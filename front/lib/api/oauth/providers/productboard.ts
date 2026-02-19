@@ -1,13 +1,15 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import type { ParsedUrlQuery } from "querystring";
 
 export class ProductboardOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -41,7 +43,12 @@ export class ProductboardOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType) {
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "personal_actions") {
+      if (extraConfig.mcp_server_id) {
+        return true;
+      }
+    }
     // Productboard doesn't require any extra configuration (like subdomain)
     return Object.keys(extraConfig).length === 0;
   }

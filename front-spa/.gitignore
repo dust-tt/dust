@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Vite
+*.local
+
+# Logs
+*.log
+
+# Cache
+.cache/
+.vite/

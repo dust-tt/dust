@@ -1,10 +1,14 @@
-import { Op } from "sequelize";
-
+import {
+  getModelConfigByModelId,
+  getSupportedModelConfigs,
+} from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId, SupportedModel } from "@app/types";
-import { isSupportedModel, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { isSupportedModel } from "@app/types/assistant/assistant";
+import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import { Op } from "sequelize";
 
 type SupportedModelIds = SupportedModel["modelId"];
 type SelectCriteria = {
@@ -87,7 +91,7 @@ async function updateWorkspaceAssistants(
     }
 
     const targetProviderId = forceProviderChange
-      ? SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === toModel)?.providerId
+      ? getModelConfigByModelId(toModel)?.providerId
       : agent.providerId;
     if (execute) {
       await agent.update({ modelId: toModel, providerId: targetProviderId });
@@ -113,7 +117,7 @@ makeScript(
     },
     toModel: {
       type: "string",
-      choices: SUPPORTED_MODEL_CONFIGS.map((m) => m.modelId),
+      choices: getSupportedModelConfigs().map((m) => m.modelId),
       demandOption: true,
     },
     workspaceIds: {
@@ -168,11 +172,8 @@ makeScript(
         usesResponseFormat,
       });
     } else {
-      const tmp = await WorkspaceModel.findAll({
-        attributes: ["id"],
-        where: { sId: workspaceIds },
-      });
-      matchingWorkspaceIds = tmp.map((w) => w.id);
+      matchingWorkspaceIds =
+        await WorkspaceResource.fetchModelIdsByIds(workspaceIds);
     }
 
     if (matchingWorkspaceIds.length === 0) {
@@ -180,15 +181,9 @@ makeScript(
       return;
     }
 
-    const whereClause = { id: matchingWorkspaceIds };
-    const workspaces = await WorkspaceModel.findAll({
-      attributes: ["id", "name", "sId"],
-      where: whereClause,
-    });
-
-    for (const workspace of workspaces) {
+    for (const workspaceId of matchingWorkspaceIds) {
       await updateWorkspaceAssistants(
-        workspace.id,
+        workspaceId,
         fromModel,
         toModel as SupportedModelIds,
         execute,

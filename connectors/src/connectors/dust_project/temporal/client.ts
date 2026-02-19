@@ -1,8 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/common";
-
 import { QUEUE_NAME } from "@connectors/connectors/dust_project/temporal/config";
 import {
   dustProjectFullSyncWorkflow,
@@ -15,7 +10,11 @@ import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { normalizeError } from "@connectors/types";
+import { isDevelopment, normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/common";
 
 export async function launchDustProjectFullSyncWorkflow(
   connectorId: ModelId
@@ -72,10 +71,12 @@ export async function launchDustProjectIncrementalSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const workflowId = dustProjectIncrementalSyncWorkflowId(connectorId);
 
-  // minuteOffset ensures jobs are distributed across the 30-minute intervals based on connector ID
-  // Run incremental sync every 30 minutes
-  const minuteOffset = connector.id % 30;
-  const cronSchedule = `${minuteOffset},${minuteOffset + 30} * * * *`;
+  // minuteOffset ensures jobs are distributed across the 10-minute intervals based on connector ID
+  // Run incremental sync every 10 minutes
+  const minuteOffset = connector.id % 10;
+  const cronSchedule = isDevelopment()
+    ? `* * * * *`
+    : `${minuteOffset},${minuteOffset + 10},${minuteOffset + 20},${minuteOffset + 30},${minuteOffset + 40},${minuteOffset + 50} * * * *`;
 
   try {
     // Check if workflow already exists

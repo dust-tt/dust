@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::databases::{
     database::{QueryDatabaseError, QueryResult, SqlDialect},
-    remote_databases::remote_database::RemoteDatabase,
+    remote_databases::remote_database::{RemoteDatabase, QUERY_TIMEOUT},
     table::Table,
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
 };
@@ -253,7 +253,7 @@ impl SnowflakeRemoteDatabase {
                 role: Some(role),
                 database: None,
                 schema: None,
-                timeout: Some(std::time::Duration::from_secs(60)),
+                timeout: Some(QUERY_TIMEOUT),
             },
         )
         .map_err(|e| {

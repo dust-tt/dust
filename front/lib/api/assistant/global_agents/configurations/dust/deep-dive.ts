@@ -1,16 +1,19 @@
-import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import { WEB_SEARCH_BROWSE_ACTION_DESCRIPTION } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { shouldUseOpus } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   getCompanyDataAction,
   getCompanyDataWarehousesAction,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/shared";
-import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
+import type {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getDefaultWebActionsForGlobalAgent,
   _getToolsetsToolsConfiguration,
@@ -18,27 +21,31 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
   AgentReasoningEffort,
-  ModelConfigurationType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
-  assertNever,
+  GLOBAL_AGENTS_SID,
+  getLargeWhitelistedModel,
+} from "@app/types/assistant/assistant";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
-  getLargeWhitelistedModel,
-  GLOBAL_AGENTS_SID,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import {
   GPT_5_2_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
-  isProviderWhitelisted,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+} from "@app/types/assistant/models/openai";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -174,7 +181,12 @@ When using sub-agents for data analytics tasks or querying data warehouses, do n
 </sub_agent_guidelines>
 `;
 
-const toolsPrompt = `<company_data_guidelines>
+function getToolsPrompt({
+  includeToolsetsPrompt,
+}: {
+  includeToolsetsPrompt: boolean;
+}) {
+  return `<company_data_guidelines>
 You can use the Company Data tools to explore and search through the user's internal, unstructured, textual Company Data.
 
 This data can come from various sources, such as internal messaging systems, emails, knowledge bases code repositories, project management systems, support tickets etc...
@@ -208,7 +220,8 @@ Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
 The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
 A dataSourceId typically starts with the prefix "dts_".
 </data_warehouses_guidelines>
-
+` + includeToolsetsPrompt
+    ? `
 <additional_tools>
 If you need a capability that is not available in your current tools, first use the \`toolsets\` tool to list available toolsets on the platform.
 
@@ -216,7 +229,9 @@ You may then either:
 - Enable the required toolset on yourself using \`toolsets__enable\` with the provided toolsetId
 - Spawn a sub-agent and pass the required toolset(s) via \`toolsetsToAdd\` so the sub-agent starts with them pre-enabled.
 </additional_tools>
-`;
+`
+    : "";
+}
 
 const offloadedBrowsingPrompt = `<web_browsing_guidelines>
 You can use the web tools to search the web and browse web pages.
@@ -266,9 +281,15 @@ Heavily bias against using the interactive_content tool for what could be writte
 Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
-const deepDiveInstructions = `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
+export function getDeepDiveInstructions({
+  includeToolsetsPrompt,
+}: {
+  includeToolsetsPrompt: boolean;
+}) {
+  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
+}
 
-const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}
+const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${getToolsPrompt({ includeToolsetsPrompt: true })}
 <output_format>
 Your output will be consumed by another AI agent, not a human. As a result, do not focus on formatting, avoid making verbose sentences and focus on producing concise but information-dense output.
 Make sure to include all information and details that are relevant to the request, without any noise or redundancy.
@@ -303,7 +324,7 @@ Any task that requires gathering substantial amounts of context, such as browsin
 The research agent you are planning for has the following instructions:
 
 <research_agent_instructions>
-${deepDiveInstructions}
+${getDeepDiveInstructions({ includeToolsetsPrompt: true })}
 </research_agent_instructions>
 
 These instructions are NOT your own instructions, but you may use them to understand the research agent's capabilities and constraints.
@@ -381,7 +402,7 @@ function getModelConfig(
   };
 }
 
-function getFastModelConfig(owner: WorkspaceType): {
+export function getFastModelConfig(owner: WorkspaceType): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
@@ -424,28 +445,27 @@ export function _getDeepDiveGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    webSearchBrowseMCPServerView,
-    dataSourcesFileSystemMCPServerView,
-    interactiveContentMCPServerView,
-    runAgentMCPServerView,
-    dataWarehousesMCPServerView,
-    toolsetsMCPServerView,
-    slideshowMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
-    runAgentMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
-    slideshowMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ): AgentConfigurationType | null {
+  const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const owner = auth.getNonNullableWorkspace();
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
+
+  const enterpriseModelConfig =
+    shouldUseOpus(auth) && isProviderWhitelisted(owner, "anthropic")
+      ? {
+          modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+          reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
+        }
+      : null;
+
+  const effectiveModelConfig = enterpriseModelConfig ?? modelConfig;
 
   const deepAgent: Omit<
     AgentConfigurationType,
@@ -458,7 +478,8 @@ export function _getDeepDiveGlobalAgent(
     versionAuthorId: null,
     name: DEEP_DIVE_NAME,
     description: DEEP_DIVE_DESC,
-    instructions: deepDiveInstructions,
+    instructions: getDeepDiveInstructions({ includeToolsetsPrompt: true }),
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,
@@ -471,7 +492,7 @@ export function _getDeepDiveGlobalAgent(
     canEdit: false,
   };
 
-  if (settings?.status === "disabled_by_admin" || !modelConfig) {
+  if (settings?.status === "disabled_by_admin" || !effectiveModelConfig) {
     return {
       ...deepAgent,
       status: "disabled_by_admin",
@@ -481,10 +502,10 @@ export function _getDeepDiveGlobalAgent(
   }
 
   const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
+    providerId: effectiveModelConfig.modelConfiguration.providerId,
+    modelId: effectiveModelConfig.modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
+    reasoningEffort: effectiveModelConfig.reasoningEffort,
   };
 
   deepAgent.model = model;
@@ -493,7 +514,7 @@ export function _getDeepDiveGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    dataSourcesFileSystemMCPServerView
+    mcpServerViews
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
@@ -502,42 +523,21 @@ export function _getDeepDiveGlobalAgent(
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
-      webSearchBrowseMCPServerView,
+      mcpServerViews,
     }),
     ..._getToolsetsToolsConfiguration({
       agentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      toolsetsMcpServerView: toolsetsMCPServerView,
+      mcpServerViews,
     })
   );
 
   // Add data warehouses tool with all warehouses in global space (all remote DBs)
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    dataWarehousesMCPServerView
+    mcpServerViews
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);
-  }
-
-  // Add Interactive Content tool.
-  if (interactiveContentMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-interactive-content",
-      type: "mcp_server_configuration",
-      name: "interactive_content" satisfies InternalMCPServerNameType,
-      description: "Create & update Interactive Content files.",
-      mcpServerViewId: interactiveContentMCPServerView.sId,
-      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-    });
   }
 
   // Add run_agent to call dust-task
@@ -558,6 +558,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
     actions.push({
       id: -1,
@@ -576,27 +577,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
-    });
-  }
-
-  // Add Slideshow tool.
-  if (slideshowMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-slideshow",
-      type: "mcp_server_configuration",
-      name: "slideshow" satisfies InternalMCPServerNameType,
-      description: "Create & update interactive slideshow presentations.",
-      mcpServerViewId: slideshowMCPServerView.sId,
-      internalMCPServerId: slideshowMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
+      dustProject: null,
     });
   }
 
@@ -613,6 +594,7 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
@@ -622,15 +604,11 @@ export function _getDustTaskGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    webSearchBrowseMCPServerView,
-    dataSourcesFileSystemMCPServerView,
-    dataWarehousesMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -653,6 +631,7 @@ export function _getDustTaskGlobalAgent(
     name,
     description,
     instructions: subAgentInstructions,
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,
@@ -689,19 +668,21 @@ export function _getDustTaskGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    dataSourcesFileSystemMCPServerView
+    mcpServerViews
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
   }
 
+  const { "web_search_&_browse": webSearchBrowseMCPServerView } =
+    mcpServerViews;
   if (webSearchBrowseMCPServerView) {
     actions.push({
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: "webtools",
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
@@ -714,12 +695,13 @@ export function _getDustTaskGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
   }
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    dataWarehousesMCPServerView
+    mcpServerViews
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);
@@ -759,6 +741,7 @@ export function _getPlanningAgent(
     name,
     description,
     instructions: planningAgentInstructions,
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,
@@ -821,6 +804,7 @@ export function _getBrowserSummaryAgent(
     name,
     description,
     instructions: browserSummaryAgentInstructions,
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,

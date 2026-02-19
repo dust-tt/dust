@@ -1,3 +1,4 @@
+import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
   validateTailwindCode,
   validateTypeScriptSyntax,
@@ -7,17 +8,18 @@ import {
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { InteractiveContentFileContentType, Result } from "@app/types";
+import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
-  Err,
   INTERACTIVE_CONTENT_FILE_FORMATS,
   isInteractiveContentFileContentType,
-  normalizeError,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function validateFileTitle({
   fileName,
@@ -67,23 +69,27 @@ export async function createClientExecutableFile(
     fileName: string;
     createdByAgentConfigurationId?: string;
   }
-): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
-  // Validate Tailwind classes.
-  const tailwindValidation = validateTailwindCode(content);
-  if (tailwindValidation.isErr()) {
-    return new Err({
-      message: tailwindValidation.error.message,
-      tracked: false,
-    });
-  }
-
-  // Validate TypeScript/JSX syntax.
+): Promise<
+  Result<
+    { fileResource: FileResource; warnings: ValidationWarning[] },
+    { tracked: boolean; message: string }
+  >
+> {
+  // TODO(2026-01-16 flav): Implement warning logic.
+  // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
   const syntaxValidation = validateTypeScriptSyntax(content);
   if (syntaxValidation.isErr()) {
     return new Err({
       message: syntaxValidation.error.message,
       tracked: false,
     });
+  }
+
+  // Collect Tailwind validation warnings (non-blocking).
+  const warnings: ValidationWarning[] = [];
+  const tailwindValidation = validateTailwindCode(content);
+  if (tailwindValidation.isErr()) {
+    warnings.push(...tailwindValidation.error);
   }
 
   try {
@@ -123,7 +129,7 @@ export async function createClientExecutableFile(
     // Upload content directly.
     await fileResource.uploadContent(auth, content);
 
-    return new Ok(fileResource);
+    return new Ok({ fileResource, warnings });
   } catch (error) {
     const workspace = auth.getNonNullableWorkspace();
     logger.error(
@@ -160,76 +166,93 @@ export async function editClientExecutableFile(
   }
 ): Promise<
   Result<
-    { fileResource: FileResource; replacementCount: number },
+    {
+      fileResource: FileResource;
+      replacementCount: number;
+      warnings: ValidationWarning[];
+    },
     { tracked: boolean; message: string }
   >
 > {
-  // Fetch the existing file.
-  const fileContentResult = await getClientExecutableFileContent(auth, fileId);
-  if (fileContentResult.isErr()) {
-    return new Err({
-      message: fileContentResult.error.message,
-      tracked: fileContentResult.error.tracked,
-    });
-  }
-  const { fileResource, content: currentContent } = fileContentResult.value;
+  // Acquire edit lock to prevent concurrent modifications.
+  // TODO(YJS): Replace with YJS-based concurrent editing for proper multi-agent support.
+  try {
+    return await executeWithLock(`file:edit:${fileId}`, async () => {
+      // Fetch the existing file.
+      const fileContentResult = await getClientExecutableFileContent(
+        auth,
+        fileId
+      );
+      if (fileContentResult.isErr()) {
+        return new Err({
+          message: fileContentResult.error.message,
+          tracked: fileContentResult.error.tracked,
+        });
+      }
+      const { fileResource, content: currentContent } = fileContentResult.value;
 
-  const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
-    oldString,
-    newString,
-    currentContent,
-  });
-
-  if (occurrences === 0) {
-    return new Err({
-      message: `String not found in file: "${oldString}"`,
-      tracked: false,
-    });
-  }
-
-  if (occurrences !== expectedReplacements) {
-    return new Err({
-      message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
-      tracked: false,
-    });
-  }
-
-  // Update metadata to track the editing agent
-  if (editedByAgentConfigurationId) {
-    const needsMetadataUpdate =
-      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-      editedByAgentConfigurationId;
-
-    if (needsMetadataUpdate) {
-      await fileResource.setUseCaseMetadata({
-        ...fileResource.useCaseMetadata,
-        lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+      const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
+        oldString,
+        newString,
+        currentContent,
       });
-    }
-  }
 
-  // Validate the Tailwind classes in the resulting code.
-  const tailwindValidation = validateTailwindCode(updatedContent);
-  if (tailwindValidation.isErr()) {
+      if (occurrences === 0) {
+        return new Err({
+          message: `String not found in file: "${oldString}"`,
+          tracked: false,
+        });
+      }
+
+      if (occurrences !== expectedReplacements) {
+        return new Err({
+          message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
+          tracked: false,
+        });
+      }
+
+      // Update metadata to track the editing agent
+      if (editedByAgentConfigurationId) {
+        const needsMetadataUpdate =
+          fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+          editedByAgentConfigurationId;
+
+        if (needsMetadataUpdate) {
+          await fileResource.setUseCaseMetadata({
+            ...fileResource.useCaseMetadata,
+            lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+          });
+        }
+      }
+
+      // TODO(2026-01-16 flav): Implement warning logic.
+      // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
+      const syntaxValidation = validateTypeScriptSyntax(updatedContent);
+      if (syntaxValidation.isErr()) {
+        return new Err({
+          message: syntaxValidation.error.message,
+          tracked: false,
+        });
+      }
+
+      // Collect Tailwind validation warnings (non-blocking).
+      const warnings: ValidationWarning[] = [];
+      const tailwindValidation = validateTailwindCode(updatedContent);
+      if (tailwindValidation.isErr()) {
+        warnings.push(...tailwindValidation.error);
+      }
+
+      // Upload the updated content (version is incremented inside uploadContent).
+      await fileResource.uploadContent(auth, updatedContent);
+
+      return new Ok({ fileResource, replacementCount: occurrences, warnings });
+    });
+  } catch (error) {
     return new Err({
-      message: tailwindValidation.error.message,
+      message: `File is currently being edited: ${normalizeError(error)}`,
       tracked: false,
     });
   }
-
-  // Validate TypeScript/JSX syntax in the resulting code.
-  const syntaxValidation = validateTypeScriptSyntax(updatedContent);
-  if (syntaxValidation.isErr()) {
-    return new Err({
-      message: syntaxValidation.error.message,
-      tracked: false,
-    });
-  }
-
-  // Upload the updated content (version is incremented inside uploadContent).
-  await fileResource.uploadContent(auth, updatedContent);
-
-  return new Ok({ fileResource, replacementCount: occurrences });
 }
 
 export async function renameClientExecutableFile(

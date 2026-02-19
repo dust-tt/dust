@@ -1,7 +1,3 @@
-import fs from "fs/promises";
-import parseArgs from "minimist";
-import path from "path";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
@@ -12,6 +8,7 @@ import {
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -37,13 +34,13 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import {
-  assertNever,
-  ConnectorsAPI,
-  isRoleType,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { isRoleType } from "@app/types/user";
+import fs from "fs/promises";
+import parseArgs from "minimist";
+import path from "path";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -311,7 +308,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      await softDeleteDataSourceAndLaunchScrubWorkflow(auth, dataSource);
+      await softDeleteDataSourceAndLaunchScrubWorkflow(auth, { dataSource });
 
       console.log(`Data Source deleted: ${args.dsId}`);
 
@@ -336,9 +333,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.modelId) {
         throw new Error("Missing --modelId argument");
       }
-      const model = SUPPORTED_MODEL_CONFIGS.find(
-        (m) => m.modelId === args.modelId
-      );
+      const model = getModelConfigByModelId(args.modelId);
       if (!model) {
         throw new Error(`Model not found: '${args.modelId}'`);
       }
@@ -469,7 +464,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-      await transcriptsConfiguration.setIsActive(true);
+      await transcriptsConfiguration.setStatus("active");
 
       logger.info(
         {
@@ -491,7 +486,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         const configs =
           await LabsTranscriptsConfigurationResource.findByWorkspaceId(ws.id);
         for (const config of configs) {
-          if (config.isActive === true || !!config.dataSourceViewId) {
+          if (config.status === "active" || !!config.dataSourceViewId) {
             activeConfigSIds.push(config.sId);
             if (execute) {
               await stopRetrieveTranscriptsWorkflow(config);

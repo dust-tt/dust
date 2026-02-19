@@ -1,15 +1,15 @@
-import { createContext } from "react";
-import type { UseFormReturn } from "react-hook-form";
-import { z } from "zod";
-
 import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import {
   actionSchema,
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
+import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
+import { createContext } from "react";
+import type { UseFormReturn } from "react-hook-form";
+import { z } from "zod";
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
 
@@ -105,6 +105,7 @@ export type AgentBuilderScheduleTriggerType = z.infer<
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
+  instructionsHtml: z.string().optional(),
   generationSettings: generationSettingsSchema,
   skills: z.array(skillsSchema),
   additionalSpaces: additionalSpacesSchema,
@@ -138,6 +139,7 @@ export interface MCPFormData {
     } | null;
     additionalConfiguration: AdditionalConfigurationInBuilderType;
     dustAppConfiguration: any;
+    dustProject: ProjectConfiguration | null;
     secretName: string | null;
     jsonSchema: any;
     _jsonSchemaString: string | null;

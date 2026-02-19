@@ -1,6 +1,3 @@
-import tracer from "dd-trace";
-import type { OAuth2Client } from "googleapis-common";
-
 import { syncOneFileTable } from "@connectors/connectors/google_drive/temporal/file/sync_one_file_table";
 import { syncOneFileTextDocument } from "@connectors/connectors/google_drive/temporal/file/sync_one_file_text_document";
 import { isTableFile } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -21,6 +18,8 @@ import type {
   GoogleDriveObjectType,
   ModelId,
 } from "@connectors/types";
+import tracer from "dd-trace";
+import type { OAuth2Client } from "googleapis-common";
 
 export async function syncOneFile(
   connectorId: ModelId,

@@ -6,25 +6,30 @@ import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers
 import {
   getSteps,
   renderContentFragment,
+  renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
+  ConversationType,
+} from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
-  ConversationType,
-  ModelConfigurationType,
   ModelMessageTypeMultiActions,
-} from "@app/types";
-import {
-  assertNever,
-  isAgentMessageType,
-  isContentFragmentType,
-  isUserMessageType,
-} from "@app/types";
-import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
+} from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Renders agent message steps into model messages
@@ -117,34 +122,15 @@ export function renderAgentSteps(
     }
   }
 
-  // Legacy agent message support
-  if (!message.rawContents.length && message.content?.trim()) {
-    // This should not happen anymore, putting logs to check if anything goes wrong.
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        agentMessageId: message.sId,
-      },
-      "Unexpected legacy agent message state, agent message with empty `rawContents` and non-empty `content`"
-    );
-    messages.push({
-      role: "assistant",
-      name: message.configuration.name,
-      contents: [
-        {
-          type: "text_content",
-          value: message.content,
-        },
-      ],
-    });
-  }
-
   return messages;
 }
 
 /**
  * Renders all conversation messages into model messages
+ *
+ * When `agentConfiguration` is provided and the `agent_bound_loop_rendering` feature flag
+ * is enabled, agent messages from other agents are rendered as user messages with system tags,
+ * showing only the final output (not the full agentic loop).
  */
 export async function renderAllMessages(
   auth: Authenticator,
@@ -154,15 +140,22 @@ export async function renderAllMessages(
     excludeActions,
     excludeImages,
     onMissingAction,
+    agentConfiguration,
+    featureFlags,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
     excludeActions?: boolean;
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
+    agentConfiguration?: AgentConfigurationType;
+    featureFlags?: WhitelistableFeature[];
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
+
+  const agentBoundLoopRendering =
+    featureFlags?.includes("agent_bound_loop_rendering") ?? false;
 
   // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
@@ -170,32 +163,47 @@ export async function renderAllMessages(
 
     if (isAgentMessageType(m)) {
       if (m.visibility === "visible") {
-        const steps = await getSteps(auth, {
-          model,
-          message: m,
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          onMissingAction,
-        });
+        // When agent_bound_loop_rendering is enabled, check if this is the current agent's message.
+        const isCurrentAgentMessage =
+          !agentBoundLoopRendering ||
+          !agentConfiguration ||
+          m.configuration.sId === agentConfiguration.sId;
 
-        const agentMessages = renderAgentSteps(
-          steps,
-          m,
-          conversation,
-          !!excludeActions
-        );
-        messages.push(...agentMessages);
+        if (isCurrentAgentMessage) {
+          // Render the current agent's messages normally with full agentic loop.
+          const steps = getSteps(auth, {
+            model,
+            message: m,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            onMissingAction,
+          });
+
+          const agentMessages = renderAgentSteps(
+            steps,
+            m,
+            conversation,
+            !!excludeActions
+          );
+          messages.push(...agentMessages);
+        } else {
+          // Render other agent messages as user messages with system tags, showing only the final
+          // output (not the full agentic loop).
+          const userMessage = renderOtherAgentMessageAsUserMessage(m);
+          if (userMessage) {
+            messages.push(userMessage);
+          }
+        }
       }
     } else if (isUserMessageType(m)) {
       if (m.visibility === "visible") {
-        messages.push(renderUserMessage(m));
+        messages.push(renderUserMessage(conversation, m));
       }
     } else if (isContentFragmentType(m)) {
       if (m.visibility === "visible") {
         const renderedContentFragment = await renderContentFragment(
           auth,
           m,
-          conversation,
           model,
           !!excludeImages
         );

@@ -7,7 +7,7 @@ import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_serv
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
-import { OAuthAPI } from "@app/types";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 
 type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
   id: string;
@@ -109,6 +109,13 @@ makeScript(
     }
 
     // Get the OAuth access token
+    if (!mcpServerConnection.connectionId) {
+      logger.error(
+        `MCP server connection ${mcpServerConnection.id} is not configured for OAuth`
+      );
+      return;
+    }
+
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
     const tokenResult = await oauthApi.getAccessToken({
       connectionId: mcpServerConnection.connectionId,

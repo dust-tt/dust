@@ -1,6 +1,3 @@
-import isEqual from "lodash/isEqual";
-import type { WhereOptions } from "sequelize";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
@@ -10,6 +7,8 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import isEqual from "lodash/isEqual";
+import type { WhereOptions } from "sequelize";
 
 async function updateAgentRequestedSpaceIds(
   workspaceId: string,

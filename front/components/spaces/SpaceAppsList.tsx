@@ -1,3 +1,15 @@
+import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useQueryParams } from "@app/hooks/useQueryParams";
+import { useAppRouter } from "@app/lib/platform";
+import { useApps } from "@app/lib/swr/apps";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
+import type { AppType } from "@app/types/app";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CommandLineIcon,
@@ -7,21 +19,10 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
-import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
-
-import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
-import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
-import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
-import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useApps } from "@app/lib/swr/apps";
-import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type { AppType, LightWorkspaceType, SpaceType } from "@app/types";
-import { isString } from "@app/types";
 
 type RowData = {
   app: AppType;
@@ -77,7 +78,7 @@ export const SpaceAppsList = ({
   space,
   onSelect,
 }: SpaceAppsListProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);

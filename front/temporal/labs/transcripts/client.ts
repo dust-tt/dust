@@ -1,9 +1,3 @@
-import type { ScheduleOptions } from "@temporalio/client";
-import {
-  ScheduleNotFoundError,
-  ScheduleOverlapPolicy,
-} from "@temporalio/client";
-
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -11,8 +5,14 @@ import logger from "@app/logger/logger";
 import { TRANSCRIPTS_QUEUE_NAME } from "@app/temporal/labs/transcripts/config";
 import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
 import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/transcripts/workflows";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { ScheduleOptions } from "@temporalio/client";
+import {
+  ScheduleNotFoundError,
+  ScheduleOverlapPolicy,
+} from "@temporalio/client";
 
 function makeScheduleId(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
@@ -56,7 +56,7 @@ async function getScheduleOptions(
     memo: {
       transcriptsConfigurationId: transcriptsConfiguration.id,
       transcriptsConfigurationSid: transcriptsConfiguration.sId,
-      IsProcessingTranscripts: transcriptsConfiguration.isActive,
+      IsProcessingTranscripts: transcriptsConfiguration.isActive(),
       IsStoringTranscripts: transcriptsConfiguration.dataSourceViewId !== null,
     },
   };
@@ -127,14 +127,14 @@ export async function stopRetrieveTranscriptsWorkflow(
     childLogger.info("Deleted transcripts schedule successfully.");
 
     if (setIsActiveToFalse) {
-      await transcriptsConfiguration.setIsActive(false);
+      await transcriptsConfiguration.setStatus("disabled");
     }
     return new Ok(undefined);
   } catch (err) {
     if (err instanceof ScheduleNotFoundError) {
       childLogger.warn("Schedule not found, nothing to delete.");
       if (setIsActiveToFalse) {
-        await transcriptsConfiguration.setIsActive(false);
+        await transcriptsConfiguration.setStatus("disabled");
       }
       return new Ok(undefined);
     }

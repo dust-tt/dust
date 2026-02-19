@@ -1,6 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -50,32 +47,30 @@ import type {
 } from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
-import type {
-  LightWorkspaceType,
-  SpaceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type {
   MCPOAuthUseCase,
   OAuthProvider,
   OAuthUseCase,
-  Result,
-} from "@app/types";
-import {
-  Err,
-  isAdmin,
-  isAPIErrorResponse,
-  Ok,
-  removeNulls,
-  setupOAuthConnection,
-} from "@app/types";
+} from "@app/types/oauth/lib";
+import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;
   connectionId: string;
 };
 
-function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
+export function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: !isAdmin(owner),
@@ -850,22 +845,39 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     connectionType: "personal",
   });
 
-  const sendNotification = useSendNotification();
-
   const createPersonalConnection = async ({
     mcpServerId,
     mcpServerDisplayName,
+    authorization,
     provider,
     useCase,
     scope,
+    overriddenCredentials,
   }: {
     mcpServerId: string;
     mcpServerDisplayName: string;
+    authorization?: MCPServerType["authorization"];
     provider: OAuthProvider;
     useCase: OAuthUseCase;
     scope?: string;
-  }): Promise<boolean> => {
+    overriddenCredentials?: Record<string, string>;
+  }): Promise<{ success: boolean; error?: string }> => {
     try {
+      const workspaceConnectionRequirement =
+        authorization?.workspace_connection;
+      if (
+        useCase === "personal_actions" &&
+        workspaceConnectionRequirement?.required &&
+        !workspaceConnectionRequirement.satisfied
+      ) {
+        return {
+          success: false,
+          error:
+            `A workspace admin must first connect ${mcpServerDisplayName} at the workspace level before users can connect their personal accounts. ` +
+            "Please contact your workspace administrator to set up the workspace connection.",
+        };
+      }
+
       const extraConfig: Record<string, string> = {
         mcp_server_id: mcpServerId,
       };
@@ -874,8 +886,16 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         extraConfig.scope = scope;
       }
 
+      if (overriddenCredentials) {
+        for (const [key, value] of Object.entries(overriddenCredentials)) {
+          const trimmedValue = value.trim();
+          if (trimmedValue && isSupportedOAuthCredential(key)) {
+            extraConfig[key] = trimmedValue;
+          }
+        }
+      }
+
       const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
         provider,
         useCase,
@@ -883,33 +903,24 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       });
 
       if (cRes.isErr()) {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect provider",
-          description: cRes.error.message,
-        });
-        return false;
+        return { success: false, error: cRes.error.message };
       }
 
       const result = await createMCPServerConnection({
         connectionId: cRes.value.connection_id,
-        mcpServerId: mcpServerId,
-        mcpServerDisplayName: mcpServerDisplayName,
+        mcpServerId,
+        mcpServerDisplayName,
         provider,
       });
 
-      return result !== null;
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to connect provider",
-        description:
-          "Unexpected error trying to connect to your provider. Please try again. Error: " +
-          // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-          error,
-      });
+      return { success: result !== null };
+    } catch {
+      return {
+        success: false,
+        error:
+          "Unexpected error trying to connect to your provider. Please try again.",
+      };
     }
-    return false;
   };
 
   return { createPersonalConnection };

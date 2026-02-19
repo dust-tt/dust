@@ -1,10 +1,17 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 export const emptyToolCallLLMEvents: LLMEvent[] = [
   {
     type: "interaction_id",
     content: { modelInteractionId: "msg_017KE6ziN29Ks5KyL3jGE7RR" },
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
+    type: "tool_call_delta",
     metadata: {
       clientId: "anthropic" as const,
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
@@ -30,6 +37,7 @@ export const emptyToolCallLLMEvents: LLMEvent[] = [
       cachedTokens: 0,
       cacheCreationTokens: 0,
       totalTokens: 120,
+      uncachedInputTokens: 100,
     },
     metadata: {
       clientId: "anthropic" as const,

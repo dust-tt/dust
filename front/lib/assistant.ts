@@ -1,44 +1,15 @@
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import type {
-  AgentModelConfigurationType,
-  ModelConfigurationType,
-  PlanType,
-  SupportedModel,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
-import { isProviderWhitelisted, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
 
-export function isLargeModel(model: unknown): model is SupportedModel {
-  const maybeSupportedModel = model as SupportedModel;
-  const m = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === maybeSupportedModel.modelId &&
-      m.providerId === maybeSupportedModel.providerId
-  );
-  if (m) {
-    return m.largeModel;
-  }
-  return false;
-}
-
-export function getSupportedModelConfig(
-  supportedModel: SupportedModel | AgentModelConfigurationType
-) {
-  // here it is safe to cast the result to non-nullable because SupportedModel
-  // is derived from the const array of configs above
-  return SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === supportedModel.modelId &&
-      m.providerId === supportedModel.providerId
-  ) as (typeof SUPPORTED_MODEL_CONFIGS)[number];
-}
-
-export function canUseModel(
+// Returns true if the model is available to the workspace, regardless of whether it is whitelisted or not.
+export function isModelAvailable(
   m: ModelConfigurationType,
   featureFlags: WhitelistableFeature[],
-  plan: PlanType | null,
-  owner: WorkspaceType
+  plan: PlanType | null
 ) {
   if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
     return false;
@@ -52,6 +23,19 @@ export function canUseModel(
   }
 
   if (m.largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+  return true;
+}
+
+// Returns true if the model is available to the workspace and is whitelisted.
+export function isModelAvailableAndWhitelisted(
+  m: ModelConfigurationType,
+  featureFlags: WhitelistableFeature[],
+  plan: PlanType | null,
+  owner: WorkspaceType
+) {
+  if (!isModelAvailable(m, featureFlags, plan)) {
     return false;
   }
 

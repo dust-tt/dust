@@ -1,5 +1,4 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
-import type { NextApiRequest, NextApiResponse } from "next";
 
 import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { canAccessFileInConversation } from "@app/lib/api/viz/files";
@@ -8,8 +7,10 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { frameContentType, isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { frameContentType } from "@app/types/files";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger

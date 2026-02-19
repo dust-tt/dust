@@ -7,6 +7,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const scrubWorkspaces = async (execute: boolean) => {
   const endedSubs = await SubscriptionModel.findAll({
@@ -18,12 +19,9 @@ const scrubWorkspaces = async (execute: boolean) => {
     },
   });
 
-  const workspaces = await WorkspaceModel.findAll({
-    where: {
-      id: endedSubs.map((s) => s.workspaceId),
-    },
-  });
-
+  const workspaces = await WorkspaceResource.fetchByModelIds(
+    endedSubs.map((s) => s.workspaceId)
+  );
   const allSubsByWorkspaceId = _.groupBy(
     await SubscriptionModel.findAll({
       where: {

@@ -1,14 +1,14 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const WorkspaceTypeSchema = t.type({
   segmentation: t.union([t.literal("interesting"), t.null]),

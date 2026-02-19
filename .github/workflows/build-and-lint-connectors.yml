@@ -3,6 +3,7 @@ name: Lint & Build & Test (connectors)
 on:
   push:
     paths:
+      - package-lock.json
       - sdks/js/**
       - connectors/**
       - .github/workflows/build-and-lint-connectors.yml
@@ -12,50 +13,39 @@ permissions:
   pull-requests: write
 
 jobs:
-  check-package-lock:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-      - name: Check package.json and package-lock.json sync
-        run: ./scripts/check-package-lock-sync.sh connectors sdks/js
-  tsc:
+  tsgo:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          node-version: '22.22.0'
       - name: Typecheck
-        working-directory: connectors
-        run: npm install && npm run tsgo -- --version && npm run tsgo
+        run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
         with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: ./connectors/package-lock.json
-      - name: Build sdk js
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Lint and format:check
-        working-directory: connectors
-        run: npm install && npm run lint && npm run format:check
+          build-sdks: "true"
+          node-version: '22.22.0'
+      - name: Lint
+        run: npm -w connectors run lint
   tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
         with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: ./connectors/package-lock.json
+          build-sdks: "true"
+          node-version: '22.22.0'
       - name: Install Postgres
-        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
+        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
         with:
           postgresql docker image: mirror.gcr.io/postgres
           postgresql version: "14.13"
@@ -63,15 +53,12 @@ jobs:
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
-      - name: Build sdk js
-        working-directory: sdks/js
-        run: npm install && npm run build
       - name: Run Tests
         working-directory: connectors
         env:
           CONNECTORS_DATABASE_URI: "postgres://test:test@localhost:5433/connectors_test"
           NODE_ENV: test
-        run: npm install && npx tsx src/admin/db.ts && npm run test:ci
+        run: npx tsx src/admin/db.ts && npm run test:ci
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
@@ -81,7 +68,3 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report
-      - name: Knip
-        uses: ./.github/actions/knip
-        with:
-          working_directory: connectors

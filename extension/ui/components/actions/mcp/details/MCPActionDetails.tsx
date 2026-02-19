@@ -279,11 +279,20 @@ export function GenericActionDetails({
   action,
   viewType,
 }: MCPActionDetailsProps) {
-  const actionName =
-    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
-    (action.functionCallName
-      ? `: ${asDisplayName(action.functionCallName)}`
-      : "");
+  let actionName: string;
+
+  if (action.displayLabels) {
+    actionName =
+      viewType === "conversation"
+        ? action.displayLabels.running
+        : action.displayLabels.done;
+  } else {
+    actionName =
+      (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+      (action.functionCallName
+        ? `: ${asDisplayName(action.functionCallName)}`
+        : "");
+  }
 
   return (
     <ActionDetailsWrapper

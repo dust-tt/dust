@@ -1,11 +1,10 @@
-import { faker } from "@faker-js/faker";
-import { beforeEach, describe, expect, it } from "vitest";
-
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { faker } from "@faker-js/faker";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("WorkspaceVerificationAttemptResource", () => {
   let workspace1: WorkspaceType;
@@ -66,6 +65,27 @@ describe("WorkspaceVerificationAttemptResource", () => {
       expect(attempt.twilioVerificationSid).toBe(twilioVerificationSid);
       expect(attempt.attemptNumber).toBe(1);
       expect(attempt.verifiedAt).toBeNull();
+    });
+  });
+
+  describe("makeVerified", () => {
+    it("should create a new verified attempt", async () => {
+      const phoneNumberHash =
+        WorkspaceVerificationAttemptResource.hashPhoneNumber("+33612345678");
+
+      const attempt = await WorkspaceVerificationAttemptResource.makeVerified(
+        authW1,
+        {
+          phoneNumberHash,
+        }
+      );
+
+      expect(attempt).toBeDefined();
+      expect(attempt.workspaceId).toBe(workspace1.id);
+      expect(attempt.phoneNumberHash).toBe(phoneNumberHash);
+      expect(attempt.twilioVerificationSid).toBeNull();
+      expect(attempt.attemptNumber).toBe(1);
+      expect(attempt.verifiedAt).toBeInstanceOf(Date);
     });
   });
 

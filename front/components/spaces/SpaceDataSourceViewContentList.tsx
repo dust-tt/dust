@@ -1,32 +1,3 @@
-import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  Button,
-  cn,
-  Cog6ToothIcon,
-  DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import type {
-  CellContext,
-  ColumnDef,
-  SortingState,
-} from "@tanstack/react-table";
-import { useRouter } from "next/router";
-import * as React from "react";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -41,8 +12,8 @@ import {
 } from "@app/components/spaces/ContentActions";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
@@ -52,25 +23,53 @@ import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { ConnectorType } from "@app/types/data_source";
 import type {
-  APIError,
-  ConnectorType,
-  ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
-  FileUseCase,
-  LightWorkspaceType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { isValidContentNodesViewType } from "@app/types";
+} from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import type { FileUseCase } from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
+import {
+  Button,
+  Cog6ToothIcon,
+  cn,
+  DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
+import type * as React from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const DEFAULT_VIEW_TYPE = "all";
 const PAGE_SIZE = 100;
@@ -86,49 +85,21 @@ const columnsBreakpoints = {
   spaces: "md" as const,
 };
 
-function isMicrosoftNode(row: RowData) {
-  return row.dataSourceView.dataSource.connectorProvider === "microsoft";
-}
-
-/**
- * Microsoft root folders' titles do not contain the sites / unsynced parent
- * directory information, which had caused usability issues, see
- * https://github.com/dust-tt/tasks/issues/2619
- *
- * As such we extract title from the sourceUrl rather than using titles
- * directly.
- *
- * TODO(pr, 2025-04-18): if solution is satisfactory, change the title field for
- * microsoft directly in connectors + backfill, then remove this logic.
- */
-function getTitleForMicrosoftNode(row: RowData) {
-  if (
-    row.parentInternalId !== null ||
-    row.type !== "folder" ||
-    !row.sourceUrl
-  ) {
-    return row.title;
-  }
-  // remove the trailing url in parenthesis
-  //title = title.replace(/\s*\([^\)\()]*\)\s*$/, "");
-
-  // extract the title from the sourceUrl
-  const url = new URL(row.sourceUrl);
-  const decodedPathname = decodeURIComponent(url.pathname);
-  const title = decodedPathname.split("/").slice(2).join("/");
-  return title;
-}
-const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
+const getTableColumns = ({
+  showSpaceUsage,
+  isTopLevelInView,
+}: {
+  showSpaceUsage: boolean;
+  isTopLevelInView: boolean;
+}): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
     header: "Name",
     id: "title",
-    accessorFn: (row) => {
-      if (isMicrosoftNode(row)) {
-        return getTitleForMicrosoftNode(row);
-      }
-      return row.title;
-    },
+    accessorFn: (row) =>
+      getDisplayTitleForDataSourceViewContentNode(row, {
+        disambiguate: isTopLevelInView,
+      }),
     sortingFn: (a, b, columnId) => {
       const aValue = a.getValue(columnId) as string;
       const bValue = b.getValue(columnId) as string;
@@ -300,11 +271,12 @@ export const SpaceDataSourceViewContentList = ({
     "viewType",
     DEFAULT_VIEW_TYPE
   ) as [ContentNodesViewType, (viewType: ContentNodesViewType) => void];
-  const router = useRouter();
+  const router = useAppRouter();
   const showSpaceUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular"],
     disabled: !showSpaceUsage,
   });
   const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner, {
@@ -323,16 +295,12 @@ export const SpaceDataSourceViewContentList = ({
   const sortingAsString = useMemo(() => JSON.stringify(sorting), [sorting]);
 
   // Reset pagination when sorting changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     resetPagination();
   }, [sortingAsString, resetPagination]);
 
   const { setIsSearchDisabled } = useContext(SpaceSearchContext);
-
-  const columns = useMemo(
-    () => getTableColumns(showSpaceUsage),
-    [showSpaceUsage]
-  );
 
   // Convert DataTable sorting format to our API format
   const apiSorting = sorting.map((sort) => ({
@@ -357,6 +325,17 @@ export const SpaceDataSourceViewContentList = ({
       : DEFAULT_VIEW_TYPE,
     sorting: apiSorting,
   });
+
+  const isTopLevelInView = !parentId;
+
+  const columns = useMemo(
+    () =>
+      getTableColumns({
+        showSpaceUsage,
+        isTopLevelInView,
+      }),
+    [showSpaceUsage, isTopLevelInView]
+  );
 
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 

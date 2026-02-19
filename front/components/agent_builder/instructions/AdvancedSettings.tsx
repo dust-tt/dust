@@ -1,3 +1,12 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
+import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
+import { isInvalidJson } from "@app/components/agent_builder/utils";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useModels } from "@app/lib/swr/models";
+import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
 import {
   Button,
   cn,
@@ -14,23 +23,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import React from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
-import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
-import { isInvalidJson } from "@app/components/agent_builder/utils";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useModels } from "@app/lib/swr/models";
-import { isSupportingResponseFormat } from "@app/types";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 const RESPONSE_FORMAT_PLACEHOLDER =
   "Example:\n\n" +
@@ -89,7 +83,7 @@ export function AdvancedSettings() {
         <DropdownMenuContent align="start">
           <ModelSelectionSubmenu models={models} />
 
-          <ReasoningEffortSubmenu />
+          <ReasoningEffortSubmenu models={models} />
 
           {supportsResponseFormat && (
             <DropdownMenuItem
@@ -119,7 +113,7 @@ export function AdvancedSettings() {
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
-            <CodeEditor
+            <SuspensedCodeEditor
               data-color-mode={isDark ? "dark" : "light"}
               value={tempResponseFormat ?? responseFormatField.value ?? ""}
               placeholder={RESPONSE_FORMAT_PLACEHOLDER}

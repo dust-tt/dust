@@ -1,15 +1,19 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
+import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { LightAgentConfigurationType } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
+const SKILL_KNOWLEDGE_DATA_WAREHOUSE_SERVER_NAME =
+  "skill_knowledge_data_warehouse";
 
 export async function getSkillServers(
   auth: Authenticator,
@@ -18,7 +22,7 @@ export async function getSkillServers(
     skills,
   }: {
     agentConfiguration: LightAgentConfigurationType;
-    skills: SkillResource[];
+    skills: (SkillResource & { extendedSkill: SkillResource | null })[];
   }
 ): Promise<MCPServerConfigurationType[]> {
   const rawInheritedDataSourceViews = await concurrentExecutor(
@@ -29,19 +33,46 @@ export async function getSkillServers(
   const inheritedDataSourceViews = removeNulls(
     rawInheritedDataSourceViews.flat()
   );
-  const dataSources: DataSourceConfiguration[] = inheritedDataSourceViews.map(
-    (view) => ({
-      dataSourceViewId: view.sId,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      filter: view.toViewFilter(),
-    })
+
+  const remoteDbViews = inheritedDataSourceViews.filter((v) =>
+    isRemoteDatabase(v.dataSource)
+  );
+  const nonRemoteDbViews = inheritedDataSourceViews.filter(
+    (v) => !isRemoteDatabase(v.dataSource)
   );
 
   return skills.flatMap((skill) =>
-    skill.mcpServerViews.map((mcpServerView) => {
+    [
+      ...skill.mcpServerConfigurations,
+      ...(skill.extendedSkill?.mcpServerConfigurations ?? []),
+    ].map((config) => {
+      const { view, childAgentId, serverNameOverride } = config;
+
+      const {
+        requiresDataWarehouseConfiguration,
+        requiresDataSourceConfiguration,
+      } = getMCPServerRequirements(view.toJSON());
+
+      let applicableViews: DataSourceViewResource[];
+      if (requiresDataWarehouseConfiguration) {
+        applicableViews = remoteDbViews;
+      } else if (requiresDataSourceConfiguration) {
+        applicableViews = nonRemoteDbViews;
+      } else {
+        applicableViews = [];
+      }
+
+      const dataSources = applicableViews.map((dsView) => ({
+        dataSourceViewId: dsView.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        filter: dsView.toViewFilter(),
+      }));
+
       return buildServerSideMCPServerConfiguration({
-        mcpServerView,
+        mcpServerView: view,
         dataSources,
+        childAgentId,
+        serverNameOverride,
       });
     })
   );
@@ -58,14 +89,20 @@ export async function getSkillDataSourceConfigurations(
   }: {
     skills: SkillResource[];
   }
-): Promise<DataSourceConfiguration[]> {
+): Promise<{
+  documentDataSourceConfigurations: DataSourceConfiguration[];
+  warehouseDataSourceConfigurations: DataSourceConfiguration[];
+}> {
   // Filter skills that have attached knowledge.
   const skillsWithKnowledge = skills.filter(
     (skill) => skill.dataSourceConfigurations.length > 0
   );
 
   if (skillsWithKnowledge.length === 0) {
-    return [];
+    return {
+      documentDataSourceConfigurations: [],
+      warehouseDataSourceConfigurations: [],
+    };
   }
 
   // Extract all unique dataSourceViewIds from skill configurations.
@@ -87,8 +124,9 @@ export async function getSkillDataSourceConfigurations(
     dataSourceViews.map((view) => [view.id, view])
   );
 
-  // Build configurations with parentsIn filters, grouped by dataSourceViewId (sId).
-  const configsByViewId = new Map<string, DataSourceConfiguration>();
+  // Build configurations split by type, grouped by dataSourceViewId (sId).
+  const documentConfigsByViewId = new Map<string, DataSourceConfiguration>();
+  const warehouseConfigsByViewId = new Map<string, DataSourceConfiguration>();
 
   for (const skill of skillsWithKnowledge) {
     for (const config of skill.dataSourceConfigurations) {
@@ -99,7 +137,11 @@ export async function getSkillDataSourceConfigurations(
         continue;
       }
 
-      const existingConfig = configsByViewId.get(view.sId);
+      const targetMap = isRemoteDatabase(view.dataSource)
+        ? warehouseConfigsByViewId
+        : documentConfigsByViewId;
+
+      const existingConfig = targetMap.get(view.sId);
       if (existingConfig) {
         // Merge parentsIn arrays for duplicate data source views.
         const mergedParentsIn = Array.from(
@@ -109,7 +151,7 @@ export async function getSkillDataSourceConfigurations(
           ])
         );
 
-        configsByViewId.set(view.sId, {
+        targetMap.set(view.sId, {
           ...existingConfig,
           filter: {
             ...existingConfig.filter,
@@ -121,7 +163,7 @@ export async function getSkillDataSourceConfigurations(
         });
       } else {
         // Create new configuration.
-        configsByViewId.set(view.sId, {
+        targetMap.set(view.sId, {
           dataSourceViewId: view.sId,
           workspaceId: auth.getNonNullableWorkspace().sId,
           filter: {
@@ -136,7 +178,14 @@ export async function getSkillDataSourceConfigurations(
     }
   }
 
-  return Array.from(configsByViewId.values());
+  return {
+    documentDataSourceConfigurations: Array.from(
+      documentConfigsByViewId.values()
+    ),
+    warehouseDataSourceConfigurations: Array.from(
+      warehouseConfigsByViewId.values()
+    ),
+  };
 }
 
 /**
@@ -169,5 +218,38 @@ export async function createSkillKnowledgeFileSystemServer(
     mcpServerView,
     dataSources: dataSourceConfigurations,
     serverNameOverride: SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME,
+  });
+}
+
+/**
+ * Creates a data warehouse server configuration scoped to the provided data source configurations.
+ * Returns null if no configurations are provided or the server view doesn't exist.
+ */
+export async function createSkillKnowledgeDataWarehouseServer(
+  auth: Authenticator,
+  {
+    dataSourceConfigurations,
+  }: {
+    dataSourceConfigurations: DataSourceConfiguration[];
+  }
+): Promise<MCPServerConfigurationType | null> {
+  if (dataSourceConfigurations.length === 0) {
+    return null;
+  }
+
+  const mcpServerView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "data_warehouses"
+    );
+
+  if (!mcpServerView) {
+    return null;
+  }
+
+  return buildServerSideMCPServerConfiguration({
+    mcpServerView,
+    dataSources: dataSourceConfigurations,
+    serverNameOverride: SKILL_KNOWLEDGE_DATA_WAREHOUSE_SERVER_NAME,
   });
 }

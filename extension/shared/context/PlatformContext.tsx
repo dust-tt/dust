@@ -1,6 +1,7 @@
 import type { PlatformService } from "@app/shared/services/platform";
+import type React from "react";
 import type { ReactNode } from "react";
-import React, { createContext, useContext } from "react";
+import { createContext, useContext } from "react";
 
 // Create the context with a null initial value.
 export const PlatformContext = createContext<PlatformService | null>(null);

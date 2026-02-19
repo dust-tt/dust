@@ -3,12 +3,11 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import type {
-  ConversationWithoutContentType,
-  Result,
-  UserType,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { UserType } from "@app/types/user";
 
 /**
  * We retrieve the feedbacks for a whole conversation, not just a single message.
@@ -185,12 +184,16 @@ export async function getAgentFeedbacks({
   withMetadata,
   paginationParams,
   filter = "active",
+  version,
+  days,
 }: {
   auth: Authenticator;
   withMetadata: boolean;
   agentConfigurationId: string;
   paginationParams: PaginationParams;
   filter?: "active" | "all";
+  version?: number;
+  days?: number;
 }): Promise<
   Result<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
@@ -215,6 +218,8 @@ export async function getAgentFeedbacks({
         agentConfiguration,
         paginationParams,
         filter,
+        version,
+        days,
       }
     );
 

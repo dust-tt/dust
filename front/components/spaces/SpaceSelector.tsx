@@ -1,4 +1,10 @@
 import {
+  getSpaceIcon,
+  getSpaceName,
+  groupSpacesForDisplay,
+} from "@app/lib/spaces";
+import type { SpaceType } from "@app/types/space";
+import {
   cn,
   Dialog,
   DialogContainer,
@@ -13,13 +19,6 @@ import {
   Separator,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
-
-import {
-  getSpaceIcon,
-  getSpaceName,
-  groupSpacesForDisplay,
-} from "@app/lib/spaces";
-import type { SpaceType } from "@app/types";
 
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];

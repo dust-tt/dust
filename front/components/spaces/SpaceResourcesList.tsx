@@ -1,27 +1,3 @@
-import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  Button,
-  Chip,
-  CloudArrowLeftRightIcon,
-  cn,
-  Cog6ToothIcon,
-  CubeIcon,
-  DataTable,
-  PencilSquareIcon,
-  Spinner,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { useRouter } from "next/router";
-import type { ParsedUrlQuery } from "querystring";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
@@ -30,8 +6,8 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
@@ -43,26 +19,41 @@ import {
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers_ui";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import { isWebsiteOrFolderCategory } from "@app/types/api/public/spaces";
+import type { ConnectorProvider } from "@app/types/data_source";
 import type {
-  ConnectorProvider,
-  DataSourceViewCategoryWithoutApps,
   DataSourceViewsWithDetails,
   DataSourceViewType,
-  PlanType,
-  SpaceType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import type { PlanType } from "@app/types/plan";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  ANONYMOUS_USER_IMAGE_URL,
-  isString,
-  isWebsiteOrFolderCategory,
-} from "@app/types";
+  Button,
+  Chip,
+  CloudArrowLeftRightIcon,
+  Cog6ToothIcon,
+  CubeIcon,
+  cn,
+  DataTable,
+  PencilSquareIcon,
+  Spinner,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { ParsedUrlQuery } from "querystring";
+import type React from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
@@ -306,7 +297,7 @@ export const SpaceResourcesList = ({
   const [shouldOpenSlackEditionModal, setShouldOpenSlackEditionModal] =
     useState(false);
 
-  const router = useRouter();
+  const router = useAppRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";
@@ -366,6 +357,7 @@ export const SpaceResourcesList = ({
   const { setIsSearchDisabled, setTargetDataSourceViews } =
     useContext(SpaceSearchContext);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
       return [];

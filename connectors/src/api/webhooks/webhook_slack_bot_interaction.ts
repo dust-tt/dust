@@ -1,16 +1,14 @@
-import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import {
   botReplaceMention,
   botValidateToolExecution,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/bot";
 import {
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import {
   getSlackClientForTeam,
@@ -18,6 +16,10 @@ import {
 } from "@connectors/connectors/slack/feedback_modal";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
+import type { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 export const STATIC_AGENT_CONFIG = "static_agent_config";
 export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";

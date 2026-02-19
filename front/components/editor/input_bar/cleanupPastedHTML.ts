@@ -87,6 +87,23 @@ export function cleanupPastedHTML(html: string): string {
   }
 }
 
+/**
+ * Strip style, class, and id attributes from HTML while preserving all tags.
+ * Used to store clean HTML structure without Tailwind styling classes.
+ */
+export function stripHtmlAttributes(html: string): string {
+  try {
+    return DOMPurify.sanitize(html, {
+      // Allow all tags but strip styling/identifiers
+      ADD_TAGS: ["*"],
+      FORBID_ATTR: ["style", "class", "id"],
+    });
+  } catch {
+    // Fallback: return the original HTML if sanitization fails
+    return html;
+  }
+}
+
 let isHookAdded = false;
 
 // Add hook to convert inline styles to semantic tags

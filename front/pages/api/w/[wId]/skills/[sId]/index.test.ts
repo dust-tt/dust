@@ -1,13 +1,8 @@
-import type { RequestMethod } from "node-mocks-http";
-import type { WhereOptions } from "sequelize";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { SkillVersionModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -15,6 +10,9 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { RequestMethod } from "node-mocks-http";
+import type { WhereOptions } from "sequelize";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 
@@ -40,9 +38,6 @@ async function setupTest(
     role: requestUserRole,
     method: method,
   });
-
-  // Enable skills feature flag for the workspace
-  await FeatureFlagFactory.basic("skills", workspace);
 
   // Create default spaces (including system space required for PATCH operations)
   // We need an admin auth to create spaces, so create a temporary admin if needed
@@ -503,8 +498,6 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
       method: "PATCH",
     });
 
-    await FeatureFlagFactory.basic("skills", workspace);
-
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       requestUser.sId,
       workspace.sId
@@ -611,7 +604,7 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
 
-    // Verify the skill is now archived
+    // Verify the skill is now archived.
     const archivedSkill = await SkillResource.fetchById(
       requestUserAuth,
       suggestedSkill.sId

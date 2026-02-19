@@ -1,3 +1,7 @@
+import type { RegionType } from "@app/lib/api/regions/config";
+import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { getRegionDisplay } from "@app/lib/poke/regions";
 import {
   Button,
   DropdownMenu,
@@ -6,30 +10,40 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 
-import type { RegionType } from "@app/lib/api/regions/config";
-import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
-import { getRegionDisplay } from "@app/lib/poke/regions";
-import { isDevelopment } from "@app/types";
-
 interface PokeRegionDropdownProps {
-  currentRegion: RegionType;
+  currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
 }
 
 export function PokeRegionDropdown({
-  currentRegion,
+  currentRegion: propRegion,
   regionUrls,
 }: PokeRegionDropdownProps) {
+  // Use safe context hook to avoid errors in Next.js mode.
+  const regionContext = useRegionContextSafe();
+
+  // Use context if available (SPA mode), otherwise use prop (Next.js mode).
+  const currentRegion = regionContext?.regionInfo?.name ?? propRegion;
+
   const handleRegionChange = (region: RegionType) => {
-    if (region === currentRegion) {
+    if (region === currentRegion || !regionUrls) {
       return;
     }
-    if (regionUrls) {
-      const regionUrl = regionUrls[region];
-      // eslint-disable-next-line react-hooks/immutability
-      window.location.href = regionUrl + "/poke";
+
+    // SPA mode: use context to switch region without page reload.
+    if (regionContext) {
+      regionContext.setRegionInfo({ name: region, url: regionUrls[region] });
+      return;
     }
+
+    // Next.js mode: redirect to the other region's URL.
+    const regionUrl = regionUrls[region];
+    window.location.assign(`${regionUrl}/poke`);
   };
+
+  if (!currentRegion) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
@@ -39,7 +53,6 @@ export function PokeRegionDropdown({
           size="sm"
           isSelect
           label={getRegionDisplay(currentRegion)}
-          disabled={isDevelopment()}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

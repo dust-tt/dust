@@ -232,6 +232,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("upsert-file"),
     t.literal("update-core-parents"),
     t.literal("restart-google-webhooks"),
+    t.literal("start-full-sync"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
@@ -285,6 +286,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("set-conversations-sliding-window"),
     t.literal("get-conversations-sliding-window"),
     t.literal("search-conversations"),
+    t.literal("restart-schedules"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -299,6 +301,8 @@ export const IntercomCommandSchema = t.type({
       t.union([t.literal("open"), t.literal("closed")]),
       t.undefined,
     ]),
+    cursor: t.union([t.string, t.undefined]),
+    forceDeleteExisting: t.union([t.literal("true"), t.undefined]),
   }),
 });
 
@@ -393,6 +397,14 @@ export type IntercomForceResyncAllConversationsResponseType = t.TypeOf<
   typeof IntercomForceResyncAllConversationsResponseSchema
 >;
 
+export const IntercomRestartSchedulesResponseSchema = t.type({
+  helpCenterScheduleId: t.string,
+  conversationScheduleId: t.string,
+});
+export type IntercomRestartSchedulesResponseType = t.TypeOf<
+  typeof IntercomRestartSchedulesResponseSchema
+>;
+
 /**
  * </ Intercom>
  */
@@ -405,6 +417,7 @@ export const MicrosoftCommandSchema = t.type({
   command: t.union([
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
+    t.literal("start-full-sync"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
@@ -764,6 +777,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("remove-organization-tag"),
     t.literal("add-ticket-tag"),
     t.literal("remove-ticket-tag"),
+    t.literal("set-rate-limit"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -775,6 +789,7 @@ export const ZendeskCommandSchema = t.type({
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
+    rateLimitTps: t.union([t.number, t.undefined]),
     tag: t.union([t.string, t.undefined]),
     include: t.union([t.literal("true"), t.undefined]),
     exclude: t.union([t.literal("true"), t.undefined]),
@@ -883,6 +898,7 @@ export const AdminResponseSchema = t.union([
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
   IntercomGetConversationsSlidingWindowResponseSchema,
+  IntercomRestartSchedulesResponseSchema,
   IntercomSearchConversationsResponseSchema,
   NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,

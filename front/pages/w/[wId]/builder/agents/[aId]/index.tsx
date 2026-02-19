@@ -1,106 +1,22 @@
-import tracer from "dd-trace";
-import type { InferGetServerSidePropsType } from "next";
-import Head from "next/head";
+import { EditAgentPage } from "@app/components/pages/builder/agents/EditAgentPage";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { ReactElement } from "react";
 
-import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
-import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
+export const getServerSideProps = appGetServerSideProps;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  agentConfiguration: LightAgentConfigurationType;
-  owner: WorkspaceType;
-  user: UserType;
-  isAdmin: boolean;
-}>(async (context, auth) => {
-  return tracer.trace("getServerSideProps", async () => {
-    const owner = auth.workspace();
-    const plan = auth.plan();
-    const subscription = auth.subscription();
-    if (
-      !owner ||
-      !plan ||
-      !subscription ||
-      !auth.isUser() ||
-      !context.params?.aId
-    ) {
-      return {
-        notFound: true,
-      };
-    }
+const PageWithAuthLayout = EditAgentPage as AppPageWithLayout;
 
-    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-
-    const [configuration] = await Promise.all([
-      getAgentConfiguration(auth, {
-        agentId: context.params?.aId as string,
-        variant: "light",
-      }),
-      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
-    ]);
-
-    if (!configuration) {
-      return {
-        notFound: true,
-      };
-    }
-
-    if (!configuration.canEdit && !auth.isAdmin()) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const user = auth.getNonNullableUser().toJSON();
-    const isAdmin = auth.isAdmin();
-
-    return {
-      props: {
-        agentConfiguration: configuration,
-        owner,
-        user,
-        isAdmin,
-      },
-    };
-  });
-});
-
-export default function EditAgent({
-  agentConfiguration,
-  owner,
-  user,
-  isAdmin,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  if (agentConfiguration.scope === "global") {
-    throw new Error("Cannot edit global agent");
-  }
-
-  if (agentConfiguration.status === "archived") {
-    throw new Error("Cannot edit archived agent");
-  }
-
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
   return (
-    <AgentBuilderProvider
-      owner={owner}
-      user={user}
-      isAdmin={isAdmin}
-      assistantTemplate={null}
-    >
-      <Head>
-        <title>{`Dust - @${agentConfiguration.name}`}</title>
-      </Head>
-      <AgentBuilder agentConfiguration={agentConfiguration} />
-    </AgentBuilderProvider>
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
   );
-}
-
-EditAgent.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
 };
+
+export default PageWithAuthLayout;

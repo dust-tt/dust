@@ -1,26 +1,39 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { ContactForm } from "@app/components/home/ContactForm";
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
-import HubSpotForm from "@app/components/home/HubSpotForm";
+import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
-import UTMPageWrapper from "@app/components/UTMPageWrapper";
+import { isString } from "@app/types/shared/utils/general";
+import type { GetStaticProps } from "next";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
-export async function getStaticProps() {
+export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      shape: 0,
     },
   };
-}
+};
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Contact() {
   const router = useRouter();
-  const companyName =
-    typeof router.query.company === "string" ? router.query.company : null;
+  const { company, email, company_headcount_form, headquarters_region } =
+    router.query;
+
+  const companyName = isString(company) ? company : null;
+  const prefillEmail = isString(email) ? email : undefined;
+  const prefillHeadcount = isString(company_headcount_form)
+    ? company_headcount_form
+    : undefined;
+  const prefillRegion = isString(headquarters_region)
+    ? headquarters_region
+    : undefined;
 
   const subtitle = companyName ? (
     <>
@@ -36,7 +49,7 @@ export default function Contact() {
   );
 
   return (
-    <UTMPageWrapper>
+    <>
       <PageMetadata
         title="Contact Dust: Schedule a Demo for AI Agents"
         description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
@@ -48,16 +61,18 @@ export default function Contact() {
           hasCTA={false}
           subtitle={subtitle}
         />
-        <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
-          <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-            <div className="w-full max-w-150">
-              <HubSpotForm />
-            </div>
+        <Grid>
+          <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
+            <ContactForm
+              prefillEmail={prefillEmail}
+              prefillHeadcount={prefillHeadcount}
+              prefillRegion={prefillRegion}
+            />
           </div>
-        </div>
+        </Grid>
         <TrustedBy />
       </div>
-    </UTMPageWrapper>
+    </>
   );
 }
 

@@ -1,12 +1,12 @@
-import { useCallback, useSyncExternalStore } from "react";
-import type { Fetcher } from "swr";
-
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
 } from "@app/types/credits";
+import { useCallback, useSyncExternalStore } from "react";
+import type { Fetcher } from "swr";
 
 // Global state for tracking purchase loading status per workspace
 const purchaseLoadingState = new Map<string, boolean>();
@@ -157,5 +157,36 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
   return {
     purchaseCredits,
     isLoading,
+  };
+}
+
+export function useCreditPurchaseInfo({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const creditPurchaseInfoFetcher: Fetcher<GetCreditPurchaseInfoResponseBody> =
+    fetcher;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/purchase`,
+    creditPurchaseInfoFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    isEnterprise: data?.isEnterprise ?? false,
+    currency: data?.currency ?? "usd",
+    discountPercent: data?.discountPercent ?? 0,
+    creditPricing: data?.creditPricing ?? null,
+    creditPurchaseLimits: data?.creditPurchaseLimits ?? null,
+    billingCycleStartDay: data?.billingCycleStartDay ?? null,
+    isCreditPurchaseInfoLoading: !error && !data && !disabled,
+    isCreditPurchaseInfoValidating: isValidating,
+    isCreditPurchaseInfoError: error,
   };
 }

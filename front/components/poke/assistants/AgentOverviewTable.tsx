@@ -1,12 +1,13 @@
-import { Chip } from "@dust-tt/sparkle";
-
 import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import type { AgentConfigurationType, SpaceType, UserType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { SpaceType } from "@app/types/space";
+import type { UserType } from "@app/types/user";
+import { Chip } from "@dust-tt/sparkle";
 
 interface AgentOverviewTableProps {
   agentConfiguration: AgentConfigurationType;

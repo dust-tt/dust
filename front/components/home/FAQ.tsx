@@ -1,9 +1,8 @@
+import { H2 } from "@app/components/home/ContentComponents";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { DashIcon, PlusIcon, Separator } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useState } from "react";
-
-import { H2 } from "@app/components/home/ContentComponents";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 export interface FAQItem {
   question: string;

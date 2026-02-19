@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -7,6 +5,7 @@ import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnection
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it } from "vitest";
 
 describe("MCPServerConnectionResource", () => {
   describe("findByMCPServer", () => {

@@ -8,7 +8,7 @@ import {
 } from "@app/lib/production_checks/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
 
 const BATCH_SIZE = 512;
 const CONCURRENCY = 8;
@@ -35,7 +35,6 @@ async function getCoreDataSourceId(
 ): Promise<number | null> {
   const coreSequelize = getCorePrimaryDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql
   const [row] = await coreSequelize.query<{ id: number }>(
     `SELECT id FROM data_sources WHERE project = :projectId AND data_source_id = :dataSourceId`,
     {
@@ -61,7 +60,6 @@ async function getZendeskTicketNodeBatch({
 }): Promise<{ hasMore: boolean; nextId: number; nodes: ZendeskTicketNode[] }> {
   const coreSequelize = getCorePrimaryDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql
   const nodes = await coreSequelize.query<ZendeskTicketNode>(
     `SELECT id, node_id
        FROM data_sources_nodes
@@ -119,7 +117,6 @@ async function checkTicketsExistInConnectors({
     .map((t) => `(${t.brandId}, ${t.ticketId})`)
     .join(", ");
 
-  // eslint-disable-next-line dust/no-raw-sql
   const existingTickets = await connectorsSequelize.query<ConnectorTicket>(
     `SELECT "ticketId", "brandId" 
      FROM zendesk_tickets 

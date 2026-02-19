@@ -25,6 +25,8 @@ export async function main() {
         await launchGoogleDriveFullSyncWorkflow(
           connector.id,
           null,
+          null,
+          [],
           mimeTypeFilter
         );
       }

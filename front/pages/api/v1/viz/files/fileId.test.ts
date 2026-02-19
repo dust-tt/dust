@@ -1,10 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { createMocks } from "node-mocks-http";
-import { Readable } from "stream";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
@@ -13,8 +6,13 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
 import { frameContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { createMocks } from "node-mocks-http";
+import { Readable } from "stream";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import publicConversationsHandler from "../../w/[wId]/assistant/conversations/index";
 import handler from "./[fileId]";
@@ -29,13 +27,14 @@ vi.mock("@app/lib/utils/rate_limiter", () => ({
 vi.mock("@app/lib/plans/usage/seats", () => ({
   countActiveSeatsInWorkspace: vi.fn().mockResolvedValue(100),
   countActiveSeatsInWorkspaceCached: vi.fn().mockResolvedValue(100),
+  invalidateActiveSeatsCache: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("/api/v1/viz/files/[fileId] security tests", () => {
   let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
 
     const { workspace: w } = await createResourceTest({
       role: "user",
@@ -422,7 +421,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   it("should reject access when file is not a frame", async () => {
     // Frame from conversation.
     const frameFile = await FileFactory.create(workspace, null, {
-      contentType: frameContentType,
+      contentType: "image/png",
       fileName: "frame.html",
       fileSize: 1000,
       status: "ready",

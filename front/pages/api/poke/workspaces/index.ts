@@ -1,7 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { FindOptions, Order, WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -24,13 +20,14 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  SubscriptionType,
-  WithAPIErrorResponse,
-  WorkspaceDomain,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { SubscriptionType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { FindOptions, Order, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;
@@ -166,6 +163,19 @@ async function handler(
       }
 
       if (searchTerm) {
+        // Search by Stripe subscription ID (exact match).
+        let isSearchByStripeSubscription = false;
+        if (searchTerm.startsWith("sub_")) {
+          const subscription =
+            await SubscriptionResource.fetchByStripeId(searchTerm);
+          if (subscription) {
+            isSearchByStripeSubscription = true;
+            conditions.push({
+              id: subscription.workspaceId,
+            });
+          }
+        }
+
         let isSearchByEmail = false;
         if (isEmailValid(searchTerm)) {
           // We can have 2 users with the same email if a Google user and a Github user have the same email.
@@ -197,7 +207,11 @@ async function handler(
           }
         }
 
-        if (!isSearchByEmail && !isSearchByDomain) {
+        if (
+          !isSearchByEmail &&
+          !isSearchByDomain &&
+          !isSearchByStripeSubscription
+        ) {
           conditions.push({
             [Op.or]: [
               {

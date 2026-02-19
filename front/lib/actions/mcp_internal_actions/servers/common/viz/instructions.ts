@@ -1,4 +1,4 @@
-import { frameContentType } from "@app/types";
+import { frameContentType } from "@app/types/files";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
@@ -43,9 +43,12 @@ export const VIZ_STYLING_GUIDELINES = `
     - \`stroke="var(--chart-1)"\` for first data series
     - \`fill="var(--chart-2)"\` for second data series
     - Available: \`--chart-1\` through \`--chart-5\` (automatically theme-aware)
-  - Tailwind's arbitrary values like \`h-[600px]\` STRICTLY FORBIDDEN, and will cause immediate failure. ANY class with square brackets [ ] is prohibited.
-  - FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
-  - ALLOWED ALTERNATIVES: Use predefined classes: \`h-96\`, \`w-full\`, \`text-sm\`, \`bg-red-500\`, \`border-2\`, \`p-5\`, \`m-2\`
+  - Tailwind's arbitrary values like \`h-[600px]\` are NOT allowed. ANY class with square brackets
+    [ ] will trigger validation warnings that you must fix immediately with targeted edits.
+  - FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`,
+    \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
+  - ALLOWED ALTERNATIVES: Use predefined classes: \`h-96\`, \`w-full\`, \`text-sm\`, \`bg-red-500\`,
+    \`border-2\`, \`p-5\`, \`m-2\`
   - For specific values: Use the \`style\` prop instead: \`style={{ height: '600px', width: '800px' }}\`
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use shadcn's background classes (bg-background, bg-card) instead of hardcoded bg-white for automatic theme compatibility.

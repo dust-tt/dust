@@ -1,5 +1,5 @@
 import { BarHeader, cn } from "@dust-tt/sparkle";
-import React from "react";
+import type React from "react";
 
 interface AppLayoutTitleProps {
   children?: React.ReactNode;
@@ -10,9 +10,9 @@ export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
   return (
     <div
       className={cn(
-        "flex h-14 w-full shrink-0 flex-col border-b border-border px-4 pl-14 lg:pl-4",
+        "flex h-[58px] w-full shrink-0 flex-col border-b border-separator px-4 pl-14 lg:pl-4",
         "bg-background dark:bg-background-night",
-        "dark:border-border-night",
+        "dark:border-separator-night",
         // When no children, only show on mobile for hamburger menu alignment.
         !children && "block lg:hidden",
         className

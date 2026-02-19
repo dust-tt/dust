@@ -1,15 +1,5 @@
-import {
-  Chip,
-  classNames,
-  DataTable,
-  EmptyCTA,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
-
 import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
@@ -33,19 +23,26 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type {
-  AgentsUsageType,
-  LightWorkspaceType,
-  SpaceType,
-  UserType,
-} from "@app/types";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import {
+  Chip,
+  classNames,
+  DataTable,
+  EmptyCTA,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
 
 type RowData = {
   mcpServer: MCPServerType;
   mcpServerView?: MCPServerViewType;
   usage: AgentsUsageType | null;
   isConnected: boolean;
+  account: string;
   spaces: SpaceType[];
   onClick: () => void;
 };
@@ -176,9 +173,17 @@ export const AdminActionsList = ({
           const agentsUsage =
             usage && mcpServerView ? usage[mcpServerView.server.sId] : null;
 
+          const account =
+            mcpServerView?.oAuthUseCase === "personal_actions"
+              ? "Personal"
+              : mcpServerView?.oAuthUseCase === "platform_actions"
+                ? "Shared"
+                : "";
+
           return {
             mcpServer: mcpServerWithViews,
             mcpServerView,
+            account,
             spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
             usage: agentsUsage,
             isConnected: !!connections.find(
@@ -219,8 +224,20 @@ export const AdminActionsList = ({
         cell: (info: CellContext<RowData, string>) => (
           <NameCell row={info.row.original} />
         ),
-        filterFn: (row, id, filterValue) =>
-          filterMCPServer(row.original.mcpServer, filterValue),
+        filterFn: (row, _, filterValue) => {
+          const { mcpServer, mcpServerView } = row.original;
+          const filterLower = filterValue.toLowerCase();
+
+          // Check base server properties (name, description, tools).
+          if (filterMCPServer(mcpServer, filterValue)) {
+            return true;
+          }
+          // Check display name (may differ from server name due to custom view name or formatting).
+          const displayName = mcpServerView
+            ? getMcpServerViewDisplayName(mcpServerView)
+            : getMcpServerDisplayName(mcpServer);
+          return displayName.toLowerCase().includes(filterLower);
+        },
         sortingFn: (rowA, rowB) => {
           return mcpServersSortingFn(
             {
@@ -249,13 +266,13 @@ export const AdminActionsList = ({
           </DataTable.CellContent>
         ),
         meta: {
-          className: "hidden @sm:w-10 @sm:table-cell",
+          className: "hidden @sm:w-5 @sm:table-cell",
         },
       },
       {
         id: "access",
         accessorKey: "spaces",
-        header: "Access",
+        header: "Availability",
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
 
@@ -283,6 +300,28 @@ export const AdminActionsList = ({
         },
       },
       {
+        id: "account",
+        accessorKey: "account",
+        header: "Account",
+        cell: (info: CellContext<RowData, string>) => {
+          const account = info.getValue();
+
+          return (
+            <DataTable.CellContent>
+              <div className="flex items-center gap-2">{account}</div>
+            </DataTable.CellContent>
+          );
+        },
+        sortingFn: (rowA, rowB) => {
+          const accountA = rowA.original.account;
+          const accountB = rowB.original.account;
+          return accountA.localeCompare(accountB);
+        },
+        meta: {
+          className: "hidden @sm:w-5 @sm:table-cell",
+        },
+      },
+      {
         id: "by",
         accessorKey: "mcpServerView.editedByUser",
         header: "By",
@@ -298,7 +337,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "hidden @sm:w-10 @sm:table-cell",
+          className: "hidden @sm:w-2 @sm:table-cell",
         },
       },
       {
@@ -315,7 +354,7 @@ export const AdminActionsList = ({
           />
         ),
         meta: {
-          className: "hidden @sm:w-28 @sm:table-cell @2xl:w-10",
+          className: "hidden @sm:w-5 @sm:table-cell @2xl:w-5",
         },
       }
     );

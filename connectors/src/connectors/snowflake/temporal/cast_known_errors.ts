@@ -1,10 +1,9 @@
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 interface SnowflakeError extends Error {
   name: string;
@@ -133,7 +132,27 @@ function isSnowflakeUserAccessDisabledError(
   );
 }
 
-export class SnowflakeCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+interface SnowflakeInsufficientPrivilegesError extends Error {
+  name: "OperationFailedError";
+}
+
+function isSnowflakeInsufficientPrivilegesError(
+  err: unknown
+): err is SnowflakeInsufficientPrivilegesError {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.includes("SQL access control error")
+  );
+}
+
+export class SnowflakeCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -149,7 +168,8 @@ export class SnowflakeCastKnownErrorsInterceptor implements ActivityInboundCalls
         isSnowflakeIncorrectCredentialsError(err) ||
         isSnowflakeRoleNotFoundError(err) ||
         isSnowflakeSuspendedError(err) ||
-        isSnowflakeUserAccessDisabledError(err)
+        isSnowflakeUserAccessDisabledError(err) ||
+        isSnowflakeInsufficientPrivilegesError(err)
       ) {
         throw new ExternalOAuthTokenError(err);
       }

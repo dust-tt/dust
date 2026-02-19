@@ -1,6 +1,4 @@
 // Maximum allowed number of unconsumed invitations per workspace per day.
-import type { NotificationType } from "@dust-tt/sparkle";
-import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { clientFetch } from "@app/lib/egress/client";
@@ -8,12 +6,10 @@ import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
 } from "@app/pages/api/w/[wId]/invitations";
-import type {
-  ActiveRoleType,
-  MembershipInvitationType,
-  RoleType,
-  WorkspaceType,
-} from "@app/types";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { ActiveRoleType, RoleType, WorkspaceType } from "@app/types/user";
+import type { NotificationType } from "@dust-tt/sparkle";
+import { mutate } from "swr";
 
 export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
 
@@ -113,6 +109,7 @@ export async function sendInvitations({
     try {
       data = await res.json();
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // ignore
     }

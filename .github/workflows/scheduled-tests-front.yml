@@ -1,6 +1,9 @@
 name: Scheduled Lint (front)
 
 on:
+  push:
+    paths:
+      - ".github/workflows/scheduled-tests-front.yml"
   schedule:
     # Run twice a day at 8 AM and 8 PM UTC
     - cron: "0 8,20 * * *"
@@ -29,19 +32,12 @@ jobs:
               🧪 Starting scheduled front tests
               • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
         with:
-          node-version: 20.13.0
-      - name: Install SDK/JS dependencies
-        working-directory: sdks/js
-        run: npm ci
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm run build
-      - name: Install Front dependencies
-        working-directory: front
-        run: npm ci
+          build-sdks: "true"
+          build-sparkle: "true"
+
       - name: Run ESLint (Full Check, No Cache)
         working-directory: front
         run: npm run lint

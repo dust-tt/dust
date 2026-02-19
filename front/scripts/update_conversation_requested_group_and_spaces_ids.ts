@@ -1,8 +1,3 @@
-import isEqual from "lodash/isEqual";
-import sortBy from "lodash/sortBy";
-import type { WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -15,7 +10,12 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightAgentConfigurationType, ModelId } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import isEqual from "lodash/isEqual";
+import sortBy from "lodash/sortBy";
+import type { WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 const BATCH_SIZE = 1000; // Process conversations in batches of 1000
 

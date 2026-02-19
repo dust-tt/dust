@@ -23,11 +23,35 @@ jobs:
         with:
           node-version: 20.x
           cache: "npm"
-          cache-dependency-path: ./sdks/js/package-lock.json
+          cache-dependency-path: ./package-lock.json
           registry-url: "https://registry.npmjs.org"
 
       - name: Upgrade npm for OIDC support
         run: npm install -g npm@latest
 
-      - working-directory: sdks/js
-        run: npm ci && npm run build && npm publish --provenance --access public
+      - name: Install root dependencies
+        run: npm ci -w sdks/js
+
+      - name: Build SDK
+        working-directory: sdks/js
+        run: npm run build
+
+        # Needed because with bundleDependencies, npm workspace won't install the package
+      - name: Add bundleDependencies to package.json
+        working-directory: sdks/js
+        run: |
+          node -e '
+          const fs = require("fs");
+          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          const newDep = "@modelcontextprotocol/sdk";
+          if (!pkg.bundleDependencies) {
+            pkg.bundleDependencies = [newDep];
+          } else if (!pkg.bundleDependencies.includes(newDep)) {
+            pkg.bundleDependencies.push(newDep);
+          }
+          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          '
+
+      - name: Publish SDK
+        working-directory: sdks/js
+        run: npm publish --provenance --access public

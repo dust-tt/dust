@@ -1,10 +1,9 @@
+import type { ModelId } from "@connectors/types";
 import type {
   BlockObjectResponse,
   PageObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import * as t from "io-ts";
-
-import type { ModelId } from "@connectors/types";
 
 // notion SDK types
 export type PageObjectProperties = PageObjectResponse["properties"];

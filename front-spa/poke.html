@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dust - Poke</title>
+    <script>
+      // Shim for Node.js Buffer API used by some dependencies
+      globalThis.Buffer = globalThis.Buffer || {
+        isBuffer: function () {
+          return false;
+        },
+        from: function (x) {
+          return new Uint8Array(
+            typeof x === "string"
+              ? Array.from(x).map(function (c) {
+                  return c.charCodeAt(0);
+                })
+              : x
+          );
+        },
+        alloc: function (n) {
+          return new Uint8Array(n);
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme") || "system";
+          var isDark =
+            theme === "dark" ||
+            (theme === "system" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (isDark) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <style>
+      #loading {
+        --loading-logo-size: 48px;
+        --loading-header-height: 84px;
+        --loading-gap: 10px;
+        --loading-text-size: 11px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        opacity: 1;
+        pointer-events: none;
+      }
+      #loading.hidden {
+        display: none;
+      }
+      #loading-header {
+        height: var(--loading-header-height);
+        background-color: rgb(247, 247, 247);
+        flex-shrink: 0;
+      }
+      #loading-main {
+        flex: 1;
+        position: relative;
+        background-color: rgb(247, 247, 247);
+      }
+      #loading-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(
+          calc(var(--loading-logo-size) / -2),
+          calc((var(--loading-logo-size) + var(--loading-gap) + var(--loading-text-size)) / -2)
+        );
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--loading-gap);
+      }
+      #loading-logo {
+        width: var(--loading-logo-size);
+        height: var(--loading-logo-size);
+      }
+      #loading-text {
+        line-height: 1;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: var(--loading-text-size);
+        color: #64748b;
+        opacity: 0;
+        animation:
+          loading-fade-in 300ms ease-out 2s forwards,
+          loading-breathing 3s ease-in-out 2.3s infinite;
+      }
+      @keyframes loading-breathing {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      @keyframes loading-fade-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .dark #loading-header {
+        background-color: #1c222d;
+      }
+      .dark #loading-main {
+        background-color: #111418;
+      }
+    </style>
+
+    <div id="root"></div>
+    <div id="loading">
+      <div id="loading-header"></div>
+      <div id="loading-main">
+        <div id="loading-content">
+          <svg
+            id="loading-logo"
+            xmlns="http://www.w3.org/2000/svg"
+            width="48"
+            height="48"
+            fill="none"
+            viewBox="0 0 48 48"
+          >
+            <path
+              fill="#64748B"
+              fill-rule="evenodd"
+              d="M12 24c6.627 0 12-5.373 12-12 0 6.627 5.373 12 12 12s12-5.373 12-12S42.627 0 36 0 24 5.373 24 12c0-6.627-5.373-12-12-12S0 5.373 0 12s5.373 12 12 12Zm24 12H24v12h12V36ZM12 48a6 6 0 0 0 0-12H0v12h12Z"
+              clip-rule="evenodd"
+            />
+            <path
+              fill="#334155"
+              fill-rule="evenodd"
+              d="M12 0H0v24h12a6 6 0 0 0 0 12h36V24H12V0Zm12 0h24v12H24V0Z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          <span id="loading-text">Loading...</span>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/poke/main.tsx"></script>
+  </body>
+</html>

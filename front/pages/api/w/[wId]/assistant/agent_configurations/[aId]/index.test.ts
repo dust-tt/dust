@@ -1,15 +1,13 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it, vi } from "vitest";
-
+import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -40,21 +38,14 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
   it("should include skill's requestedSpaceIds when updating agent with skill", async () => {
     const { req, res, workspace, user, authenticator } = await setupTest();
 
-    // Enable skills feature flag
-    await FeatureFlagFactory.basic("skills", workspace);
-
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
     const skill = await SkillFactory.create(authenticator, {
       name: "Skill with restricted space",
+      requestedSpaceIds: [restrictedSpace.id],
     });
-
-    await SkillConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { id: skill.id } }
-    );
 
     req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
     req.body = {
@@ -150,5 +141,61 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - additionalRe
     expect(agentConfigurationModel?.requestedSpaceIds).toContain(
       openSpaceModelId
     );
+  });
+});
+
+describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - pending agent", () => {
+  it("should convert a pending agent to active with version 0", async () => {
+    const { req, res, workspace, user, authenticator } = await setupTest();
+
+    await SpaceFactory.defaults(authenticator);
+
+    // Create a pending agent using the helper function
+    const { sId: pendingSId } =
+      await createPendingAgentConfiguration(authenticator);
+
+    req.query = { ...req.query, wId: workspace.sId, aId: pendingSId };
+    req.body = {
+      assistant: {
+        name: "My New Agent",
+        description: "A test agent converted from pending",
+        instructions: "Test instructions",
+        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+        status: "active",
+        scope: "hidden",
+        model: {
+          providerId: "anthropic",
+          modelId: "claude-sonnet-4-5-20250929",
+          temperature: 0.5,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("agentConfiguration");
+    // Verify the sId is preserved
+    expect(data.agentConfiguration.sId).toBe(pendingSId);
+    // Verify the status changed to active
+    expect(data.agentConfiguration.status).toBe("active");
+    // Verify the name was updated
+    expect(data.agentConfiguration.name).toBe("My New Agent");
+    // Verify version is 0 (not incremented since pending was deleted and new created)
+    expect(data.agentConfiguration.version).toBe(0);
+
+    // Verify only one record exists for this sId (pending was deleted)
+    const agents = await AgentConfigurationModel.findAll({
+      where: { sId: pendingSId, workspaceId: workspace.id },
+    });
+    expect(agents).toHaveLength(1);
+    expect(agents[0].status).toBe("active");
   });
 });

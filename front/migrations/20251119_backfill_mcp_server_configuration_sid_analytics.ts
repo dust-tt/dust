@@ -1,8 +1,8 @@
 import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
@@ -17,8 +17,9 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { AgentMessageAnalyticsToolUsed } from "@app/types/assistant/analytics";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const BATCH_SIZE = 1000;
 
@@ -318,12 +319,7 @@ makeScript(
   },
   async ({ execute, workspaceId, days }, logger) => {
     if (workspaceId) {
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      });
-
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }

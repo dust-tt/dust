@@ -1,5 +1,3 @@
-import React, { useContext } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -7,7 +5,9 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import { DocumentIcon, Icon } from "@dust-tt/sparkle";
+import React, { useContext } from "react";
 
 function getActionDisplayName(
   action: BuilderAction,
@@ -51,9 +51,21 @@ interface SkillToRemove {
   icon: string | null;
 }
 
+interface KnowledgeToRemove {
+  nodeId: string;
+  title: string;
+}
+
 interface UseRemoveSpaceConfirmParams {
   entityName: "agent" | "skill";
   mcpServerViews: MCPServerViewType[];
+}
+
+interface ConfirmRemoveSpaceParams {
+  space: SpaceType;
+  actions: BuilderAction[];
+  knowledgeInInstructions?: KnowledgeToRemove[];
+  skills?: SkillToRemove[];
 }
 
 export function useRemoveSpaceConfirm({
@@ -62,12 +74,18 @@ export function useRemoveSpaceConfirm({
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
 
-  return async (
-    space: SpaceType,
-    actions: BuilderAction[],
-    skills: SkillToRemove[] = []
-  ): Promise<boolean> => {
+  return async ({
+    space,
+    actions,
+    knowledgeInInstructions = [],
+    skills = [],
+  }: ConfirmRemoveSpaceParams): Promise<boolean> => {
     const allItems: ItemToRemove[] = [
+      ...knowledgeInInstructions.map((k) => ({
+        id: k.nodeId,
+        name: k.title,
+        icon: <Icon visual={DocumentIcon} size="xs" />,
+      })),
       ...skills.map((skill) => ({
         id: skill.sId,
         name: skill.name,
@@ -80,12 +98,18 @@ export function useRemoveSpaceConfirm({
       })),
     ];
 
+    const hasKnowledge = knowledgeInInstructions.length > 0;
+
     return confirm({
-      title: `Remove ${getSpaceName(space)} space`,
+      title: `Remove ${getSpaceName(space)} ${space.kind === "project" ? "project" : "space"}`,
       message: (
-        <p className="text-sm">
-          This will remove the following elements from the {entityName}:
-          <span className="mt-4 flex flex-wrap items-center gap-1">
+        <div className="space-y-3">
+          <p className="text-sm">
+            {hasKnowledge
+              ? `The following elements from this ${space.kind === "project" ? "project" : "space"} are used in the ${entityName}:`
+              : `This will remove the following elements from the ${entityName}:`}
+          </p>
+          <span className="flex flex-wrap items-center gap-1">
             {allItems.map((item, index) => (
               <span key={item.id} className="inline-flex items-center gap-1">
                 {item.icon}
@@ -100,10 +124,17 @@ export function useRemoveSpaceConfirm({
               </span>
             ))}
           </span>
-        </p>
+          {hasKnowledge && (
+            <p className="dark:text-warning-night text-sm">
+              To remove this {space.kind === "project" ? "project" : "space"},
+              first update your instructions to remove the knowledge references.
+            </p>
+          )}
+        </div>
       ),
       validateLabel: "OK",
       validateVariant: "warning",
+      validateDisabled: hasKnowledge,
     });
   };
 }

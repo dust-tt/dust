@@ -1,6 +1,3 @@
-import type { Stripe } from "stripe";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   createCreditPurchaseCoupon,
   finalizeInvoice,
@@ -14,6 +11,8 @@ import {
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
+import type { Stripe } from "stripe";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockInvoices, mockCoupons, mockSubscriptions, mockInvoiceItems } =
   vi.hoisted(() => {
@@ -65,6 +64,7 @@ vi.mock("@app/lib/api/config", () => ({
   default: {
     getStripeSecretKey: vi.fn(() => "sk_test_mock_key"),
     getClientFacingUrl: vi.fn(() => "https://test.example.com"),
+    getAppUrl: vi.fn(() => "https://test.example.com"),
   },
 }));
 

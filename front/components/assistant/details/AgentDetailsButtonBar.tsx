@@ -1,3 +1,19 @@
+import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
+import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BracesIcon,
   Button,
@@ -15,22 +31,7 @@ import {
   StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
-
-import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
-import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  getAgentBuilderRoute,
-  getConversationRoute,
-} from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder, normalizeError } from "@app/types";
 
 interface AgentDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -43,7 +44,7 @@ export function AgentDetailsButtonBar({
   isAgentConfigurationValidating,
   owner,
 }: AgentDetailsButtonBarProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -164,7 +165,7 @@ export function AgentDetailsDropdownMenu({
   contextMenuPosition,
 }: AgentDetailsDropdownMenuProps) {
   const sendNotification = useSendNotification();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);

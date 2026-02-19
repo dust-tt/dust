@@ -1,9 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { describe, expect, it } from "vitest";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
 import type { ServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   augmentInputsWithConfiguration,
@@ -15,7 +9,12 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Mock workspace for testing
 const mockWorkspace: WorkspaceType = {
@@ -59,6 +58,7 @@ function createBasicMCPConfiguration(
     originalName: "test_tool",
     mcpServerName: "test_server",
     secretName: null,
+    dustProject: null,
     ...overrides,
   };
 }

@@ -1,14 +1,14 @@
+import type { ConversationError } from "@app/types/assistant/conversation";
+import { isAPIErrorResponse } from "@app/types/error";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
   Button,
   ExclamationCircleIcon,
   Icon,
+  LinkWrapper,
   LoginIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import type { ComponentType } from "react";
-
-import type { ConversationError } from "@app/types";
-import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 interface ConversationErrorProps {
   error: ConversationError;
@@ -93,9 +93,9 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
           <p>{message}</p>
         )}
       </p>
-      <Link href="/">
+      <LinkWrapper href="/">
         <Button variant="outline" label="Back to homepage" icon={LoginIcon} />
-      </Link>
+      </LinkWrapper>
     </div>
   );
 }

@@ -1,3 +1,6 @@
+import { useUpdateTag } from "@app/lib/swr/tags";
+import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -9,10 +12,6 @@ import {
   Label,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useUpdateTag } from "@app/lib/swr/tags";
-import type { WorkspaceType } from "@app/types";
-import type { TagType } from "@app/types/tag";
 
 import { MAX_TAG_LENGTH } from "./TagCreationDialog";
 

@@ -1,6 +1,3 @@
-import { isConnectorProvider } from "@dust-tt/client";
-import type { Request, Response } from "express";
-
 import {
   GithubDiscussionModel,
   GithubIssueModel,
@@ -8,8 +5,12 @@ import {
 import { NotionPageModel } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorType } from "@connectors/types";
-import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import type {
+  ConnectorType,
+  WithConnectorsAPIErrorReponse,
+} from "@connectors/types";
+import { isConnectorProvider } from "@dust-tt/client";
+import type { Request, Response } from "express";
 
 type GetConnectorRes = WithConnectorsAPIErrorReponse<ConnectorType>;
 
@@ -70,7 +71,10 @@ const _getConnector = async (
     }
   }
 
-  return res.status(200).json(connector.toJSON());
+  return res.status(200).json({
+    ...connector.toJSON(),
+    firstSyncProgress,
+  });
 };
 
 export const getConnectorAPIHandler = withLogging(_getConnector);

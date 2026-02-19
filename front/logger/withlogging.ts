@@ -1,18 +1,4 @@
-/**
- * Force dd-trace inclusion in Next.js standalone mode.
- * Side-effect import ensures dd-trace/init is available at runtime.
- * Safe: this file is server-only (API routes, getServerSideProps).
- * See: https://github.com/DataDog/dd-trace-js/issues/4003
- */
-import "dd-trace";
-
-import tracer from "dd-trace";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
-
+import { shouldForceClientReload } from "@app/lib/api/force_client_reload";
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
@@ -23,8 +9,18 @@ import type {
   BaseResource,
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
-import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
-import { isString, normalizeError } from "@app/types";
+import tracer from "@app/logger/tracer";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorResponse,
+} from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
@@ -32,6 +28,26 @@ import { statsDClient } from "./statsDClient";
 export type RequestContext = {
   [key: string]: ResourceLogJSON;
 };
+
+// Sequelize errors (ValidationError, UniqueConstraintError, etc.) have a
+// generic .message ("Validation error") but carry field-level detail in
+// .errors[]. This helper extracts that detail for structured logging.
+export function getSequelizeErrorDetails(error: Error) {
+  if (
+    error.name.startsWith("Sequelize") &&
+    "errors" in error &&
+    Array.isArray(error.errors)
+  ) {
+    return error.errors.map(
+      (e: { message?: string; type?: string; path?: string }) => ({
+        message: e.message,
+        type: e.type,
+        path: e.path,
+      })
+    );
+  }
+  return undefined;
+}
 
 const EMPTY_LOG_CONTEXT = Object.freeze({});
 
@@ -127,6 +143,12 @@ export function withLogging<T>(
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
+    if (typeof commitHash === "string" && commitHash.length > 0) {
+      if (await shouldForceClientReload(commitHash)) {
+        res.setHeader("X-Reload-Required", "true");
+      }
+    }
+
     try {
       await handler(req, res, {
         session,
@@ -134,28 +156,28 @@ export function withLogging<T>(
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
       const error = normalizeError(err);
+
+      const sequelizeDetails = getSequelizeErrorDetails(error);
+
       logger.error(
         {
           clientIp,
           cliVersion,
           commitHash,
           durationMs: elapsed,
-          error: err,
           extensionVersion,
           method: req.method,
           route,
           sessionId,
           streaming,
           url: req.url,
+          error: {
+            name: error.name,
+            message: error.message || "unknown",
+            stack: error.stack,
+            ...(sequelizeDetails ? { sequelizeDetails } : {}),
+          },
           error_stack: error.stack,
-          ...(error.stack
-            ? {
-                error: {
-                  message: error.message || "unknown",
-                  stack: error.stack,
-                },
-              }
-            : {}),
           workspaceId,
           ...req.logContext,
         },
@@ -324,6 +346,8 @@ export function withGetServerSidePropsLogging<
       const elapsed = new Date().getTime() - now.getTime();
       const error = normalizeError(err);
 
+      const sequelizeDetails = getSequelizeErrorDetails(error);
+
       logger.error(
         {
           returnType: "error",
@@ -332,8 +356,10 @@ export function withGetServerSidePropsLogging<
           route,
           clientIp,
           error: {
+            name: error.name,
             message: error.message,
             stack: error.stack,
+            ...(sequelizeDetails ? { sequelizeDetails } : {}),
           },
           error_stack: error.stack,
         },

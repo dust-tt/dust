@@ -12,16 +12,14 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type {
-  ActiveRoleType,
-  LightWorkspaceType,
-  MembershipOriginType,
-  Result,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { MembershipOriginType } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
 
 export async function createAndLogMembership({
   user,
@@ -30,12 +28,13 @@ export async function createAndLogMembership({
   origin,
 }: {
   user: UserResource;
-  workspace: WorkspaceModel | LightWorkspaceType;
+  workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
 }) {
   const w =
-    workspace instanceof WorkspaceModel
+    workspace instanceof WorkspaceModel ||
+    workspace instanceof WorkspaceResource
       ? renderLightWorkspaceType({ workspace })
       : workspace;
   const m = await MembershipResource.createMembership({
@@ -223,7 +222,8 @@ export async function handleRegularSignupFlow(
   session: SessionWithUser,
   user: UserResource,
   activeMemberships: MembershipResource[],
-  targetWorkspaceId?: string
+  targetWorkspaceId?: string,
+  utmParams?: UTMParams
 ): Promise<
   Result<
     {
@@ -279,8 +279,8 @@ export async function handleRegularSignupFlow(
     }
 
     const workspaceSubscription =
-      await SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace: existingWorkspace })
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(
+        existingWorkspace.id
       );
 
     if (!workspaceSubscription) {
@@ -323,7 +323,7 @@ export async function handleRegularSignupFlow(
 
     return new Ok({ flow: "joined", workspace: lightWorkspace });
   } else if (!targetWorkspace && activeMemberships.length === 0) {
-    const workspace = await createWorkspace(session);
+    const workspace = await createWorkspace(session, utmParams);
     const lightWorkspace = renderLightWorkspaceType({ workspace });
     await createAndLogMembership({
       workspace: lightWorkspace,

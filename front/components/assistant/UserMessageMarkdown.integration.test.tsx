@@ -1,8 +1,16 @@
 import { render } from "@testing-library/react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { UserMessageMarkdown } from "./UserMessageMarkdown";
+
+// Mock useAuth to provide a fake user for mention components.
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useAuth: () => ({
+    user: { sId: "user_1", fullName: "Test User" },
+  }),
+}));
 
 // Mock router utilities and hooks for mention directives
 const pushMock = vi.fn();

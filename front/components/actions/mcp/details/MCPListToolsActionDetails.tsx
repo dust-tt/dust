@@ -1,5 +1,3 @@
-import { BoltIcon, Chip } from "@dust-tt/sparkle";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -7,18 +5,20 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { isToolsetsResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { BoltIcon, Chip } from "@dust-tt/sparkle";
 
 export function MCPListToolsActionDetails({
   owner,
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const { spaces } = useSpaces({
+    kinds: ["global"],
     workspaceId: owner.sId,
   });
   const { serverViews: mcpServerViews } = useMCPServerViews({
     owner,
-    space: spaces.find((s) => s.kind === "global"),
+    space: spaces[0] ?? undefined,
     availability: "all",
   });
   const results =
@@ -27,11 +27,13 @@ export function MCPListToolsActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
-      actionName={viewType === "conversation" ? `Listing tools` : `List tools`}
+      displayContext={displayContext}
+      actionName={
+        displayContext === "conversation" ? `Listing tools` : `List tools`
+      }
       visual={BoltIcon}
     >
-      {viewType !== "conversation" && (
+      {displayContext !== "conversation" && (
         <div className="pl-6 pt-4 text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           <div className="flex flex-wrap gap-1">
             {results.map((result) => {

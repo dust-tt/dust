@@ -1,11 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  InferAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -17,19 +9,29 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  LabsTranscriptsConfigurationStatus,
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+} from "@app/types/labs";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  Attributes,
+  CreationAttributes,
+  InferAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface LabsTranscriptsConfigurationResource extends ReadonlyAttributesType<LabsTranscriptsConfigurationModel> {}
+export interface LabsTranscriptsConfigurationResource
+  extends ReadonlyAttributesType<LabsTranscriptsConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTranscriptsConfigurationModel> {
   static model: ModelStatic<LabsTranscriptsConfigurationModel> =
@@ -43,14 +45,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   static async makeNew(
-    blob: Omit<
-      CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive"
-    >
+    blob: Omit<CreationAttributes<LabsTranscriptsConfigurationModel>, "status">
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
-      isActive: false,
+      status: "disabled",
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -204,12 +203,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ agentConfigurationId });
   }
 
-  async setIsActive(isActive: boolean) {
-    if (this.isActive === isActive) {
+  async setStatus(status: LabsTranscriptsConfigurationStatus) {
+    if (this.status === status) {
       return;
     }
 
-    return this.update({ isActive });
+    return this.update({ status });
+  }
+
+  isActive(): boolean {
+    return this.status === "active";
   }
 
   async setIsDefault(isDefault: boolean) {
@@ -427,7 +430,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       workspaceId: this.workspaceId,
       provider: this.provider,
       agentConfigurationId: this.agentConfigurationId,
-      isActive: this.isActive,
+      status: this.status,
       isDefaultWorkspaceConfiguration: this.isDefaultWorkspaceConfiguration,
       credentialId: this.credentialId,
       dataSourceViewId: this.dataSourceViewId,

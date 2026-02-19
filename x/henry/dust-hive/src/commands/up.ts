@@ -1,15 +1,10 @@
 import { logger } from "../lib/logger";
 import { TEMPORAL_PORT, findRepoRoot } from "../lib/paths";
+import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isTemporalServerRunning, startTemporalServer } from "../lib/temporal-server";
 import { isTestPostgresRunning, startTestPostgres } from "../lib/test-postgres";
 import { isTestRedisRunning, startTestRedis } from "../lib/test-redis";
-import {
-  getCurrentBranch,
-  getMainRepoPath,
-  hasUncommittedChanges,
-  isWorktree,
-} from "../lib/worktree";
 import { openMainSession } from "./open";
 import { syncCommand } from "./sync";
 
@@ -17,42 +12,6 @@ interface UpOptions {
   attach?: boolean;
   force?: boolean;
   compact?: boolean;
-}
-
-// Check preconditions for managed services mode
-async function checkPreconditions(repoRoot: string): Promise<Result<void>> {
-  // Must not be in a worktree
-  const inWorktree = await isWorktree(repoRoot);
-  if (inWorktree) {
-    const mainRepo = await getMainRepoPath(repoRoot);
-    return Err(
-      new CommandError(
-        `Cannot run 'dust-hive up' from a worktree. Run from the main repo: cd ${mainRepo}`
-      )
-    );
-  }
-
-  // Must be on main branch
-  const currentBranch = await getCurrentBranch(repoRoot);
-  if (currentBranch !== "main") {
-    return Err(
-      new CommandError(
-        `Cannot run 'dust-hive up' from branch '${currentBranch}'. Checkout main first: git checkout main`
-      )
-    );
-  }
-
-  // Must have clean working directory (ignoring untracked files, since git pull --rebase handles them)
-  const hasChanges = await hasUncommittedChanges(repoRoot, { ignoreUntracked: true });
-  if (hasChanges) {
-    return Err(
-      new CommandError(
-        "Repository has uncommitted changes. Commit or stash them before running 'dust-hive up'."
-      )
-    );
-  }
-
-  return Ok(undefined);
 }
 
 // Start temporal server if not already running
@@ -126,7 +85,7 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   console.log();
 
   // Check preconditions
-  const preconditions = await checkPreconditions(repoRoot);
+  const preconditions = await checkMainRepoPreconditions(repoRoot, { commandName: "dust-hive up" });
   if (!preconditions.ok) {
     return preconditions;
   }

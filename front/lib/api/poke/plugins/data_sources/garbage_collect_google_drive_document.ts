@@ -2,8 +2,9 @@ import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function garbageCollectGoogleDriveDocument(
   dataSource: DataSourceResource,

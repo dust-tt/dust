@@ -9,13 +9,16 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
-import type { GenerationTokensEvent } from "@app/types";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-} from "@app/types";
-import type { AgentMessageNewEvent, UserMessageNewEvent } from "@app/types";
+} from "@app/types/assistant/agent";
+import type {
+  AgentMessageNewEvent,
+  UserMessageNewEvent,
+} from "@app/types/assistant/conversation";
+import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
 export async function* getConversationEvents({
   conversationId,

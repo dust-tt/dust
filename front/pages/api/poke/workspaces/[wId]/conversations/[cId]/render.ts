@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -12,9 +10,10 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -23,9 +22,11 @@ import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isString, isUserMessageType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostRenderConversationRequestBody = {
   agentId: string;
@@ -102,7 +103,16 @@ async function handler(
         });
       }
 
-      const conversationRes = await getConversation(auth, cId, true);
+      const [conversationRes, agentConfiguration, featureFlags] =
+        await Promise.all([
+          getConversation(auth, cId, true),
+          getAgentConfiguration(auth, {
+            agentId,
+            variant: "full",
+          }),
+          getFeatureFlags(auth.getNonNullableWorkspace()),
+        ]);
+
       if (conversationRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
@@ -114,10 +124,6 @@ async function handler(
       }
       const conversation: ConversationType = conversationRes.value;
 
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId,
-        variant: "full",
-      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
@@ -157,7 +163,7 @@ async function handler(
 
       // Build tools list and prompt similar to the agent loop.
       const attachments = listAttachments(conversation);
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration,
         conversation,
         attachments,
@@ -202,9 +208,7 @@ async function handler(
         configuration: agentConfiguration,
         skipToolsValidation: false,
         actions: [],
-        rawContents: [],
         contents: [],
-        parsedContents: {},
         modelInteractionDurationMs: null,
         completionDurationMs: null,
         richMentions: [],
@@ -247,11 +251,7 @@ async function handler(
           })
         : null;
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-
-      const prompt = constructPromptMultiActions(auth, {
+      const promptSections = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
         fallbackPrompt,
@@ -259,12 +259,12 @@ async function handler(
         hasAvailableActions: availableActions.length > 0,
         errorContext: mcpToolsListingError,
         agentsList,
-        conversationId: conversation.sId,
+        conversation,
         serverToolsAndInstructions,
         enabledSkills,
         equippedSkills,
-        featureFlags,
       });
+      const prompt = systemPromptToText(promptSections);
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).
       const specifications = availableActions.map((t) =>
@@ -297,6 +297,8 @@ async function handler(
         excludeActions,
         excludeImages,
         onMissingAction,
+        agentConfiguration,
+        featureFlags,
       });
 
       if (convoRes.isErr()) {

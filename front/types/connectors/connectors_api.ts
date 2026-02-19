@@ -1,6 +1,5 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { ConnectorsAPIError } from "@dust-tt/client";
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+
 import { isConnectorsAPIError } from "@dust-tt/client";
 import * as t from "io-ts";
 
@@ -250,20 +249,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async stopConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/stop/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async pauseConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
@@ -283,20 +268,6 @@ export class ConnectorsAPI {
   ): Promise<ConnectorsAPIResponse<undefined>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/unpause/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async resumeConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/resume/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),

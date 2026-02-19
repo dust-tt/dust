@@ -1,12 +1,9 @@
-import type Stripe from "stripe";
-import type { MockInstance } from "vitest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { Authenticator } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
   getCustomerPaymentStatus,
+  grantFreeCreditFromSubscriptionStateChangeYearly,
   grantFreeCreditsFromSubscriptionStateChange,
 } from "@app/lib/credits/free";
 import {
@@ -17,7 +14,10 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import type Stripe from "stripe";
+import type { MockInstance } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/plans/stripe", async () => {
   const actual = await vi.importActual("@app/lib/plans/stripe");
@@ -37,19 +37,24 @@ vi.mock("@app/lib/auth", async () => {
 });
 
 const MONTH_SECONDS = 30 * 24 * 60 * 60;
+const YEAR_SECONDS = 365 * 24 * 60 * 60;
 const NOW = 1700000000; // Fixed timestamp for tests
 const NOW_MS = NOW * 1000;
 
 function makeSubscription(
   currentPeriodStart: number,
   startDate: number,
-  status: Stripe.Subscription.Status = "active"
+  status: Stripe.Subscription.Status = "active",
+  interval: "month" | "year" = "month"
 ): Stripe.Subscription {
   return {
     id: "sub_123",
     current_period_start: currentPeriodStart,
     start_date: startDate,
     status,
+    items: {
+      data: [{ price: { recurring: { interval } } }],
+    },
   } as Stripe.Subscription;
 }
 
@@ -184,6 +189,54 @@ describe("checkCustomerStatus", () => {
       );
       expect(result).toBe("paying");
       expect(getSubscriptionInvoices).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("yearly subscriptions", () => {
+    beforeEach(() => {
+      vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
+    });
+
+    it("returns 'paying' for yearly subscription with payment 6 months ago", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+        makeInvoice(NOW - MONTH_SECONDS * 6),
+      ]);
+      const result = await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS, "active", "year")
+      );
+      expect(result).toBe("paying");
+    });
+
+    it("returns 'paying' for yearly subscription with payment 12 months ago", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+        makeInvoice(NOW - YEAR_SECONDS),
+      ]);
+      const result = await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS, "active", "year")
+      );
+      expect(result).toBe("paying");
+    });
+
+    it("uses ~13 month lookback for yearly subscriptions", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+      await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS, "active", "year")
+      );
+      expect(getSubscriptionInvoices).toHaveBeenCalledWith({
+        subscriptionId: "sub_123",
+        status: "paid",
+        createdSinceDate: new Date(
+          NOW * 1000 - (YEAR_SECONDS + MONTH_SECONDS) * 1000
+        ),
+      });
+    });
+
+    it("returns 'not_paying' for yearly subscription with no invoices in lookback period", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+      const result = await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS * 2, "active", "year")
+      );
+      expect(result).toBe("not_paying");
     });
   });
 });
@@ -466,6 +519,205 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
       stripeSubscription: subscription,
     });
 
+    expect(isEnterpriseSubscription).toHaveBeenCalledWith(subscription);
+  });
+});
+
+function makeYearlySubscription(
+  overrides: Partial<Stripe.Subscription> = {}
+): Stripe.Subscription {
+  return {
+    id: "sub_yearly_test",
+    current_period_start: NOW,
+    current_period_end: NOW + YEAR_SECONDS,
+    start_date: NOW - YEAR_SECONDS,
+    status: "active",
+    items: { data: [], has_more: false, object: "list", url: "" },
+    ...overrides,
+  } as Stripe.Subscription;
+}
+
+describe("grantFreeCreditFromSubscriptionStateChangeYearly", () => {
+  let auth: Authenticator;
+  let getMembersCountSpy: MockInstance;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW_MS);
+
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    auth = authenticator;
+
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+      makeInvoice(NOW - MONTH_SECONDS * 0.5),
+    ]);
+    getMembersCountSpy = vi
+      .spyOn(MembershipResource, "getMembersCountForWorkspace")
+      .mockResolvedValue(10);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    getMembersCountSpy.mockRestore();
+  });
+
+  it("should skip when credit already exists for billing cycle (idempotency)", async () => {
+    const subscription = makeYearlySubscription();
+    const idempotencyKey = `free-renewal-yearly-${subscription.id}-${subscription.current_period_start}`;
+
+    await CreditResource.makeNew(auth, {
+      type: "free",
+      initialAmountMicroUsd: 600_000_000,
+      consumedAmountMicroUsd: 0,
+      invoiceOrLineItemId: idempotencyKey,
+    });
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const credits = await CreditResource.listAll(auth);
+    expect(credits.length).toBe(1);
+  });
+
+  it("should return error for non-paying subscription (no trials for yearly)", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+    const subscription = makeYearlySubscription({
+      start_date: NOW - YEAR_SECONDS * 2,
+      status: "active",
+    });
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.message).toContain(
+      "Yearly subscription not eligible for free credits"
+    );
+  });
+
+  it("should return error for trialing subscription (no trials for yearly)", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+    const subscription = makeYearlySubscription({
+      status: "trialing",
+      start_date: NOW,
+    });
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.message).toContain(
+      "Yearly subscription not eligible for free credits"
+    );
+  });
+
+  it("should use programmatic config override when freeCreditMicroUsd is set (yearly amount)", async () => {
+    const configResult = await ProgrammaticUsageConfigurationResource.makeNew(
+      auth,
+      {
+        freeCreditMicroUsd: 1_200_000_000, // $1200 yearly
+        defaultDiscountPercent: 0,
+        paygCapMicroUsd: null,
+      }
+    );
+    expect(configResult.isOk()).toBe(true);
+
+    const subscription = makeYearlySubscription();
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const credits = await CreditResource.listAll(auth);
+    expect(credits[0].initialAmountMicroUsd).toBe(1_200_000_000);
+  });
+
+  it("should calculate bracket-based credits times 12 for paying customers", async () => {
+    getMembersCountSpy.mockResolvedValue(10);
+    // 10 users = $50/month -> $600/year
+
+    const subscription = makeYearlySubscription();
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const credits = await CreditResource.listAll(auth);
+    expect(credits[0].initialAmountMicroUsd).toBe(50_000_000 * 12);
+  });
+
+  it("should calculate correct yearly amount for 25 users", async () => {
+    getMembersCountSpy.mockResolvedValue(25);
+    // 25 users = $50 (first 10) + $30 (15 users @ $2) = $80/month -> $960/year
+
+    const subscription = makeYearlySubscription();
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const credits = await CreditResource.listAll(auth);
+    expect(credits[0].initialAmountMicroUsd).toBe(
+      (50_000_000 + 30_000_000) * 12
+    );
+  });
+
+  it("should create credit with correct expiration date (period end = 1 year)", async () => {
+    const subscription = makeYearlySubscription();
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const credits = await CreditResource.listAll(auth);
+    expect(credits[0].expirationDate?.getTime()).toBe(
+      subscription.current_period_end * 1000
+    );
+  });
+
+  it("should use correct yearly idempotency key format", async () => {
+    const subscription = makeYearlySubscription({ id: "sub_yearly_abc123" });
+
+    await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    const credits = await CreditResource.listAll(auth);
+    expect(credits[0].invoiceOrLineItemId).toBe(
+      `free-renewal-yearly-sub_yearly_abc123-${subscription.current_period_start}`
+    );
+  });
+
+  it("should always grant credits for enterprise subscriptions", async () => {
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+
+    const subscription = makeYearlySubscription();
+
+    const result = await grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
     expect(isEnterpriseSubscription).toHaveBeenCalledWith(subscription);
   });
 });

@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
@@ -14,8 +12,11 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
-export class SnowflakeConnectorStrategy implements ConnectorProviderStrategy<"snowflake"> {
+export class SnowflakeConnectorStrategy
+  implements ConnectorProviderStrategy<"snowflake">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<SnowflakeConfigurationModel>,

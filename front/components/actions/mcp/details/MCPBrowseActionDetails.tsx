@@ -1,6 +1,3 @@
-import { FaviconIcon, GlobeAltIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
@@ -10,11 +7,12 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isWebbrowseInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import { FaviconIcon, GlobeAltIcon, LinkWrapper } from "@dust-tt/sparkle";
 
 export function MCPBrowseActionDetails({
   toolOutput,
   toolParams,
-  viewType,
+  displayContext,
   owner,
 }: ToolExecutionDetailsProps) {
   const urls = isWebbrowseInputType(toolParams) ? toolParams.urls : null;
@@ -26,16 +24,20 @@ export function MCPBrowseActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation" ? "Browsing the web" : "Web navigation"
+        displayContext === "conversation"
+          ? "Browsing the web"
+          : "Web navigation"
       }
       visual={GlobeAltIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-            {(viewType === "conversation" || browseResults.length === 0) && urls
+            {(displayContext === "conversation" ||
+              browseResults.length === 0) &&
+            urls
               ? urls.map((url, idx) => (
                   <div
                     className="group flex max-h-60 flex-row items-center gap-x-1 overflow-y-auto overflow-x-hidden pb-1"
@@ -59,13 +61,13 @@ export function MCPBrowseActionDetails({
                         {(() => {
                           const urlValidation = validateUrl(r.uri);
                           return urlValidation.valid ? (
-                            <Link
+                            <LinkWrapper
                               href={urlValidation.standardized}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
                               {r.title ?? r.requestedUrl}
-                            </Link>
+                            </LinkWrapper>
                           ) : (
                             <span className="text-sm text-foreground dark:text-foreground-night">
                               {r.title ?? r.requestedUrl} (invalid URL)

@@ -6,25 +6,24 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
-  ModelConfigurationType,
-  Result,
   UserMessageType,
-  WorkspaceType,
-} from "@app/types";
-import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  ConversationError,
-  Err,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
-  getSmallWhitelistedModel,
-  GPT_5_1_MODEL_CONFIG,
-  isProviderWhitelisted,
-  Ok,
-} from "@app/types";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+} from "@app/types/assistant/conversation";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 
 export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
@@ -32,13 +31,16 @@ export async function ensureConversationTitleFromAgentLoop(
 ): Promise<string | null> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
-    if (
-      runAgentDataRes.error instanceof ConversationError &&
-      runAgentDataRes.error.type === "conversation_not_found"
-    ) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
       return null;
     }
-
     throw runAgentDataRes.error;
   }
 

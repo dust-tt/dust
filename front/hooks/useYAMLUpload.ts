@@ -1,23 +1,22 @@
-import { useRouter } from "next/router";
-import { useCallback, useState } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
 
 interface UseYAMLUploadOptions {
   owner: LightWorkspaceType;
 }
 
 export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isUploading, setIsUploading] = useState(false);
 
@@ -64,7 +63,10 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
         sendNotification({
           title: "Agent creation failed",
-          description: "An error occurred while creating the agent from YAML",
+          description:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            errorData.error?.message ||
+            "An error occurred while creating the agent from YAML",
           type: "error",
         });
         setIsUploading(false);

@@ -1,36 +1,35 @@
 "use client";
 
+import { Spinner } from "@viz/app/components/Components";
+import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import type {
+  VisualizationAPI,
+  VisualizationConfig,
+  VisualizationDataAPI,
+  VisualizationUIAPI,
+} from "@viz/app/lib/visualization-api";
 import {
-  isDevelopment,
   type CommandResultMap,
+  isDevelopment,
   type VisualizationRPCCommand,
   type VisualizationRPCRequestMap,
 } from "@viz/app/types";
-
-import { Spinner } from "@viz/app/components/Components";
-import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import {
+  type SupportedEventType,
+  type SupportedMessage,
+  validateMessage,
+} from "@viz/app/types/messages";
+import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
+import * as shadcnAll from "@viz/components/ui";
+import * as utilsAll from "@viz/lib/utils";
 import { toBlob, toSvg } from "html-to-image";
+import * as lucideAll from "lucide-react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
-import * as utilsAll from "@viz/lib/utils";
-import * as shadcnAll from "@viz/components/ui";
-import * as lucideAll from "lucide-react";
-import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
-import {
-  SupportedEventType,
-  SupportedMessage,
-  validateMessage,
-} from "@viz/app/types/messages";
-import {
-  VisualizationAPI,
-  VisualizationConfig,
-  VisualizationDataAPI,
-  VisualizationUIAPI,
-} from "@viz/app/lib/visualization-api";
 
 // Regular expressions to capture the value inside a className attribute.
 // We check both double and single quotes separately to handle mixed usage.
@@ -169,7 +168,7 @@ function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
       try {
         const fetchedFile = await dataAPI.fetchFile(fileId);
         setFile(fetchedFile);
-      } catch (err) {
+      } catch (_err) {
         setFile(null);
       }
     };
@@ -253,8 +252,9 @@ export function VisualizationWrapper({
   config: VisualizationConfig;
   api: VisualizationAPI;
 }) {
-  const { identifier, isFullHeight = false } = config;
+  const { identifier, isFullHeight = false, isPdfMode = false } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
+  const [vizReady, setVizReady] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
@@ -413,32 +413,36 @@ export function VisualizationWrapper({
     return <Spinner />;
   }
 
+  // In PDF mode: no height constraint, content flows naturally for full capture.
+  const heightClass = isPdfMode ? "" : isFullHeight ? "h-screen" : "";
+
+  const shouldShowControls = !isFullHeight && !isPdfMode;
+
   return (
     <div
-      className={`relative font-sans group/viz ${
-        isFullHeight ? "h-screen" : ""
-      }`}
+      className={`relative font-sans group/viz ${heightClass}`}
+      data-viz-ready={vizReady}
     >
-      {!isFullHeight && (
-        <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
+      {shouldShowControls && (
+        <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
           <button
             onClick={() => handleScreenshotDownload()}
-            title='Download screenshot'
-            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
+            title="Download screenshot"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
           >
             Png
           </button>
           <button
             onClick={handleSVGDownload}
-            title='Download SVG'
-            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
+            title="Download SVG"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
           >
             Svg
           </button>
           <button
-            title='Show code'
+            title="Show code"
             onClick={handleDisplayCode}
-            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
           >
             Code
           </button>
@@ -451,6 +455,11 @@ export function VisualizationWrapper({
           onRendered={(error) => {
             if (error) {
               setErrorMessage(error);
+            } else {
+              // Set data-viz-ready attribute once fully rendered to enable screen capture.
+              // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
+              const delayMs = isPdfMode ? 5000 : 0;
+              setTimeout(() => setVizReady(true), delayMs);
             }
           }}
         />

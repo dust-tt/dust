@@ -1,4 +1,4 @@
-import React, { forwardRef, Ref, useEffect, useRef, useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Button,
@@ -12,13 +12,20 @@ import {
   ScrollBar,
   Spinner,
 } from "@sparkle/components";
-import { ContentMessageProps } from "@sparkle/components/ContentMessage";
+import type { ContentMessageProps } from "@sparkle/components/ContentMessage";
 import {
   ListCheckIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React, {
+  forwardRef,
+  type Ref,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export interface SearchInputProps {
   placeholder?: string;
@@ -26,6 +33,7 @@ export interface SearchInputProps {
   onChange: (value: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus?: () => void;
+  onBlur?: () => void;
   name: string;
   disabled?: boolean;
   isLoading?: boolean;
@@ -40,6 +48,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       onChange,
       onKeyDown,
       onFocus,
+      onBlur,
       name,
       disabled = false,
       isLoading = false,
@@ -63,6 +72,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             onChange(e.target.value);
           }}
           onFocus={onFocus}
+          onBlur={onBlur}
           onKeyDown={onKeyDown}
           disabled={disabled}
           ref={ref}
@@ -109,6 +119,8 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   onOpenChange: (open: boolean) => void;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  availableHeight?: boolean;
+  maxHeight?: "sm" | "md" | "lg" | "xl";
   items: T[];
   renderItem: (item: T, selected: boolean) => React.ReactNode;
   onItemSelect?: (item: T) => void;
@@ -118,7 +130,16 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   contentMessage?: ContentMessageProps;
   displayItemCount?: boolean;
   totalItems?: number;
+  stickyTopContent?: React.ReactNode;
+  stickyBottomContent?: React.ReactNode;
 };
+
+const MAX_HEIGHT_CLASSES = {
+  sm: "s-max-h-48",
+  md: "s-max-h-72",
+  lg: "s-max-h-96",
+  xl: "s-max-h-[40rem]",
+} as const;
 
 function BaseSearchInputWithPopover<T>(
   {
@@ -139,12 +160,20 @@ function BaseSearchInputWithPopover<T>(
     contentMessage,
     displayItemCount = false,
     totalItems,
+    stickyTopContent,
+    stickyBottomContent,
+    availableHeight = false,
+    maxHeight = "md",
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
+  const showHeader =
+    Boolean(stickyTopContent) ||
+    (items.length > 0 && (displayItemCount || onSelectAll));
+  const showBottom = Boolean(stickyBottomContent);
 
   useEffect(() => {
     itemRefs.current = new Array(items.length).fill(null);
@@ -208,7 +237,9 @@ function BaseSearchInputWithPopover<T>(
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
+          "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-lg dark:s-bg-background-night",
+          availableHeight &&
+            "s-max-h-[var(--radix-popover-content-available-height)] s-overflow-hidden",
           contentClassName
         )}
         sideOffset={0}
@@ -221,18 +252,29 @@ function BaseSearchInputWithPopover<T>(
         mountPortal={mountPortal}
         mountPortalContainer={mountPortalContainer}
       >
-        <div className="s-flex s-flex-col">
-          {items.length > 0 && (displayItemCount || onSelectAll) && (
-            <div className="s-flex s-items-center s-justify-between s-p-2 s-text-sm s-text-gray-500">
-              <div>
-                {displayItemCount && (
-                  <span>
+        <div
+          className={cn(
+            "s-flex s-flex-col s-overflow-hidden s-rounded-lg",
+            availableHeight && "s-max-h-full"
+          )}
+        >
+          {showHeader && (
+            <div
+              className={cn(
+                "s-z-10 s-flex s-shrink-0 s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-bg-background s-p-2 dark:s-border-border-night dark:s-bg-background-night"
+              )}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <div className="s-flex s-flex-1 s-items-center s-gap-2">
+                {stickyTopContent}
+                {displayItemCount && items.length > 0 && (
+                  <span className="s-text-sm s-text-gray-500">
                     {items.length} search results
                     {totalItems && ` (out of ${totalItems})`}.
                   </span>
                 )}
               </div>
-              {onSelectAll && (
+              {onSelectAll && items.length > 0 && (
                 <Button
                   variant="ghost"
                   size="xs"
@@ -244,27 +286,49 @@ function BaseSearchInputWithPopover<T>(
             </div>
           )}
           <ScrollArea
-            role="listbox"
-            className="s-flex s-max-h-72 s-flex-col"
+            className={cn(
+              "s-flex s-min-h-0 s-flex-1 s-flex-col",
+              availableHeight
+                ? "s-max-h-[calc(var(--radix-popover-content-available-height)-12px)]"
+                : MAX_HEIGHT_CLASSES[maxHeight]
+            )}
             hideScrollBar
           >
-            {items.length > 0 ? (
-              items.map((item, index) => (
-                <div key={index} ref={(el) => (itemRefs.current[index] = el)}>
-                  {renderItem(item, selectedIndex === index)}
+            <div role="listbox" className="s-flex s-flex-col">
+              {items.length > 0 ? (
+                items.map((item, index) => (
+                  <div
+                    key={index}
+                    ref={(el) => (itemRefs.current[index] = el)}
+                    onClick={() => {
+                      onOpenChange(false);
+                      onItemSelect?.(item);
+                    }}
+                  >
+                    {renderItem(item, selectedIndex === index)}
+                  </div>
+                ))
+              ) : isLoading ? (
+                <div className="s-flex s-justify-center s-py-8">
+                  <Spinner variant="dark" size="md" />
                 </div>
-              ))
-            ) : isLoading ? (
-              <div className="s-flex s-justify-center s-py-8">
-                <Spinner variant="dark" size="md" />
-              </div>
-            ) : (
-              <div className="s-p-2 s-text-sm s-text-gray-500">
-                {noResults ?? ""}
-              </div>
-            )}
+              ) : (
+                <div className="s-p-4 s-text-center s-text-sm s-italic s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  {noResults ?? ""}
+                </div>
+              )}
+            </div>
             <ScrollBar className="s-py-0" />
           </ScrollArea>
+          {showBottom && (
+            <div
+              className={cn(
+                "s-z-10 s-hidden s-shrink-0 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-bg-background s-p-2 dark:s-border-border-night dark:s-bg-background-night sm:s-flex"
+              )}
+            >
+              {stickyBottomContent}
+            </div>
+          )}
           {contentMessage && (
             <div className="s-p-1">
               <ContentMessage {...contentMessage} />

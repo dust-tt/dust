@@ -1,23 +1,21 @@
+import { useAppRouter } from "@app/lib/platform";
+import { createFavorite, usePokeFavorites } from "@app/poke/swr/favorites";
 import {
   Chip,
   IconButton,
+  LinkWrapper,
   StarIcon,
   StarStrokeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
-import React from "react";
-
-import { createFavorite, usePokeFavorites } from "@app/poke/swr/favorites";
+import React, { useCallback, useEffect, useState } from "react";
 
 interface PokeFavoriteButtonProps {
   title: string;
 }
 
 export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { isFavorite, toggleFavorite } = usePokeFavorites();
   const [hasMounted, setHasMounted] = React.useState(false);
 
@@ -109,9 +107,9 @@ export function PokeFavoritesList() {
             <Chip size="xs" color="primary">
               {favorite.data.type}
             </Chip>
-            <Link href={favorite.url} className="text-sm">
+            <LinkWrapper href={favorite.url} className="text-sm">
               {favorite.data.name}
-            </Link>
+            </LinkWrapper>
             <IconButton
               icon={XMarkIcon}
               onClick={() => removeFavorite(favorite.url)}

@@ -1,18 +1,8 @@
-import assert from "assert";
-import { tracer } from "dd-trace";
-import type { Transaction } from "sequelize";
-import {
-  Op,
-  Sequelize,
-  UniqueConstraintError,
-  ValidationError,
-} from "sequelize";
-
-import {
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import {
+  WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
+  WEB_SEARCH_BROWSE_SERVER_NAME,
+} from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   enrichAgentConfigurations,
@@ -24,7 +14,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -36,6 +26,7 @@ import {
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -46,6 +37,8 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -53,6 +46,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { tracer } from "@app/logger/tracer";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -60,22 +54,90 @@ import type {
   AgentModelConfigurationType,
   AgentStatus,
   LightAgentConfigurationType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  CoreAPI,
-  Err,
-  isAdmin,
-  isBuilder,
-  isGlobalAgentId,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-  normalizeAsInternalDustError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
+import type { UserType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+import {
+  Op,
+  QueryTypes,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
+
+// Placeholder constants for pending agents
+const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
+const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
+const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
+  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
+/**
+ * Creates a pending agent configuration.
+ * Pending agents are placeholders created when the agent builder is opened for a new agent,
+ * before it is saved for the first time. This allows capturing the sId early.
+ */
+export async function createPendingAgentConfiguration(
+  auth: Authenticator
+): Promise<{ sId: string }> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
+
+  const sId = generateRandomModelSId();
+
+  await withTransaction(async (t) => {
+    const agent = await AgentConfigurationModel.create(
+      {
+        sId,
+        version: 0,
+        status: "pending",
+        scope: "hidden",
+        name: PENDING_AGENT_PLACEHOLDER_NAME,
+        description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
+        instructions: null,
+        providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        temperature: 0.7,
+        reasoningEffort:
+          CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+        maxStepsPerRun: 8,
+        pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
+        workspaceId: owner.id,
+        authorId: user.id,
+        templateId: null,
+        requestedSpaceIds: [],
+      },
+      { transaction: t }
+    );
+
+    const group = await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
+      transaction: t,
+    });
+    await auth.refresh({ transaction: t });
+    if (!group.canWrite(auth)) {
+      throw new DustError(
+        "unauthorized",
+        "User does not have write permission for the agent editors group."
+      );
+    }
+    await group.dangerouslySetMembers(auth, {
+      users: [user.toJSON()],
+      transaction: t,
+    });
+  });
+
+  return { sId };
+}
 
 export async function getAgentConfigurationsWithVersion<
   V extends AgentFetchVariant,
@@ -207,29 +269,34 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      const latestVersions = (await AgentConfigurationModel.findAll({
-        attributes: [
-          "sId",
-          [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
-        ],
-        where: {
-          workspaceId: owner.id,
-          sId: workspaceAgentIds,
-        },
-        group: ["sId"],
-        raw: true,
-      })) as unknown as { sId: string; max_version: number }[];
+      // Use window function for optimal performance - single query, single pass
+      const query = `
+        SELECT *
+        FROM (
+          SELECT *,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY "sId"
+                    ORDER BY version DESC
+                  ) as rn
+          FROM agent_configurations
+          WHERE "workspaceId" = :workspaceId
+            AND "sId" IN (:agentIds)
+        ) ranked_agents
+        WHERE rn = 1
+        ORDER BY version DESC
+      `;
 
-      const agentModels = await AgentConfigurationModel.findAll({
-        where: {
-          workspaceId: owner.id,
-          [Op.or]: latestVersions.map((v) => ({
-            sId: v.sId,
-            version: v.max_version,
-          })),
-        },
-        order: [["version", "DESC"]],
-      });
+      const agentModels =
+        (await AgentConfigurationModel.sequelize?.query(query, {
+          type: QueryTypes.SELECT,
+          replacements: {
+            workspaceId: owner.id,
+            agentIds: workspaceAgentIds,
+          },
+          model: AgentConfigurationModel,
+          mapToModel: true,
+        })) ?? [];
+
       const allowedAgentModels = await filterAgentsByRequestedSpaces(
         auth,
         agentModels
@@ -323,6 +390,7 @@ export async function createAgentConfiguration(
     name,
     description,
     instructions,
+    instructionsHtml,
     pictureUrl,
     status,
     scope,
@@ -336,6 +404,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
+    instructionsHtml: string | null;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -417,6 +486,7 @@ export async function createAgentConfiguration(
       t: Transaction
     ): Promise<AgentConfigurationModel> => {
       let existingAgent = null;
+
       if (agentConfigurationId) {
         const [agentConfiguration, userRelation] = await Promise.all([
           AgentConfigurationModel.findOne({
@@ -424,7 +494,16 @@ export async function createAgentConfiguration(
               sId: agentConfigurationId,
               workspaceId: owner.id,
             },
-            attributes: ["scope", "version", "id", "sId"],
+            attributes: [
+              "scope",
+              "version",
+              "id",
+              "sId",
+              "status",
+              "authorId",
+              "workspaceId",
+              "createdAt",
+            ],
             order: [["version", "DESC"]],
             transaction: t,
             limit: 1,
@@ -442,52 +521,121 @@ export async function createAgentConfiguration(
         existingAgent = agentConfiguration;
 
         if (existingAgent) {
-          // Bump the version of the agent.
-          version = existingAgent.version + 1;
+          // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
+          // Otherwise: archive old versions and bump version
+          if (existingAgent.status === "pending") {
+            if (existingAgent.authorId === user.id) {
+              const timeToCreationMs =
+                Date.now() - existingAgent.createdAt.getTime();
+              logger.info(
+                {
+                  agentId: existingAgent.sId,
+                  workspaceId: owner.sId,
+                  timeToCreationMs,
+                },
+                "Agent created from pending status"
+              );
+            } else {
+              throw new Error(
+                "Cannot update a pending agent owned by another user."
+              );
+            }
+          } else {
+            // Regular update: bump version and archive old versions
+            version = existingAgent.version + 1;
+            await AgentConfigurationModel.update(
+              { status: "archived" },
+              {
+                where: {
+                  sId: agentConfigurationId,
+                  workspaceId: owner.id,
+                },
+                transaction: t,
+              }
+            );
+          }
         }
 
-        await AgentConfigurationModel.update(
-          { status: "archived" },
-          {
-            where: {
-              sId: agentConfigurationId,
-              workspaceId: owner.id,
-            },
-            transaction: t,
-          }
-        );
         userFavorite = userRelation?.favorite ?? false;
       }
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
-      // Create Agent config.
-      const agentConfigurationInstance = await AgentConfigurationModel.create(
-        {
-          sId,
-          version,
-          status,
-          scope,
-          name,
-          description,
-          instructions,
-          providerId: model.providerId,
-          modelId: model.modelId,
-          temperature: model.temperature,
-          reasoningEffort: model.reasoningEffort,
-          maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-          pictureUrl,
-          workspaceId: owner.id,
-          authorId: user.id,
-          templateId: template?.id,
-          requestedSpaceIds: requestedSpaceIds,
-          responseFormat: model.responseFormat,
-        },
-        {
+      // Create or update Agent config.
+      let agentConfigurationInstance: AgentConfigurationModel;
+
+      if (existingAgent && existingAgent.status === "pending") {
+        // Update pending agent in place to preserve id (and FK relationships like suggestions)
+        await AgentConfigurationModel.update(
+          {
+            version,
+            status,
+            scope,
+            name,
+            description,
+            instructions,
+            instructionsHtml,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
+            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+            pictureUrl,
+            authorId: user.id,
+            templateId: template?.id,
+            requestedSpaceIds: requestedSpaceIds,
+            responseFormat: model.responseFormat,
+          },
+          {
+            where: {
+              id: existingAgent.id,
+              workspaceId: owner.id,
+            },
+            transaction: t,
+          }
+        );
+        // Reload the updated instance
+        const updatedAgent = await AgentConfigurationModel.findOne({
+          where: {
+            id: existingAgent.id,
+            workspaceId: owner.id,
+          },
           transaction: t,
+        });
+        if (!updatedAgent) {
+          throw new Error("Failed to reload updated agent configuration");
         }
-      );
+        agentConfigurationInstance = updatedAgent;
+      } else {
+        // Create new agent config
+        agentConfigurationInstance = await AgentConfigurationModel.create(
+          {
+            sId,
+            version,
+            status,
+            scope,
+            name,
+            description,
+            instructions,
+            instructionsHtml,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
+            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+            pictureUrl,
+            workspaceId: owner.id,
+            authorId: user.id,
+            templateId: template?.id,
+            requestedSpaceIds: requestedSpaceIds,
+            responseFormat: model.responseFormat,
+          },
+          {
+            transaction: t,
+          }
+        );
+      }
 
       const existingTags = existingAgent
         ? await TagResource.listForAgent(auth, existingAgent.id)
@@ -537,7 +685,11 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, editors, { transaction: t });
+          // No need to check on permission here since it was done a few lines above.
+          await group.dangerouslySetMembers(auth, {
+            users: editors,
+            transaction: t,
+          });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -548,22 +700,41 @@ export async function createAgentConfiguration(
               "Unexpected: agent should have exactly one editor group."
             );
           }
-          const result = await group.addGroupToAgentConfiguration({
-            auth,
-            agentConfiguration: agentConfigurationInstance,
-            transaction: t,
-          });
-          if (result.isErr()) {
+          // For pending agents updated in place, the group is already linked to the same agent ID
+          // For regular updates, we need to link the group to the new agent configuration
+          if (existingAgent.id !== agentConfigurationInstance.id) {
+            const result = await group.addGroupToAgentConfiguration({
+              auth,
+              agentConfiguration: agentConfigurationInstance,
+              transaction: t,
+            });
+            if (result.isErr()) {
+              logger.error(
+                {
+                  workspaceId: owner.sId,
+                  agentConfigurationId: existingAgent.sId,
+                },
+                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
+              );
+              throw result.error;
+            }
+          }
+
+          if (!group.canWrite(auth)) {
             logger.error(
               {
                 workspaceId: owner.sId,
                 agentConfigurationId: existingAgent.sId,
               },
-              `Error adding group to agent ${existingAgent.sId}: ${result.error}`
+              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
             );
-            throw result.error;
+            throw new DustError(
+              "unauthorized",
+              "You are not authorized to manage the editors of this agent"
+            );
           }
-          const setMembersRes = await group.setMembers(auth, editors, {
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
+            users: editors,
             transaction: t,
           });
           if (setMembersRes.isErr()) {
@@ -597,6 +768,7 @@ export async function createAgentConfiguration(
       name: agent.name,
       description: agent.description,
       instructions: agent.instructions,
+      instructionsHtml: agent.instructionsHtml,
       userFavorite,
       model: {
         providerId: agent.providerId,
@@ -664,6 +836,12 @@ export async function createAgentConfiguration(
     }
     if (error instanceof SyntaxError) {
       return new Err(new Error(error.message));
+    }
+    if (error instanceof DustError) {
+      return new Err(error);
+    }
+    if (error instanceof Error) {
+      return new Err(error);
     }
     throw error;
   }
@@ -738,6 +916,7 @@ export async function createGenericAgentConfiguration(
     name,
     description,
     instructions,
+    instructionsHtml: null,
     pictureUrl,
     status: "active",
     scope: "hidden", // Unpublished
@@ -775,8 +954,8 @@ export async function createGenericAgentConfiguration(
     auth,
     {
       type: "mcp_server_configuration",
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      name: WEB_SEARCH_BROWSE_SERVER_NAME,
+      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchMCPServerView.sId,
       dataSources: null,
       tables: null,
@@ -994,6 +1173,15 @@ export async function archiveAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const agentConfig = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+
+  if (!agentConfig) {
+    throw new Error(`Could not find agent ${agentConfigurationId}`);
+  }
+
   // Disable all triggers for this agent before archiving
   const triggers = await TriggerResource.listByAgentConfigurationId(
     auth,
@@ -1024,6 +1212,29 @@ export async function archiveAgentConfiguration(
     }
   );
 
+  // Suspend all editor group memberships for this agent
+  if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      auth,
+      agentConfig
+    );
+    if (editorGroupRes.isOk()) {
+      const editorGroup = editorGroupRes.value;
+      await GroupMembershipModel.update(
+        { status: "suspended" },
+        {
+          where: {
+            groupId: editorGroup.id,
+            workspaceId: owner.id,
+            status: "active",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+        }
+      );
+    }
+  }
+
   const affectedCount = updated[0];
   return affectedCount > 0;
 }
@@ -1031,11 +1242,9 @@ export async function archiveAgentConfiguration(
 export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
-): Promise<boolean> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+): Promise<Result<{ restored: boolean }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
   const latestConfig = await AgentConfigurationModel.findOne({
     where: {
       sId: agentConfigurationId,
@@ -1045,13 +1254,16 @@ export async function restoreAgentConfiguration(
     limit: 1,
   });
   if (!latestConfig) {
-    throw new Error("Could not find agent configuration");
+    return new Err(new Error("Could not find agent configuration"));
   }
   if (latestConfig.status !== "archived") {
-    throw new Error("Agent configuration is not archived");
+    return new Err(new Error("Agent configuration is not archived"));
   }
+
   const updated = await AgentConfigurationModel.update(
-    { status: "active" },
+    {
+      status: "active",
+    },
     {
       where: {
         id: latestConfig.id,
@@ -1059,8 +1271,27 @@ export async function restoreAgentConfiguration(
     }
   );
 
-  // Re-enable all triggers for this agent after restoring
+  // Restore all editor group memberships (set suspended → active) and re-enable triggers
   if (updated[0] > 0) {
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(auth, {
+      id: latestConfig.id,
+    } as LightAgentConfigurationType);
+    if (editorGroupRes.isOk()) {
+      const editorGroup = editorGroupRes.value;
+      await GroupMembershipModel.update(
+        { status: "active" },
+        {
+          where: {
+            groupId: editorGroup.id,
+            workspaceId: owner.id,
+            status: "suspended",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+        }
+      );
+    }
+
     const triggers = await TriggerResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId
@@ -1098,8 +1329,7 @@ export async function restoreAgentConfiguration(
     }
   }
 
-  const affectedCount = updated[0];
-  return affectedCount > 0;
+  return new Ok({ restored: updated[0] > 0 });
 }
 
 // Should only be called when we need to clean up the agent configuration
@@ -1191,6 +1421,52 @@ export async function unsafeHardDeleteAgentConfiguration(
 }
 
 /**
+ * Batch-deletes pending agent configurations and their editor groups.
+ */
+export async function batchHardDeletePendingAgentConfigurations(
+  agents: AgentConfigurationModel[],
+  workspaceId: number
+) {
+  const agentIds = agents.map((a) => a.id);
+
+  // Find all editor group IDs for this batch.
+  const groupAgents = await GroupAgentModel.findAll({
+    where: { agentConfigurationId: agentIds, workspaceId },
+  });
+  const groupIds = groupAgents.map((ga) => ga.groupId);
+
+  await withTransaction(async (t) => {
+    if (groupIds.length > 0) {
+      await GroupMembershipModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupAgentModel.destroy({
+        where: { groupId: groupIds, workspaceId },
+        transaction: t,
+      });
+
+      await GroupModel.destroy({
+        where: { id: groupIds, workspaceId },
+        transaction: t,
+      });
+    }
+
+    // Delete agent suggestions before agents (FK constraint)
+    await AgentSuggestionModel.destroy({
+      where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
+
+    await AgentConfigurationModel.destroy({
+      where: { id: agentIds, workspaceId },
+      transaction: t,
+    });
+  });
+}
+
+/**
  * Updates the permissions (editors) for an agent configuration.
  */
 export async function updateAgentPermissions(
@@ -1228,12 +1504,20 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  // The canWrite check for agent_editors groups (allowing members and admins)
-  // is implicitly handled by addMembers and removeMembers.
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can add group members"
+            )
+          );
+        }
+        const addRes = await editorGroupRes.value.dangerouslyAddMembers(auth, {
+          users: usersToAdd,
           transaction: t,
         });
         if (addRes.isErr()) {
@@ -1242,10 +1526,19 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        const removeRes = await editorGroupRes.value.removeMembers(
+        // Check authorization for agent_editors groups (allowing members and admins)
+        if (!editorGroupRes.value.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can remove group members"
+            )
+          );
+        }
+        const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
           auth,
-          usersToRemove,
           {
+            users: usersToRemove,
             transaction: t,
           }
         );

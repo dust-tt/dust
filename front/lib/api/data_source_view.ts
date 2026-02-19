@@ -11,16 +11,18 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import type { PatchDataSourceViewType } from "@app/types/api/public/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import type { CoreAPIDatasourceViewFilter } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
 import type {
-  ContentNodesViewType,
-  CoreAPIContentNode,
-  CoreAPIDatasourceViewFilter,
   DataSourceViewContentNode,
   DataSourceViewType,
-  PatchDataSourceViewType,
-  Result,
-} from "@app/types";
-import { assertNever, CoreAPI, Err, Ok } from "@app/types";
+} from "@app/types/data_source_view";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
 const CORE_MAX_PAGE_SIZE = 1000;

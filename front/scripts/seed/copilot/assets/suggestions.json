@@ -1,0 +1,58 @@
+[
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "tools",
+    "suggestion": {
+      "action": "add",
+      "toolId": "web_search_&_browse"
+    },
+    "analysis": "The agent could benefit from web search capabilities to provide real-time weather information instead of relying only on training data."
+  },
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "model",
+    "suggestion": {
+      "modelId": "claude-haiku-4-5-20251001"
+    },
+    "analysis": "Weather queries are typically straightforward and don't require the full capabilities of Sonnet. Haiku would be more cost-effective while still providing good responses."
+  },
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "instructions",
+    "suggestion": {
+      "content": "<p>Always remind users to check official weather services for critical decisions. Include temperature in both Celsius and Fahrenheit when providing forecasts.</p>",
+      "targetBlockId": "block001",
+      "type": "replace"
+    },
+    "analysis": "Adding dual temperature units would make the agent more useful for international users."
+  },
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "instructions",
+    "suggestion": {
+      "content": "<p>Be friendly and informative. When discussing weather conditions, also mention any relevant safety tips (e.g., UV protection on sunny days, staying hydrated during heat waves).</p>",
+      "targetBlockId": "block002",
+      "type": "replace"
+    },
+    "analysis": "Adding safety tips would make the agent more helpful and proactive about user wellbeing."
+  },
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "skills",
+    "suggestion": {
+      "action": "add",
+      "skillId": "frames"
+    },
+    "analysis": "Adding the Frames skill would allow the agent to create interactive weather visualizations like temperature charts, precipitation graphs, and forecast timelines."
+  },
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "sub_agent",
+    "suggestion": {
+      "action": "add",
+      "toolId": "run_agent",
+      "childAgentId": "TechNewsDigest"
+    },
+    "analysis": "Adding TechNewsDigest as a sub-agent would allow the weather assistant to delegate tech news queries to a specialized agent when users ask about tech-related weather impacts on technology infrastructure."
+  }
+]

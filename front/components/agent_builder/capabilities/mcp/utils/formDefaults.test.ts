@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getDefaultConfiguration } from "./formDefaults";
 
@@ -32,6 +31,7 @@ describe("getDefaultConfiguration", () => {
         jsonSchema: null,
         _jsonSchemaString: null,
         secretName: null,
+        dustProject: null,
       });
     });
 
@@ -49,6 +49,7 @@ describe("getDefaultConfiguration", () => {
         jsonSchema: null,
         _jsonSchemaString: null,
         secretName: null,
+        dustProject: null,
       });
     });
   });
@@ -111,6 +112,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -158,6 +160,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -185,6 +188,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -237,6 +241,7 @@ describe("getDefaultConfiguration", () => {
           },
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -280,6 +285,7 @@ describe("getDefaultConfiguration", () => {
           },
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -325,6 +331,7 @@ describe("getDefaultConfiguration", () => {
           },
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -375,6 +382,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -422,6 +430,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -456,6 +465,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -508,6 +518,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -620,6 +631,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });
@@ -697,6 +709,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
+          requiresDustProjectConfiguration: false,
           developerSecretSelection: null,
           noRequirement: true,
         });

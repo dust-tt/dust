@@ -1,9 +1,8 @@
-import crypto from "crypto";
-import type { NextFunction, Request, Response } from "express";
-
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorsAPIErrorResponse } from "@connectors/types";
+import crypto from "crypto";
+import type { NextFunction, Request, Response } from "express";
 
 const {
   DUST_CONNECTORS_SECRET,
@@ -162,7 +161,6 @@ const _authMiddlewareWebhooksGithub = (
   const signatureHeader = req.headers["x-hub-signature-256"];
   const computedSignature = `sha256=${crypto
     .createHmac("sha256", GITHUB_WEBHOOK_SECRET)
-    // @ts-expect-error -- migration to tsgo
     .update(body)
     .digest("hex")}`;
 
@@ -182,7 +180,6 @@ const _authMiddlewareWebhooksGithub = (
 
   if (
     !crypto.timingSafeEqual(
-      // @ts-expect-error -- migration to tsgo
       Buffer.from(signatureHeader),
       Buffer.from(computedSignature)
     )
@@ -257,7 +254,6 @@ const _authMiddlewareWebhooksIntercom = (
     const signatureHeader = req.headers["x-hub-signature"];
     const computedSignature = `sha1=${crypto
       .createHmac("sha1", INTERCOM_CLIENT_SECRET)
-      // @ts-expect-error -- migration to tsgo
       .update(body)
       .digest("hex")}`;
 
@@ -277,7 +273,6 @@ const _authMiddlewareWebhooksIntercom = (
 
     if (
       !crypto.timingSafeEqual(
-        // @ts-expect-error -- migration to tsgo
         Buffer.from(signatureHeader),
         Buffer.from(computedSignature)
       )

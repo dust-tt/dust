@@ -6,8 +6,9 @@ import type { DustError } from "@app/lib/error";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { ConversationType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 async function findUserMessageForRetry(
   auth: Authenticator,

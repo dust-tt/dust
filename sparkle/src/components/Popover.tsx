@@ -1,17 +1,15 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 import { useEffect, useState } from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 const PopoverRoot = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverPortal = PopoverPrimitive.Portal;
 const PopoverAnchor = PopoverPrimitive.Anchor;
 
-export interface PopoverContentProps extends React.ComponentPropsWithoutRef<
-  typeof PopoverPrimitive.Content
-> {
+export interface PopoverContentProps
+  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   fullWidth?: boolean;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;

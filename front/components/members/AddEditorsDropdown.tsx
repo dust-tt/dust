@@ -1,3 +1,5 @@
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -11,9 +13,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { UserType, WorkspaceType } from "@app/types";
 
 export function AddEditorDropdown({
   owner,

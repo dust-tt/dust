@@ -1,14 +1,10 @@
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type {
-  ActiveRoleType,
-  MembershipOriginType,
-  RoleType,
-} from "@app/types";
-import { ACTIVE_ROLES } from "@app/types";
+import type { MembershipOriginType } from "@app/types/memberships";
+import type { ActiveRoleType, RoleType } from "@app/types/user";
+import { ACTIVE_ROLES } from "@app/types/user";
+import { IconButton, TrashIcon } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 export type MemberDisplayType = {
   createdAt: number;
@@ -35,58 +31,27 @@ export function makeColumnsForMembers({
   const baseColumns: ColumnDef<MemberDisplayType>[] = [
     {
       accessorKey: "sId",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Id</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       accessorKey: "email",
-      header: "email",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Email" />
+      ),
     },
     {
       accessorKey: "lastLoginAt",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Last login</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last login" />
+      ),
       cell: ({ row }) => {
         const lastLoginAt: number | null = row.getValue("lastLoginAt");
 
@@ -99,7 +64,9 @@ export function makeColumnsForMembers({
     },
     {
       accessorKey: "createdAt",
-      header: "Created at",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
       cell: ({ row }) => {
         const createdAt: string | null = row.getValue("createdAt");
 
@@ -112,20 +79,9 @@ export function makeColumnsForMembers({
     },
     {
       accessorKey: "role",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Role</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Role" />
+      ),
       filterFn: (row, id, value) => {
         return value.includes(row.getValue(id));
       },

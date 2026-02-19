@@ -1,0 +1,17 @@
+engine biome(1.0)
+language js
+
+// Discourages direct import of useSendNotification from @dust-tt/sparkle.
+// Use @app/hooks/useNotification instead for better logging and monitoring.
+//
+// Note: Due to Biome GritQL bug #5801, import patterns with multiple named
+// specifiers don't match. This handles single-specifier imports only.
+// Multi-specifier cases (import { useSendNotification, X } from "@dust-tt/sparkle")
+// are not caught but are uncommon in practice.
+`import { useSendNotification } from "@dust-tt/sparkle"` as $import where {
+    register_diagnostic(
+        span = $import,
+        message = "Avoid importing useSendNotification from @dust-tt/sparkle. Use 'import { useSendNotification } from \"@app/hooks/useNotification\"' instead.",
+        severity = "error"
+    )
+}

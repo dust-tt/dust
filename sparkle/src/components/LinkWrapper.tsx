@@ -1,6 +1,5 @@
-import React from "react";
-
 import { SparkleContext } from "@sparkle/context";
+import React from "react";
 
 export interface LinkWrapperProps {
   children: React.ReactNode;
@@ -10,29 +9,48 @@ export interface LinkWrapperProps {
   shallow?: boolean;
   target?: string;
   prefetch?: boolean;
+  className?: string;
+  tabIndex?: number;
 }
 
 export const LinkWrapper = React.forwardRef<
   HTMLAnchorElement,
   LinkWrapperProps
->(({ children, href, rel, replace, shallow, target, prefetch }, ref) => {
-  const { components } = React.useContext(SparkleContext);
+>(
+  (
+    {
+      children,
+      href,
+      rel,
+      replace,
+      shallow,
+      target,
+      prefetch,
+      className,
+      tabIndex,
+    },
+    ref
+  ) => {
+    const { components } = React.useContext(SparkleContext);
 
-  if (href) {
-    return (
-      <components.link
-        ref={ref}
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-        prefetch={prefetch}
-      >
-        {children}
-      </components.link>
-    );
+    if (href) {
+      return (
+        <components.link
+          ref={ref}
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+          prefetch={prefetch}
+          className={className}
+          tabIndex={tabIndex}
+        >
+          {children}
+        </components.link>
+      );
+    }
+
+    return children;
   }
-
-  return children;
-});
+);

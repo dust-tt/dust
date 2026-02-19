@@ -1,9 +1,8 @@
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { cva, VariantProps } from "class-variance-authority";
-import React from "react";
-
 import { CheckIcon, DashIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import React from "react";
 
 import { Icon } from "./Icon";
 import { Label } from "./Label";
@@ -44,8 +43,7 @@ const checkboxStyles = cva(
 type CheckBoxStateType = boolean | "partial";
 
 interface CheckboxProps
-  extends
-    Omit<
+  extends Omit<
       React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
       "checked" | "defaultChecked"
     >,
@@ -94,15 +92,23 @@ interface CheckboxWithTextProps extends CheckboxProps {
 function CheckboxWithText({
   text,
   tooltip,
-  id,
+  id: idProp,
+  size,
   ...props
 }: CheckboxWithTextProps) {
+  // Unique id per instance so checkbox and label stay associated (htmlFor/id); required for a11y and click-label-to-toggle.
+  const generatedId = React.useId();
+  const id = idProp ?? generatedId;
+
   const content = (
     <div className="s-items-top s-flex s-items-center s-space-x-2">
-      <Checkbox id={id} {...props} />
+      <Checkbox id={id} size={size} {...props} />
       <Label
         htmlFor={id}
-        className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+        className={cn(
+          "s-cursor-pointer s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70",
+          size === "xs" ? "s-text-xs" : "s-text-sm"
+        )}
       >
         {text}
       </Label>
@@ -120,16 +126,24 @@ function CheckBoxWithTextAndDescription({
   text,
   description,
   tooltip,
-  id,
+  id: idProp,
+  size,
   ...props
 }: CheckboxWithTextAndDescriptionProps) {
+  // Unique id per instance so checkbox and label stay associated (htmlFor/id); required for a11y and click-label-to-toggle.
+  const generatedId = React.useId();
+  const id = idProp ?? generatedId;
+
   const content = (
     <div className="s-items-top s-flex s-space-x-2">
-      <Checkbox id={id} {...props} />
+      <Checkbox id={id} size={size} {...props} />
       <div className="s-grid s-gap-1.5 s-leading-none">
         <Label
           htmlFor={id}
-          className="s-cursor-pointer s-text-sm s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+          className={cn(
+            "s-cursor-pointer s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70",
+            size === "xs" ? "s-text-xs" : "s-text-sm"
+          )}
         >
           {text}
         </Label>

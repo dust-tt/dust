@@ -1,18 +1,23 @@
-import type { MutableRefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
-import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // We are using webm with Opus codec
 // In general browsers are using a 48 kbps bitrate
 // A 1-minute recording will be around 400kB
 // 60 seconds * 48000bps / 8 => 360 000 bit, round up to 400kB
 const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 400 * 1024;
+
+type VoiceTranscriberStatus =
+  | "idle"
+  | "authorizing_microphone"
+  | "recording"
+  | "transcribing";
 
 interface UseVoiceTranscriberServiceParams {
   owner: LightWorkspaceType;
@@ -22,16 +27,22 @@ interface UseVoiceTranscriberServiceParams {
   fileUploaderService: FileUploaderService;
 }
 
+export interface VoiceTranscriberService {
+  status: VoiceTranscriberStatus;
+  level: number;
+  elapsedSeconds: number;
+  startRecording: () => Promise<void>;
+  stopRecording: () => Promise<void>;
+}
+
 export function useVoiceTranscriberService({
   owner,
   onTranscribeDelta,
   onTranscribeComplete,
   onError,
   fileUploaderService,
-}: UseVoiceTranscriberServiceParams) {
-  const [status, setStatus] = useState<
-    "idle" | "authorizing_microphone" | "recording" | "transcribing"
-  >("idle");
+}: UseVoiceTranscriberServiceParams): VoiceTranscriberService {
+  const [status, setStatus] = useState<VoiceTranscriberStatus>("idle");
   const [level, setLevel] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -229,13 +240,8 @@ export function useVoiceTranscriberService({
   const finalizeRecordingAddAsAttachment = useCallback(
     async (file: File) => {
       await fileUploaderService.handleFilesUpload([file]);
-      sendNotification({
-        type: "success",
-        title: "Attachment added.",
-        description: "Your voice message was added to attachments.",
-      });
     },
-    [fileUploaderService, sendNotification]
+    [fileUploaderService]
   );
 
   const stopAndFinalize = useCallback(async () => {
@@ -295,13 +301,9 @@ export function useVoiceTranscriberService({
     : quackingVoiceTranscriptService;
 }
 
-export type VoiceTranscriberService = ReturnType<
-  typeof useVoiceTranscriberService
->;
-
 // Helpers ---------------------------------------------------------------------
 
-const quackingVoiceTranscriptService = {
+const quackingVoiceTranscriptService: VoiceTranscriberService = {
   status: "idle",
   level: 0,
   elapsedSeconds: 0,

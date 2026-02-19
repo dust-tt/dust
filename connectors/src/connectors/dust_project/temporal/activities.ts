@@ -2,6 +2,7 @@ import {
   deleteConversation,
   syncConversation,
 } from "@connectors/connectors/dust_project/lib/sync_conversation";
+import { syncProjectMetadata } from "@connectors/connectors/dust_project/lib/sync_metadata";
 import { launchDustProjectIncrementalSyncWorkflow } from "@connectors/connectors/dust_project/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
@@ -21,7 +22,7 @@ import { concurrentExecutor } from "@connectors/types";
  * Full sync activity: Syncs all conversations for a project.
  * This is used for initial syncs or when force resync is requested.
  */
-export async function dustProjectFullSyncActivity({
+export async function dustProjectConversationsFullSyncActivity({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -158,7 +159,7 @@ export async function dustProjectFullSyncActivity({
 /**
  * Incremental sync activity: Syncs only conversations updated since last sync.
  */
-export async function dustProjectIncrementalSyncActivity({
+export async function dustProjectConversationsIncrementalSyncActivity({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -237,7 +238,7 @@ export async function dustProjectIncrementalSyncActivity({
 
     // Run garbage collection to remove hard-deleted conversations
     // This checks for conversations that were completely removed from the database
-    await dustProjectGarbageCollectActivity({ connectorId });
+    await dustProjectConversationsGarbageCollectActivity({ connectorId });
   } catch (error) {
     localLogger.error(
       { error, projectId: configuration.projectId },
@@ -253,7 +254,7 @@ export async function dustProjectIncrementalSyncActivity({
  * (completely removed from the database, not just soft-deleted).
  * This is called after incremental sync to clean up conversations that no longer exist.
  */
-async function dustProjectGarbageCollectActivity({
+async function dustProjectConversationsGarbageCollectActivity({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -355,5 +356,73 @@ async function dustProjectGarbageCollectActivity({
     );
     // Don't throw - garbage collection failures shouldn't fail the sync
     // Log the error and continue
+  }
+}
+
+/**
+ * Sync metadata activity: Fetches and syncs project metadata (description).
+ * This is called during both full and incremental syncs.
+ * Errors are logged but don't fail the parent sync.
+ */
+export async function dustProjectSyncMetadataActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const localLogger = logger.child({ connectorId });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const configuration =
+    await DustProjectConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`Configuration not found for connector ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  try {
+    localLogger.info(
+      { projectId: configuration.projectId },
+      "Fetching and syncing project metadata"
+    );
+
+    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
+    const metadataResult = await dustAPI.getSpaceMetadata({
+      spaceId: configuration.projectId,
+    });
+
+    if (metadataResult.isErr()) {
+      localLogger.warn(
+        {
+          error: metadataResult.error,
+          projectId: configuration.projectId,
+        },
+        "Failed to fetch project metadata, skipping metadata sync"
+      );
+      // Don't throw - metadata fetch failures shouldn't fail the sync
+      return;
+    }
+
+    await syncProjectMetadata({
+      dataSourceConfig,
+      connectorId,
+      projectId: configuration.projectId,
+      metadata: metadataResult.value.metadata,
+    });
+
+    localLogger.info(
+      { projectId: configuration.projectId },
+      "Successfully synced project metadata"
+    );
+  } catch (error) {
+    localLogger.warn(
+      { error, projectId: configuration.projectId },
+      "Failed to sync project metadata"
+    );
+    // Don't throw - metadata sync failures shouldn't fail the parent sync
   }
 }

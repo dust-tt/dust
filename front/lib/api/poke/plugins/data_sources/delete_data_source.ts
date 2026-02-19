@@ -2,7 +2,7 @@ import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_so
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const deleteDataSourcePlugin = createPlugin({
   manifest: {
@@ -58,10 +58,9 @@ export const deleteDataSourcePlugin = createPlugin({
       );
     }
 
-    const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-      auth,
-      dataSource
-    );
+    const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+      dataSource,
+    });
 
     if (delRes.isErr()) {
       return new Err(

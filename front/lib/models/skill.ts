@@ -1,7 +1,3 @@
-import isNil from "lodash/isNil";
-import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -9,6 +5,9 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import isNil from "lodash/isNil";
+import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
+import { DataTypes } from "sequelize";
 
 const SKILL_MODEL_ATTRIBUTES = {
   createdAt: {

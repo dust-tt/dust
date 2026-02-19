@@ -1,4 +1,3 @@
-import type { ModelConfigurationType } from "@app/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 
@@ -25,7 +24,16 @@ import {
   CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_MODEL_ID,
 } from "./anthropic";
+// Custom models (generated at build time from GCS, empty in dev).
+import {
+  CUSTOM_MODEL_CONFIGS,
+  CUSTOM_MODEL_IDS,
+} from "./custom_models.generated";
 import {
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_CHAT_MODEL_ID,
@@ -37,11 +45,16 @@ import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
+  FIREWORKS_GLM_5_MODEL_CONFIG,
+  FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
+  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+  FIREWORKS_MINIMAX_M2P5_MODEL_ID,
 } from "./fireworks";
 import {
-  GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
   GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -50,6 +63,7 @@ import {
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_ID,
+  GEMINI_3_PRO_IMAGE_MODEL_ID,
   GEMINI_3_PRO_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_ID,
 } from "./google_ai_studio";
@@ -114,6 +128,7 @@ import {
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
 } from "./togetherai";
+import type { ModelConfigurationType } from "./types";
 import {
   GROK_3_MINI_MODEL_CONFIG,
   GROK_3_MINI_MODEL_ID,
@@ -130,7 +145,8 @@ import {
   GROK_4_MODEL_ID,
 } from "./xai";
 
-export const MODEL_IDS = [
+// Static model IDs (compile-time known, used for pricing maps).
+export const STATIC_MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
@@ -152,6 +168,8 @@ export const MODEL_IDS = [
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_5_OPUS_20251101_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
@@ -179,6 +197,9 @@ export const MODEL_IDS = [
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
+  FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_MINIMAX_M2P5_MODEL_ID,
+  FIREWORKS_GLM_5_MODEL_ID,
   GROK_3_MODEL_ID,
   GROK_3_MINI_MODEL_ID,
   GROK_4_MODEL_ID,
@@ -189,13 +210,19 @@ export const MODEL_IDS = [
   NOOP_MODEL_ID,
 ] as const;
 
+// Type for static model IDs only (excludes custom models from GCS).
+export type StaticModelIdType = (typeof STATIC_MODEL_IDS)[number];
+
+// Combined model IDs: static + custom (custom models generated at build time from GCS).
+export const MODEL_IDS = [...STATIC_MODEL_IDS, ...CUSTOM_MODEL_IDS] as const;
+
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
 
 export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
 
 // Image generation model IDs (internal-only, not user-selectable)
-export const IMAGE_MODEL_IDS = [GEMINI_2_5_FLASH_IMAGE_MODEL_ID] as const;
+export const IMAGE_MODEL_IDS = [GEMINI_3_PRO_IMAGE_MODEL_ID] as const;
 
 export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
@@ -220,6 +247,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -247,6 +276,9 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+  FIREWORKS_GLM_5_MODEL_CONFIG,
   GROK_3_MODEL_CONFIG,
   GROK_3_MINI_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
@@ -254,5 +286,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_1_FAST_REASONING_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   NOOP_MODEL_CONFIG,
+  // Custom models (generated at build time from GCS).
+  ...CUSTOM_MODEL_CONFIGS,
 ];
 export default SUPPORTED_MODEL_CONFIGS;

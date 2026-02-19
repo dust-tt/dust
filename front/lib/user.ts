@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import type { UserMetadataType } from "@app/types";
+import type { UserMetadataType } from "@app/types/user";
 
 export async function setUserMetadataFromClient(metadata: UserMetadataType) {
   const res = await clientFetch(

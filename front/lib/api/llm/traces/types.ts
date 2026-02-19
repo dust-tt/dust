@@ -1,9 +1,10 @@
 import type { TokenUsage, ToolCall } from "@app/lib/api/llm/types/events";
+import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 /**
  * Context information for LLM operations to help debugging and discovery
@@ -20,6 +21,8 @@ interface LLMTraceContextBase {
     | "agent_observability_summary"
     | "agent_suggestion"
     | "conversation_title_suggestion"
+    | "conversation_unread_summary"
+    | "copilot_template_suggestion"
     | "process_data_sources"
     | "process_schema_generator"
     | "skill_builder_description_suggestion"
@@ -28,6 +31,7 @@ interface LLMTraceContextBase {
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"
+    | "web_content_summarization"
     | "workspace_tags_suggestion";
 
   workspaceId?: string;
@@ -55,7 +59,7 @@ export interface LLMTraceCustomization {
 export interface LLMTraceInput {
   conversation: ModelConversationTypeMultiActions;
   modelId: ModelIdType;
-  prompt: string;
+  prompt: SystemPromptInput;
   reasoningEffort: ReasoningEffort | null;
   responseFormat: string | null;
   specifications: unknown[];

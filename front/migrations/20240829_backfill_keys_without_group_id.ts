@@ -3,10 +3,11 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 async function backfillApiKeys(
   workspace: LightWorkspaceType,
@@ -45,11 +46,7 @@ makeScript({}, async ({ execute }, logger) => {
 
   logger.info({ keyCount: keys.length }, "Found keys to backfill");
   for (const key of keys) {
-    const workspace = await WorkspaceModel.findOne({
-      where: {
-        id: key.workspaceId,
-      },
-    });
+    const workspace = await WorkspaceResource.fetchByModelId(key.workspaceId);
     if (!workspace) {
       throw new Error(
         `Workspace not found for key: ${key.id}, workspaceId: ${key.workspaceId}`

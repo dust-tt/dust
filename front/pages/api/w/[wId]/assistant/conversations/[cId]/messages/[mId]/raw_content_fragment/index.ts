@@ -1,6 +1,3 @@
-import { IncomingForm } from "formidable";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -8,8 +5,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isContentFragmentType } from "@app/types";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { IncomingForm } from "formidable";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {
@@ -95,7 +94,7 @@ async function handler(
       // Redirect to a signed URL.
       const url = await privateUploadGcs.getSignedUrl(filePath, {
         // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 10 * 1000,
+        expirationDelayMs: 10 * 1000,
         // Remove special chars.
         promptSaveAs:
           message.title.replace(/[^\w\s.-]/gi, "") +

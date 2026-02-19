@@ -1,3 +1,20 @@
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
+import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { useVisualizationRevert } from "@app/hooks/conversations";
+import { useHashParam } from "@app/hooks/useHashParams";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
+import { isUsingConversationFiles } from "@app/lib/files";
+import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowCircleIcon,
@@ -9,6 +26,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   EyeIcon,
   FullscreenExitIcon,
@@ -17,24 +37,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
-import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
-import { useHashParam } from "@app/hooks/useHashParams";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { isUsingConversationFiles } from "@app/lib/files";
-import { useVisualizationRevert } from "@app/lib/swr/conversations";
-import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
-import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -50,6 +52,8 @@ function ExportContentDropdown({
   fileContent,
 }: ExportContentDropdownProps) {
   const sendNotification = useSendNotification();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   const exportAsPng = () => {
     if (fileContent) {
       const imgRegex = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/gi;
@@ -74,9 +78,62 @@ function ExportContentDropdown({
     }
   };
 
+  const exportAsPdf = async (orientation: "portrait" | "landscape") => {
+    if (isExportingPdf) {
+      return;
+    }
+
+    setIsExportingPdf(true);
+    try {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ orientation }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      // Get the PDF blob and trigger download.
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      // Get filename from Content-Disposition header or use default.
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/);
+      link.download = filenameMatch?.[1] ?? "frame.pdf";
+
+      link.click();
+      URL.revokeObjectURL(url);
+
+      sendNotification({
+        title: "PDF exported",
+        type: "success",
+        description: "Your PDF has been downloaded.",
+      });
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      sendNotification({
+        title: "PDF Export Failed",
+        type: "error",
+        description: "An error occurred while generating the PDF.",
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const downloadAsCode = () => {
     try {
-      const downloadUrl = `/api/w/${owner.sId}/files/${fileId}?action=download`;
+      const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
       // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
       // to cloud storage.
       window.open(downloadUrl, "_blank");
@@ -96,17 +153,25 @@ function ExportContentDropdown({
         <Button
           icon={ArrowDownOnSquareIcon}
           isSelect
-          label="Download"
+          label={isExportingPdf ? "Exporting..." : "Export"}
           variant="ghost"
+          disabled={isExportingPdf}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={exportAsPng}>
-          Download as PNG
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={downloadAsCode}>
-          Download as template
-        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger disabled={isExportingPdf} label="PDF" />
+          <DropdownMenuSubContent>
+            <DropdownMenuItem onClick={() => exportAsPdf("portrait")}>
+              Portrait
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportAsPdf("landscape")}>
+              Landscape
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuItem onClick={exportAsPng}>PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={downloadAsCode}>Template</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

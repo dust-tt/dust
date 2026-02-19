@@ -1,22 +1,24 @@
-import * as _ from "lodash";
-
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
-  DataSourceType,
-  LightWorkspaceType,
-  MembershipRoleType,
   UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { DataSourceType } from "@app/types/data_source";
+import type { JobType } from "@app/types/job_type";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type {
+  LightWorkspaceType,
   UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
-} from "@app/types";
-import type { JobType } from "@app/types/job_type";
+} from "@app/types/user";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import * as _ from "lodash";
 
 import type { UserResource } from "../resources/user_resource";
 
@@ -27,15 +29,18 @@ export class ServerSideTracking {
 
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
     try {
-      const subscriptionByWorkspaceId =
-        await SubscriptionResource.fetchActiveByWorkspaces(user.workspaces);
+      const subscriptionByWorkspaceModelId =
+        await SubscriptionResource.fetchActiveByWorkspacesModelId(
+          user.workspaces.map((w) => w.id)
+        );
 
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
-            const seats = await countActiveSeatsInWorkspaceCached(
-              workspace.sId
-            );
+            const seats =
+              await MembershipResource.countActiveSeatsInWorkspaceCached(
+                workspace.sId
+              );
             return { sId: workspace.sId, seats };
           })
         ),
@@ -50,20 +55,20 @@ export class ServerSideTracking {
       const workspacesToTrackOnCustomerIo = user.workspaces
         .map((ws) => {
           const subscriptionStartInt =
-            subscriptionByWorkspaceId[ws.sId].startDate;
+            subscriptionByWorkspaceModelId[ws.id].startDate;
           const subscriptionStartAt = subscriptionStartInt
             ? new Date(subscriptionStartInt)
             : null;
 
           const requestCancelAtInt =
-            subscriptionByWorkspaceId[ws.sId].requestCancelAt;
+            subscriptionByWorkspaceModelId[ws.id].requestCancelAt;
           const requestCancelAt = requestCancelAtInt
             ? new Date(requestCancelAtInt)
             : null;
 
           return {
             ...ws,
-            planCode: subscriptionByWorkspaceId[ws.sId].getPlan().code,
+            planCode: subscriptionByWorkspaceModelId[ws.id].getPlan().code,
             seats: seatsByWorkspaceId[ws.sId].seats,
             subscriptionStartAt,
             requestCancelAt,

@@ -2,19 +2,18 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  BuilderSuggestionInputType,
-  ModelConversationTypeMultiActions,
-  Result,
-} from "@app/types";
-import { Err, GPT_3_5_TURBO_MODEL_ID, Ok } from "@app/types";
+import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import { GPT_3_5_TURBO_MODEL_ID } from "@app/types/assistant/models/openai";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const FUNCTION_NAME = "send_suggestion";
 
 const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
-    description: "Send a suggestion of description for the assistant",
+    description: "Send a suggestion of description for the agent",
     inputSchema: {
       type: "object",
       properties: {
@@ -36,7 +35,7 @@ function getConversationContext(
   const instructions = "instructions" in inputs ? inputs.instructions : "";
 
   const instructionsText = instructions
-    ? "\nAssistant instructions\n======\n" + JSON.stringify(instructions)
+    ? "\nAgent instructions\n======\n" + JSON.stringify(instructions)
     : "";
 
   return {
@@ -66,9 +65,9 @@ export async function getBuilderDescriptionSuggestions(
     {
       conversation: getConversationContext(inputs),
       prompt:
-        "The user is currently creating an assistant based on a large language model. " +
-        "The assistant has been given instructions by the user. Based on the provided " +
-        "instructions suggest a short description of the assistant.",
+        "The user is currently creating an agent based on a large language model. " +
+        "The agent has been given instructions by the user. Based on the provided " +
+        "instructions suggest a short description of the agent.",
       specifications,
       forceToolCall: FUNCTION_NAME,
     },

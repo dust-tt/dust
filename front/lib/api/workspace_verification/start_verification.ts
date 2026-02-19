@@ -4,8 +4,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { VerificationErrorType } from "@app/types/workspace_verification";
 
 const MAX_ATTEMPTS_PER_PHONE = 3;
@@ -123,6 +124,9 @@ export async function startVerification(
     switch (error.code) {
       case "not_mobile":
         message = "Only mobile phone numbers are accepted for verification.";
+        break;
+      case "prepaid_not_accepted":
+        message = "Prepaid phone numbers are not accepted for verification.";
         break;
       case "high_risk_blocked":
       case "flagged_for_review":

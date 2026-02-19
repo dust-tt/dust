@@ -1,15 +1,14 @@
-import { describe, expect, it } from "vitest";
-
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   RichAgentMentionInConversation,
   RichUserMentionInConversation,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+} from "@app/types/assistant/mentions";
+import { describe, expect, it } from "vitest";
 
 import {
   filterAndSortEditorSuggestionAgents,
-  sortEditorSuggestionUsers,
   SUGGESTION_PRIORITY,
+  sortEditorSuggestionUsers,
 } from "./suggestion";
 
 describe("filterAndSortEditorSuggestionAgents", () => {
@@ -424,24 +423,28 @@ describe("sortEditorSuggestionUsers", () => {
   const createUserMention = (
     id: string,
     label: string,
-    isParticipant?: boolean,
-    lastActivityAt?: number
+    options?: {
+      isParticipant?: boolean;
+      lastActivityAt?: number;
+      isProjectMember?: boolean;
+    }
   ): RichUserMentionInConversation => ({
     type: "user",
     id,
     label,
     pictureUrl: "",
     description: `${label}@example.com`,
-    isParticipant,
-    lastActivityAt,
+    isParticipant: options?.isParticipant,
+    isProjectMember: options?.isProjectMember,
+    lastActivityAt: options?.lastActivityAt,
   });
 
   describe("participant sorting", () => {
     it("should prioritize participants over non-participants", () => {
       const users = [
-        createUserMention("1", "Alice", false),
-        createUserMention("2", "Bob", true),
-        createUserMention("3", "Charlie", false),
+        createUserMention("1", "Alice", { isParticipant: false }),
+        createUserMention("2", "Bob", { isParticipant: true }),
+        createUserMention("3", "Charlie", { isParticipant: false }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -450,12 +453,36 @@ describe("sortEditorSuggestionUsers", () => {
       expect(result[0].isParticipant).toBe(true);
     });
 
+    it("should prioritize project members over non-members", () => {
+      const users = [
+        createUserMention("1", "Alice", { isProjectMember: false }),
+        createUserMention("2", "Bob", { isProjectMember: true }),
+        createUserMention("3", "Charlie", { isProjectMember: false }),
+      ];
+
+      const result = sortEditorSuggestionUsers(users);
+
+      expect(result[0].label).toBe("Bob");
+      expect(result[0].isProjectMember).toBe(true);
+    });
+
+    it("should prioritize participants over project members", () => {
+      const users = [
+        createUserMention("1", "Alice", { isProjectMember: true }),
+        createUserMention("2", "Bob", { isParticipant: true }),
+        createUserMention("3", "Charlie", { isProjectMember: true }),
+      ];
+      const result = sortEditorSuggestionUsers(users);
+      expect(result[0].label).toBe("Bob");
+      expect(result[0].isParticipant).toBe(true);
+    });
+
     it("should keep all participants at the top", () => {
       const users = [
-        createUserMention("1", "Alice", false),
-        createUserMention("2", "Bob", true),
-        createUserMention("3", "Charlie", true),
-        createUserMention("4", "David", false),
+        createUserMention("1", "Alice", { isParticipant: false }),
+        createUserMention("2", "Bob", { isParticipant: true }),
+        createUserMention("3", "Charlie", { isParticipant: true }),
+        createUserMention("4", "David", { isParticipant: false }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -468,10 +495,10 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should maintain non-participant order", () => {
       const users = [
-        createUserMention("1", "Alice", false),
-        createUserMention("2", "Bob", true),
-        createUserMention("3", "Charlie", false),
-        createUserMention("4", "David", false),
+        createUserMention("1", "Alice", { isParticipant: false }),
+        createUserMention("2", "Bob", { isParticipant: true }),
+        createUserMention("3", "Charlie", { isParticipant: false }),
+        createUserMention("4", "David", { isParticipant: false }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -488,9 +515,18 @@ describe("sortEditorSuggestionUsers", () => {
   describe("lastActivityAt sorting", () => {
     it("should sort participants by lastActivityAt (most recent first)", () => {
       const users = [
-        createUserMention("1", "Alice", true, 1000),
-        createUserMention("2", "Bob", true, 3000),
-        createUserMention("3", "Charlie", true, 2000),
+        createUserMention("1", "Alice", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: 3000,
+        }),
+        createUserMention("3", "Charlie", {
+          isParticipant: true,
+          lastActivityAt: 2000,
+        }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -502,9 +538,18 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should handle undefined lastActivityAt as 0", () => {
       const users = [
-        createUserMention("1", "Alice", true, 1000),
-        createUserMention("2", "Bob", true, undefined),
-        createUserMention("3", "Charlie", true, 2000),
+        createUserMention("1", "Alice", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: undefined,
+        }),
+        createUserMention("3", "Charlie", {
+          isParticipant: true,
+          lastActivityAt: 2000,
+        }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -516,10 +561,22 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should handle mix of defined and undefined lastActivityAt", () => {
       const users = [
-        createUserMention("1", "Alice", true, undefined),
-        createUserMention("2", "Bob", true, 1000),
-        createUserMention("3", "Charlie", true, undefined),
-        createUserMention("4", "David", true, 500),
+        createUserMention("1", "Alice", {
+          isParticipant: true,
+          lastActivityAt: undefined,
+        }),
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("3", "Charlie", {
+          isParticipant: true,
+          lastActivityAt: undefined,
+        }),
+        createUserMention("4", "David", {
+          isParticipant: true,
+          lastActivityAt: 500,
+        }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -534,9 +591,18 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should not sort non-participants by lastActivityAt", () => {
       const users = [
-        createUserMention("1", "Alice", false, 1000),
-        createUserMention("2", "Bob", false, 3000),
-        createUserMention("3", "Charlie", false, 2000),
+        createUserMention("1", "Alice", {
+          isParticipant: false,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("2", "Bob", {
+          isParticipant: false,
+          lastActivityAt: 3000,
+        }),
+        createUserMention("3", "Charlie", {
+          isParticipant: false,
+          lastActivityAt: 2000,
+        }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -556,7 +622,12 @@ describe("sortEditorSuggestionUsers", () => {
     });
 
     it("should handle array with single user", () => {
-      const users = [createUserMention("1", "Alice", true, 1000)];
+      const users = [
+        createUserMention("1", "Alice", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+      ];
 
       const result = sortEditorSuggestionUsers(users);
 
@@ -566,9 +637,18 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should handle all participants", () => {
       const users = [
-        createUserMention("1", "Alice", true, 1000),
-        createUserMention("2", "Bob", true, 2000),
-        createUserMention("3", "Charlie", true, 3000),
+        createUserMention("1", "Alice", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: 2000,
+        }),
+        createUserMention("3", "Charlie", {
+          isParticipant: true,
+          lastActivityAt: 3000,
+        }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -581,9 +661,9 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should handle all non-participants", () => {
       const users = [
-        createUserMention("1", "Alice", false),
-        createUserMention("2", "Bob", false),
-        createUserMention("3", "Charlie", false),
+        createUserMention("1", "Alice", { isParticipant: false }),
+        createUserMention("2", "Bob", { isParticipant: false }),
+        createUserMention("3", "Charlie", { isParticipant: false }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -596,9 +676,12 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should handle participants with undefined isParticipant flag", () => {
       const users = [
-        createUserMention("1", "Alice", undefined),
-        createUserMention("2", "Bob", true, 1000),
-        createUserMention("3", "Charlie", undefined),
+        createUserMention("1", "Alice"),
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("3", "Charlie"),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -614,11 +697,20 @@ describe("sortEditorSuggestionUsers", () => {
   describe("combined real-world scenarios", () => {
     it("should handle typical conversation with multiple participants", () => {
       const users = [
-        createUserMention("1", "Alice", false), // Not in conversation
-        createUserMention("2", "Bob", true, 1000), // Participant, older activity
-        createUserMention("3", "Charlie", false), // Not in conversation
-        createUserMention("4", "David", true, 3000), // Participant, recent activity
-        createUserMention("5", "Eve", true, 2000), // Participant, middle activity
+        createUserMention("1", "Alice", { isParticipant: false }), // Not in conversation
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }), // Participant, older activity
+        createUserMention("3", "Charlie", { isParticipant: false }), // Not in conversation
+        createUserMention("4", "David", {
+          isParticipant: true,
+          lastActivityAt: 3000,
+        }), // Participant, recent activity
+        createUserMention("5", "Eve", {
+          isParticipant: true,
+          lastActivityAt: 2000,
+        }), // Participant, middle activity
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -637,10 +729,13 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should handle conversation with one active participant", () => {
       const users = [
-        createUserMention("1", "Alice", false),
-        createUserMention("2", "Bob", true, Date.now()),
-        createUserMention("3", "Charlie", false),
-        createUserMention("4", "David", false),
+        createUserMention("1", "Alice", { isParticipant: false }),
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: Date.now(),
+        }),
+        createUserMention("3", "Charlie", { isParticipant: false }),
+        createUserMention("4", "David", { isParticipant: false }),
       ];
 
       const result = sortEditorSuggestionUsers(users);
@@ -657,9 +752,18 @@ describe("sortEditorSuggestionUsers", () => {
 
     it("should handle participants with same lastActivityAt", () => {
       const users = [
-        createUserMention("1", "Alice", true, 1000),
-        createUserMention("2", "Bob", true, 1000),
-        createUserMention("3", "Charlie", true, 1000),
+        createUserMention("1", "Alice", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("2", "Bob", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
+        createUserMention("3", "Charlie", {
+          isParticipant: true,
+          lastActivityAt: 1000,
+        }),
       ];
 
       const result = sortEditorSuggestionUsers(users);

@@ -1,6 +1,6 @@
 import { mockAgents } from "./agents";
 import { mockSpaces } from "./spaces";
-import type { Conversation, Message } from "./types";
+import type { Conversation, ConversationItem } from "./types";
 import { mockUsers } from "./users";
 
 // Helper function to get random user IDs
@@ -256,6 +256,29 @@ for (let i = 0; i < 10; i++) {
   });
 }
 
+// Generate "My conversations" - conversations without spaceId (2-3 conversations)
+const myConversationsCount = Math.floor(Math.random() * 2) + 2; // 2-3 conversations
+for (let i = 0; i < myConversationsCount; i++) {
+  const { userParticipants, agentParticipants } =
+    generateConversationParticipants();
+  const createdAt = randomDateBetween(
+    new Date(new Date().setHours(0, 0, 0, 0)),
+    new Date()
+  );
+  const title =
+    conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
+  mockConversations.push({
+    id: `conv-${mockConversations.length + 1}`,
+    title,
+    createdAt,
+    updatedAt: randomDateBetween(createdAt, new Date()),
+    userParticipants,
+    agentParticipants,
+    description: generateDescription(title),
+    // No spaceId - these are "My conversations"
+  });
+}
+
 // Generate conversations for yesterday (15 conversations)
 for (let i = 0; i < 15; i++) {
   const { userParticipants, agentParticipants } =
@@ -486,91 +509,550 @@ export function createConversationsWithMessages(
   const agent1 = mockAgents[0];
   const agent2 = mockAgents[1];
 
-  // Conversation 1: Q4 Planning Discussion
+  const exampleShort = `
+Key structure ideas:
+- Add a quiet beat with Tyrion and Bran on stories as legitimacy.
+- Expand the corridor walk to show the cost of conquest on civilians.
+- Let Jon argue the case for mercy before he acts, then cut to silence.
+`;
+
+  const exampleLong = `
+**Ending restructure (proposal)**
+
+Strengthen the turn:
+- Scene before the assault: Dany hears about missed provisions and frames it as betrayal.
+- Insert a small act of mercy that fails, reinforcing her isolation.
+
+Make the council choice land:
+- Tyrion reframes the vote as a choice of memory, not bloodline.
+- Sansa, Arya, and Davos each acknowledge one consequence of war.
+
+**Suggested follow-ups**
+- Draft a 2-3 beat montage of letters to the realm.
+- Add a short exchange between Jon and Grey Worm on justice vs. vengeance.
+- Reduce the dragon's arrival delay so the focus stays on the human stakes.
+
+~~~
+Next step checklist
+[ ] Pull earlier Bran moments for resonance
+[ ] Recut the corridor walk for empathy
+[ ] Rework council vote dialogue
+~~~
+`;
+
+  const exampleLongProduct = `
+**Search experience redesign (summary)**
+
+Current pain points:
+- Users miss the entry point because it blends into the header.
+- Results feel slow because suggestions appear only after submit.
+- Empty state offers no guidance, creating a dead end.
+
+Proposed changes:
+- Move search to top nav with a distinct input background.
+- Add inline suggestions for recent, saved, and popular queries.
+- Show a guided empty state with example queries and quick filters.
+
+Impact estimate:
+- Expect 20-35% higher discoverability based on similar UI changes.
+- Reduce time-to-result by ~1.5s with suggestion caching.
+- Increase successful searches by ~15% via better empty states.
+
+**Next steps**
+- Draft interaction states for desktop + mobile
+- Define the suggestion ranking rules
+- Partner with analytics on success metrics
+`;
+
+  const exampleLongRoadmap = `
+**Implementation plan (draft)**
+
+Phase 1: Navigation + entry point
+- Add top nav input, focus state, and keyboard shortcut hint
+- Hook to existing search endpoint with debounce
+- Track impressions and first query start time
+
+Phase 2: Suggestions + empty state
+- Build suggestion service (recent + popular + saved)
+- Create empty state cards with quick filters
+- Add "Did you mean" fallback for no results
+
+Phase 3: Quality + performance
+- Optimize search latency with caching and prefetch
+- Instrument result relevance feedback
+- Roll out A/B test with success metrics
+
+Risks:
+- Suggestion relevance might lag without feedback loop
+- Mobile layout needs careful input sizing
+`;
+
+  // Conversation 1: Story-like assets
   const conv1Start = new Date(twoHoursAgo.getTime() - 3 * 60 * 60 * 1000);
-  const conv1Messages: Message[] = [
+  const conv1Messages: ConversationItem[] = [
+    { kind: "section", id: "section-monday", label: "Monday" },
     {
+      kind: "message",
       id: "msg-1-1",
       content:
-        "Hey team, let's discuss our Q4 planning. I've been reviewing the numbers and we need to prioritize our roadmap.",
+        "We need the ending to feel inevitable without rushing the turn. Everyone keeps calling out the pacing.",
       timestamp: new Date(conv1Start.getTime() + 5 * 60 * 1000),
       ownerId: locutorId,
       ownerType: "user",
       type: "user",
+      group: {
+        id: "group-locutor-1",
+        type: "locutor",
+        timestamp: "09:10",
+        infoChip: { icon: "bolt" },
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+        },
+      },
+      reactions: [
+        { emoji: "🔥", count: 4, reactedByLocutor: true },
+        { emoji: "👍", count: 2, reactedByLocutor: false },
+      ],
+      citations: [
+        {
+          id: "locutor-outline",
+          icon: "table",
+          title: "Finale beat sheet v3",
+        },
+        {
+          id: "locutor-mockup",
+          icon: "image",
+          title: "throne-room-layout.png",
+          imgSrc: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+        },
+        {
+          id: "locutor-sketch",
+          icon: "image",
+          title: "blocking-sketch-v2.jpg",
+          imgSrc: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+        },
+      ],
     },
     {
+      kind: "message",
       id: "msg-1-2",
       content:
-        "I agree. Based on the data I've analyzed, we should focus on the three high-impact features that align with our strategic goals.",
-      timestamp: new Date(conv1Start.getTime() + 12 * 60 * 1000),
-      ownerId: agent1.id,
-      ownerType: "agent",
-      type: "agent",
+        "Can we map out the key beats we have to honor and where we can breathe?",
+      timestamp: new Date(conv1Start.getTime() + 7 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-locutor-1",
+        type: "locutor",
+        timestamp: "09:10",
+        infoChip: { icon: "bolt" },
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+        },
+      },
     },
     {
+      kind: "message",
       id: "msg-1-3",
       content:
-        "That makes sense. What about the mobile app improvements? I think those are critical for user retention.",
-      timestamp: new Date(conv1Start.getTime() + 18 * 60 * 1000),
+        "Agreed. If we keep the throne room, we need sharper setup for why she crosses the line and how Jon processes it.",
+      timestamp: new Date(conv1Start.getTime() + 12 * 60 * 1000),
       ownerId: user1.id,
       ownerType: "user",
       type: "user",
+      group: {
+        id: "group-interlocutor-dan",
+        type: "interlocutor",
+        name: "Dan",
+        timestamp: "09:12",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          isRounded: true,
+        },
+      },
+      reactions: [{ emoji: "👀", count: 3, reactedByLocutor: false }],
+      citations: [
+        {
+          id: "interlocutor-council",
+          icon: "document",
+          title: "Council outline notes",
+        },
+      ],
     },
     {
+      kind: "message",
       id: "msg-1-4",
       content:
-        "Good point. The mobile engagement metrics show a 40% increase when we improve the UX. I recommend prioritizing that.",
+        "I pulled the outline beats from last season and flagged the emotional pivots that felt underwritten.",
+      timestamp: new Date(conv1Start.getTime() + 14 * 60 * 1000),
+      ownerId: user2.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-interlocutor-bryan",
+        type: "interlocutor",
+        name: "Bryan",
+        timestamp: "09:14",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Orange_4.jpg",
+          isRounded: true,
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-5",
+      content:
+        "If we can intercut the northern reactions and Varys's letters, it gives us more weight before the snap.",
+      timestamp: new Date(conv1Start.getTime() + 15 * 60 * 1000),
+      ownerId: user2.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-interlocutor-bryan",
+        type: "interlocutor",
+        name: "Bryan",
+        timestamp: "09:14",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Orange_4.jpg",
+          isRounded: true,
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-6",
+      content:
+        "Sharing the latest rewrite notes and the blocking sketch for the throne room. Let me know what feels off.",
+      timestamp: new Date(conv1Start.getTime() + 16 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-locutor-2",
+        type: "locutor",
+        timestamp: "09:16",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-7",
+      timestamp: new Date(conv1Start.getTime() + 17 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-locutor-2",
+        type: "locutor",
+        timestamp: "09:16",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+        },
+      },
+      attachments: [
+        {
+          id: "attach-1",
+          label: "Finale_rewrite_notes.docx",
+          icon: "document",
+        },
+        {
+          id: "attach-2",
+          label: "ThroneRoom_blocking.png",
+          icon: "document",
+        },
+        {
+          id: "attach-3",
+          label: "Dragonpit_scene.png",
+          icon: "document",
+        },
+      ],
+    },
+    {
+      kind: "message",
+      id: "msg-1-8",
+      content:
+        "I like the council ending, but we need a stronger reason for the vote to land on Bran. It can't feel like a twist for twist's sake.",
+      timestamp: new Date(conv1Start.getTime() + 18 * 60 * 1000),
+      ownerId: user3.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-interlocutor-jane",
+        type: "interlocutor",
+        name: "Jane",
+        timestamp: "09:18",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          isRounded: true,
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-9",
+      content:
+        "Maybe we seed the memory-as-power idea earlier. A short beat between Tyrion and Bran about stories outlasting kings.",
+      timestamp: new Date(conv1Start.getTime() + 19 * 60 * 1000),
+      ownerId: user2.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-interlocutor-bryan-late",
+        type: "interlocutor",
+        name: "Bryan",
+        timestamp: "09:19",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Orange_4.jpg",
+          isRounded: true,
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-10",
+      content:
+        "I can pull relevant scenes from season two and five to echo it.",
+      timestamp: new Date(conv1Start.getTime() + 20 * 60 * 1000),
+      ownerId: user2.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-interlocutor-bryan-late",
+        type: "interlocutor",
+        name: "Bryan",
+        timestamp: "09:19",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Orange_4.jpg",
+          isRounded: true,
+        },
+      },
+      reactions: [
+        { emoji: "✅", count: 1, reactedByLocutor: true },
+        { emoji: "💬", count: 2, reactedByLocutor: false },
+      ],
+    },
+    { kind: "section", id: "section-today", label: "Today" },
+    {
+      kind: "message",
+      id: "msg-1-11",
+      content:
+        "Quick update: the corridor walk is now the cold open, so the assault doesn't feel like it comes out of nowhere.",
+      timestamp: new Date(conv1Start.getTime() + 21 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-locutor-3",
+        type: "locutor",
+        timestamp: "10:02",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-12",
+      content:
+        "Can someone sanity-check the new beats before we lock the outline?",
+      timestamp: new Date(conv1Start.getTime() + 22 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-locutor-3",
+        type: "locutor",
+        timestamp: "10:02",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-13",
+      content:
+        "Love the cold open move. I added a note to clarify why the bells change her mind in that moment instead of the prior scene.",
+      timestamp: new Date(conv1Start.getTime() + 24 * 60 * 1000),
+      ownerId: user3.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-interlocutor-jane-late",
+        type: "interlocutor",
+        name: "Jane",
+        timestamp: "10:04",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          isRounded: true,
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-14",
       timestamp: new Date(conv1Start.getTime() + 25 * 60 * 1000),
       ownerId: agent1.id,
       ownerType: "agent",
       type: "agent",
+      group: {
+        id: "group-agent-1",
+        type: "agent",
+        name: "GoTWriter",
+        timestamp: "09:20",
+        completionStatus: "Completed in 22 sec",
+        avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+      },
+      markdown: exampleShort,
+      citations: [
+        { id: "outline", icon: "table", title: "Season 8 outline beats" },
+        { id: "letters", icon: "slack", title: "Varys letters montage" },
+      ],
     },
     {
-      id: "msg-1-5",
+      kind: "message",
+      id: "msg-1-15a",
       content:
-        "Perfect. Let's schedule a follow-up meeting to finalize the timeline. Can everyone make it Thursday at 2pm?",
-      timestamp: new Date(conv1Start.getTime() + 32 * 60 * 1000),
+        "Sharing these options now. Let me know if we should bundle any.",
+      timestamp: new Date(conv1Start.getTime() + 26 * 60 * 1000),
       ownerId: locutorId,
       ownerType: "user",
       type: "user",
+      group: {
+        id: "group-locutor-4",
+        type: "locutor",
+        timestamp: "10:05",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+        },
+      },
     },
     {
-      id: "msg-1-6",
-      content:
-        "I'm available. Should I prepare a detailed breakdown of the mobile improvements?",
-      timestamp: new Date(conv1Start.getTime() + 38 * 60 * 1000),
-      ownerId: user2.id,
-      ownerType: "user",
-      type: "user",
-    },
-    {
-      id: "msg-1-7",
-      content:
-        "Yes, that would be helpful. I can also generate a comparison matrix of all proposed features with their expected ROI.",
-      timestamp: new Date(conv1Start.getTime() + 45 * 60 * 1000),
+      kind: "message",
+      id: "msg-1-15",
+      timestamp: new Date(conv1Start.getTime() + 27 * 60 * 1000),
       ownerId: agent1.id,
       ownerType: "agent",
       type: "agent",
+      group: {
+        id: "group-agent-2",
+        type: "agent",
+        name: "GoTWriter",
+        timestamp: "09:22",
+        completionStatus: "Awaiting approval",
+        avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+      },
+      actionCards: [
+        {
+          id: "action-1",
+          title: "Add Bran foreshadowing beat",
+          acceptedTitle: "Bran foreshadowing added",
+          rejectedTitle: "Bran foreshadowing skipped",
+          description:
+            "Insert a short scene in episode 5 linking memory, duty, and legitimacy.",
+          applyLabel: "Add beat",
+          rejectLabel: "Skip",
+          cardVariant: "highlight",
+          actionsPosition: "header",
+          visual: { emoji: "🌲", backgroundColor: "s-bg-blue-100" },
+        },
+        {
+          id: "action-2",
+          title: "Rework Jon's decision moment",
+          acceptedTitle: "Jon's decision moment reworked",
+          rejectedTitle: "Jon's decision moment left as is",
+          description:
+            "Hold the blade beat for two exchanges to sell the internal conflict.",
+          applyLabel: "Rework",
+          rejectLabel: "Leave as is",
+          cardVariant: "secondary",
+          visual: { emoji: "⚔️", backgroundColor: "s-bg-green-100" },
+        },
+      ],
+    },
+    {
+      kind: "message",
+      id: "msg-1-15b",
+      content: "I can weigh in after I review the pacing map.",
+      timestamp: new Date(conv1Start.getTime() + 28 * 60 * 1000),
+      ownerId: user3.id,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-interlocutor-jane-late",
+        type: "interlocutor",
+        name: "Jane",
+        timestamp: "10:06",
+        avatar: {
+          visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+          isRounded: true,
+        },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-1-16",
+      timestamp: new Date(conv1Start.getTime() + 29 * 60 * 1000),
+      ownerId: agent1.id,
+      ownerType: "agent",
+      type: "agent",
+      group: {
+        id: "group-agent-3",
+        type: "agent",
+        name: "GoTWriter",
+        timestamp: "09:24",
+        completionStatus: "Completed in 41 sec",
+        avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+      },
+      markdown: exampleLong,
+      citations: [
+        { id: "table", icon: "table", title: "Scene-by-scene pacing map" },
+        { id: "notion", icon: "notion", title: "Alternate endings draft" },
+      ],
+    },
+    {
+      kind: "activeIndicator",
+      id: "active-agent",
+      type: "agent",
+      name: "GoTWriter",
+      action: "thinking",
+      avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+    },
+    {
+      kind: "activeIndicator",
+      id: "active-interlocutor",
+      type: "interlocutor",
+      name: "Dan",
+      action: "typing",
+      avatar: {
+        visual: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+        isRounded: true,
+      },
     },
   ];
 
   const conversation1: Conversation = {
     id: "conv-with-msgs-1",
-    title: "Q4 Planning Discussion",
+    title: "Finale Rewrite Thread",
     createdAt: conv1Start,
     updatedAt: conv1Messages[conv1Messages.length - 1].timestamp,
     userParticipants: [locutorId, user1.id, user2.id],
     agentParticipants: [agent1.id],
     messages: conv1Messages,
     description:
-      "Strategic planning session for Q4 roadmap and feature prioritization",
+      "Collaborative scene pass with attachments, citations, and action cards",
     spaceId: getRandomSpaceId(),
   };
 
   // Conversation 2: Product Feature Review
   const conv2Start = new Date(yesterday.getTime() + 10 * 60 * 60 * 1000);
-  const conv2Messages: Message[] = [
+  const conv2Messages: ConversationItem[] = [
     {
+      kind: "message",
       id: "msg-2-1",
       content:
         "I've been getting feedback about the new search feature. Users find it confusing. What do you think?",
@@ -578,8 +1060,16 @@ export function createConversationsWithMessages(
       ownerId: user3.id,
       ownerType: "user",
       type: "user",
+      group: {
+        id: "group-interlocutor-review",
+        type: "interlocutor",
+        name: user3.fullName,
+        timestamp: "11:01",
+        avatar: { visual: user3.portrait, isRounded: true },
+      },
     },
     {
+      kind: "message",
       id: "msg-2-2",
       content:
         "I've analyzed the user feedback and session recordings. The main issue is the search bar placement and lack of autocomplete suggestions.",
@@ -587,8 +1077,20 @@ export function createConversationsWithMessages(
       ownerId: agent2.id,
       ownerType: "agent",
       type: "agent",
+      group: {
+        id: "group-agent-review",
+        type: "agent",
+        name: agent2.name,
+        timestamp: "11:02",
+        completionStatus: "Completed in 12 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
+        },
+      },
     },
     {
+      kind: "message",
       id: "msg-2-3",
       content:
         "That aligns with what I've heard. Should we move it to the top navigation and add those suggestions?",
@@ -596,8 +1098,14 @@ export function createConversationsWithMessages(
       ownerId: locutorId,
       ownerType: "user",
       type: "user",
+      group: {
+        id: "group-locutor-review",
+        type: "locutor",
+        timestamp: "11:05",
+      },
     },
     {
+      kind: "message",
       id: "msg-2-4",
       content:
         "Based on UX best practices, moving it to the top navigation would improve discoverability by 60%. I can draft a design proposal.",
@@ -605,8 +1113,40 @@ export function createConversationsWithMessages(
       ownerId: agent2.id,
       ownerType: "agent",
       type: "agent",
+      group: {
+        id: "group-agent-review",
+        type: "agent",
+        name: agent2.name,
+        timestamp: "11:02",
+        completionStatus: "Completed in 12 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
+        },
+      },
     },
     {
+      kind: "message",
+      id: "msg-2-4b",
+      timestamp: new Date(conv2Start.getTime() + 26 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+      group: {
+        id: "group-agent-review",
+        type: "agent",
+        name: agent2.name,
+        timestamp: "11:02",
+        completionStatus: "Completed in 18 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
+        },
+      },
+      markdown: exampleLongProduct,
+    },
+    {
+      kind: "message",
       id: "msg-2-5",
       content:
         "Great! Let's also consider adding keyboard shortcuts. Power users would love that.",
@@ -614,17 +1154,36 @@ export function createConversationsWithMessages(
       ownerId: user3.id,
       ownerType: "user",
       type: "user",
+      group: {
+        id: "group-interlocutor-review",
+        type: "interlocutor",
+        name: user3.fullName,
+        timestamp: "11:01",
+        avatar: { visual: user3.portrait, isRounded: true },
+      },
     },
     {
-      id: "msg-2-6",
-      content:
-        "Excellent idea. Keyboard shortcuts can increase productivity by 30% for frequent users. I'll include that in the proposal.",
-      timestamp: new Date(conv2Start.getTime() + 35 * 60 * 1000),
+      kind: "message",
+      id: "msg-2-6b",
+      timestamp: new Date(conv2Start.getTime() + 39 * 60 * 1000),
       ownerId: agent2.id,
       ownerType: "agent",
       type: "agent",
+      group: {
+        id: "group-agent-review",
+        type: "agent",
+        name: agent2.name,
+        timestamp: "11:02",
+        completionStatus: "Completed in 20 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
+        },
+      },
+      markdown: exampleLongRoadmap,
     },
     {
+      kind: "message",
       id: "msg-2-7",
       content:
         "Perfect. Let's aim to have this ready for next week's sprint planning.",
@@ -632,14 +1191,31 @@ export function createConversationsWithMessages(
       ownerId: locutorId,
       ownerType: "user",
       type: "user",
+      group: {
+        id: "group-locutor-review",
+        type: "locutor",
+        timestamp: "11:05",
+      },
     },
     {
+      kind: "message",
       id: "msg-2-8",
       content: "I'll create a task breakdown and estimate the effort required.",
       timestamp: new Date(conv2Start.getTime() + 48 * 60 * 1000),
       ownerId: agent2.id,
       ownerType: "agent",
       type: "agent",
+      group: {
+        id: "group-agent-review",
+        type: "agent",
+        name: agent2.name,
+        timestamp: "11:02",
+        completionStatus: "Completed in 12 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
+        },
+      },
     },
   ];
 

@@ -26,14 +26,84 @@ if (Number.isNaN(basePort) || basePort < 1 || basePort > 65535) {
 
 const LISTEN_HOST = process.env["DUST_HIVE_FORWARD_LISTEN_HOST"] ?? "127.0.0.1";
 const TARGET_HOST = "127.0.0.1";
-const MAX_PENDING_BYTES = 256 * 1024;
+const MAX_PENDING_BYTES = 16 * 1024 * 1024; // 16MB max buffer
 const CONNECT_TIMEOUT_MS = 4000;
 
 interface ConnectionData {
-  upstream: Socket<ConnectionData> | null;
-  clientClosed: boolean;
-  pendingData: Uint8Array[]; // Buffer data until upstream connects
-  pendingBytes: number;
+  peer: Socket<ConnectionData> | null;
+  closed: boolean;
+  peerClosed: boolean; // Peer has closed, close this socket after drain
+  writeQueue: Uint8Array[]; // Data waiting to be written (backpressure)
+  writeQueueBytes: number;
+}
+
+// Write data to socket with backpressure handling
+function writeToSocket(socket: Socket<ConnectionData>, data: Uint8Array | Buffer): boolean {
+  // If already closed, drop the data
+  if (socket.data.closed) {
+    return false;
+  }
+
+  // If there's already queued data, add to queue
+  if (socket.data.writeQueueBytes > 0) {
+    const chunk = new Uint8Array(data);
+    socket.data.writeQueue.push(chunk);
+    socket.data.writeQueueBytes += chunk.byteLength;
+    return socket.data.writeQueueBytes < MAX_PENDING_BYTES;
+  }
+
+  // Try to write directly
+  const written = socket.write(data);
+
+  if (written === data.byteLength) {
+    // All data written
+    return true;
+  }
+
+  if (written === 0) {
+    // Backpressure - queue all data
+    const chunk = new Uint8Array(data);
+    socket.data.writeQueue.push(chunk);
+    socket.data.writeQueueBytes += chunk.byteLength;
+  } else if (written > 0 && written < data.byteLength) {
+    // Partial write - queue remaining data
+    const remaining = new Uint8Array(data.slice(written));
+    socket.data.writeQueue.push(remaining);
+    socket.data.writeQueueBytes += remaining.byteLength;
+  }
+
+  return socket.data.writeQueueBytes < MAX_PENDING_BYTES;
+}
+
+// Flush queued data on drain
+function flushQueue(socket: Socket<ConnectionData>): void {
+  while (socket.data.writeQueue.length > 0 && !socket.data.closed) {
+    const chunk = socket.data.writeQueue[0];
+    if (!chunk) break;
+
+    const written = socket.write(chunk);
+
+    if (written === 0) {
+      // Still backpressure, wait for next drain
+      return;
+    }
+
+    if (written === chunk.byteLength) {
+      // Chunk fully written
+      socket.data.writeQueue.shift();
+      socket.data.writeQueueBytes -= chunk.byteLength;
+    } else if (written > 0) {
+      // Partial write - update the chunk in place
+      socket.data.writeQueue[0] = chunk.slice(written);
+      socket.data.writeQueueBytes -= written;
+      return; // Wait for next drain
+    }
+  }
+
+  // Queue is empty - check if we should close
+  if (socket.data.peerClosed && !socket.data.closed) {
+    socket.end();
+  }
 }
 
 function createForwarder(listenPort: number, targetPort: number, name: string) {
@@ -47,11 +117,20 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
     socket: {
       open(client) {
         client.data = {
-          upstream: null,
-          clientClosed: false,
-          pendingData: [],
-          pendingBytes: 0,
+          peer: null,
+          closed: false,
+          peerClosed: false,
+          writeQueue: [],
+          writeQueueBytes: 0,
         };
+
+        // Set up connection timeout - cleared on success or failure
+        const timeoutId = setTimeout(() => {
+          if (!client.data.closed) {
+            console.error(`[${name}] Upstream connection timed out`);
+            client.end();
+          }
+        }, CONNECT_TIMEOUT_MS);
 
         // Connect to upstream
         Bun.connect<ConnectionData>({
@@ -59,89 +138,114 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
           port: targetPort,
           socket: {
             open(upstream) {
-              client.data.upstream = upstream;
+              clearTimeout(timeoutId);
+              // Link sockets together
+              client.data.peer = upstream;
               upstream.data = {
-                upstream: client,
-                clientClosed: false,
-                pendingData: [],
-                pendingBytes: 0,
+                peer: client,
+                closed: false,
+                peerClosed: false,
+                writeQueue: [],
+                writeQueueBytes: 0,
               };
-              // Flush any buffered data
-              for (const chunk of client.data.pendingData) {
-                upstream.write(chunk);
+              // Flush any data buffered before upstream connected
+              for (const chunk of client.data.writeQueue) {
+                writeToSocket(upstream, chunk);
               }
-              client.data.pendingData = [];
-              client.data.pendingBytes = 0;
+              client.data.writeQueue = [];
+              client.data.writeQueueBytes = 0;
             },
             data(upstream, data) {
-              const clientSocket = upstream.data.upstream;
-              if (clientSocket && !upstream.data.clientClosed) {
-                clientSocket.write(data);
+              const client = upstream.data.peer;
+              if (client && !client.data.closed) {
+                const ok = writeToSocket(client, data);
+                if (!ok) {
+                  console.error(`[${name}] Client write buffer exceeded max`);
+                  client.end();
+                }
               }
             },
+            drain(upstream) {
+              flushQueue(upstream);
+            },
             close(upstream) {
-              const clientSocket = upstream.data.upstream;
-              if (clientSocket && !upstream.data.clientClosed) {
-                clientSocket.end();
+              const client = upstream.data.peer;
+              if (client && !client.data.closed) {
+                client.data.peerClosed = true;
+                if (client.data.writeQueueBytes === 0) {
+                  // No pending data, close immediately
+                  client.end();
+                }
+                // Otherwise, drain will close after queue is empty
               }
             },
             error(upstream, error) {
               console.error(`[${name}] Upstream error: ${error.message}`);
-              const clientSocket = upstream.data.upstream;
-              if (clientSocket && !upstream.data.clientClosed) {
-                clientSocket.end();
+              const client = upstream.data.peer;
+              if (client && !client.data.closed) {
+                client.end();
               }
             },
             connectError(_upstream, error) {
+              clearTimeout(timeoutId);
               console.error(`[${name}] Failed to connect to upstream: ${error.message}`);
-              if (!client.data.clientClosed) {
+              if (!client.data.closed) {
                 client.end();
               }
             },
           },
-          data: { upstream: null, clientClosed: false, pendingData: [], pendingBytes: 0 },
+          data: {
+            peer: null,
+            closed: false,
+            peerClosed: false,
+            writeQueue: [],
+            writeQueueBytes: 0,
+          },
         }).catch((error) => {
+          clearTimeout(timeoutId);
           console.error(`[${name}] Connection error: ${error.message}`);
-          client.end();
-        });
-
-        setTimeout(() => {
-          if (!(client.data.upstream || client.data.clientClosed)) {
-            console.error(`[${name}] Upstream connection timed out`);
+          if (!client.data.closed) {
             client.end();
           }
-        }, CONNECT_TIMEOUT_MS);
+        });
       },
       data(client, data) {
-        const upstream = client.data.upstream;
-        if (upstream) {
-          upstream.write(data);
-        } else {
+        const upstream = client.data.peer;
+        if (upstream && !upstream.data.closed) {
+          const ok = writeToSocket(upstream, data);
+          if (!ok) {
+            console.error(`[${name}] Upstream write buffer exceeded max`);
+            upstream.end();
+          }
+        } else if (!upstream) {
           // Buffer data until upstream connects
           const chunk = new Uint8Array(data);
-          client.data.pendingBytes += chunk.byteLength;
-          if (client.data.pendingBytes > MAX_PENDING_BYTES) {
-            console.error(`[${name}] Pending buffer exceeded ${MAX_PENDING_BYTES} bytes`);
+          client.data.writeQueue.push(chunk);
+          client.data.writeQueueBytes += chunk.byteLength;
+          if (client.data.writeQueueBytes > MAX_PENDING_BYTES) {
+            console.error(`[${name}] Pre-connect buffer exceeded max`);
             client.end();
-            return;
           }
-          client.data.pendingData.push(chunk);
         }
       },
+      drain(client) {
+        flushQueue(client);
+      },
       close(client) {
-        client.data.clientClosed = true;
-        const upstream = client.data.upstream;
-        if (upstream) {
-          upstream.data.clientClosed = true;
-          upstream.end();
+        client.data.closed = true;
+        const upstream = client.data.peer;
+        if (upstream && !upstream.data.closed) {
+          upstream.data.peerClosed = true;
+          if (upstream.data.writeQueueBytes === 0) {
+            upstream.end();
+          }
         }
       },
       error(client, error) {
         console.error(`[${name}] Client error: ${error.message}`);
-        client.data.clientClosed = true;
-        const upstream = client.data.upstream;
-        if (upstream) {
-          upstream.data.clientClosed = true;
+        client.data.closed = true;
+        const upstream = client.data.peer;
+        if (upstream && !upstream.data.closed) {
           upstream.end();
         }
       },

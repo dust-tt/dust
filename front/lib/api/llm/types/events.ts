@@ -29,6 +29,13 @@ export interface ReasoningDeltaEvent {
   metadata: LLMClientMetadata & { encrypted_content?: string };
 }
 
+// Tool call deltas are not streamed to the UI but they are used internally
+// as heartbeat to know the LLM is still active.
+export interface ToolCallDeltaEvent {
+  type: "tool_call_delta";
+  metadata: LLMClientMetadata;
+}
+
 // Output items
 export interface ToolCall {
   id: string;
@@ -68,6 +75,9 @@ export interface TokenUsage {
   outputTokens: number;
   reasoningTokens?: number;
   totalTokens: number;
+  // Raw input tokens after the last cache breakpoint (not from cache).
+  // This is the raw `input_tokens` value from providers that support caching.
+  uncachedInputTokens?: number;
 }
 
 export interface TokenUsageEvent {
@@ -102,6 +112,7 @@ export type LLMEvent =
   | ResponseIdEvent
   | TextDeltaEvent
   | ReasoningDeltaEvent
+  | ToolCallDeltaEvent
   | ToolCallEvent
   | TextGeneratedEvent
   | ReasoningGeneratedEvent

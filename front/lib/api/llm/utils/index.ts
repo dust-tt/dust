@@ -1,6 +1,11 @@
 import logger from "@app/logger/logger";
-import type { ResponseFormat } from "@app/types";
-import { isString, ResponseFormatSchema, safeParseJSON } from "@app/types";
+import type {
+  ModelProviderIdType,
+  ResponseFormat,
+} from "@app/types/assistant/models/types";
+import { ResponseFormatSchema } from "@app/types/assistant/models/types";
+import { isString } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
   for (const item of items) {
@@ -40,7 +45,7 @@ export function extractIdFromMetadata(metadata: string): string {
 
 export function parseResponseFormatSchema(
   responseFormat: string | null,
-  providerId?: string
+  providerId?: ModelProviderIdType
 ): ResponseFormat | undefined {
   if (!responseFormat) {
     return;

@@ -1,14 +1,3 @@
-import assert from "assert";
-import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  IncludeOptions,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
@@ -24,17 +13,31 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
   AgentStepContentType,
 } from "@app/types/assistant/agent_message_content";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type {
+  Attributes,
+  CreationAttributes,
+  IncludeOptions,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentStepContentResource extends ReadonlyAttributesType<AgentStepContentModel> {}
+export interface AgentStepContentResource
+  extends ReadonlyAttributesType<AgentStepContentModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentStepContentResource extends BaseResource<AgentStepContentModel> {
@@ -78,7 +81,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     // Fetch agent configuration to check permissions
     const agentConfigurations = await getAgentConfigurations(auth, {
       agentIds: uniqueAgentIds,
-      variant: "light",
+      variant: "extra_light",
     });
 
     if (agentConfigurations.length !== uniqueAgentIds.length) {
@@ -102,14 +105,11 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     blob: CreationAttributes<AgentStepContentModel>,
     transaction?: Transaction
   ): Promise<AgentStepContentResource> {
-    const agentStepContent = await AgentStepContentModel.create(blob, {
+    const agentStepContent = await this.model.create(blob, {
       transaction,
     });
 
-    return new AgentStepContentResource(
-      AgentStepContentModel,
-      agentStepContent.get()
-    );
+    return new AgentStepContentResource(this.model, agentStepContent.get());
   }
 
   public static async fetchByModelIds(
@@ -172,7 +172,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       agentMessageIds
     );
 
-    let contents = await AgentStepContentModel.findAll({
+    let contents = await this.model.findAll({
       where: {
         workspaceId: owner.id,
         agentMessageId: {
@@ -196,8 +196,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
 
     return contents.map(
-      (content) =>
-        new AgentStepContentResource(AgentStepContentModel, content.get())
+      (content) => new AgentStepContentResource(this.model, content.get())
     );
   }
 
@@ -263,23 +262,26 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     ];
 
     const [totalCount, stepContents] = await Promise.all([
-      AgentStepContentModel.count({
+      this.model.count({
         include: includeClause,
         where: whereClause,
         distinct: true,
       }),
-      AgentStepContentModel.findAll({
+      this.model.findAll({
         include: includeClause,
         where: whereClause,
-        order: [["createdAt", "DESC"]],
         limit: limit + 1,
       }),
     ]);
 
-    const hasMore = stepContents.length > limit;
+    const sortedStepContents = stepContents.toSorted(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    );
+
+    const hasMore = sortedStepContents.length > limit;
     const actualStepContents = hasMore
-      ? stepContents.slice(0, limit)
-      : stepContents;
+      ? sortedStepContents.slice(0, limit)
+      : sortedStepContents;
 
     const nextCursor = hasMore
       ? actualStepContents[
@@ -334,7 +336,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       return new Err(new Error("User does not have access to agents"));
     }
 
-    const deletedCount = await AgentStepContentModel.destroy({
+    const deletedCount = await this.model.destroy({
       where: {
         id: this.id,
         workspaceId: owner.id,
@@ -343,6 +345,18 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     return new Ok(deletedCount);
+  }
+
+  static async deleteByAgentMessageIds(
+    auth: Authenticator,
+    { agentMessageIds }: { agentMessageIds: ModelId[] }
+  ): Promise<number> {
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: { [Op.in]: agentMessageIds },
+      },
+    });
   }
 
   toJSON(): AgentStepContentType {

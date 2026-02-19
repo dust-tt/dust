@@ -1,36 +1,59 @@
-import { workflow } from "@novu/framework";
-import type { ChannelPreference } from "@novu/react";
-import uniqBy from "lodash/uniqBy";
-import { Op } from "sequelize";
-import z from "zod";
-
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import { isMessageUnread } from "@app/components/assistant/conversation/utils";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
-import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
+import {
+  getAgentsDataRetention,
+  getConversationsDataRetention,
+} from "@app/lib/data_retention";
+import { DustError } from "@app/lib/error";
+import {
+  ensureSlackNotificationsReady,
+  getNovuClient,
+  getUserNotificationDelay,
+  type NotificationAllowedTags,
+} from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { Result, UserMessageOrigin } from "@app/types";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import type {
+  AgentMessageType,
+  UserMessageOrigin,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import {
-  assertNever,
-  Err,
-  isContentFragmentType,
-  isDevelopment,
+  ConversationError,
   isUserMessageType,
-  normalizeError,
-  Ok,
-} from "@app/types";
-import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
+} from "@app/types/assistant/conversation";
+import { isRichUserMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
-  isNotificationPreferencesDelay,
-  makeNotificationPreferencesUserMetadata,
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  CONVERSATION_UNREAD_TRIGGER_ID,
+  isNotificationCondition,
   NOTIFICATION_DELAY_OPTIONS,
+  NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
-
-const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import type { UserType } from "@app/types/user";
+import { workflow } from "@novu/framework";
+import assert from "assert";
+import uniqBy from "lodash/uniqBy";
+import { Op } from "sequelize";
+import z from "zod";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -52,6 +75,8 @@ export const shouldSendNotificationForAgentAnswer = (
     case "cli_programmatic":
       return true;
     case "onboarding_conversation":
+    case "agent_copilot":
+    case "project_butler":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
@@ -70,6 +95,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "triggered":
     case "zapier":
     case "zendesk":
+    case "project_kickoff":
     case undefined:
     case null:
       return false;
@@ -85,158 +111,185 @@ const ConversationDetailsSchema = z.object({
   avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
   workspaceName: z.string(),
+  mentionedUserIds: z.array(z.string()),
+  hasUnreadMessages: z.boolean(),
+  hasUnreadMentions: z.boolean(),
+  hasConversationRetentionPolicy: z.boolean(),
+  hasAgentRetentionPolicies: z.boolean(),
+  newMessageContent: z.string().nullable(),
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
+
+// Wrapper for workflow step that may fail when conversation is deleted.
+const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
+  z.object({
+    success: z.literal(true),
+    data: ConversationDetailsSchema,
+  }),
+  z.object({
+    success: z.literal(false),
+  }),
+]);
 
 const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-type NotificationDelayAmountConfig = {
-  amount: number;
-  unit: "minutes" | "hours" | "days";
-};
-
-type NotificationDelayCronConfig = { cron: string };
-
-type NotificationDelayConfig =
-  | NotificationDelayAmountConfig
-  | NotificationDelayCronConfig;
-
-/**
- * Maps delay option keys to their time configurations.
- */
-const NOTIFICATION_PREFERENCES_DELAYS: Record<
-  NotificationPreferencesDelay,
-  NotificationDelayConfig
-> = {
-  "5_minutes": { amount: 5, unit: "minutes" },
-  "15_minutes": { amount: 15, unit: "minutes" },
-  "30_minutes": { amount: 30, unit: "minutes" },
-  "1_hour": { amount: 1, unit: "hours" },
-  daily: { cron: "0 6 * * *" }, // Every day at 6am
-};
-
-const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = isDevelopment()
-  ? "5_minutes"
-  : "1_hour";
-
 const getConversationDetails = async ({
-  subscriberId,
   payload,
-}: {
-  subscriberId?: string | null;
-  payload: ConversationUnreadPayloadType;
-}): Promise<ConversationDetailsType> => {
-  let subject: string = "A dust conversation";
-  let author: string = "Someone else";
-  let authorIsAgent: boolean = false;
-  let avatarUrl: string | undefined;
-  let isFromTrigger: boolean = false;
-  let workspaceName: string = "A workspace";
-
-  if (subscriberId) {
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+  auth: providedAuth,
+  subscriberId,
+}: { payload: ConversationUnreadPayloadType } & (
+  | { auth: Authenticator; subscriberId?: never }
+  | { auth?: never; subscriberId: string }
+)): Promise<Result<ConversationDetailsType, ConversationError>> => {
+  // Get or create auth from the discriminated union.
+  let auth: Authenticator;
+  if (providedAuth) {
+    auth = providedAuth;
+  } else {
+    // subscriberId may be empty when previewing the workflow step.
+    if (!subscriberId) {
+      return new Ok({
+        subject: "Deleted conversation",
+        author: "Deleted conversation",
+        authorIsAgent: false,
+        isFromTrigger: false,
+        workspaceName: "Deleted conversation",
+        mentionedUserIds: [],
+        avatarUrl: undefined,
+        hasUnreadMessages: false,
+        hasUnreadMentions: false,
+        hasConversationRetentionPolicy: false,
+        hasAgentRetentionPolicies: false,
+        newMessageContent: null,
+      });
+    }
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
       subscriberId,
       payload.workspaceId
     );
-
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      payload.conversationId
-    );
-
-    if (conversation) {
-      workspaceName = auth.getNonNullableWorkspace().name;
-      subject = conversation.title ?? "Dust conversation";
-      isFromTrigger = !!conversation.triggerSId;
-
-      // Retrieve the message that triggered the notification
-      const messageRes = await conversation.getMessageById(
-        auth,
-        payload.messageId
-      );
-
-      if (messageRes.isOk()) {
-        const rendered = await batchRenderMessages(
-          auth,
-          conversation,
-          [messageRes.value],
-          "light"
-        );
-
-        if (rendered.isOk() && rendered.value.length === 1) {
-          const lightMessage = rendered.value[0];
-          if (isContentFragmentType(lightMessage)) {
-            // Do nothing. Content fragments are not displayed in the notification.
-          } else if (isUserMessageType(lightMessage)) {
-            author = lightMessage.user?.fullName ?? "Someone else";
-            avatarUrl = lightMessage.user?.image ?? undefined;
-            authorIsAgent = false;
-          } else {
-            author = lightMessage.configuration.name
-              ? `@${lightMessage.configuration.name}`
-              : "An agent";
-            avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
-            authorIsAgent = true;
-          }
-        }
-      }
-    }
   }
-  return {
+
+  const conversationRes = await getConversation(auth, payload.conversationId);
+
+  if (conversationRes.isErr()) {
+    // Check if the conversation was deleted (expected during workflow delay).
+    const deletedConversation = await ConversationResource.fetchById(
+      auth,
+      payload.conversationId,
+      { includeDeleted: true }
+    );
+    if (deletedConversation) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+    // Conversation never existed - unexpected.
+    throw new Error(`Conversation not found: ${payload.conversationId}`);
+  }
+
+  const conversation = conversationRes.value;
+
+  const workspaceName = auth.getNonNullableWorkspace().name;
+  const subject = conversation.title ?? "Dust conversation";
+  const isFromTrigger = !!conversation.triggerId;
+
+  // Retrieve the message that triggered the notification.
+  const message = conversation.content
+    .flat()
+    .find((msg) => msg.sId === payload.messageId);
+  if (!message) {
+    // Message doesn't exist at all - unexpected.
+    throw new Error(`Message not found: ${payload.messageId}`);
+  }
+  if (message.visibility === "deleted") {
+    // Message was deleted during workflow delay - expected.
+    return new Err(new ConversationError("message_not_found"));
+  }
+
+  let author: string;
+  let authorIsAgent: boolean;
+  let avatarUrl: string | undefined;
+  let mentionedUserIds: string[] = [];
+  const messageContent =
+    message.type === "agent_message" || message.type === "user_message"
+      ? message.content
+      : "";
+
+  if (isContentFragmentType(message)) {
+    // Content fragments don't have author info.
+    author = "Someone else";
+    authorIsAgent = false;
+  } else if (isUserMessageType(message)) {
+    author = message.user?.fullName ?? "Someone else";
+    avatarUrl = message.user?.image ?? undefined;
+    authorIsAgent = false;
+
+    // Extract approved user mentions from the rendered message.
+    mentionedUserIds = message.richMentions
+      .filter((m) => isRichUserMention(m) && m.status === "approved")
+      .map((m) => m.id);
+  } else {
+    author = message.configuration.name
+      ? `@${message.configuration.name}`
+      : "An agent";
+    avatarUrl = message.configuration.pictureUrl ?? undefined;
+    authorIsAgent = true;
+  }
+
+  const unreadMessages = conversation.content
+    .flat()
+    .filter((msg) => isMessageUnread(msg, conversation.lastReadMs));
+
+  const hasUnreadMessages = unreadMessages.length > 0;
+
+  const hasUnreadMentions = unreadMessages.some((msg) => {
+    if (isContentFragmentType(msg)) {
+      return false;
+    }
+    return msg.richMentions.some(
+      (m) => isRichUserMention(m) && m.id === subscriberId
+    );
+  });
+
+  const conversationsRetention = await getConversationsDataRetention(auth);
+  const hasConversationRetentionPolicy = conversationsRetention !== null;
+
+  const agentsRetention = await getAgentsDataRetention(auth);
+  const hasAgentRetentionPolicies = conversation.content.flat().some((msg) => {
+    if (msg.type !== "agent_message") {
+      return false;
+    }
+
+    return msg.configuration.sId in agentsRetention;
+  });
+
+  return new Ok({
     subject,
     author,
     authorIsAgent,
     avatarUrl,
     isFromTrigger,
     workspaceName,
-  };
-};
-
-const getUserNotificationDelay = async ({
-  subscriberId,
-  workspaceId,
-  channel,
-}: {
-  subscriberId?: string;
-  workspaceId: string;
-  channel: keyof ChannelPreference;
-}): Promise<NotificationPreferencesDelay> => {
-  if (!subscriberId) {
-    return DEFAULT_NOTIFICATION_DELAY;
-  }
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    workspaceId
-  );
-  const user = auth.user();
-  if (!user) {
-    return DEFAULT_NOTIFICATION_DELAY;
-  }
-  const metadata = await UserMetadataModel.findOne({
-    where: {
-      userId: user.id,
-      key: {
-        [Op.eq]: makeNotificationPreferencesUserMetadata(channel),
-      },
-    },
+    mentionedUserIds,
+    hasUnreadMessages,
+    hasUnreadMentions,
+    hasConversationRetentionPolicy,
+    hasAgentRetentionPolicies,
+    newMessageContent: messageContent,
   });
-  const metadataValue = metadata?.value;
-  return isNotificationPreferencesDelay(metadataValue)
-    ? metadataValue
-    : DEFAULT_NOTIFICATION_DELAY;
 };
 
-const shouldSkipConversation = async ({
+export const shouldSkipConversation = async ({
   subscriberId,
   payload,
   triggerShouldSkip,
+  hasUnreadMessages,
 }: {
   subscriberId?: string | null;
   payload: ConversationUnreadPayloadType;
   triggerShouldSkip: boolean;
+  hasUnreadMessages: boolean;
 }): Promise<boolean> => {
   if (subscriberId) {
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -257,11 +310,15 @@ const shouldSkipConversation = async ({
       return true;
     }
 
-    const { actionRequired, unread } =
-      await ConversationResource.getActionRequiredAndUnreadForUser(
+    const { actionRequired, lastReadAt } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
         auth,
         conversation.id
       );
+
+    const unread =
+      (lastReadAt === null || conversation.updatedAt > lastReadAt) &&
+      hasUnreadMessages;
 
     if (!actionRequired && !unread) {
       return true;
@@ -271,30 +328,320 @@ const shouldSkipConversation = async ({
   return false;
 };
 
+const FUNCTION_NAME = "write_summary";
+
+const specification: AgentActionSpecification = {
+  name: FUNCTION_NAME,
+  description: "Write a summary of the conversation",
+  inputSchema: {
+    type: "object",
+    properties: {
+      conversation_summary: {
+        type: "string",
+        description: "A short summary of the conversation.",
+      },
+    },
+    required: ["conversation_summary"],
+  },
+};
+
+const SUMMARY_ALLOWED_TOKEN_COUNT = 4000;
+
+const generateUnreadMessagesSummary = async ({
+  subscriberId,
+  payload,
+}: {
+  subscriberId?: string;
+  payload: ConversationUnreadPayloadType;
+}): Promise<
+  Result<
+    string,
+    DustError<
+      | "conversation_not_found"
+      | "no_unread_messages_found"
+      | "no_whitelisted_model_found"
+      | "internal_error"
+      | "generation_failed"
+      | "user_not_found"
+    >
+  >
+> => {
+  if (!subscriberId) {
+    return new Ok("");
+  }
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    payload.workspaceId
+  );
+
+  const conversationRes = await getConversation(auth, payload.conversationId);
+
+  if (conversationRes.isErr()) {
+    return new Err(
+      new DustError("conversation_not_found", "Failed to get conversation")
+    );
+  }
+
+  const conversation = conversationRes.value;
+
+  const unreadMessages = conversation.content
+    .map((messages) =>
+      messages.filter((msg) => isMessageUnread(msg, conversation.lastReadMs))
+    )
+    .filter(
+      (
+        turn
+      ): turn is
+        | UserMessageType[]
+        | AgentMessageType[]
+        | ContentFragmentType[] => {
+        if (turn.length === 0) {
+          return false;
+        }
+        const firstType = turn[0].type;
+        return turn.every((msg) => msg.type === firstType);
+      }
+    );
+
+  if (unreadMessages.length === 0) {
+    return new Err(
+      new DustError("no_unread_messages_found", "No unread messages")
+    );
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+
+  const model = getSmallWhitelistedModel(owner);
+
+  if (!model) {
+    return new Err(
+      new DustError("no_whitelisted_model_found", "No whitelisted model found")
+    );
+  }
+
+  const userFullName = auth.user()?.fullName();
+
+  if (!userFullName) {
+    return new Err(
+      new DustError("user_not_found", "User not found for summary generation")
+    );
+  }
+  // Generate LLM summary
+  const prompt =
+    `# Task\n` +
+    `Write a 1-2 sentence summary of unread messages for ${userFullName} to quickly understand what happened while they were away and what action (if any) is needed from them.\n\n` +
+    `CRITICAL RULE: You are writing to ${userFullName}. NEVER write their name "${userFullName}" in the summary. Always use "you/your/yours" instead.\n\n` +
+    `# Input Format\n` +
+    `You'll receive a JSON array of UNREAD messages (not the full conversation history, only what ${userFullName} hasn't seen yet). Each message has:\n` +
+    `- "role": "user" (human) or "assistant" (AI agent)\n` +
+    `- "name": sender's display name (e.g., "Sarah Chen", "dust")\n` +
+    `- "content": message text (human messages start with <dust_system> block with sender details)\n\n` +
+    `Use "role", "name", and <dust_system> to attribute senders correctly. Use message text for what happened. Never guess.\n\n` +
+    `# Writing Rules\n` +
+    `1. **Length**: 1-2 sentences maximum\n` +
+    `2. **Second person**: Use "you/your/yours" when referring to ${userFullName} - NEVER write "${userFullName}"\n` +
+    `3. **Action-first**: If someone needs something from ${userFullName}, lead with that: "[Name] needs you to [action] [details]"\n` +
+    `4. **Outcome-first for updates**: If no action needed from ${userFullName}, lead with what's ready/decided: "Draft is ready", "Meeting scheduled"\n` +
+    `5. **No chat narration**: NEVER write "X asked", "assistant provided", "then Y replied"\n` +
+    `6. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
+    `7. **Use names**: Refer to other participants by name, never "the user"\n` +
+    `8. **Accurate attribution**: Only include information actually in the messages\n\n` +
+    `# Examples\n\n` +
+    `## Action Needed (someone waiting on the recipient)\n` +
+    `"Sarah needs your approval on the Q1 hiring budget ($450K) by end of week to finalize headcount."\n` +
+    `"Alex needs you to choose between the three homepage designs by Tuesday for the product launch."\n` +
+    `"Jordan needs your technical review of the migration plan—specifically whether the 2-week timeline is feasible."\n\n` +
+    `## Updates (no specific action needed)\n` +
+    `"Three design mockups are ready with Sarah's feedback for the homepage redesign."\n` +
+    `"Q4 budget approved at $2.5M. Implementation timeline set for March."\n` +
+    `"David shared the customer research findings—80% want mobile-first experience."\n\n` +
+    `## Mixed (update + action)\n` +
+    `"Hiring budget spreadsheet is ready for Q1. Emily needs your review by Wednesday."\n` +
+    `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n\n` +
+    `# Your Task\n` +
+    `Read the UNREAD messages below and write a 1-2 sentence summary following ALL rules above.\n` +
+    `Prioritize any actions needed from the recipient first, then updates. Include key specifics.\n` +
+    `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
+    `Write in a natural, engaging tone that makes someone want to read it.`;
+
+  const modelConversationRes = await renderConversationForModel(auth, {
+    conversation: {
+      ...conversation,
+      content: unreadMessages,
+    },
+    model,
+    prompt,
+    tools: JSON.stringify(specification),
+    allowedTokenCount: Math.min(
+      model.contextSize - model.generationTokensCount,
+      SUMMARY_ALLOWED_TOKEN_COUNT
+    ),
+    excludeActions: true,
+    excludeImages: true,
+  });
+
+  if (modelConversationRes.isErr()) {
+    return new Err(
+      new DustError("internal_error", "Failed to render conversation for model")
+    );
+  }
+
+  const { modelConversation } = modelConversationRes.value;
+
+  const res = await runMultiActionsAgent(
+    auth,
+    {
+      providerId: model.providerId,
+      modelId: model.modelId,
+      functionCall: FUNCTION_NAME,
+    },
+    {
+      conversation: {
+        messages: [
+          {
+            role: "user",
+            name: userFullName,
+            content: [
+              {
+                type: "text",
+                text: `This is the content of the conversation to summarize:\n\n\`\`\`json\n${JSON.stringify(modelConversation.messages, null, 2)}\n\`\`\``,
+              },
+            ],
+          },
+        ],
+      },
+      prompt,
+      specifications: [specification],
+      forceToolCall: FUNCTION_NAME,
+    },
+    {
+      context: {
+        operationType: "conversation_unread_summary",
+        conversationId: conversation.sId,
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
+    }
+  );
+
+  if (res.isErr()) {
+    return new Err(new DustError("generation_failed", res.error.message));
+  }
+
+  // Extract summary from function call result.
+  if (res.value.actions?.[0]?.arguments?.conversation_summary) {
+    const summary = res.value.actions[0].arguments.conversation_summary;
+    return new Ok(stripMarkdown(summary));
+  }
+
+  return new Err(
+    new DustError("generation_failed", "No conversation summary generated")
+  );
+};
+
+export const getEmailSummary = async ({
+  details,
+  subscriberId,
+  payload,
+}: {
+  details: ConversationDetailsType;
+  subscriberId: string;
+  payload: ConversationUnreadPayloadType;
+}): Promise<string | null> => {
+  if (details.hasConversationRetentionPolicy) {
+    return "Summary not generated due to data retention policy on conversations in this workspace.";
+  }
+
+  if (details.hasAgentRetentionPolicies) {
+    return "Summary not generated due to data retention policy on agents in this conversation.";
+  }
+
+  // Generate summary of unread messages
+  const summaryResult = await generateUnreadMessagesSummary({
+    subscriberId,
+    payload,
+  });
+
+  if (summaryResult.isErr()) {
+    switch (summaryResult.error.code) {
+      case "generation_failed":
+      case "conversation_not_found":
+      case "no_unread_messages_found":
+      case "internal_error":
+      case "no_whitelisted_model_found":
+      case "user_not_found":
+        break;
+      default:
+        assertNever(summaryResult.error.code);
+    }
+    return null;
+  }
+  return summaryResult.value;
+};
+
+export const getMessagePreview = (
+  details: ConversationDetailsType
+): string | undefined => {
+  if (details.hasConversationRetentionPolicy) {
+    return "> Preview not available due to data retention policy on conversations in this workspace.";
+  }
+  if (details.hasAgentRetentionPolicies) {
+    return "> Preview not available due to data retention policy on agents in this conversation.";
+  }
+  if (details.newMessageContent) {
+    const stripped = stripMarkdown(details.newMessageContent);
+    const trimmed = stripped.trim();
+    const truncated =
+      trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
+    // Replace newlines with "> \n" to maintain blockquote formatting on each line
+    return truncated
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+  }
+};
+
 export const conversationUnreadWorkflow = workflow(
   CONVERSATION_UNREAD_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
-    const details = await step.custom(
+    const detailsResult = await step.custom(
       "get-conversation-details",
       async () => {
-        return getConversationDetails({
-          subscriberId: subscriber.subscriberId,
+        // In local development, subscriberId may be empty when previewing the workflow.
+        assert(
+          isDevelopment() || subscriber.subscriberId,
+          "subscriberId is required in workflow"
+        );
+        const result = await getConversationDetails({
+          subscriberId: subscriber.subscriberId ?? "",
           payload,
         });
+        if (result.isErr()) {
+          // Conversation or message was deleted during workflow delay - skip notification.
+          return { success: false as const };
+        }
+        return { success: true as const, data: result.value };
       },
       {
-        outputSchema: ConversationDetailsSchema,
+        outputSchema: ConversationDetailsResultSchema,
       }
     );
+
+    // Extract details if available (null when conversation/message was deleted).
+    // We don't return early here because Novu needs to discover all steps.
+    const details = detailsResult.success ? detailsResult.data : null;
 
     await step.inApp(
       "send-in-app",
       async () => {
+        // details is guaranteed non-null here because skip prevents execution otherwise.
+        const d = details!;
         return {
-          subject: `New message from ${details.author}`,
-          body: details.authorIsAgent
-            ? `${details.author} replied in the conversation "${details.subject}".`
-            : `You have a new message from ${details.author} in the conversation "${details.subject}".`,
+          subject: `New message from ${d.author}`,
+          body: d.authorIsAgent
+            ? `${d.author} replied in the conversation "${d.subject}".`
+            : `You have a new message from ${d.author} in the conversation "${d.subject}".`,
           primaryAction: {
             label: "View",
             redirect: {
@@ -307,18 +654,73 @@ export const conversationUnreadWorkflow = workflow(
           data: {
             // This custom flag means that the in-app message should be deleted automatically after it is received (we don't want to clutter the user's inbox).
             autoDelete: true,
-            skipPushNotification: details.isFromTrigger,
+            skipPushNotification: d.isFromTrigger,
             conversationId: payload.conversationId,
           },
         };
       },
       {
         skip: async () =>
+          !details ||
           shouldSkipConversation({
             subscriberId: subscriber.subscriberId,
             payload,
             triggerShouldSkip: false,
+            hasUnreadMessages: details.hasUnreadMessages,
           }),
+      }
+    );
+
+    await step.chat(
+      "slack-notification",
+      async () => {
+        // details is guaranteed non-null here because skip prevents execution otherwise.
+        const d = details!;
+        const conversationUrl = getConversationRoute(
+          payload.workspaceId,
+          payload.conversationId,
+          undefined,
+          config.getAppUrl()
+        );
+
+        // Create message preview
+        const messagePreview = getMessagePreview(d);
+
+        const baseMessage = d.authorIsAgent
+          ? `${d.author} replied in "${d.subject}"`
+          : `New message from ${d.author} in "${d.subject}"`;
+
+        const message = messagePreview
+          ? `${baseMessage}\n${messagePreview}\n<${conversationUrl}|View conversation>`
+          : `${baseMessage}\n<${conversationUrl}|View conversation>`;
+
+        return {
+          body: message,
+        };
+      },
+      {
+        skip: async () => {
+          if (!details) {
+            return true;
+          }
+          const shouldSkip = await shouldSkipConversation({
+            subscriberId: subscriber.subscriberId,
+            payload,
+            triggerShouldSkip: false,
+            hasUnreadMessages: details.hasUnreadMessages,
+          });
+          if (shouldSkip) {
+            return true;
+          }
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
+            return true;
+          }
+          return false;
+        },
       }
     );
 
@@ -334,6 +736,7 @@ export const conversationUnreadWorkflow = workflow(
       },
       {
         outputSchema: UserNotificationDelaySchema,
+        skip: async () => !details,
       }
     );
 
@@ -350,10 +753,12 @@ export const conversationUnreadWorkflow = workflow(
       {
         // No email from trigger until we give more control over the notification to the users.
         skip: async () =>
+          !details ||
           shouldSkipConversation({
             subscriberId: subscriber.subscriberId,
             payload,
             triggerShouldSkip: true,
+            hasUnreadMessages: details.hasUnreadMessages,
           }),
       }
     );
@@ -370,53 +775,90 @@ export const conversationUnreadWorkflow = workflow(
           (event) => event.payload.conversationId
         );
 
-        for (const event of uniqEventsPerConversation) {
-          const shouldSkip = await shouldSkipConversation({
-            payload: event.payload as ConversationUnreadPayloadType,
-            triggerShouldSkip: true,
-          });
-          if (shouldSkip) {
-            continue;
-          }
+        await concurrentExecutor(
+          uniqEventsPerConversation,
+          async (event) => {
+            const payload = event.payload as ConversationUnreadPayloadType;
+            // In local development, subscriberId may be empty when previewing the workflow.
+            assert(
+              isDevelopment() || subscriber.subscriberId,
+              "subscriberId is required in workflow"
+            );
+            const detailsResult = await getConversationDetails({
+              subscriberId: subscriber.subscriberId ?? "",
+              payload,
+            });
+            if (detailsResult.isErr()) {
+              // Conversation or message was deleted during workflow delay - skip this event.
+              return;
+            }
 
-          const payload = event.payload as ConversationUnreadPayloadType;
-          const details = await getConversationDetails({
-            subscriberId: subscriber.subscriberId,
-            payload,
-          });
+            const shouldSkip = await shouldSkipConversation({
+              subscriberId: subscriber.subscriberId,
+              payload: event.payload as ConversationUnreadPayloadType,
+              triggerShouldSkip: true,
+              hasUnreadMessages: detailsResult.value.hasUnreadMessages,
+            });
+            if (shouldSkip) {
+              return;
+            }
 
-          conversations.push({
-            id: payload.conversationId,
-            title: details.subject as string,
-          });
-        }
+            const summary = await getEmailSummary({
+              details: detailsResult.value,
+              subscriberId: subscriber.subscriberId ?? "",
+              payload,
+            });
+            conversations.push({
+              id: payload.conversationId,
+              title: detailsResult.value.subject,
+              hasUnreadMentions: detailsResult.value.hasUnreadMentions,
+              summary,
+            });
+          },
+          { concurrency: 8 }
+        );
 
+        // details is guaranteed non-null here because skip prevents execution otherwise.
         const body = await renderEmail({
           name: subscriber.firstName ?? "You",
           workspace: {
             id: payload.workspaceId,
-            name: details.workspaceName,
+            name: details!.workspaceName,
           },
           conversations,
         });
+        const subject =
+          conversations.length > 1
+            ? `[Dust] New unread message(s) in ${conversations.length} conversations`
+            : `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
         return {
-          subject:
-            conversations.length > 1
-              ? `[Dust] new unread message(s) in ${conversations.length} conversations`
-              : `[Dust] new unread message(s) in conversation`,
+          subject,
           body,
         };
       },
       {
         // No email from trigger until we give more control over the notification to the users.
         skip: async () => {
-          const shouldSkip = await Promise.all(
-            events.map(async (event) =>
-              shouldSkipConversation({
+          const shouldSkip = await concurrentExecutor(
+            events,
+            async (event) => {
+              const detailsResult = await getConversationDetails({
+                subscriberId: subscriber.subscriberId ?? "",
+                payload: event.payload as ConversationUnreadPayloadType,
+              });
+              if (detailsResult.isErr()) {
+                // Conversation or message was deleted during workflow delay - skip this event.
+                return true;
+              }
+              const details = detailsResult.value;
+              return shouldSkipConversation({
+                subscriberId: subscriber.subscriberId,
                 payload: event.payload as ConversationUnreadPayloadType,
                 triggerShouldSkip: true,
-              })
-            )
+                hasUnreadMessages: details.hasUnreadMessages,
+              });
+            },
+            { concurrency: 8 }
           );
 
           // Do not skip if at least one conversation is not skipped.
@@ -431,12 +873,69 @@ export const conversationUnreadWorkflow = workflow(
   }
 );
 
+const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
+
+/**
+ * Filters participants based on their notification condition preference.
+ * Returns only participants who should receive notifications.
+ * Note: If a user is the only human participant in the conversation, they are
+ * always notified regardless of their preference.
+ */
+export const filterParticipantsByNotifyCondition = async ({
+  participants,
+  mentionedUserIds,
+  totalParticipantCount,
+}: {
+  participants: (UserType & { lastReadAt: Date | null })[];
+  mentionedUserIds: Set<string>;
+  totalParticipantCount: number;
+}): Promise<(UserType & { lastReadAt: Date | null })[]> => {
+  const userModelIds = participants.map((p) => p.id);
+
+  // Bulk query for all preferences.
+  const preferences = await UserMetadataModel.findAll({
+    where: {
+      userId: { [Op.in]: userModelIds },
+      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+    },
+    attributes: ["userId", "value"],
+  });
+
+  const preferenceMap = new Map<number, NotificationCondition>();
+  for (const pref of preferences) {
+    if (isNotificationCondition(pref.value)) {
+      preferenceMap.set(pref.userId, pref.value);
+    }
+  }
+
+  return participants.filter((participant) => {
+    const notifyCondition =
+      preferenceMap.get(participant.id) ?? DEFAULT_NOTIFICATION_CONDITION;
+    switch (notifyCondition) {
+      case "all_messages":
+        return true;
+      case "only_mentions":
+        // Notify if mentioned OR if only human participant.
+        return (
+          mentionedUserIds.has(participant.sId) || totalParticipantCount === 1
+        );
+      case "never":
+        return false;
+    }
+  });
+};
+
 export const triggerConversationUnreadNotifications = async (
   auth: Authenticator,
   {
-    conversation,
+    conversationId,
     messageId,
-  }: { conversation: ConversationResource; messageId: string }
+    userToNotifyId,
+  }: {
+    conversationId: string;
+    messageId: string;
+    userToNotifyId?: string; // Optional override for which user to notify, used in edge cases like adding a conversation participant.
+  }
 ): Promise<
   Result<
     void,
@@ -445,51 +944,96 @@ export const triggerConversationUnreadNotifications = async (
     }
   >
 > => {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return new Ok(undefined);
+  }
   // Skip any sub-conversations.
   if (conversation.depth > 0) {
     return new Ok(undefined);
   }
 
-  const participants = await conversation.listParticipants(auth, true);
+  // Get all participants to determine total count (for single-participant exception).
+  const totalParticipants = await conversation.listParticipants(auth);
+  const allParticipants = totalParticipants.filter((p) => {
+    if (userToNotifyId && p.sId !== userToNotifyId) {
+      return false;
+    }
+    return p.lastReadAt === null || conversation.updatedAt > p.lastReadAt;
+  });
 
-  if (participants.length !== 0) {
-    try {
-      const novuClient = await getNovuClient();
+  if (allParticipants.length === 0) {
+    return new Ok(undefined);
+  }
 
-      const r = await novuClient.bulkTrigger(
-        participants.map((p) => {
-          const payload: ConversationUnreadPayloadType = {
-            conversationId: conversation.sId,
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            messageId,
-          };
-          return {
-            name: CONVERSATION_UNREAD_TRIGGER_ID,
-            to: {
-              subscriberId: p.sId,
-              email: p.email,
-              firstName: p.firstName ?? undefined,
-              lastName: p.lastName ?? undefined,
-            },
-            payload,
-          };
-        })
-      );
-      if (r.status <= 200 && r.status >= 300) {
-        return new Err({
-          name: "dust_error",
-          code: "internal_server_error",
-          message: `Failed to trigger conversation unread notification due to network error: ${r.status} ${r.statusText}`,
-        });
-      }
-      return new Ok(undefined);
-    } catch (error) {
+  // Get conversation details including mentioned user IDs.
+  const detailsResult = await getConversationDetails({
+    auth,
+    payload: {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      conversationId: conversation.sId,
+      messageId,
+    },
+  });
+  if (detailsResult.isErr()) {
+    // Conversation or message was deleted - no notification needed.
+    return new Ok(undefined);
+  }
+
+  // Filter participants based on their notification condition preference.
+  const participants = await filterParticipantsByNotifyCondition({
+    participants: allParticipants,
+    mentionedUserIds: new Set(detailsResult.value.mentionedUserIds),
+    totalParticipantCount: totalParticipants.length,
+  });
+
+  if (participants.length === 0) {
+    return new Ok(undefined);
+  }
+
+  try {
+    const novuClient = await getNovuClient();
+
+    const r = await novuClient.triggerBulk({
+      events: participants.map((p) => {
+        const payload: ConversationUnreadPayloadType = {
+          conversationId: conversation.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          messageId,
+        };
+        return {
+          workflowId: CONVERSATION_UNREAD_TRIGGER_ID,
+          to: {
+            subscriberId: p.sId,
+            email: p.email,
+            firstName: p.firstName ?? undefined,
+            lastName: p.lastName ?? undefined,
+          },
+          payload,
+        };
+      }),
+    });
+
+    if (r.result.some((event) => !!event.error?.length)) {
+      const eventErrors = r.result
+        .filter((res) => !!res.error?.length)
+        .map(({ error }) => error?.join("; "))
+        .join("; ");
       return new Err({
         name: "dust_error",
         code: "internal_server_error",
-        message: `Failed to trigger conversation unread notification due to unknwon error: ${normalizeError(error).message}`,
+        message: `Failed to trigger conversation unread notification due to network errors: ${eventErrors}`,
       });
     }
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to trigger conversation unread notification: ${normalizeError(error).message}`,
+    });
   }
-  return new Ok(undefined);
 };

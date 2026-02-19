@@ -1,9 +1,8 @@
-import type { LoggerInterface } from "@dust-tt/client";
-
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { OAuthConnectionType, OAuthProvider } from "@connectors/types";
 import { getOAuthConnectionAccessToken } from "@connectors/types";
+import type { LoggerInterface } from "@dust-tt/client";
 
 // Most connectors are built on the assumption that errors are thrown with special handling of
 // selected errors such as ExternalOauthTokenError. This function is used to retrieve an OAuth
@@ -41,9 +40,10 @@ export async function getOAuthConnectionAccessTokenWithThrow({
       // Happens with confluence
       (tokRes.error.code === "provider_access_token_refresh_error" &&
         tokRes.error.message.includes("Token was globally revoked")) ||
-      // Happens with microsoft
+      // Happens with microsoft & gong
       (tokRes.error.code === "provider_access_token_refresh_error" &&
-        tokRes.error.message.includes("invalid_grant")) ||
+        (tokRes.error.message.includes("invalid_grant") ||
+          tokRes.error.message.includes("invalid_client"))) ||
       // Happens with google drive
       (tokRes.error.code === "provider_access_token_refresh_error" &&
         tokRes.error.message.includes("Account Restricted"))

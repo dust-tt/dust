@@ -7,11 +7,14 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
-import assert from "assert";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import type {
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
+} from "@app/types/assistant/agent_message_content";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -19,13 +22,10 @@ import type {
   FunctionMessageTypeModel,
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
-} from "@app/types";
-import { assertNever, isString } from "@app/types";
-import type {
-  AgentFunctionCallContentType,
-  AgentReasoningContentType,
-  AgentTextContentType,
-} from "@app/types/assistant/agent_message_content";
+} from "@app/types/assistant/generation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 
 function userContentToParam(
   content: Content
@@ -99,10 +99,20 @@ function functionMessage(message: FunctionMessageTypeModel): MessageParam {
   };
 }
 
-function userMessage(message: UserMessageTypeModel): MessageParam {
+function userMessage(
+  message: UserMessageTypeModel,
+  { isLast }: { isLast: boolean }
+): MessageParam {
+  const content = message.content.map(userContentToParam);
+
+  // Add cache_control to the last content block if this is the last message.
+  if (isLast && content.length > 0) {
+    content[content.length - 1].cache_control = { type: "ephemeral" };
+  }
+
   return {
     role: "user",
-    content: message.content.map(userContentToParam),
+    content,
   };
 }
 
@@ -120,11 +130,12 @@ function assistantMessage(
 }
 
 export function toMessage(
-  message: ModelMessageTypeMultiActionsWithoutContentFragment
+  message: ModelMessageTypeMultiActionsWithoutContentFragment,
+  { isLast }: { isLast: boolean } = { isLast: false }
 ): MessageParam {
   switch (message.role) {
     case "user":
-      return userMessage(message);
+      return userMessage(message, { isLast });
     case "function":
       return functionMessage(message);
     case "assistant":
@@ -138,6 +149,10 @@ export function toTool(tool: AgentActionSpecification): Tool {
   return {
     name: tool.name,
     description: tool.description,
+    // Eager input streaming allows the LLM to start streaming tool call arguments before
+    // the full input is generated, which avoid hanging for long tool call arguments generation.
+    // This is at the cost that JSON input can no longer be validated by Anthropic.
+    eager_input_streaming: true,
     input_schema: { ...tool.inputSchema, type: "object" },
   };
 }

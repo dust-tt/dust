@@ -1,11 +1,10 @@
-import { Button, Chip } from "@dust-tt/sparkle";
-import Image from "next/image";
-import Link from "next/link";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { BlogPostSummary } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
+import Image from "next/image";
 
 export const BLOG_PAGE_SIZE = 12;
 
@@ -70,7 +69,7 @@ interface BlogPostCardProps {
 
 export function BlogPostCard({ post }: BlogPostCardProps) {
   return (
-    <Link
+    <LinkWrapper
       href={`/blog/${post.slug}`}
       className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white"
     >
@@ -102,7 +101,7 @@ export function BlogPostCard({ post }: BlogPostCardProps) {
           ))}
         </div>
       </div>
-    </Link>
+    </LinkWrapper>
   );
 }
 
@@ -141,7 +140,7 @@ export function FeaturedPost({ post }: FeaturedPostProps) {
     <div className="col-span-12 pt-4">
       <div className="grid gap-6 rounded-2xl border border-gray-100 bg-white p-6 lg:grid-cols-12">
         {post.image && (
-          <Link
+          <LinkWrapper
             href={`/blog/${post.slug}`}
             className="cursor-pointer lg:col-span-7"
           >
@@ -154,7 +153,7 @@ export function FeaturedPost({ post }: FeaturedPostProps) {
               className="aspect-[16/9] w-full rounded-xl object-cover transition-opacity hover:opacity-90"
               sizes="(max-width: 1024px) 100vw, 60vw"
             />
-          </Link>
+          </LinkWrapper>
         )}
         <div className="flex h-full flex-col justify-center gap-4 lg:col-span-5">
           <div className="flex flex-wrap items-center gap-3">
@@ -168,14 +167,14 @@ export function FeaturedPost({ post }: FeaturedPostProps) {
               )}
             </span>
           </div>
-          <Link
+          <LinkWrapper
             href={`/blog/${post.slug}`}
             className="cursor-pointer transition-colors hover:text-highlight"
           >
             <h2 className="text-2xl font-semibold text-foreground md:text-3xl">
               {post.title}
             </h2>
-          </Link>
+          </LinkWrapper>
           {post.description && (
             <P className="text-muted-foreground">{post.description}</P>
           )}

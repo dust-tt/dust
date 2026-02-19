@@ -1,0 +1,38 @@
+{
+  "name": "@dust-tt/front-spa",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev:poke": "VITE_APP_NAME=poke VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
+    "dev:app": "VITE_APP_NAME=app VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
+    "build:poke": "VITE_APP_NAME=poke vite build && cp public-poke/_redirects dist/poke/_redirects",
+    "build:app": "VITE_APP_NAME=app vite build && cp public-app/_redirects dist/app/_redirects",
+    "build": "npm run build:poke && npm run build:app",
+    "preview:poke": "VITE_APP_NAME=poke vite preview",
+    "preview:app": "VITE_APP_NAME=app vite preview",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "dependencies": {
+    "@dust-tt/front": "*",
+    "@dust-tt/sparkle": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwind-scrollbar-hide": "^1.1.7",
+    "tailwindcss": "^3.4.19",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.0"
+  }
+}

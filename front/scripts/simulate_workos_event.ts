@@ -1,8 +1,7 @@
-import type { Event } from "@workos-inc/node";
-
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
+import type { Event } from "@workos-inc/node";
 
 /**
  * Script to simulate any WorkOS event

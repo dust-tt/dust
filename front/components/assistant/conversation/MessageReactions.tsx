@@ -1,7 +1,6 @@
+import { useAuth } from "@app/lib/auth/AuthContext";
+import type { MessageReactionType } from "@app/types/assistant/conversation";
 import { Button, Tooltip } from "@dust-tt/sparkle";
-
-import { useUser } from "@app/lib/swr/user";
-import type { MessageReactionType } from "@app/types";
 
 import { ReactionPill } from "./ReactionPill";
 
@@ -16,7 +15,7 @@ export function MessageReactions({
   reactions,
   onReactionClick,
 }: MessageReactionsProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   if (reactions.length === 0) {
     return null;
@@ -64,7 +63,7 @@ export function MessageReactions({
           trigger={
             <Button
               label={`+${hiddenReactions.length}`}
-              size="xs"
+              size="xmini"
               variant="outline"
               aria-label="More reactions"
             />

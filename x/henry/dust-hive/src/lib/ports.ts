@@ -1,7 +1,7 @@
 import { mkdir, open, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { createTypeGuard, isErrnoException } from "./errors";
+import { isErrnoException } from "./errors";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, DUST_HIVE_HOME, getPortsPath } from "./paths";
 import { getPidsOnPort, getProcessCommand } from "./platform";
@@ -16,6 +16,8 @@ export const PORT_OFFSETS = {
   core: 1,
   connectors: 2,
   oauth: 6,
+  frontSpaPoke: 10,
+  frontSpaApp: 11,
   postgres: 432,
   redis: 379,
   qdrantHttp: 333,
@@ -30,25 +32,29 @@ const PORT_LOCK_PATH = join(DUST_HIVE_HOME, "ports.lock");
 const PORT_LOCK_TIMEOUT_MS = 5000;
 const PORT_LOCK_STALE_MS = 30000;
 
-const PortAllocationFields = z.object({
-  base: z.number(),
-  front: z.number(),
-  core: z.number(),
-  connectors: z.number(),
-  oauth: z.number(),
-  postgres: z.number(),
-  redis: z.number(),
-  qdrantHttp: z.number(),
-  qdrantGrpc: z.number(),
-  elasticsearch: z.number(),
-  apacheTika: z.number(),
-});
+const PortAllocationSchema = z
+  .object({
+    base: z.number(),
+    front: z.number(),
+    core: z.number(),
+    connectors: z.number(),
+    oauth: z.number(),
+    frontSpaPoke: z.number().optional(),
+    frontSpaApp: z.number().optional(),
+    postgres: z.number(),
+    redis: z.number(),
+    qdrantHttp: z.number(),
+    qdrantGrpc: z.number(),
+    elasticsearch: z.number(),
+    apacheTika: z.number(),
+  })
+  .transform((data) => ({
+    ...data,
+    frontSpaPoke: data.frontSpaPoke ?? data.base + PORT_OFFSETS.frontSpaPoke,
+    frontSpaApp: data.frontSpaApp ?? data.base + PORT_OFFSETS.frontSpaApp,
+  }));
 
-const PortAllocationSchema = PortAllocationFields.passthrough();
-
-export type PortAllocation = z.infer<typeof PortAllocationFields>;
-
-const isPortAllocation = createTypeGuard<PortAllocation>(PortAllocationSchema);
+export type PortAllocation = z.output<typeof PortAllocationSchema>;
 
 // Calculate ports from a base port
 export function calculatePorts(base: number): PortAllocation {
@@ -58,6 +64,8 @@ export function calculatePorts(base: number): PortAllocation {
     core: base + PORT_OFFSETS.core,
     connectors: base + PORT_OFFSETS.connectors,
     oauth: base + PORT_OFFSETS.oauth,
+    frontSpaPoke: base + PORT_OFFSETS.frontSpaPoke,
+    frontSpaApp: base + PORT_OFFSETS.frontSpaApp,
     postgres: base + PORT_OFFSETS.postgres,
     redis: base + PORT_OFFSETS.redis,
     qdrantHttp: base + PORT_OFFSETS.qdrantHttp,
@@ -91,8 +99,9 @@ async function getAllocatedBasePorts(): Promise<number[]> {
 
     if (await file.exists()) {
       const data: unknown = await file.json();
-      if (isPortAllocation(data)) {
-        bases.push(data.base);
+      const result = PortAllocationSchema.safeParse(data);
+      if (result.success) {
+        bases.push(result.data.base);
       }
     }
   }
@@ -196,11 +205,12 @@ export async function loadPortAllocation(name: string): Promise<PortAllocation |
   }
 
   const data: unknown = await file.json();
-  if (!isPortAllocation(data)) {
-    return null;
+  const result = PortAllocationSchema.safeParse(data);
+  if (result.success) {
+    return result.data;
   }
 
-  return data;
+  return null;
 }
 
 // Re-export getPidsOnPort from platform module for backwards compatibility
@@ -274,4 +284,18 @@ export async function cleanupServicePorts(
   }
 
   return { killedPorts, blockedPorts };
+}
+
+// Format blocked ports for display in error messages
+export function formatBlockedPorts(
+  blockedPorts: Array<{ port: number; processes: PortProcessInfo[] }>
+): string {
+  return blockedPorts
+    .map(({ port, processes }) => {
+      const procInfo = processes
+        .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
+        .join(", ");
+      return `${port}: ${procInfo}`;
+    })
+    .join("; ");
 }

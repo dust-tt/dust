@@ -1,11 +1,10 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-
 import { getTemporalWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/upsert_queue/activities";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 

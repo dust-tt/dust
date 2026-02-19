@@ -1,13 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getWorkOSOrganizationDSyncDirectories } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { normalizeError } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,

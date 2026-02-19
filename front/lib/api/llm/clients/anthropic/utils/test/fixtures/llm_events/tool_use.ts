@@ -1,5 +1,5 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 export const toolUseLLMEvents: LLMEvent[] = [
   {
@@ -41,6 +41,13 @@ export const toolUseLLMEvents: LLMEvent[] = [
     },
   },
   {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
     type: "tool_call",
     content: {
       id: "DdHr7L197",
@@ -59,6 +66,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
       outputTokens: 128,
       cachedTokens: 0,
       cacheCreationTokens: 0,
+      uncachedInputTokens: 1766,
       totalTokens: 1894,
     },
     metadata: {

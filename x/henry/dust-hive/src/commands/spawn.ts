@@ -19,19 +19,26 @@ import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { type Settings, getBranchName, loadSettings } from "../lib/settings";
 import { installAllDependencies } from "../lib/setup";
 import { createTestDatabase, isTestPostgresRunning } from "../lib/test-postgres";
-import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
+import {
+  cleanupPartialEnvironment,
+  createWorktree,
+  createWorktreeFromExistingBranch,
+  getMainRepoPath,
+} from "../lib/worktree";
 import { openCommand } from "./open";
 import { warmCommand } from "./warm";
 
 interface SpawnOptions {
   name?: string;
   branchName?: string;
+  reuseExistingBranch?: boolean;
   noOpen?: boolean;
   noAttach?: boolean;
   warm?: boolean;
   wait?: boolean;
   command?: string;
   compact?: boolean;
+  unifiedLogs?: boolean;
 }
 
 async function promptForName(): Promise<string> {
@@ -139,16 +146,26 @@ async function setupWorktree(
   metadata: EnvironmentMetadata,
   worktreePath: string,
   workspaceBranch: string,
+  reuseExistingBranch: boolean,
   settings: Settings
 ): Promise<Result<void, CommandError>> {
   try {
-    await createWorktree(
-      metadata.repoRoot,
-      worktreePath,
-      workspaceBranch,
-      metadata.baseBranch,
-      settings
-    );
+    if (reuseExistingBranch) {
+      await createWorktreeFromExistingBranch(
+        metadata.repoRoot,
+        worktreePath,
+        workspaceBranch,
+        settings
+      );
+    } else {
+      await createWorktree(
+        metadata.repoRoot,
+        worktreePath,
+        workspaceBranch,
+        metadata.baseBranch,
+        settings
+      );
+    }
   } catch (error) {
     await deleteEnvironmentDir(metadata.name).catch((e) =>
       logger.warn(`Cleanup failed: ${errorMessage(e)}`)
@@ -182,8 +199,8 @@ async function setupWorktree(
   return Ok(undefined);
 }
 
-// Phase 3: Start SDK
-async function startSdk(
+// Phase 3: Start build watchers (sparkle and SDK)
+async function startBuildWatchers(
   env: Environment,
   worktreePath: string,
   waitForReady: boolean,
@@ -193,19 +210,20 @@ async function startSdk(
   const workspaceBranch = env.metadata.workspaceBranch;
 
   try {
-    await startService(env, "sdk");
+    // Start both sparkle and SDK in parallel
+    await Promise.all([startService(env, "sparkle"), startService(env, "sdk")]);
     if (waitForReady) {
-      await waitForServiceReady(env, "sdk");
+      await Promise.all([waitForServiceReady(env, "sparkle"), waitForServiceReady(env, "sdk")]);
     }
   } catch (error) {
-    logger.error("Spawn failed during SDK startup, cleaning up...");
+    logger.error("Spawn failed during build watcher startup, cleaning up...");
     await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch, settings).catch((e) =>
       logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
     );
     await deleteEnvironmentDir(env.name).catch((e) =>
       logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
     );
-    return Err(new CommandError(`Failed to start SDK: ${errorMessage(error)}`));
+    return Err(new CommandError(`Failed to start build watchers: ${errorMessage(error)}`));
   }
 
   return Ok(undefined);
@@ -273,10 +291,16 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   await tryCreateTestDatabase(name);
 
   // Phase 2: Setup worktree
-  const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch, settings);
+  const worktreeResult = await setupWorktree(
+    metadata,
+    worktreePath,
+    workspaceBranch,
+    Boolean(options.reuseExistingBranch),
+    settings
+  );
   if (!worktreeResult.ok) return worktreeResult;
 
-  // Phase 3: Start SDK
+  // Phase 3: Start build watchers (sparkle and SDK)
   const env: Environment = {
     name,
     metadata,
@@ -284,13 +308,18 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     initialized: false,
   };
 
-  // Wait for SDK build if:
+  // Wait for build watchers if:
   // - --no-open is passed (forced, no UI to show progress)
   // - --wait is explicitly passed
-  // Otherwise, let the watch process run and show progress in zellij
-  const shouldWaitForSdk = options.noOpen || options.wait;
-  const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk), settings);
-  if (!sdkResult.ok) return sdkResult;
+  // Otherwise, let the watch processes run and show progress in terminal session
+  const shouldWaitForBuild = options.noOpen || options.wait;
+  const buildResult = await startBuildWatchers(
+    env,
+    worktreePath,
+    Boolean(shouldWaitForBuild),
+    settings
+  );
+  if (!buildResult.ok) return buildResult;
 
   logger.success(`Environment '${name}' created successfully!`);
   console.log();
@@ -300,10 +329,10 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   console.log();
   console.log("Next steps:");
   console.log(`  dust-hive warm ${name}    # Start all services`);
-  console.log(`  dust-hive open ${name}    # Open zellij session`);
+  console.log(`  dust-hive open ${name}    # Open terminal session`);
   console.log();
 
-  // Open zellij unless --no-open
+  // Open terminal session unless --no-open
   if (!options.noOpen) {
     return openCommand(name, buildOpenOptions(name, options));
   }
@@ -315,16 +344,24 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
 function buildOpenOptions(
   name: string,
   options: SpawnOptions
-): { warmCommand?: string; noAttach?: boolean; initialCommand?: string; compact?: boolean } {
+): {
+  warmCommand?: string;
+  noAttach?: boolean;
+  initialCommand?: string;
+  compact?: boolean;
+  unifiedLogs?: boolean;
+} {
   const openOpts: {
     warmCommand?: string;
     noAttach?: boolean;
     initialCommand?: string;
     compact?: boolean;
+    unifiedLogs?: boolean;
   } = {};
   if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
   if (options.noAttach) openOpts.noAttach = true;
   if (options.command) openOpts.initialCommand = options.command;
   if (options.compact) openOpts.compact = true;
+  if (options.unifiedLogs) openOpts.unifiedLogs = true;
   return openOpts;
 }

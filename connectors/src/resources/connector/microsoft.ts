@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type {
   ConnectorProviderConfigurationType,
@@ -10,8 +8,11 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
-export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy<"microsoft"> {
+export class MicrosoftConnectorStrategy
+  implements ConnectorProviderStrategy<"microsoft">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,

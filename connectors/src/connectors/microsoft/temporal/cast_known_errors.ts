@@ -1,11 +1,10 @@
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 const knownMicrosoftSignInErrors = ["AADSTS50173", "AADSTS700016"];
 
@@ -29,7 +28,30 @@ export function isItemNotFoundError(err: unknown): err is GraphError {
   );
 }
 
-export class MicrosoftCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+// 423 Locked with code "notAllowed" indicates a SharePoint site has been blocked
+// by an administrator. This is an external permission restriction that cannot
+// be resolved in-product.
+export function isAccessBlockedError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 423 &&
+    err.code === "notAllowed"
+  );
+}
+
+// 401 with code "generalException" typically indicates site-level permission changes
+// or revoked access. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when
+export function isGeneralExceptionError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 401 &&
+    err.code === "generalException"
+  );
+}
+
+export class MicrosoftCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

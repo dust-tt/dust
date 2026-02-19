@@ -1,24 +1,32 @@
-import { Chip, Spinner } from "@dust-tt/sparkle";
-import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { getSkillIcon } from "@app/lib/skill";
 import {
   useAgentMessageSkills,
   useConversationMessage,
-} from "@app/lib/swr/conversations";
+} from "@app/hooks/conversations";
+import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/llms/agent_message_content_parser";
+import { getSkillIcon } from "@app/lib/skill";
+import {
+  isAgentFunctionCallContent,
+  isAgentReasoningContent,
+  isAgentTextContent,
+} from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
-  LightWorkspaceType,
   ParsedContentItem,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, Spinner } from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AgentActionsPanelProps {
   conversation: ConversationWithoutContentType;
@@ -86,10 +94,79 @@ function AgentActionsPanelContent({
     }
   }, [fullAgentMessage, isFreshMountWithContent, mutateSkills]);
 
-  const steps =
-    fullAgentMessage?.type === "agent_message"
-      ? fullAgentMessage.parsedContents
-      : {};
+  const [steps, setSteps] = useState<Record<number, ParsedContentItem[]>>({});
+
+  useEffect(() => {
+    async function generateParsedContents() {
+      const actions = fullAgentMessage.actions;
+      const agentConfiguration = fullAgentMessage.configuration;
+      const messageId = fullAgentMessage.sId;
+      const contents = fullAgentMessage.contents;
+      const parsedContents: Record<number, ParsedContentItem[]> = {};
+      const actionsByCallId = new Map(
+        actions.map((a) => [a.functionCallId, a])
+      );
+
+      for (const c of contents) {
+        const step = c.step + 1; // Convert to 1-indexed for display
+        if (!parsedContents[step]) {
+          parsedContents[step] = [];
+        }
+
+        if (isAgentReasoningContent(c.content)) {
+          const reasoning = c.content.value.reasoning;
+          if (reasoning && reasoning.trim()) {
+            parsedContents[step].push({
+              kind: "reasoning",
+              content: reasoning,
+            });
+          }
+          continue;
+        }
+
+        if (isAgentTextContent(c.content)) {
+          const contentParser = new AgentMessageContentParser(
+            agentConfiguration,
+            messageId,
+            getDelimitersConfiguration({ agentConfiguration })
+          );
+          const parsedContent = await contentParser.parseContents([
+            c.content.value,
+          ]);
+
+          if (
+            parsedContent.chainOfThought &&
+            parsedContent.chainOfThought.trim()
+          ) {
+            parsedContents[step].push({
+              kind: "reasoning",
+              content: parsedContent.chainOfThought,
+            });
+          }
+          continue;
+        }
+
+        if (isAgentFunctionCallContent(c.content)) {
+          const functionCallId = c.content.value.id;
+          const matchingAction = actionsByCallId.get(functionCallId);
+
+          if (matchingAction) {
+            parsedContents[step].push({
+              kind: "action",
+              action: matchingAction,
+            });
+          }
+        }
+      }
+      setSteps(parsedContents);
+    }
+    generateParsedContents().catch(console.error);
+  }, [
+    fullAgentMessage.actions,
+    fullAgentMessage.configuration,
+    fullAgentMessage.sId,
+    fullAgentMessage.contents,
+  ]);
 
   const nbSteps = Object.entries(steps || {}).filter(
     ([, entries]) => Array.isArray(entries) && entries.length > 0
@@ -118,6 +195,7 @@ function AgentActionsPanelContent({
     }
   }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!shouldStream) {
       return;
@@ -291,6 +369,7 @@ export function AgentActionsPanel({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({

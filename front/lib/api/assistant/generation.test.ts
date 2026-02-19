@@ -1,77 +1,477 @@
-import { describe, expect, it } from "vitest";
-
 import {
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/actions/constants";
-import { constructGuidelinesSection } from "@app/lib/api/assistant/generation";
-import type { AgentConfigurationType, UserMessageType } from "@app/types";
+  constructProjectContextSection,
+  constructPromptMultiActions,
+} from "@app/lib/api/assistant/generation";
+import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import { globalAgentInjectsMemory } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  normalizePrompt,
+  systemPromptToText,
+} from "@app/lib/api/llm/types/options";
+import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it } from "vitest";
 
-describe("constructGuidelinesSection", () => {
-  describe("MENTIONING USERS section with Slack/Teams origin handling", () => {
-    const baseAgentConfiguration: Pick<
-      AgentConfigurationType,
-      "actions" | "name"
-    > = {
-      actions: [],
-      name: "test-agent",
+describe("constructProjectContextSection", () => {
+  it("should return null when conversation is undefined", () => {
+    const result = constructProjectContextSection(undefined);
+    expect(result).toBeNull();
+  });
+
+  it("should return null when conversation has no spaceId", () => {
+    const conversation: ConversationWithoutContentType = {
+      id: 1,
+      sId: "conv-123",
+      created: 1234567890,
+      updated: 1234567890,
+      unread: false,
+      lastReadMs: 1234567890,
+      actionRequired: false,
+      hasError: false,
+      title: "Test Conversation",
+      spaceId: null,
+      triggerId: null,
+      depth: 0,
+      requestedSpaceIds: [],
+      metadata: {},
     };
 
-    it("should include mention tools for web origin", () => {
-      const userMessage = {
-        context: {
-          origin: "web" as const,
-          timezone: "UTC",
-        },
-      } as UserMessageType;
+    const result = constructProjectContextSection(conversation);
+    expect(result).toBeNull();
+  });
 
-      const result = constructGuidelinesSection({
-        agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-        userMessage,
-      });
+  it("should return project context section when conversation has spaceId", () => {
+    const conversation: ConversationWithoutContentType = {
+      id: 1,
+      sId: "conv-123",
+      created: 1234567890,
+      updated: 1234567890,
+      unread: false,
+      lastReadMs: 1234567890,
+      actionRequired: false,
+      hasError: false,
+      title: "Test Conversation",
+      spaceId: "space-456",
+      triggerId: null,
+      depth: 0,
+      requestedSpaceIds: [],
+      metadata: {},
+    };
 
-      // For web origin, should use the tool-based approach
-      expect(result).toContain(
-        `Use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users`
-      );
-      expect(result).toContain(
-        `Use the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive`
-      );
+    const result = constructProjectContextSection(conversation);
 
-      // Should NOT tell to use simple @username
-      expect(result).not.toContain("Use a simple @username to mention users");
-    });
+    expect(result).not.toBeNull();
+    expect(result).toEqual(`# PROJECT CONTEXT
 
-    it("should use simple @username for Slack origin", () => {
-      for (const origin of ["slack", "teams"] as const) {
-        const userMessage = {
-          context: {
-            origin: origin,
-            timezone: "UTC",
-          },
-        } as UserMessageType;
+This conversation is associated with a project. The project provides:
+- Persistent file storage shared across all conversations in this project
+- Project metadata (description and URLs) for organizational context
+- Semantic search capabilities over project files
+- Collaborative context that persists beyond individual conversations
 
-        const result = constructGuidelinesSection({
-          agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-          userMessage,
-        });
+## Using Project Tools
 
-        // For Slack, should explicitly tell NOT to use the tools
-        expect(result).toContain(
-          `Do not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.`
-        );
-        expect(result).toContain(
-          "Use a simple @username to mention users in your messages in this conversation."
-        );
+**project_manager**: Use these tools to manage persistent project files, metadata, and conversations
+**search_project_context**: Use this tool to semantically search across all project files when you need to:
+- Find relevant information within the project
+- Locate specific content across multiple files
+- Answer questions based on project knowledge
 
-        // Should NOT contain instructions to use the tools
-        expect(result).not.toContain(
-          `Use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available`
-        );
-        expect(result).not.toContain(
-          `Use the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use`
-        );
+## Tool Usage Priority
+
+When answering questions that require searching for information, follow this priority order:
+1. **First**, use \`search_project_context\` to search within the project's files. Project context is the most relevant source of information for this conversation.
+2. **Second**, use \`project_manager\` to gather more context on the project.
+2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`search\` to search across the broader company data sources.
+
+## Project Files vs Conversation Attachments
+- **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
+- **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
+
+When information should be preserved for future conversations or context, add it to project files.
+`);
+  });
+});
+
+describe("constructPromptMultiActions - system prompt stability", () => {
+  // This test ensures that the system prompt remains stable across multiple calls
+  // with the same inputs. This is critical for prompt caching - high-entropy data
+  // (timestamps with time precision, unique IDs, etc.) would reduce cache hits.
+
+  let authenticator1: Authenticator;
+  let workspace1: WorkspaceType;
+  let agentConfig1: AgentConfigurationType;
+  let userMessage1: UserMessageType;
+  let conversation1: ConversationType;
+
+  let authenticator2: Authenticator;
+  let workspace2: WorkspaceType;
+  let agentConfig2: AgentConfigurationType;
+  let userMessage2: UserMessageType;
+  let conversation2: ConversationType;
+
+  let modelConfig: ModelConfigurationType;
+
+  beforeEach(async () => {
+    // Set up first workspace with conversation and user message
+    const setup1 = await createResourceTest({ role: "admin" });
+    authenticator1 = setup1.authenticator;
+    workspace1 = setup1.workspace;
+
+    agentConfig1 = await AgentConfigurationFactory.createTestAgent(
+      authenticator1,
+      {
+        name: "Test Agent",
+        description: "A test agent for prompt stability",
       }
+    );
+
+    conversation1 = await ConversationFactory.create(authenticator1, {
+      agentConfigurationId: agentConfig1.sId,
+      messagesCreatedAt: [],
     });
+
+    const { userMessage: um1 } = await ConversationFactory.createUserMessage({
+      auth: authenticator1,
+      workspace: workspace1,
+      conversation: conversation1,
+      content: "Hello, this is a test message",
+      origin: "web",
+    });
+    userMessage1 = um1;
+
+    // Set up second workspace with different conversation
+    const setup2 = await createResourceTest({ role: "admin" });
+    authenticator2 = setup2.authenticator;
+    workspace2 = setup2.workspace;
+
+    agentConfig2 = await AgentConfigurationFactory.createTestAgent(
+      authenticator2,
+      {
+        name: "Test Agent",
+        description: "A test agent for prompt stability",
+      }
+    );
+
+    conversation2 = await ConversationFactory.create(authenticator2, {
+      agentConfigurationId: agentConfig2.sId,
+      messagesCreatedAt: [],
+    });
+
+    const { userMessage: um2 } = await ConversationFactory.createUserMessage({
+      auth: authenticator2,
+      workspace: workspace2,
+      conversation: conversation2,
+      content: "Different test message content",
+      origin: "web",
+    });
+    userMessage2 = um2;
+
+    // Get a real model config.
+    const modelConfigs = getSupportedModelConfigs();
+    const gpt4Config = modelConfigs.find(
+      (m) => m.providerId === "openai" && m.modelId === "gpt-4-turbo"
+    );
+    modelConfig = gpt4Config ?? modelConfigs[0];
+  });
+
+  it("should generate identical system prompts for the same inputs", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const prompt1 = constructPromptMultiActions(authenticator1, params);
+    const prompt2 = constructPromptMultiActions(authenticator1, params);
+
+    expect(prompt1).toEqual(prompt2);
+  });
+
+  it("should generate identical prompts with different conversation metadata from the same workspace", () => {
+    // Same workspace, same agent, but different conversation metadata
+    const baseParams = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    // Create two different conversation metadata objects
+    const convMetadata1: ConversationWithoutContentType = {
+      ...conversation1,
+      id: 111,
+      sId: "conv-aaa",
+      title: "First Conversation",
+    };
+
+    const convMetadata2: ConversationWithoutContentType = {
+      ...conversation1,
+      id: 222,
+      sId: "conv-bbb",
+      title: "Second Conversation - Different",
+      unread: true,
+      metadata: { different: "metadata" },
+    };
+
+    const prompt1 = constructPromptMultiActions(authenticator1, {
+      ...baseParams,
+      conversation: convMetadata1,
+    });
+    const prompt2 = constructPromptMultiActions(authenticator1, {
+      ...baseParams,
+      conversation: convMetadata2,
+    });
+
+    // Both should produce identical prompts since conversation-specific metadata
+    // (id, sId, title, timestamps) should NOT be included in the system prompt
+    expect(prompt1).toEqual(prompt2);
+  });
+
+  it("should generate different prompts for different workspaces", () => {
+    // Different workspaces should produce different prompts (workspace name is in the prompt)
+    const params1 = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      conversation: conversation1,
+    };
+
+    const params2 = {
+      userMessage: userMessage2,
+      agentConfiguration: agentConfig2,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      conversation: conversation2,
+    };
+
+    const prompt1 = constructPromptMultiActions(authenticator1, params1);
+    const prompt2 = constructPromptMultiActions(authenticator2, params2);
+
+    // Different workspaces should produce different prompts
+    // (workspace name is included in the context section)
+    expect(prompt1).not.toEqual(prompt2);
+
+    // Verify the workspace names are actually in the prompts
+    const text1 = systemPromptToText(prompt1);
+    const text2 = systemPromptToText(prompt2);
+    expect(text1).toContain(`workspace: ${workspace1.name}`);
+    expect(text2).toContain(`workspace: ${workspace2.name}`);
+  });
+
+  it("should return flat context array for regular agents", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Regular agents return a flat SystemPromptContext[] (no tuple).
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(0);
+    expect(context.length).toBeGreaterThan(0);
+    expect(context[0].content).toContain("# INSTRUCTIONS");
+    expect(context.every((s) => s.role === "context")).toBe(true);
+  });
+
+  it("should return tuple with instructions for deep-dive agent", () => {
+    const deepDiveConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+      scope: "global" as const,
+    };
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: deepDiveConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    // Deep-dive returns the tuple form [instructions, context].
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].role).toBe("instruction");
+    expect(instructions[0].content).toContain("# INSTRUCTIONS");
+    expect(context.length).toBeGreaterThan(0);
+    expect(context.every((s) => s.role === "context")).toBe(true);
+  });
+
+  it("should include memoriesContext in prompt output when provided", () => {
+    const memoriesContext =
+      "<existing_memories>\n- User prefers TypeScript (saved Jan 15, 2025).\n</existing_memories>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      memoriesContext,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("<existing_memories>");
+    expect(text).toContain("User prefers TypeScript");
+  });
+
+  it("should produce a valid prompt when memoriesContext is omitted", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    // Prompt works without memoriesContext (no crash, contains instructions).
+    expect(text).toContain("# INSTRUCTIONS");
+    expect(text).not.toContain("<existing_memories>");
+  });
+
+  it("should keep memory_guidelines in instructions but existing_memories in context for dust-like agents", () => {
+    const dustConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DUST,
+      scope: "global" as const,
+      instructions: agentConfig1.instructions + "\n<memory_guidelines>\n",
+    };
+
+    const memoriesContext =
+      "<existing_memories>\n- Some memory (saved Jan 1, 2025).\n</existing_memories>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: dustConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      memoriesContext,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const [instructions, context] = normalizePrompt(sections);
+
+    // Dust-like agents use the tuple form: memory_guidelines are in instructions.
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].content).toContain("<memory_guidelines>");
+    expect(instructions[0].content).not.toContain("<existing_memories>");
+
+    // existing_memories should be in a separate context section.
+    const memoriesSection = context.find((s) =>
+      s.content.includes("<existing_memories>")
+    );
+    expect(memoriesSection).toBeDefined();
+    expect(memoriesSection?.content).toContain("Some memory");
+  });
+});
+
+describe("globalAgentInjectsMemory", () => {
+  it("should return true for dust-like agents", () => {
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_EDGE)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_QUICK)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_OAI)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_GOOG)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH)).toBe(
+      true
+    );
+  });
+
+  it("should return false for non-dust global agents", () => {
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DEEP_DIVE)).toBe(false);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.GPT4)).toBe(false);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.HELPER)).toBe(false);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.GEMINI_PRO)).toBe(false);
+  });
+
+  it("should return false for arbitrary non-global-agent strings", () => {
+    expect(globalAgentInjectsMemory("my-custom-agent")).toBe(false);
+    expect(globalAgentInjectsMemory("random-string")).toBe(false);
+    expect(globalAgentInjectsMemory("")).toBe(false);
+  });
+});
+
+describe("buildMemoriesContext", () => {
+  it("should output 'No existing memories' for an empty array", async () => {
+    const result = buildMemoriesContext([]);
+
+    expect(result).toContain("<existing_memories>");
+    expect(result).toContain("</existing_memories>");
+    expect(result).toContain("No existing memories");
+  });
+
+  it("should include each memory's content and a saved date marker", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const memory1 = await AgentMemoryResource.makeNew(authenticator, {
+      agentConfigurationId: "test-agent",
+      content: "User is a backend engineer",
+      userId: null,
+    });
+    const memory2 = await AgentMemoryResource.makeNew(authenticator, {
+      agentConfigurationId: "test-agent",
+      content: "Prefers dark mode",
+      userId: null,
+    });
+
+    const result = buildMemoriesContext([memory1, memory2]);
+
+    expect(result).toContain("<existing_memories>");
+    expect(result).toContain("</existing_memories>");
+    expect(result).toContain("User is a backend engineer");
+    expect(result).toContain("Prefers dark mode");
+    // Each memory should have a "saved" date marker from formatTimestampToFriendlyDate.
+    expect(result).toContain("(saved ");
   });
 });

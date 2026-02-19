@@ -1,6 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
-
 import type {
   CursorPaginationParams,
   SortingParams,
@@ -20,12 +17,12 @@ import type {
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -78,8 +75,9 @@ export function useMultipleDataSourceViewsContentNodes({
   // We need to return an invalidation function to avoid stale data.
   invalidate: () => void;
 } {
-  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] =
-    useState<DataSourceViewsAndNodes[]>(emptyArray());
+  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] = useState<
+    DataSourceViewsAndNodes[]
+  >(emptyArray());
   const [isNodesLoading, setIsNodesLoading] = useState(false);
   const [isNodesError, setIsNodesError] = useState(false);
 
@@ -165,6 +163,7 @@ export function useMultipleDataSourceViewsContentNodes({
             }
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
         } catch (error) {
           setIsNodesError(true);
           break;

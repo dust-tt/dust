@@ -1,15 +1,14 @@
-import { useRouter } from "next/router";
-
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { MEMBERSHIP_ROLE_TYPES } from "@app/types/memberships";
 import type {
   RoleType,
   UserTypeWithWorkspaces,
   WorkspaceType,
-} from "@app/types";
-import { MEMBERSHIP_ROLE_TYPES } from "@app/types";
+} from "@app/types/user";
 
 function prepareMembersForDisplay(
   members: UserTypeWithWorkspaces[]
@@ -40,7 +39,7 @@ export function MembersDataTable({
   owner,
   readonly,
 }: MembersDataTableProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const onRevokeMember = async (m: MemberDisplayType) => {
     if (!window.confirm(`Are you sure you want to revoke ${m.email}?`)) {

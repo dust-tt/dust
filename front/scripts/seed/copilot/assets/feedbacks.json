@@ -1,0 +1,14 @@
+[
+  {
+    "conversationSId": "CopilotConv01",
+    "agentMessageSId": "CopilotAMsg01",
+    "thumbDirection": "down",
+    "content": "The agent should be able to search the internet for recent news. It's useless without web access."
+  },
+  {
+    "conversationSId": "CopilotConv02",
+    "agentMessageSId": "CopilotAMsg03",
+    "thumbDirection": "down",
+    "content": null
+  }
+]

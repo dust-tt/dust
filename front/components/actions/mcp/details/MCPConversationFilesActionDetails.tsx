@@ -1,3 +1,6 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   CodeBlock,
   Collapsible,
@@ -6,15 +9,11 @@ import {
   DocumentIcon,
 } from "@dust-tt/sparkle";
 
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-
 const MAX_PREVIEW_LINES = 10;
 
 export function MCPConversationCatFileDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const contentBlock = toolOutput?.find(isTextContent);
   const content = contentBlock?.text ?? null;
@@ -22,9 +21,9 @@ export function MCPConversationCatFileDetails({
   if (!content) {
     return (
       <ActionDetailsWrapper
-        viewType={viewType}
+        displayContext={displayContext}
         actionName={
-          viewType === "conversation"
+          displayContext === "conversation"
             ? "Reading conversation file"
             : "Read conversation file"
         }
@@ -43,15 +42,15 @@ export function MCPConversationCatFileDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? "Reading conversation file"
           : "Read conversation file"
       }
       visual={DocumentIcon}
     >
-      {viewType === "sidebar" && (
+      {displayContext === "sidebar" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>

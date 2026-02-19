@@ -15,6 +15,7 @@ use crate::oauth::{
         monday::MondayConnectionProvider, notion::NotionConnectionProvider,
         productboard::ProductboardConnectionProvider, salesforce::SalesforceConnectionProvider,
         slack::SlackConnectionProvider, slack_tools::SlackToolsConnectionProvider,
+        snowflake::SnowflakeConnectionProvider, ukg_ready::UkgReadyConnectionProvider,
         vanta::VantaConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
@@ -33,12 +34,24 @@ use tracing::{error, info};
 
 use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 
-// We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
+// We hold the lock for at most 20s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
-static REDIS_LOCK_TTL_SECONDS: u64 = 15;
+static REDIS_LOCK_TTL_SECONDS: u64 = 20;
+// Default timeout for provider token operations. Some providers may override this.
 // To ensure we don't write without holding the lock providers must comply to this timeout when
 // operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
+
+/// Returns the timeout in seconds for a specific provider's token operations.
+/// Some providers (e.g., Atlassian) have slower auth servers and need longer timeouts.
+pub fn provider_timeout_seconds(provider: ConnectionProvider) -> u64 {
+    match provider {
+        ConnectionProvider::Jira
+        | ConnectionProvider::Confluence
+        | ConnectionProvider::ConfluenceTools => 15,
+        _ => PROVIDER_TIMEOUT_SECONDS,
+    }
+}
 // Buffer of time in ms before the expiry of an access token within which we will attempt to
 // refresh it.
 pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
@@ -118,10 +131,12 @@ pub enum ConnectionProvider {
     Productboard,
     Slack,
     SlackTools,
+    Snowflake,
     Mock,
     Zendesk,
     Salesforce,
     Hubspot,
+    UkgReady,
     Vanta,
     Mcp,
     McpStatic,
@@ -266,10 +281,12 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
         ConnectionProvider::SlackTools => Box::new(SlackToolsConnectionProvider::new()),
+        ConnectionProvider::Snowflake => Box::new(SnowflakeConnectionProvider::new()),
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
+        ConnectionProvider::UkgReady => Box::new(UkgReadyConnectionProvider::new()),
         ConnectionProvider::Vanta => Box::new(VantaConnectionProvider::new()),
         ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
         // MCP Static is the same as MCP but does not require the discovery process on the front end.
@@ -834,10 +851,11 @@ impl Connection {
 
         self.access_token_expiry = refresh.access_token_expiry;
         self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);
-        self.encrypted_refresh_token = match &refresh.refresh_token {
-            Some(t) => Some(seal_str(t)?),
-            None => None,
-        };
+        // Only update refresh_token if the provider returned a new one.
+        // Some providers (like Snowflake) don't return a new refresh_token on every refresh.
+        if let Some(t) = &refresh.refresh_token {
+            self.encrypted_refresh_token = Some(seal_str(t)?);
+        }
         self.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&refresh.raw_json)?)?);
         store.update_connection_secrets(self).await?;
 

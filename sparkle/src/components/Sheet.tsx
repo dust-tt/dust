@@ -1,11 +1,12 @@
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
+
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
-import { cva } from "class-variance-authority";
-import * as React from "react";
-
 import { Button, Icon, ScrollArea } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import * as React from "react";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -33,7 +34,7 @@ const SheetOverlay = React.forwardRef<
 ));
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
-const SHEET_SIZES = ["md", "lg", "xl"] as const;
+const SHEET_SIZES = ["md", "lg", "xl", "2xl", "3xl"] as const;
 
 type SheetSizeType = (typeof SHEET_SIZES)[number];
 
@@ -45,6 +46,8 @@ const sizeClasses: Record<SheetSizeType, string> = {
   md: "sm:s-max-w-md",
   lg: "sm:s-max-w-xl",
   xl: "sm:s-max-w-3xl",
+  "2xl": "sm:s-max-w-4xl",
+  "3xl": "sm:s-max-w-5xl",
 };
 
 const sheetVariants = cva(
@@ -82,9 +85,8 @@ const sheetVariants = cva(
   }
 );
 
-interface SheetContentProps extends React.ComponentPropsWithoutRef<
-  typeof SheetPrimitive.Content
-> {
+interface SheetContentProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
   size?: SheetSizeType;
   trapFocusScope?: boolean;
   side?: SheetSideType;
@@ -184,14 +186,14 @@ const SheetHeader = ({
 }: SheetHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-p-5 s-text-left",
+      "s-z-50 s-flex s-flex-none s-flex-col s-p-5 s-text-left",
       "s-bg-background dark:s-bg-background-night",
       className
     )}
     {...props}
   >
     {children}
-    <SheetClose asChild className="s-absolute s-right-3">
+    <SheetClose asChild className="s-absolute s-right-3 s-top-4">
       {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
     </SheetClose>
   </div>
@@ -200,6 +202,7 @@ SheetHeader.displayName = "SheetHeader";
 
 interface SheetContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   noScroll?: boolean;
+  isListSelector?: boolean;
 }
 
 const ScrollContainer = ({
@@ -220,6 +223,7 @@ const ScrollContainer = ({
 const SheetContainer = ({
   children,
   noScroll,
+  isListSelector,
   className,
 }: SheetContainerProps) => {
   return (
@@ -232,7 +236,8 @@ const SheetContainer = ({
     >
       <div
         className={cn(
-          "s-relative s-flex s-h-full s-flex-col s-gap-5 s-px-5 s-pt-3 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night",
+          "s-relative s-flex s-h-full s-flex-col s-gap-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night",
+          !isListSelector && "s-px-5 s-pt-3",
           className
         )}
       >
@@ -301,9 +306,8 @@ const SheetFooter = ({
 };
 SheetFooter.displayName = "SheetFooter";
 
-interface SheetTitleProps extends React.ComponentPropsWithoutRef<
-  typeof SheetPrimitive.Title
-> {
+interface SheetTitleProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title> {
   icon?: React.ComponentType;
 }
 
@@ -312,7 +316,13 @@ const SheetTitle = React.forwardRef<
   SheetTitleProps
 >(({ className, icon, ...props }, ref) => (
   <>
-    {icon && <Icon visual={icon} size="lg" className="s-text-foreground" />}
+    {icon && (
+      <Icon
+        visual={icon}
+        size="lg"
+        className="s-text-foreground dark:s-text-foreground-night"
+      />
+    )}
     <SheetPrimitive.Title
       ref={ref}
       className={cn("s-heading-lg", className)}

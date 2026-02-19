@@ -1,9 +1,8 @@
-import { describe, expect, it } from "vitest";
-
 import type {
   RichAgentMentionInConversation,
   RichUserMentionInConversation,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { describe, expect, it } from "vitest";
 
 import { interleaveMentionsPreservingAgentOrder } from "./mention_suggestions";
 

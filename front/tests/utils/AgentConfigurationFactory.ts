@@ -1,12 +1,11 @@
-import assert from "assert";
-
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  LightAgentConfigurationType,
   ModelIdType,
   ModelProviderIdType,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
+import assert from "assert";
 
 export class AgentConfigurationFactory {
   static async createTestAgent(
@@ -14,14 +13,14 @@ export class AgentConfigurationFactory {
     overrides: Partial<{
       name: string;
       description: string;
-      scope: Exclude<LightAgentConfigurationType["scope"], "global">;
+      scope: Exclude<AgentConfigurationType["scope"], "global">;
       model: {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
         temperature?: number;
       };
     }> = {}
-  ): Promise<LightAgentConfigurationType> {
+  ): Promise<AgentConfigurationType> {
     const name = overrides.name ?? "Test Agent";
     const description = overrides.description ?? "Test Agent Description";
     const scope = overrides.scope ?? "visible";
@@ -36,6 +35,7 @@ export class AgentConfigurationFactory {
       name,
       description,
       instructions: "Test Instructions",
+      instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope,
@@ -54,6 +54,50 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
-    return result.value;
+    return { ...result.value, actions: [] };
+  }
+
+  /**
+   * Updates an existing agent configuration, creating a new version.
+   * Pass the sId of the existing agent to update it.
+   */
+  static async updateTestAgent(
+    auth: Authenticator,
+    agentId: string,
+    overrides: Partial<{
+      name: string;
+      description: string;
+      instructions: string;
+      instructionsHtml: string | null;
+    }> = {}
+  ): Promise<AgentConfigurationType> {
+    const user = auth.user();
+    assert(user, "User is required");
+
+    const result = await createAgentConfiguration(auth, {
+      name: overrides.name ?? "Test Agent",
+      description: overrides.description ?? "Test Agent Description",
+      instructions: overrides.instructions ?? "Updated Test Instructions",
+      instructionsHtml: overrides.instructionsHtml ?? null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "visible",
+      model: {
+        providerId: "openai",
+        modelId: "gpt-4-turbo",
+        temperature: 0.7,
+      },
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      agentConfigurationId: agentId,
+    });
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    return { ...result.value, actions: [] };
   }
 }

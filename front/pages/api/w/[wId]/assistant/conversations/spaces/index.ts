@@ -1,20 +1,18 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConversationWithoutContentType,
-  SpaceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { SpaceType } from "@app/types/space";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetBySpacesSummaryResponseBody = {
   summary: Array<{
     space: SpaceType;
     unreadConversations: ConversationWithoutContentType[];
+    nonParticipantUnreadConversations: ConversationWithoutContentType[];
   }>;
 };
 
@@ -25,28 +23,24 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const workspace = auth.getNonNullableWorkspace();
-
-      // Filter out non-regular groups as we only want to allow conversations in project spaces (that are linked to regular groups)
-      const allGroups = auth
-        .groups()
-        .filter((g) => g.kind === "regular" && g.workspaceId === workspace.id);
-
-      const spaces = await SpaceResource.listForGroups(auth, allGroups);
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
       // Fetch all unread conversations for the user in one query
-      const unreadConversations =
-        await ConversationResource.listConversationsForUser(auth, {
-          onlyUnread: true,
-          kind: "space",
-        });
+      const { unreadConversations, nonParticipantUnreadConversations } =
+        await ConversationResource.listSpaceUnreadConversationsForUser(
+          auth,
+          spaces.map((s) => s.id)
+        );
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
       const conversationsBySpace = new Map<
         number,
-        ConversationWithoutContentType[]
+        {
+          unreadConversations: ConversationWithoutContentType[];
+          nonParticipantUnreadConversations: ConversationWithoutContentType[];
+        }
       >();
 
       for (const conversation of unreadConversations) {
@@ -54,8 +48,28 @@ async function handler(
         if (conversation.spaceId) {
           const spaceModelId = conversation.space?.id;
           if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
-            const existing = conversationsBySpace.get(spaceModelId) ?? [];
-            existing.push(conversation.toJSON());
+            const existing = conversationsBySpace.get(spaceModelId) ?? {
+              unreadConversations: [],
+              nonParticipantUnreadConversations: [],
+            };
+            existing.unreadConversations.push(conversation.toJSON());
+            conversationsBySpace.set(spaceModelId, existing);
+          }
+        }
+      }
+
+      for (const conversation of nonParticipantUnreadConversations) {
+        // Only match conversations to spaces via spaceId
+        if (conversation.spaceId) {
+          const spaceModelId = conversation.space?.id;
+          if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
+            const existing = conversationsBySpace.get(spaceModelId) ?? {
+              unreadConversations: [],
+              nonParticipantUnreadConversations: [],
+            };
+            existing.nonParticipantUnreadConversations.push(
+              conversation.toJSON()
+            );
             conversationsBySpace.set(spaceModelId, existing);
           }
         }
@@ -70,9 +84,11 @@ async function handler(
           )
           .map((space) => ({
             space: space.toJSON(),
-            unreadConversations: (
-              conversationsBySpace.get(space.id) ?? []
-            ).sort((a, b) => b.updated - a.updated), // Sort by updated time descending
+            unreadConversations:
+              conversationsBySpace.get(space.id)?.unreadConversations ?? [],
+            nonParticipantUnreadConversations:
+              conversationsBySpace.get(space.id)
+                ?.nonParticipantUnreadConversations ?? [],
           })),
       };
 

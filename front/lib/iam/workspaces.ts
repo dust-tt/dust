@@ -1,17 +1,22 @@
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 
-export async function createWorkspace(session: SessionWithUser) {
+export async function createWorkspace(
+  session: SessionWithUser,
+  utmParams?: UTMParams
+) {
   const { user: externalUser } = session;
 
   return createWorkspaceInternal({
@@ -19,6 +24,7 @@ export async function createWorkspace(session: SessionWithUser) {
     isBusiness: false,
     planCode: null,
     endDate: null,
+    utmParams,
   });
 }
 
@@ -27,11 +33,13 @@ export async function createWorkspaceInternal({
   isBusiness,
   planCode,
   endDate,
+  utmParams,
 }: {
   name: string;
   isBusiness: boolean;
   planCode: string | null;
   endDate: Date | null;
+  utmParams?: UTMParams;
 }) {
   // If planCode is provided, it must be a free plan that exists in the database.
   if (planCode) {
@@ -50,12 +58,24 @@ export async function createWorkspaceInternal({
     }
   }
 
-  const workspace = await WorkspaceModel.create({
+  const metadata: {
+    isBusiness: boolean;
+    utmTracking?: UTMParams & { capturedAt: number };
+  } = {
+    isBusiness,
+  };
+
+  if (utmParams && Object.keys(utmParams).length > 0) {
+    metadata.utmTracking = {
+      ...utmParams,
+      capturedAt: Date.now(),
+    };
+  }
+
+  const workspace = await WorkspaceResource.makeNew({
     sId: generateRandomModelSId(),
     name,
-    metadata: {
-      isBusiness,
-    },
+    metadata,
   });
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -75,11 +95,22 @@ export async function createWorkspaceInternal({
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   if (planCode) {
-    await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
-      workspaceId: workspace.sId,
-      planCode,
-      endDate,
-    });
+    const newSubscription =
+      await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
+        workspaceId: workspace.sId,
+        planCode,
+        endDate,
+      });
+
+    if (isUpgraded(newSubscription.getPlan())) {
+      const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
+      if (orgRes.isErr()) {
+        logger.error(
+          { error: orgRes.error, workspaceId: workspace.sId },
+          "Failed to create WorkOS organization during workspace creation"
+        );
+      }
+    }
   }
 
   return workspace;
@@ -88,24 +119,23 @@ export async function createWorkspaceInternal({
 export async function findWorkspaceWithVerifiedDomain(user: {
   email: string;
   email_verified: boolean;
-}): Promise<WorkspaceHasDomainModel | null> {
+}): Promise<{
+  workspace: WorkspaceResource;
+  domainAutoJoinEnabled: boolean;
+} | null> {
   if (!user.email_verified) {
     return null;
   }
 
   const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne({
-    where: {
-      domain: userEmailDomain,
-    },
-    include: [
-      {
-        model: WorkspaceModel,
-        as: "workspace",
-        required: true,
-      },
-    ],
-  });
+  const result = await WorkspaceResource.fetchByDomainWithInfo(userEmailDomain);
 
-  return workspaceWithVerifiedDomain;
+  if (!result) {
+    return null;
+  }
+
+  return {
+    workspace: result.workspace,
+    domainAutoJoinEnabled: result.domainInfo.domainAutoJoinEnabled,
+  };
 }

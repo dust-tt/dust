@@ -3,14 +3,14 @@ import {
   isBotIntegration,
 } from "@app/lib/connector_providers";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { CoreAPIDocument } from "@app/types/core/data_source";
 import type {
   ConnectorProvider,
-  CoreAPIDocument,
   DataSourceType,
-  DataSourceViewType,
-  WhitelistableFeature,
   WithConnector,
-} from "@app/types";
+} from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 // TODO(DURABLE AGENTS 2025-06-25): Remove RetrievalDocumentResource support.
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
@@ -126,9 +126,9 @@ export function supportsDocumentsData(
 export function supportsStructuredData(ds: DataSource): boolean {
   return Boolean(
     isFolder(ds) ||
-    isRemoteDatabase(ds) ||
-    (ds.connectorProvider &&
-      STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
+      isRemoteDatabase(ds) ||
+      (ds.connectorProvider &&
+        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
   );
 }
 

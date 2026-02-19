@@ -1,15 +1,6 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { literal, Op, QueryTypes } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -17,9 +8,20 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type {
+  TriggerType,
+  WebhookRequestTriggerStatus,
+} from "@app/types/assistant/triggers";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { col, fn, literal, Op, QueryTypes } from "sequelize";
 
 const MAX_WEBHOOK_REQUESTS_TO_KEEP = 1000;
 const WEBHOOK_REQUEST_TTL = "30 day";
@@ -32,7 +34,8 @@ type CleanUpWorkspaceOptions = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WebhookRequestResource extends ReadonlyAttributesType<WebhookRequestModel> {}
+export interface WebhookRequestResource
+  extends ReadonlyAttributesType<WebhookRequestModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
@@ -172,6 +175,43 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
+  /**
+   * Fetch webhook request triggers for a given trigger ID, including the associated
+   * webhook request data. Used for displaying recent webhook request history.
+   */
+  static async listForTriggerId(
+    auth: Authenticator,
+    {
+      triggerId,
+      limit,
+      status,
+    }: {
+      triggerId: ModelId;
+      limit?: number;
+      status?: WebhookRequestTriggerStatus;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    return WebhookRequestTriggerModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        triggerId,
+        ...(status ? { status } : {}),
+      },
+      include: [
+        {
+          model: WebhookRequestModel,
+          as: "webhookRequest",
+          required: true,
+          attributes: ["id", "createdAt", "webhookSourceId"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit,
+    });
+  }
+
   static async listByStatus(
     auth: Authenticator,
     {
@@ -191,7 +231,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webhookRequestTtl = WEBHOOK_REQUEST_TTL,
     maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
   }: Partial<CleanUpWorkspaceOptions> = {}) {
-    // eslint-disable-next-line dust/no-raw-sql
+    // biome-ignore lint/plugin/noRawSql: automatic suppress
     const rows = await frontSequelize.query<{
       workspaceId: ModelId;
       total_entries: number;
@@ -272,6 +312,151 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       },
       { concurrency: 16 }
     );
+  }
+
+  /**
+   * Count webhook requests for a source across multiple time periods.
+   */
+  static async countBySourceInPeriods(
+    auth: Authenticator,
+    webhookSourceModelId: ModelId
+  ): Promise<{ last24h: number; last7d: number; last30d: number }> {
+    const workspace = auth.getNonNullableWorkspace();
+    const where = {
+      workspaceId: workspace.id,
+      webhookSourceId: webhookSourceModelId,
+    };
+
+    const [last24h, last7d, last30d] = await Promise.all([
+      WebhookRequestModel.count({
+        where: {
+          ...where,
+          createdAt: { [Op.gt]: literal("NOW() - interval '24 hour'") },
+        },
+      }),
+      WebhookRequestModel.count({
+        where: {
+          ...where,
+          createdAt: { [Op.gt]: literal("NOW() - interval '7 day'") },
+        },
+      }),
+      WebhookRequestModel.count({
+        where: {
+          ...where,
+          createdAt: { [Op.gt]: literal("NOW() - interval '30 day'") },
+        },
+      }),
+    ]);
+
+    return { last24h, last7d, last30d };
+  }
+
+  /**
+   * Get execution stats for a trigger: status breakdown and daily volume (last 30 days).
+   */
+  static async getExecutionStatsForTrigger(
+    auth: Authenticator,
+    triggerModelId: ModelId
+  ): Promise<{
+    statusBreakdown: Record<string, number>;
+    dailyVolume: Array<{
+      date: string;
+      succeeded: number;
+      failed: number;
+      notMatched: number;
+      rateLimited: number;
+    }>;
+  }> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Status breakdown.
+    const statusRows = await WebhookRequestTriggerModel.findAll({
+      attributes: ["status", [fn("COUNT", col("id")), "count"]],
+      where: {
+        workspaceId: workspace.id,
+        triggerId: triggerModelId,
+      },
+      group: ["status"],
+      raw: true,
+    });
+
+    const statusBreakdown: Record<string, number> = {};
+    for (const row of statusRows) {
+      statusBreakdown[row.status] = Number(
+        (row as unknown as { count: string }).count
+      );
+    }
+
+    // Daily volume grouped by status (last 30 days).
+    const dailyRows = await WebhookRequestTriggerModel.findAll({
+      attributes: [
+        [fn("DATE", col("createdAt")), "date"],
+        "status",
+        [fn("COUNT", col("id")), "count"],
+      ],
+      where: {
+        workspaceId: workspace.id,
+        triggerId: triggerModelId,
+        createdAt: {
+          [Op.gt]: literal("NOW() - interval '30 day'"),
+        },
+      },
+      group: [fn("DATE", col("createdAt")), "status"],
+      order: [[fn("DATE", col("createdAt")), "DESC"]],
+      raw: true,
+    });
+
+    // Aggregate rows by date into per-status counts.
+    const dailyMap = new Map<
+      string,
+      {
+        succeeded: number;
+        failed: number;
+        notMatched: number;
+        rateLimited: number;
+      }
+    >();
+    for (const row of dailyRows) {
+      const { status } = row;
+      const date = (row as unknown as { date: string }).date;
+      const count = Number((row as unknown as { count: string }).count);
+
+      if (!dailyMap.has(date)) {
+        dailyMap.set(date, {
+          succeeded: 0,
+          failed: 0,
+          notMatched: 0,
+          rateLimited: 0,
+        });
+      }
+      const entry = dailyMap.get(date)!;
+      switch (status) {
+        case "workflow_start_succeeded":
+          entry.succeeded += count;
+          break;
+        case "workflow_start_failed":
+          entry.failed += count;
+          break;
+        case "not_matched":
+          entry.notMatched += count;
+          break;
+        case "rate_limited":
+          entry.rateLimited += count;
+          break;
+      }
+    }
+
+    const dailyVolume = Array.from(dailyMap.entries()).map(
+      ([date, counts]) => ({
+        date,
+        ...counts,
+      })
+    );
+
+    return {
+      statusBreakdown,
+      dailyVolume,
+    };
   }
 
   static getGcsPath({

@@ -1,3 +1,11 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
+import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
+import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   ArrowPathIcon,
   Button,
@@ -6,17 +14,9 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 import { useFormContext } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
-import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
-import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
-import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types";
 
 interface AgentBuilderInstructionsBlockProps {
   agentConfigurationId: string | null;
@@ -49,22 +49,7 @@ export function AgentBuilderInstructionsBlock({
     setIsInstructionDiffMode(false);
   };
 
-  const headerActions = (
-    <>
-      {!isInstructionDiffMode && <AdvancedSettings />}
-      {agentConfigurationHistory && agentConfigurationHistory.length > 1 && (
-        <AgentInstructionsHistory
-          history={agentConfigurationHistory}
-          selectedConfig={compareVersion}
-          onSelect={(config) => {
-            setCompareVersion(config);
-            setIsInstructionDiffMode(true);
-          }}
-          owner={owner}
-        />
-      )}
-    </>
-  );
+  const headerActions = <>{!isInstructionDiffMode && <AdvancedSettings />}</>;
 
   return (
     <AgentBuilderSectionContainer
@@ -105,7 +90,21 @@ export function AgentBuilderInstructionsBlock({
       <AgentBuilderInstructionsEditor
         compareVersion={compareVersion}
         isInstructionDiffMode={isInstructionDiffMode}
-      />
+      >
+        {agentConfigurationHistory && agentConfigurationHistory.length > 1 && (
+          <AgentBuilderInstructionsEditor.ToolbarSlot>
+            <AgentInstructionsHistory
+              history={agentConfigurationHistory}
+              selectedConfig={compareVersion}
+              onSelect={(config) => {
+                setCompareVersion(config);
+                setIsInstructionDiffMode(true);
+              }}
+              owner={owner}
+            />
+          </AgentBuilderInstructionsEditor.ToolbarSlot>
+        )}
+      </AgentBuilderInstructionsEditor>
     </AgentBuilderSectionContainer>
   );
 }

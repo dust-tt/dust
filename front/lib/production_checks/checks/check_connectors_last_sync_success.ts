@@ -1,12 +1,11 @@
-import { QueryTypes } from "sequelize";
-
 import {
   isBotTypeProvider,
   isWebhookBasedProvider,
 } from "@app/lib/connector_providers";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
-import type { ActionLink, CheckFunction } from "@app/types";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { QueryTypes } from "sequelize";
 
 interface ConnectorBlob {
   id: number;
@@ -21,6 +20,7 @@ interface ConnectorBlob {
 
 async function listAllConnectors() {
   const connectors: ConnectorBlob[] =
+    // biome-ignore lint/plugin/noRawSql: production check uses read replica
     await getConnectorsPrimaryDbConnection().query(
       `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
       {

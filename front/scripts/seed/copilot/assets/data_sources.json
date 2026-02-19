@@ -1,0 +1,55 @@
+[
+  {
+    "name": "Sales CRM Data",
+    "description": "Sales pipeline data including opportunities, accounts, and deal history",
+    "documents": [
+      {
+        "id": "closed-won-q4-2025",
+        "title": "Closed Won Opportunities Q4 2025",
+        "content": "Closed Won Opportunities - Q4 2025\n\nDeal: Enterprise License - Acme Corp\nAmount: $450,000\nClose Date: 2025-12-15\nSales Rep: Sarah Johnson\nStage Duration: 45 days\nProducts: Platform License, Professional Services\n\nDeal: Annual Subscription - TechStart Inc\nAmount: $120,000\nClose Date: 2025-11-28\nSales Rep: Mike Chen\nStage Duration: 30 days\nProducts: Team License\n\nDeal: Multi-year Agreement - GlobalBank\nAmount: $890,000\nClose Date: 2025-10-05\nSales Rep: Sarah Johnson\nStage Duration: 90 days\nProducts: Enterprise License, Premium Support, Custom Integration"
+      },
+      {
+        "id": "closed-lost-q4-2025",
+        "title": "Closed Lost Opportunities Q4 2025",
+        "content": "Closed Lost Opportunities - Q4 2025\n\nDeal: Platform Upgrade - RetailMax\nAmount: $200,000\nLoss Date: 2025-12-20\nLoss Reason: Budget constraints\nCompetitor: None\nNotes: Prospect indicated budget freeze until Q2 2026\n\nDeal: New Business - DataFlow Systems\nAmount: $350,000\nLoss Date: 2025-11-15\nLoss Reason: Chose competitor\nCompetitor: Salesforce\nNotes: Prospect preferred native Salesforce ecosystem integration\n\nDeal: Expansion - CloudNine Media\nAmount: $175,000\nLoss Date: 2025-10-30\nLoss Reason: No decision\nNotes: Stakeholder left the company, deal went cold"
+      },
+      {
+        "id": "pipeline-summary-2025",
+        "title": "Annual Pipeline Summary 2025",
+        "content": "Annual Pipeline Summary 2025\n\nTotal Pipeline Generated: $12.5M\nTotal Closed Won: $8.2M\nTotal Closed Lost: $3.1M\nWin Rate: 72.5%\nAverage Deal Size: $285,000\nAverage Sales Cycle: 52 days\n\nTop Performing Reps:\n1. Sarah Johnson - $3.2M closed\n2. Mike Chen - $2.1M closed\n3. Lisa Park - $1.8M closed\n\nTop Loss Reasons:\n1. Budget constraints (35%)\n2. Chose competitor (28%)\n3. No decision (22%)\n4. Timing (15%)"
+      }
+    ]
+  },
+  {
+    "name": "Product Documentation",
+    "description": "Product specifications, release notes, and technical documentation",
+    "documents": [
+      {
+        "id": "release-notes-v3",
+        "title": "Release Notes v3.0",
+        "content": "Release Notes - Version 3.0\n\nNew Features:\n- Advanced analytics dashboard with custom widgets\n- Real-time collaboration on documents\n- API v2 with GraphQL support\n- SSO integration with SAML 2.0 and OIDC\n- Automated workflow builder\n\nImprovements:\n- 40% faster page load times\n- Redesigned navigation sidebar\n- Enhanced search with filters and facets\n- Mobile-responsive admin panel\n\nBug Fixes:\n- Fixed CSV export timeout for large datasets\n- Resolved permission inheritance issue in nested folders\n- Fixed notification delivery delays"
+      },
+      {
+        "id": "api-reference",
+        "title": "API Reference Guide",
+        "content": "API Reference Guide\n\nBase URL: https://api.example.com/v2\n\nAuthentication:\nAll API requests require a Bearer token in the Authorization header.\n\nEndpoints:\n\nGET /users - List all users\nPOST /users - Create a new user\nGET /users/:id - Get user details\nPATCH /users/:id - Update user\nDELETE /users/:id - Delete user\n\nGET /documents - List documents\nPOST /documents - Create document\nGET /documents/:id - Get document\nPUT /documents/:id/content - Update document content\n\nRate Limits:\n- Standard: 100 requests/minute\n- Enterprise: 1000 requests/minute"
+      }
+    ]
+  },
+  {
+    "name": "Company Wiki",
+    "description": "Internal company processes, team information, and policies",
+    "documents": [
+      {
+        "id": "onboarding-guide",
+        "title": "New Employee Onboarding Guide",
+        "content": "New Employee Onboarding Guide\n\nWeek 1: Getting Started\n- Set up your laptop and accounts (IT will provide credentials)\n- Complete compliance training modules\n- Meet your team and manager\n- Review company handbook\n\nWeek 2: Deep Dive\n- Shadow team members on key workflows\n- Set up development environment (if engineering)\n- Complete product training\n- First 1:1 with manager\n\nWeek 3-4: Ramp Up\n- Take on first small task/project\n- Attend team planning meetings\n- Set 30-60-90 day goals with manager\n\nKey Contacts:\n- IT Support: it-support@company.com\n- HR: hr@company.com\n- Facilities: facilities@company.com"
+      },
+      {
+        "id": "engineering-standards",
+        "title": "Engineering Standards and Best Practices",
+        "content": "Engineering Standards and Best Practices\n\nCode Review Process:\n- All changes require at least one approval\n- Use conventional commits format\n- PRs should be under 400 lines when possible\n- Include tests for new features\n\nDeployment:\n- Staging deploys happen automatically on merge to main\n- Production deploys require manual approval\n- Rollback procedure: revert the PR and merge\n\nTech Stack:\n- Frontend: React, TypeScript, Tailwind CSS\n- Backend: Node.js, PostgreSQL, Redis\n- Infrastructure: AWS, Terraform, GitHub Actions\n\nOn-Call:\n- Rotation is weekly, Monday to Monday\n- Primary on-call responds within 15 minutes\n- Escalation path: Primary → Secondary → Engineering Manager"
+      }
+    ]
+  }
+]

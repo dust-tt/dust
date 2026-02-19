@@ -1,6 +1,4 @@
-import { PaginationState } from "@tanstack/react-table";
-import { useState } from "react";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Citation,
@@ -12,6 +10,8 @@ import {
 } from "@sparkle/components/Citation";
 import { Pagination } from "@sparkle/components/Pagination";
 import { classNames } from "@sparkle/lib/utils";
+import type { PaginationState } from "@tanstack/react-table";
+import React, { useState } from "react";
 
 interface CitationItem {
   description?: string;

@@ -1,13 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type {
+  ToolLatencyRow,
+  ToolLatencyView,
+} from "@app/lib/api/assistant/observability/tool_latency";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -21,13 +21,16 @@ import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]"
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
 import type { GetDatasourceRetrievalResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval";
+import type { GetDatasourceRetrievalDocumentsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval-documents";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
+import type { GetSkillExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/skill-execution";
 import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
 import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
+import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
 import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
@@ -39,10 +42,12 @@ import type {
   AgentConfigurationType,
   AgentsGetViewType,
   LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+} from "@app/types/assistant/agent";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function useAgentMcpConfigurations({
   workspaceId,
@@ -294,6 +299,8 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   agentConfigurationId: string | null;
   limit: number;
   filter?: "unseen" | "all";
+  version?: number;
+  days?: number;
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
@@ -301,6 +308,8 @@ export function useAgentConfigurationFeedbacksByDescVersion({
   agentConfigurationId,
   limit,
   filter = "unseen",
+  version,
+  days,
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -333,6 +342,14 @@ export function useAgentConfigurationFeedbacksByDescVersion({
           withMetadata: "true",
           filter,
         });
+
+        if (version !== undefined) {
+          urlParams.set("version", version.toString());
+        }
+
+        if (days !== undefined) {
+          urlParams.set("days", days.toString());
+        }
 
         if (previousPageData !== null) {
           const lastIdValue =
@@ -1051,6 +1068,84 @@ export function useAgentToolExecution({
   };
 }
 
+export function useAgentSkillExecution({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetSkillExecutionResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/skill-execution?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    skillExecutionByVersion: data?.byVersion ?? emptyArray(),
+    skillExecutionBySource: data?.bySource ?? emptyArray(),
+    isSkillExecutionLoading: !error && !data && !disabled,
+    isSkillExecutionError: error,
+    isSkillExecutionValidating: isValidating,
+  };
+}
+
+type AgentToolLatencyResult = {
+  toolLatencyRows: ToolLatencyRow[];
+  isToolLatencyLoading: boolean;
+  isToolLatencyError: unknown;
+  isToolLatencyValidating: boolean;
+};
+
+export function useAgentToolLatency({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  view,
+  serverName,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  view: ToolLatencyView;
+  serverName?: string;
+  disabled?: boolean;
+}): AgentToolLatencyResult {
+  const fetcherFn: Fetcher<GetToolLatencyResponse> = fetcher;
+  const params = new URLSearchParams({ days: days.toString(), view });
+  if (version) {
+    params.set("version", version);
+  }
+  if (serverName) {
+    params.set("serverName", serverName);
+  }
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-latency?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolLatencyRows: data?.rows ?? emptyArray(),
+    isToolLatencyLoading: !error && !data && !disabled,
+    isToolLatencyError: error,
+    isToolLatencyValidating: isValidating,
+  };
+}
+
 export function useAgentToolStepIndex({
   workspaceId,
   agentConfigurationId,
@@ -1112,6 +1207,69 @@ export function useAgentDatasourceRetrieval({
     isDatasourceRetrievalLoading: !error && !data && !disabled,
     isDatasourceRetrievalError: error,
     isDatasourceRetrievalValidating: isValidating,
+  };
+}
+
+export function useAgentDatasourceRetrievalDocuments({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  mcpServerConfigIds,
+  mcpServerName,
+  dataSourceId,
+  limit = 50,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  mcpServerConfigIds: string[] | null;
+  // For servers without config IDs (like data_sources_file_system), use name.
+  mcpServerName: string | null;
+  dataSourceId: string | null;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
+  const hasConfigIds = mcpServerConfigIds && mcpServerConfigIds.length > 0;
+  // Allow query if we have either config IDs or server name.
+  const isDisabled =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    disabled || (!hasConfigIds && !mcpServerName) || !dataSourceId;
+
+  const params = new URLSearchParams({ days: days.toString() });
+  if (version) {
+    params.set("version", version);
+  }
+  if (hasConfigIds) {
+    params.set(
+      "mcpServerConfigIds",
+      [...new Set(mcpServerConfigIds)].join(",")
+    );
+  }
+  if (mcpServerName) {
+    params.set("mcpServerName", mcpServerName);
+  }
+  if (dataSourceId) {
+    params.set("dataSourceId", dataSourceId);
+  }
+  params.set("limit", limit.toString());
+
+  const key = isDisabled
+    ? null
+    : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval-documents?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(key, fetcherFn);
+
+  return {
+    documents: data?.documents ?? emptyArray(),
+    groups: data?.groups ?? emptyArray(),
+    total: data?.total ?? 0,
+    isDatasourceRetrievalDocumentsLoading: !error && !data && !isDisabled,
+    isDatasourceRetrievalDocumentsError: error,
+    isDatasourceRetrievalDocumentsValidating: isValidating,
   };
 }
 

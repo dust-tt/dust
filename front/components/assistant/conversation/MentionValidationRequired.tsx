@@ -1,33 +1,30 @@
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useMentionValidation } from "@app/lib/swr/mentions";
+import type {
+  ConversationWithoutContentType,
+  RichMentionWithStatus,
+} from "@app/types/assistant/conversation";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
+  ActionCardBlock,
+  Avatar,
   Button,
-  CheckIcon,
-  ContentMessage,
-  Icon,
-  InformationCircleIcon,
-  XMarkIcon,
+  ChatBubbleLeftRightIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
-import { useMentionValidation } from "@app/lib/swr/mentions";
-import { useUser } from "@app/lib/swr/user";
-import type {
-  LightWorkspaceType,
-  RichMentionWithStatus,
-  UserType,
-} from "@app/types";
-
-interface MentionValidationRequired {
+interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   mention: Extract<
     RichMentionWithStatus,
     {
-      status: "pending";
+      status: "pending_conversation_access" | "pending_project_membership";
     }
   >;
-  conversationId: string;
+  conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
 }
 
@@ -35,15 +32,18 @@ export function MentionValidationRequired({
   triggeringUser,
   owner,
   mention,
-  conversationId,
+  conversation,
   message,
-}: MentionValidationRequired) {
-  const { user } = useUser();
+}: MentionValidationRequiredProps) {
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isProjectMembership = mention.status === "pending_project_membership";
+
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
-    conversationId,
+    conversationId: conversation.sId,
     messageId: message.sId,
+    isProjectConversation: isProjectMembership,
   });
 
   const isTriggeredByCurrentUser = useMemo(
@@ -73,47 +73,50 @@ export function MentionValidationRequired({
     return null;
   }
 
-  // Original behavior for users who can access
+  const title = isProjectMembership
+    ? `Add ${mention.label} to this project?`
+    : `Invite ${mention.label} to this conversation?`;
+
+  const description = isMessageTemporayState(message) ? (
+    <>
+      <span className="font-semibold">@{message.configuration.name}</span>{" "}
+      mentioned <span className="font-semibold">{mention.label}</span>.
+      {isProjectMembership
+        ? " Do you want to add them to this project?"
+        : " Do you want to invite them? They'll see the full history and be able to reply."}
+    </>
+  ) : isProjectMembership ? (
+    "They'll have access to all project conversations."
+  ) : (
+    "They'll see the full history and be able to reply."
+  );
+
   return (
-    <ContentMessage variant="info" className="my-3 w-full max-w-full">
-      <div className="flex flex-col items-center gap-2 sm:flex-row">
-        <Icon visual={InformationCircleIcon} className="hidden sm:block" />
-        <div>
-          {isMessageTemporayState(message) ? (
-            <>
-              <span className="font-semibold">
-                @{message.configuration.name}
-              </span>{" "}
-              mentioned <span className="font-semibold">{mention.label}</span>.
-              Do you want to invite them? They'll see the full history and be
-              able to reply.
-            </>
-          ) : (
-            <>
-              Invite <b>{mention.label}</b> to this conversation? They'll see
-              the full history and be able to reply.
-            </>
-          )}
-        </div>
-        <div className="ml-auto flex gap-2">
-          <Button
-            label="No"
-            variant="outline"
-            size="xs"
-            icon={XMarkIcon}
-            disabled={isSubmitting}
-            onClick={handleReject}
-          />
-          <Button
-            label="Yes"
-            variant="highlight"
-            size="xs"
-            icon={CheckIcon}
-            disabled={isSubmitting}
-            onClick={handleApprove}
-          />
-        </div>
-      </div>
-    </ContentMessage>
+    <div className="my-3">
+      <ActionCardBlock
+        title={title}
+        visual={<Avatar icon={ChatBubbleLeftRightIcon} size="sm" />}
+        description={description}
+        actions={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              label="Decline"
+              disabled={isSubmitting}
+              onClick={handleReject}
+            />
+            <Button
+              variant="highlight"
+              size="sm"
+              label={isProjectMembership ? "Add to project" : "Invite"}
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              onClick={handleApprove}
+            />
+          </div>
+        }
+      />
+    </div>
   );
 }

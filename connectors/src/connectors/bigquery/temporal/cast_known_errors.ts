@@ -1,3 +1,4 @@
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -5,9 +6,9 @@ import type {
 } from "@temporalio/worker";
 import { GaxiosError } from "googleapis-common";
 
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
-
-export class BigQueryCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+export class BigQueryCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

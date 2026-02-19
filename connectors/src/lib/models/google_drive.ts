@@ -1,10 +1,9 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { TablesErrorType } from "@connectors/lib/error";
 import { connectorsSequelize } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class GoogleDriveConfigModel extends ConnectorBaseModel<GoogleDriveConfigModel> {
   declare createdAt: CreationOptional<Date>;
@@ -13,7 +12,6 @@ export class GoogleDriveConfigModel extends ConnectorBaseModel<GoogleDriveConfig
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
-  declare useParallelSync: boolean;
 }
 GoogleDriveConfigModel.init(
   {
@@ -38,11 +36,6 @@ GoogleDriveConfigModel.init(
       defaultValue: false,
     },
     largeFilesEnabled: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    useParallelSync: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

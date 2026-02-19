@@ -1,12 +1,9 @@
-import React from "react";
-
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  SpaceType,
-} from "@app/types";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import React from "react";
 
 interface SearchLocationProps {
   category: DataSourceViewCategory | undefined;

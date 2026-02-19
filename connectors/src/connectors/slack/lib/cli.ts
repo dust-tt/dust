@@ -20,6 +20,7 @@ import {
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
@@ -310,13 +311,33 @@ export const slack = async ({
         connector.id
       );
 
-      if (slackConfig) {
-        // Handle groupId as either a single string or comma-separated string of group IDs
-        const groupIds = groupId.includes(",")
-          ? groupId.split(",").map((id) => id.trim())
-          : [groupId];
-        await slackConfig.whitelistBot(botName, groupIds, whitelistType);
+      if (!slackConfig) {
+        throw new Error(
+          `Could not find Slack configuration for connector ${connector.id}`
+        );
       }
+
+      // For summon_agent, the runtime check (isBotAllowed) finds the connector
+      // via fetchByActiveBot (the config with botEnabled: true). We must store
+      // the whitelist entry on that same config, otherwise the lookup at runtime
+      // will miss it when botEnabled: true is on a different connector than the
+      // one selected in Poke (e.g. "slack" vs "slack_bot").
+      let targetConfig = slackConfig;
+      if (whitelistType === "summon_agent") {
+        const activeBotConfig =
+          await SlackConfigurationResource.fetchByActiveBot(
+            slackConfig.slackTeamId
+          );
+        if (activeBotConfig) {
+          targetConfig = activeBotConfig;
+        }
+      }
+
+      // Handle groupId as either a single string or comma-separated string of group IDs
+      const groupIds = groupId.includes(",")
+        ? groupId.split(",").map((id) => id.trim())
+        : [groupId];
+      await targetConfig.whitelistBot(botName, groupIds, whitelistType);
 
       return { success: true };
     }
@@ -490,9 +511,10 @@ export const slack = async ({
       if (!args.channelId) {
         throw new Error("Missing --channelId argument");
       }
-      const connector = await ConnectorModel.findOne({
-        where: { workspaceId: `${args.wId}`, type: "slack" },
-      });
+      const connector = await ConnectorResource.findByWorkspaceIdAndType(
+        args.wId,
+        "slack"
+      );
       if (!connector) {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }

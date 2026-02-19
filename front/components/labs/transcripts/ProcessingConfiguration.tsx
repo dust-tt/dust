@@ -1,16 +1,13 @@
-import { Page, SliderToggle } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-import type { KeyedMutator } from "swr";
-
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type {
-  LabsTranscriptsConfigurationType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Page, SliderToggle } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+import type { KeyedMutator } from "swr";
 
 interface ProcessingConfigurationProps {
   owner: LightWorkspaceType;
@@ -48,7 +45,6 @@ export function ProcessingConfiguration({
   ) => {
     setAssistantSelected(assistant);
     const response = await doUpdate({
-      isActive: transcriptsConfiguration.isActive,
       agentConfigurationId: assistant.sId,
     });
 
@@ -68,8 +64,10 @@ export function ProcessingConfiguration({
     }
   };
 
-  const handleSetIsActive = async (isActive: boolean) => {
-    const response = await doUpdate({ isActive });
+  const handleSetStatus = async (active: boolean) => {
+    const response = await doUpdate({
+      status: active ? "active" : "disabled",
+    });
 
     if (response.isOk()) {
       await mutateTranscriptsConfiguration();
@@ -127,8 +125,10 @@ export function ProcessingConfiguration({
       </Page.Layout>
       <Page.Layout direction="horizontal" gap="xl">
         <SliderToggle
-          selected={transcriptsConfiguration.isActive}
-          onClick={() => handleSetIsActive(!transcriptsConfiguration.isActive)}
+          selected={transcriptsConfiguration.status === "active"}
+          onClick={() =>
+            handleSetStatus(transcriptsConfiguration.status !== "active")
+          }
           disabled={!assistantSelected}
         />
         <Page.P>Enable transcripts email processing</Page.P>

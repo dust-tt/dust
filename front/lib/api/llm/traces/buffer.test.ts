@@ -1,6 +1,3 @@
-import { faker } from "@faker-js/faker";
-import { expect, test, vi } from "vitest";
-
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -13,6 +10,8 @@ import type {
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
+import { faker } from "@faker-js/faker";
+import { expect, test, vi } from "vitest";
 
 // Mock GCS bucket to avoid external dependencies.
 vi.mock("@app/lib/file_storage", () => ({
@@ -27,7 +26,7 @@ class LLMEventFactory {
     return {
       type: "text_delta",
       content: { delta },
-      metadata: { clientId: "test", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -37,7 +36,7 @@ class LLMEventFactory {
     return {
       type: "text_generated",
       content: { text },
-      metadata: { clientId: "test", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -49,7 +48,7 @@ class LLMEventFactory {
         name: faker.hacker.verb(),
         arguments: { query: faker.lorem.sentence() },
       },
-      metadata: { clientId: "test", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -61,7 +60,7 @@ class LLMEventFactory {
         outputTokens: faker.number.int({ min: 10, max: 1000 }),
         totalTokens: 0, // Will be calculated
       },
-      metadata: { clientId: "test", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -72,7 +71,7 @@ class LLMEventFactory {
         isRetryable: false,
         message: "Maximum length reached",
       },
-      { clientId: "test", modelId: "gpt-4-turbo" }
+      { clientId: "openai", modelId: "gpt-4-turbo" }
     );
   }
 }

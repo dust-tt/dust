@@ -1,7 +1,4 @@
-import { removeNulls } from "@dust-tt/client";
-import type { Logger } from "pino";
-import type { InferAttributes, WhereOptions } from "sequelize";
-
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
@@ -9,6 +6,7 @@ import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   getAuthObject,
@@ -31,9 +29,7 @@ import {
 } from "@connectors/lib/models/google_drive";
 import { getLoggerArgs } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ContentNodesViewType } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ContentNodesViewType, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
   concurrentExecutor,
@@ -43,6 +39,9 @@ import {
   isGoogleSheetContentNodeInternalId,
 } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import { removeNulls } from "@dust-tt/client";
+import type { Logger } from "pino";
+import type { InferAttributes, WhereOptions } from "sequelize";
 
 export async function isDriveObjectExpandable({
   objectId,
@@ -184,7 +183,7 @@ export async function internalDeleteFile(
 }
 
 export async function updateParentsField(
-  connector: ConnectorResource | ConnectorModel,
+  connector: ConnectorResource,
   file: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger

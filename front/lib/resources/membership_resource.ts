@@ -1,13 +1,3 @@
-import type {
-  Attributes,
-  FindOptions,
-  IncludeOptions,
-  InferAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,19 +7,31 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
-  LightWorkspaceType,
   MembershipOriginType,
   MembershipRoleType,
-  ModelId,
-  RequireAtLeastOne,
-  Result,
-  UserType,
-} from "@app/types";
-import { assertNever, Err, normalizeError, Ok } from "@app/types";
+} from "@app/types/memberships";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  Attributes,
+  FindOptions,
+  IncludeOptions,
+  InferAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -55,7 +57,8 @@ type MembershipsWithTotal = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MembershipResource extends ReadonlyAttributesType<MembershipModel> {}
+export interface MembershipResource
+  extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MembershipResource extends BaseResource<MembershipModel> {
   static model: ModelStaticWorkspaceAware<MembershipModel> = MembershipModel;
@@ -197,6 +200,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       where: { ...findOptions.where, ...paginationWhereClause },
       // WORKSPACE_ISOLATION_BYPASS: We could fetch via workspaceId or via userIds, check is done above
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -302,6 +306,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       ...findOptions,
       // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
       // optional.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     // Then, we only keep the latest membership for each (user, workspace).
@@ -473,6 +478,56 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  static async countActiveMembersForWorkspace({
+    workspace,
+  }: {
+    workspace: LightWorkspaceType;
+  }): Promise<number> {
+    const now = new Date();
+    return MembershipModel.count({
+      where: {
+        workspaceId: workspace.id,
+        startAt: {
+          [Op.lte]: now,
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }],
+        },
+      },
+      distinct: true,
+      col: "userId",
+    });
+  }
+
+  // Seat counting with caching - used to track active seats in a workspace
+  private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
+    `count-active-seats-in-workspace:${workspaceId}`;
+
+  static async countActiveSeatsInWorkspace(
+    workspaceId: string
+  ): Promise<number> {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found for sId: ${workspaceId}`);
+    }
+
+    return MembershipResource.getMembersCountForWorkspace({
+      workspace: renderLightWorkspaceType({ workspace }),
+      activeOnly: true,
+    });
+  }
+
+  static countActiveSeatsInWorkspaceCached = cacheWithRedis(
+    MembershipResource.countActiveSeatsInWorkspace,
+    MembershipResource.seatsCacheKeyResolver,
+    { ttlMs: 60 * 10 * 1000 } // 10 minutes
+  );
+
+  static invalidateActiveSeatsCache = invalidateCacheWithRedis(
+    MembershipResource.countActiveSeatsInWorkspace,
+    MembershipResource.seatsCacheKeyResolver
+  );
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -573,6 +628,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       throw workflowResult.error;
     }
 
+    // Invalidate the active seats cache for this workspace.
+    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -584,6 +642,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         userId: userIds,
       },
       // WORKSPACE_ISOLATION_BYPASS: fetch by userIds
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return membershipModels.map(
@@ -641,7 +700,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           });
 
         if (workOSMemberships.data.length > 0) {
-          await workos.userManagement.deactivateOrganizationMembership(
+          await workos.userManagement.deleteOrganizationMembership(
             workOSMemberships.data[0].id
           );
         }
@@ -652,7 +711,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
             userId: user.id,
             error,
           },
-          "Failed to deactivate WorkOS membership"
+          "Failed to delete WorkOS membership"
         );
       }
     }
@@ -665,6 +724,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       // Throw if it fails to launch (unexpected).
       throw workflowResult.error;
     }
+
+    // Invalidate the active seats cache for this workspace.
+    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
 
     return new Ok({
       role: membership.role,
@@ -885,49 +947,46 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
-    try {
-      const w = auth.workspace();
-      const u = this.user;
-      if (w && w.workOSOrganizationId && u && u.workOSUserId) {
-        try {
-          const workos = getWorkOS();
+    const w = auth.workspace();
+    const u = this.user;
+    if (w && w.workOSOrganizationId && u && u.workOSUserId) {
+      try {
+        const workos = getWorkOS();
 
-          const workOSMemberships =
-            await workos.userManagement.listOrganizationMemberships({
-              organizationId: w.workOSOrganizationId,
-              userId: u.workOSUserId,
-            });
+        const workOSMemberships =
+          await workos.userManagement.listOrganizationMemberships({
+            organizationId: w.workOSOrganizationId,
+            userId: u.workOSUserId,
+          });
 
-          if (workOSMemberships.data.length > 0) {
-            await workos.userManagement.deleteOrganizationMembership(
-              workOSMemberships.data[0].id
-            );
-          }
-
-          await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
-        } catch (error) {
-          logger.error(
-            {
-              workspaceId: w.id,
-              userId: u.id,
-              error,
-            },
-            "Failed to delete WorkOS membership"
+        if (workOSMemberships.data.length > 0) {
+          await workos.userManagement.deleteOrganizationMembership(
+            workOSMemberships.data[0].id
           );
         }
+
+        await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: w.id,
+            userId: u.id,
+            error,
+          },
+          "Failed to delete WorkOS membership"
+        );
       }
-
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
     }
+
+    await this.model.destroy({
+      where: {
+        id: this.id,
+        workspaceId: this.workspaceId,
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
   }
 
   isRevoked(referenceDate: Date = new Date()): boolean {

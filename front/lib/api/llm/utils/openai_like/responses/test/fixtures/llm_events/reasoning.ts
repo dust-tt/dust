@@ -5,7 +5,7 @@ export const reasoningLLMEvents = [
       delta: "**Solving the Equation**\n\nWe need to ",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -15,7 +15,7 @@ export const reasoningLLMEvents = [
       delta: "solve the equation.\n\n",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -25,7 +25,7 @@ export const reasoningLLMEvents = [
       delta: "\n\n",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -35,7 +35,7 @@ export const reasoningLLMEvents = [
       delta: "**Solving the Quadratic**\n\nTo solve ",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -45,7 +45,7 @@ export const reasoningLLMEvents = [
       delta: "the equation $$x^2 + 2x + 1 = 0$$, I can factor it...",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -55,7 +55,7 @@ export const reasoningLLMEvents = [
       delta: "# Solving the equation\n\nGiven:\n$$\nx^2 + 2x + 1 = 0\n",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -65,7 +65,7 @@ export const reasoningLLMEvents = [
       delta: "$$\n\nNotice it factors as:\n$$\n(x + 1)^2 = 0\n$$\n\n",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -77,7 +77,7 @@ export const reasoningLLMEvents = [
     metadata: {
       id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
       encrypted_content: undefined,
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -87,7 +87,7 @@ export const reasoningLLMEvents = [
       text: "# Solving the equation\n\nGiven:\n$$\nx^2 + 2x + 1 = 0\n$$\n\nNotice it factors as:\n$$\n(x + 1)^2 = 0\n$$\n\n",
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -101,7 +101,7 @@ export const reasoningLLMEvents = [
       totalTokens: 7267,
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -115,7 +115,7 @@ export const reasoningLLMEvents = [
         },
         metadata: {
           id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
-          clientId: "openai_responses",
+          clientId: "openai",
           modelId: "gpt-5",
           encrypted_content: undefined,
         },
@@ -126,7 +126,7 @@ export const reasoningLLMEvents = [
           text: "# Solving the equation\n\nGiven:\n$$\nx^2 + 2x + 1 = 0\n$$\n\nNotice it factors as:\n$$\n(x + 1)^2 = 0\n$$\n\n",
         },
         metadata: {
-          clientId: "openai_responses",
+          clientId: "openai",
           modelId: "gpt-5",
         },
       },
@@ -137,7 +137,7 @@ export const reasoningLLMEvents = [
         text: "# Solving the equation\n\nGiven:\n$$\nx^2 + 2x + 1 = 0\n$$\n\nNotice it factors as:\n$$\n(x + 1)^2 = 0\n$$\n\n",
       },
       metadata: {
-        clientId: "openai_responses",
+        clientId: "openai",
         modelId: "gpt-5",
       },
     },
@@ -148,14 +148,14 @@ export const reasoningLLMEvents = [
       },
       metadata: {
         id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
-        clientId: "openai_responses",
+        clientId: "openai",
         modelId: "gpt-5",
         encrypted_content: undefined,
       },
     },
     toolCalls: undefined,
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },

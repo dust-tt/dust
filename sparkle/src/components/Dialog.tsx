@@ -1,16 +1,17 @@
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
+
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
-import { cva } from "class-variance-authority";
-import * as React from "react";
-
 import {
   Button,
-  ButtonProps,
+  type ButtonProps,
   ScrollArea,
   Separator,
 } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import * as React from "react";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -33,7 +34,7 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const DIALOG_SIZES = ["md", "lg", "xl", "2xl", "full"] as const;
+const DIALOG_SIZES = ["md", "lg", "xl", "2xl", "full", "fit"] as const;
 type DialogSizeType = (typeof DIALOG_SIZES)[number];
 
 const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl"] as const;
@@ -45,6 +46,7 @@ const sizeClasses: Record<DialogSizeType, string> = {
   xl: "sm:s-max-w-3xl",
   "2xl": "sm:s-max-w-5xl",
   full: "sm:s-max-w-full sm:s-h-full",
+  fit: "sm:s-max-w-[90vw] !s-w-fit",
 };
 
 const heightClasses: Record<DialogHeightType, string> = {
@@ -73,9 +75,8 @@ const dialogVariants = cva(
   }
 );
 
-interface DialogContentProps extends React.ComponentPropsWithoutRef<
-  typeof DialogPrimitive.Content
-> {
+interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: DialogSizeType;
   height?: DialogHeightType;
   trapFocusScope?: boolean;
@@ -178,7 +179,7 @@ const DialogContainer = ({
   className,
 }: DialogContainerProps) => {
   const contentStyles = cn(
-    "s-copy-base s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
+    "s-copy-base s-break-words s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
   );
 
   const scrollableContent = (
@@ -265,6 +266,7 @@ const DialogTitle = React.forwardRef<
       ref={ref}
       className={cn(
         "s-heading-lg",
+        "s-min-w-0 s-break-words",
         "s-text-foreground dark:s-text-foreground-night",
         className
       )}

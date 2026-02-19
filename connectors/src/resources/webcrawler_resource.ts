@@ -1,3 +1,26 @@
+import {
+  WebCrawlerConfigurationHeaderModel,
+  WebCrawlerConfigurationModel,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
+} from "@connectors/lib/models/webcrawler";
+import { BaseResource } from "@connectors/resources/base_resource";
+import type {} from "@connectors/resources/connector/strategy";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type {
+  CrawlingFrequency,
+  ModelId,
+  WebCrawlerConfigurationType,
+} from "@connectors/types";
+import {
+  CrawlingFrequencies,
+  WEBCRAWLER_MAX_DEPTH,
+  WEBCRAWLER_MAX_PAGES,
+  WebCrawlerHeaderRedactedValue,
+} from "@connectors/types";
+import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Action } from "@mendable/firecrawl-js";
@@ -9,32 +32,12 @@ import type {
 } from "sequelize";
 import { literal, Op } from "sequelize";
 
-import {
-  WebCrawlerConfigurationHeaderModel,
-  WebCrawlerConfigurationModel,
-  WebCrawlerFolderModel,
-  WebCrawlerPageModel,
-} from "@connectors/lib/models/webcrawler";
-import { BaseResource } from "@connectors/resources/base_resource";
-import type {} from "@connectors/resources/connector/strategy";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import type { CrawlingFrequency } from "@connectors/types";
-import type { WebCrawlerConfigurationType } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
-import {
-  CrawlingFrequencies,
-  WEBCRAWLER_MAX_DEPTH,
-  WEBCRAWLER_MAX_PAGES,
-  WebCrawlerHeaderRedactedValue,
-} from "@connectors/types";
-import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
-
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WebCrawlerConfigurationResource extends ReadonlyAttributesType<WebCrawlerConfigurationModel> {}
+export interface WebCrawlerConfigurationResource
+  extends ReadonlyAttributesType<WebCrawlerConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConfigurationModel> {
   static model: ModelStatic<WebCrawlerConfigurationModel> =

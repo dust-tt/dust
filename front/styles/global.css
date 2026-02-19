@@ -185,3 +185,28 @@ body {
 .observability-chart-container svg:focus-visible {
   outline: none;
 }
+
+/* Rich text table styles for Contentful blog posts */
+.rich-text-table table tr:last-child td,
+.rich-text-table table tr:last-child th {
+  border-bottom: none;
+}
+
+.rich-text-table table td:last-child,
+.rich-text-table table th:last-child {
+  border-right: none;
+}
+
+.rich-text-table table td > div,
+.rich-text-table table th > div {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  min-height: 1.5em;
+}
+
+/* Style first row as header (Contentful doesn't always use th elements) */
+.rich-text-table table tr:first-child td {
+  background-color: theme("colors.gray.50");
+  font-weight: 600;
+}

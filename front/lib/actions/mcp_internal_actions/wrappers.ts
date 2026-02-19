@@ -1,3 +1,16 @@
+import type { MCPError } from "@app/lib/actions/mcp_errors";
+import type {
+  ToolDefinition,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { errorToString } from "@app/types/shared/utils/error_utils";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
   CallToolResult,
@@ -5,13 +18,70 @@ import type {
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import type { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
-import type { Result } from "@app/types";
-import { errorToString } from "@app/types";
+export function registerTool(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType | undefined,
+  server: McpServer,
+  tool: ToolDefinition,
+  { monitoringName }: { monitoringName: string }
+): void {
+  server.tool(
+    tool.name,
+    tool.description,
+    tool.schema,
+
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: monitoringName,
+        agentLoopContext,
+        enableAlerting: tool.enableAlerting,
+      },
+      (params, extra) =>
+        withToolResultProcessing(
+          tool.handler(params, { ...extra, agentLoopContext, auth })
+        )
+    )
+  );
+}
+
+// The MCP SDK is now stripping extra properties from the tool result (both client and server).
+// To keep the same behavior as before, we move the extra properties to the _meta field of each resource item.
+// They will be moved back to the resource items root level in the tool result processing.
+export async function withToolResultProcessing(
+  resultPromise: Promise<ToolHandlerResult>
+): Promise<ToolHandlerResult> {
+  const result = await resultPromise;
+  if (result.isOk()) {
+    return new Ok(
+      result.value.map((item) => {
+        if (item.type === "resource") {
+          // Pickup extra properties compared to the offical SDK speccs at the root level.
+          const officalSDKFields = ["text", "uri", "mimeType", "blob", "_meta"];
+          const extraProperties = Object.fromEntries(
+            Object.entries(item.resource).filter(
+              ([k, v]) => !officalSDKFields.includes(k) && v !== undefined
+            )
+          );
+
+          return {
+            ...item,
+            resource: {
+              ...item.resource,
+              _meta: {
+                ...item.resource._meta,
+                ...extraProperties,
+              },
+            },
+          };
+        } else {
+          return item;
+        }
+      })
+    );
+  }
+  return result;
+}
 
 /**
  * Wraps a tool callback with logging and monitoring.
@@ -20,7 +90,7 @@ import { errorToString } from "@app/types";
  *
  * The tool name is used as a tag in the DD metric, it's 1 tool name <=> 1 monitor.
  */
-export function withToolLogging<T>(
+function withToolLogging<T>(
   auth: Authenticator,
   {
     toolNameForMonitoring,

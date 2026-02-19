@@ -1,0 +1,198 @@
+name: Deploy SPA to Cloudflare Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "SPA to deploy"
+        type: choice
+        options:
+          - poke
+          - app
+        required: true
+      env:
+        description: "The environment to use for API endpoints (prod or edge)"
+        type: choice
+        options:
+          - prod
+          - edge
+        default: "prod"
+        required: true
+      region:
+        description: "Default region for API endpoint (should stay US unless we have a reason to change it)"
+        type: choice
+        options:
+          - eu
+          - us
+        default: "us"
+        required: true
+  workflow_call:
+    inputs:
+      app:
+        description: "SPA to deploy"
+        type: string
+        required: true
+      env:
+        description: "The environment to use for API endpoints (prod or edge)"
+        type: string
+        default: "prod"
+        required: true
+      region:
+        description: "Default region for API endpoint"
+        type: string
+        default: "us"
+        required: true
+      thread_ts:
+        description: "Slack thread timestamp to post in (from parent deploy workflow)"
+        type: string
+        default: ""
+        required: false
+
+concurrency:
+  group: deploy-spa-${{ inputs.app }}
+  cancel-in-progress: false
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prevent edge deploys from main
+        if: ${{ github.ref == 'refs/heads/main' && inputs.env == 'edge' }}
+        run: |
+          echo "Error: Cannot deploy with env 'edge' from the main branch"
+          exit 1
+
+  prepare:
+    needs: [check-branch]
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.short_sha.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  notify-start:
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    outputs:
+      thread_ts: ${{ inputs.thread_ts || steps.build_message.outputs.thread_ts }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Notify SPA Deploy Start
+        if: ${{ !inputs.thread_ts }}
+        id: build_message
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "spa_start"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: spa-${{ inputs.app }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  deploy:
+    needs: [prepare, notify-start]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
+
+      - name: Build SPA
+        working-directory: front-spa
+        env:
+          NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
+          NEXT_PUBLIC_DATADOG_SERVICE: ${{ inputs.app }}-spa
+          NEXT_PUBLIC_COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
+        run: |
+          set -a
+          source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
+          # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            export NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt
+          else
+            export NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}--app.preview.dust.tt
+          fi
+          export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
+          # Map all NEXT_PUBLIC_* to VITE_* for SPA
+          for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
+            export "VITE_${var#NEXT_PUBLIC_}=${!var}"
+          done
+          set +a
+          npm run build:${{ inputs.app }}
+
+      - name: Upload sourcemaps to Datadog
+        if: ${{ inputs.env != 'edge' }}
+        working-directory: front-spa
+        env:
+          DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
+          DATADOG_SITE: datadoghq.eu
+        run: |
+          if [ -z "$DATADOG_API_KEY" ]; then
+            echo "DD_API_KEY not set, skipping sourcemap upload"
+            exit 0
+          fi
+          npx --yes @datadog/datadog-ci sourcemaps upload dist/${{ inputs.app }}/assets \
+            --minified-path-prefix=/assets/ \
+            --repository-url=https://github.com/dust-tt/dust \
+            --project-path=front-spa \
+            --release-version=${{ github.sha }} \
+            --service=${{ inputs.app }}-spa-browser
+
+      - name: Deploy to preview branch
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt --branch=staging-${{ github.sha }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spa-dist-${{ inputs.app }}
+          path: front-spa/dist/${{ inputs.app }}
+          retention-days: 1
+
+      - name: Summary
+        run: |
+          echo "### SPA Deployed :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: ${{ inputs.app }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://${{ inputs.app }}.dust.tt" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Deploy Success
+        uses: ./.github/actions/slack-notify
+        with:
+          step: ${{ 'spa_preview_success' }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+          component: spa-${{ inputs.app }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          preview_url: ${{ github.ref_name == 'main' && format('https://{0}.dust.tt', inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: spa-${{ inputs.app }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"

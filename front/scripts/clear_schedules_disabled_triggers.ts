@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";
@@ -11,19 +10,19 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   // List all disabled triggers.
-  const triggers = await TriggerModel.findAll({
-    where: { status: "disabled" },
+  const triggerResources = await TriggerResource.listAllForScript({
+    status: "disabled",
   });
 
-  if (triggers.length === 0) {
+  if (triggerResources.length === 0) {
     logger.info("No disabled triggers found.");
     return;
   }
 
-  logger.info(`Found ${triggers.length} disabled trigger(s).`);
+  logger.info(`Found ${triggerResources.length} disabled trigger(s).`);
 
   // Group by workspace to minimize the number of workspace fetch.
-  const triggersByWorkspace = triggers.reduce(
+  const triggersByWorkspace = triggerResources.reduce(
     (acc, trigger) => {
       if (!acc[trigger.workspaceId]) {
         acc[trigger.workspaceId] = [];
@@ -31,7 +30,7 @@ makeScript({}, async ({ execute }, logger) => {
       acc[trigger.workspaceId].push(trigger);
       return acc;
     },
-    {} as Record<number, TriggerModel[]>
+    {} as Record<number, TriggerResource[]>
   );
 
   let affectedTriggersCount = 0;
@@ -48,17 +47,15 @@ makeScript({}, async ({ execute }, logger) => {
     // Get internal admin auth for the workspace to be able to remove temporal schedules.
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    // Fetch all triggers resources from sIds.
-    for (const trigger of triggersByWorkspace[workspace.id]) {
-      const t = new TriggerResource(TriggerModel, trigger.get());
-
+    // Process all triggers for this workspace.
+    for (const triggerResource of triggersByWorkspace[workspace.id]) {
       if (execute) {
-        const result = await t.removeTemporalWorkflow(auth);
+        const result = await triggerResource.removeTemporalWorkflow(auth);
         if (result.isErr()) {
           logger.error(
             {
-              triggerId: t.sId,
-              triggerName: t.name,
+              triggerId: triggerResource.sId,
+              triggerName: triggerResource.name,
               error: result.error.message,
             },
             "Failed to remove temporal workflow"
@@ -66,7 +63,10 @@ makeScript({}, async ({ execute }, logger) => {
           errorCount++;
         } else {
           logger.info(
-            { triggerId: t.sId, triggerName: t.name },
+            {
+              triggerId: triggerResource.sId,
+              triggerName: triggerResource.name,
+            },
             "Temporal workflow removed successfully."
           );
           affectedTriggersCount++;
@@ -76,7 +76,7 @@ makeScript({}, async ({ execute }, logger) => {
         );
       } else {
         logger.info(
-          { triggerId: t.sId, triggerName: t.name },
+          { triggerId: triggerResource.sId, triggerName: triggerResource.name },
           "Would remove temporal workflow (dry run)"
         );
         logger.info(

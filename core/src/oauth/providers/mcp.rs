@@ -25,6 +25,8 @@ pub struct MCPConnectionMetadata {
     pub code_verifier: String,
     pub code_challenge: String,
     pub scope: Option<String>,
+    pub resource: Option<String>,
+    pub token_endpoint_auth_method: Option<String>,
 }
 
 pub struct MCPConnectionProvider {}
@@ -32,6 +34,16 @@ pub struct MCPConnectionProvider {}
 impl MCPConnectionProvider {
     pub fn new() -> Self {
         MCPConnectionProvider {}
+    }
+
+    fn build_basic_auth_header(client_id: &str, client_secret: &str) -> String {
+        format!(
+            "Basic {}",
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                format!("{}:{}", client_id, client_secret)
+            )
+        )
     }
 
     pub async fn get_credentials(
@@ -96,24 +108,48 @@ impl Provider for MCPConnectionProvider {
 
         let grant_type = "authorization_code";
 
+        let use_basic_auth = matches!(
+            metadata.token_endpoint_auth_method.as_deref(),
+            Some("client_secret_basic")
+        ) && client_secret.is_some();
+
         let mut form_data = vec![
             ("grant_type", grant_type),
-            ("client_id", &client_id),
             ("code", code),
             ("code_verifier", &metadata.code_verifier),
             ("redirect_uri", redirect_uri),
         ];
 
-        // Only include client_secret if it's provided
-        if let Some(ref secret) = client_secret {
-            form_data.push(("client_secret", secret));
+        if !use_basic_auth {
+            form_data.push(("client_id", &client_id));
+
+            // Only include client_secret if it's provided
+            if let Some(ref secret) = client_secret {
+                form_data.push(("client_secret", secret));
+            }
         }
 
-        let req = self
+        // Include resource parameter per RFC 8707 if available.
+        if let Some(ref resource) = metadata.resource {
+            form_data.push(("resource", resource));
+        }
+
+        let mut req = self
             .reqwest_client()
             .post(metadata.token_endpoint)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&form_data);
+
+        if use_basic_auth {
+            let auth_header = Self::build_basic_auth_header(
+                &client_id,
+                client_secret
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("client_secret required for basic auth"))?,
+            );
+
+            req = req.header("Authorization", auth_header);
+        }
 
         let raw_json = execute_request(ConnectionProvider::Mcp, req)
             .await
@@ -172,22 +208,45 @@ impl Provider for MCPConnectionProvider {
 
         let grant_type = "refresh_token";
 
+        let use_basic_auth = matches!(
+            metadata.token_endpoint_auth_method.as_deref(),
+            Some("client_secret_basic")
+        ) && client_secret.is_some();
+
         let mut form_data = vec![
             ("grant_type", grant_type),
-            ("client_id", &client_id),
             ("refresh_token", &refresh_token),
         ];
 
-        // Only include client_secret if it's provided
-        if let Some(ref secret) = client_secret {
-            form_data.push(("client_secret", secret));
+        if !use_basic_auth {
+            form_data.push(("client_id", &client_id));
+
+            // Only include client_secret if it's provided
+            if let Some(ref secret) = client_secret {
+                form_data.push(("client_secret", secret));
+            }
         }
 
-        let req = self
+        // Include resource parameter per RFC 8707 if available.
+        if let Some(ref resource) = metadata.resource {
+            form_data.push(("resource", resource));
+        }
+
+        let mut req = self
             .reqwest_client()
             .post(metadata.token_endpoint)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&form_data);
+
+        if use_basic_auth {
+            let auth_header = Self::build_basic_auth_header(
+                &client_id,
+                client_secret
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("client_secret required for basic auth"))?,
+            );
+            req = req.header("Authorization", auth_header);
+        }
 
         let raw_json = execute_request(ConnectionProvider::Mcp, req)
             .await

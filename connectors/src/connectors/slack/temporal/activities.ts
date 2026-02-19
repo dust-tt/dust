@@ -1,20 +1,3 @@
-import type { DataSourceViewType } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
-import type {
-  CodedError,
-  ConversationsInfoResponse,
-  WebAPIPlatformError,
-  WebClient,
-} from "@slack/web-api";
-import { ErrorCode } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/types/response/ChannelsInfoResponse";
-import type {
-  ConversationsHistoryResponse,
-  MessageElement,
-} from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-import assert from "assert";
-import { Op, Sequelize } from "sequelize";
-
 import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
 import {
   getBotUserIdMemoized,
@@ -45,6 +28,7 @@ import {
   slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
   slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -66,17 +50,37 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig, SlackAutoReadPattern } from "@connectors/types";
+import type {
+  DataSourceConfig,
+  ModelId,
+  SlackAutoReadPattern,
+} from "@connectors/types";
 import {
   concurrentExecutor,
   INTERNAL_MIME_TYPES,
   normalizeError,
   withRetries,
 } from "@connectors/types";
+import type { DataSourceViewType } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
+import type {
+  CodedError,
+  ConversationsInfoResponse,
+  WebAPIPlatformError,
+  WebClient,
+} from "@slack/web-api";
+import { ErrorCode } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/types/response/ChannelsInfoResponse";
+import type {
+  ConversationsHistoryResponse,
+  MessageElement,
+} from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
+import assert from "assert";
+import { Op, Sequelize } from "sequelize";
 
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -318,12 +322,19 @@ export async function getMessagesForChannel(
     channelId,
     limit,
   });
-  const c: ConversationsHistoryResponse = await withSlackErrorHandling(() =>
-    slackClient.conversations.history({
-      channel: channelId,
-      limit: limit,
-      cursor: nextCursor,
-    })
+  const c = await throttleWithRedis(
+    RATE_LIMITS["conversations.history"],
+    `${connectorId}-conversations-history`,
+    { canBeIgnored: false },
+    () =>
+      withSlackErrorHandling(() =>
+        slackClient.conversations.history({
+          channel: channelId,
+          limit: limit,
+          cursor: nextCursor,
+        })
+      ),
+    { source: "getMessagesForChannel" }
   );
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
@@ -454,14 +465,21 @@ export async function syncNonThreaded({
         useCase: isBatchSync ? "batch_sync" : "incremental_sync",
       });
 
-      c = await withSlackErrorHandling(() =>
-        slackClient.conversations.history({
-          channel: channelId,
-          limit: CONVERSATION_HISTORY_LIMIT,
-          oldest: `${startTsSec}`,
-          latest: `${latestTsSec}`,
-          inclusive: true,
-        })
+      c = await throttleWithRedis(
+        RATE_LIMITS["conversations.history"],
+        `${connectorId}-conversations-history`,
+        { canBeIgnored: false },
+        () =>
+          withSlackErrorHandling(() =>
+            slackClient.conversations.history({
+              channel: channelId,
+              limit: CONVERSATION_HISTORY_LIMIT,
+              oldest: `${startTsSec}`,
+              latest: `${latestTsSec}`,
+              inclusive: true,
+            })
+          ),
+        { source: "syncNonThreaded" }
       );
     } catch (e) {
       const maybeSlackPlatformError = e as WebAPIPlatformError;
@@ -476,12 +494,17 @@ export async function syncNonThreaded({
       throw e;
     }
 
-    if (c?.error) {
+    if (!c) {
+      throw new Error(
+        `Failed getting messages for channel ${channelId}: response is undefined`
+      );
+    }
+    if (c.error) {
       throw new Error(
         `Failed getting messages for channel ${channelId}: ${c.error}`
       );
     }
-    if (c?.messages === undefined) {
+    if (c.messages === undefined) {
       logger.error(
         {
           channelId,

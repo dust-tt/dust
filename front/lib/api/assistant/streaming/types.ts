@@ -1,26 +1,34 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type {
+  ToolFileAuthRequiredEvent,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   AgentActionSuccessEvent,
+  AgentContextPrunedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
-  AgentMessageNewEvent,
   AgentMessageSuccessEvent,
-  ConversationTitleEvent,
-  GenerationTokensEvent,
   ToolErrorEvent,
+} from "@app/types/assistant/agent";
+import type {
+  AgentMessageNewEvent,
+  ConversationTitleEvent,
   UserMessageNewEvent,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
 export type AgentMessageEvents =
   | AgentActionRunningEvents
   | AgentActionSuccessEvent
+  | AgentContextPrunedEvent
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
   | ToolErrorEvent
+  | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent;
 
 export type ConversationEvents =

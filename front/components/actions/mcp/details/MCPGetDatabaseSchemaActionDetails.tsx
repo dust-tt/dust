@@ -1,11 +1,3 @@
-import {
-  CodeBlock,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  TableIcon,
-} from "@dust-tt/sparkle";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import type {
@@ -16,10 +8,17 @@ import {
   isDatabaseSchemaResourceType,
   isExampleRowsResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  CodeBlock,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  TableIcon,
+} from "@dust-tt/sparkle";
 
 export function MCPGetDatabaseSchemaActionDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   // Extract different types of outputs
   const schemaBlocks =
@@ -30,15 +29,15 @@ export function MCPGetDatabaseSchemaActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? "Getting database schema"
           : "Get database schema"
       }
       visual={TableIcon}
     >
-      {viewType === "sidebar" && (
+      {displayContext === "sidebar" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <>
             <DatabaseSchemaSection schemas={schemaBlocks} />

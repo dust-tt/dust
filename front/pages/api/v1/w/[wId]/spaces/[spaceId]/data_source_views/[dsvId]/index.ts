@@ -1,16 +1,15 @@
-import type { DataSourceViewResponseType } from "@dust-tt/client";
-import { PatchDataSourceViewRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { DataSourceViewResponseType } from "@dust-tt/client";
+import { PatchDataSourceViewRequestSchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger

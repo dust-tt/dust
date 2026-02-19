@@ -1,18 +1,15 @@
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
-import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
-import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
-
 interface ConversationSidePanelContainerProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 

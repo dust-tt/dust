@@ -1,17 +1,28 @@
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
+
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { cva } from "class-variance-authority";
-import * as React from "react";
-import { useRef } from "react";
-
 import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import {
+  KeyboardShortcut,
+  type KeyboardShortcutProps,
+} from "@sparkle/components/KeyboardShortcut";
+import {
+  LinkWrapper,
+  type LinkWrapperProps,
+} from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
-import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
+import {
+  SearchInput,
+  type SearchInputProps,
+} from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import * as React from "react";
+import { useRef } from "react";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -80,10 +91,7 @@ export const menuStyleClasses = {
     "-s-mx-1 s-my-1 s-h-px",
     "s-bg-separator dark:s-bg-separator-night"
   ),
-  shortcut: cn(
-    "s-ml-auto s-text-xs s-tracking-widest",
-    "s-text-primary-400 dark:s-text-primary-400-night"
-  ),
+  shortcut: "s-ml-auto",
 };
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -243,9 +251,8 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
-interface DropdownMenuContentProps extends React.ComponentPropsWithoutRef<
-  typeof DropdownMenuPrimitive.Content
-> {
+interface DropdownMenuContentProps
+  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
@@ -488,10 +495,8 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-interface DropdownMenuTagItemProps extends Omit<
-  DropdownMenuItemProps,
-  "label" | "icon" | "onClick"
-> {
+interface DropdownMenuTagItemProps
+  extends Omit<DropdownMenuItemProps, "label" | "icon" | "onClick"> {
   label: string;
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];
@@ -592,12 +597,32 @@ const DropdownMenuSeparator = React.forwardRef<
 ));
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
+type DropdownMenuShortcutProps = React.HTMLAttributes<HTMLSpanElement> & {
+  shortcut?: KeyboardShortcutProps["shortcut"];
+};
+
 const DropdownMenuShortcut = ({
   className,
+  shortcut,
+  children,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
+}: DropdownMenuShortcutProps) => {
+  const resolvedShortcut = shortcut ?? "";
+
+  if (!resolvedShortcut && children) {
+    return (
+      <span className={cn(className)} {...props}>
+        {children}
+      </span>
+    );
+  }
+
   return (
-    <span className={cn(menuStyleClasses.shortcut, className)} {...props} />
+    <KeyboardShortcut
+      shortcut={resolvedShortcut}
+      className={cn(menuStyleClasses.shortcut, className)}
+      {...props}
+    />
   );
 };
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
@@ -809,7 +834,8 @@ const DropdownTooltipTrigger = React.forwardRef<
       <TooltipPrimitive.Provider delayDuration={300}>
         <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
-            {children}
+            {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
+            <span className="s-block s-w-full">{children}</span>
           </TooltipPrimitive.Trigger>
           {mountPortal ? (
             <TooltipPrimitive.Portal container={container}>

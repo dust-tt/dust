@@ -1,67 +1,80 @@
 import { z } from "zod";
 
-import type {
-  AgentReasoningEffort,
-  EMBEDDING_PROVIDER_IDS,
-  ExtractSpecificKeys,
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORTS,
-  SUPPORTED_MODEL_CONFIGS,
-  TokenizerConfig,
-  WhitelistableFeature,
-} from "@app/types";
+import type { WhitelistableFeature } from "../../shared/feature_flags";
+import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
+import type { TokenizerConfig } from "../../tokenizer";
+import type { AgentReasoningEffort } from "../agent";
+import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
+import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
+import type { MODEL_PROVIDER_IDS } from "./providers";
+import type { REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
-export type ModelConfigurationType = {
+
+export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
+export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
+
+// Schema for validating model configs (e.g., from GCS at build time).
+// This is the source of truth for the structure of ModelConfigurationType.
+export const ModelConfigurationSchema = z.object({
+  providerId: z.string(),
+  modelId: z.string(),
+  displayName: z.string(),
+  contextSize: z.number(),
+  recommendedTopK: z.number(),
+  recommendedExhaustiveTopK: z.number(),
+  largeModel: z.boolean(),
+  description: z.string(),
+  shortDescription: z.string(),
+  isLegacy: z.boolean(),
+  isLatest: z.boolean(),
+  nativeReasoningMetaPrompt: z.string().optional(),
+  formattingMetaPrompt: z.string().optional(),
+  toolUseMetaPrompt: z.string().optional(),
+  tokenCountAdjustment: z.number().optional(),
+  generationTokensCount: z.number(),
+  supportsVision: z.boolean(),
+  minimumReasoningEffort: z.string(),
+  maximumReasoningEffort: z.string(),
+  defaultReasoningEffort: z.string(),
+  useNativeLightReasoning: z.boolean().optional(),
+  supportsResponseFormat: z.boolean().optional(),
+  supportsPromptCaching: z.boolean().optional(),
+  featureFlag: z.string().optional(),
+  customAssistantFeatureFlag: z.string().optional(),
+  tokenizer: z.object({
+    type: z.string(),
+    base: z.string().optional(),
+  }),
+  customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
+  customBetas: z.array(z.string()).optional(),
+  disablePrefill: z.boolean().optional(),
+});
+
+// Base type inferred from the schema.
+type ModelConfigurationSchemaType = z.infer<typeof ModelConfigurationSchema>;
+
+// Final type with proper union types for ID and enum fields.
+// Derived from schema to ensure structure stays in sync.
+export type ModelConfigurationType = Omit<
+  ModelConfigurationSchemaType,
+  | "providerId"
+  | "modelId"
+  | "minimumReasoningEffort"
+  | "maximumReasoningEffort"
+  | "defaultReasoningEffort"
+  | "featureFlag"
+  | "customAssistantFeatureFlag"
+  | "tokenizer"
+> & {
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
-  displayName: string;
-  contextSize: number;
-  recommendedTopK: number;
-  recommendedExhaustiveTopK: number;
-  largeModel: boolean;
-  description: string;
-  shortDescription: string;
-  isLegacy: boolean;
-  isLatest: boolean;
-
-  // This meta-prompt is injected into the agent's system instructions if the agent is in a native reasoning context (reasoning effort >= medium).
-  nativeReasoningMetaPrompt?: string;
-
-  // This meta-prompt is always injected into the agent's system instructions.
-  formattingMetaPrompt?: string;
-
-  // This meta-prompt is injected if the agent has tools available.
-  toolUseMetaPrompt?: string;
-
-  // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
-  tokenCountAdjustment?: number;
-
-  // Controls how many output tokens the model can generate
-  generationTokensCount: number;
-
-  supportsVision: boolean;
-
-  // Reasoning effort constraints for the model
   minimumReasoningEffort: AgentReasoningEffort;
   maximumReasoningEffort: AgentReasoningEffort;
   defaultReasoningEffort: AgentReasoningEffort;
-
-  // If set to true, we'll pass the "light" reasoning effort to `core`. Otherwise, we'll
-  // use chain of thought prompting.
-  useNativeLightReasoning?: boolean;
-
-  // Denotes model is able to take a response format request parameter
-  supportsResponseFormat?: boolean;
-
-  // Supports prompt caching feature.
-  supportsPromptCaching?: boolean;
-
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
-
   tokenizer: TokenizerConfig;
 };
 

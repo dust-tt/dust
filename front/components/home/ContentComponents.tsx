@@ -1,3 +1,4 @@
+import { classNames } from "@app/lib/utils";
 import {
   CircleIcon,
   HexagonIcon,
@@ -9,10 +10,8 @@ import {
   SquareIcon,
   TriangleIcon,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
-import React from "react";
-
-import { classNames } from "@app/lib/utils";
 
 const verticalGridClasses = {
   top: "items-start",

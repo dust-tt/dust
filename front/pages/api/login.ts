@@ -1,5 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
+import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -12,9 +12,13 @@ import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import type { UTMParams } from "@app/lib/utils/utm";
+import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
@@ -38,6 +42,9 @@ async function handler(
 
   const { inviteToken, wId } = req.query;
   const { isSSO, workspaceId } = session;
+
+  // Extract UTM params to preserve through login redirects
+  const utmParams = extractUTMParams(req.query);
 
   // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
   const targetWorkspaceId = typeof wId === "string" ? wId : workspaceId;
@@ -125,7 +132,7 @@ async function handler(
 
     // More than one pending invitation, redirect to invite choose page - otherwise use the first one.
     if (pendingInvitations && pendingInvitations.length > 1) {
-      res.redirect("/invite-choose");
+      res.redirect(`${config.getAppUrl()}/invite-choose`);
       return;
     }
 
@@ -141,7 +148,8 @@ async function handler(
             session,
             user,
             memberships,
-            targetWorkspaceId
+            targetWorkspaceId,
+            utmParams
           );
 
     const result = await loginFctn();
@@ -166,15 +174,19 @@ async function handler(
         await user.unsafeDelete();
       }
 
+      const ssoLoginUrl = await makeEnterpriseConnectionInitiateLoginUrl(
+        error.workspaceId,
+        null
+      );
       res.redirect(
-        `/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
       );
       return;
     }
 
     const { flow, workspace } = result.value;
     if (flow === "no-auto-join" || flow === "revoked") {
-      res.redirect(`/no-workspace?flow=${flow}`);
+      res.redirect(`${config.getAppUrl()}/no-workspace?flow=${flow}`);
       return;
     }
 
@@ -184,12 +196,13 @@ async function handler(
 
   const u = await getUserFromSession(session);
   if (!u || u.workspaces.length === 0) {
-    res.redirect("/no-workspace?flow=revoked");
+    res.redirect(`${config.getAppUrl()}/no-workspace?flow=revoked`);
     return;
   }
 
   const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
     welcome: user.lastLoginAt === null,
+    utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined,
   };
 
   await user.recordLoginActivity();
@@ -222,14 +235,24 @@ const buildPostLoginUrl = (
   options?: {
     welcome?: boolean;
     conversationId?: string;
+    utmParams?: UTMParams;
   }
 ) => {
-  let path = `/w/${workspaceId}`;
+  let path = `${config.getAppUrl(true)}/w/${workspaceId}`;
   if (options?.welcome) {
     path += "/welcome";
   }
+
+  const searchParams = new URLSearchParams();
   if (options?.conversationId) {
-    path += `?cId=${options.conversationId}`;
+    searchParams.set("cId", options.conversationId);
   }
-  return path;
+  if (options?.utmParams) {
+    for (const [key, value] of Object.entries(options.utmParams)) {
+      searchParams.set(key, value);
+    }
+  }
+
+  const queryString = searchParams.toString();
+  return queryString ? `${path}?${queryString}` : path;
 };

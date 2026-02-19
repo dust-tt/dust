@@ -1,0 +1,189 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  getAgentDataSourceConfigurations,
+  makeCoreSearchNodesFilters,
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import {
+  extractDataSourceIdFromNodeId,
+  isDataSourceNodeId,
+} from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
+import config from "@app/lib/api/config";
+import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
+import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
+import type {
+  CoreAPIError,
+  CoreAPISearchNodesResponse,
+} from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isDustMimeType } from "@dust-tt/client";
+
+export async function list(
+  {
+    nodeId,
+    dataSources,
+    limit,
+    mimeTypes,
+    sortBy,
+    nextPageCursor,
+  }: {
+    nodeId: string | null;
+    dataSources: DataSourcesToolConfigurationType;
+    limit?: number;
+    mimeTypes?: string[];
+    sortBy?: "title" | "timestamp";
+    nextPageCursor?: string;
+  },
+  { auth }: { auth: Authenticator }
+) {
+  const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
+  if (invalidMimeTypes && invalidMimeTypes.length > 0) {
+    return new Err(
+      new MCPError(`Invalid mime types: ${invalidMimeTypes.join(", ")}`, {
+        tracked: false,
+      })
+    );
+  }
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
+
+  if (fetchResult.isErr()) {
+    return fetchResult;
+  }
+
+  const agentDataSourceConfigurations = fetchResult.value;
+
+  const options = {
+    cursor: nextPageCursor,
+    limit,
+    sort: sortBy
+      ? [
+          {
+            field: sortBy,
+            direction: getSearchNodesSortDirection(sortBy),
+          },
+        ]
+      : undefined,
+  };
+
+  let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
+
+  // By-pass tag filters when exploring the filesystem hierarchy
+  const includeTagFilters = false;
+
+  if (!nodeId) {
+    // When nodeId is null, search for data sources only.
+    const dataSourceViewFilter = makeCoreSearchNodesFilters({
+      agentDataSourceConfigurations,
+      includeTagFilters,
+    }).map((view) => ({
+      ...view,
+      search_scope: "data_source_name" as const,
+    }));
+
+    searchResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: dataSourceViewFilter,
+        mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+      },
+      options,
+    });
+  } else if (isDataSourceNodeId(nodeId)) {
+    // If it's a data source node ID, extract the data source ID and list its root contents.
+    const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+    if (!dataSourceId) {
+      return new Err(
+        new MCPError("Invalid data source node ID format", {
+          tracked: false,
+        })
+      );
+    }
+
+    const dataSourceConfig = agentDataSourceConfigurations.find(
+      ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+    );
+
+    if (!dataSourceConfig) {
+      return new Err(
+        new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    searchResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: makeCoreSearchNodesFilters({
+          agentDataSourceConfigurations: [dataSourceConfig],
+          includeTagFilters,
+        }),
+        node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
+        parent_id: dataSourceConfig.filter.parents?.in
+          ? undefined
+          : ROOT_PARENT_ID,
+        mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+      },
+      options,
+    });
+  } else {
+    // Regular node listing.
+    searchResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: makeCoreSearchNodesFilters({
+          agentDataSourceConfigurations,
+          includeTagFilters,
+        }),
+        parent_id: nodeId,
+        mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+      },
+      options,
+    });
+  }
+
+  if (searchResult.isErr()) {
+    if (searchResult.error.code === "cursor_sort_mismatch") {
+      return new Err(
+        new MCPError(
+          "The nextPageCursor passed was generated with a different sortBy value. " +
+            "This nextPageCursor can be used if passed with the same sortBy that was used to " +
+            "generate it.",
+          { tracked: false }
+        )
+      );
+    }
+
+    return new Err(
+      new MCPError(
+        `Failed to list node contents: ${searchResult.error.message}`
+      )
+    );
+  }
+
+  return new Ok([
+    {
+      type: "resource" as const,
+      resource: renderSearchResults(
+        searchResult.value,
+        agentDataSourceConfigurations
+      ),
+    },
+  ]);
+}
+
+function getSearchNodesSortDirection(
+  field: "title" | "timestamp"
+): "asc" | "desc" {
+  switch (field) {
+    case "title":
+      return "asc"; // Alphabetical A-Z.
+
+    case "timestamp":
+      return "desc"; // Most recent first.
+  }
+}

@@ -1,13 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetPokeSkillsResponseBody = {
   skills: SkillType[];
@@ -23,8 +22,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 400,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found.",
+        type: "invalid_request_error",
+        message: "Missing or invalid workspace id.",
       },
     });
   }
@@ -43,7 +42,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const skills = await SkillResource.listSkills(auth, {
+      const skills = await SkillResource.listByWorkspace(auth, {
         status: ["active", "archived", "suggested"],
       });
 

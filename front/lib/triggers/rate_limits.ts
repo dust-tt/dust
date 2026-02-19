@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -23,11 +23,13 @@ export async function checkWebhookRequestForRateLimit(
   const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
   if (maxMessages !== -1) {
-    const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
-    // For free phone plans, don't multiply by activeSeats to prevent increased limits with more users.
-    const effectiveMaxMessages = isFreeTrialPhonePlan(plan.code)
-      ? maxMessages
-      : maxMessages * activeSeats;
+    const activeSeats =
+      await MembershipResource.countActiveSeatsInWorkspaceCached(workspace.sId);
+    const effectiveMaxMessages = computeEffectiveMessageLimit({
+      planCode: plan.code,
+      maxMessages,
+      activeSeats,
+    });
     const webhookLimit = Math.ceil(
       effectiveMaxMessages * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
     );

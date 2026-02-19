@@ -1,9 +1,12 @@
-import { Chip, IconButton } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import type {
+  FeatureFlagStage,
+  WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
+import { FEATURE_FLAG_STAGE_LABELS } from "@app/types/shared/feature_flags";
+import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
+import { Chip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-
-import type { FeatureFlagStage, WhitelistableFeature } from "@app/types";
-import { dateToHumanReadable, FEATURE_FLAG_STAGE_LABELS } from "@app/types";
 
 type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;
@@ -17,37 +20,15 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
   return [
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       accessorKey: "stage",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Stage</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Stage" />
+      ),
       cell: ({ row }) => {
         const { stage } = row.original;
         const warningStages: FeatureFlagStage[] = ["dust_only", "rolling_out"];
@@ -75,20 +56,9 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
     },
     {
       accessorKey: "enabled",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Status</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Status" />
+      ),
       cell: ({ row }) => {
         const { enabled } = row.original;
         return (
@@ -102,20 +72,9 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
     },
     {
       accessorKey: "enabledAt",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Enabled Date</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Enabled date" />
+      ),
       cell: ({ row }) => {
         const { enabledAt } = row.original;
         if (!enabledAt) {

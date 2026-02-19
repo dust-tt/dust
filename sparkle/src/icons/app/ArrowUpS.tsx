@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
+
 const SvgArrowUpS = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -9,7 +10,7 @@ const SvgArrowUpS = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m12 8 6 6H6l6-6Z" />
+    <path fill="currentColor" d="m12 8 6 6H6z" />
   </svg>
 );
 export default SvgArrowUpS;

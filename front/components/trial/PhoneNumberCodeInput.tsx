@@ -1,7 +1,6 @@
-import { cn } from "@dust-tt/sparkle";
-import React from "react";
-
 import { CODE_LENGTH } from "@app/lib/plans/trial/phone";
+import { cn } from "@dust-tt/sparkle";
+import type React from "react";
 
 interface CodeInputProps {
   code: string[];

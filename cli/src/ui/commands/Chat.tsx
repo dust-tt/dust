@@ -1,10 +1,15 @@
 import type {
   AgentActionSpecificEvent,
+  ConversationPublicType,
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
+import chalk from "chalk";
+import { structuredPatch } from "diff";
+import { readdir, stat } from "fs/promises";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
+import path from "path";
 import type { FC } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -15,7 +20,9 @@ import { normalizeError } from "../../utils/errors.js";
 import type { FileInfo } from "../../utils/fileHandling.js";
 import {
   formatFileSize,
+  getFileExtension,
   isImageFile,
+  isSupportedFileType,
   validateAndGetFileInfo,
 } from "../../utils/fileHandling.js";
 import { useAgents } from "../../utils/hooks/use_agents.js";
@@ -25,12 +32,10 @@ import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
-import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
-import FileAccessSelector from "../components/FileAccessSelector.js";
-import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
-import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
+import type { InlineSelectorItem } from "../components/InlineSelector.js";
+import { resolveSpaceId, validateProjectFlags } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -41,6 +46,8 @@ interface CliChatProps {
   agentSearch?: string;
   conversationId?: string;
   autoAcceptEditsFlag?: boolean;
+  projectName?: string;
+  projectId?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -56,11 +63,70 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
+function buildConversationItemsFromHistory(
+  conv: ConversationPublicType,
+  agent: { name: string; description: string }
+): ConversationItem[] {
+  const items: ConversationItem[] = [
+    {
+      key: "welcome_header",
+      type: "welcome_header",
+      agentName: agent.name,
+      agentDescription: agent.description,
+    },
+  ];
+
+  let userMsgIdx = 0;
+  let agentMsgIdx = 0;
+
+  for (const messageGroup of conv.content) {
+    for (const msg of messageGroup) {
+      if (msg.type === "user_message") {
+        items.push({
+          key: `resumed_user_${userMsgIdx}`,
+          type: "user_message",
+          firstName: msg.user?.firstName ?? "You",
+          content: msg.content,
+          index: userMsgIdx,
+        });
+        userMsgIdx++;
+      } else if (msg.type === "agent_message") {
+        items.push({
+          key: `resumed_agent_header_${agentMsgIdx}`,
+          type: "agent_message_header",
+          agentName: msg.configuration.name,
+          index: agentMsgIdx,
+        });
+        if (msg.content) {
+          const contentLines = msg.content.trim().split("\n");
+          for (let i = 0; i < contentLines.length; i++) {
+            items.push({
+              key: `resumed_agent_content_${agentMsgIdx}_${i}`,
+              type: "agent_message_content_line",
+              text: contentLines[i] || " ",
+              index: i,
+            });
+          }
+        }
+        items.push({
+          key: `resumed_agent_sep_${agentMsgIdx}`,
+          type: "separator",
+        });
+        agentMsgIdx++;
+      }
+    }
+  }
+
+  return items;
+}
+
 const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
   conversationId,
   autoAcceptEditsFlag,
+  projectName,
+  projectId,
 }) => {
   const [autoAcceptEdits, setAutoAcceptEdits] = useState(!!autoAcceptEditsFlag);
   const autoAcceptEditsRef = useRef(autoAcceptEdits);
@@ -85,7 +151,13 @@ const CliChat: FC<CliChatProps> = ({
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
-  const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
+  const [inlineSelector, setInlineSelector] = useState<{
+    mode: "agent" | "file" | "conversation" | "approval" | "diff";
+    items: InlineSelectorItem[];
+    query: string;
+    selectedIndex: number;
+    currentPath?: string;
+  } | null>(null);
   const [pendingApproval, setPendingApproval] =
     useState<AgentActionSpecificEvent | null>(null);
   const [approvalResolver, setApprovalResolver] = useState<
@@ -102,14 +174,21 @@ const CliChat: FC<CliChatProps> = ({
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
-  const [showFileSelector, setShowFileSelector] = useState(false);
-  const [chosenFileSystemUsage, setChosenFileSystemUsage] = useState(false);
+  const [fileSystemInitialized, setFileSystemInitialized] = useState(false);
   const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
     null
   );
+  const [resolvedSpaceId, setResolvedSpaceId] = useState<string | undefined>(
+    undefined
+  );
+  const [isResolvingSpace, setIsResolvingSpace] = useState(
+    !!(projectName || projectId)
+  );
+  const [actionStatus, setActionStatus] = useState<string | null>(null);
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
+  const resumeLoadedRef = useRef(false);
 
   const { stdout } = useStdout();
 
@@ -122,7 +201,58 @@ const CliChat: FC<CliChatProps> = ({
     isLoading: agentsIsLoading,
   } = useAgents();
 
-  const triggerAgentSwitch = useCallback(async () => {
+  // Validate and resolve spaceId from projectName or projectId
+  useEffect(() => {
+    // Validate flags first - fail fast before any async operations
+    const validationError = validateProjectFlags(
+      projectName,
+      projectId,
+      conversationId ?? undefined
+    );
+    if (validationError) {
+      setError(validationError);
+      setIsResolvingSpace(false);
+      return;
+    }
+
+    if (!projectName && !projectId) {
+      setIsResolvingSpace(false);
+      return;
+    }
+
+    async function resolveSpace() {
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        setIsResolvingSpace(false);
+        return;
+      }
+
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        setIsResolvingSpace(false);
+        return;
+      }
+
+      try {
+        const spaceId = await resolveSpaceId(
+          dustClient,
+          projectName,
+          projectId
+        );
+        setResolvedSpaceId(spaceId);
+      } catch (error) {
+        setError(normalizeError(error).message);
+      } finally {
+        setIsResolvingSpace(false);
+      }
+    }
+
+    void resolveSpace();
+  }, [projectName, projectId, conversationId]);
+
+  const triggerAgentSwitch = useCallback(() => {
     // Clear all input states before switching.
     setUserInput("");
     setCursorPosition(0);
@@ -131,9 +261,164 @@ const CliChat: FC<CliChatProps> = ({
     setSelectedCommandIndex(0);
     setCommandCursorPosition(0);
 
-    await clearTerminal();
-    setIsSelectingNewAgent(true);
-  }, []);
+    const items: InlineSelectorItem[] = (allAgents || []).map((agent) => ({
+      id: agent.sId,
+      label: agent.name,
+      description: agent.description.split("\n")[0]?.slice(0, 60) || "",
+    }));
+
+    setInlineSelector({
+      mode: "agent",
+      items,
+      query: "",
+      selectedIndex: 0,
+    });
+  }, [allAgents]);
+
+  const loadDirectoryItems = useCallback(
+    async (dirPath: string): Promise<InlineSelectorItem[]> => {
+      const entries = await readdir(dirPath, { withFileTypes: true });
+      const items: InlineSelectorItem[] = [];
+
+      // Add parent directory navigation unless at root
+      if (dirPath !== "/") {
+        items.push({ id: path.dirname(dirPath), label: ".." });
+      }
+
+      const dirs: InlineSelectorItem[] = [];
+      const supportedFiles: InlineSelectorItem[] = [];
+      const unsupportedFiles: InlineSelectorItem[] = [];
+
+      for (const entry of entries) {
+        // Skip hidden files/dirs
+        if (entry.name.startsWith(".")) {
+          continue;
+        }
+
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          dirs.push({ id: fullPath, label: `📁 ${entry.name}/` });
+        } else if (entry.isFile()) {
+          const ext = getFileExtension(entry.name);
+          if (isSupportedFileType(ext)) {
+            supportedFiles.push({ id: fullPath, label: `  ${entry.name}` });
+          } else {
+            unsupportedFiles.push({
+              id: fullPath,
+              label: `  ${entry.name}`,
+              description: "(unsupported)",
+            });
+          }
+        }
+      }
+
+      // Directories first, then supported files, then unsupported
+      items.push(...dirs, ...supportedFiles, ...unsupportedFiles);
+
+      // Cap at 200 items
+      const MAX_ITEMS = 200;
+      if (items.length > MAX_ITEMS) {
+        const remaining = items.length - MAX_ITEMS;
+        const capped = items.slice(0, MAX_ITEMS);
+        capped.push({
+          id: "__more__",
+          label: `(${remaining} more items not shown)`,
+        });
+        return capped;
+      }
+
+      return items;
+    },
+    []
+  );
+
+  const formatInputs = (inputs: unknown): string => {
+    if (!inputs) {
+      return "";
+    }
+    if (typeof inputs === "string") {
+      return inputs;
+    }
+    if (typeof inputs === "object" && !Array.isArray(inputs)) {
+      return Object.entries(inputs as Record<string, unknown>)
+        .map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`)
+        .join("\n");
+    }
+    return JSON.stringify(inputs, null, 2);
+  };
+
+  const DIFF_COLORS = {
+    addedFg: "#2D5A3D",
+    removedFg: "#8B3A3A",
+    contextFg: "#6B7280",
+  } as const;
+
+  const DIFF_TYPE_MAP = {
+    remove: { color: DIFF_COLORS.removedFg, symbol: "- " },
+    add: { color: DIFF_COLORS.addedFg, symbol: "+ " },
+    context: { color: DIFF_COLORS.contextFg, symbol: "  " },
+  } as const;
+
+  const renderDiffLines = (diff: {
+    originalContent: string;
+    updatedContent: string;
+    filePath: string;
+  }) => {
+    const patch = structuredPatch(
+      diff.filePath,
+      diff.filePath,
+      diff.originalContent,
+      diff.updatedContent,
+      undefined,
+      undefined,
+      { context: 3 }
+    );
+
+    const lines: {
+      type: "remove" | "add" | "context";
+      lineNumber: number;
+      content: string;
+    }[] = [];
+    for (const hunk of patch.hunks) {
+      let oldLineNum = hunk.oldStart;
+      let newLineNum = hunk.newStart;
+      for (const line of hunk.lines) {
+        if (line.startsWith("-")) {
+          lines.push({
+            type: "remove",
+            lineNumber: oldLineNum,
+            content: line.substring(1),
+          });
+          oldLineNum++;
+        } else if (line.startsWith("+")) {
+          lines.push({
+            type: "add",
+            lineNumber: newLineNum,
+            content: line.substring(1),
+          });
+          newLineNum++;
+        } else if (line !== "\\ No newline at end of file") {
+          lines.push({
+            type: "context",
+            lineNumber: oldLineNum,
+            content: line.substring(1),
+          });
+          oldLineNum++;
+          newLineNum++;
+        }
+      }
+    }
+
+    return lines.map((line, index) => {
+      const { color, symbol } = DIFF_TYPE_MAP[line.type];
+      return (
+        <Text key={index}>
+          {chalk.hex(color)(`${symbol}${line.lineNumber}: ${line.content}`)}
+        </Text>
+      );
+    });
+  };
 
   const handleApprovalRequest = useCallback(
     async (event: AgentActionSpecificEvent): Promise<boolean> => {
@@ -162,6 +447,28 @@ const CliChat: FC<CliChatProps> = ({
       return new Promise<boolean>((resolve) => {
         setPendingApproval(event);
         setApprovalResolver(() => resolve);
+
+        const isLowStake = event.stake === "low";
+        const items: InlineSelectorItem[] = isLowStake
+          ? [
+              { id: "approve", label: "Approve" },
+              {
+                id: "approve_and_cache",
+                label: "Approve and don't ask again",
+              },
+              { id: "reject", label: "Reject" },
+            ]
+          : [
+              { id: "approve", label: "Approve" },
+              { id: "reject", label: "Reject" },
+            ];
+
+        setInlineSelector({
+          mode: "approval",
+          items,
+          query: "",
+          selectedIndex: 0,
+        });
       });
     },
     []
@@ -192,6 +499,7 @@ const CliChat: FC<CliChatProps> = ({
         approvalResolver(approved);
         setPendingApproval(null);
         setApprovalResolver(null);
+        setInlineSelector(null);
       }
     },
     [approvalResolver, pendingApproval]
@@ -203,6 +511,7 @@ const CliChat: FC<CliChatProps> = ({
         diffApprovalResolver(approved);
         setPendingDiffApproval(null);
         setDiffApprovalResolver(null);
+        setInlineSelector(null);
       }
     },
     [diffApprovalResolver, pendingDiffApproval]
@@ -224,6 +533,16 @@ const CliChat: FC<CliChatProps> = ({
         setDiffApprovalResolver(() => (approved: boolean) => {
           resolve(approved);
         });
+
+        setInlineSelector({
+          mode: "diff",
+          items: [
+            { id: "accept", label: "Accept" },
+            { id: "reject", label: "Reject" },
+          ],
+          query: "",
+          selectedIndex: 0,
+        });
       });
     },
     []
@@ -236,9 +555,24 @@ const CliChat: FC<CliChatProps> = ({
   }, []);
 
   const showAttachDialog = useCallback(async () => {
-    await clearTerminal();
-    setShowFileSelector(true);
-  }, []);
+    const cwd = process.cwd();
+    const items = await loadDirectoryItems(cwd);
+
+    setUserInput("");
+    setCursorPosition(0);
+    setShowCommandSelector(false);
+    setCommandQuery("");
+    setSelectedCommandIndex(0);
+    setCommandCursorPosition(0);
+
+    setInlineSelector({
+      mode: "file",
+      items,
+      query: "",
+      selectedIndex: 0,
+      currentPath: cwd,
+    });
+  }, [loadDirectoryItems]);
 
   const toggleAutoEdits = useCallback(() => {
     setAutoAcceptEdits((prev) => !prev);
@@ -268,6 +602,7 @@ const CliChat: FC<CliChatProps> = ({
         title,
         visibility: "unlisted",
         contentFragments: [],
+        spaceId: resolvedSpaceId,
       });
 
       if (convRes.isErr()) {
@@ -278,12 +613,11 @@ const CliChat: FC<CliChatProps> = ({
       setCurrentConversationId(convRes.value.conversation.sId);
       return convRes.value.conversation.sId;
     },
-    [selectedAgent, me, meError, isMeLoading]
+    [selectedAgent, me, meError, isMeLoading, resolvedSpaceId]
   );
 
   const handleFileSelected = useCallback(
     async (filePathOrPaths: string | string[]) => {
-      setShowFileSelector(false);
       // Normalize to array for unified handling
       const paths = Array.isArray(filePathOrPaths)
         ? filePathOrPaths
@@ -317,8 +651,149 @@ const CliChat: FC<CliChatProps> = ({
     [currentConversationId, createConversationForFiles]
   );
 
-  const handleFileSelectorCancel = useCallback(() => {
-    setShowFileSelector(false);
+  const startNewConversation = useCallback(async () => {
+    await clearTerminal();
+    setCurrentConversationId(null);
+    setConversationItems(
+      selectedAgent
+        ? [
+            {
+              key: "welcome_header",
+              type: "welcome_header",
+              agentName: selectedAgent.name,
+              agentDescription: selectedAgent.description,
+            },
+          ]
+        : []
+    );
+    setUploadedFiles([]);
+    setPendingFiles([]);
+  }, [selectedAgent]);
+
+  const showHelp = useCallback(() => {
+    const helpText =
+      "Commands: /help /switch /new /resume /attach /clear-files /auto /exit\n" +
+      "Shortcuts: Enter=send  \\Enter=newline  ESC=clear/cancel  Ctrl+G=open in browser";
+    const lines = helpText.split("\n");
+    setConversationItems((prev) => [
+      ...prev,
+      ...lines.map((line, i) => ({
+        key: `help_line_${Date.now()}_${i}`,
+        type: "agent_message_content_line" as const,
+        text: line,
+        index: 0,
+      })),
+      { key: `help_sep_${Date.now()}`, type: "separator" as const },
+    ]);
+  }, []);
+
+  const handleConversationSelected = useCallback(
+    async (convSId: string) => {
+      setConversationItems((prev) => [
+        ...prev,
+        {
+          key: `loading_conv_${Date.now()}`,
+          type: "agent_message_content_line" as const,
+          text: "Loading conversation...",
+          index: 0,
+        },
+      ]);
+
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return;
+      }
+
+      const convRes = await dustClient.getConversation({
+        conversationId: convSId,
+      });
+      if (convRes.isErr()) {
+        setError(`Failed to load conversation: ${convRes.error.message}`);
+        return;
+      }
+
+      setCurrentConversationId(convSId);
+      const items = buildConversationItemsFromHistory(convRes.value, {
+        name: selectedAgent?.name ?? "dust",
+        description: selectedAgent?.description ?? "",
+      });
+
+      await clearTerminal();
+      setConversationItems(items);
+    },
+    [selectedAgent]
+  );
+
+  const resumeConversation = useCallback(async () => {
+    setConversationItems((prev) => [
+      ...prev,
+      {
+        key: `loading_resume_${Date.now()}`,
+        type: "agent_message_content_line" as const,
+        text: "Loading conversations...",
+        index: 0,
+      },
+    ]);
+
+    const dustClientRes = await getDustClient();
+    if (dustClientRes.isErr()) {
+      setError(dustClientRes.error.message);
+      return;
+    }
+    const dustClient = dustClientRes.value;
+    if (!dustClient) {
+      setError("Authentication required. Run `dust login` first.");
+      return;
+    }
+
+    const convRes = await dustClient.getConversations();
+    if (convRes.isErr()) {
+      setError(`Failed to fetch conversations: ${convRes.error.message}`);
+      return;
+    }
+
+    const conversations = convRes.value
+      .filter((c) => c.visibility !== "deleted")
+      .slice(0, 20);
+
+    if (conversations.length === 0) {
+      setConversationItems((prev) => [
+        ...prev,
+        {
+          key: `resume_empty_${Date.now()}`,
+          type: "agent_message_content_line" as const,
+          text: "No recent conversations found.",
+          index: 0,
+        },
+        { key: `resume_sep_${Date.now()}`, type: "separator" as const },
+      ]);
+      return;
+    }
+
+    const items: InlineSelectorItem[] = conversations.map((c) => ({
+      id: c.sId,
+      label: `${new Date(c.created).toLocaleDateString()} - ${c.title || "Untitled"}`,
+    }));
+
+    setUserInput("");
+    setCursorPosition(0);
+    setShowCommandSelector(false);
+    setCommandQuery("");
+    setSelectedCommandIndex(0);
+    setCommandCursorPosition(0);
+
+    setInlineSelector({
+      mode: "conversation",
+      items,
+      query: "",
+      selectedIndex: 0,
+    });
   }, []);
 
   const commands = createCommands({
@@ -326,6 +801,9 @@ const CliChat: FC<CliChatProps> = ({
     clearFiles,
     attachFile: showAttachDialog,
     toggleAutoEdits,
+    startNewConversation,
+    showHelp,
+    resumeConversation,
   });
 
   // Cache Edit tool when agent is selected, since approval is asked anyways
@@ -371,10 +849,112 @@ const CliChat: FC<CliChatProps> = ({
         key: "welcome_header",
         type: "welcome_header",
         agentName: agentToSelect.name,
-        agentId: agentToSelect.sId,
+        agentDescription: agentToSelect.description,
       },
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
+
+  // Auto-select @dust agent when no agent/sId/search is specified
+  useEffect(() => {
+    if (selectedAgent || requestedSId || agentSearch) {
+      return;
+    }
+    if (!allAgents || allAgents.length === 0) {
+      return;
+    }
+
+    const dustAgent = allAgents.find((agent) => agent.sId === "dust");
+    if (dustAgent) {
+      setSelectedAgent(dustAgent);
+      setConversationItems([
+        {
+          key: "welcome_header",
+          type: "welcome_header",
+          agentName: dustAgent.name,
+          agentDescription: dustAgent.description,
+        },
+      ]);
+    }
+  }, [allAgents, selectedAgent, requestedSId, agentSearch]);
+
+  // Auto-initialize filesystem server when agent is selected.
+  useEffect(() => {
+    if (!selectedAgent || fileSystemInitialized) {
+      return;
+    }
+    setFileSystemInitialized(true);
+
+    void (async () => {
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return;
+      }
+
+      const useFsServerRes = await useFileSystemServer(
+        dustClient,
+        (serverId) => {
+          setFileSystemServerId(serverId);
+        },
+        requestDiffApproval
+      );
+      if (useFsServerRes.isErr()) {
+        setError(useFsServerRes.error.message);
+      }
+    })();
+  }, [selectedAgent, fileSystemInitialized, requestDiffApproval]);
+
+  // Load conversation history when resuming via --resume
+  useEffect(() => {
+    if (!conversationId || !selectedAgent || resumeLoadedRef.current) {
+      return;
+    }
+    resumeLoadedRef.current = true;
+
+    setConversationItems((prev) => [
+      ...prev,
+      {
+        key: `loading_resume_init_${Date.now()}`,
+        type: "agent_message_content_line" as const,
+        text: "Loading conversation...",
+        index: 0,
+      },
+    ]);
+
+    void (async () => {
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+      const dustClient = dustClientRes.value;
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return;
+      }
+
+      const convRes = await dustClient.getConversation({
+        conversationId,
+      });
+      if (convRes.isErr()) {
+        setError(`Failed to load conversation: ${convRes.error.message}`);
+        return;
+      }
+
+      const items = buildConversationItemsFromHistory(convRes.value, {
+        name: selectedAgent.name,
+        description: selectedAgent.description,
+      });
+
+      await clearTerminal();
+      setConversationItems(items);
+    })();
+  }, [conversationId, selectedAgent]);
 
   useEffect(() => {
     autoAcceptEditsRef.current = autoAcceptEdits;
@@ -385,7 +965,7 @@ const CliChat: FC<CliChatProps> = ({
     !meError &&
     !isMeLoading &&
     !isProcessingQuestion &&
-    !isSelectingNewAgent &&
+    !inlineSelector &&
     !!userInput.trim();
 
   const handleSubmitQuestion = useCallback(
@@ -520,6 +1100,7 @@ const CliChat: FC<CliChatProps> = ({
               },
             },
             contentFragments,
+            spaceId: resolvedSpaceId,
           });
 
           if (convRes.isErr()) {
@@ -708,6 +1289,7 @@ const CliChat: FC<CliChatProps> = ({
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);
             }
+            setActionStatus(null);
             setError(null);
             pushFullLinesToConversationItems(false);
             chainOfThoughtRef.current = "";
@@ -719,11 +1301,18 @@ const CliChat: FC<CliChatProps> = ({
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);
             }
+            setActionStatus(null);
             setError(null);
             pushFullLinesToConversationItems(false);
             chainOfThoughtRef.current = "";
             contentRef.current = "";
             break;
+          } else if (event.type === "tool_params") {
+            setActionStatus(
+              event.action.displayLabels?.running ?? "Running a tool"
+            );
+          } else if (event.type === "agent_action_success") {
+            setActionStatus(null);
           } else if (event.type === "tool_approve_execution") {
             const approved = await handleApprovalRequest(event);
             await dustClient.validateAction({
@@ -737,6 +1326,7 @@ const CliChat: FC<CliChatProps> = ({
       } catch (error) {
         if (controller.signal.aborted) {
           setAbortController(null);
+          setActionStatus(null);
           if (updateIntervalRef.current) {
             clearInterval(updateIntervalRef.current);
           }
@@ -781,6 +1371,7 @@ const CliChat: FC<CliChatProps> = ({
       isMeLoading,
       uploadedFiles,
       fileSystemServerId,
+      resolvedSpaceId,
     ]
   );
 
@@ -810,12 +1401,159 @@ const CliChat: FC<CliChatProps> = ({
 
   // Handle keyboard events.
   useInput((input, key) => {
-    // Skip input handling when there's a pending approval
-    if (pendingApproval || pendingDiffApproval) {
+    if (!selectedAgent) {
       return;
     }
 
-    if (!selectedAgent || isSelectingNewAgent || showFileSelector) {
+    // Handle inline selector keyboard (agent switch, file browser, approval).
+    if (inlineSelector) {
+      if (key.escape) {
+        if (inlineSelector.mode === "approval") {
+          void handleApproval(false);
+        } else if (inlineSelector.mode === "diff") {
+          void handleDiffApproval(false);
+        } else {
+          setInlineSelector(null);
+        }
+        return;
+      }
+
+      const isFixedMode =
+        inlineSelector.mode === "approval" || inlineSelector.mode === "diff";
+      const filtered = isFixedMode
+        ? inlineSelector.items
+        : inlineSelector.items.filter((item) =>
+            item.label
+              .toLowerCase()
+              .includes(inlineSelector.query.toLowerCase())
+          );
+      const maxVisible = 10;
+      const visibleCount = Math.min(filtered.length, maxVisible);
+
+      if (key.upArrow) {
+        setInlineSelector((prev) =>
+          prev
+            ? { ...prev, selectedIndex: Math.max(0, prev.selectedIndex - 1) }
+            : prev
+        );
+        return;
+      }
+
+      if (key.downArrow) {
+        setInlineSelector((prev) =>
+          prev
+            ? {
+                ...prev,
+                selectedIndex: Math.min(
+                  visibleCount - 1,
+                  prev.selectedIndex + 1
+                ),
+              }
+            : prev
+        );
+        return;
+      }
+
+      if (key.return) {
+        if (
+          filtered.length > 0 &&
+          inlineSelector.selectedIndex < filtered.length
+        ) {
+          const selected = filtered[inlineSelector.selectedIndex];
+
+          if (inlineSelector.mode === "approval") {
+            const approved =
+              selected.id === "approve" || selected.id === "approve_and_cache";
+            const cacheApproval = selected.id === "approve_and_cache";
+            void handleApproval(approved, cacheApproval);
+            return;
+          }
+
+          if (inlineSelector.mode === "diff") {
+            void handleDiffApproval(selected.id === "accept");
+            return;
+          }
+
+          if (inlineSelector.mode === "agent") {
+            const agent = (allAgents || []).find((a) => a.sId === selected.id);
+            if (agent) {
+              setSelectedAgent(agent);
+              setConversationItems((prev) => [
+                ...prev,
+                {
+                  key: `switch_${Date.now()}`,
+                  type: "agent_message_content_line",
+                  text: `Switched to @${agent.name}`,
+                  index: 0,
+                },
+                { key: `switch_sep_${Date.now()}`, type: "separator" },
+              ]);
+            }
+            setInlineSelector(null);
+          } else if (inlineSelector.mode === "file") {
+            if (selected.id === "__more__") {
+              return;
+            }
+            void (async () => {
+              try {
+                const targetStat = await stat(selected.id);
+                if (targetStat.isDirectory()) {
+                  const items = await loadDirectoryItems(selected.id);
+                  setInlineSelector({
+                    mode: "file",
+                    items,
+                    query: "",
+                    selectedIndex: 0,
+                    currentPath: selected.id,
+                  });
+                } else {
+                  const ext = getFileExtension(selected.id);
+                  if (isSupportedFileType(ext)) {
+                    setInlineSelector(null);
+                    await handleFileSelected(selected.id);
+                  }
+                }
+              } catch {
+                setInlineSelector(null);
+              }
+            })();
+          } else if (inlineSelector.mode === "conversation") {
+            void handleConversationSelected(selected.id);
+            setInlineSelector(null);
+          }
+        }
+        return;
+      }
+
+      // Suppress typing/backspace in fixed-option modes (no filtering needed)
+      if (isFixedMode) {
+        return;
+      }
+
+      if (key.backspace || key.delete) {
+        setInlineSelector((prev) =>
+          prev
+            ? {
+                ...prev,
+                query: prev.query.slice(0, -1),
+                selectedIndex: 0,
+              }
+            : prev
+        );
+        return;
+      }
+
+      if (!key.ctrl && !key.meta && input && input.length === 1) {
+        setInlineSelector((prev) =>
+          prev
+            ? {
+                ...prev,
+                query: prev.query + input,
+                selectedIndex: 0,
+              }
+            : prev
+        );
+      }
       return;
     }
 
@@ -887,6 +1625,12 @@ const CliChat: FC<CliChatProps> = ({
           }
         })();
       }
+      return;
+    }
+
+    // Shift+Tab to toggle auto-approval mode
+    if (key.tab && key.shift) {
+      setAutoAcceptEdits((prev) => !prev);
       return;
     }
 
@@ -1183,6 +1927,17 @@ const CliChat: FC<CliChatProps> = ({
     );
   }
 
+  // Show loading state while resolving project/space
+  if (isResolvingSpace) {
+    return (
+      <Box flexDirection="column">
+        <Text color="green">
+          Resolving project "{projectName || projectId}"...
+        </Text>
+      </Box>
+    );
+  }
+
   // Render error state
   if (error || agentsError) {
     return (
@@ -1204,122 +1959,37 @@ const CliChat: FC<CliChatProps> = ({
     );
   }
 
-  if (showFileSelector) {
-    return (
-      <FileSelector
-        onSelect={handleFileSelected}
-        onCancel={handleFileSelectorCancel}
-      />
-    );
-  }
-
-  if ((!selectedAgent || isSelectingNewAgent) && !agentSearch) {
-    const isInitialSelection = !selectedAgent;
+  if (!selectedAgent && !agentSearch) {
+    // If no --sId flag and no agent search, wait for auto-select to kick in
+    if (!requestedSId) {
+      return (
+        <Box flexDirection="column">
+          <Text color="green">Loading...</Text>
+        </Box>
+      );
+    }
 
     return (
       <AgentSelector
         selectMultiple={false}
-        requestedSIds={isInitialSelection && requestedSId ? [requestedSId] : []}
+        requestedSIds={requestedSId ? [requestedSId] : []}
         onError={setError}
         onConfirm={async (agents) => {
           setSelectedAgent(agents[0]);
-
-          if (isInitialSelection) {
-            setConversationItems([
-              {
-                key: "welcome_header",
-                type: "welcome_header",
-                agentName: agents[0].name,
-                agentId: agents[0].sId,
-              },
-            ]);
-          } else {
-            setIsSelectingNewAgent(false);
-
-            setUserInput("");
-            setCursorPosition(0);
-            setShowCommandSelector(false);
-            setCommandQuery("");
-            setSelectedCommandIndex(0);
-            setCommandCursorPosition(0);
-
-            // Clear terminal and force re-render.
-            await clearTerminal();
-          }
-        }}
-      />
-    );
-  }
-
-  if ((selectedAgent || !isSelectingNewAgent) && !chosenFileSystemUsage) {
-    return (
-      <FileAccessSelector
-        selectMultiple={false}
-        onConfirm={async (selectedModelFileAccess) => {
-          if (selectedModelFileAccess[0].id === "y") {
-            const dustClientRes = await getDustClient();
-            if (dustClientRes.isErr()) {
-              setError(dustClientRes.error.message);
-              return;
-            }
-
-            const dustClient = dustClientRes.value;
-            if (!dustClient) {
-              setError("No Dust API set.");
-              return;
-            }
-
-            const useFsServerRes = await useFileSystemServer(
-              dustClient,
-              (serverId) => {
-                setFileSystemServerId(serverId);
-              },
-              requestDiffApproval
-            );
-            if (useFsServerRes.isErr()) {
-              setError(useFsServerRes.error.message);
-            }
-          }
-          setChosenFileSystemUsage(true);
+          setConversationItems([
+            {
+              key: "welcome_header",
+              type: "welcome_header",
+              agentName: agents[0].name,
+              agentDescription: agents[0].description,
+            },
+          ]);
         }}
       />
     );
   }
 
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
-
-  // Show approval prompt if pending
-  if (pendingApproval) {
-    if (pendingApproval.type !== "tool_approve_execution") {
-      setError(`Unexpected pending approval type: ${pendingApproval.type}`);
-      return null; // Exit early if we encounter an unexpected type
-    }
-
-    return (
-      <ToolApprovalSelector
-        event={pendingApproval}
-        onApproval={async (approved, cachedApproval) => {
-          await clearTerminal();
-          await handleApproval(approved, cachedApproval);
-        }}
-      />
-    );
-  }
-
-  // Show diff approval prompt if pending
-  if (pendingDiffApproval) {
-    return (
-      <DiffApprovalSelector
-        originalContent={pendingDiffApproval.originalContent}
-        updatedContent={pendingDiffApproval.updatedContent}
-        filePath={pendingDiffApproval.filePath}
-        onApproval={async (approved) => {
-          await clearTerminal();
-          await handleDiffApproval(approved);
-        }}
-      />
-    );
-  }
 
   // Main chat UI
   return (
@@ -1369,9 +2039,28 @@ const CliChat: FC<CliChatProps> = ({
       <Conversation
         conversationItems={conversationItems}
         isProcessingQuestion={isProcessingQuestion}
-        userInput={userInput}
-        cursorPosition={cursorPosition}
-        mentionPrefix={mentionPrefix}
+        actionStatus={actionStatus}
+        userInput={inlineSelector ? inlineSelector.query : userInput}
+        cursorPosition={
+          inlineSelector ? inlineSelector.query.length : cursorPosition
+        }
+        mentionPrefix={
+          inlineSelector
+            ? inlineSelector.mode === "agent"
+              ? "Switch agent: "
+              : inlineSelector.mode === "file"
+                ? `📁 ${inlineSelector.currentPath ?? ""} `
+                : inlineSelector.mode === "conversation"
+                  ? "Resume conversation: "
+                  : inlineSelector.mode === "approval" &&
+                      pendingApproval &&
+                      pendingApproval.type === "tool_approve_execution"
+                    ? `Tool Approval Required: ${pendingApproval.metadata.agentName} wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
+                    : inlineSelector.mode === "diff" && pendingDiffApproval
+                      ? `Changes Preview: ${pendingDiffApproval.filePath} `
+                      : mentionPrefix
+            : mentionPrefix
+        }
         conversationId={currentConversationId}
         stdout={stdout}
         showCommandSelector={showCommandSelector}
@@ -1380,6 +2069,40 @@ const CliChat: FC<CliChatProps> = ({
         commandCursorPosition={commandCursorPosition}
         commands={commands}
         autoAcceptEdits={autoAcceptEdits}
+        inlineSelector={
+          inlineSelector
+            ? {
+                items: inlineSelector.items,
+                query: inlineSelector.query,
+                selectedIndex: inlineSelector.selectedIndex,
+                prompt:
+                  inlineSelector.mode === "agent"
+                    ? "Select an agent:"
+                    : inlineSelector.mode === "file"
+                      ? "Select a file:"
+                      : inlineSelector.mode === "conversation"
+                        ? "Select a conversation:"
+                        : inlineSelector.mode === "approval" ||
+                            inlineSelector.mode === "diff"
+                          ? "Use ↑/↓ to navigate, Enter to confirm, Esc to reject:"
+                          : undefined,
+                header:
+                  inlineSelector.mode === "approval" &&
+                  pendingApproval &&
+                  pendingApproval.type === "tool_approve_execution" &&
+                  pendingApproval.inputs ? (
+                    <Box flexDirection="column" marginBottom={1}>
+                      <Text dimColor>Inputs:</Text>
+                      <Text>{formatInputs(pendingApproval.inputs)}</Text>
+                    </Box>
+                  ) : inlineSelector.mode === "diff" && pendingDiffApproval ? (
+                    <Box flexDirection="column" marginBottom={1}>
+                      {renderDiffLines(pendingDiffApproval)}
+                    </Box>
+                  ) : undefined,
+              }
+            : null
+        }
       />
     </Box>
   );

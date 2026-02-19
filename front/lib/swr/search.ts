@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
+import config from "@app/lib/api/config";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray } from "@app/lib/swr/swr";
-import type {
-  ContentNodesViewType,
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -96,8 +94,8 @@ export function useUnifiedSearch({
         params.append("cursor", cursor);
       }
 
-      const url = `/api/w/${owner.sId}/search?${params.toString()}`;
-      const eventSource = new EventSource(url);
+      const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/search?${params.toString()}`;
+      const eventSource = new EventSource(url, { withCredentials: true });
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
@@ -160,6 +158,7 @@ export function useUnifiedSearch({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setKnowledgeResults([]);
     setToolResults([]);
@@ -183,7 +182,21 @@ export function useUnifiedSearch({
         eventSourceRef.current = null;
       }
     };
-  }, [loadPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    disabled,
+    includeDataSources,
+    includeTools,
+    owner.sId,
+    pageSize,
+    prioritizeSpaceAccess,
+    query,
+    searchSourceUrls,
+    // Serialize spaceIds to compare by value, not reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    spaceIds?.join(","),
+    viewType,
+  ]);
 
   const nextPage = useCallback(async () => {
     if (nextPageCursor && !isLoadingNextPage) {

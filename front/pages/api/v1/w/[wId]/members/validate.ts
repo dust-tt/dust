@@ -1,14 +1,13 @@
-import type { ValidateMemberResponseType } from "@dust-tt/client";
-import { ValidateMemberRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ValidateMemberResponseType } from "@dust-tt/client";
+import { ValidateMemberRequestSchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @ignoreswagger

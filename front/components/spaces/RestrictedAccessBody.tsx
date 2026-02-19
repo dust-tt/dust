@@ -1,3 +1,10 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import { GroupsList } from "@app/components/groups/GroupsList";
+import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
+import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { GroupType } from "@app/types/groups";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   DataTable,
@@ -15,15 +22,9 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import * as React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
-
-import { ConfirmContext } from "@app/components/Confirm";
-import { GroupsList } from "@app/components/groups/GroupsList";
-import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
-import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
-import { useSendNotification } from "@app/hooks/useNotification";
-import type { GroupType, LightWorkspaceType, UserType } from "@app/types";
 
 type MembersManagementType = "manual" | "group";
 

@@ -1,8 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import type {
   AllPlugins,
   InferPluginArgsAtExecution,
@@ -17,13 +15,16 @@ import {
 } from "@app/lib/resources/storage/models/plugin_runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
-  LightWorkspaceType,
   PluginArgs,
   PluginResourceTarget,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok, safeParseJSON } from "@app/types";
-import type { PluginRunType } from "@app/types/poke/plugins";
+  PluginRunType,
+} from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type { UserResource } from "./user_resource";
 
@@ -52,20 +53,17 @@ function redactPluginArgs(
 }
 
 // This might save a non-valid JSON object in the DB. It needs to be safely parsed.
-function trimPluginRunResultOrError(result: PluginResponse | string) {
-  let stringResult: string;
-  if (typeof result === "string") {
-    stringResult = JSON.stringify(result);
-  } else {
-    stringResult = JSON.stringify(result.value);
-  }
+function trimPluginRunResultOrError(result: PluginResponse | string): string {
+  const stringResult =
+    typeof result === "string" ? result : JSON.stringify(result.value);
 
   // Trim to max size of the field in the DB.
   return stringResult.slice(0, POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface PluginRunResource extends ReadonlyAttributesType<PluginRunModel> {}
+export interface PluginRunResource
+  extends ReadonlyAttributesType<PluginRunModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class PluginRunResource extends BaseResource<PluginRunModel> {
   static model: ModelStatic<PluginRunModel> = PluginRunModel;

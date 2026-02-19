@@ -1,11 +1,9 @@
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { Context } from "@temporalio/activity";
 import axios from "axios";
 import type { LoggerOptions } from "pino";
 import pino from "pino";
-
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 function sanitizeError(error: Error) {
   // Override default pino error serializer to handle Axios errors.
@@ -78,10 +76,10 @@ const logger = pino(pinoOptions);
 export default logger;
 export type { Logger } from "pino";
 
-export const getLoggerArgs = (
-  connector: ConnectorResource | ConnectorModel,
+export function getLoggerArgs(
+  connector: ConnectorResource,
   loggerArgs?: Record<string, string | number | null>
-) => {
+) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const effectiveArgs: Record<string, string | number | null> = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -100,15 +98,15 @@ export const getLoggerArgs = (
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,
     });
-  } catch (e) {
+  } catch (_e) {
     // Cannot read context, ignore
   }
   return effectiveArgs;
-};
+}
 
-export const getActivityLogger = (
-  connector: ConnectorResource | ConnectorModel,
+export function getActivityLogger(
+  connector: ConnectorResource,
   loggerArgs?: Record<string, string | number | null>
-) => {
+) {
   return logger.child(getLoggerArgs(connector, loggerArgs));
-};
+}

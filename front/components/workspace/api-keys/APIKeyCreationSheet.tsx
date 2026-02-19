@@ -1,3 +1,6 @@
+import config from "@app/lib/api/config";
+import type { KeyType } from "@app/types/key";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -10,9 +13,8 @@ import {
   SheetTitle,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import type { KeyType, WorkspaceType } from "@app/types";
 
 type APIKeyCreationSheetProps = {
   isOpen: boolean;
@@ -32,7 +34,7 @@ export const APIKeyCreationSheet = ({
   const [isCopiedDomain, copyDomain] = useCopyToClipboard();
   const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
 
-  const domain = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? "";
+  const domain = config.getApiBaseUrl();
 
   return (
     <Sheet

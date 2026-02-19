@@ -1,3 +1,21 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
+import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { useGroups } from "@app/lib/swr/groups";
+import {
+  useCreateSpace,
+  useDeleteSpace,
+  useSpaceInfo,
+  useUpdateSpace,
+} from "@app/lib/swr/spaces";
+import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { GroupType } from "@app/types/groups";
+import type { PlanType } from "@app/types/plan";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Input,
   Page,
@@ -9,30 +27,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { ConfirmContext } from "@app/components/Confirm";
-import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
-import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
-import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
-import { useGroups } from "@app/lib/swr/groups";
-import {
-  useCreateSpace,
-  useDeleteSpace,
-  useSpaceInfo,
-  useUpdateSpace,
-} from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
-import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type {
-  GroupType,
-  LightWorkspaceType,
-  PlanType,
-  SpaceType,
-  UserType,
-} from "@app/types";
 
 type MembersManagementType = "manual" | "group";
 
@@ -70,7 +66,7 @@ export function CreateOrEditSpaceModal({
   const [isDirty, setIsDirty] = useState(false);
 
   const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
-  const { user } = useUser();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!planAllowsSCIM) {
@@ -82,7 +78,7 @@ export function CreateOrEditSpaceModal({
   const doUpdate = useUpdateSpace({ owner });
   const doDelete = useDeleteSpace({ owner, force: true });
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -96,6 +92,7 @@ export function CreateOrEditSpaceModal({
     disabled: !planAllowsSCIM,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       const spaceMembers = spaceInfo?.members ?? null;
@@ -200,6 +197,7 @@ export function CreateOrEditSpaceModal({
         await doUpdate(space, {
           isRestricted,
           groupIds: selectedGroups.map((group) => group.sId),
+          editorGroupIds: [],
           managementMode: "group",
           name: trimmedName,
         });
@@ -207,6 +205,7 @@ export function CreateOrEditSpaceModal({
         await doUpdate(space, {
           isRestricted,
           memberIds: selectedMembers.map((vm) => vm.sId),
+          editorIds: [],
           managementMode: "manual",
           name: trimmedName,
         });

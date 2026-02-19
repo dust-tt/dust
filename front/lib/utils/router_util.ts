@@ -1,7 +1,7 @@
-import type { NextRouter } from "next/router";
+import type { AppRouter } from "@app/lib/platform";
 
 export const removeParamFromRouter = async (
-  router: NextRouter,
+  router: AppRouter,
   keys: string | string[]
 ) => {
   const params = Array.isArray(keys) ? keys : [keys];

@@ -1,55 +1,60 @@
-name: 'Setup Node Dependencies'
-description: 'Setup Node.js and cache dependencies for SDK/JS and Front'
+name: "Setup Node Dependencies"
+description: "Setup Node.js and cache dependencies for SDK/JS and Front"
+inputs:
+  build-sdks:
+    description: "Build SDK/JS"
+    required: false
+    default: "false"
+  build-sparkle:
+    description: "Build Sparkle"
+    required: false
+    default: "false"
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "20.13.0"
 outputs:
-  cache-hit-sdkjs:
-    description: 'Whether SDK/JS cache was hit'
-    value: ${{ steps.cache-sdkjs.outputs.cache-hit }}
-  cache-hit-front:
-    description: 'Whether Front cache was hit'
-    value: ${{ steps.cache-front.outputs.cache-hit }}
+  cache-hit-node-modules:
+    description: "Whether node_modules cache was hit"
+    value: ${{ steps.cache-node-modules.outputs.cache-hit }}
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 20.13.0
-        cache: "npm"
-        cache-dependency-path: |
-          sdks/js/package-lock.json
-          front/package-lock.json
+        node-version: ${{ inputs.node-version }}
 
-    - name: Cache SDK/JS node_modules
-      id: cache-sdkjs
+    - name: Cache node_modules
+      id: cache-node-modules
       uses: actions/cache@v3
       with:
-        path: sdks/js/node_modules
-        key: sdkjs-node-modules-${{ runner.os }}-${{ hashFiles('sdks/js/package-lock.json') }}
+        path: |
+          node_modules
+          front/node_modules
+          connectors/node_modules
+          sparkle/node_modules
+          cli/node_modules
+          extension/node_modules
+          viz/node_modules
+          sdks/js/node_modules
+        key: workspaces-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
         restore-keys: |
-          sdkjs-node-modules-${{ runner.os }}-
+          workspaces-node-modules-${{ runner.os }}-
 
-    - name: Cache Front node_modules
-      id: cache-front
-      uses: actions/cache@v3
-      with:
-        path: front/node_modules
-        key: front-node-modules-${{ runner.os }}-${{ hashFiles('front/package-lock.json') }}
-        restore-keys: |
-          front-node-modules-${{ runner.os }}-
-
-    - name: Install SDK/JS dependencies
-      if: steps.cache-sdkjs.outputs.cache-hit != 'true'
-      working-directory: sdks/js
+    - name: Install workspaces dependencies
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
       shell: bash
       run: npm ci
 
     - name: Build SDK/JS
+      if: inputs.build-sdks == 'true'
       working-directory: sdks/js
       shell: bash
       run: npm run build
 
-    - name: Install Front dependencies
-      if: steps.cache-front.outputs.cache-hit != 'true'
-      working-directory: front
+    - name: Build Sparkle
+      if: inputs.build-sparkle == 'true'
+      working-directory: sparkle
       shell: bash
-      run: npm ci
+      run: npm run build

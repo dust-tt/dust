@@ -1,12 +1,11 @@
+import { ProviderWorkflowError } from "@connectors/lib/error";
+import { WithRetriesError } from "@connectors/types";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
 import { RequestError } from "octokit";
-
-import { ProviderWorkflowError } from "@connectors/lib/error";
-import { WithRetriesError } from "@connectors/types";
 
 const checkRateLimitError = (err: unknown) => {
   if (err instanceof RequestError) {
@@ -21,7 +20,9 @@ const checkRateLimitError = (err: unknown) => {
   }
 };
 
-export class GithubCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+export class GithubCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

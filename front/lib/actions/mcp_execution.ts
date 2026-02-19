@@ -1,7 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { extname } from "path";
-import type { Logger } from "pino";
-
 import {
   generatePlainTextFile,
   uploadFileToConversationDataSource,
@@ -34,22 +30,51 @@ import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
   ConversationType,
+} from "@app/types/assistant/conversation";
+import type {
   FileUseCase,
   FileUseCaseMetadata,
   SupportedFileContentType,
-} from "@app/types";
+} from "@app/types/files";
 import {
-  assertNever,
   extensionsForContentType,
   isSupportedFileContentType,
-  removeNulls,
+} from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import {
   stripNullBytes,
   toWellFormed,
-} from "@app/types";
+} from "@app/types/shared/utils/string_utils";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { extname } from "path";
+import type { Logger } from "pino";
+
+/**
+ * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
+ * This prevents PostgreSQL errors when storing JSON with \u0000 characters.
+ */
+function sanitizeStringsDeep<T>(input: T): T {
+  if (typeof input === "string") {
+    return toWellFormed(stripNullBytes(input)) as T;
+  }
+  if (Array.isArray(input)) {
+    return input.map(sanitizeStringsDeep) as T;
+  }
+  if (input !== null && typeof input === "object") {
+    return Object.fromEntries(
+      Object.entries(input).map(([key, value]) => [
+        key,
+        sanitizeStringsDeep(value),
+      ])
+    ) as T;
+  }
+  return input;
+}
 
 export async function processToolNotification(
   notification: MCPProgressNotificationType,
@@ -65,7 +90,7 @@ export async function processToolNotification(
     agentMessage: AgentMessageType;
   }
 ): Promise<ToolNotificationEvent> {
-  const output = notification.params.data.output;
+  const output = notification.params._meta.data.output;
 
   // Handle store_resource notifications by creating output items immediately
   if (isStoreResourceProgressOutput(output)) {
@@ -73,7 +98,7 @@ export async function processToolNotification(
       output.contents.map((content) => ({
         workspaceId: action.workspaceId,
         agentMCPActionId: action.id,
-        content,
+        content: sanitizeStringsDeep(content),
       }))
     );
   }
@@ -208,7 +233,8 @@ export async function processToolResults(
             );
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
-            if (file) {
+            // Skip for project_context files — they are already indexed via their own data source.
+            if (file && file.useCase !== "project_context") {
               await uploadFileToConversationDataSource({ auth, file });
             }
             return {
@@ -283,6 +309,9 @@ export async function processToolResults(
                 ? toWellFormed(stripNullBytes(block.resource.text))
                 : null;
 
+            // Sanitize the entire resource object to remove null bytes from all string fields
+            const sanitizedResource = sanitizeStringsDeep(block.resource);
+
             // If the resource text is too large, we create a file and return a resource block that references the file.
             if (text && computeTextByteSize(text) > MAX_RESOURCE_CONTENT_SIZE) {
               const fileName =
@@ -302,7 +331,7 @@ export async function processToolResults(
                 content: {
                   type: block.type,
                   resource: {
-                    ...block.resource,
+                    ...sanitizedResource,
                     text: text,
                   },
                 },
@@ -313,7 +342,7 @@ export async function processToolResults(
               content: {
                 type: block.type,
                 resource: {
-                  ...block.resource,
+                  ...sanitizedResource,
                   ...(text ? { text } : {}),
                 },
               },
@@ -340,7 +369,7 @@ export async function processToolResults(
     cleanContent.map((c) => ({
       workspaceId: action.workspaceId,
       agentMCPActionId: action.id,
-      content: c.content,
+      content: sanitizeStringsDeep(c.content),
       fileId: c.file?.id,
     }))
   );

@@ -7,12 +7,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import type {
-  LightAgentConfigurationType,
-  SupportedResourceType,
-} from "@app/types";
-import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { SupportedResourceType } from "@app/types/poke/plugins";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type ResourceTypeMap = {
   agents: LightAgentConfigurationType;

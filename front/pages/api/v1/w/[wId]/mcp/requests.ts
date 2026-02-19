@@ -1,13 +1,12 @@
-import { PostMCPRequestsRequestQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { PostMCPRequestsRequestQuerySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger
@@ -70,7 +69,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 async function handler(
   req: NextApiRequest,
   // This endpoint only returns void as it is used only for streaming, so no need to use @dust-tt/client types.
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {

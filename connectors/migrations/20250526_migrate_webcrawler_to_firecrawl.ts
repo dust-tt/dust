@@ -2,16 +2,15 @@
  * Move a given percentage of the remaining webcrawler to firecrawl
  */
 
+import { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
+import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { concurrentExecutor } from "@connectors/types";
 import fs from "fs";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 import { promisify } from "util";
 import z from "zod";
-
-import { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
-import logger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { concurrentExecutor } from "@connectors/types";
 
 makeScript(
   {

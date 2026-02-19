@@ -1,3 +1,15 @@
+import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type {
+  PresetWebhook,
+  WebhookEvent,
+} from "@app/types/triggers/webhooks_source_preset";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Checkbox,
@@ -10,26 +22,14 @@ import {
   ExclamationCircleIcon,
   Input,
   Label,
+  LinkWrapper,
   Separator,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
-import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
-import type { LightWorkspaceType } from "@app/types";
-import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import type {
-  PresetWebhook,
-  WebhookEvent,
-} from "@app/types/triggers/webhooks_source_preset";
 
 interface WebhookEditionNameInputProps {
   isEditor: boolean;
@@ -119,14 +119,14 @@ function WebhookEditionExecutionLimit({
         {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
         quota.
         <br /> (
-        <Link
+        <LinkWrapper
           href="https://docs.dust.tt/update/docs/rate-limiting#/"
           target="_blank"
           rel="noreferrer"
           className="underline"
         >
           Learn more
-        </Link>
+        </LinkWrapper>
         )
       </ContentMessage>
     </div>

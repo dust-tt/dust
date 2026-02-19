@@ -1,16 +1,15 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { RoleType } from "@app/types";
+import type { RoleType } from "@app/types/user";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare lastUsedAt: CreationOptional<Date>;
+  declare lastUsedAt: CreationOptional<Date | null>;
 
   declare secret: string;
   declare status: "active" | "disabled";
@@ -21,7 +20,8 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare userId: ForeignKey<UserModel["id"]>;
   declare groupId: ForeignKey<GroupModel["id"]>;
 
-  declare name: string | null;
+  declare name: string;
+  declare monthlyCapMicroUsd: number | null;
   declare user: NonAttribute<UserModel>;
 }
 KeyModel.init(
@@ -50,7 +50,7 @@ KeyModel.init(
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     isSystem: {
       type: DataTypes.BOOLEAN,
@@ -66,6 +66,10 @@ KeyModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "default",
+    },
+    monthlyCapMicroUsd: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
   },
   {

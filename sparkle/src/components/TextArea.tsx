@@ -1,13 +1,13 @@
+import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 const RESIZE_DIRECTIONS = ["none", "vertical", "horizontal", "both"] as const;
 
 type ResizeDirectionType = (typeof RESIZE_DIRECTIONS)[number];
 
-export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   resize?: ResizeDirectionType;
   error?: string | null;
   showErrorLabel?: boolean;

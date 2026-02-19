@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 // Tailwind base globals
 import "@app/styles/global.css";
 // Use sparkle styles, override local globals
@@ -33,6 +34,24 @@ if (DATADOG_CLIENT_TOKEN) {
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
+    beforeSend: (log) => {
+      // Filter out benign ResizeObserver errors that have no user impact.
+      // Different browsers use different messages:
+      // - Safari/Firefox: "ResizeObserver loop completed with undelivered notifications"
+      // - Chrome: "ResizeObserver loop limit exceeded"
+      // See: https://github.com/DataDog/browser-sdk/issues/1616
+      if (log.message && typeof log.message === "string") {
+        if (
+          log.message.includes(
+            "ResizeObserver loop completed with undelivered notifications"
+          ) ||
+          log.message.includes("ResizeObserver loop limit exceeded")
+        ) {
+          return false;
+        }
+      }
+      return true;
+    },
   });
 }
 
@@ -82,6 +101,7 @@ if (
         );
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // Silently fail if localStorage is not available or throws an error.
       // This can happen in private browsing mode or when cookies are disabled.
@@ -100,6 +120,7 @@ type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);

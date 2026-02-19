@@ -33,7 +33,8 @@
     "**/*.jsx",
     "**/*.js",
     "**/*.mjs",
-    "./.eslintrc.js"
+    "./.eslintrc.js",
+    ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".next", "dist"]
+  "exclude": ["node_modules", ".next", "dist", "app"]
 }

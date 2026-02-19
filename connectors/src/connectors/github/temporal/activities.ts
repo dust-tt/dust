@@ -1,7 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import PQueue from "p-queue";
-
 import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
 import {
   isGraphQLNotFound,
@@ -60,6 +56,9 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import { normalizeError } from "@connectors/types/api";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import PQueue from "p-queue";
 
 export async function githubGetReposResultPageActivity(
   connectorId: ModelId,
@@ -441,9 +440,13 @@ async function renderDiscussion(
             prefix: `>> ${childComment.author?.login || "Unknown author"}:\n`,
             content: null,
             sections: [
-              await renderMarkdownSection(dataSourceConfig, comment.bodyText, {
-                flavor: "gfm",
-              }),
+              await renderMarkdownSection(
+                dataSourceConfig,
+                childComment.bodyText,
+                {
+                  flavor: "gfm",
+                }
+              ),
             ],
           };
           c.sections.push(cc);

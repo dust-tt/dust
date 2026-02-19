@@ -16,7 +16,6 @@ import {
   FaviconIcon,
   GlobeAltIcon,
   Icon,
-  ImageIcon,
   NotionLogo,
   Popover,
   SlackLogo,
@@ -24,7 +23,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Citation",
+  title: "Conversation/Citation",
   component: Citation,
 } satisfies Meta<typeof Citation>;
 
@@ -82,19 +81,20 @@ export const CitationsExample = () => (
         <CitationTitle>GitHub Repository</CitationTitle>
       </Citation>
 
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
-        <CitationImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
-        <CitationIcons>
-          <Icon visual={ImageIcon} size="sm" />
-        </CitationIcons>
-        <CitationTitle>screenshot.png</CitationTitle>
+      <Citation className="s-w-48">
+        <CitationImage
+          imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+          title="screenshot.png"
+          downloadUrl="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+        />
       </Citation>
 
-      <Citation className="s-w-48" isLoading={true}>
-        <CitationIcons>
-          <Icon visual={ImageIcon} size="sm" />
-        </CitationIcons>
-        <CitationTitle>screenshot.png</CitationTitle>
+      <Citation className="s-w-48">
+        <CitationImage
+          imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+          title="screenshot.png (loading)"
+          isLoading={true}
+        />
       </Citation>
     </CitationGrid>
     Example of dissmissable attachements
@@ -133,16 +133,12 @@ export const CitationsExample = () => (
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
 
-      <Citation
-        onClick={() => alert("Card clicked")}
-        className="s-w-48"
-        action={<CitationClose onClick={() => alert("Close clicked")} />}
-      >
-        <CitationImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
-        <CitationIcons>
-          <Icon visual={ImageIcon} size="sm" />
-        </CitationIcons>
-        <CitationTitle>screenshot.png</CitationTitle>
+      <Citation className="s-w-48">
+        <CitationImage
+          imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+          title="screenshot.png"
+          onClose={() => alert("Close clicked")}
+        />
       </Citation>
     </CitationGrid>
     Example of citations in markdown

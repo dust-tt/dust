@@ -1,4 +1,5 @@
-import type { ModelId, WhitelistableFeature } from "@app/types";
+import type { WhitelistableFeature } from "./shared/feature_flags";
+import type { ModelId } from "./shared/model_id";
 
 // Constants
 
@@ -9,6 +10,22 @@ export const labsTranscriptsProviders = [
 ] as const;
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
+
+export const LABS_TRANSCRIPTS_CONFIGURATION_STATUSES = [
+  "active",
+  "disabled",
+  "relocating",
+] as const;
+export type LabsTranscriptsConfigurationStatus =
+  (typeof LABS_TRANSCRIPTS_CONFIGURATION_STATUSES)[number];
+
+export function isValidLabsTranscriptsConfigurationStatus(
+  status: string
+): status is LabsTranscriptsConfigurationStatus {
+  return (
+    LABS_TRANSCRIPTS_CONFIGURATION_STATUSES as readonly string[]
+  ).includes(status);
+}
 
 export const labsFeatures = [
   "transcripts",
@@ -25,7 +42,7 @@ export type LabsTranscriptsConfigurationType = {
   workspaceId: ModelId;
   provider: LabsTranscriptsProviderType;
   agentConfigurationId: string | null;
-  isActive: boolean;
+  status: LabsTranscriptsConfigurationStatus;
   isDefaultWorkspaceConfiguration: boolean;
   credentialId: string | null;
   dataSourceViewId: ModelId | null;

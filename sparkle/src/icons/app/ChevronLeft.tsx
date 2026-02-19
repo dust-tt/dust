@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
+
 const SvgChevronLeft = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -9,10 +10,7 @@ const SvgChevronLeft = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path
-      fill="currentColor"
-      d="m11.5 12 4.5 4.5-2 2L7.5 12 14 5.5l2 2-4.5 4.5Z"
-    />
+    <path fill="currentColor" d="m11.5 12 4.5 4.5-2 2L7.5 12 14 5.5l2 2z" />
   </svg>
 );
 export default SvgChevronLeft;

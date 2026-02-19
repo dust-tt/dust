@@ -1,0 +1,35 @@
+{
+  "name": "dust-sandbox-bench-cloudflare",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "BENCH_PLAN": "lite"
+  },
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./Dockerfile",
+      "max_instances": 50
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "Sandbox",
+        "name": "Sandbox"
+      },
+      {
+        "class_name": "BenchRegistry",
+        "name": "BENCH_REGISTRY"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "new_sqlite_classes": ["Sandbox", "BenchRegistry"],
+      "tag": "v1"
+    }
+  ]
+}
+

@@ -1,12 +1,11 @@
-import { isLeft } from "fp-ts/lib/Either";
-import { readFileSync } from "fs";
-import * as reporter from "io-ts-reporters";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import { ImportAppBody } from "@app/pages/api/poke/workspaces/[wId]/apps/import";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { isLeft } from "fp-ts/lib/Either";
+import { readFileSync } from "fs";
+import * as reporter from "io-ts-reporters";
 
 export const importAppPlugin = createPlugin({
   manifest: {

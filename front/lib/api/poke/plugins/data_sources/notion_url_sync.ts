@@ -1,16 +1,12 @@
-import { isLeft } from "fp-ts/lib/Either";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import {
-  ConnectorsAPI,
-  Err,
-  mapToEnumValues,
-  NotionFindUrlResponseSchema,
-  Ok,
-} from "@app/types";
+import { NotionFindUrlResponseSchema } from "@app/types/connectors/admin/cli";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { mapToEnumValues } from "@app/types/poke/plugins";
+import { Err, Ok } from "@app/types/shared/result";
+import { isLeft } from "fp-ts/lib/Either";
 
 const NOTION_OPERATIONS = ["Sync urls", "Delete urls"] as const;
 

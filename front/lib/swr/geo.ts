@@ -1,7 +1,6 @@
-import type { Fetcher } from "swr";
-
 import type { GeoLocationResponse } from "@app/pages/api/geo/location";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "./swr";
 
@@ -14,7 +13,7 @@ interface CachedGeoData {
 }
 
 function getCachedGeoData(): GeoLocationResponse | null {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !window.localStorage) {
     return null;
   }
 
@@ -42,7 +41,7 @@ function getCachedGeoData(): GeoLocationResponse | null {
 }
 
 function setCachedGeoData(data: GeoLocationResponse): void {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !window.localStorage) {
     return;
   }
 

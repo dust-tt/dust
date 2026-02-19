@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { validateVerification } from "@app/lib/api/workspace_verification";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,11 +7,15 @@ import {
   getStatusCodeForError,
   OtpCode,
 } from "@app/pages/api/w/[wId]/verification/start";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   VerificationErrorResponse,
   VerifyCodeResponse,
 } from "@app/types/workspace_verification";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const PostValidateVerificationRequestBody = t.type({
   phoneNumber: E164PhoneNumber,

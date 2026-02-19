@@ -1,6 +1,3 @@
-import { TokenExpiredError } from "jsonwebtoken";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
@@ -16,15 +13,17 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
-import {
-  getGroupIdsFromHeaders,
-  getRoleFromHeaders,
-  getUserEmailFromHeaders,
-} from "@app/types";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorResponse,
+} from "@app/types/error";
+import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
+import { getUserEmailFromHeaders } from "@app/types/user";
+import { TokenExpiredError } from "jsonwebtoken";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 function getMaintenanceError(
   maintenance: string | number | true | object
@@ -48,6 +47,21 @@ function getMaintenanceError(
     api_error: {
       type: "service_unavailable",
       message: `Service is currently unavailable. [${maintenance}]`,
+    },
+  };
+}
+
+function isWorkspaceKillSwitchedForAllAPIs(killSwitched: unknown): boolean {
+  return killSwitched === "full";
+}
+
+function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message:
+        "Access to this workspace has been disabled for emergency maintenance.",
     },
   };
 }
@@ -122,9 +136,9 @@ export function withSessionAuthenticationForPoke<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
- * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the user is not a
- * member of the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
+ * This function now supports both cookie-based sessions and bearer token authentication.
+ * If a session cookie is present, it will be used. Otherwise, it will attempt to authenticate
+ * using a bearer token from the Authorization header.
  *
  * @param handler
  * @param opts
@@ -135,19 +149,18 @@ export function withSessionAuthenticationForWorkspace<T>(
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
-    session: SessionWithUser
+    session: SessionWithUser | null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
-    allowUserOutsideCurrentWorkspace?: boolean;
     doesNotRequireCanUseProduct?: boolean;
+    allowMissingWorkspace?: boolean;
   } = {}
 ) {
-  return withSessionAuthentication(
+  return withLogging(
     async (
       req: NextApiRequestWithContext,
-      res: NextApiResponse<WithAPIErrorResponse<T>>,
-      session: SessionWithUser
+      res: NextApiResponse<WithAPIErrorResponse<T>>
     ) => {
       const { wId } = req.query;
       if (typeof wId !== "string" || !wId) {
@@ -160,10 +173,65 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      const auth = await Authenticator.fromSession(session, wId);
+      // Try to get session from cookies first
+      const session = await getSession(req, res);
+      let auth: Authenticator;
+
+      if (session) {
+        // Use session-based authentication
+        auth = await Authenticator.fromSession(session, wId);
+      } else {
+        // Try bearer token authentication as fallback
+        const bearerTokenRes = await getBearerToken(req);
+        if (bearerTokenRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The user does not have an active session or is not authenticated.",
+            },
+          });
+        }
+
+        const token = bearerTokenRes.value;
+        if (!isOAuthToken(token)) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+
+        try {
+          const authRes = await handleWorkOSAuth(req, res, token, wId);
+          if (authRes.isErr()) {
+            return apiError(req, res, authRes.error);
+          }
+          auth = authRes.value;
+        } catch (error) {
+          logger.error({ error }, "Failed to verify token");
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_oauth_token_error",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+      }
 
       const owner = auth.workspace();
       const plan = auth.plan();
+
+      if (opts.allowMissingWorkspace && (!owner || !plan)) {
+        return handler(req, res, auth, session);
+      }
+
       if (!owner || !plan) {
         return apiError(req, res, {
           status_code: 404,
@@ -191,6 +259,9 @@ export function withSessionAuthenticationForWorkspace<T>(
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
       }
+      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+        return apiError(req, res, getWorkspaceKillSwitchError());
+      }
 
       const user = auth.user();
       if (!user) {
@@ -204,9 +275,7 @@ export function withSessionAuthenticationForWorkspace<T>(
       }
       req.addResourceToLog?.(user);
 
-      // If `allowUserOutsideCurrentWorkspace` is not set or false then we check that the user is a
-      // member of the workspace.
-      if (!auth.isUser() && !opts.allowUserOutsideCurrentWorkspace) {
+      if (!auth.isUser()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -218,7 +287,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
       return handler(req, res, auth, session);
     },
-    opts
+    opts.isStreaming
   );
 }
 
@@ -226,27 +295,31 @@ export function withSessionAuthenticationForWorkspace<T>(
  * This function is a wrapper for Public API routes that require authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId]/).
  *
- * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
- * associated with the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
- *
  * @param handler
  * @param opts
  * @returns
  */
-export function withPublicAPIAuthentication<T, U extends boolean>(
+export function withPublicAPIAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
-    keyAuth: U extends true ? Authenticator : null
+    // Null is passed for compatibility with withResourceFetchingFromRoute which uses
+    // the 4th parameter to determine legacy endpoint support (null = API route).
+    _sessionOrKeyAuth: null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
-    allowUserOutsideCurrentWorkspace?: U;
+    /**
+     * When true, system keys bypass the isBuilder() check even if their role is downgraded
+     * via X-Dust-Role header. The key must still belong to the target workspace.
+     * Used for internal calls (e.g., run_dust_app) where the role header is passed for
+     * tracking purposes but the system key itself should still be trusted.
+     */
+    allowSystemKeyBypassBuilderCheck?: boolean;
   } = {}
 ) {
-  const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
+  const { isStreaming, allowSystemKeyBypassBuilderCheck } = opts;
 
   return withLogging(
     async (
@@ -338,13 +411,15 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           if (maintenance) {
             return apiError(req, res, getMaintenanceError(maintenance));
           }
+          if (
+            isWorkspaceKillSwitchedForAllAPIs(
+              auth.workspace()?.metadata?.killSwitched
+            )
+          ) {
+            return apiError(req, res, getWorkspaceKillSwitchError());
+          }
 
-          return await handler(
-            req,
-            res,
-            auth,
-            null as U extends true ? Authenticator : null
-          );
+          return await handler(req, res, auth, null);
         } catch (error) {
           logger.error({ error }, "Failed to verify token");
           return apiError(req, res, {
@@ -370,7 +445,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         getGroupIdsFromHeaders(req.headers),
         getRoleFromHeaders(req.headers)
       );
-      const { keyAuth } = keyAndWorkspaceAuth;
       let { workspaceAuth } = keyAndWorkspaceAuth;
 
       const owner = workspaceAuth.workspace();
@@ -400,10 +474,17 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
       }
+      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+        return apiError(req, res, getWorkspaceKillSwitchError());
+      }
 
-      // Authenticator created from the a key has the builder role if the key is associated with
-      // the workspace.
-      if (!workspaceAuth.isBuilder() && !allowUserOutsideCurrentWorkspace) {
+      // Authenticator created from a key has the builder role if the key is associated with
+      // the workspace. System keys can bypass this when allowSystemKeyBypassBuilderCheck is set.
+      const isSystemKeyAllowed =
+        allowSystemKeyBypassBuilderCheck &&
+        workspaceAuth.isSystemKey() &&
+        keyRes.value.workspaceId === owner.id;
+      if (!workspaceAuth.isBuilder() && !isSystemKeyAllowed) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -420,7 +501,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       // 1. The user associated with the email is a member of the current workspace.
       // 2. The system key is being used for authentication.
       const userEmailFromHeader = getUserEmailFromHeaders(req.headers);
-      if (userEmailFromHeader && !allowUserOutsideCurrentWorkspace) {
+      if (userEmailFromHeader) {
         workspaceAuth =
           (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
             workspaceAuth,
@@ -440,16 +521,10 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           name: apiKeyNameFromHeader,
           isSystem: key.isSystem,
           role: key.role,
+          monthlyCapMicroUsd: key.monthlyCapMicroUsd,
         });
       }
-      return handler(
-        req,
-        res,
-        workspaceAuth,
-        (opts.allowUserOutsideCurrentWorkspace
-          ? keyAuth
-          : null) as U extends true ? Authenticator : null
-      );
+      return handler(req, res, workspaceAuth, null);
     },
     isStreaming
   );

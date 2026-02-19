@@ -1,13 +1,15 @@
+import {
+  isBadCredentials,
+  isGithubRequestErrorNotFound,
+  isTransientNetworkError,
+  RepositoryNotFoundError,
+} from "@connectors/connectors/github/lib/errors";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Octokit } from "octokit";
-
-import {
-  isGithubRequestErrorNotFound,
-  RepositoryNotFoundError,
-} from "@connectors/connectors/github/lib/errors";
-import logger from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const REPO_SIZE_LIMIT = 10 * 1024 * 1024; // 10GB in KB
 
@@ -46,6 +48,15 @@ export async function getRepoInfo(
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
       return new Err(new RepositoryNotFoundError(err));
+    }
+    if (isBadCredentials(err)) {
+      throw new ExternalOAuthTokenError(err);
+    }
+    if (isTransientNetworkError(err)) {
+      logger.warn(
+        { err, repoLogin, repoName },
+        "Transient network error fetching repository info, will be retried."
+      );
     }
     throw err;
   }

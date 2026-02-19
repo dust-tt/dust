@@ -1,7 +1,3 @@
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
-import { UniqueConstraintError } from "sequelize";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -36,15 +32,19 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
-import type { AgentMessageType, UserMessageContext } from "@app/types";
-import {
-  assertNever,
-  dustManagedCredentials,
-  isEmptyString,
-  isProviderWithDefaultWorkspaceConfiguration,
-} from "@app/types";
-import { Err } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type {
+  AgentMessageType,
+  UserMessageContext,
+} from "@app/types/assistant/conversation";
+import { CoreAPI } from "@app/types/core/core_api";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
+import { Err } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isEmptyString } from "@app/types/shared/utils/general";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
+import { UniqueConstraintError } from "sequelize";
 
 class TranscriptNonRetryableError extends Error {}
 
@@ -424,7 +424,7 @@ export async function processTranscriptActivity(
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
-    transcriptsConfiguration.isActive && userParticipated;
+    transcriptsConfiguration.isActive() && userParticipated;
 
   localLogger.info(
     {
@@ -747,7 +747,7 @@ export async function processTranscriptActivity(
       from: config.getSupportEmailAddress(),
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${getConversationRoute(owner.sId, conversation.sId, undefined, config.getClientFacingUrl())}"
+    <a href="${getConversationRoute(owner.sId, conversation.sId, undefined, config.getAppUrl())}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;

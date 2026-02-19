@@ -8,8 +8,9 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
-import { AGENT_GROUP_PREFIX, SKILL_GROUP_PREFIX } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { AGENT_GROUP_PREFIX, SKILL_GROUP_PREFIX } from "@app/types/groups";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 /**
  * This migration changes all groups that are associated with skills from
@@ -108,7 +109,7 @@ makeScript(
     logger.info("Starting skill editor groups migration");
 
     if (wId) {
-      const ws = await WorkspaceModel.findOne({ where: { sId: wId } });
+      const ws = await WorkspaceResource.fetchById(wId);
       if (!ws) {
         throw new Error(`Workspace not found: ${wId}`);
       }

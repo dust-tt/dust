@@ -1,5 +1,7 @@
+import config from "@app/lib/api/config";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ConnectorProvider, ContentNodesViewType } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { ConnectorProvider } from "@app/types/data_source";
 
 function getConnectorOrder() {
   return Object.keys(CONNECTOR_CONFIGURATIONS)
@@ -280,6 +282,17 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return { url: `${url.origin}${path}`, provider: "intercom" };
     },
   },
+  dust_project: {
+    matcher: (url: URL): boolean => {
+      return url.toString().startsWith(config.getClientFacingUrl());
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}`, provider: "dust_project" };
+    },
+  },
 };
 
 // Extract a channel node ID from a Slack client URL
@@ -360,8 +373,7 @@ export function nodeCandidateFromUrl(
       }
     }
     return null;
-  } catch (error) {
-    console.error("Error parsing URL:", error);
+  } catch {
     return null;
   }
 }

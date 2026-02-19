@@ -1,7 +1,8 @@
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 export interface MessageCardProps {
   className?: string;

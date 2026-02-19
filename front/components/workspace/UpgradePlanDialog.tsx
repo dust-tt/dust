@@ -1,3 +1,4 @@
+import { useAppRouter } from "@app/lib/platform";
 import {
   Button,
   Dialog,
@@ -5,7 +6,6 @@ import {
   DialogFooter,
   DialogHeader,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 
 interface UpgradePlanDialogProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export function UpgradePlanDialog({
   title = "Free plan",
   description = "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members.",
 }: UpgradePlanDialogProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   return (
     <Dialog open={isOpen}>

@@ -1,63 +1,206 @@
-import assert from "assert";
-
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
+import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
+import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import {
+  AGENT_LOOP_COST_HARD_CAP_USD,
+  AGENT_LOOP_SUBAGENT_HARD_CAP,
+  checkCostAndSubagentsThresholds,
+} from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
-import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
-import type { ModelId } from "@app/types";
-import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
+import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
+import { runModel } from "@app/temporal/agent_loop/lib/run_model";
+import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
+import type { ModelId } from "@app/types/shared/model_id";
+import { startActiveObservation } from "@langfuse/tracing";
+import assert from "assert";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
   runId: string | null;
 };
 
+const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
+const AGENT_LOOP_SUBAGENT_CAP_ERROR_CODE = "agent_loop_subagent_cap_exceeded";
+const AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE =
+  "This message used too many resources to continue. Start a new message with a narrower request.";
+
 /**
- * Wrapper around runModelActivity and createToolActionsActivity that:
+ * Wrapper around runModel and createToolActionsActivity that:
  * 1. Checks if actions already exist for this step (resume case)
  * 2. If they exist, returns them without running expensive operations
- * 3. If they don't exist, runs both runModelActivity and createToolActionsActivity
+ * 3. If they don't exist, runs both runModel and createToolActionsActivity
  */
 export async function runModelAndCreateActionsActivity({
   authType,
-  autoRetryCount = 0,
   checkForResume = true,
   runAgentArgs,
   runIds,
   step,
 }: {
   authType: AuthenticatorType;
-  autoRetryCount?: number;
   checkForResume?: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
+  return tracer.trace("runModelAndCreateActionsActivity", async () =>
+    _runModelAndCreateActionsActivity({
+      authType,
+      checkForResume,
+      runAgentArgs,
+      runIds,
+      step,
+    })
+  );
+}
+
+async function _runModelAndCreateActionsActivity({
+  authType,
+  checkForResume,
+  runAgentArgs,
+  runIds,
+  step,
+}: {
+  authType: AuthenticatorType;
+  checkForResume: boolean;
+  runAgentArgs: AgentLoopArgsWithTiming;
+  runIds: string[];
+  step: number;
+}): Promise<RunModelAndCreateActionsResult | null> {
+  const runAgentDataRes = await startActiveObservation(
+    "get-agent-loop-data",
+    () => getAgentLoopData(authType, runAgentArgs)
+  );
   if (runAgentDataRes.isErr()) {
-    return null;
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: runAgentArgs.conversationId,
+          agentMessageId: runAgentArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return null;
+    }
+    throw runAgentDataRes.error;
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
+  const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
-  // Log step start.
-  logAgentLoopStepStart({
-    agentMessageId: runAgentData.agentMessage.sId,
-    conversationId: runAgentData.conversation.sId,
-    step,
-  });
+  // Intentionally check at step start (not step end) to early exit if dollar amount too high.
+  // This can miss thresholds crossed on the final step.
+  // Not tied to checkForResume: we want this check on every step, not only phase entry.
+  let hardCapCheckResult: {
+    totalCostMicroUsd: number;
+    hardCapExceeded: boolean;
+    subagentLaunchCount: number;
+    subagentHardCapExceeded: boolean;
+  } | null = null;
+  try {
+    hardCapCheckResult = await checkCostAndSubagentsThresholds({
+      auth,
+      isRootAgentMessage,
+      eventData: {
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+      },
+    });
+  } catch (error) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+        error,
+      },
+      "Failed to run guardrail checks"
+    );
+    // Fail closed: do not start the next step when we cannot evaluate cost.
+    throw new Error("Failed to run guardrail checks");
+  }
+
+  if (hardCapCheckResult?.hardCapExceeded) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+        totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+      },
+      "Agent loop hard cost cap exceeded before starting a new step"
+    );
+
+    await publishAgentLoopGuardrailExceededError(auth, {
+      runAgentData,
+      runIds,
+      step,
+      errorCode: AGENT_LOOP_COST_CAP_ERROR_CODE,
+      errorMetadata: {
+        category: "cost_cap",
+        thresholdUsd: AGENT_LOOP_COST_HARD_CAP_USD,
+        totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+      },
+    });
+
+    return null;
+  }
+
+  if (hardCapCheckResult?.subagentHardCapExceeded) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        step,
+        subagentLaunchCount: hardCapCheckResult.subagentLaunchCount,
+      },
+      "Agent loop hard subagent cap exceeded before starting a new step"
+    );
+
+    await publishAgentLoopGuardrailExceededError(auth, {
+      runAgentData,
+      runIds,
+      step,
+      errorCode: AGENT_LOOP_SUBAGENT_CAP_ERROR_CODE,
+      errorMetadata: {
+        category: "subagent_cap",
+        thresholdCount: AGENT_LOOP_SUBAGENT_HARD_CAP,
+        subagentLaunchCount: hardCapCheckResult.subagentLaunchCount,
+      },
+    });
+
+    return null;
+  }
+
+  // Tool test run: bypass LLM and directly execute tool commands.
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("run_tools_from_prompt")) {
+    const result = await handlePromptCommand(auth, runAgentData, step, runIds);
+    if (result !== "not_a_command") {
+      return result;
+    }
+  }
 
   if (checkForResume) {
     // Check if actions already exist for this step. If so, we are resuming from tool validation.
@@ -80,13 +223,13 @@ export async function runModelAndCreateActionsActivity({
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
 
-  // 1. Run model activity.
-  const modelResult = await runModelActivity(auth, {
+  // 1. Run model.
+  const modelResult = await runModel(auth, {
     runAgentData,
     runIds,
     step,
     functionCallStepContentIds,
-    autoRetryCount,
+    featureFlags,
   });
 
   if (!modelResult) {
@@ -100,22 +243,26 @@ export async function runModelAndCreateActionsActivity({
     stepContexts,
   } = modelResult;
 
-  // We received the actions to run, but will enforce a limit on the number of actions
-  // which is very high. Over that the latency will just be too high. This is a guardrail
-  // against the model outputting something unreasonable.
-  const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
+  // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
+  // to contain cascading fan-out from nested run_agent calls.
+  const actionsToRun = actions.slice(
+    0,
+    getMaxActionsPerStep(runAgentData.conversation.depth)
+  );
 
   // 2. Create tool actions.
   // Include the new runId in the runIds array when creating actions
   const currentRunIds = runId ? [...runIds, runId] : runIds;
-  const createResult = await createToolActionsActivity(auth, {
-    runAgentData,
-    actions: actionsToRun,
-    stepContexts,
-    functionCallStepContentIds: updatedFunctionCallStepContentIds,
-    step,
-    runIds: currentRunIds,
-  });
+  const createResult = await startActiveObservation("create-tool-actions", () =>
+    createToolActionsActivity(auth, {
+      runAgentData,
+      actions: actionsToRun,
+      stepContexts,
+      functionCallStepContentIds: updatedFunctionCallStepContentIds,
+      step,
+      runIds: currentRunIds,
+    })
+  );
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
@@ -128,6 +275,41 @@ export async function runModelAndCreateActionsActivity({
     runId,
     actionBlobs: createResult.actionBlobs,
   };
+}
+
+async function publishAgentLoopGuardrailExceededError(
+  auth: Authenticator,
+  {
+    runAgentData,
+    runIds,
+    step,
+    errorCode,
+    errorMetadata,
+  }: {
+    runAgentData: AgentLoopExecutionData;
+    runIds: string[];
+    step: number;
+    errorCode: string;
+    errorMetadata: Record<string, string | number | boolean>;
+  }
+): Promise<void> {
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: runAgentData.agentConfiguration.sId,
+      messageId: runAgentData.agentMessage.sId,
+      error: {
+        code: errorCode,
+        message: AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE,
+        metadata: errorMetadata,
+      },
+      runIds,
+    },
+    agentMessage: runAgentData.agentMessage,
+    conversation: runAgentData.conversation,
+    step,
+  });
 }
 
 /**
@@ -147,7 +329,7 @@ async function getExistingActionsAndBlobs(
   // Find function_call step contents for this step.
   const stepContents = await AgentStepContentModel.findAll({
     where: {
-      workspaceId: runAgentArgs.agentMessageRow.workspaceId,
+      workspaceId: auth.getNonNullableWorkspace().id,
       agentMessageId: agentMessage.agentMessageId,
       step,
       type: "function_call",

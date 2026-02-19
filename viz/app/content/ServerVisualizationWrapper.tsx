@@ -1,13 +1,14 @@
-import { extractFileIds } from "@viz/app/lib/parseFileIds";
-import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
 import { ServerVisualizationWrapperClient } from "@viz/app/content/ServerVisualizationWrapperClient";
+import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
 import logger from "@viz/app/lib/logger";
+import { extractFileIds } from "@viz/app/lib/parseFileIds";
 
 interface ServerSideVisualizationWrapperProps {
   accessToken: string;
   allowedOrigins: string[];
   identifier: string;
   isFullHeight?: boolean;
+  isPdfMode?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export async function ServerSideVisualizationWrapper({
   allowedOrigins,
   identifier,
   isFullHeight = false,
+  isPdfMode = false,
 }: ServerSideVisualizationWrapperProps) {
   let prefetchedCode: string | undefined;
   let preFetchedFiles: PreFetchedFile[] = [];
@@ -86,7 +88,7 @@ export async function ServerSideVisualizationWrapper({
                 fileId,
                 mimeType,
               };
-            } catch (err) {
+            } catch (_err) {
               logger.error({ fileId }, "Failed to fetch file");
               return null;
             }
@@ -112,6 +114,7 @@ export async function ServerSideVisualizationWrapper({
       allowedOrigins={allowedOrigins}
       identifier={identifier}
       isFullHeight={isFullHeight}
+      isPdfMode={isPdfMode}
       prefetchedCode={prefetchedCode}
       prefetchedFiles={preFetchedFiles}
     />

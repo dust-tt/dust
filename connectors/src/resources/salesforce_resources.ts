@@ -1,3 +1,11 @@
+import {
+  SalesforceConfigurationModel,
+  SalesforceSyncedQueryModel,
+} from "@connectors/lib/models/salesforce";
+import { BaseResource } from "@connectors/resources/base_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
+import type { ModelId } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
 import { Ok } from "@dust-tt/client";
 import type {
@@ -7,20 +15,12 @@ import type {
   Transaction,
 } from "sequelize";
 
-import {
-  SalesforceConfigurationModel,
-  SalesforceSyncedQueryModel,
-} from "@connectors/lib/models/salesforce";
-import { BaseResource } from "@connectors/resources/base_resource";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-import type { ModelId } from "@connectors/types";
-
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SalesforceConfigurationResource extends ReadonlyAttributesType<SalesforceConfigurationModel> {}
+export interface SalesforceConfigurationResource
+  extends ReadonlyAttributesType<SalesforceConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SalesforceConfigurationResource extends BaseResource<SalesforceConfigurationModel> {
@@ -107,7 +107,8 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SalesforceSyncedQueryResource extends ReadonlyAttributesType<SalesforceSyncedQueryModel> {}
+export interface SalesforceSyncedQueryResource
+  extends ReadonlyAttributesType<SalesforceSyncedQueryModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSyncedQueryModel> {

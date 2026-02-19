@@ -1,11 +1,3 @@
-import type { InternalToolInputMimeType } from "@dust-tt/client";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
-import type {
-  JSONSchema7 as JSONSchema,
-  JSONSchema7Type as JSONSchemaType,
-} from "json-schema";
-
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
@@ -32,8 +24,16 @@ import {
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
-import type { WorkspaceType } from "@app/types";
-import { assertNever, isString, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
+import type { InternalToolInputMimeType } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
+import type {
+  JSONSchema7 as JSONSchema,
+  JSONSchema7Type as JSONSchemaType,
+} from "json-schema";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -269,6 +269,17 @@ function generateConfiguredInput({
       return { secretName, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT: {
+      if (!actionConfiguration.dustProject) {
+        return undefined;
+      }
+      const project = actionConfiguration.dustProject;
+      return {
+        uri: `project://dust/w/${project.workspaceId}/projects/${project.projectId}`,
+        mimeType,
+      };
+    }
+
     default:
       assertNever(mimeType);
   }
@@ -487,6 +498,7 @@ export interface MCPServerRequirements {
     }
   >;
   requiresDustAppConfiguration: boolean;
+  requiresDustProjectConfiguration: boolean;
   developerSecretSelection: DeveloperSecretSelectionType | null;
   noRequirement: boolean;
 }
@@ -508,6 +520,7 @@ export function getMCPServerRequirements(
       requiredEnums: {},
       requiredLists: {},
       requiresDustAppConfiguration: false,
+      requiresDustProjectConfiguration: false,
       developerSecretSelection: null,
       noRequirement: false,
     };
@@ -736,6 +749,14 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
+  const requiresDustProjectConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+      })
+    ).length > 0;
+
   const developerSecretSelection =
     mcpServerView.server.developerSecretSelection ?? null;
 
@@ -752,6 +773,7 @@ export function getMCPServerRequirements(
     requiredEnums,
     requiredLists,
     requiresDustAppConfiguration,
+    requiresDustProjectConfiguration,
     developerSecretSelection,
     noRequirement:
       !requiresDataSourceConfiguration &&
@@ -766,6 +788,7 @@ export function getMCPServerRequirements(
       !Object.values(requiredEnums).some((c) => c.default === null) &&
       !Object.values(requiredLists).some((c) => c.default === null) &&
       !requiresDustAppConfiguration &&
+      !requiresDustProjectConfiguration &&
       !developerSecretSelection,
   };
 }

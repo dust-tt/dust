@@ -6,6 +6,7 @@ import {
   makeGongTranscriptFolderInternalId,
   makeGongTranscriptInternalId,
 } from "@connectors/connectors/gong/lib/internal_ids";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   renderDocumentTitleAndContent,
   renderMarkdownSection,
@@ -14,7 +15,6 @@ import {
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
-import type { DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 function formatDateNicely(date: Date) {
@@ -33,7 +33,6 @@ export async function syncGongTranscript({
   participantEmails,
   speakerToEmailMap,
   connector,
-  dataSourceConfig,
   loggerArgs,
   forceResync,
 }: {
@@ -42,10 +41,11 @@ export async function syncGongTranscript({
   participantEmails: string[];
   speakerToEmailMap: Record<string, string>;
   connector: ConnectorResource;
-  dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
 }) {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   const { callId } = transcript;
   const createdAtDate = new Date(transcriptMetadata.metaData.started);
   const title = `${formatDateNicely(createdAtDate)} - ${transcriptMetadata.metaData.title || "Untitled transcript"}`;

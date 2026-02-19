@@ -13,7 +13,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const BATCH_SIZE = 1000;
 
@@ -254,12 +255,7 @@ makeScript(
   },
   async ({ execute, workspaceId, days }, logger) => {
     if (workspaceId) {
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      });
-
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }

@@ -1,10 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
-import assert from "assert";
-import { Op } from "sequelize";
-
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import {
   getSlackChannelSourceUrl,
@@ -21,16 +14,25 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 import type { ConnectorPermission, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
+  concurrentExecutor,
   INTERNAL_MIME_TYPES,
   normalizeError,
   withRetries,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WebClient } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
+import assert from "assert";
+import { Op } from "sequelize";
 
 import {
   getSlackClient,
   reportSlackUsage,
   withSlackErrorHandling,
 } from "./slack_client";
+
+const MIGRATE_CHANNELS_CONCURRENCY = 4;
 
 export type SlackChannelType = {
   id: number;
@@ -592,38 +594,38 @@ export async function migrateChannelsFromLegacyBotToNewBot(
     "Found channels to migrate"
   );
 
-  for (const channel of publicChannels) {
-    if (!channel.id) {
-      continue;
-    }
+  const channelsWithId = publicChannels.flatMap((c) =>
+    c.id ? [{ ...c, id: c.id }] : []
+  );
 
-    await heartbeat();
+  await concurrentExecutor(
+    channelsWithId,
+    async (channel) => {
+      const { id: channelId } = channel;
 
-    childLogger.info(
-      {
-        channelId: channel.id,
-      },
-      "Migrating channel"
-    );
+      childLogger.info({ channelId }, "Migrating channel");
 
-    const { id: channelId } = channel;
-
-    // Join the new bot to the channel. Wrap with retries to handle rate limits.
-    const joinRes = await joinChannelWithRetries(
-      slackBotConnector.id,
-      channelId
-    );
-
-    if (joinRes.isErr()) {
-      childLogger.error(
-        { error: joinRes.error, channelId: channel.id },
-        "Could not join channel"
+      // Join the new bot to the channel. Wrap with retries to handle rate limits.
+      const joinRes = await joinChannelWithRetries(
+        slackBotConnector.id,
+        channelId
       );
 
-      // Ignore the error and continue.
-      continue;
+      if (joinRes.isErr()) {
+        childLogger.error(
+          { error: joinRes.error, channelId },
+          "Could not join channel"
+        );
+        // Ignore the error and continue.
+      }
+    },
+    {
+      concurrency: MIGRATE_CHANNELS_CONCURRENCY,
+      onBatchComplete: async () => {
+        await heartbeat();
+      },
     }
-  }
+  );
 
   return new Ok({ migratedChannelsCount: channels.length });
 }

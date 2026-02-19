@@ -24,4 +24,8 @@ export const VALIDATION_MESSAGES = {
     required: "Secret selection is required",
     invalid: "Please select a valid secret",
   },
+  dustProject: {
+    required: "Please select one project",
+    invalid: "Selected project is not valid",
+  },
 } as const;

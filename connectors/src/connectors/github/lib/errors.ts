@@ -1,7 +1,6 @@
+import { normalizeError } from "@connectors/types/api";
 import { GraphqlResponseError } from "@octokit/graphql";
 import { RequestError } from "octokit";
-
-import { normalizeError } from "@connectors/types/api";
 
 export function isGithubRequestErrorNotFound(
   error: unknown
@@ -97,4 +96,27 @@ export function isGraphQLRepositoryNotFound(
       normalizedError.message.includes("Could not resolve to a Repository")
     );
   });
+}
+
+/**
+ * Checks if an error is a transient network error that should be retried.
+ * These are typically connection issues, timeouts, or stream terminations.
+ */
+export function isTransientNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const transientMessages = [
+    "terminated", // undici fetch stream termination
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "socket hang up",
+    "other side closed",
+    "network socket disconnected",
+  ];
+
+  return transientMessages.some((msg) =>
+    error.message.toLowerCase().includes(msg.toLowerCase())
+  );
 }

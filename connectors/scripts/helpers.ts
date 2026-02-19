@@ -1,9 +1,8 @@
+import type { Logger } from "@connectors/logger/logger";
+import logger from "@connectors/logger/logger";
 import type { Options } from "yargs";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-
-import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
 
 // Define a type for the argument specification object.
 export type ArgumentSpecs = {

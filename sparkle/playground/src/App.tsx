@@ -7,11 +7,11 @@ const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
 // Extract story names and components
 const stories = Object.entries(storyModules).map(
-  ([path, module]: [string, unknown]) => {
+  ([path, module]: [string, any]) => {
     const name = path.split("/").pop()?.replace(".tsx", "") || "";
     return {
       name,
-      component: module.default,
+      component: (module as { default: React.ComponentType }).default,
     };
   }
 );

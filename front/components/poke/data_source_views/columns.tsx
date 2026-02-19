@@ -1,9 +1,8 @@
-import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { AgentsUsageType } from "@app/types";
+import type { AgentsUsageType } from "@app/types/data_source";
+import { LinkWrapper } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface DataSourceView {
   dataSourceLink: string;
@@ -25,20 +24,9 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
 
         return <LinkWrapper href={dataSourceViewLink}>{sId}</LinkWrapper>;
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>sId</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "dataSourceName",
@@ -49,37 +37,15 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
           <LinkWrapper href={dataSourceLink}>{dataSourceName}</LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Data Source</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Data source" />
+      ),
     },
     {
       accessorKey: "usage",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Usage</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Usage" />
+      ),
       cell: ({ row }) => {
         const usage = row.original.usage;
         if (!usage) {
@@ -112,15 +78,21 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
 
     {
       accessorKey: "editedBy",
-      header: "Last edited by",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last edited by" />
+      ),
     },
     {
       accessorKey: "kind",
-      header: "Kind",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Kind" />
+      ),
     },
     {
       accessorKey: "editedAt",
-      header: "Last edited at",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last edited at" />
+      ),
       cell: ({ row }) => {
         const editedAt: number | undefined = row.getValue("editedAt");
 

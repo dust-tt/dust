@@ -1,7 +1,5 @@
-import flatMap from "lodash/flatMap";
-
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType } from "@app/types";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import {
   GROK_3_MINI_MODEL_ID,
   GROK_3_MODEL_ID,
@@ -9,7 +7,10 @@ import {
   GROK_4_1_FAST_REASONING_MODEL_ID,
   GROK_4_FAST_NON_REASONING_MODEL_ID,
   GROK_4_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/xai";
+import flatMap from "lodash/flatMap";
+
+export const XAI_PROVIDER_ID = "xai";
 
 export const XAI_MODEL_FAMILIES = [
   "no-vision",
@@ -74,9 +75,7 @@ export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: XaiWhitelistedModelId;
   }
-): LLMParameters & { modelId: XaiWhitelistedModelId } & {
-  clientId: "xai";
-} {
+): LLMParameters & { modelId: XaiWhitelistedModelId } {
   const config = Object.values(XAI_MODEL_FAMILIES_CONFIGS).find((config) =>
     new Set<string>(config.modelIds).has(llmParameters.modelId)
   );
@@ -84,6 +83,5 @@ export function overwriteLLMParameters(
   return {
     ...llmParameters,
     ...config?.overwrites,
-    clientId: "xai" as const,
   };
 }

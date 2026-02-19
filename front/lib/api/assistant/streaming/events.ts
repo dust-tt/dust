@@ -15,8 +15,8 @@ import type {
   ConversationWithoutContentType,
   UserMessageNewEvent,
   UserMessageTypeWithContentFragments,
-} from "@app/types";
-import { assertNever } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Generic event publication interface.
@@ -109,12 +109,14 @@ function isMessageEventParams(
 ): params is MessageEventParams {
   switch (eventType) {
     case "agent_action_success":
+    case "agent_context_pruned":
     case "agent_error":
     case "agent_generation_cancelled":
     case "agent_message_success":
     case "generation_tokens":
     case "tool_approve_execution":
     case "tool_error":
+    case "tool_file_auth_required":
     case "tool_notification":
     case "tool_params":
     case "tool_personal_auth_required":

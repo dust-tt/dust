@@ -1,6 +1,8 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import config from "@app/lib/api/config";
 import { Html } from "@react-email/html";
 import Head from "next/head";
-import React from "react";
+import type React from "react";
 
 export const EmailLayout = ({
   workspace,
@@ -22,11 +24,16 @@ export const EmailLayout = ({
           padding: "20px",
         }}
       >
-        <div style={{ width: "100%", textAlign: "left", marginBottom: "30px" }}>
-          <a
-            href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
-            target="_new"
-          >
+        <div
+          style={{
+            maxWidth: "600px",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          {children}
+        </div>
+        <div style={{ width: "100%", textAlign: "left", marginTop: "20px" }}>
+          <a href={config.getClientFacingUrl()} target="_new">
             <img
               alt="Dust Logo"
               style={{ margin: "0 auto", border: "0px" }}
@@ -35,14 +42,6 @@ export const EmailLayout = ({
               src="https://dust.tt/static/landing/logos/dust/Dust_Logo.png"
             />
           </a>
-        </div>
-        <div
-          style={{
-            maxWidth: "600px",
-            backgroundColor: "#ffffff",
-          }}
-        >
-          {children}
         </div>
         <div
           style={{
@@ -57,7 +56,7 @@ export const EmailLayout = ({
           <div>
             Manage your notifications in{" "}
             <a
-              href={`${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${workspace.id}/me`}
+              href={`${config.getClientFacingUrl()}/w/${workspace.id}/me`}
               target="_blank"
               style={{ color: "#1C91FF" }}
             >

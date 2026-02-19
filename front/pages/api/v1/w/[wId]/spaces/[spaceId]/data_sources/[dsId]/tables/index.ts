@@ -1,11 +1,3 @@
-import type {
-  ListTablesResponseType,
-  UpsertTableResponseType,
-} from "@dust-tt/client";
-import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
@@ -16,8 +8,18 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type {
+  ListTablesResponseType,
+  UpsertTableResponseType,
+} from "@dust-tt/client";
+import {
+  DUST_TABLE_MIME_TYPE,
+  UpsertDatabaseTableRequestSchema,
+} from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger
@@ -313,7 +315,7 @@ async function handler(
             },
           });
         }
-        mimeType = "application/vnd.dust.table";
+        mimeType = DUST_TABLE_MIME_TYPE;
       }
       // If the title is provided, we use it.
       // Otherwise, we default to either:

@@ -1,7 +1,3 @@
-import type { RunAppResponseType } from "@dust-tt/client";
-import { createParser } from "eventsource-parser";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
@@ -17,21 +13,22 @@ import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  BlockType,
-  CredentialsType,
-  ModelIdType,
-  ModelProviderIdType,
-  RunType,
-  TraceType,
-  WithAPIErrorResponse,
-} from "@app/types";
 import {
-  assertNever,
-  CoreAPI,
   credentialsFromProviders,
   dustManagedCredentials,
-} from "@app/types";
+} from "@app/types/api/credentials";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { CredentialsType } from "@app/types/provider";
+import type { BlockType, RunType, TraceType } from "@app/types/run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { RunAppResponseType } from "@dust-tt/client";
+import { createParser } from "eventsource-parser";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {
@@ -207,16 +204,14 @@ async function handler(
 
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
-  { space }: { space: SpaceResource },
-  keyAuth: Authenticator
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
   const [app, providers, secrets] = await Promise.all([
     AppResource.fetchById(auth, req.query.aId as string),
     ProviderModel.findAll({
       where: {
-        workspaceId: keyWorkspaceId,
+        workspaceId: owner.id,
       },
     }),
     getDustAppSecrets(auth, true),
@@ -232,7 +227,7 @@ async function handler(
     });
   }
 
-  if (!app.canRead(keyAuth)) {
+  if (!app.canRead(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -286,9 +281,7 @@ async function handler(
       }
 
       // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(
-        keyAuth.getNonNullableWorkspace()
-      );
+      const keyWorkspaceFlags = await getFeatureFlags(owner);
 
       let credentials: CredentialsType | null = null;
       if (useDustCredentials) {
@@ -328,15 +321,14 @@ async function handler(
           },
           app: app.sId,
           useOpenAIEUEndpoint: credentials?.OPENAI_USE_EU_ENDPOINT,
-          userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"
       );
 
       const runRes = await coreAPI.createRunStream(
-        keyAuth.getNonNullableWorkspace(),
+        owner,
         keyWorkspaceFlags,
-        keyAuth.groups(),
+        auth.groupIds(),
         {
           projectId: app.dustAPIProjectId,
           runType: "deploy",
@@ -463,7 +455,7 @@ async function handler(
           dustRunId,
           appId: app.id,
           runType: "deploy",
-          workspaceId: keyWorkspaceId,
+          workspaceId: owner.id,
           useWorkspaceCredentials: !useDustCredentials,
         });
 
@@ -555,7 +547,5 @@ async function handler(
 export default withPublicAPIAuthentication(
   // Check read on the workspace authenticator - for public space, everybody can read
   withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } }),
-  {
-    allowUserOutsideCurrentWorkspace: true,
-  }
+  { allowSystemKeyBypassBuilderCheck: true }
 );

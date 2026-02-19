@@ -9,11 +9,11 @@ import type {
   ConversationMessageReactions,
   ConversationWithoutContentType,
   MessageReactionType,
-  ModelId,
-  Result,
-} from "@app/types";
-import type { UserType } from "@app/types";
-import { Ok } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import type { UserType } from "@app/types/user";
 
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.
@@ -219,6 +219,7 @@ export async function deleteMessageReaction(
       userContextUsername: context.username,
       userContextFullName: context.fullName,
       reaction,
+      workspaceId: owner.id,
     },
   });
   return deletedReaction === 1;

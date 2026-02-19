@@ -318,7 +318,7 @@ export const InputBarContainer = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  size="mini"
+                  size="icon"
                   variant="highlight"
                   icon={ChevronDownIcon}
                   disabled={disabled}

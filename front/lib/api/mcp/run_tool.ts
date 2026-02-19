@@ -12,9 +12,10 @@ import {
 import type {
   MCPApproveExecutionEvent,
   ToolEarlyExitEvent,
+  ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
@@ -22,12 +23,12 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
   ConversationType,
-} from "@app/types";
-import { removeNulls } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.
@@ -56,6 +57,7 @@ export async function* runToolWithStreaming(
   | MCPParamsEvent
   | MCPSuccessEvent
   | ToolNotificationEvent
+  | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent
   | ToolEarlyExitEvent,
   void

@@ -1,11 +1,13 @@
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType } from "@app/types";
 import {
   MISTRAL_CODESTRAL_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/mistral";
+import type { ModelIdType } from "@app/types/assistant/models/types";
+
+export const MISTRAL_PROVIDER_ID = "mistral";
 
 export const MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT = [
   MISTRAL_CODESTRAL_MODEL_ID,

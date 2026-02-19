@@ -34,9 +34,10 @@ export class DustConnectorWorkflowError extends Error {
   constructor(
     message: string,
     readonly type: WorkflowErrorType,
-    readonly originalError?: Error | APIError
+    readonly originalError?: Error | APIError | unknown
   ) {
     super(message);
+    this.cause = originalError;
   }
 }
 
@@ -46,7 +47,7 @@ export class ProviderWorkflowError extends DustConnectorWorkflowError {
     public readonly provider: ConnectorProvider,
     message: string,
     type: ProviderErrorType,
-    originalError?: Error | APIError
+    originalError?: Error | APIError | unknown
   ) {
     super(message, type, originalError);
   }
@@ -94,8 +95,11 @@ export interface NotFoundError extends HTTPError {
 // This error is thrown when we are dealing with a revoked OAuth token, or more
 // generally Oauth issues due to a revoked access
 export class ExternalOAuthTokenError extends Error {
+  declare cause?: Error;
+
   constructor(readonly innerError?: Error) {
     super(innerError?.message);
+    this.cause = innerError;
     this.name = "ExternalOAuthTokenError";
   }
 }

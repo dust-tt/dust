@@ -1,3 +1,5 @@
+import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
+import { DustConnectorWorkflowError } from "@connectors/lib/error";
 import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
@@ -5,10 +7,9 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
-import { DustConnectorWorkflowError } from "@connectors/lib/error";
-
-export class GongCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+export class GongCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

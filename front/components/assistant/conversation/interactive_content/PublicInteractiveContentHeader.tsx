@@ -1,14 +1,13 @@
+import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
+import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   cn,
   RocketIcon,
 } from "@dust-tt/sparkle";
-
-import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
-import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { UserTypeWithWorkspaces } from "@app/types";
 
 interface PublicInteractiveContentHeaderProps {
   title: string;

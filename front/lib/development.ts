@@ -1,10 +1,8 @@
 import { clientFetch } from "@app/lib/egress/client";
-import type {
-  LightWorkspaceType,
-  UserType,
-  WhitelistableFeature,
-} from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export function showDebugTools(flags: WhitelistableFeature[]) {
   return isDevelopment() || flags.includes("show_debug_tools");
@@ -63,11 +61,15 @@ export async function sendOnboardingConversation(
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({ force: true }),
     }
   );
 
   if (response.ok) {
     const data = await response.json();
+    if (!data.conversationSId) {
+      return { isOk: false, error: "Failed to create onboarding conversation" };
+    }
     return { isOk: true, conversationSId: data.conversationSId };
   } else {
     return { isOk: false, error: "Error sending onboarding conversation" };

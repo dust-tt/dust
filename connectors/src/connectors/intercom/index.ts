@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import {
   allowSyncTeam,
   retrieveIntercomConversationsPermissions,
@@ -45,6 +42,7 @@ import {
   IntercomTeamModel,
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
+import { scheduleExists } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -53,6 +51,12 @@ import type {
   ContentNodesViewType,
   DataSourceConfig,
 } from "@connectors/types";
+import {
+  makeIntercomConversationScheduleId,
+  makeIntercomHelpCenterScheduleId,
+} from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child(
   {
@@ -261,9 +265,37 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const schedulesRes = await unpauseIntercomSchedules(connector);
-    if (schedulesRes.isErr()) {
-      return schedulesRes;
+    // Check if schedules exist (they may be missing after workspace relocation).
+    const helpCenterScheduleId = makeIntercomHelpCenterScheduleId(connector);
+    const conversationScheduleId =
+      makeIntercomConversationScheduleId(connector);
+
+    const [helpCenterExists, conversationExists] = await Promise.all([
+      scheduleExists({ scheduleId: helpCenterScheduleId }),
+      scheduleExists({ scheduleId: conversationScheduleId }),
+    ]);
+
+    if (!helpCenterExists || !conversationExists) {
+      // Schedules are missing - recreate them (e.g., after workspace relocation).
+      logger.warn(
+        {
+          connectorId: this.connectorId,
+          helpCenterScheduleExists: helpCenterExists,
+          conversationScheduleExists: conversationExists,
+        },
+        "Intercom schedules missing during resume, recreating them."
+      );
+
+      const launchRes = await launchIntercomSchedules(connector);
+      if (launchRes.isErr()) {
+        return launchRes;
+      }
+    } else {
+      // Schedules exist - just unpause them.
+      const schedulesRes = await unpauseIntercomSchedules(connector);
+      if (schedulesRes.isErr()) {
+        return schedulesRes;
+      }
     }
 
     const teamsIds = await IntercomTeamModel.findAll({
@@ -305,6 +337,17 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
+    const intercomWorkspace = await IntercomWorkspaceModel.findOne({
+      where: { connectorId: connector.id },
+    });
+    if (!intercomWorkspace) {
+      logger.error(
+        { connectorId: this.connectorId },
+        "IntercomWorkspace not found. Cannot set permissions."
+      );
+      return new Err(new Error("IntercomWorkspace not found"));
+    }
+
     const helpCentersIds = await IntercomHelpCenterModel.findAll({
       where: {
         connectorId: this.connectorId,
@@ -317,11 +360,20 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       },
       attributes: ["teamId"],
     });
+    // Resetting the syncAllConversation flag to scheduled_activate to re-trigger the full sync.
+    const syncAllConversations =
+      intercomWorkspace.syncAllConversations === "activated";
+    if (syncAllConversations) {
+      await intercomWorkspace.update({
+        syncAllConversations: "scheduled_activate",
+      });
+    }
 
     const sendSignalToWorkflowResult = await launchIntercomFullSyncWorkflow({
       connectorId: this.connectorId,
       helpCenterIds: helpCentersIds.map((hc) => hc.helpCenterId),
       teamIds: teamsIds.map((team) => team.teamId),
+      hasUpdatedSelectAllConversations: syncAllConversations,
       forceResync: true,
     });
     if (sendSignalToWorkflowResult.isErr()) {

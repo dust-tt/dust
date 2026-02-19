@@ -1,17 +1,19 @@
+import { PlanModel } from "@app/lib/models/plan";
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
 
-import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
-import { upsertProPlans } from "@app/lib/plans/pro_plans";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { WorkspaceType } from "@app/types";
-
 export class WorkspaceFactory {
   static async basic(): Promise<WorkspaceType> {
-    await upsertProPlans();
+    // Plans are seeded by the DB init script (admin/db.ts) to avoid deadlocks
+    // from concurrent upserts in parallel test workers.
     const workspace = await WorkspaceModel.create({
       sId: generateRandomModelSId(),
       name: faker.company.name(),
@@ -22,22 +24,34 @@ export class WorkspaceFactory {
     const newPlan = await PlanModel.findOne({
       where: { code: PRO_PLAN_SEAT_29_CODE },
     });
+    if (!newPlan) {
+      throw new Error(`Plan ${PRO_PLAN_SEAT_29_CODE} not found`);
+    }
     const now = new Date();
 
-    await SubscriptionModel.create({
-      sId: generateRandomModelSId(),
-      workspaceId: workspace.id,
-      planId: newPlan?.id,
-      status: "active",
-      startDate: now,
-      stripeSubscriptionId: null,
-      endDate: null,
-    });
+    await SubscriptionResource.makeNew(
+      {
+        sId: generateRandomModelSId(),
+        workspaceId: workspace.id,
+        planId: newPlan.id,
+        status: "active",
+        startDate: now,
+        stripeSubscriptionId: null,
+        endDate: null,
+      },
+      renderPlanFromModel({ plan: newPlan })
+    );
 
-    return {
+    const workspaceType: WorkspaceType = {
       ...renderLightWorkspaceType({ workspace }),
       ssoEnforced: workspace.ssoEnforced,
       workOSOrganizationId: workspace.workOSOrganizationId,
     };
+
+    // Create default groups (global, system) so tests don't need to call
+    // GroupFactory.defaults() manually. Idempotent if already created.
+    await GroupResource.makeDefaultsForWorkspace(workspaceType);
+
+    return workspaceType;
   }
 }

@@ -1,7 +1,13 @@
-import { EnvironmentConfig, isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
 export type RegionType = (typeof SUPPORTED_REGIONS)[number];
+
+export const REGION_TIMEZONES: Record<RegionType, string> = {
+  "europe-west1": "Europe/Paris",
+  "us-central1": "America/New_York",
+};
 
 export interface RegionInfo {
   name: RegionType;
@@ -20,7 +26,10 @@ export const config = {
     return EnvironmentConfig.getEnvVariable("REGION_RESOLVER_SECRET");
   },
   getRegionUrl(region: RegionType): string {
-    if (isDevelopment()) {
+    if (
+      isDevelopment() &&
+      !EnvironmentConfig.getOptionalEnvVariable("DUST_EU_URL")
+    ) {
       return "http://localhost:3000";
     }
 
@@ -46,16 +55,5 @@ export const config = {
   },
   getDustRegionSyncMasterUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_US_URL");
-  },
-  getDustAppsSyncMasterWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_SYNC_MASTER_WORKSPACE_ID"
-    );
-  },
-  getDustAppsSyncMasterSpaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_SPACE_ID");
-  },
-  getDustAppsSyncMasterApiKey: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_API_KEY");
   },
 };

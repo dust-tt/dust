@@ -148,7 +148,11 @@ export const INTERNAL_MIME_TYPES = {
   }),
   DUST_PROJECT: generateMimeTypes({
     provider: "dust_project",
-    resourceTypes: ["CONVERSATION_FOLDER", "CONVERSATION_MESSAGES"],
+    resourceTypes: [
+      "CONVERSATION_FOLDER",
+      "CONVERSATION_MESSAGES",
+      "CONTEXT_FOLDER",
+    ],
   }),
 };
 

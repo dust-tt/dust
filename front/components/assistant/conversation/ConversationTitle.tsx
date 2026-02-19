@@ -1,22 +1,25 @@
-import { ArrowLeftIcon, Button, IconButton, MoreIcon } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useConversation } from "@app/lib/swr/conversations";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types";
+import { getProjectRoute } from "@app/lib/utils/router";
+import type { WorkspaceType } from "@app/types/user";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
+import { useState } from "react";
+
+import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -25,7 +28,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const router = useRouter();
+  const router = useAppRouter();
+
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
 
   const {
     isMenuOpen,
@@ -34,41 +39,56 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     handleMenuOpenChange,
   } = useConversationMenu();
 
+  const currentTitle = conversation?.title ?? "";
+
   if (!activeConversationId) {
     return null;
+  }
+
+  const spaceId = conversation?.spaceId;
+  const isProjectConversation = !!spaceId;
+  const isLoading = isProjectConversation && !spaceInfo;
+
+  const breadcrumbItems: BreadcrumbItem[] = [];
+
+  if (spaceId && spaceInfo) {
+    breadcrumbItems.push({
+      icon: ArrowLeftIcon,
+      label: spaceInfo.name,
+      onClick: () => {
+        void router.push(getProjectRoute(owner.sId, spaceId), undefined, {
+          shallow: true,
+        });
+      },
+    });
+  }
+
+  if (!isLoading) {
+    breadcrumbItems.push({
+      label: currentTitle || "New Conversation",
+      onClick: () => setShowRenameDialog(true),
+    });
   }
 
   return (
     <AppLayoutTitle>
       <div
-        className="grid h-full min-w-0 max-w-full grid-cols-[auto,1fr,auto] items-center gap-4"
+        className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
-        <div className="flex min-w-0">
-          {conversation?.spaceId && (
-            <IconButton
-              size="sm"
-              variant="ghost"
-              icon={ArrowLeftIcon}
-              aria-label={`Back to ${spaceInfo?.name}`}
-              onClick={() => {
-                void router.push(
-                  getSpaceConversationsRoute(owner.sId, conversation.spaceId!),
-                  undefined,
-                  {
-                    shallow: true,
-                  }
-                );
-              }}
-            />
-          )}
-        </div>
-        <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
-          <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-sm font-normal">
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-            {conversation?.title || ""}
-          </div>
-        </div>
+        <Breadcrumbs
+          items={breadcrumbItems}
+          className="dd-privacy-mask"
+          truncateLengthMiddle={35}
+          truncateLengthEnd={120}
+        />
+        <EditConversationTitleDialog
+          isOpen={showRenameDialog}
+          onClose={() => setShowRenameDialog(false)}
+          owner={owner}
+          conversationId={activeConversationId}
+          currentTitle={currentTitle}
+        />
         <div className="flex items-center gap-2">
           <ConversationFilesPopover
             conversationId={activeConversationId}

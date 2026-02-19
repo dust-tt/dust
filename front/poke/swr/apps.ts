@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListApps } from "@app/pages/api/poke/workspaces/[wId]/apps";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { Fetcher } from "swr";
 
 export function usePokeApps({ disabled, owner }: PokeConditionalFetchProps) {
   const dataSourceViewsFetcher: Fetcher<PokeListApps> = fetcher;

@@ -86,6 +86,44 @@ export function getDockerProjectName(name: string): string {
   return `dust-hive-${name}`;
 }
 
+// Get container ID for a service in an environment
+// Uses docker compose ps -q which is more reliable than constructing container names
+export async function getServiceContainerId(
+  envName: string,
+  service: string
+): Promise<string | null> {
+  const projectName = getDockerProjectName(envName);
+  const overridePath = getDockerOverridePath(envName);
+  const basePath = getDockerComposePath();
+
+  const proc = Bun.spawn(
+    [
+      "docker",
+      "compose",
+      "-f",
+      basePath,
+      "-f",
+      overridePath,
+      "-p",
+      projectName,
+      "ps",
+      "-q",
+      service,
+    ],
+    { stdout: "pipe", stderr: "pipe" }
+  );
+
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    return null;
+  }
+
+  const containerId = output.trim();
+  return containerId || null;
+}
+
 // Start docker-compose containers (starts in background, services have retry logic)
 export async function startDocker(env: Environment): Promise<void> {
   logger.step("Starting Docker containers...");

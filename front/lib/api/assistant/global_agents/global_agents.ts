@@ -1,3 +1,4 @@
+import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   _getClaude3_7GlobalAgent,
@@ -9,6 +10,7 @@ import {
   _getClaude4SonnetGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
+import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import {
   _getBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
@@ -16,17 +18,33 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import {
+  _getDustAntGlobalAgent,
+  _getDustAntHighGlobalAgent,
+  _getDustAntMediumGlobalAgent,
   _getDustEdgeGlobalAgent,
+  _getDustGlmGlobalAgent,
+  _getDustGlmHighGlobalAgent,
+  _getDustGlmMediumGlobalAgent,
   _getDustGlobalAgent,
+  _getDustGoogGlobalAgent,
+  _getDustGoogMediumGlobalAgent,
+  _getDustKimiGlobalAgent,
+  _getDustKimiHighGlobalAgent,
+  _getDustKimiMediumGlobalAgent,
+  _getDustMinimaxGlobalAgent,
+  _getDustMinimaxHighGlobalAgent,
+  _getDustMinimaxMediumGlobalAgent,
+  _getDustNextGlobalAgent,
+  _getDustNextHighGlobalAgent,
+  _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
   _getDustQuickGlobalAgent,
+  _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
+import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
-import {
-  _getHelperGlobalAgent,
-  HelperAssistantPrompt,
-} from "@app/lib/api/assistant/global_agents/configurations/helper";
+import { _getHelperGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/helper";
 import {
   _getMistralLargeGlobalAgent,
   _getMistralMediumGlobalAgent,
@@ -52,64 +70,295 @@ import {
   _getNotionGlobalAgent,
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
-import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
-import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assistant/global_agents/tools";
+import type {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
+import {
+  getDataSourcesAndWorkspaceIdForGlobalAgents,
+  getMCPServerViewsForGlobalAgents,
+} from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
   GlobalAgentStatus,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 import {
   GLOBAL_AGENTS_SID,
-  isDevelopment,
   isGlobalAgentId,
-  isProviderWhitelisted,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
+import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
+import type { JobType } from "@app/types/job_type";
+import { isJobType } from "@app/types/job_type";
+import { isDevelopment } from "@app/types/shared/env";
+import { isStringArray } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+
+// Exhaustive map of flags for each global agent. This is used to control which agents inject
+// per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
+// allows us to move dynamic content out of instructions and into context sections, improving prompt
+// cache hit rates. Will be properly refactored if we manage to improve cache hit rates.
+const GLOBAL_AGENT_FLAGS: Record<
+  GLOBAL_AGENTS_SID,
+  { injectsMemory: boolean; injectsToolsets: boolean }
+> = {
+  [GLOBAL_AGENTS_SID.DUST]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_EDGE]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_QUICK]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_OAI]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_GOOG]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_KIMI]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GLM]: { injectsMemory: true, injectsToolsets: true },
+  [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_NEXT]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+  },
+  [GLOBAL_AGENTS_SID.HELPER]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.DEEP_DIVE]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_TASK]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_PLANNING]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.COPILOT]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.SLACK]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GOOGLE_DRIVE]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.NOTION]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GITHUB]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.INTERCOM]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT35_TURBO]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT4]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GPT5]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.GPT5_THINKING]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT5_NANO]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GPT5_MINI]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.O1]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.O1_MINI]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.O1_HIGH_REASONING]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.O3_MINI]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.O3]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_OPUS]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.MISTRAL_LARGE]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.MISTRAL_MEDIUM]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.MISTRAL_SMALL]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.GEMINI_PRO]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.DEEPSEEK_R1]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
+  [GLOBAL_AGENTS_SID.NOOP]: { injectsMemory: false, injectsToolsets: false },
+};
+
+export function globalAgentInjectsMemory(sId: string): boolean {
+  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
+}
+
+export function globalAgentInjectsToolsets(sId: string): boolean {
+  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsToolsets;
+}
+
+export function isDustLikeAgent(sId: string): boolean {
+  return (
+    isGlobalAgentId(sId) &&
+    GLOBAL_AGENT_FLAGS[sId].injectsMemory &&
+    GLOBAL_AGENT_FLAGS[sId].injectsToolsets
+  );
+}
+
+export interface CopilotUserMetadata {
+  jobType: JobType | null;
+  favoritePlatforms: FavoritePlatform[];
+}
+
+async function fetchCopilotUserMetadata(
+  auth: Authenticator
+): Promise<CopilotUserMetadata | null> {
+  const user = auth.user();
+  if (!user) {
+    return null;
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+
+  const [jobTypeMeta, platformsMeta] = await Promise.all([
+    // Job type is user-scoped (not workspace-specific).
+    user.getMetadata("job_type"),
+    user.getMetadata("favorite_platforms", owner.id),
+  ]);
+
+  let favoritePlatforms: FavoritePlatform[] = [];
+  if (platformsMeta?.value) {
+    const parsed = safeParseJSON(platformsMeta.value);
+    if (
+      parsed.isOk() &&
+      isStringArray(parsed.value) &&
+      parsed.value.every(isFavoritePlatform)
+    ) {
+      favoritePlatforms = parsed.value;
+    }
+  }
+
+  const jobType = isJobType(jobTypeMeta?.value) ? jobTypeMeta.value : null;
+
+  return { jobType, favoritePlatforms };
+}
 
 function getGlobalAgent({
   auth,
   sId,
   preFetchedDataSources,
-  helperPromptInstance,
   globalAgentSettings,
-  agentRouterMCPServerView,
-  webSearchBrowseMCPServerView,
-  searchMCPServerView,
-  dataSourcesFileSystemMCPServerView,
-  interactiveContentMCPServerView,
-  runAgentMCPServerView,
-  toolsetsMCPServerView,
-  dataWarehousesMCPServerView,
-  slideshowMCPServerView,
-  deepDiveMCPServerView,
-  agentMemoryMCPServerView,
-  memories,
-  availableToolsets,
+  mcpServerViews,
+  copilotMCPServerViews,
+  copilotUserMetadata,
+  hasDeepDive,
 }: {
   auth: Authenticator;
   sId: string | number;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
-  helperPromptInstance: HelperAssistantPrompt;
   globalAgentSettings: GlobalAgentSettingsModel[];
-  agentRouterMCPServerView: MCPServerViewResource | null;
-  webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  searchMCPServerView: MCPServerViewResource | null;
-  dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
-  runAgentMCPServerView: MCPServerViewResource | null;
-  toolsetsMCPServerView: MCPServerViewResource | null;
-  dataWarehousesMCPServerView: MCPServerViewResource | null;
-  slideshowMCPServerView: MCPServerViewResource | null;
-  deepDiveMCPServerView: MCPServerViewResource | null;
-  agentMemoryMCPServerView: MCPServerViewResource | null;
-  memories: AgentMemoryResource[];
-  availableToolsets: MCPServerViewResource[];
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  copilotMCPServerViews: {
+    context: MCPServerViewResource;
+  } | null;
+  copilotUserMetadata: CopilotUserMetadata | null;
+  hasDeepDive: boolean;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -118,68 +367,54 @@ function getGlobalAgent({
 
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
-      agentConfiguration = _getHelperGlobalAgent({
-        auth,
-        helperPromptInstance,
-        agentRouterMCPServerView,
-        webSearchBrowseMCPServerView,
-        searchMCPServerView,
-        interactiveContentMCPServerView,
-      });
+      agentConfiguration = _getHelperGlobalAgent({ auth, mcpServerViews });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       agentConfiguration = _getGPT35TurboGlobalAgent({
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = _getGPT4GlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5:
       agentConfiguration = _getGPT5GlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_NANO:
       agentConfiguration = _getGPT5NanoGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_MINI:
       agentConfiguration = _getGPT5MiniGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_THINKING:
       agentConfiguration = _getGPT5ThinkingGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.O1:
       agentConfiguration = _getO1GlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.O1_MINI:
@@ -189,110 +424,96 @@ function getGlobalAgent({
       agentConfiguration = _getO1HighReasoningGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.O3_MINI:
       agentConfiguration = _getO3MiniGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.O3:
       agentConfiguration = _getO3GlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
       agentConfiguration = _getClaude4_5SonnetGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
       agentConfiguration = _getClaude4_5HaikuGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
       agentConfiguration = _getClaude4SonnetGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
       agentConfiguration = _getClaude3OpusGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
       agentConfiguration = _getClaude3GlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
       agentConfiguration = _getClaude3_7GlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
       agentConfiguration = _getMistralLargeGlobalAgent({
         settings,
         auth,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
       agentConfiguration = _getMistralMediumGlobalAgent({
         settings,
         auth,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
       agentConfiguration = _getMistralSmallGlobalAgent({
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       agentConfiguration = _getGeminiProGlobalAgent({
         auth,
         settings,
-        webSearchBrowseMCPServerView,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
@@ -302,121 +523,225 @@ function getGlobalAgent({
       agentConfiguration = _getSlackGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        searchMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
       agentConfiguration = _getGoogleDriveGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        searchMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
       agentConfiguration = _getNotionGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        searchMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
       agentConfiguration = _getGithubGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        searchMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
       agentConfiguration = _getIntercomGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        searchMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = _getDustGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        agentRouterMCPServerView,
-        webSearchBrowseMCPServerView,
-        dataSourcesFileSystemMCPServerView,
-        toolsetsMCPServerView,
-        deepDiveMCPServerView,
-        interactiveContentMCPServerView,
-        dataWarehousesMCPServerView,
-        agentMemoryMCPServerView,
-        memories,
-        availableToolsets,
+        mcpServerViews,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_EDGE:
       agentConfiguration = _getDustEdgeGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        agentRouterMCPServerView,
-        webSearchBrowseMCPServerView,
-        dataSourcesFileSystemMCPServerView,
-        toolsetsMCPServerView,
-        deepDiveMCPServerView,
-        interactiveContentMCPServerView,
-        dataWarehousesMCPServerView,
-        agentMemoryMCPServerView,
-        memories,
-        availableToolsets,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT:
+      agentConfiguration = _getDustAntGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
+      agentConfiguration = _getDustAntMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
+      agentConfiguration = _getDustAntHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_KIMI:
+      agentConfiguration = _getDustKimiGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:
+      agentConfiguration = _getDustKimiMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_KIMI_HIGH:
+      agentConfiguration = _getDustKimiHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GLM:
+      agentConfiguration = _getDustGlmGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM:
+      agentConfiguration = _getDustGlmMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GLM_HIGH:
+      agentConfiguration = _getDustGlmHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX:
+      agentConfiguration = _getDustMinimaxGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM:
+      agentConfiguration = _getDustMinimaxMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH:
+      agentConfiguration = _getDustMinimaxHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
       agentConfiguration = _getDustQuickGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        agentRouterMCPServerView,
-        webSearchBrowseMCPServerView,
-        dataSourcesFileSystemMCPServerView,
-        toolsetsMCPServerView,
-        deepDiveMCPServerView,
-        interactiveContentMCPServerView,
-        dataWarehousesMCPServerView,
-        agentMemoryMCPServerView,
-        memories,
-        availableToolsets,
+        mcpServerViews,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI:
       agentConfiguration = _getDustOaiGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        agentRouterMCPServerView,
-        webSearchBrowseMCPServerView,
-        dataSourcesFileSystemMCPServerView,
-        toolsetsMCPServerView,
-        deepDiveMCPServerView,
-        interactiveContentMCPServerView,
-        dataWarehousesMCPServerView,
-        agentMemoryMCPServerView,
-        memories,
-        availableToolsets,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GOOG:
+      agentConfiguration = _getDustGoogGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
+      agentConfiguration = _getDustGoogMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
+      agentConfiguration = _getDustQuickMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_NEXT:
+      agentConfiguration = _getDustNextGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
+      agentConfiguration = _getDustNextMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
+      agentConfiguration = _getDustNextHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       agentConfiguration = _getDeepDiveGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        webSearchBrowseMCPServerView,
-        dataSourcesFileSystemMCPServerView,
-        interactiveContentMCPServerView,
-        runAgentMCPServerView,
-        dataWarehousesMCPServerView,
-        toolsetsMCPServerView,
-        slideshowMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
       agentConfiguration = _getDustTaskGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        webSearchBrowseMCPServerView,
-        dataSourcesFileSystemMCPServerView,
-        dataWarehousesMCPServerView,
+        mcpServerViews,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
@@ -427,6 +752,12 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_PLANNING:
       agentConfiguration = _getPlanningAgent(auth, {
         settings,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.COPILOT:
+      agentConfiguration = _getCopilotGlobalAgent(auth, {
+        copilotMCPServerViews,
+        copilotUserMetadata,
       });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
@@ -492,105 +823,28 @@ export async function getGlobalAgents(
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  const [
-    preFetchedDataSources,
-    globalAgentSettings,
-    helperPromptInstance,
-    agentRouterMCPServerView,
-    webSearchBrowseMCPServerView,
-    searchMCPServerView,
-    dataSourcesFileSystemMCPServerView,
-    interactiveContentMCPServerView,
-    runAgentMCPServerView,
-    toolsetsMCPServerView,
-    dataWarehousesMCPServerView,
-    slideshowMCPServerView,
-    deepDiveMCPServerView,
-    agentMemoryMCPServerView,
-  ] = await Promise.all([
-    variant === "full"
-      ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
-      : null,
-    GlobalAgentSettingsModel.findAll({
-      where: { workspaceId: owner.id },
-    }),
-    HelperAssistantPrompt.getInstance(),
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "agent_router"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "web_search_&_browse"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "search"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "data_sources_file_system"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "interactive_content"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "run_agent"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "toolsets"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "data_warehouses"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "slideshow"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "deep_dive"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "agent_memory"
-        )
-      : null,
-  ]);
+  const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
+
+  const [preFetchedDataSources, globalAgentSettings, mcpServerViews] =
+    await Promise.all([
+      variant === "full"
+        ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
+        : null,
+      GlobalAgentSettingsModel.findAll({
+        where: { workspaceId: owner.id },
+      }),
+      getMCPServerViewsForGlobalAgents(auth, variant),
+    ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
   // user agents).
   let agentsIdsToFetch =
     agentIds ??
-    Object.values(GLOBAL_AGENTS_SID).filter(
-      (sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId)
-    );
+    Object.values(GLOBAL_AGENTS_SID)
+      .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
+      // We only want to fetch copilot global agent if explicitely requested.
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.COPILOT);
 
   const flags = await getFeatureFlags(owner);
 
@@ -612,54 +866,69 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
-  if (!flags.includes("dust_edge_global_agent")) {
+  const DUST_INTERNAL_AGENTS = [
+    GLOBAL_AGENTS_SID.DUST_ANT,
+    GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
+    GLOBAL_AGENTS_SID.DUST_EDGE,
+    GLOBAL_AGENTS_SID.DUST_KIMI,
+    GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
+    GLOBAL_AGENTS_SID.DUST_GLM,
+    GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_GLM_HIGH,
+    GLOBAL_AGENTS_SID.DUST_MINIMAX,
+    GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH,
+    GLOBAL_AGENTS_SID.DUST_QUICK,
+    GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_OAI,
+    GLOBAL_AGENTS_SID.DUST_GOOG,
+    GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_NEXT,
+    GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+  ];
+  if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_EDGE
+      (sId) => !DUST_INTERNAL_AGENTS.includes(sId as GLOBAL_AGENTS_SID)
     );
   }
-  if (!flags.includes("dust_quick_global_agent")) {
+  // Also hide dust-next variants if the custom model's own feature flag isn't enabled.
+  const customModelFlag = CUSTOM_MODEL_CONFIGS[0]?.featureFlag;
+  if (customModelFlag && !flags.includes(customModelFlag)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_QUICK
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM &&
+        sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
     );
   }
-  if (!flags.includes("dust_oai_global_agent")) {
+  if (!flags.includes("agent_builder_copilot")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_OAI
+      (sId) => sId !== GLOBAL_AGENTS_SID.COPILOT
     );
   }
 
-  let memories: AgentMemoryResource[] = [];
+  let copilotMCPServerViews: {
+    context: MCPServerViewResource;
+  } | null = null;
+  let copilotUserMetadata: CopilotUserMetadata | null = null;
   if (
     variant === "full" &&
-    agentMemoryMCPServerView &&
-    auth.user() &&
-    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI))
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT)
   ) {
-    memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
-      auth,
-      {
-        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      }
-    );
-  }
-
-  let availableToolsets: MCPServerViewResource[] = [];
-  if (
-    variant === "full" &&
-    toolsetsMCPServerView &&
-    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI))
-  ) {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    availableToolsets = await MCPServerViewResource.listBySpace(
-      auth,
-      globalSpace
-    );
+    const [context, userMetadata] = await Promise.all([
+      MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        AGENT_COPILOT_CONTEXT_TOOL_NAME
+      ),
+      fetchCopilotUserMetadata(auth),
+    ]);
+    if (context) {
+      copilotMCPServerViews = { context };
+    }
+    copilotUserMetadata = userMetadata;
   }
 
   // For now we retrieve them all
@@ -669,21 +938,11 @@ export async function getGlobalAgents(
       auth,
       sId,
       preFetchedDataSources,
-      helperPromptInstance,
       globalAgentSettings,
-      agentRouterMCPServerView,
-      webSearchBrowseMCPServerView,
-      searchMCPServerView,
-      dataSourcesFileSystemMCPServerView,
-      interactiveContentMCPServerView,
-      runAgentMCPServerView,
-      toolsetsMCPServerView,
-      dataWarehousesMCPServerView,
-      slideshowMCPServerView,
-      deepDiveMCPServerView,
-      agentMemoryMCPServerView,
-      memories,
-      availableToolsets,
+      mcpServerViews,
+      copilotMCPServerViews,
+      copilotUserMetadata,
+      hasDeepDive: !isDeepDiveDisabled,
     })
   );
 

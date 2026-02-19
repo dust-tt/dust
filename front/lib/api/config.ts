@@ -3,7 +3,26 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
+// Pluggable base URL resolver (e.g. RegionContext in the SPA).
+let baseUrlResolver: (() => string) | null = null;
+
+export function setBaseUrlResolver(fn: (() => string) | null): void {
+  baseUrlResolver = fn;
+}
+
+// Returns the resolver's URL if set, or empty string.
+// Used by clientFetch to decide whether to rewrite relative URLs (SPA cross-origin only).
+export function getBaseUrlFromResolver(): string {
+  return baseUrlResolver?.() || "";
+}
+
 const config = {
+  // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
+  // otherwise falls back to getClientFacingUrl().
+  getApiBaseUrl: (): string => {
+    return baseUrlResolver?.() || config.getClientFacingUrl();
+  },
+
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
@@ -14,9 +33,30 @@ const config = {
     if (override) {
       return override;
     }
-    return EnvironmentConfig.getEnvVariable(
-      "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
-    );
+
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
+      throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+  },
+  // URL for the main app pages (/w/..., /share/..., etc.). Falls back to getClientFacingUrl() when not set.
+  // Use this for page URLs, not API endpoints.
+  // TODO(spa): make NEXT_PUBLIC_DUST_APP_URL mandatory, remove allowRelativeUrl parameter.
+  getAppUrl: (allowRelativeUrl: boolean = false): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
+      if (allowRelativeUrl) {
+        return "";
+      }
+      return config.getClientFacingUrl();
+    }
+
+    return process.env.NEXT_PUBLIC_DUST_APP_URL;
+  },
+  // URL for the poke app (front-spa). Falls back to getClientFacingUrl()/poke when not set.
+  getPokeAppUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
@@ -131,19 +171,14 @@ const config = {
   getVizJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");
   },
+  getAcademyJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_ACADEMY_JWT_SECRET");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
-  },
-  getDustAppsWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");
-  },
-  getDustAppsHelperDatasourceViewId: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
-    );
   },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
@@ -183,6 +218,9 @@ const config = {
   },
   getOAuthGoogleDriveClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GOOGLE_DRIVE_CLIENT_ID");
+  },
+  getGoogleDrivePickerApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("GOOGLE_DRIVE_PICKER_API_KEY");
   },
   getOAuthSlackClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_CLIENT_ID");
@@ -245,6 +283,13 @@ const config = {
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
+  getDocumentRendererUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
+  },
+  // Public viz URL (used by Gotenberg which routes through egress proxy).
+  getVizPublicUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("VIZ_PUBLIC_URL");
+  },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_PROVIDERS_PAGE_ID");
@@ -301,6 +346,12 @@ const config = {
   getApolloApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("APOLLO_API_KEY");
   },
+  getRedisUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_URI");
+  },
+  getRedisCacheUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_CACHE_URI");
+  },
   getContentfulSpaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_SPACE_ID");
   },
@@ -352,8 +403,55 @@ const config = {
 
     return isEnabled;
   },
+  getLangfuseClientConfig: (): {
+    publicKey: string;
+    secretKey: string;
+    baseUrl: string | undefined;
+  } => {
+    return {
+      publicKey: EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY"),
+      secretKey: EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY"),
+      baseUrl: EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL"),
+    };
+  },
   getLangfuseUiBaseUrl: () => {
     return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_UI_BASE_URL");
+  },
+  getTemporalConnectorsNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "TEMPORAL_CONNECTORS_NAMESPACE"
+    );
+  },
+  getTemporalAgentNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_AGENT_NAMESPACE");
+  },
+  // Deployment component name. Set via DD_SERVICE in helm values per deployment.
+  getServiceName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DD_SERVICE");
+  },
+  // Northflank sandbox.
+  getNorthflankApiToken: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_API_TOKEN");
+  },
+  getNorthflankProjectId: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
+  },
+  // Email.
+  getEmailWebhookSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
+  },
+  getProductionDustWorkspaceId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "PRODUCTION_DUST_WORKSPACE_ID"
+    );
+  },
+  // Email validation secret for HMAC signing of action approval tokens.
+  getEmailValidationSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("EMAIL_VALIDATION_SECRET");
+  },
+  // Secret for signing gated asset download tokens (ebooks, whitepapers, etc.).
+  getGatedAssetsTokenSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
 };
 

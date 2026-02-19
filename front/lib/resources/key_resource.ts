@@ -1,11 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import { hash as blake3 } from "blake3";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
@@ -13,17 +8,42 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { KeyType, ModelId, RoleType } from "@app/types";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { formatUserFullName, redactString } from "@app/types";
+import {
+  batchInvalidateCacheWithRedis,
+  cacheWithRedis,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
+import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { redactString } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType, RoleType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
+import { hash as blake3 } from "blake3";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
+
+const KEY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes.
+
+type CachedKeyData = Omit<
+  Attributes<KeyModel>,
+  "secret" | "lastUsedAt" | "createdAt" | "updatedAt"
+> & {
+  lastUsedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+};
 
 export interface KeyAuthType {
   id: ModelId;
-  name: string | null;
+  name: string;
   isSystem: boolean;
   role: RoleType;
+  monthlyCapMicroUsd: number | null;
 }
 
+export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -34,11 +54,85 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   private user?: UserModel;
 
+  private static readonly keyCacheKeyResolver = (secret: string) =>
+    `key:secret:${Buffer.from(blake3(secret)).toString("hex")}`;
+
+  private static async _fetchBySecretUncached(
+    secret: string
+  ): Promise<CachedKeyData | null> {
+    const key = await KeyResource.model.findOne({
+      where: { secret },
+      // WORKSPACE_ISOLATION_BYPASS: Used when a request is made from an API Key, at this point we
+      // don't know the workspaceId.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    if (!key) {
+      return null;
+    }
+
+    return {
+      id: key.id,
+      name: key.name,
+      status: key.status,
+      isSystem: key.isSystem,
+      role: key.role,
+      scope: key.scope,
+      monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+      workspaceId: key.workspaceId,
+      groupId: key.groupId,
+      userId: key.userId,
+      lastUsedAt: key.lastUsedAt?.getTime() ?? null,
+      createdAt: key.createdAt.getTime(),
+      updatedAt: key.updatedAt.getTime(),
+    };
+  }
+
+  private static fetchBySecretCached = cacheWithRedis(
+    KeyResource._fetchBySecretUncached,
+    KeyResource.keyCacheKeyResolver,
+    { ttlMs: KEY_CACHE_TTL_MS }
+  );
+
+  private static invalidateKeyCache = invalidateCacheWithRedis(
+    KeyResource._fetchBySecretUncached,
+    KeyResource.keyCacheKeyResolver
+  );
+
+  private static batchInvalidateKeyCache = batchInvalidateCacheWithRedis(
+    KeyResource._fetchBySecretUncached,
+    KeyResource.keyCacheKeyResolver
+  );
+
+  private static fromCachedData(
+    data: CachedKeyData,
+    secret: string
+  ): KeyResource {
+    return new KeyResource(KeyModel, {
+      ...data,
+      secret,
+      lastUsedAt: data.lastUsedAt ? new Date(data.lastUsedAt) : null,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt),
+    });
+  }
+
   constructor(
     model: ModelStaticWorkspaceAware<KeyModel>,
     blob: Attributes<KeyModel>
   ) {
     super(KeyModel, blob);
+  }
+
+  protected override async update(
+    blob: Partial<Attributes<KeyModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const oldSecret = this.secret;
+    const result = await super.update(blob, transaction);
+    await KeyResource.invalidateKeyCache(oldSecret);
+    return result;
   }
 
   static async makeNew(
@@ -76,13 +170,26 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async fetchBySecret(secret: string) {
+    const data = await this.fetchBySecretCached(secret);
+    if (data === null) {
+      return null;
+    }
+    return this.fromCachedData(data, secret);
+  }
+
+  static async fetchByWorkspaceAndId({
+    workspace,
+    id,
+  }: {
+    workspace: LightWorkspaceType;
+    id: ModelId | string;
+  }) {
+    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
     const key = await this.model.findOne({
       where: {
-        secret,
+        id: parsedId,
+        workspaceId: workspace.id,
       },
-      // WORKSPACE_ISOLATION_BYPASS: Used when a request is made from an API Key, at this point we
-      // don't know the workspaceId.
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (!key) {
@@ -92,28 +199,15 @@ export class KeyResource extends BaseResource<KeyModel> {
     return new this(KeyResource.model, key.get());
   }
 
-  static async fetchByWorkspaceAndId(
-    workspace: LightWorkspaceType,
-    id: ModelId | string
+  static async fetchByName(
+    auth: Authenticator,
+    { name, onlyActive }: { name: string; onlyActive?: boolean }
   ) {
-    const key = await this.fetchByModelId(id);
-
-    if (!key) {
-      return null;
-    }
-
-    if (key.workspaceId !== workspace.id) {
-      return null;
-    }
-
-    return key;
-  }
-
-  static async fetchByName(auth: Authenticator, { name }: { name: string }) {
     const key = await this.model.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         name: name,
+        ...(onlyActive ? { status: "active" } : {}),
       },
     });
 
@@ -156,14 +250,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   async setIsDisabled() {
-    return this.model.update(
-      { status: "disabled" },
-      {
-        where: {
-          id: this.id,
-        },
-      }
-    );
+    return this.update({ status: "disabled" });
   }
 
   async rotateSecret(
@@ -204,11 +291,20 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
-    return this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const keys = await this.model.findAll({
+      where: { workspaceId },
+      attributes: ["secret"],
     });
+
+    await this.model.destroy({
+      where: { workspaceId },
+    });
+
+    await KeyResource.batchInvalidateKeyCache(
+      keys.map((k) => [k.secret] as [string])
+    );
   }
 
   toJSON(): KeyType {
@@ -233,6 +329,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       groupId: this.groupId,
       role: this.role,
       scope: this.scope,
+      monthlyCapMicroUsd: this.monthlyCapMicroUsd,
     };
   }
 
@@ -243,6 +340,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       isSystem: this.isSystem,
       role: this.role,
+      monthlyCapMicroUsd: this.monthlyCapMicroUsd,
     };
   }
 
@@ -252,5 +350,13 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   async updateRole({ newRole }: { newRole: RoleType }) {
     await this.update({ role: newRole });
+  }
+
+  async updateMonthlyCap({
+    monthlyCapMicroUsd,
+  }: {
+    monthlyCapMicroUsd: number | null;
+  }) {
+    await this.update({ monthlyCapMicroUsd });
   }
 }

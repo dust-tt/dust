@@ -1,9 +1,4 @@
-import { createParser } from "eventsource-parser";
-import * as t from "io-ts";
-import chunk from "lodash/chunk";
-
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { EmbeddingProviderIdType } from "@app/types";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
@@ -21,7 +16,6 @@ import type {
 } from "@app/types/core/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
-import type { GroupType } from "@app/types/groups";
 import type { Project } from "@app/types/project";
 import type { CredentialsType } from "@app/types/provider";
 import type {
@@ -38,6 +32,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
 import type { LightWorkspaceType } from "@app/types/user";
+import { createParser } from "eventsource-parser";
+import * as t from "io-ts";
+import chunk from "lodash/chunk";
+
+import type { EmbeddingProviderIdType } from "../assistant/models/types";
 
 export const MAX_CHUNK_SIZE = 512;
 
@@ -504,7 +503,7 @@ export class CoreAPI {
   async createRun(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groups: GroupType[],
+    groupIds: string[],
     {
       projectId,
       runType,
@@ -526,7 +525,7 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },
@@ -550,7 +549,7 @@ export class CoreAPI {
   async createRunStream(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groups: GroupType[],
+    groupIds: string[],
     {
       projectId,
       runType,
@@ -577,7 +576,7 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },

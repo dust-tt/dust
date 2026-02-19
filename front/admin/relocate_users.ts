@@ -3,8 +3,8 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import type { Logger } from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function updateWorkspaceRegionMetadata(
   auth: Authenticator,

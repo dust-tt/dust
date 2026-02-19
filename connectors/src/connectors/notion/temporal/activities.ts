@@ -1,18 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-import { Storage } from "@google-cloud/storage";
-import {
-  APIResponseError,
-  isFullBlock,
-  isFullPage,
-  isNotionClientError,
-  UnknownHTTPResponseError,
-} from "@notionhq/client";
-import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
-import { Context } from "@temporalio/activity";
-import { chunk } from "lodash";
-import type { Logger } from "pino";
-import { Op } from "sequelize";
-
 import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
 import {
@@ -99,6 +84,21 @@ import {
 } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import { sha256 } from "@connectors/types/shared/utils/hashing";
+import { assertNever } from "@dust-tt/client";
+import { Storage } from "@google-cloud/storage";
+import {
+  APIResponseError,
+  isFullBlock,
+  isFullPage,
+  isNotionClientError,
+  UnknownHTTPResponseError,
+} from "@notionhq/client";
+import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { Context } from "@temporalio/activity";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import { chunk } from "lodash";
+import type { Logger } from "pino";
+import { Op } from "sequelize";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -3445,8 +3445,10 @@ export async function maybeUpdateOrphaneResourcesParents({
 
 export async function clearParentsLastUpdatedAt({
   connectorId,
+  resetToDate,
 }: {
   connectorId: ModelId;
+  resetToDate?: Date;
 }): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   const notionConnectorState = await NotionConnectorStateModel.findOne({
@@ -3464,11 +3466,16 @@ export async function clearParentsLastUpdatedAt({
       workspaceId: connector.workspaceId,
       dataSourceId: connector.dataSourceId,
       provider: "notion",
+      resetToDate: resetToDate ?? null,
     },
-    "Clearing parents last updated at"
+    resetToDate
+      ? "Setting parents last updated at to specific date"
+      : "Clearing parents last updated at"
   );
 
-  await notionConnectorState.update({ parentsLastUpdatedAt: null });
+  await notionConnectorState.update({
+    parentsLastUpdatedAt: resetToDate ?? null,
+  });
 }
 
 // Finds the next database to upsert for the connector.

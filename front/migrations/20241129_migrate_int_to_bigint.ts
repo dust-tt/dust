@@ -4,7 +4,7 @@ import type { PoolClient } from "pg";
 import { Pool } from "pg";
 
 import { makeScript } from "@app/scripts/helpers";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Types.
 interface MigrationConfig {

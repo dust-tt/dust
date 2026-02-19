@@ -1,7 +1,6 @@
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
+import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -14,30 +13,30 @@ import type {
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
-import type {
-  DataSourceViewType,
-  FileShareScope,
-  FileTypeWithMetadata,
-  LightWorkspaceType,
-} from "@app/types";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
   fileId: string | null | undefined
-) => `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+) =>
+  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
 
 export const getProcessedFileDownloadUrl = (
   owner: LightWorkspaceType,
   fileId: string
-) => `/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
+) =>
+  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
 
 export const getFileDownloadUrl = (owner: LightWorkspaceType, fileId: string) =>
-  `/api/w/${owner.sId}/files/${fileId}?action=download`;
+  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
 
 export const getFileViewUrl = (
   owner: LightWorkspaceType,
   fileId: string | null | undefined
-) => `/api/w/${owner.sId}/files/${fileId}?action=view`;
+) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
 export function useFileProcessedContent({
   owner,
@@ -201,6 +200,32 @@ export function useFileContent({
     fileContent: data,
     isFileContentLoading: !error && !data,
     mutateFileContent: mutate,
+  };
+}
+
+export function useFileSignedUrl({
+  fileId,
+  owner,
+  config,
+}: {
+  fileId: string | null;
+  owner: LightWorkspaceType;
+  config?: SWRConfiguration & { disabled?: boolean };
+}) {
+  const signedUrlFetcher: Fetcher<{ signedUrl: string }> = fetcher;
+  const isDisabled = config?.disabled ?? !fileId;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    isDisabled ? null : `/api/w/${owner.sId}/files/${fileId}/signed-url`,
+    signedUrlFetcher,
+    config
+  );
+
+  return {
+    signedUrl: data?.signedUrl ?? null,
+    isLoading: isDisabled ? false : !error && !data,
+    error,
+    mutate,
   };
 }
 

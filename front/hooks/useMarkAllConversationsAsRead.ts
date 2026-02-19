@@ -1,36 +1,52 @@
-import { useCallback, useState } from "react";
-
+import {
+  useConversations,
+  useSpaceConversations,
+  useSpaceConversationsSummary,
+  useSpaceUnreadConversationIds,
+} from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useConversations } from "@app/lib/swr/conversations";
-import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
 
 interface useMarkAllConversationsAsReadParams {
   owner: WorkspaceType;
+  spaceId?: string;
 }
 
 export function useMarkAllConversationsAsRead({
   owner,
+  spaceId,
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const sendNotification = useSendNotification();
-  const { mutateConversations } = useConversations({
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
+    options: { disabled: true },
+  });
+
+  const { mutateConversations: mutateSpaceConversations } =
+    useSpaceConversations({
+      workspaceId: owner.sId,
+      spaceId: spaceId ?? null,
+    });
+
+  const { mutateUnreadConversationIds } = useSpaceUnreadConversationIds({
+    workspaceId: owner.sId,
+    spaceId: spaceId ?? null,
   });
 
   const markAllAsRead = useCallback(
-    async (conversations: ConversationWithoutContentType[]) => {
-      if (conversations.length === 0) {
+    async (conversationIds: string[]) => {
+      if (conversationIds.length === 0) {
         return;
       }
 
       setIsMarkingAllAsRead(true);
 
-      const total = conversations.length;
-      const conversationIds = conversations.map((c) => c.sId);
+      const total = conversationIds.length;
 
       try {
         const response = await clientFetch(
@@ -58,6 +74,9 @@ export function useMarkAllConversationsAsRead({
         }
 
         void mutateConversations();
+        void mutateSpaceSummary();
+        void mutateSpaceConversations();
+        void mutateUnreadConversationIds();
 
         sendNotification({
           type: "success",
@@ -74,7 +93,14 @@ export function useMarkAllConversationsAsRead({
         setIsMarkingAllAsRead(false);
       }
     },
-    [owner.sId, mutateConversations, sendNotification]
+    [
+      owner.sId,
+      mutateConversations,
+      mutateSpaceSummary,
+      mutateSpaceConversations,
+      sendNotification,
+      mutateUnreadConversationIds,
+    ]
   );
 
   return {

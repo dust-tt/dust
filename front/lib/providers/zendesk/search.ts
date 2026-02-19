@@ -1,12 +1,12 @@
 import {
   getUniqueCustomFieldIds,
   getZendeskClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
+} from "@app/lib/api/actions/servers/zendesk/client";
 import {
   renderTicket,
   renderTicketComments,
-} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
-import type { ZendeskUser } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+} from "@app/lib/api/actions/servers/zendesk/rendering";
+import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
 import type {
   ToolDownloadParams,
   ToolDownloadResult,

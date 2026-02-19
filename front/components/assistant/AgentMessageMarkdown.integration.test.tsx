@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 import { describe, expect, it } from "vitest";
 
@@ -189,6 +190,25 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
         );
         expect(container.querySelector("strong")).toBeInTheDocument();
         expect(container.querySelector("em")).toBeInTheDocument();
+      });
+
+      it("does not crash when an instruction block starts in a list item", () => {
+        const content = `1. <channel_suggestion>
+
+hello
+
+</channel_suggestion>`;
+
+        const { container } = render(
+          <AgentMessageMarkdown
+            owner={mockOwner}
+            content={content}
+            isInstructions={true}
+          />
+        );
+
+        expect(container.textContent).toContain("CHANNEL_SUGGESTION");
+        expect(container.textContent).toContain("hello");
       });
     });
   });

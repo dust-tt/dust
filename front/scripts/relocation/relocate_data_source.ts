@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import {
   config,
   isRegionType,
@@ -11,6 +9,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
 import { workspaceRelocateDataSourceCoreWorkflow } from "@app/temporal/relocation/workflows";
+import assert from "assert";
 
 makeScript(
   {

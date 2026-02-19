@@ -1,3 +1,6 @@
+import { useShareInteractiveContentFile } from "@app/lib/swr/files";
+import type { FileShareScope } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Button,
@@ -15,13 +18,10 @@ import {
   PopoverRoot,
   PopoverTrigger,
   Spinner,
-  useCopyToClipboard,
   UserGroupIcon,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import React from "react";
-
-import { useShareInteractiveContentFile } from "@app/lib/swr/files";
-import type { FileShareScope, LightWorkspaceType } from "@app/types";
 
 const WORKSPACE_LABEL = "Internal - Workspace members with the link";
 
@@ -69,7 +69,7 @@ function FileSharingDropdown({
             label={selectedOption?.label}
             icon={selectedOption?.icon}
             disabled={disabled}
-            className="grid w-full grid-cols-[auto_1fr_auto] truncate"
+            className="grid grid-cols-[auto_1fr_auto] truncate"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">

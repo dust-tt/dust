@@ -1,3 +1,5 @@
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -21,6 +23,7 @@ import type {
   ColumnDef,
   PaginationState,
 } from "@tanstack/react-table";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
   useCallback,
   useEffect,
@@ -28,9 +31,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-
-import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { UserType, WorkspaceType } from "@app/types";
 
 const DEFAULT_PAGE_SIZE = 25;
 

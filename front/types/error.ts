@@ -1,9 +1,10 @@
 // Okay to use public API types because it's front/connectors communication.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { ConnectorsAPIError } from "@dust-tt/client";
 
+import type { RegionType } from "@app/lib/api/regions/config";
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import type { ConnectorsAPIError } from "@dust-tt/client";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
@@ -38,6 +39,7 @@ const API_ERROR_TYPES = [
   "provider_not_found",
   "dataset_not_found",
   "workspace_not_found",
+  "workspace_in_different_region",
   "workspace_auth_error",
   "workspace_can_use_product_required_error",
   "workspace_user_not_found",
@@ -53,14 +55,17 @@ const API_ERROR_TYPES = [
   "connector_not_found_error",
   "connector_update_error",
   "connector_update_unauthorized",
+  "connector_oauth_connection_not_found",
   "connector_oauth_target_mismatch",
   "connector_oauth_user_missing_rights",
   "connector_provider_not_supported",
   "connector_credentials_error",
+  "connector_credentials_not_found",
   "connector_operation_in_progress",
   "agent_configuration_not_found",
   "agent_group_permission_error",
   "agent_message_error",
+  "unprocessable_entity",
   "message_not_found",
   "plan_message_limit_exceeded",
   "model_disabled",
@@ -145,7 +150,16 @@ const API_ERROR_TYPES = [
   "elasticsearch_error",
   // Skills
   "skill_not_found",
+  // Projects
+  "project_metadata_not_found",
+  // Suggestions
+  "agent_suggestion_not_found",
 ] as const;
+
+export type RegionRedirectError = {
+  region: RegionType;
+  url: string;
+};
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
 
@@ -156,6 +170,7 @@ export type APIError = {
   run_error?: CoreAPIError;
   app_error?: CoreAPIError;
   connectors_error?: ConnectorsAPIError;
+  redirect?: RegionRedirectError;
 };
 
 export function isAPIError(obj: unknown): obj is APIError {

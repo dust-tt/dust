@@ -1,14 +1,14 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+
+import type { SupportedContentFragmentType } from "@app/types/content_fragment";
+import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import {
   CONTENT_NODE_MIME_TYPES,
   isDustMimeType,
   isIncludableInternalMimeType,
   isSupportedImageContentType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
-
-import type { SupportedContentFragmentType } from "@app/types";
-import { isSupportedDelimitedTextContentType } from "@app/types";
 
 export function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType

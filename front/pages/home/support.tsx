@@ -1,6 +1,4 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   Grid,
   H1,
@@ -14,8 +12,9 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
-import UTMPageWrapper from "@app/components/UTMPageWrapper";
 import { classNames } from "@app/lib/utils";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 // Constants
 const SECTION_CLASSES = "py-12 md:py-16";
@@ -281,11 +280,12 @@ function JustUseDustSection() {
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Support() {
   const router = useRouter();
 
   return (
-    <UTMPageWrapper>
+    <>
       <PageMetadata
         title="Dust Support & Help"
         description="Get help with Dust AI platform. Access documentation, contact support, and connect with our community."
@@ -301,7 +301,7 @@ export default function Support() {
         <TrustedBy logoSet="landing" />
         <JustUseDustSection />
       </div>
-    </UTMPageWrapper>
+    </>
   );
 }
 

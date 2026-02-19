@@ -1,3 +1,14 @@
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useAppRouter } from "@app/lib/platform";
+import { getSkillAvatarIcon } from "@app/lib/skill";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   ClipboardIcon,
@@ -7,19 +18,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
-
-import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
-import { getSkillAvatarIcon } from "@app/lib/skill";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType, UserType } from "@app/types";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
-import type { AgentsUsageType } from "@app/types/data_source";
 
 type RowData = {
   name: string;
@@ -71,12 +70,14 @@ const editorsColumn = {
       ? editors.map((editor) => ({
           name: editor.fullName,
           visual: editor.image,
+          isRounded: true,
         }))
-      : // Only dust managed skills should have no editors
+      : // Only Dust-managed skills should have no editors
         [
           {
             name: "Dust",
             visual: DUST_AVATAR_URL,
+            isRounded: false,
           },
         ];
     return <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />;
@@ -157,11 +158,12 @@ export function SkillsTable({
   onSkillClick,
   onAgentClick,
 }: SkillsTableProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] =
     useState<SkillWithRelationsType | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({

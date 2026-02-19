@@ -1,8 +1,7 @@
 import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
   isProgrammaticUsage,
   trackProgrammaticCost,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -18,8 +17,9 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
-import type { UserMessageOrigin } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);

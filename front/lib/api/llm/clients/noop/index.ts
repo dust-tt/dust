@@ -9,71 +9,75 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { isTextContent } from "@app/types/assistant/generation";
 
 const metadata = {
   clientId: "noop" as const,
   modelId: "noop" as const,
 };
 
-const textDelta1: TextDeltaEvent = {
-  type: "text_delta",
-  content: {
-    delta: "Soup",
-  },
-  metadata,
-};
-
-const textDelta2: TextDeltaEvent = {
-  type: "text_delta",
-  content: {
-    delta: "inou!",
-  },
-  metadata,
-};
-
-const textEvent: TextGeneratedEvent = {
-  type: "text_generated",
-  content: {
-    text: "Soupinou!",
-  },
-  metadata,
-};
-
-// NoopLLM is a dummy LLM that simply returns "Soupinou!".
+// NoopLLM is a dummy LLM that can respond to special commands.
 export class NoopLLM extends LLM {
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & { modelId: "noop" }
+    llmParameters: LLMParameters & { modelId: "noop" }
   ) {
-    super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-      clientId: "noop",
-    });
+    super(auth, "noop", llmParameters);
   }
 
   async *internalStream({
-    conversation: _conversation,
+    conversation,
     prompt: _prompt,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    // Emit a simple flow of event:
-    // 1. text delta "Soup"
-    // 2. text delta "inou!"
-    // 3. text generated "Soupinou!"
-    // 4. success event with aggregated text "Soupinou!"
+    const lastUserMessage =
+      conversation.messages
+        .slice()
+        .reverse()
+        .find((msg) => msg.role === "user")
+        ?.content.filter(isTextContent)
+        .map((item) => item.text)
+        .join("\n")
+        .split("@noop")[1]
+        ?.trim() ?? "";
 
-    yield textDelta1;
-    yield textDelta2;
+    let responseText: string;
+
+    // Determine response based on the message content.
+    if (lastUserMessage === "long message") {
+      // Generate a very long message.
+      responseText = "This is a very long message. ".repeat(100);
+    } else if (lastUserMessage === "help") {
+      // Display usage instructions.
+      responseText =
+        "Noop agent usage:\n" +
+        "- Send 'long message' to receive a very long response\n" +
+        "- Send 'help' to see this help message\n" +
+        "- Send anything else to see 'Soupinou!' as a response\n";
+    } else {
+      responseText = "Soupinou!";
+    }
+
+    // Emit text deltas in chunks.
+    const chunkSize = 50;
+    for (let i = 0; i < responseText.length; i += chunkSize) {
+      const delta = responseText.slice(i, i + chunkSize);
+      const textDelta: TextDeltaEvent = {
+        type: "text_delta",
+        content: { delta },
+        metadata,
+      };
+      yield textDelta;
+    }
+
+    // Emit the full text generated event.
+    const textEvent: TextGeneratedEvent = {
+      type: "text_generated",
+      content: { text: responseText },
+      metadata,
+    };
     yield textEvent;
+
+    // Emit success event.
     yield {
       type: "success",
       aggregated: [textEvent],

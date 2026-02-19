@@ -1,6 +1,3 @@
-import assert from "assert";
-import { tracer } from "dd-trace";
-
 import type {
   AgentBuilderMCPConfiguration,
   AgentBuilderMCPConfigurationWithId,
@@ -19,13 +16,17 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import { tracer } from "@app/logger/tracer";
 import type {
   AgentConfigurationType,
+  TemplateAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type {
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
-  TemplateAgentConfigurationType,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import assert from "assert";
 
 // We are moving resource fetch to the client side. Until we finish,
 // we will keep this duplicated version for fetching actions.
@@ -34,7 +35,9 @@ export const getAccessibleSourcesAndAppsForActions = async (
 ) => {
   return tracer.trace("getAccessibleSourcesAndAppsForActions", async () => {
     const accessibleSpaces = (
-      await SpaceResource.listWorkspaceSpaces(auth)
+      await SpaceResource.listWorkspaceSpaces(auth, {
+        includeProjectSpaces: true,
+      })
     ).filter((space) => !space.isSystem() && space.canRead(auth));
 
     const [dsViews, allMCPServerViews] = await Promise.all([
@@ -133,6 +136,7 @@ async function getMCPServerActionConfiguration(
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
   builderAction.configuration.secretName = action.secretName;
+  builderAction.configuration.dustProject = action.dustProject;
 
   return { ...builderAction, id: action.sId };
 }

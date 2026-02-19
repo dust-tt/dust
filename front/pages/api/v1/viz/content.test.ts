@@ -1,13 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { createMocks } from "node-mocks-http";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
 import { frameContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { createMocks } from "node-mocks-http";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./content";
 
@@ -15,7 +14,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
   let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
 
     const { workspace: w } = await createResourceTest({
       role: "user",

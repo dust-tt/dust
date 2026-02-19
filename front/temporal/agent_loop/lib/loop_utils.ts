@@ -1,10 +1,9 @@
-import assert from "assert";
-
-import { isAgentMessageType } from "@app/types";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import assert from "assert";
 
 /**
  * Cuts the conversation messages to properly handle post / edit / retry
@@ -61,10 +60,6 @@ export function sliceConversationForAgentMessage(
 
   // Now remove contents, rawContents, actions after the current step being processed
   slicedAgentMessage.contents = slicedAgentMessage.contents.filter(
-    (content) => content.step < step
-  );
-
-  slicedAgentMessage.rawContents = slicedAgentMessage.rawContents.filter(
     (content) => content.step < step
   );
 

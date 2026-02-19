@@ -1,3 +1,8 @@
+import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
+import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
+import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
+import type * as sync_status from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
 import {
   continueAsNew,
   proxyActivities,
@@ -5,13 +10,8 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { uniq } from "lodash";
-
-import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
-import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
-import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
-import type * as sync_status from "@connectors/lib/sync_status";
-import type { ModelId } from "@connectors/types";
 
 const {
   getRootNodesToSync,
@@ -19,6 +19,7 @@ const {
   markNodeAsSeen,
   populateDeltas,
   groupRootItemsByDriveId,
+  isMicrosoftFullSyncRunning,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
@@ -202,7 +203,10 @@ export async function incrementalSyncWorkflowV2({
 }: {
   connectorId: ModelId;
 }) {
-  await syncStarted(connectorId);
+  const fullSyncRunning = await isMicrosoftFullSyncRunning(connectorId);
+  if (!fullSyncRunning) {
+    await syncStarted(connectorId);
+  }
 
   const nodeIdsToSync = await getRootNodesToSync(connectorId);
 
@@ -259,7 +263,9 @@ export async function incrementalSyncWorkflowV2({
     }
   }
 
-  await syncSucceeded(connectorId);
+  if (!fullSyncRunning) {
+    await syncSucceeded(connectorId);
+  }
 
   await sleep("5 minutes");
   await continueAsNew<typeof incrementalSyncWorkflow>({

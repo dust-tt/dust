@@ -1,24 +1,25 @@
-import { heartbeat } from "@temporalio/activity";
-import assert from "assert";
-
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
-import {
-  TOOL_NAME_SEPARATOR,
-  tryListMCPTools,
-} from "@app/lib/actions/mcp_actions";
+import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import {
-  AgentMessageContentParser,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import {
+  buildMemoriesContext,
+  buildToolsetsContext,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import {
+  globalAgentInjectsMemory,
+  globalAgentInjectsToolsets,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
@@ -27,52 +28,65 @@ import {
   getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
 import {
+  createSkillKnowledgeDataWarehouseServer,
   createSkillKnowledgeFileSystemServer,
   getSkillDataSourceConfigurations,
   getSkillServers,
 } from "@app/lib/api/assistant/skill_actions";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
-import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
-import {
-  LLM_ERROR_TYPE_TO_CATEGORY,
-  USER_FACING_LLM_ERROR_MESSAGES,
-} from "@app/lib/api/llm/types/errors";
+import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/llms/agent_message_content_parser";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import tracer from "@app/logger/tracer";
+import {
+  updateAgentMessageDBAndMemory,
+  updateResourceAndPublishEvent,
+} from "@app/temporal/agent_loop/activities/common";
+import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
-import { assertNever, isTextContent, removeNulls } from "@app/types";
+import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isTextContent } from "@app/types/assistant/generation";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { startActiveObservation } from "@langfuse/tracing";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
 
-const MAX_AUTO_RETRY = 3;
-
-// This method is used by the multi-actions execution loop to pick the next
-// action to execute and generate its inputs.
-export async function runModelActivity(
+// This method is used by the multi-actions execution loop to pick the next action to execute and
+// generate its inputs.
+export async function runModel(
   auth: Authenticator,
   {
     runAgentData,
     runIds,
     step,
     functionCallStepContentIds,
-    autoRetryCount = 0,
+    featureFlags,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
-    autoRetryCount?: number;
+    featureFlags: WhitelistableFeature[];
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -85,7 +99,6 @@ export async function runModelActivity(
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
-    agentMessageRow,
   } = runAgentData;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -147,7 +160,7 @@ export async function runModelActivity(
         error,
         runIds: dustRunId ? [...runIds, dustRunId] : runIds,
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });
@@ -158,7 +171,7 @@ export async function runModelActivity(
     for await (const tokenEvent of contentParser.flushTokens()) {
       await updateResourceAndPublishEvent(auth, {
         event: tokenEvent,
-        agentMessageRow,
+        agentMessage,
         conversation,
         step,
       });
@@ -176,61 +189,85 @@ export async function runModelActivity(
     return null;
   }
 
-  const attachments = listAttachments(conversation);
-  const jitServers = await getJITServers(auth, {
-    agentConfiguration,
-    conversation,
-    attachments,
-  });
-  // Get client-side MCP server configurations from the user message context.
-  const clientSideMCPActionConfigurations =
-    await createClientSideMCPServerConfigurations(
+  const {
+    enabledSkills,
+    equippedSkills,
+    hasConditionalJITTools,
+    mcpActions,
+    mcpToolsListingError,
+  } = await startActiveObservation("resolve-tools", async () => {
+    const attachments = listAttachments(conversation);
+    const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
       auth,
-      userMessage.context.clientSideMCPServerIds
+      {
+        agentConfiguration,
+        conversation,
+        attachments,
+      }
     );
 
-  const { enabledSkills, equippedSkills } =
-    await SkillResource.listForAgentLoop(auth, {
+    const clientSideMCPActionConfigurations =
+      await createClientSideMCPServerConfigurations(
+        auth,
+        userMessage.context.clientSideMCPServerIds
+      );
+
+    const { enabledSkills, equippedSkills } =
+      await SkillResource.listForAgentLoop(auth, runAgentData);
+
+    const skillServers = await getSkillServers(auth, {
       agentConfiguration,
-      conversation,
+      skills: enabledSkills,
     });
 
-  const skillServers = await getSkillServers(auth, {
-    agentConfiguration,
-    skills: enabledSkills,
-  });
-
-  // Add file system server if skills have attached knowledge.
-  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
-    auth,
-    {
+    // Add file system / data warehouse servers if skills have attached knowledge.
+    const {
+      documentDataSourceConfigurations,
+      warehouseDataSourceConfigurations,
+    } = await getSkillDataSourceConfigurations(auth, {
       skills: enabledSkills,
-    }
-  );
+    });
 
-  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-    dataSourceConfigurations,
+    const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+      dataSourceConfigurations: documentDataSourceConfigurations,
+    });
+    const dataWarehouseServer = await createSkillKnowledgeDataWarehouseServer(
+      auth,
+      {
+        dataSourceConfigurations: warehouseDataSourceConfigurations,
+      }
+    );
+    if (fileSystemServer) {
+      skillServers.push(fileSystemServer);
+    }
+    if (dataWarehouseServer) {
+      skillServers.push(dataWarehouseServer);
+    }
+
+    const {
+      serverToolsAndInstructions: mcpActions,
+      error: mcpToolsListingError,
+    } = await startActiveObservation("list-mcp-tools", () =>
+      tryListMCPTools(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+          agentMessage,
+          clientSideActionConfigurations: clientSideMCPActionConfigurations,
+        },
+        { jitServers, skillServers }
+      )
+    );
+
+    return {
+      hasConditionalJITTools,
+      enabledSkills,
+      equippedSkills,
+      mcpActions,
+      mcpToolsListingError,
+    };
   });
-  if (fileSystemServer) {
-    skillServers.push(fileSystemServer);
-  }
-
-  const {
-    serverToolsAndInstructions: mcpActions,
-    error: mcpToolsListingError,
-  } = await tryListMCPTools(
-    auth,
-    {
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      clientSideActionConfigurations: clientSideMCPActionConfigurations,
-    },
-    {
-      jitServers,
-      skillServers,
-    }
-  );
 
   if (mcpToolsListingError) {
     localLogger.error(
@@ -264,7 +301,41 @@ export async function runModelActivity(
       })
     : null;
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  let memoriesContext: string | undefined;
+  const hasAgentMemoryAction = agentConfiguration.actions.some((action) =>
+    isServerSideMCPServerConfigurationWithName(action, "agent_memory")
+  );
+  if (
+    globalAgentInjectsMemory(agentConfiguration.sId) &&
+    hasAgentMemoryAction &&
+    auth.user()
+  ) {
+    const memories =
+      await AgentMemoryResource.findByAgentConfigurationIdAndUser(auth, {
+        agentConfigurationId: agentConfiguration.sId,
+      });
+    memoriesContext = buildMemoriesContext(memories);
+  }
+
+  let toolsetsContext: string | undefined;
+  const hasToolsetsAction = agentConfiguration.actions.some((action) =>
+    isServerSideMCPServerConfigurationWithName(action, "toolsets")
+  );
+  if (globalAgentInjectsToolsets(agentConfiguration.sId) && hasToolsetsAction) {
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const allToolsets = await MCPServerViewResource.listBySpace(
+      auth,
+      globalSpace
+    );
+    const filteredToolsets = allToolsets.filter((toolset) => {
+      const mcpServerView = toolset.toJSON();
+      return (
+        getMCPServerRequirements(mcpServerView).noRequirement &&
+        mcpServerView.server.availability !== "auto_hidden_builder"
+      );
+    });
+    toolsetsContext = buildToolsetsContext(filteredToolsets);
+  }
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
@@ -274,11 +345,12 @@ export async function runModelActivity(
     hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
     agentsList,
-    conversationId: conversation.sId,
+    conversation,
     serverToolsAndInstructions: mcpActions,
     enabledSkills,
     equippedSkills,
-    featureFlags,
+    memoriesContext,
+    toolsetsContext,
   });
 
   const specifications: AgentActionSpecification[] = [];
@@ -297,13 +369,22 @@ export async function runModelActivity(
   );
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    tools,
-    allowedTokenCount: model.contextSize - model.generationTokensCount,
-  });
+  const promptText = systemPromptToText(prompt);
+  const modelConversationRes = await startActiveObservation(
+    "render-conversation",
+    () =>
+      tracer.trace("renderConversationForModel", async () =>
+        renderConversationForModel(auth, {
+          conversation,
+          model,
+          prompt: promptText,
+          tools,
+          allowedTokenCount: model.contextSize - model.generationTokensCount,
+          agentConfiguration,
+          featureFlags,
+        })
+      )
+  );
 
   if (modelConversationRes.isErr()) {
     const categorizedError = categorizeConversationRenderErrorMessage(
@@ -365,52 +446,6 @@ export async function runModelActivity(
     seen.add(spec.name);
   }
 
-  // Errors occurring during the multi-actions-agent dust app may be retryable.
-  // Their implicit code should be "multi_actions_error".
-  async function handlePossiblyRetryableError(
-    errorInfo: LLMErrorInfo,
-    dustRunId?: string
-  ) {
-    const { isRetryable, message, type } = errorInfo;
-
-    if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
-      await publishAgentError(
-        {
-          code: "multi_actions_error",
-          message: USER_FACING_LLM_ERROR_MESSAGES[type],
-          metadata: {
-            category: LLM_ERROR_TYPE_TO_CATEGORY[type],
-            retriesAttempted: autoRetryCount,
-            message: errorInfo.message,
-            retryState: isRetryable ? "max_retries_reached" : "not_retryable",
-          },
-        },
-        dustRunId
-      );
-
-      return null;
-    }
-
-    // Should retry
-    localLogger.warn(
-      {
-        error: message,
-        retryCount: autoRetryCount + 1,
-        maxRetries: MAX_AUTO_RETRY,
-      },
-      "Auto-retrying multi-actions agent due to retryable model error."
-    );
-
-    // Recursively retry with incremented count
-    return runModelActivity(auth, {
-      runAgentData,
-      runIds,
-      step,
-      functionCallStepContentIds,
-      autoRetryCount: autoRetryCount + 1,
-    });
-  }
-
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
@@ -419,6 +454,7 @@ export async function runModelActivity(
 
   const traceContext: LLMTraceContext = {
     operationType: "agent_conversation",
+    agentConfigurationId: agentConfiguration.sId,
     conversationId: conversation.sId,
     userId: auth.user()?.sId,
     workspaceId: conversation.owner.sId,
@@ -432,9 +468,9 @@ export async function runModelActivity(
     context: traceContext,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
-      const lastUserMessage = [...conv.messages]
-        .reverse()
-        .find((msg) => msg.role === "user");
+      const lastUserMessage = conv.messages.findLast(
+        (msg) => msg.role === "user"
+      );
       return lastUserMessage?.content
         .filter(isTextContent)
         .map((item) => item.text)
@@ -452,11 +488,13 @@ export async function runModelActivity(
         conversationId: conversation.sId,
         workspaceId: conversation.owner.sId,
       },
-      "LLM is null in runModelActivity, cannot proceed."
+      "LLM is null in runModel, cannot proceed."
     );
 
     return null;
   }
+
+  const metadata = llm.getMetadata();
 
   const modelInteractionStartDate = performance.now();
 
@@ -465,17 +503,52 @@ export async function runModelActivity(
   // listing, conversation rendering, etc.).
   heartbeat();
 
+  localLogger.info(
+    {
+      modelId: model.modelId,
+      messageCount:
+        modelConversationRes.value.modelConversation.messages.length,
+      toolCount: specifications.length,
+    },
+    "[LLM stream] Starting (agent loop)"
+  );
+
+  if (
+    modelConversationRes.value.prunedContext === true &&
+    !agentMessage.prunedContext
+  ) {
+    await updateAgentMessageDBAndMemory(auth, {
+      agentMessage,
+      update: {
+        type: "prunedContext",
+        prunedContext: true,
+      },
+    });
+
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "agent_context_pruned",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+      },
+      agentMessage,
+      conversation,
+      step,
+    });
+  }
+
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
+    hasConditionalJITTools,
     userMessage,
     specifications,
     flushParserTokens,
     contentParser,
-    agentMessageRow,
+    agentMessage,
     step,
     agentConfiguration,
-    agentMessage,
     model,
     publishAgentError,
     prompt,
@@ -489,10 +562,30 @@ export async function runModelActivity(
     const error = getOutputFromActionResponse.error;
 
     switch (error.type) {
-      case "shouldRetryMessage":
-        // Get the dustRunId from the llm object (if available)
+      case "shouldRetryMessage": {
+        const { type, isRetryable } = error.content;
         const errorDustRunId = llm?.getTraceId();
-        return handlePossiblyRetryableError(error.content, errorDustRunId);
+        const currentAttempt = Context.current().info.attempt;
+        const isLastAttempt = currentAttempt >= RUN_MODEL_MAX_RETRIES;
+
+        if (!isRetryable || isLastAttempt) {
+          // Non-retryable errors or last retry attempt: surface error to user.
+          await publishAgentError(
+            {
+              code: "multi_actions_error",
+              message: getUserFacingLLMErrorMessage(type, metadata),
+              metadata: null,
+            },
+            errorDustRunId
+          );
+          return null;
+        }
+
+        // Throw to let Temporal handle the retry via its retry policy.
+        throw new Error(
+          `LLM error (${type}): ${getUserFacingLLMErrorMessage(type, metadata)}`
+        );
+      }
       case "shouldReturnNull":
         return null;
       default:
@@ -538,13 +631,6 @@ export async function runModelActivity(
     }
   }
 
-  // Track retries that lead to completing successfully (with either function calls or generation).
-  if (autoRetryCount > 0) {
-    statsDClient.increment("successful_auto_retry.count", 1, [
-      `retryCount:${autoRetryCount}`,
-    ]);
-  }
-
   // Store the contents for returning to the caller
   // These will be added to agentMessage.contents in the calling function
 
@@ -576,6 +662,7 @@ export async function runModelActivity(
         completedTs,
         agentMessage.actions
       ),
+      prunedContext: agentMessage.prunedContext ?? false,
     } satisfies AgentMessageType;
 
     await updateResourceAndPublishEvent(auth, {
@@ -588,7 +675,7 @@ export async function runModelActivity(
         // TODO(OBSERVABILITY 2025-11-04): Create a row in run with the associated usage.
         runIds: [...runIds, dustRunId],
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
       modelInteractionDurationMs:
@@ -625,7 +712,7 @@ export async function runModelActivity(
         text: "\n",
         classification: "tokens",
       },
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
     });
@@ -713,6 +800,7 @@ export async function runModelActivity(
         timeFrame: null,
         jsonSchema: null,
         secretName: null,
+        dustProject: null,
         additionalConfiguration: {},
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,

@@ -1,13 +1,12 @@
-import isPlainObject from "lodash/isPlainObject";
-
 import type { RegionType } from "@app/lib/api/regions/config";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import type { CoreAPIDataset } from "@app/types/core/core_api";
 import type {
-  CoreAPIContentNode,
-  CoreAPIDataset,
   CoreAPIDocumentBlob,
   CoreAPITableBlob,
-  ModelId,
-} from "@app/types";
+} from "@app/types/core/data_source";
+import type { ModelId } from "@app/types/shared/model_id";
+import isPlainObject from "lodash/isPlainObject";
 
 export interface RelocationBlob<T extends string = string> {
   statements: Record<T, { sql: string; params: any[] }[]>;
@@ -25,6 +24,8 @@ export interface ReadTableChunkParams {
   tableName: string;
   workspaceId: string;
   fileName?: string;
+  userIdColumns?: string[];
+  userIdMappingPath?: string | null;
 }
 
 export const CORE_API_CONCURRENCY_LIMIT = 48;

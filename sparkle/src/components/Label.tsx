@@ -1,8 +1,7 @@
 import * as LabelPrimitive from "@radix-ui/react-label";
+import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 const labelVariants = cva(
   cn(
@@ -26,8 +25,7 @@ const labelVariants = cva(
 );
 
 export interface LabelProps
-  extends
-    React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>,
+  extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>,
     VariantProps<typeof labelVariants> {
   isMuted?: boolean;
 }

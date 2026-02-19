@@ -1,7 +1,7 @@
-import type { NextRouter } from "next/router";
+import type { AppRouter } from "@app/lib/platform";
 
 export const setQueryParam = (
-  router: NextRouter,
+  router: AppRouter,
   key: string,
   value: string
 ) => {
@@ -66,6 +66,12 @@ export const getSkillBuilderRoute = (
   return queryParams ? `${fullPath}?${queryParams}` : fullPath;
 };
 
+export const getManageSkillsRoute = (workspaceId: string, skillId?: string) => {
+  return (
+    `/w/${workspaceId}/builder/skills` + (skillId ? `#?skillId=${skillId}` : "")
+  );
+};
+
 export const getConversationRoute = (
   workspaceId: string,
   conversationIdOrNew: string | null = "new",
@@ -82,9 +88,6 @@ export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/spaces/${spaceId}`;
 };
 
-export const getSpaceConversationsRoute = (
-  workspaceId: string,
-  spaceId: string
-) => {
+export const getProjectRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/conversation/space/${spaceId}`;
 };

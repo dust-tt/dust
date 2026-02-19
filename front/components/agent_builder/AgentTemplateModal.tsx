@@ -1,6 +1,9 @@
+import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  LinkWrapper,
   Markdown,
   Page,
   ReadOnlyTextArea,
@@ -11,10 +14,6 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
-
-import { useAssistantTemplate } from "@app/lib/swr/assistants";
-import type { WorkspaceType } from "@app/types";
 
 interface AgentTemplateModalProps {
   onClose: () => void;
@@ -56,7 +55,7 @@ export function AgentTemplateModal({
                   <span className="heading-lg text-foreground dark:text-foreground-night">
                     @{assistantTemplate.handle}
                   </span>
-                  <Link
+                  <LinkWrapper
                     href={`/w/${owner.sId}/builder/agents/new?templateId=${assistantTemplate.sId}`}
                   >
                     <Button
@@ -66,11 +65,13 @@ export function AgentTemplateModal({
                       data-gtm-location="templateModal"
                       size="sm"
                     />
-                  </Link>
+                  </LinkWrapper>
                 </div>
               </div>
               <div>
-                <Markdown content={assistantTemplate.description ?? ""} />
+                <Markdown
+                  content={assistantTemplate.userFacingDescription ?? ""}
+                />
               </div>
               <Page.SectionHeader title="Instructions" />
               <ReadOnlyTextArea

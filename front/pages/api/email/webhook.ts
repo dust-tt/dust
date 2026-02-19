@@ -1,11 +1,8 @@
-import { IncomingForm } from "formidable";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import type {
   EmailAttachment,
   EmailTriggerError,
   InboundEmail,
-} from "@app/lib/api/assistant/email_trigger";
+} from "@app/lib/api/assistant/email/email_trigger";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAssistantMatcher,
@@ -13,15 +10,18 @@ import {
   replyToEmail,
   triggerFromEmail,
   userAndWorkspacesFromEmail,
-} from "@app/lib/api/assistant/email_trigger";
+} from "@app/lib/api/assistant/email/email_trigger";
+import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { Result, WithAPIErrorResponse } from "@app/types";
-import { Err, isSupportedFileContentType, Ok, removeNulls } from "@app/types";
-
-const { DUST_CLIENT_FACING_URL = "", EMAIL_WEBHOOK_SECRET = "" } = process.env;
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isSupportedFileContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { IncomingForm } from "formidable";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {
@@ -98,6 +98,7 @@ const parseSendgridWebhookContent = async (
       attachments,
     });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     return new Err(new Error("Failed to parse email content"));
   }
@@ -114,7 +115,14 @@ const replyToError = async (
   const htmlContent =
     `<p>Error running agent:</p>\n` +
     `<p>(${error.type}) ${error.message}</p>\n`;
-  await replyToEmail({ email, htmlContent });
+  await replyToEmail({
+    email,
+    htmlContent,
+    recipients: {
+      to: [email.envelope.from],
+      cc: [],
+    },
+  });
 };
 
 export type PostResponseBody = {
@@ -145,7 +153,10 @@ async function handler(
       );
       const [username, password] = credentials.split(":");
 
-      if (username !== "sendgrid" || password !== EMAIL_WEBHOOK_SECRET) {
+      if (
+        username !== "sendgrid" ||
+        password !== apiConfig.getEmailWebhookSecret()
+      ) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -172,7 +183,7 @@ async function handler(
       // WARNING: DO NOT UNGATE. Todo before ungating:
       // - ! check security, including but not limited to SPF dkim approach thorough review
       // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
-      // - also, need to ungate the workspace check in email_trigger/userAndWorkspacesFromEmail
+      // - also, need to ungate the workspace check in email/email_trigger/userAndWorkspacesFromEmail
       if (!email.envelope.from.endsWith("@dust.tt")) {
         return apiError(req, res, {
           status_code: 401,
@@ -267,28 +278,26 @@ async function handler(
           return;
         }
 
-        const answerRes = await triggerFromEmail({
+        // Trigger async processing - reply will be sent by finalization activity.
+        const triggerRes = await triggerFromEmail({
           auth,
           agentConfigurations,
           email,
         });
 
-        if (answerRes.isErr()) {
-          await replyToError(email, answerRes.error);
+        if (triggerRes.isErr()) {
+          await replyToError(email, triggerRes.error);
           return;
         }
 
-        const { conversation, answers } = answerRes.value;
-
-        answers.forEach(async (answer) => {
-          void replyToEmail({
-            email,
-            agentConfiguration: answer.agentConfiguration,
-            htmlContent: `<div><div>${
-              answer.html
-            }</div><br/><a href="${getConversationRoute(workspace.sId, conversation.sId, undefined, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
-          });
-        });
+        logger.info(
+          {
+            conversationId: triggerRes.value.conversation.sId,
+            workspaceId: workspace.sId,
+            agentCount: agentConfigurations.length,
+          },
+          "[email] Triggered async email processing"
+        );
       }
       return;
 

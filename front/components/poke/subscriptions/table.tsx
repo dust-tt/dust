@@ -1,27 +1,3 @@
-import {
-  Button,
-  Chip,
-  ConfluenceLogo,
-  GithubLogo,
-  GlobeAltIcon,
-  GoogleLogo,
-  IntercomLogo,
-  NotionLogo,
-  Page,
-  SalesforceLogo,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SlackLogo,
-} from "@dust-tt/sparkle";
-import { Separator } from "@radix-ui/react-select";
-import { format } from "date-fns/format";
-import Link from "next/link";
-import { useRouter } from "next/router";
-
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import {
   PokeTable,
@@ -36,14 +12,34 @@ import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUp
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type {
-  PlanType,
-  ProgrammaticUsageConfigurationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
-import { isDevelopment } from "@app/types";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
+import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
+import { isDevelopment } from "@app/types/shared/env";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Chip,
+  ConfluenceLogo,
+  GithubLogo,
+  GlobeAltIcon,
+  GoogleLogo,
+  IntercomLogo,
+  LinkWrapper,
+  NotionLogo,
+  Page,
+  SalesforceLogo,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SlackLogo,
+} from "@dust-tt/sparkle";
+import { Separator } from "@radix-ui/react-select";
+import { format } from "date-fns/format";
 
 type SubscriptionStatus = "paymentFailed" | "trialing" | "ended" | "active";
 
@@ -202,7 +198,7 @@ export function ActiveSubscriptionTable({
                 <PokeTableCell>Stripe Subscription Id</PokeTableCell>
                 <PokeTableCell>
                   {subscription.stripeSubscriptionId ? (
-                    <Link
+                    <LinkWrapper
                       href={
                         isDevelopment()
                           ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
@@ -212,7 +208,7 @@ export function ActiveSubscriptionTable({
                       className="text-xs text-highlight-400"
                     >
                       {subscription.stripeSubscriptionId}
-                    </Link>
+                    </LinkWrapper>
                   ) : (
                     "No subscription id"
                   )}
@@ -384,7 +380,7 @@ function UpgradeDowngradeModal({
   subscription,
   programmaticUsageConfig,
 }: UpgradeDowngradeModalProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { plans } = usePokePlans();
 
   const { submit: onDowngrade } = useSubmitFunction(async () => {
@@ -500,6 +496,7 @@ function UpgradeDowngradeModal({
             <div>
               <EnterpriseUpgradeDialog
                 owner={owner}
+                subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
               />
             </div>

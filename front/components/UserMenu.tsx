@@ -1,3 +1,19 @@
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import config from "@app/lib/api/config";
+import {
+  forceUserRole,
+  sendOnboardingConversation,
+  showDebugTools,
+} from "@app/lib/development";
+import { useAppRouter } from "@app/lib/platform";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { SubscriptionType } from "@app/types/plan";
+import { isDevelopment } from "@app/types/shared/env";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
@@ -24,36 +40,16 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useMemo } from "react";
 
-import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
-import {
-  forceUserRole,
-  sendOnboardingConversation,
-  showDebugTools,
-} from "@app/lib/development";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
-
-export function UserMenu({
-  user,
-  owner,
-  subscription,
-}: {
+interface UserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
-}) {
-  const router = useRouter();
+}
+
+export function UserMenu({ user, owner, subscription }: UserMenuProps) {
+  const router = useAppRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -63,7 +59,7 @@ export function UserMenu({
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
-    conversationId: null,
+    draftKey: "user-menu",
   });
 
   const forceRoleUpdate = useMemo(
@@ -114,9 +110,16 @@ export function UserMenu({
     [owner, sendNotification, featureFlags, router]
   );
 
-  // Check if user has multiple workspaces
+  // Check if user has multiple workspaces (from WorkOS orgs, or in dev
+  // mode from local DB workspaces as fallback).
   const hasMultipleWorkspaces = useMemo(() => {
-    return user.organizations && user.organizations.length > 1;
+    const hasMultipleOrgs =
+      !!user.organizations && user.organizations.length > 1;
+    const hasMultipleLocalWorkspaces =
+      isDevelopment() &&
+      !user.organizations?.length &&
+      user.workspaces.length > 1;
+    return hasMultipleOrgs || hasMultipleLocalWorkspaces;
   }, [user]);
 
   return (
@@ -201,10 +204,10 @@ export function UserMenu({
             clearAllDraftsFromUser();
 
             datadogLogs.clearUser();
-            window.DD_RUM.onReady(() => {
-              window.DD_RUM.clearUser();
+            window.DD_RUM?.onReady(() => {
+              window.DD_RUM?.clearUser();
             });
-            window.location.href = "/api/workos/logout";
+            window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
           }}
         />
 
@@ -215,7 +218,10 @@ export function UserMenu({
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {router.route === "/w/[wId]/conversation/[cId]" && (
+                  {(router.pathname === "/w/[wId]/conversation/[cId]" ||
+                    router.pathname.match(
+                      /^\/w\/[^/]+\/conversation\/[^/]+$/
+                    )) && (
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {

@@ -1,7 +1,6 @@
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
-
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
 
 /**
  * Hook to manage pagination for a table where the data is fetched using cursor pagination.

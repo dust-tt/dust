@@ -2,8 +2,8 @@ name: Run DangerJS
 
 on:
   pull_request:
-    branches: [main]
-    types: [edited, labeled, opened, pushed, reopened, synchronize]
+    branches: [ main ]
+    types: [ edited, labeled, opened, pushed, reopened, synchronize ]
 
 permissions:
   contents: read
@@ -54,9 +54,55 @@ jobs:
       - name: Setup Node Dependencies
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
         uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
 
       - name: Run Danger for front
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
         run: cd front && npx danger ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  danger-connectors:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check for activity file changes
+        id: file_changes
+        run: |
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+
+          echo "Checking for changed activity files in connectors..."
+
+          # Define monitored paths for connectors
+          CONNECTORS_MONITORED_PATHS=(
+            'connectors/src/connectors/*/temporal/activities.ts'
+          )
+
+          PATHS_STRING="${CONNECTORS_MONITORED_PATHS[*]}"
+
+          CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} | grep -E 'connectors/src/.*/temporal/activities\.ts$' || true)
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "Changed activity files found:"
+            echo "$CHANGED_FILES"
+            echo "run_danger=true" >> $GITHUB_OUTPUT
+            echo "::warning ::Activity files in connectors have been modified."
+          else
+            echo "No changed activity files found."
+            echo "run_danger=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node Dependencies
+        if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
+        uses: ./.github/actions/setup-node-deps
+
+      - name: Run Danger for connectors
+        if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
+        run: cd connectors && npx danger ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

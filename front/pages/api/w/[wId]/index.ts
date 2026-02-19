@@ -1,17 +1,18 @@
-import { isLeft } from "fp-ts/lib/Either";
-import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
-import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@app/types";
+import { EmbeddingProviderCodec } from "@app/types/assistant/models/embedding";
+import { ModelProviderIdCodec } from "@app/types/assistant/models/providers";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { WorkspaceType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import { escape } from "html-escaper";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;
@@ -34,6 +35,15 @@ const WorkspaceAllowedDomainUpdateBodySchema = t.type({
   domainAutoJoinEnabled: t.boolean,
 });
 
+const WorkspaceBatchDomainUpdateBodySchema = t.type({
+  domainUpdates: t.array(
+    t.type({
+      domain: t.string,
+      domainAutoJoinEnabled: t.boolean,
+    })
+  ),
+});
+
 const WorkspaceProvidersUpdateBodySchema = t.type({
   whiteListedProviders: t.array(ModelProviderIdCodec),
   defaultEmbeddingProvider: t.union([EmbeddingProviderCodec, t.null]),
@@ -53,6 +63,7 @@ const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
 
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
+  WorkspaceBatchDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
@@ -169,6 +180,22 @@ async function handler(
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
+      } else if ("domainUpdates" in body) {
+        for (const update of body.domainUpdates) {
+          const updateResult = await workspace.updateDomainAutoJoinEnabled({
+            domainAutoJoinEnabled: update.domainAutoJoinEnabled,
+            domain: update.domain,
+          });
+          if (updateResult.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: updateResult.error.message,
+              },
+            });
+          }
+        }
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const updateResult = await workspace.updateDomainAutoJoinEnabled({

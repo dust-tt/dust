@@ -1,16 +1,17 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
-import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
+import { GPT_4_1_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const SET_SCHEDULE_FUNCTION_NAME = "set_schedule";
-const SET_TIMEZONE_FUNCTION_NAME = "set_tz";
 
 const specifications: AgentActionSpecification[] = [
   {
     name: SET_SCHEDULE_FUNCTION_NAME,
-    description: "Setup a schedule for triggering an assistant",
+    description:
+      "Setup a schedule and timezone for triggering an assistant. Both cron and timezone are required.",
     inputSchema: {
       type: "object",
       properties: {
@@ -18,22 +19,12 @@ const specifications: AgentActionSpecification[] = [
           type: "string",
           description: "The schedule expressed in cron format.",
         },
-      },
-      required: ["cron"],
-    },
-  },
-  {
-    name: SET_TIMEZONE_FUNCTION_NAME,
-    description: "Setup a timezone for triggering an assistant",
-    inputSchema: {
-      type: "object",
-      properties: {
         timezone: {
           type: "string",
           description: "The timezone expressed in IANA Timezone format.",
         },
       },
-      required: ["timezone"],
+      required: ["cron", "timezone"],
     },
   },
 ];
@@ -44,7 +35,7 @@ export async function getCronTimezoneGeneration(
 ): Promise<Result<{ cron: string; timezone: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = GPT_4_1_MINI_MODEL_CONFIG;
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate cron rule")
@@ -89,23 +80,25 @@ IMPORTANT: The # and L operators are NOT supported. Do NOT use them.
 </cron_format>
 
 <examples>
-- "Every Monday at 9am" → 0 9 * * 1
-- "Every weekday at 8:30am" → 30 8 * * 1-5
-- "Every day at midnight" → 0 0 * * *
-- "Every hour" → 0 * * * *
-- "Every 15th of the month at noon" → 0 12 15 * *
-- "Every quarter" → 0 0 1 */3 *
+- "Every Monday at 9am" → cron: "0 9 * * 1", timezone: defaultTimezone
+- "Every weekday at 8:30am" → cron: "30 8 * * 1-5", timezone: defaultTimezone
+- "Every day at midnight" → cron: "0 0 * * *", timezone: defaultTimezone
+- "Every hour" → cron: "0 * * * *", timezone: defaultTimezone
+- "Every 15th of the month at noon" → cron: "0 12 15 * *", timezone: defaultTimezone
+- "Every quarter" → cron: "0 0 1 */3 *", timezone: defaultTimezone
+- "Every Monday at 9am in New York" → cron: "0 9 * * 1", timezone: "America/New_York"
+- "Daily at 8am Paris time" → cron: "0 8 * * *", timezone: "Europe/Paris"
 </examples>
 
 <instructions>
 1. Parse the natural language description
 2. If no time is specified, default to 9:00 AM
-3. Call set_schedule with the cron expression
-4. Call set_tz with the timezone (use defaultTimezone if not specified in description)
-5. ALWAYS use IANA timezone format (e.g., Europe/Paris, America/New_York), never UTC offsets
-6. ALWAYS call both tools
+3. Use defaultTimezone unless a specific timezone is mentioned in the description
+4. ALWAYS use IANA timezone format (e.g., Europe/Paris, America/New_York), never UTC offsets
+5. Call set_schedule with both the cron expression and timezone
 </instructions>`,
       specifications,
+      forceToolCall: SET_SCHEDULE_FUNCTION_NAME,
     },
     {
       context: {
@@ -120,19 +113,15 @@ IMPORTANT: The # and L operators are NOT supported. Do NOT use them.
     return new Err(res.error);
   }
 
-  let cron: string | null = null;
-  let timezone: string | null = null;
+  const action = res.value.actions?.find(
+    (a) => a.name === SET_SCHEDULE_FUNCTION_NAME
+  );
 
-  if (res.value.actions) {
-    for (const action of res.value.actions) {
-      if (action.name === SET_SCHEDULE_FUNCTION_NAME) {
-        cron = action.arguments.cron;
-      }
-      if (action.name === SET_TIMEZONE_FUNCTION_NAME) {
-        timezone = action.arguments.timezone;
-      }
-    }
+  if (!action) {
+    return new Err(new Error("No schedule action generated"));
   }
+
+  const { cron, timezone } = action.arguments;
 
   if (!cron) {
     return new Err(new Error("No cron rule generated"));

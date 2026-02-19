@@ -1,9 +1,8 @@
+import logger from "@app/logger/logger";
+import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { Event } from "@workos-inc/node";
 import fs from "fs";
 import readline from "readline";
-
-import logger from "@app/logger/logger";
-import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
 
 import { makeScript } from "./helpers";
 

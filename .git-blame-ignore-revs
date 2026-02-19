@@ -1,0 +1,23 @@
+# Git blame ignore file - contains commits that made formatting-only changes
+# Configure git to use this file: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# refactor: migrate connectors to Biome formatting
+39796e781c0a993df6c83710b8f7a7d84c06c59c
+
+# refactor: migrate sdks/js to Biome formatting
+c2c4f314962afc970419361225dacfba51ee00e5
+
+# refactor: migrate cli to Biome formatting
+0a2f4d5f9ed3a950b4d420b0b502a27bfc48bb2b
+
+# refactor: migrate firebase-functions to Biome formatting
+01afe83163048a19400fc0f84559d3a03335c49f
+
+# refactor: migrate extension to Biome formatting
+f8f86f26f593d2b6dceac73ba498fb7bf9803d79
+
+# refactor: migrate sparkle to Biome formatting
+2bbe4f5d582999774a1d164b142e2053c2ca31ba
+
+# refactor: migrate front to Biome formatting
+ba0554e3911b854ebad148d7aff8a16ddff7b38d

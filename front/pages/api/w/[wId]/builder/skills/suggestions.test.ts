@@ -1,16 +1,15 @@
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { Err, Ok } from "@app/types/shared/result";
 import type { RequestMethod } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { Err, Ok } from "@app/types";
-
 import handler from "./suggestions";
 
-vi.mock("@app/lib/api/skill/description_suggestion", () => ({
+vi.mock("@app/lib/api/skills/description_suggestion", () => ({
   getSkillDescriptionSuggestion: vi.fn(),
 }));
 
-import { getSkillDescriptionSuggestion } from "@app/lib/api/skill/description_suggestion";
+import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
 
 async function setupTest(options: { method?: RequestMethod } = {}) {
   const method = options.method ?? "POST";

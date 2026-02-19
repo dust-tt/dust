@@ -9,7 +9,7 @@ import { createMarkdownSerializer } from "@app/ui/components/input_bar/editor/ma
 import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
 import type { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
 import Paragraph from "@tiptap/extension-paragraph";
-import Placeholder from "@tiptap/extension-placeholder";
+import { Placeholder } from "@tiptap/extensions";
 import { PluginKey } from "@tiptap/pm/state";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
@@ -288,9 +288,14 @@ const useCustomEditor = ({
       },
     }),
     Placeholder.configure({
-      placeholder: "Ask an @agent a question, or get some @help",
+      placeholder: ({ node }) => {
+        if (node.type.name !== "paragraph") {
+          return "";
+        }
+        return "Ask an @agent a question, or get some @help";
+      },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     MarkdownStyleExtension,
     ParagraphExtension,

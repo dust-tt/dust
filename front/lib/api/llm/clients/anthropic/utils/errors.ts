@@ -5,7 +5,7 @@ import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // https://github.com/anthropics/anthropic-sdk-typescript#handling-errors
 export const handleError = (
@@ -120,6 +120,15 @@ function categorizeAnthropicError(
     return {
       type: "rate_limit_error",
       message: `Rate limit exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
+      isRetryable,
+      originalError,
+    };
+  }
+
+  if (statusCode === 503) {
+    return {
+      type: "overloaded_error",
+      message: `Provider ${metadata.clientId} is overloaded. ${normalized.message}`,
       isRetryable,
       originalError,
     };

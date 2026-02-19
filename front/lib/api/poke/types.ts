@@ -7,9 +7,9 @@ import type {
   PluginArgDefinition,
   PluginArgs,
   PluginManifest,
-  Result,
   SupportedResourceType,
-} from "@app/types";
+} from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
 
 interface FormidableFile {
   filepath: string;
@@ -62,11 +62,33 @@ export type InferPluginArgsAtExecution<T extends PluginArgs> = {
   [K in keyof T]: InferArgType<T[K]["type"]>;
 };
 
+type PluginTextResponse = {
+  display: "text";
+  value: string;
+};
+
+type PluginJSONResponse = {
+  display: "json";
+  value: Record<string, unknown>;
+};
+
+type PluginMarkdownResponse = {
+  display: "markdown";
+  value: string;
+};
+
+type PluginTextWithLinkResponse = {
+  display: "textWithLink";
+  value: string;
+  link: string;
+  linkText: string;
+};
+
 export type PluginResponse =
-  | { display: "text"; value: string }
-  | { display: "json"; value: Record<string, unknown> }
-  | { display: "markdown"; value: string }
-  | { display: "textWithLink"; value: string; link: string; linkText: string };
+  | PluginTextResponse
+  | PluginJSONResponse
+  | PluginMarkdownResponse
+  | PluginTextWithLinkResponse;
 
 // Base plugin interface.
 interface BasePlugin<

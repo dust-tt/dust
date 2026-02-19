@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import fs from "fs";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
@@ -17,9 +12,13 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { syncFiles } from "@connectors/connectors/microsoft/temporal/activities";
-import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import {
+  launchMicrosoftFullSyncWorkflow,
+  launchMicrosoftIncrementalSyncWorkflow,
+} from "@connectors/connectors/microsoft/temporal/client";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import {
   updateDataSourceDocumentParents,
@@ -28,6 +27,7 @@ import {
 } from "@connectors/lib/data_sources";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
@@ -39,6 +39,11 @@ import {
   INTERNAL_MIME_TYPES,
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import { isString } from "@connectors/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import fs from "fs";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 /**
  * Parse internal IDs from either a JSON file or a single internal ID argument
@@ -80,34 +85,27 @@ function parseInternalIds(idsFile?: string, internalId?: string): string[] {
   }
 }
 
-const getConnector = async (args: { [key: string]: string | undefined }) => {
-  if (args.wId) {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        workspaceId: `${args.wId}`,
-        type: "microsoft",
-      },
-    });
-    if (!connector) {
-      throw new Error(`Could not find connector for workspace ${args.wId}`);
-    }
-    return connector;
+async function getConnector(args: MicrosoftCommandType["args"]) {
+  if (!args.connectorId && !(args.wId && args.dsId)) {
+    throw new Error("Missing --connectorId or --wId and --dsId argument");
   }
+
+  let connector;
   if (args.connectorId) {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        id: args.connectorId,
-      },
+    connector = await ConnectorResource.fetchById(args.connectorId);
+  } else if (args.dsId && args.wId) {
+    connector = await ConnectorResource.findByDataSource({
+      workspaceId: args.wId,
+      dataSourceId: args.dsId,
     });
-    if (!connector) {
-      throw new Error(
-        `Could not find connector for connectorId ${args.connectorId}`
-      );
-    }
-    return connector;
   }
-  throw new Error("Missing --connectorId or --wId argument");
-};
+
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  return connector;
+}
 
 export const microsoft = async ({
   command,
@@ -132,6 +130,17 @@ export const microsoft = async ({
           );
         }
       }
+      return { success: true };
+    }
+    case "start-full-sync": {
+      const connector = await getConnector(args);
+      const folderId = isString(args.folderId) ? args.folderId : undefined;
+      await throwOnError(
+        launchMicrosoftFullSyncWorkflow(
+          connector.id,
+          folderId ? [folderId] : undefined
+        )
+      );
       return { success: true };
     }
     case "check-file": {

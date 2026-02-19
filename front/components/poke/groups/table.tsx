@@ -2,7 +2,7 @@ import { makeColumnsForGroups } from "@app/components/poke/groups/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeGroups } from "@app/poke/swr/groups";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 interface GroupDataTableProps {
   owner: WorkspaceType;

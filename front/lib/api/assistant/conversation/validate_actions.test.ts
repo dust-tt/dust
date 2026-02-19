@@ -28,11 +28,9 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   createAgentMessages,
   createUserMentions,
-} from "@app/lib/api/assistant/conversation/mentions";
-import {
   dismissMention,
-  validateAction,
-} from "@app/lib/api/assistant/conversation/validate_actions";
+} from "@app/lib/api/assistant/conversation/mentions";
+import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
@@ -49,8 +47,10 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -58,16 +58,13 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type {
-  AgentMention,
-  ConversationType,
-  MentionType,
-  WorkspaceType,
-} from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 
 describe("dismissMention", () => {
   let workspace: WorkspaceType;
@@ -428,7 +425,7 @@ describe("dismissMention", () => {
         conversation,
       });
 
-      // Verify mention was created with pending status (not restricted)
+      // Verify mention was created with pending_conversation_access status (not restricted)
       const mentionInDb = await MentionModel.findOne({
         where: {
           workspaceId: workspace.id,
@@ -437,7 +434,7 @@ describe("dismissMention", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("pending");
+      expect(mentionInDb?.status).toBe("pending_conversation_access");
       expect(mentionInDb?.dismissed).toBe(false);
 
       // Try to dismiss the mention (should not dismiss because it's not restricted)
@@ -973,6 +970,7 @@ describe("validateAction", () => {
       mcpServerViewId: "test-server-view",
       dustAppConfiguration: null,
       secretName: null,
+      dustProject: null,
       internalMCPServerId: null,
       availability: "auto",
       permission: "low",

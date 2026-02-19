@@ -1,13 +1,5 @@
-import { AttachmentIcon, Button } from "@dust-tt/sparkle";
-import type { Transaction } from "@tiptap/pm/state";
-import type { Editor } from "@tiptap/react";
-import { cva } from "class-variance-authority";
-import debounce from "lodash/debounce";
-import { useCallback, useEffect, useMemo } from "react";
-import { useController } from "react-hook-form";
-
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
@@ -15,9 +7,37 @@ import {
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { Transaction } from "@tiptap/pm/state";
+import type { Editor } from "@tiptap/react";
+import { cva } from "class-variance-authority";
+import debounce from "lodash/debounce";
+import { useCallback, useEffect, useMemo } from "react";
+import { useController, useFormContext } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
+
+function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
+  const items: KnowledgeItem[] = [];
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === KNOWLEDGE_NODE_TYPE && node.attrs?.selectedItems) {
+      const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
+      items.push(...selectedItems);
+    }
+  });
+  return items;
+}
+
+function toAttachedKnowledge(
+  items: readonly KnowledgeItem[]
+): SkillBuilderFormData["attachedKnowledge"] {
+  return items.map((item) => ({
+    dataSourceViewId: item.dataSourceViewId,
+    nodeId: item.nodeId,
+    spaceId: item.spaceId,
+    title: item.label,
+  }));
+}
 
 const editorVariants = cva(
   [
@@ -52,71 +72,46 @@ const editorVariants = cva(
 interface SkillBuilderInstructionsEditorProps {
   compareVersion?: SkillType | null;
   isInstructionDiffMode?: boolean;
+  onAddKnowledge?: (addKnowledge: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
+  onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
+  const { setValue } = useFormContext<SkillBuilderFormData>();
+
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
       name: INSTRUCTIONS_FIELD_NAME,
     });
-  const {
-    field: attachedKnowledgeField,
-    fieldState: attachedKnowledgeFieldState,
-  } = useController<SkillBuilderFormData, typeof ATTACHED_KNOWLEDGE_FIELD_NAME>(
-    {
-      name: ATTACHED_KNOWLEDGE_FIELD_NAME,
-    }
-  );
+
+  const { fieldState: attachedKnowledgeFieldState } = useController<
+    SkillBuilderFormData,
+    typeof ATTACHED_KNOWLEDGE_FIELD_NAME
+  >({
+    name: ATTACHED_KNOWLEDGE_FIELD_NAME,
+  });
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
-
-  // Helper function to extract attached knowledge and update form.
-  const extractAttachedKnowledge = useCallback((editorInstance: Editor) => {
-    const knowledgeItems: KnowledgeItem[] = [];
-
-    // Use TipTap's document traversal API to recursively find all knowledge nodes.
-    // Note: $nodes() only searches top-level nodes, not nested inline nodes.
-    const { state } = editorInstance;
-    const { doc } = state;
-
-    doc.descendants((node) => {
-      if (node.type.name === KNOWLEDGE_NODE_TYPE && node.attrs?.selectedItems) {
-        const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
-        knowledgeItems.push(...selectedItems);
-      }
-    });
-
-    return knowledgeItems;
-  }, []);
-
-  const updateAttachedKnowledge = useCallback(
-    (editor: Editor) => {
-      const attachedKnowledge = extractAttachedKnowledge(editor);
-      // Transform for form storage.
-      const transformedAttachments = attachedKnowledge.map((item) => ({
-        dataSourceViewId: item.dataSourceViewId,
-        nodeId: item.nodeId, // This is the node ID from the data source view content node.
-        spaceId: item.spaceId,
-        title: item.label,
-      }));
-      attachedKnowledgeField.onChange(transformedAttachments);
-    },
-    [extractAttachedKnowledge, attachedKnowledgeField]
-  );
 
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: Editor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          instructionsField.onChange(editor.getMarkdown());
-          updateAttachedKnowledge(editor);
+          setValue(INSTRUCTIONS_FIELD_NAME, editor.getMarkdown().trim(), {
+            shouldDirty: true,
+          });
+          setValue(
+            ATTACHED_KNOWLEDGE_FIELD_NAME,
+            toAttachedKnowledge(collectKnowledgeItems(editor)),
+            { shouldDirty: true }
+          );
         }
       }, 250),
-    [instructionsField, isInstructionDiffMode, updateAttachedKnowledge]
+    [isInstructionDiffMode, setValue]
   );
 
   const handleUpdate = useCallback(
@@ -136,9 +131,13 @@ export function SkillBuilderInstructionsEditor({
 
   const handleDelete = useCallback(
     (editorInstance: Editor) => {
-      updateAttachedKnowledge(editorInstance);
+      setValue(
+        ATTACHED_KNOWLEDGE_FIELD_NAME,
+        toAttachedKnowledge(collectKnowledgeItems(editorInstance)),
+        { shouldDirty: true }
+      );
     },
-    [updateAttachedKnowledge]
+    [setValue]
   );
 
   const { editor } = useSkillInstructionsEditor({
@@ -150,10 +149,39 @@ export function SkillBuilderInstructionsEditor({
   });
 
   const handleAddKnowledge = useCallback(() => {
-    if (editor) {
-      editor.chain().focus().insertKnowledgeNode().run();
+    if (!editor) {
+      return;
     }
+
+    // Check if there's already an empty knowledge node (in search mode).
+    // If so, do nothing - clicking the button already dismissed it via handleInteractOutside.
+    const { doc } = editor.state;
+    let hasEmptyKnowledgeNode = false;
+    doc.descendants((node) => {
+      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
+        const selectedItems = node.attrs?.selectedItems as
+          | KnowledgeItem[]
+          | undefined;
+        if (!selectedItems || selectedItems.length === 0) {
+          hasEmptyKnowledgeNode = true;
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (hasEmptyKnowledgeNode) {
+      return;
+    }
+
+    editor.chain().focus().insertKnowledgeNode().run();
   }, [editor]);
+
+  useEffect(() => {
+    if (editor && onAddKnowledge) {
+      onAddKnowledge(handleAddKnowledge);
+    }
+  }, [editor, handleAddKnowledge, onAddKnowledge]);
 
   useEffect(() => {
     return () => {
@@ -176,12 +204,19 @@ export function SkillBuilderInstructionsEditor({
     });
   }, [editor, displayError]);
 
+  // Sync external changes to the editor content
   useEffect(() => {
     if (!editor || instructionsField.value === undefined) {
       return;
     }
 
-    if (editor.isFocused) {
+    // Skip if the editor or any of its node views (e.g. knowledge search input)
+    // currently have focus — the editor itself is the source of this change.
+    if (
+      editor.isFocused ||
+      // KnowledgeSearchComponent is a sibling of the editor view in the DOM
+      editor.view.dom.parentElement?.contains(document.activeElement)
+    ) {
       return;
     }
     const currentContent = editor.getMarkdown();
@@ -220,20 +255,7 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="space-y-1 p-px">
-      <div className="relative">
-        <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
-
-        {/* Floating Add Knowledge Button */}
-        <Button
-          size="xs"
-          variant="ghost"
-          icon={AttachmentIcon}
-          onClick={handleAddKnowledge}
-          className="absolute bottom-2 left-2"
-          tooltip="Add knowledge"
-          disabled={!editor}
-        />
-      </div>
+      <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
 
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">

@@ -1,4 +1,8 @@
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
+
+export const FILE_ID_PATTERN = "fil_[A-Za-z0-9]{10,}";
+export const FILE_ID_REGEX = new RegExp(`\\b${FILE_ID_PATTERN}\\b`, "g");
 
 // We use this to detect if a Interactive Content file uses conversation files.
 // In which case, we don't want to display it publicly. Our proxy here is to look for usage of the

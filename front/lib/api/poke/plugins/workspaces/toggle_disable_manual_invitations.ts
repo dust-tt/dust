@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateWorkspaceMetadata } from "@app/lib/api/workspace";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const toggleDisableManualInvitationsPlugin = createPlugin({
   manifest: {
@@ -8,7 +8,7 @@ export const toggleDisableManualInvitationsPlugin = createPlugin({
     name: "Toggle Disable Manual Invitations",
     description:
       "Enable/disable manual user invitations. " +
-      "When enabled, the 'Invite members' button will be hidden. Existing invitations will not be affected, and emmbers can still be invited with poke plugin.",
+      "When enabled, the 'Invite members' button will be hidden. Existing invitations will not be affected, and members can still be invited with poke plugin.",
     resourceTypes: ["workspaces"],
     args: {
       disabled: {

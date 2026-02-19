@@ -1,16 +1,13 @@
-import FirecrawlApp from "@mendable/firecrawl-js";
-import _ from "lodash";
-
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import {
-  assertNever,
-  dustManagedCredentials,
-  Err,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import FirecrawlApp from "@mendable/firecrawl-js";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 const credentials = dustManagedCredentials();
 

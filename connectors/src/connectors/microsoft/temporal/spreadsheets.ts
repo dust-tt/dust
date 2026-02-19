@@ -1,10 +1,4 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { Client } from "@microsoft/microsoft-graph-client";
-import { GraphError } from "@microsoft/microsoft-graph-client";
-import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
-import { stringify } from "csv-stringify/sync";
-
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
@@ -19,6 +13,7 @@ import {
   getColumnsFromListItem,
   markInternalIdAsSkipped,
 } from "@connectors/connectors/microsoft/lib/utils";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -35,6 +30,12 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, slugify } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
+import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
+import { stringify } from "csv-stringify/sync";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 

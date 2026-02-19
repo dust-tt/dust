@@ -1,3 +1,16 @@
+import { PluginForm } from "@app/components/poke/plugins/PluginForm";
+import {
+  PokeAlert,
+  PokeAlertDescription,
+  PokeAlertTitle,
+} from "@app/components/poke/shadcn/ui/alert";
+import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
+import {
+  usePokePluginAsyncArgs,
+  usePokePluginManifest,
+  useRunPokePlugin,
+} from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   Button,
   cn,
@@ -12,20 +25,6 @@ import {
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
-
-import { PluginForm } from "@app/components/poke/plugins/PluginForm";
-import {
-  PokeAlert,
-  PokeAlertDescription,
-  PokeAlertTitle,
-} from "@app/components/poke/shadcn/ui/alert";
-import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
-import {
-  usePokePluginAsyncArgs,
-  usePokePluginManifest,
-  useRunPokePlugin,
-} from "@app/poke/swr/plugins";
-import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
   onClose: () => void;
@@ -42,8 +41,8 @@ export function RunPluginDialog({
   const [result, setResult] = useState<PluginResponse | null>(null);
 
   const { isLoading, manifest } = usePokePluginManifest({
-    disabled: !open,
-    pluginId: plugin?.id,
+    disabled: false,
+    pluginId: plugin.id,
   });
 
   // Check if any args are marked as async
@@ -87,12 +86,12 @@ export function RunPluginDialog({
     <Dialog open={true} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "w-auto",
+          "w-auto overflow-visible",
           "bg-muted-background dark:bg-muted-background-night",
           "sm:min-w-[600px] sm:max-w-[1000px]"
         )}
       >
-        <DialogHeader>
+        <DialogHeader className="bg-structure-100 dark:bg-structure-100-night rounded-t-2xl pb-4">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
@@ -160,16 +159,12 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
-              {isLoadingAsyncArgs ? (
-                <Spinner />
-              ) : (
-                <PluginForm
-                  disabled={result !== null}
-                  manifest={manifest}
-                  asyncArgs={asyncArgs}
-                  onSubmit={onSubmit}
-                />
-              )}
+              <PluginForm
+                disabled={result !== null}
+                manifest={manifest}
+                asyncArgs={asyncArgs}
+                onSubmit={onSubmit}
+              />
               {manifest.warning && (
                 <PokeAlert variant="destructive">
                   <PokeAlertTitle>Warning</PokeAlertTitle>

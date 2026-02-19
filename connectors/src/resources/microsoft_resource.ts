@@ -1,8 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Ok } from "@dust-tt/client";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type {
   MicrosoftNode,
   MicrosoftNodeType,
@@ -18,12 +13,17 @@ import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type { ModelId } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftConfigurationResource extends ReadonlyAttributesType<MicrosoftConfigurationModel> {}
+export interface MicrosoftConfigurationResource
+  extends ReadonlyAttributesType<MicrosoftConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfigurationModel> {
@@ -130,7 +130,8 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftRootResource extends ReadonlyAttributesType<MicrosoftRootModel> {}
+export interface MicrosoftRootResource
+  extends ReadonlyAttributesType<MicrosoftRootModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
@@ -230,7 +231,8 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftNodeResource extends ReadonlyAttributesType<MicrosoftNodeModel> {}
+export interface MicrosoftNodeResource
+  extends ReadonlyAttributesType<MicrosoftNodeModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {

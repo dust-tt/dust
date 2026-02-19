@@ -36,6 +36,8 @@ export DUST_FRONT_INTERNAL_API=http://localhost:${ports.front}
 export DUST_CLIENT_FACING_URL=http://localhost:${ports.front}
 export DUST_PUBLIC_URL=http://localhost:${ports.front}
 export NEXT_PUBLIC_DUST_CLIENT_FACING_URL=http://localhost:${ports.front}
+export NEXT_PUBLIC_DUST_APP_URL=http://localhost:${ports.frontSpaApp}
+export POKE_APP_URL=http://localhost:${ports.frontSpaPoke}
 export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000
 export CONNECTORS_PUBLIC_URL=http://localhost:${ports.connectors}
 
@@ -61,6 +63,11 @@ export QDRANT_CLUSTER_0_URL=http://127.0.0.1:${ports.qdrantGrpc}
 export QDRANT_USE_SHARDING=false
 export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
+
+# === Region & auth overrides (used by front cross-region and Dust CLI) ===
+export DUST_US_URL=http://localhost:${ports.front}
+export DUST_EU_URL=http://localhost:${ports.front}
+export DEFAULT_DUST_API_DOMAIN=http://localhost:${ports.front}
 `;
 }
 

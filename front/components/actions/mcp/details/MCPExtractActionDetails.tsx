@@ -1,3 +1,10 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import {
+  isExtractQueryResourceType,
+  isExtractResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 import {
   Citation,
   CitationIcons,
@@ -11,14 +18,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
-
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import {
-  isExtractQueryResourceType,
-  isExtractResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {
   toolParams: Record<string, unknown>;
@@ -44,7 +43,7 @@ interface MCPExtractActionResultsProps {
 export function MCPExtractActionDetails({
   toolParams,
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
@@ -58,9 +57,9 @@ export function MCPExtractActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation" ? "Extracting data" : "Extract data"
+        displayContext === "conversation" ? "Extracting data" : "Extract data"
       }
       visual={ScanIcon}
     >
@@ -97,7 +96,7 @@ export function MCPExtractActionDetails({
           </div>
         )}
 
-        {viewType === "sidebar" && (
+        {displayContext === "sidebar" && (
           <div>
             <Collapsible defaultOpen={false}>
               <CollapsibleTrigger>

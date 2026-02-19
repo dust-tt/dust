@@ -1,6 +1,4 @@
 // Okay to use public API types because here front is talking to core API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import type {
   ContentNodeAttachmentType,
@@ -8,15 +6,13 @@ import type {
 } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { ConversationType } from "@app/types";
-import {
-  isAgentMessageType,
-  isContentFragmentType,
-  isInteractiveContentFileContentType,
-  isSupportedImageContentType,
-} from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export function listAttachments(
   conversation: ConversationType
@@ -25,11 +21,6 @@ export function listAttachments(
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
     if (isContentFragmentType(m)) {
-      // We don't list images.
-      if (isSupportedImageContentType(m.contentType)) {
-        continue;
-      }
-
       // Only list the latest version of a content fragment.
       if (m.contentFragmentVersion !== "latest") {
         continue;
@@ -43,13 +34,8 @@ export function listAttachments(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        // Interactive Content files should not be shown in the JIT.
-        if (isInteractiveContentFileContentType(f.contentType)) {
-          continue;
-        }
-
         attachments.push(
-          getAttachmentFromToolOutput({
+          getAttachmentFromFile({
             fileId: f.fileId,
             contentType: f.contentType,
             title: f.title,

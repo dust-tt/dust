@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -15,6 +14,7 @@ describe(
 vi.mock(import("@app/lib/api/config"), (() => ({
   default: {
     getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:9999"),
+    getAppUrl: vi.fn().mockReturnValue("http://localhost:9999"),
   },
 })) as any);
 

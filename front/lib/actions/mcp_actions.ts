@@ -1,17 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-  CallToolResultSchema,
-  McpError,
-  ProgressNotificationSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { Context, heartbeat } from "@temporalio/activity";
-import assert from "assert";
-import EventEmitter from "events";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import {
   calculateContentSize,
@@ -25,6 +12,7 @@ import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
   ClientSideMCPServerConfigurationType,
@@ -40,6 +28,7 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
+  getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -50,6 +39,7 @@ import {
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
+  ClientSideMCPConnectionParams,
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
 } from "@app/lib/actions/mcp_metadata";
@@ -65,7 +55,6 @@ import type {
 } from "@app/lib/actions/types";
 import {
   isClientSideMCPToolConfiguration,
-  isMCPServerConfiguration,
   isMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
@@ -88,8 +77,25 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok, slugify } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { slugify } from "@app/types/shared/utils/string_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  McpError,
+  ProgressNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { Context, heartbeat } from "@temporalio/activity";
+import assert from "assert";
+import tracer from "dd-trace";
+import EventEmitter from "events";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -115,8 +121,6 @@ function isEmptyInputSchema(schema: JSONSchema): boolean {
 }
 
 const MAX_TOOL_NAME_LENGTH = 64;
-
-export const TOOL_NAME_SEPARATOR = "__";
 
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {
@@ -145,7 +149,7 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
-    const defaultStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes ?? {};
+    const defaultStakes = getInternalMCPServerToolStakes(serverName) ?? {};
     toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
@@ -198,8 +202,7 @@ function makeServerSideMCPToolConfigurations(
     retryPolicy: tool.retryPolicy,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    dataSources: config.dataSources || [], // Ensure dataSources is always an array
+    dataSources: config.dataSources ?? [], // Ensure dataSources is always an array
     tables: config.tables,
     availability: tool.availability,
     childAgentId: config.childAgentId,
@@ -212,6 +215,7 @@ function makeServerSideMCPToolConfigurations(
     mcpServerName: config.name,
     dustAppConfiguration: config.dustAppConfiguration,
     secretName: config.secretName,
+    dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
@@ -305,33 +309,39 @@ export async function* tryCallMCPTool(
     conversationId,
     messageId,
     toolName: toolConfiguration.originalName,
+    toolConfigurationId: toolConfiguration.sId,
     workspaceId,
   };
 
-  const connectionParamsRes = await getMCPClientConnectionParams(
-    auth,
-    toolConfiguration,
-    {
+  let connectionParams: MCPConnectionParams;
+  if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+    const mcpServerView = await MCPServerViewResource.fetchById(
+      auth,
+      toolConfiguration.mcpServerViewId
+    );
+    if (!mcpServerView) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "Could not call tool: configuration not found",
+          },
+        ],
+      };
+    }
+    connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
+  } else {
+    connectionParams = makeClientSideMCPConnectionParams(toolConfiguration, {
       conversationId,
       messageId,
-    }
-  );
-  if (connectionParamsRes.isErr()) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: `The tool execution failed with the following error: ${connectionParamsRes.error.message}`,
-        },
-      ],
-    };
+    });
   }
 
   let mcpClient;
   try {
     const connectionResult = await connectToMCPServer(auth, {
-      params: connectionParamsRes.value,
+      params: connectionParams,
       agentLoopContext: { runContext: agentLoopRunContext },
     });
     if (connectionResult.isErr()) {
@@ -361,6 +371,8 @@ export async function* tryCallMCPTool(
     }
     mcpClient = connectionResult.value;
 
+    heartbeat();
+
     const emitter = new EventEmitter();
 
     // Convert the emitter to an async generator.
@@ -386,20 +398,30 @@ export async function* tryCallMCPTool(
       }
     );
 
+    // Alias needed: `mcpClient` is declared with `let`, so TypeScript won't
+    // narrow it as non-null inside the async closure passed to tracer.trace().
+    const client = mcpClient;
+
     // Start the tool call in parallel.
-    const toolPromise = mcpClient.callTool(
-      {
-        name: toolConfiguration.originalName,
-        arguments: inputs,
-        _meta: {
-          progressToken,
-        },
-      },
-      CallToolResultSchema,
-      {
-        timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-        signal: abortSignal,
-      }
+    const toolPromise = tracer.trace(
+      "mcp.tool.call",
+      { resource: toolConfiguration.originalName },
+      async () =>
+        client.callTool(
+          {
+            name: toolConfiguration.originalName,
+            arguments: inputs,
+            _meta: {
+              progressToken,
+            },
+          },
+          CallToolResultSchema,
+          {
+            timeout:
+              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+            signal: abortSignal,
+          }
+        )
     );
 
     // Read from notificationStream and yield events until the tool is done.
@@ -407,7 +429,7 @@ export async function* tryCallMCPTool(
     let notificationPromise = notificationStream.next();
 
     // Frequently heartbeat to get notified of cancellation.
-    const getHeartbeatPromise = (): Promise<void> =>
+    const createHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
         setTimeout(() => {
           logger.info(toolLogContext, "MCP tool heartbeat");
@@ -417,6 +439,8 @@ export async function* tryCallMCPTool(
         }, 10_000);
       });
 
+    let heartbeatPromise = createHeartbeatPromise();
+
     logger.info(toolLogContext, "Starting MCP tool notification loop");
     while (!toolDone) {
       const notificationOrDone = await Promise.race([
@@ -424,7 +448,7 @@ export async function* tryCallMCPTool(
         toolPromise
           .then(() => MCP_TOOL_DONE_EVENT_NAME)
           .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
-        getHeartbeatPromise().then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
+        heartbeatPromise.then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
       ]);
 
       // If the tool completed or errored, break from the loop and stop reading notifications.
@@ -434,7 +458,8 @@ export async function* tryCallMCPTool(
       ) {
         toolDone = true;
       } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
-        // Do nothing.
+        // Renew the heartbeat promise for the next interval.
+        heartbeatPromise = createHeartbeatPromise();
       } else {
         const iteratorResult = notificationOrDone;
         if (iteratorResult.done) {
@@ -484,9 +509,9 @@ export async function* tryCallMCPTool(
     if (isClientSideMCPToolConfiguration(toolConfiguration)) {
       serverType = "client";
     } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = "internal";
-    } else {
-      serverType = "remote";
+      serverType = toolConfiguration.internalMCPServerId
+        ? "internal"
+        : "remote";
     }
 
     if (serverType === "remote") {
@@ -511,6 +536,20 @@ export async function* tryCallMCPTool(
           ],
         };
       }
+    }
+    if (serverType === "internal") {
+      // The MCP SDK is now stripping extra properties from the tool result (both client and server).
+      // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
+      // We now need to move them back to the resource items root level.
+      content.forEach((item) => {
+        if (item.type === "resource" && item.resource._meta) {
+          item.resource = {
+            ...item.resource,
+            ...item.resource._meta,
+          };
+          delete item.resource._meta;
+        }
+      });
     }
 
     return {
@@ -565,9 +604,20 @@ export async function* tryCallMCPTool(
   }
 }
 
-async function getMCPClientConnectionParams(
-  auth: Authenticator,
-  config: MCPServerConfigurationType | MCPToolConfigurationType,
+function makeServerSideMCPConnectionParams(
+  mcpServerView: MCPServerViewResource
+): ServerSideMCPConnectionParams {
+  return {
+    type: "mcpServerId",
+    mcpServerId: mcpServerView.mcpServerId,
+    oAuthUseCase: mcpServerView.oAuthUseCase,
+  };
+}
+
+function makeClientSideMCPConnectionParams(
+  config:
+    | ClientSideMCPServerConfigurationType
+    | ClientSideMCPToolConfigurationType,
   {
     conversationId,
     messageId,
@@ -575,33 +625,13 @@ async function getMCPClientConnectionParams(
     conversationId: string;
     messageId: string;
   }
-): Promise<Result<MCPConnectionParams, Error>> {
-  if (
-    (isMCPServerConfiguration(config) &&
-      isServerSideMCPServerConfiguration(config)) ||
-    (isMCPToolConfiguration(config) && isServerSideMCPToolConfiguration(config))
-  ) {
-    const mcpServerView = await MCPServerViewResource.fetchById(
-      auth,
-      config.mcpServerViewId
-    );
-    if (!mcpServerView) {
-      return new Err(new Error("MCP server view not found"));
-    }
-
-    return new Ok({
-      type: "mcpServerId",
-      mcpServerId: mcpServerView.mcpServerId,
-      oAuthUseCase: mcpServerView.oAuthUseCase,
-    });
-  }
-
-  return new Ok({
+): ClientSideMCPConnectionParams {
+  return {
     type: "clientSideMCPServerId",
     mcpServerId: config.clientSideMcpServerId,
     conversationId,
     messageId,
-  });
+  };
 }
 
 export function getPrefixedToolName(
@@ -735,7 +765,7 @@ function deduplicateMCPServerConfigurations({
     const viewId = isServerSideMCPServerConfiguration(config)
       ? config.mcpServerViewId
       : config.clientSideMcpServerId;
-    const key = `${viewId}:${config.name}`;
+    const key = `${viewId}:${slugify(config.name)}`;
 
     if (seen.has(key)) {
       return false;
@@ -779,15 +809,50 @@ export async function tryListMCPTools(
     deduplicatedConfigs
   );
 
+  // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries.
+  const serverSideViewIds = mcpServerActions
+    .filter((config) => isServerSideMCPServerConfiguration(config))
+    .map((config) => config.mcpServerViewId);
+  const preFetchedViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    serverSideViewIds
+  );
+  const preFetchedMcpServerViews = new Map(
+    preFetchedViews.map((view) => [view.sId, view])
+  );
+
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActions,
     async (action) => {
-      const toolsAndInstructionsRes =
-        await listMCPServerToolsAndServerInstructions(auth, action, {
-          ...agentLoopListToolsContext,
-          agentActionConfiguration: action,
+      let connectionParams: MCPConnectionParams;
+      if (isServerSideMCPServerConfiguration(action)) {
+        const mcpServerView = preFetchedMcpServerViews.get(
+          action.mcpServerViewId
+        );
+        if (!mcpServerView) {
+          return new Err(
+            new Error(`MCP server view not found for ${action.name}`)
+          );
+        }
+        connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
+      } else {
+        connectionParams = makeClientSideMCPConnectionParams(action, {
+          conversationId: agentLoopListToolsContext.conversation.sId,
+          messageId: agentLoopListToolsContext.agentMessage.sId,
         });
+      }
+
+      const toolsAndInstructionsRes =
+        await listMCPServerToolsAndServerInstructions(
+          auth,
+          action,
+          {
+            ...agentLoopListToolsContext,
+            agentActionConfiguration: action,
+          },
+          connectionParams
+        );
 
       if (toolsAndInstructionsRes.isErr()) {
         logger.error(
@@ -1056,25 +1121,16 @@ export async function listToolsForServerSideMCPServer(
 async function listMCPServerToolsAndServerInstructions(
   auth: Authenticator,
   config: MCPServerConfigurationType,
-  agentLoopListToolsContext: AgentLoopListToolsContextType
+  agentLoopListToolsContext: AgentLoopListToolsContextType,
+  connectionParams: MCPConnectionParams
 ): Promise<
   Result<{ instructions?: string; tools: MCPToolConfigurationType[] }, Error>
 > {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
-  const connectionParamsRes = await getMCPClientConnectionParams(auth, config, {
-    conversationId: agentLoopListToolsContext.conversation.sId,
-    messageId: agentLoopListToolsContext.agentMessage.sId,
-  });
-
-  if (connectionParamsRes.isErr()) {
-    return connectionParamsRes;
-  }
-
   try {
     // Connect to the MCP server.
-    const connectionParams = connectionParamsRes.value;
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
       agentLoopContext: { listToolsContext: agentLoopListToolsContext },

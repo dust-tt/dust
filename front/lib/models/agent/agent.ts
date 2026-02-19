@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
@@ -11,9 +8,13 @@ import type {
   AgentReasoningEffort,
   AgentStatus,
   GlobalAgentStatus,
+} from "@app/types/assistant/agent";
+import type {
   ModelIdType,
   ModelProviderIdType,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 /**
  * Agent configuration
@@ -32,6 +33,7 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
   declare description: string;
 
   declare instructions: string | null;
+  declare instructionsHtml: string | null;
   declare providerId: ModelProviderIdType;
   declare modelId: ModelIdType;
   declare temperature: number;
@@ -99,6 +101,10 @@ AgentConfigurationModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    instructionsHtml: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -129,6 +135,7 @@ AgentConfigurationModel.init(
                 throw new Error("Response format is invalid JSON");
               }
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
             } catch (e) {
               throw new Error("Response format is invalid JSON");
             }

@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import {
   getAgentConfiguration,
   restoreAgentConfiguration,
@@ -7,7 +5,8 @@ import {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type RestoreAgentConfigurationResponseBody = {
   success: true;
@@ -39,12 +38,12 @@ async function handler(
         });
       }
 
-      const restored = await restoreAgentConfiguration(
+      const restoredResult = await restoreAgentConfiguration(
         auth,
         agentConfiguration.sId
       );
 
-      if (!restored) {
+      if (!restoredResult.isOk() || !restoredResult.value.restored) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {

@@ -1,6 +1,13 @@
 import {
+  creditColumns,
+  getTableRows,
+} from "@app/components/workspace/CreditsList";
+import type { CreditDisplayData } from "@app/types/credits";
+import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
+import {
   Button,
   DataTable,
+  LinkWrapper,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -8,15 +15,8 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
-
-import {
-  creditColumns,
-  getTableRows,
-} from "@app/components/workspace/CreditsList";
-import type { CreditDisplayData } from "@app/types/credits";
-import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
   return [...credits].sort((a, b) => {
@@ -89,9 +89,9 @@ export function CreditHistorySheet({
             )}
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               For older credits,{" "}
-              <Link href="mailto:support@dust.tt" className="underline">
+              <LinkWrapper href="mailto:support@dust.tt" className="underline">
                 contact support
-              </Link>
+              </LinkWrapper>
               .
             </p>{" "}
           </SheetContainer>

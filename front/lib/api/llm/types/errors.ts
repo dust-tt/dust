@@ -1,8 +1,10 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import type { AgentErrorCategory } from "@app/types";
-import { normalizeError } from "@app/types";
+import type { AgentErrorCategory } from "@app/types/assistant/agent";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type LLMErrorType =
   // LLM errors
@@ -10,6 +12,7 @@ export type LLMErrorType =
   | "refusal_error"
   | "maximum_length"
   | "terminated_error"
+  | "llm_timeout_error"
   // HTTP errors
   | "rate_limit_error"
   | "overloaded_error"
@@ -227,41 +230,85 @@ export function categorizeLLMError(
   };
 }
 
+const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  mistral: "Mistral",
+  togetherai: "TogetherAI",
+  deepseek: "Deepseek",
+  fireworks: "Fireworks",
+  xai: "xAI",
+  google_ai_studio: "Google AI Studio",
+  noop: "Noop",
+};
+
 /**
- * Maps LLM error types to user-friendly error messages.
+ * Returns LLM error types to user-friendly error messages.
  */
-export const USER_FACING_LLM_ERROR_MESSAGES: Record<LLMErrorType, string> = {
-  stop_error: "The model request was stopped unexpectedly. Please try again.",
-  refusal_error:
-    "The model refused to complete your request. Please rephrase and try again.",
-  maximum_length:
-    "The response exceeded the maximum allowed length. Try reducing the scope of your request.",
-  terminated_error:
-    "The request was terminated before completion. Please try again.",
-  rate_limit_error:
-    "Too many requests have been made. Please wait a moment and try again.",
-  overloaded_error:
-    "The service is currently experiencing high load. Please try again in a moment.",
-  context_length_exceeded:
-    "Your message or retrieved data is too large. Break your request into smaller parts or reduce the input size.",
-  invalid_request_error:
-    "The request was invalid. Please check your input and try again.",
-  invalid_response_error:
-    "The service returned an invalid response. Please try again.",
-  authentication_error:
-    "Failed to authenticate with the service. Please check your API credentials.",
-  permission_error:
-    "You don't have permission to access this resource. Please check your access rights.",
-  not_found_error:
-    "The requested resource was not found. Please verify the request details.",
-  network_error:
-    "A network error occurred while connecting to the service. Please check your connection and try again.",
-  timeout_error: "The request took too long to complete. Please try again.",
-  server_error: "The service encountered an internal error. Please try again.",
-  stream_error:
-    "Connection interrupted while receiving the response. Please try again.",
-  unknown_error:
-    "An unexpected error occurred. Please try again or contact support if the problem persists.",
+export const getUserFacingLLMErrorMessage = (
+  type: LLMErrorType,
+  lLMClientMetadata: LLMClientMetadata
+): string => {
+  const userFacingProvider: string =
+    USERFACING_CLIENT_ID[lLMClientMetadata.clientId];
+  switch (type) {
+    case "stop_error":
+      return `${userFacingProvider} stopped the request unexpectedly. Please try again.`;
+    case "refusal_error": {
+      return `${userFacingProvider} refused to complete your request. Please rephrase your message and try again.`;
+    }
+    case "maximum_length": {
+      return "The response exceeded the maximum length. Try reducing the scope of your request.";
+    }
+    case "terminated_error": {
+      return `${userFacingProvider} terminated the request before completion. Please try again.`;
+    }
+    case "rate_limit_error": {
+      return "Too many requests sent. Please wait a moment and try again.";
+    }
+    case "overloaded_error": {
+      return `${userFacingProvider} is currently overloaded. Please try again in a moment.`;
+    }
+    case "context_length_exceeded": {
+      return "Your message or retrieved data is too large. Break it into smaller parts or reduce the input size.";
+    }
+    case "invalid_request_error": {
+      return "The request was invalid. Please check your input and try again.";
+    }
+    case "invalid_response_error": {
+      return `${userFacingProvider} returned an invalid response. Please try again.`;
+    }
+    case "authentication_error": {
+      return `${userFacingProvider} authentication failed. Please check your API credentials.`;
+    }
+    case "permission_error": {
+      return `${userFacingProvider} blocked your request. Please check your access rights.`;
+    }
+    case "not_found_error": {
+      return "The requested resource was not found. Please verify your request and try again.";
+    }
+    case "network_error": {
+      return `Connection to ${userFacingProvider} failed. Please check your network and try again.`;
+    }
+    case "timeout_error": {
+      return "The request timed out. Please try again.";
+    }
+    case "server_error": {
+      return `${userFacingProvider} encountered an internal error. Please try again.`;
+    }
+    case "stream_error": {
+      return `Connection interrupted while receiving the response. Please try again.`;
+    }
+    case "unknown_error": {
+      return "An unexpected error occurred. Please try again or contact support if the issue persists.";
+    }
+    case "llm_timeout_error": {
+      return `${userFacingProvider} is taking longer than expected. Please try again.`;
+    }
+    default: {
+      assertNever(type);
+    }
+  }
 };
 
 /**
@@ -274,9 +321,10 @@ export const LLM_ERROR_TYPE_TO_CATEGORY: Record<
 > = {
   // LLM errors - these are generally retryable or model-specific issues
   stop_error: "retryable_model_error",
-  refusal_error: "retryable_model_error",
+  refusal_error: "unknown_error",
   maximum_length: "context_window_exceeded",
   terminated_error: "retryable_model_error",
+  llm_timeout_error: "retryable_model_error",
 
   // HTTP errors - rate limiting and overload
   rate_limit_error: "retryable_model_error",

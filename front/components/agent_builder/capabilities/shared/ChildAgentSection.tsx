@@ -1,23 +1,23 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
+  Avatar,
   Button,
+  Card,
   ContentMessage,
   DataTable,
   InformationCircleIcon,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { Avatar } from "@dust-tt/sparkle";
-import { Card } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types";
 
 interface AgentTableData extends LightAgentConfigurationType {
   onClick: () => void;

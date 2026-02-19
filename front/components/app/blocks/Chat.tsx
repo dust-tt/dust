@@ -1,5 +1,17 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import ModelPicker from "@app/components/app/ModelPicker";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { supportsResponseFormat } from "@app/lib/providers";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Checkbox,
   Collapsible,
@@ -9,28 +21,9 @@ import {
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import ModelPicker from "@app/components/app/ModelPicker";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { supportsResponseFormat } from "@app/lib/providers";
-import { classNames, shallowBlockClone } from "@app/lib/utils";
-import type {
-  AppType,
-  BlockType,
-  RunType,
-  SpecificationBlockType,
-  SpecificationType,
-  WorkspaceType,
-} from "@app/types";
-
 import Block from "./Block";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 export default function Chat({
   owner,
@@ -145,6 +138,7 @@ export default function Chat({
       setIsResponseFormatJsonValid(true);
       onBlockUpdate(b);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       setIsResponseFormatJsonValid(false);
     }
@@ -395,7 +389,7 @@ export default function Chat({
                     <Label>Structured Response Format</Label>
                     <div className="flex w-full font-normal">
                       <div className="w-full leading-5">
-                        <CodeEditor
+                        <SuspensedCodeEditor
                           data-color-mode={isDark ? "dark" : "light"}
                           readOnly={readOnly}
                           value={responseFormatText}
@@ -449,7 +443,7 @@ export default function Chat({
           <Label>Instructions</Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.instructions}
@@ -473,7 +467,7 @@ export default function Chat({
           <Label>Messages</Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.messages_code}
@@ -499,7 +493,7 @@ export default function Chat({
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex w-full font-normal">
                   <div className="w-full leading-4">
-                    <CodeEditor
+                    <SuspensedCodeEditor
                       data-color-mode={isDark ? "dark" : "light"}
                       readOnly={readOnly}
                       value={block.spec.functions_code}

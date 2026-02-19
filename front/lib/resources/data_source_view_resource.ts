@@ -1,17 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import assert from "assert";
-import keyBy from "lodash/keyBy";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -37,22 +26,26 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
+import assert from "assert";
+import keyBy from "lodash/keyBy";
 import type {
-  ConversationWithoutContentType,
-  DataSourceViewCategory,
-  DataSourceViewType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  assertNever,
-  CoreAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@app/types";
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 import type { UserResource } from "./user_resource";
 
@@ -88,7 +81,8 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceViewResource extends ReadonlyAttributesType<DataSourceViewModel> {}
+export interface DataSourceViewResource
+  extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
@@ -253,6 +247,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       includeDeleted,
       // WORKSPACE_ISOLATION_BYPASS: Data source views can be public, preventing to enforce a
       // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -485,60 +480,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews ?? [];
   }
 
-  static async fetchByConversation(
+  static async fetchByConversationModelIds(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
-  ): Promise<DataSourceViewResource | null> {
-    // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByConversation(
-      auth,
-      conversation
-    );
-    if (!dataSource) {
-      return null;
+    conversationModelIds: ModelId[]
+  ): Promise<DataSourceViewResource[]> {
+    if (conversationModelIds.length === 0) {
+      return [];
     }
 
-    const dataSourceViews = await this.baseFetch(
+    const dataSources = await DataSourceResource.fetchByConversationModelIds(
+      auth,
+      conversationModelIds
+    );
+    if (dataSources.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(
       auth,
       {},
       {
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           kind: "default",
-          dataSourceId: dataSource.id,
+          dataSourceId: { [Op.in]: dataSources.map((ds) => ds.id) },
         },
       }
     );
-
-    return dataSourceViews[0] ?? null;
-  }
-
-  static async fetchByProjectId(
-    auth: Authenticator,
-    projectId: ModelId
-  ): Promise<DataSourceViewResource | null> {
-    // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByProjectId(
-      auth,
-      projectId
-    );
-    if (!dataSource) {
-      return null;
-    }
-
-    const dataSourceViews = await this.baseFetch(
-      auth,
-      {},
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          kind: "default",
-          dataSourceId: dataSource.id,
-        },
-      }
-    );
-
-    return dataSourceViews[0] ?? null;
   }
 
   static async search(

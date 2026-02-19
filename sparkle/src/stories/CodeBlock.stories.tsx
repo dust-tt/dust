@@ -4,7 +4,7 @@ import React from "react";
 import { CodeBlock } from "../index_with_tw_base";
 
 const meta: Meta<typeof CodeBlock> = {
-  title: "Components/CodeBlock",
+  title: "Conversation/CodeBlock",
   component: CodeBlock,
   argTypes: {
     children: {

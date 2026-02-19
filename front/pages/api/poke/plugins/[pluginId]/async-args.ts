@@ -1,20 +1,19 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type {
   AsyncEnumValues,
   EnumValues,
   SupportedResourceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+} from "@app/types/poke/plugins";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface PokeGetPluginAsyncArgsResponseBody {
   asyncArgs: Record<

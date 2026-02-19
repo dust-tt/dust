@@ -1,15 +1,34 @@
-import { cva } from "class-variance-authority";
-import React, { ReactNode } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Button,
   Card,
-  CardProps,
+  type CardProps,
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
+import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { type ReactNode } from "react";
+
+const citationVariants = cva(
+  "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",
+  {
+    variants: {
+      hasImage: {
+        // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
+        // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
+        false: "s-pt-[min(8%,theme(spacing.3))]",
+        true: "s-border-0 s-p-0",
+      },
+    },
+    defaultVariants: {
+      hasImage: false,
+    },
+  }
+);
 
 type CitationProps = CardProps & {
   children: React.ReactNode;
@@ -29,22 +48,30 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
     },
     ref
   ) => {
-    const hasDescription = React.useMemo(() => {
+    const { hasDescription, hasImage } = React.useMemo(() => {
       const childrenArray = React.Children.toArray(children);
-      return childrenArray.some(
-        (child) =>
-          React.isValidElement(child) && child.type === CitationDescription
-      );
+      return {
+        hasDescription: childrenArray.some(
+          (child) =>
+            React.isValidElement(child) && child.type === CitationDescription
+        ),
+        hasImage: childrenArray.some(
+          (child) => React.isValidElement(child) && child.type === CitationImage
+        ),
+      };
     }, [children]);
 
     // IMPORTANT: The order of elements is crucial for event handling.
     // The CitationDescription must always come after other elements to ensure
     // proper event propagation (especially for the close button's click events).
     // If auto-inserting a description, it must be appended after children.
+    // Skip auto-insertion for CitationImage children since they're self-contained.
     const contentWithDescription = (
       <>
         {children}
-        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
+        {!hasDescription && !hasImage && (
+          <CitationDescription>&nbsp;</CitationDescription>
+        )}
       </>
     );
     const cardButton = (
@@ -52,13 +79,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         ref={ref}
         variant={variant}
         size="sm"
-        className={cn(
-          "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",
-          // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
-          // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
-          "s-pt-[min(8%,theme(spacing.3))]",
-          className
-        )}
+        className={cn(citationVariants({ hasImage }), className)}
         {...props}
       >
         {contentWithDescription}
@@ -132,7 +153,8 @@ const CitationGrid = React.forwardRef<HTMLDivElement, CitationGridProps>(
 );
 CitationGrid.displayName = "CitationGrid";
 
-interface CitationCloseProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface CitationCloseProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
@@ -143,7 +165,7 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
       <Button
         ref={ref}
         variant="ghost"
-        size="mini"
+        size="icon"
         className={className}
         icon={XMarkIcon}
         onClick={(e) => {
@@ -158,40 +180,31 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
 
 CitationClose.displayName = "CitationClose";
 
-interface CitationImageProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CitationImageProps {
   imgSrc: string;
+  alt?: string;
+  title?: string;
+  downloadUrl?: string;
+  isLoading?: boolean;
+  onClose?: () => void;
+  className?: string;
 }
 
 const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
-  ({ imgSrc, className, ...props }, ref) => {
+  ({ imgSrc, alt, title, downloadUrl, isLoading, onClose, className }, ref) => {
     return (
-      <div
+      <ImagePreview
         ref={ref}
-        className={cn(
-          "s-absolute s-inset-0",
-          "s-bg-cover s-bg-center",
-          "s-rounded-xl",
-          "s-overflow-hidden",
-          "[mask-image:radial-gradient(white,black)]",
-          className
-        )}
-        style={{
-          backgroundImage: `url(${imgSrc})`,
-        }}
-        {...props}
-      >
-        <div
-          className={cn(
-            "s-absolute s-inset-0",
-            "s-z-0 s-h-full s-w-full",
-            "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
-            "s-backdrop-blur-sm",
-            "s-transition s-duration-200",
-            "group-hover:s-bg-primary-200/70 group-hover:s-backdrop-blur-none dark:group-hover:s-bg-primary-200-night/70",
-            "group-active:s-bg-primary-100/60 dark:group-active:s-bg-primary-100-night/60"
-          )}
-        />
-      </div>
+        imgSrc={imgSrc}
+        alt={alt}
+        title={title}
+        downloadUrl={downloadUrl}
+        isLoading={isLoading}
+        onClose={onClose ? () => onClose() : undefined}
+        className={className}
+        variant="embedded"
+        titlePosition="bottom"
+      />
     );
   }
 );
@@ -259,7 +272,8 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
 );
 CitationTitle.displayName = "CitationTitle";
 
-interface CitationDescriptionProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CitationDescriptionProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
 

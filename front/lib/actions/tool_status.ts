@@ -2,9 +2,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import type { UserResource } from "@app/lib/resources/user_resource";
-import type { AgentMessageType } from "@app/types";
-import { assertNever, isNumberOrBoolean, isString } from "@app/types";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 
 export interface ToolInputContext {
   agentId: string;
@@ -42,8 +42,7 @@ export async function getExecutionStatusFromConfig(
       const user = auth.user();
 
       if (user) {
-        const userHasAlwaysApproved = await hasUserAlwaysApprovedTool({
-          user,
+        const userHasAlwaysApproved = await hasUserAlwaysApprovedTool(auth, {
           mcpServerId: actionConfiguration.toolServerId,
           functionCallName: actionConfiguration.name,
         });
@@ -91,22 +90,18 @@ export async function getExecutionStatusFromConfig(
   }
 }
 
-const TOOLS_VALIDATION_WILDCARD = "*";
-
-const getToolsValidationKey = (mcpServerId: string) =>
-  `toolsValidations:${mcpServerId}`;
-
 // The function call name is scoped by MCP servers so that the same tool name on different servers
 // does not conflict, which is why we use it here instead of the tool name.
-export async function setUserAlwaysApprovedTool({
-  user,
-  mcpServerId,
-  functionCallName,
-}: {
-  user: UserResource;
-  mcpServerId: string;
-  functionCallName: string;
-}) {
+export async function setUserAlwaysApprovedTool(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    functionCallName,
+  }: {
+    mcpServerId: string;
+    functionCallName: string;
+  }
+) {
   if (!functionCallName) {
     throw new Error("functionCallName is required");
   }
@@ -114,32 +109,26 @@ export async function setUserAlwaysApprovedTool({
     throw new Error("mcpServerId is required");
   }
 
-  await user.upsertMetadataArray(
-    getToolsValidationKey(mcpServerId),
-    functionCallName
-  );
+  const user = auth.getNonNullableUser();
 
-  // TODO(adrien): move from metadata to tool approvals table
-  /**
-    await user.createToolApproval(auth, {
-      mcpServerId,
-      toolName: functionCallName,
-      agentId: null,
-      argsAndValues: null,
-    });
-  }
-  */
+  await user.createToolApproval(auth, {
+    mcpServerId,
+    toolName: functionCallName,
+    agentId: null,
+    argsAndValues: null,
+  });
 }
 
-export async function hasUserAlwaysApprovedTool({
-  user,
-  mcpServerId,
-  functionCallName,
-}: {
-  user: UserResource;
-  mcpServerId: string;
-  functionCallName: string;
-}) {
+export async function hasUserAlwaysApprovedTool(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    functionCallName,
+  }: {
+    mcpServerId: string;
+    functionCallName: string;
+  }
+) {
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
@@ -148,13 +137,14 @@ export async function hasUserAlwaysApprovedTool({
     throw new Error("functionCallName is required");
   }
 
-  const metadata = await user.getMetadataAsArray(
-    getToolsValidationKey(mcpServerId)
-  );
-  return (
-    metadata.includes(functionCallName) ||
-    metadata.includes(TOOLS_VALIDATION_WILDCARD)
-  );
+  const user = auth.getNonNullableUser();
+
+  return user.hasApprovedTool(auth, {
+    mcpServerId,
+    toolName: functionCallName,
+    agentId: null,
+    argsAndValues: null,
+  });
 }
 
 // Extracts the values of the approval-requiring arguments from the tool inputs,

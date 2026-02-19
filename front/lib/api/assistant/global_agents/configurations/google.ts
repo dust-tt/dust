@@ -3,30 +3,23 @@ import {
   globalAgentGuidelines,
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
-import {
-  _getDefaultWebActionsForGlobalAgent,
-  _getInteractiveContentToolConfiguration,
-} from "@app/lib/api/assistant/global_agents/tools";
+import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
+import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { AgentConfigurationType } from "@app/types";
-import {
-  GEMINI_3_PRO_MODEL_CONFIG,
-  GLOBAL_AGENTS_SID,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { GEMINI_3_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export function _getGeminiProGlobalAgent({
   auth,
   settings,
-  webSearchBrowseMCPServerView,
-  interactiveContentMCPServerView,
+  mcpServerViews,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettingsModel | null;
-  webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -45,6 +38,7 @@ export function _getGeminiProGlobalAgent({
     name: metadata.name,
     description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -58,13 +52,10 @@ export function _getGeminiProGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView,
-      }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],

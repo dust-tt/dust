@@ -1,11 +1,8 @@
-import { useRouter } from "next/router";
-
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { clientFetch } from "@app/lib/egress/client";
-import type {
-  MembershipInvitationTypeWithLink,
-  WorkspaceType,
-} from "@app/types";
+import { useAppRouter } from "@app/lib/platform";
+import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
+import type { WorkspaceType } from "@app/types/user";
 
 import { makeColumnsForInvitations } from "./columns";
 
@@ -18,8 +15,7 @@ export function InvitationsDataTable({
   owner,
   invitations,
 }: InvitationsDataTableProps) {
-  const router = useRouter();
-
+  const router = useAppRouter();
   async function onResendInvitation(invitationId: string): Promise<void> {
     if (!window.confirm("Are you sure you want to resend this invitation?")) {
       return;

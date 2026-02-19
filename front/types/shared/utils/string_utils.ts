@@ -1,5 +1,6 @@
-import type { Result } from "../result";
-import { Err, Ok } from "../result";
+import { replaceContentNodeMarkdownWithQuotedTitle } from "@app/lib/content_nodes";
+import { replaceMentionsWithAt } from "@app/lib/mentions/format";
+import removeMarkdown from "remove-markdown";
 
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode
@@ -47,6 +48,12 @@ export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
 }
 
+export function stripMarkdown(text: string): string {
+  return removeMarkdown(
+    replaceMentionsWithAt(replaceContentNodeMarkdownWithQuotedTitle(text))
+  );
+}
+
 // Conjugates a verb based on a count, assuming it only comes down to adding an
 // "s" at the end, which does not work for all words (e.g., do -> does != dos).
 export function conjugate(count: number) {
@@ -92,20 +99,6 @@ export function truncate(text: string, length: number, omission = "...") {
     : text;
 }
 
-export function safeParseJSON(str: string): Result<object | null, Error> {
-  try {
-    const res = JSON.parse(str);
-
-    return new Ok(res);
-  } catch (err) {
-    if (err instanceof Error) {
-      return new Err(err);
-    }
-
-    return new Err(new Error("Unexpected error: JSON parsing failed."));
-  }
-}
-
 export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
 }
@@ -146,16 +139,8 @@ export function asDisplayToolName(name?: string | null) {
     return "";
   }
 
-  // TODO(skills-GA 2026-01-13): remove this renaming (all 3 below) once we GA.
-  // The tool will be named interactive content, Frames the skill
-  // that wraps these tools with React client-side code generation.
-
   if (name === "interactive_content") {
     return "Create Frames";
-  }
-
-  if (name === "deep_dive") {
-    return "Go deep";
   }
 
   if (name === "slideshow") {

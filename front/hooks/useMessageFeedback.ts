@@ -1,16 +1,15 @@
-import { useCallback } from "react";
-
+import { useConversationFeedbacks } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useConversationFeedbacks } from "@app/lib/swr/conversations";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
 
 export function useMessageFeedback({
   owner,
   conversationId,
 }: {
   owner: LightWorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
   const { mutateReactions } = useConversationFeedbacks({

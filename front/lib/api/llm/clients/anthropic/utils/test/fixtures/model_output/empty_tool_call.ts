@@ -1,6 +1,6 @@
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 export const emptyToolCallModelEvents: BetaRawMessageStreamEvent[] = [
   {
@@ -24,6 +24,8 @@ export const emptyToolCallModelEvents: BetaRawMessageStreamEvent[] = [
         output_tokens: 0,
         service_tier: "standard",
         server_tool_use: null,
+        inference_geo: null,
+        iterations: null,
       },
       container: null,
       context_management: null,
@@ -65,6 +67,7 @@ export const emptyToolCallModelEvents: BetaRawMessageStreamEvent[] = [
       cache_read_input_tokens: 0,
       output_tokens: 20,
       server_tool_use: null,
+      iterations: null,
     },
   },
   {

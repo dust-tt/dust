@@ -1,12 +1,11 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { RequestMethod } from "node-mocks-http";
-import { createMocks } from "node-mocks-http";
-import { expect, it, vi } from "vitest";
-
 import { SECRET_KEY_PREFIX } from "@app/lib/resources/key_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { RequestMethod } from "node-mocks-http";
+import { createMocks } from "node-mocks-http";
+import { expect, it, vi } from "vitest";
 
 // Mock the getSession function to return the user without going through the workos session
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
@@ -42,7 +41,10 @@ type NextHandler = (
 export const createPublicApiMockRequest = async ({
   systemKey = false,
   method = "GET",
-}: { systemKey?: boolean; method?: RequestMethod } = {}) => {
+}: {
+  systemKey?: boolean;
+  method?: RequestMethod;
+} = {}) => {
   const workspace = await WorkspaceFactory.basic();
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
   const key = systemKey

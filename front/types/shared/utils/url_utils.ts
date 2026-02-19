@@ -13,6 +13,7 @@ export const validateUrl = (
   try {
     url = new URL(urlString);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     return { valid: false, standardized: null };
   }
@@ -95,3 +96,69 @@ export const validateRelativePath = (
     return { valid: false, sanitizedPath: null };
   }
 };
+
+// Pre-compiled regex for IPv4 validation.
+const IPV4_REGEX = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+/**
+ * Check if a string is an IP address (IPv4 or IPv6).
+ * Uses strict validation - only accepts properly formatted IP addresses.
+ */
+export function isIpAddress(host: string): boolean {
+  // IPv4: exactly four octets, each 0-255
+  const ipv4Match = IPV4_REGEX.exec(host);
+  if (ipv4Match) {
+    return [ipv4Match[1], ipv4Match[2], ipv4Match[3], ipv4Match[4]].every(
+      (octet) => {
+        const num = parseInt(octet, 10);
+        return num >= 0 && num <= 255;
+      }
+    );
+  }
+
+  // IPv6 in URL format (with brackets)
+  if (host.startsWith("[") && host.endsWith("]")) {
+    const inner = host.slice(1, -1);
+    // Validate by trying to parse as URL
+    try {
+      new URL(`http://[${inner}]`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Raw IPv6 without brackets (contains colons, no dots except IPv4-mapped)
+  if (host.includes(":") && !host.startsWith("[")) {
+    try {
+      new URL(`http://[${host}]`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Normalize a hostname: lowercase and remove trailing dot.
+ */
+function normalizeHostname(host: string): string {
+  return host.toLowerCase().replace(/\.$/, "");
+}
+
+/**
+ * Check if a host is under a domain.
+ * - Exact match: host === domain
+ * - Subdomain match: host ends with '.' + domain
+ */
+export function isHostUnderDomain(host: string, domain: string): boolean {
+  const normalizedHost = normalizeHostname(host);
+  const normalizedDomain = normalizeHostname(domain);
+
+  return (
+    normalizedHost === normalizedDomain ||
+    normalizedHost.endsWith("." + normalizedDomain)
+  );
+}

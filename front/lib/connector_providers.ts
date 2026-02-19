@@ -1,9 +1,7 @@
-import type {
-  ConnectorProvider,
-  PlanType,
-  WhitelistableFeature,
-} from "@app/types";
-import { assertNever } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type ConnectorProviderConfiguration = {
   name: string;
@@ -117,7 +115,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isDeletable: false,
   },
   dust_project: {
-    name: "Dust Project",
+    name: "Conversations & Context",
     connectorProvider: "dust_project",
     status: "preview",
     isDeletable: false,

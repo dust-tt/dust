@@ -1,12 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type {
-  WorkflowExecutionDescription,
-  WorkflowHandle,
-} from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
-import { z } from "zod";
-
 import {
   GARBAGE_COLLECT_QUEUE_NAME,
   QUEUE_NAME,
@@ -26,6 +17,14 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { getNotionWorkflowId, normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type {
+  WorkflowExecutionDescription,
+  WorkflowHandle,
+} from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
+import { z } from "zod";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -100,31 +99,30 @@ export async function launchNotionSyncWorkflow(
       },
       "launchNotionSyncWorkflow: Notion sync workflow already running."
     );
-    return;
-  }
-
-  await client.workflow.start(notionSyncWorkflow, {
-    args: [
-      {
-        connectorId,
-        startFromTs,
-        forceResync,
+  } else {
+    await client.workflow.start(notionSyncWorkflow, {
+      args: [
+        {
+          connectorId,
+          startFromTs,
+          forceResync,
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+      workflowId: getNotionWorkflowId(connectorId, "sync"),
+      searchAttributes: {
+        connectorId: [connectorId],
       },
-    ],
-    taskQueue: QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, "sync"),
-    searchAttributes: {
-      connectorId: [connectorId],
-    },
-    memo: {
-      connectorId,
-    },
-  });
+      memo: {
+        connectorId,
+      },
+    });
 
-  logger.info(
-    { workspaceId: dataSourceConfig.workspaceId },
-    "launchNotionSyncWorkflow: Started Notion sync workflow."
-  );
+    logger.info(
+      { workspaceId: dataSourceConfig.workspaceId },
+      "launchNotionSyncWorkflow: Started Notion sync workflow."
+    );
+  }
 
   await launchNotionGarbageCollectorWorkflow(connectorId);
   await launchProcessDatabaseUpsertQueueWorkflow(connectorId);

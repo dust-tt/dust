@@ -1,4 +1,5 @@
-import type { WebCrawlerConfigurationType } from "@app/types";
+import { clientFetch } from "@app/lib/egress/client";
+import type { WebCrawlerConfigurationType } from "@app/types/connectors/webcrawler";
 
 export async function updateWebsite(
   workspaceId: string,
@@ -6,8 +7,7 @@ export async function updateWebsite(
   dataSourceId: string,
   config: WebCrawlerConfigurationType
 ) {
-  // eslint-disable-next-line no-restricted-globals
-  const res = await fetch(
+  const res = await clientFetch(
     `/api/w/${workspaceId}/spaces/${spaceId}/data_sources/${dataSourceId}/configuration`,
     {
       method: "PATCH",
@@ -29,8 +29,7 @@ export async function createWebsite(
   name: string,
   config: WebCrawlerConfigurationType
 ) {
-  // eslint-disable-next-line no-restricted-globals
-  const res = await fetch(
+  const res = await clientFetch(
     `/api/w/${workspaceId}/spaces/${spaceId}/data_sources`,
     {
       method: "POST",

@@ -1,29 +1,28 @@
-import type { ChangeEvent } from "react";
-import { useState } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
   FileFormatCategory,
   FileUseCase,
   FileUseCaseMetadata,
-  LightWorkspaceType,
-  Result,
   SupportedFileContentType,
-} from "@app/types";
+} from "@app/types/files";
 import {
   DEFAULT_FILE_CONTENT_TYPE,
   ensureFileSizeByFormatCategory,
-  Err,
   getFileFormatCategory,
-  isAPIErrorResponse,
   isSupportedFileContentType,
   MAX_FILE_SIZES,
-  Ok,
-} from "@app/types";
+  resolveFileContentType,
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { ChangeEvent } from "react";
+import { useState } from "react";
 
 export interface FileBlob {
   contentType: SupportedFileContentType;
@@ -150,7 +149,9 @@ export function useFileUploaderService({
 
     return selectedFiles.reduce<Result<FileBlob, FileBlobUploadError>[]>(
       (acc, file) => {
-        const fileType = file.type || DEFAULT_FILE_CONTENT_TYPE;
+        const fileType =
+          resolveFileContentType(file.type, file.name) ||
+          DEFAULT_FILE_CONTENT_TYPE;
 
         // File objects are immutable - we can't modify their properties directly.
         // When we need to change the name or type, we must create a new File object.
@@ -223,6 +224,7 @@ export function useFileUploaderService({
               )
             );
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
           } catch (err) {
             return new Err(new FileBlobUploadError(fileBlob.file));
           }

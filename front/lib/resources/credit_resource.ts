@@ -1,12 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { Op, Sequelize } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
@@ -15,14 +6,24 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
-import type { Result } from "@app/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 import type { CreditDisplayData } from "@app/types/credits";
 import {
   CREDIT_EXPIRATION_DAYS,
   CREDIT_TYPES,
   isCreditType,
 } from "@app/types/credits";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { formatUserFullName } from "@app/types/user";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}
@@ -338,27 +339,38 @@ export class CreditResource extends BaseResource<CreditModel> {
       expirationDate ??
       new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
-    const [, affectedRows] = await CreditModel.update(
-      {
-        startDate: effectiveStartDate,
-        expirationDate: effectiveExpirationDate,
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-          startDate: null,
+    try {
+      const [, affectedRows] = await CreditModel.update(
+        {
+          startDate: effectiveStartDate,
+          expirationDate: effectiveExpirationDate,
         },
-        transaction,
-        returning: true,
+        {
+          where: {
+            id: this.id,
+            workspaceId: this.workspaceId,
+            startDate: null,
+          },
+          transaction,
+          returning: true,
+        }
+      );
+
+      if (affectedRows.length === 0) {
+        return new Err(new Error("Credit already started"));
       }
-    );
 
-    if (affectedRows.length === 0) {
-      return new Err(new Error("Credit already started"));
+      return new Ok(undefined);
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        return new Err(
+          new Error(
+            "A credit with the same type and dates already exists for this workspace."
+          )
+        );
+      }
+      throw error;
     }
-
-    return new Ok(undefined);
   }
 
   async freeze(

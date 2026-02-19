@@ -1,10 +1,6 @@
-import chunk from "lodash/chunk";
-import type { WhereOptions } from "sequelize";
-
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -18,16 +14,21 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type {
   ConversationError,
   ConversationWithoutContentType,
-  ModelId,
-  Result,
-} from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import chunk from "lodash/chunk";
+import type { WhereOptions } from "sequelize";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -43,7 +44,10 @@ async function destroyActionsRelatedResources(
 
   // Destroy MCP action output items.
   await AgentMCPActionOutputItemModel.destroy({
-    where: { agentMCPActionId: mcpActions.map((a) => a.id) },
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentMCPActionId: mcpActions.map((a) => a.id),
+    },
   });
 
   // Destroy the actions.
@@ -52,16 +56,30 @@ async function destroyActionsRelatedResources(
   });
 }
 
-async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
+async function destroyMessageRelatedResources(
+  auth: Authenticator,
+  messageIds: ModelId[]
+) {
+  const owner = auth.getNonNullableWorkspace();
+
   await MessageReactionModel.destroy({
-    where: { messageId: messageIds },
+    where: {
+      workspaceId: owner.id,
+      messageId: messageIds,
+    },
   });
   await MentionModel.destroy({
-    where: { messageId: messageIds },
+    where: {
+      workspaceId: owner.id,
+      messageId: messageIds,
+    },
   });
   // TODO: We should also destroy the parent message
   await MessageModel.destroy({
-    where: { id: messageIds },
+    where: {
+      workspaceId: owner.id,
+      id: messageIds,
+    },
   });
 }
 
@@ -142,13 +160,18 @@ export async function destroyConversation(
     conversationId: string;
   }
 ): Promise<Result<void, ConversationError>> {
+  const owner = auth.getNonNullableWorkspace();
+
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
       conversationId,
       // We skip access checks as some conversations associated with deleted spaces may have become
       // inaccessible, yet we want to be able to delete them here.
-      { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
+      {
+        includeDeleted: true,
+        dangerouslySkipPermissionFiltering: true,
+      }
     );
   if (conversationRes.isErr()) {
     return new Err(conversationRes.error);
@@ -166,7 +189,7 @@ export async function destroyConversation(
     ],
     where: {
       conversationId: conversation.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: owner.id,
     },
   });
 
@@ -189,16 +212,23 @@ export async function destroyConversation(
     await destroyActionsRelatedResources(auth, agentMessageIds);
 
     await UserMessageModel.destroy({
-      where: { id: userMessageIds },
+      where: {
+        id: userMessageIds,
+        workspaceId: owner.id,
+      },
     });
-    await AgentStepContentModel.destroy({
-      where: { agentMessageId: agentMessageIds },
+    await AgentStepContentResource.deleteByAgentMessageIds(auth, {
+      agentMessageIds,
     });
     await AgentMessageFeedbackModel.destroy({
-      where: { agentMessageId: agentMessageIds },
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: owner.id,
+      },
     });
 
     const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
       agentMessageId: agentMessageIds,
     };
     await AgentMessageSkillModel.destroy({
@@ -206,29 +236,44 @@ export async function destroyConversation(
     });
 
     await AgentMessageModel.destroy({
-      where: { id: agentMessageIds },
+      where: {
+        id: agentMessageIds,
+        workspaceId: owner.id,
+      },
     });
 
     await destroyContentFragments(auth, messageAndContentFragmentIds, {
       conversationId: conversation.sId,
     });
 
-    await destroyMessageRelatedResources(messageIds);
+    await destroyMessageRelatedResources(auth, messageIds);
   }
 
   await destroyConversationDataSource(auth, { conversation });
 
+  await UserProjectDigestModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      sourceConversationId: conversation.id,
+    },
+  });
+
   await ConversationSkillModel.destroy({
-    where: { conversationId: conversation.id },
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
   });
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,
-    includeTest: true,
     dangerouslySkipPermissionFiltering: true,
   });
   if (c) {
-    await c.delete(auth);
+    const r = await c.delete(auth);
+    if (r.isErr()) {
+      throw r.error;
+    }
   }
 
   return new Ok(undefined);

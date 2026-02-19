@@ -1,6 +1,3 @@
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-
 import { getConnectorManager } from "@connectors/connectors";
 import {
   fixParentsConsistency,
@@ -11,12 +8,15 @@ import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/go
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { markFolderAsVisited } from "@connectors/connectors/google_drive/temporal/activities";
 import {
+  launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleFixParentsConsistencyWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
-import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
-import { getMimeTypesToSync } from "@connectors/connectors/google_drive/temporal/mime_types";
+import {
+  getMimeTypesToSync,
+  MIME_TYPES_TO_EXPORT,
+} from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   _getLabels,
   getAuthObject,
@@ -25,6 +25,7 @@ import {
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
 import {
   GoogleDriveConfigModel,
@@ -44,32 +45,33 @@ import {
   FILE_ATTRIBUTES_TO_FETCH,
   googleDriveIncrementalSyncWorkflowId,
 } from "@connectors/types";
+import { isString } from "@connectors/types/shared/utils/general";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse } from "googleapis-common";
 
-const getConnector = async (args: GoogleDriveCommandType["args"]) => {
-  if (!args.wId) {
-    throw new Error("Missing --wId argument");
-  }
-  if (!args.dsId && !args.connectorId) {
-    throw new Error("Missing --dsId or --connectorId argument");
+async function getConnector(args: GoogleDriveCommandType["args"]) {
+  if (!args.connectorId && !(args.wId && args.dsId)) {
+    throw new Error("Missing --connectorId or --wId and --dsId argument");
   }
 
   // We retrieve by data source name as we can have multiple data source with the same provider for
   // a given workspace.
-  const connector = await ConnectorModel.findOne({
-    where: {
-      workspaceId: `${args.wId}`,
-      type: "google_drive",
-      ...(args.dsId ? { dataSourceId: args.dsId } : {}),
-      ...(args.connectorId ? { id: args.connectorId } : {}),
-    },
-  });
+  let connector;
+  if (args.connectorId) {
+    connector = await ConnectorResource.fetchById(args.connectorId);
+  } else if (args.dsId && args.wId) {
+    connector = await ConnectorResource.findByDataSource({
+      workspaceId: args.wId,
+      dataSourceId: args.dsId,
+    });
+  }
 
   if (!connector) {
     throw new Error("Could not find connector");
   }
 
   return connector;
-};
+}
 
 export const google_drive = async ({
   command,
@@ -294,6 +296,18 @@ export const google_drive = async ({
       return { success: true };
     }
 
+    case "start-full-sync": {
+      const connector = await getConnector(args);
+      const folderId = isString(args.folderId) ? args.folderId : undefined;
+      await throwOnError(
+        launchGoogleDriveFullSyncWorkflow(
+          connector.id,
+          null,
+          folderId ? [folderId] : null
+        )
+      );
+      return { success: true };
+    }
     case "start-incremental-sync": {
       const connector = await getConnector(args);
       await throwOnError(
@@ -365,12 +379,14 @@ export const google_drive = async ({
       const authCredentials = await getAuthObject(connector.connectionId);
       const drive = await getDriveClient(authCredentials);
 
-      // Get all folders configured to sync
-      const foldersToSync = await GoogleDriveFoldersModel.findAll({
-        where: {
-          connectorId: connector.id,
-        },
-      });
+      // Determine root folder IDs to export
+      const rootFolderIds: string[] = args.rootFolderId
+        ? [args.rootFolderId]
+        : (
+            await GoogleDriveFoldersModel.findAll({
+              where: { connectorId: connector.id },
+            })
+          ).map((f) => f.folderId);
 
       interface FolderNode {
         id: string;
@@ -494,8 +510,8 @@ export const google_drive = async ({
       };
 
       // Build tree for each root folder
-      for (const folder of foldersToSync) {
-        const rootNode = await buildFolderTree(folder.folderId);
+      for (const folderId of rootFolderIds) {
+        const rootNode = await buildFolderTree(folderId);
         folderStructure.push(rootNode);
       }
 

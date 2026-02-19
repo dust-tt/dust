@@ -1,3 +1,6 @@
+import { useAppRouter } from "@app/lib/platform";
+import type { PlanType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -6,9 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-
-import type { LightWorkspaceType, PlanType } from "@app/types";
 
 type DocumentLimitPopupProps = {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export const DocumentLimitPopup = ({
   onClose,
   owner,
 }: DocumentLimitPopupProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md">

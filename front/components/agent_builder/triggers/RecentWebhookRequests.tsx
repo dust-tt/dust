@@ -1,20 +1,20 @@
+import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ContentMessageInline,
   Label,
+  LinkWrapper,
   Markdown,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import Link from "next/link";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
-
-import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source";
-import type { LightWorkspaceType } from "@app/types";
 
 import { WebhookRequestStatusBadge } from "./WebhookRequestStatusBadge";
 
@@ -108,12 +108,12 @@ function RecentWebhookRequestsContent({
             Some requests were rate limited.
             <br />
             Contact{" "}
-            <Link
+            <LinkWrapper
               href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
               className="underline"
             >
               support@dust.tt
-            </Link>{" "}
+            </LinkWrapper>{" "}
             to increase the rate limit for this trigger.
           </p>
         </div>

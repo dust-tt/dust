@@ -1,11 +1,10 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentModel> {
   declare createdAt: CreationOptional<Date>;
@@ -74,20 +73,25 @@ AgentStepContentModel.init(
     indexes: [
       {
         unique: true,
-        fields: ["agentMessageId", "step", "index", "version"],
-        name: "agent_step_contents_agent_message_id_step_index_versioned",
+        concurrently: true,
+        fields: ["workspaceId", "agentMessageId", "step", "index", "version"],
+        name: "agent_step_contents_workspace_agent_message_step_index_version",
       },
       {
+        concurrently: true,
         fields: ["agentMessageId"],
-        name: "agent_step_contents_agent_message_id_idx",
       },
       {
-        fields: ["workspaceId"],
+        concurrently: true,
+        fields: ["workspaceId", "agentMessageId"],
+      },
+      {
+        concurrently: true,
+        fields: ["workspaceId", "agentMessageId"],
         name: "agent_step_contents_workspace_id_idx",
-      },
-      {
-        fields: ["type"],
-        name: "agent_step_contents_type_idx",
+        where: {
+          type: "function_call",
+        },
       },
     ],
   }

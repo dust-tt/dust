@@ -1,5 +1,0 @@
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "ignoreCommand": "bash -lc 'echo \"Branch: $VERCEL_GIT_COMMIT_REF\"; case \"$VERCEL_GIT_COMMIT_REF\" in *play*) exit 1 ;; *) exit 0 ;; esac'"
-}

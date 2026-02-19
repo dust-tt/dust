@@ -9,6 +9,9 @@ export interface RequireEnvironmentOptions {
   /** If provided, shows a confirmation prompt after selection.
    * Use {name} as placeholder for the selected environment name. */
   confirmMessage?: string;
+  /** If true, skip restoring terminal after interactive selection.
+   * Useful when more interactive prompts follow. Default: false */
+  skipRestoreTerminal?: boolean;
 }
 
 // Require an environment to exist, returning error if not found
@@ -29,7 +32,9 @@ export async function requireEnvironment(
 
     // Restore terminal to cooked mode after interactive prompt
     // This prevents terminal corruption when spawning subprocesses like zellij
-    restoreTerminal();
+    if (!options?.skipRestoreTerminal) {
+      restoreTerminal();
+    }
 
     if (!selected) {
       return Err(new CommandError("No environment selected"));

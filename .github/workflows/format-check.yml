@@ -1,0 +1,38 @@
+name: Format/lint checks (Biome)
+
+on:
+  push:
+    paths:
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.json"
+      - "**/*.css"
+      - "**/*.scss"
+      - "**/*.md"
+      - "**/*.yml"
+      - "**/*.yaml"
+      - biome.json
+      - "**/biome.json"
+      - package.json
+      - package-lock.json
+      - .github/workflows/format-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+          cache-dependency-path: ./package-lock.json
+      - name: Install Biome
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format Check
+        run: npm run biome

@@ -1,3 +1,20 @@
+import {
+  CHART_HEIGHT,
+  LATENCY_LEGEND,
+  LATENCY_PALETTE,
+} from "@app/components/agent_builder/observability/constants";
+import type { LatencyPoint } from "@app/components/agent_builder/observability/hooks";
+import { useLatencyData } from "@app/components/agent_builder/observability/hooks";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
+import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 import { useMemo } from "react";
 import {
   CartesianGrid,
@@ -8,24 +25,6 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import {
-  CHART_HEIGHT,
-  LATENCY_LEGEND,
-  LATENCY_PALETTE,
-} from "@app/components/agent_builder/observability/constants";
-import type { LatencyPoint } from "@app/components/agent_builder/observability/hooks";
-import { useLatencyData } from "@app/components/agent_builder/observability/hooks";
-import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
-import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
-import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
-import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
-import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface LatencyData extends LatencyPoint {
   date: string;
@@ -196,6 +195,7 @@ export function LatencyChart({
         />
         <Line
           type="monotone"
+          strokeWidth={2}
           dataKey="avgLatencyMs"
           name="Average time to complete output"
           className={LATENCY_PALETTE.average}
@@ -205,6 +205,7 @@ export function LatencyChart({
         />
         <Line
           type="monotone"
+          strokeWidth={2}
           dataKey="percentilesLatencyMs"
           name="Median time to complete output"
           className={LATENCY_PALETTE.median}

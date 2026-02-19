@@ -1,5 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-
 import {
   getBrandInternalId,
   getCategoryInternalId,
@@ -24,6 +22,7 @@ import type {
   ModelId,
 } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
 
 /**
  * Retrieve all nodes selected by the admin when setting permissions.

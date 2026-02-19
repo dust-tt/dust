@@ -1,15 +1,3 @@
-import { escape } from "html-escaper";
-import fromPairs from "lodash/fromPairs";
-import sortBy from "lodash/sortBy";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -21,12 +9,31 @@ import {
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
-import { Err, md5, normalizeError, Ok } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { md5 } from "@app/types/shared/utils/hashing";
+import type {
+  LightWorkspaceType,
+  UserProviderType,
+  UserType,
+} from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
+import { escape } from "html-escaper";
+import fromPairs from "lodash/fromPairs";
+import sortBy from "lodash/sortBy";
+import type {
+  Attributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 export interface SearchMembersPaginationParams {
   offset: number;
@@ -35,6 +42,27 @@ export interface SearchMembersPaginationParams {
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
+const TOOLS_VALIDATION_WILDCARD = "*";
+
+const USER_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+type CachedUserData = {
+  id: ModelId;
+  sId: string;
+  provider: UserProviderType;
+  providerId: string | null;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
+  createdAt: number;
+  updatedAt: number;
+  isDustSuperUser: boolean;
+  workOSUserId: string | null;
+  lastLoginAt: number | null;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -48,6 +76,19 @@ export class UserResource extends BaseResource<UserModel> {
 
   constructor(model: ModelStatic<UserModel>, blob: Attributes<UserModel>) {
     super(UserModel, blob);
+  }
+
+  protected async update(
+    blob: Partial<Attributes<UserModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+
+    if (this.workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(this.workOSUserId);
+    }
+
+    return result;
   }
 
   static async makeNew(
@@ -65,6 +106,12 @@ export class UserResource extends BaseResource<UserModel> {
     const lowerCaseEmail = blob.email?.toLowerCase();
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
     const userResource = new this(UserModel, user.get());
+
+    if (userResource.workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(
+        userResource.workOSUserId
+      );
+    }
 
     // Update user search index across all workspaces.
     const workflowResult = await launchIndexUserSearchWorkflow({
@@ -131,17 +178,93 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByWorkOSUserId(
-    workOSUserId: string,
-    transaction?: Transaction
-  ): Promise<UserResource | null> {
+  private static readonly userByWorkOSIdCacheKeyResolver = (
+    workOSUserId: string
+  ) => `user:workos:${workOSUserId}`;
+
+  private static async _fetchByWorkOSUserIdUncached(
+    workOSUserId: string
+  ): Promise<CachedUserData | null> {
     const user = await UserModel.findOne({
       where: {
         workOSUserId,
       },
-      transaction,
     });
-    return user ? new UserResource(UserModel, user.get()) : null;
+    if (!user) {
+      return null;
+    }
+    return {
+      id: user.id,
+      sId: user.sId,
+      provider: user.provider,
+      providerId: user.providerId,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.name,
+      image: user.imageUrl,
+      createdAt: user.createdAt.getTime(),
+      updatedAt: user.updatedAt.getTime(),
+      isDustSuperUser: user.isDustSuperUser,
+      workOSUserId: user.workOSUserId,
+      lastLoginAt: user.lastLoginAt?.getTime() ?? null,
+    };
+  }
+
+  private static fetchByWorkOSUserIdCached = cacheWithRedis(
+    UserResource._fetchByWorkOSUserIdUncached,
+    UserResource.userByWorkOSIdCacheKeyResolver,
+    { ttlMs: USER_CACHE_TTL_MS, cacheNullValues: false }
+  );
+
+  private static invalidateUserByWorkOSIdCache = invalidateCacheWithRedis(
+    UserResource._fetchByWorkOSUserIdUncached,
+    UserResource.userByWorkOSIdCacheKeyResolver
+  );
+
+  private static fromCachedData(data: CachedUserData): UserResource {
+    const blob: Attributes<UserModel> = {
+      id: data.id,
+      sId: data.sId,
+      provider: data.provider,
+      providerId: data.providerId,
+      username: data.username,
+      email: data.email,
+      name: data.fullName,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      imageUrl: data.image,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt),
+      isDustSuperUser: data.isDustSuperUser,
+      workOSUserId: data.workOSUserId,
+      lastLoginAt: data.lastLoginAt ? new Date(data.lastLoginAt) : null,
+    };
+    return new UserResource(UserModel, blob);
+  }
+
+  static async fetchByWorkOSUserId(
+    workOSUserId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
+    // Bypass cache when transaction is provided for transactional consistency
+    if (transaction) {
+      const user = await UserModel.findOne({
+        where: {
+          workOSUserId,
+        },
+        transaction,
+      });
+      return user ? new UserResource(UserModel, user.get()) : null;
+    }
+
+    const cached = await this.fetchByWorkOSUserIdCached(workOSUserId);
+    if (!cached) {
+      return null;
+    }
+
+    return this.fromCachedData(cached);
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
@@ -321,6 +444,8 @@ export class UserResource extends BaseResource<UserModel> {
     email: string,
     workOSUserId: string | null
   ) {
+    const oldWorkOSUserId = this.workOSUserId;
+
     firstName = escape(firstName);
     if (lastName) {
       lastName = escape(lastName);
@@ -334,7 +459,10 @@ export class UserResource extends BaseResource<UserModel> {
       workOSUserId,
     });
 
-    // Update user search index across all workspaces.
+    if (oldWorkOSUserId && oldWorkOSUserId !== workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(oldWorkOSUserId);
+    }
+
     const workflowResult = await launchIndexUserSearchWorkflow({
       userId: this.sId,
     });
@@ -352,11 +480,25 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async setWorkOSUserId(workOSUserId: string | null) {
+    const oldWorkOSUserId = this.workOSUserId;
+
+    const result = await this.update({
+      workOSUserId,
+    });
+
+    if (oldWorkOSUserId && oldWorkOSUserId !== workOSUserId) {
+      await UserResource.invalidateUserByWorkOSIdCache(oldWorkOSUserId);
+    }
+
+    return result;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    await this.deleteAllMetadata();
+    await this.deleteAllMetadata(auth);
 
     try {
       await this.model.destroy({
@@ -473,7 +615,7 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async deleteAllMetadata() {
+  async deleteAllMetadata(auth: Authenticator) {
     await UserMetadataModel.destroy({
       where: {
         userId: this.id,
@@ -483,6 +625,7 @@ export class UserResource extends BaseResource<UserModel> {
     await UserToolApprovalModel.destroy({
       where: {
         userId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
@@ -515,10 +658,8 @@ export class UserResource extends BaseResource<UserModel> {
   /**
    * Create a tool approval for this user.
    *
-   * For low stake (tool-level): pass agentId=null and argsAndValues=null
+   * For low stake (tool-level): omit agentId and argsAndValues (both default to null)
    * For medium stake (per-agent, per-args): pass agentId and argsAndValues
-   *
-   * Uses upsert to avoid duplicates.
    */
   async createToolApproval(
     auth: Authenticator,
@@ -527,24 +668,37 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId = null,
       argsAndValues = null,
-    }: Pick<
-      CreationAttributes<UserToolApprovalModel>,
-      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
-    >
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
   ): Promise<void> {
     // Sort keys to ensure consistent JSONB storage for unique constraint.
     const sortedArgsAndValues = argsAndValues
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    await UserToolApprovalModel.upsert({
+    const argsAndValuesMd5 = md5(JSON.stringify(sortedArgsAndValues));
+
+    const findClause = {
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: this.id,
       mcpServerId,
       toolName,
-      agentId,
-      argsAndValues: sortedArgsAndValues,
-      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+      agentId: agentId ?? { [Op.is]: null },
+      argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : { [Op.is]: null },
+    };
+
+    await UserToolApprovalModel.findOrCreate({
+      where: findClause,
+      defaults: {
+        ...findClause,
+        agentId,
+        argsAndValues: sortedArgsAndValues,
+        argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : null,
+      },
     });
   }
 
@@ -555,25 +709,34 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId = null,
       argsAndValues = null,
-    }: Pick<
-      CreationAttributes<UserToolApprovalModel>,
-      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
-    >
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
   ): Promise<boolean> {
     const sortedArgsAndValues = argsAndValues
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    const whereClause: WhereOptions<UserToolApprovalModel> = {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      userId: this.id,
-      mcpServerId,
-      toolName,
-      agentId,
-      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
-    };
+    // For low-stake tools (agentId=null, argsAndValues=null), also check for
+    // wildcard "*" approval which approves all tools for the server.
+    const isLowStake = agentId === null && argsAndValues === null;
+
     const approval = await UserToolApprovalModel.findOne({
-      where: whereClause,
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: this.id,
+        mcpServerId,
+        toolName: isLowStake
+          ? { [Op.in]: [toolName, TOOLS_VALIDATION_WILDCARD] }
+          : toolName,
+        agentId: agentId ?? { [Op.is]: null },
+        argsAndValuesMd5: argsAndValues
+          ? md5(JSON.stringify(sortedArgsAndValues))
+          : { [Op.is]: null },
+      },
     });
 
     return approval !== null;

@@ -1,3 +1,7 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { isWarehousesBrowseType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDocumentIcon } from "@app/lib/content_nodes";
 import {
   Citation,
   CitationIcons,
@@ -6,14 +10,9 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { isWarehousesBrowseType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getDocumentIcon } from "@app/lib/content_nodes";
-
 export function MCPDataWarehousesBrowseDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const browseResult = toolOutput
     ?.filter(isWarehousesBrowseType)
@@ -27,9 +26,9 @@ export function MCPDataWarehousesBrowseDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? "Browsing Data Warehouses"
           : "Browse Data Warehouses"
       }
@@ -42,7 +41,7 @@ export function MCPDataWarehousesBrowseDetails({
           </div>
         )}
 
-        {viewType === "sidebar" && data.length > 0 && (
+        {displayContext === "sidebar" && data.length > 0 && (
           <div className="flex flex-col gap-2">
             {data.map((node, index) => {
               const IconComponent = getDocumentIcon(node.connectorProvider);

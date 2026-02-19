@@ -1,6 +1,4 @@
-import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
-import type { NextApiResponse } from "next";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Authenticator } from "@app/lib/auth";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -13,8 +11,10 @@ import {
 import { statsDClient } from "@app/logger/statsDClient";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
+import type { NextApiResponse } from "next";
 
 /**
  * @swagger
@@ -187,9 +187,9 @@ async function handler(
 
   if (result.isErr()) {
     return apiError(req, res, {
-      status_code: 500,
+      status_code: 400,
       api_error: {
-        type: "webhook_processing_error",
+        type: "invalid_request_error",
         message: result.error.message,
       },
     });

@@ -1,11 +1,10 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { PublicFrameRenderer } from "@app/components/assistant/conversation/interactive_content/PublicFrameRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import Custom404 from "@app/pages/404";
-import { frameContentType } from "@app/types";
+import { frameContentType } from "@app/types/files";
+import { Spinner } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentContainerProps {
   shareToken: string;

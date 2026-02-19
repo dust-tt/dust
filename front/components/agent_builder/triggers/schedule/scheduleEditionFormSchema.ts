@@ -1,11 +1,10 @@
-import { z } from "zod";
-
 import type {
   AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { UserTypeWithWorkspaces } from "@app/types";
+import type { UserType } from "@app/types/user";
+import { z } from "zod";
 
 export const ScheduleFormSchema = z.object({
   name: z
@@ -50,7 +49,7 @@ export function formValuesToScheduleTriggerData({
 }: {
   schedule: ScheduleFormValues;
   editTrigger: AgentBuilderTriggerType | null;
-  user: UserTypeWithWorkspaces;
+  user: UserType;
 }): AgentBuilderScheduleTriggerType {
   return {
     sId: editTrigger?.kind === "schedule" ? editTrigger.sId : undefined,

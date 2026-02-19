@@ -4,22 +4,22 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Advanced features for Notion workspace management shown to admins",
     stage: "on_demand",
   },
+  analytics_csv_export: {
+    description:
+      "CSV export buttons on analytics Top Agents and Top Users tables",
+    stage: "rolling_out",
+  },
   anthropic_vertex_fallback: {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
-  dust_edge_global_agent: {
-    description:
-      "Access to dust-edge global agent that we use internally to test other models on dust",
+  custom_model_feature: {
+    description: "Access to custom models loaded from external config",
     stage: "dust_only",
   },
-  dust_quick_global_agent: {
+  dust_internal_global_agents: {
     description:
-      "Access to dust-quick global agent running Gemini 3 with minimal reasoning",
-    stage: "dust_only",
-  },
-  dust_oai_global_agent: {
-    description: "Access to dust-oai global agent running OpenAI models",
+      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, dust-next and their variants)",
     stage: "dust_only",
   },
   notion_private_integration: {
@@ -30,9 +30,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
-  agent_tool_outputs_analytics: {
-    description:
-      "Store agent tool outputs (e.g., retrieved documents) in Elasticsearch for analytics",
+  agent_builder_copilot: {
+    description: "Enable Copilot in Agent Builder",
+    stage: "dust_only",
+  },
+  agent_builder_shrink_wrap: {
+    description: "Enable 'Turn into agent' button on agent messages",
     stage: "dust_only",
   },
   ashby_tool: {
@@ -182,6 +185,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
+  snowflake_tool: {
+    description: "Snowflake MCP tool for read-only SQL queries",
+    stage: "on_demand",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -204,14 +211,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  skills: {
-    description:
-      "Access to Skills, which are packaged sets of instructions and tools",
-    stage: "dust_only",
-  },
-  skills_similar_display: {
-    description:
-      "Display similar skills when creating a new skill to avoid duplicates",
+  project_butler: {
+    description: "Enable user project digest generation in project spaces",
     stage: "dust_only",
   },
   projects: {
@@ -222,8 +223,40 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  phone_trial_paywall: {
-    description: "Phone verification during trial sign-up",
+  statuspage_tool: {
+    description: "Statuspage MCP tool for incident management",
+    stage: "on_demand",
+  },
+  sandbox_tools: {
+    description:
+      "Sandbox MCP tool for executing code in isolated Linux containers",
+    stage: "dust_only",
+  },
+  dust_no_spa: {
+    description: "Disable redirect to Dust SPA",
+    stage: "on_demand",
+  },
+  dust_spa: {
+    description: "Redirect all pages to Dust SPA",
+    stage: "dust_only",
+  },
+  run_agent_child_stream: {
+    description:
+      "Subscribe directly to child agent EventSource in run_agent action " +
+      "details (potential optimization undergoing tests)",
+    stage: "dust_only",
+  },
+  run_tools_from_prompt: {
+    description: "Enable /run command to directly call tools without LLM",
+    stage: "dust_only",
+  },
+  conversations_slack_notifications: {
+    description: "Enable slack notifications",
+    stage: "dust_only",
+  },
+  agent_bound_loop_rendering: {
+    description:
+      "When rendering conversations for agents, only show the current agent's agentic loop. Other agents' messages are shown as user messages with system tags.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

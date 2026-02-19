@@ -1,0 +1,543 @@
+import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import Custom404 from "@dust-tt/front/pages/404";
+import { Spinner, safeLazy } from "@dust-tt/sparkle";
+import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
+import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
+import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
+import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
+import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
+import { ConversationRouterLayout } from "@spa/app/layouts/ConversationRouterLayout";
+import { DustAppRouterLayout } from "@spa/app/layouts/DustAppRouterLayout";
+import { SpaceRouterLayout } from "@spa/app/layouts/SpaceRouterLayout";
+import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
+import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
+import { IndexPage } from "@spa/app/pages/IndexPage";
+import { Suspense } from "react";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+  useLocation,
+  useParams,
+} from "react-router-dom";
+
+// Redirect component that preserves query params and hash
+function RedirectWithSearchParams({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}${location.hash}`} replace />;
+}
+
+// Redirect component for /builder/assistants/:aId -> /builder/agents/:aId
+function AssistantAgentRedirect() {
+  const { aId } = useParams();
+  const location = useLocation();
+  return (
+    <Navigate
+      to={`../builder/agents/${aId}${location.search}${location.hash}`}
+      replace
+    />
+  );
+}
+
+// Redirect /poke/* to the poke app (poke.dust.tt)
+function PokeRedirect() {
+  const location = useLocation();
+  const pokePath = location.pathname.replace(/^\/poke/, "");
+  const pokeOrigin = window.location.origin.replace("://app.", "://poke.");
+  window.location.replace(
+    `${pokeOrigin}${pokePath}${location.search}${location.hash}`
+  );
+  return null;
+}
+
+// Loading fallback component
+function PageLoader() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center z-10">
+      <Spinner size="sm" />
+    </div>
+  );
+}
+
+// Helper to wrap lazy components with Suspense.
+function withSuspense(
+  importFn: () => Promise<Record<string, unknown>>,
+  exportName: string
+) {
+  const LazyComponent = safeLazy(() =>
+    importFn().then((module) => ({
+      default: module[exportName] as React.ComponentType,
+    }))
+  );
+  return function SuspenseWrapper() {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <LazyComponent />
+      </Suspense>
+    );
+  };
+}
+
+// Workspace pages (lazy loaded)
+const AnalyticsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
+  "AnalyticsPage"
+);
+const APIKeysPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/developers/APIKeysPage"),
+  "APIKeysPage"
+);
+const CreditsUsagePage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/developers/CreditsUsagePage"
+    ),
+  "CreditsUsagePage"
+);
+const ProvidersPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/developers/ProvidersPage"
+    ),
+  "ProvidersPage"
+);
+const SecretsPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/developers/SecretsPage"),
+  "SecretsPage"
+);
+const LabsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/labs/LabsPage"),
+  "LabsPage"
+);
+const AgentMCPActionsPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/labs/mcp_actions/AgentMCPActionsPage"
+    ),
+  "AgentMCPActionsPage"
+);
+const MCPActionsDashboardPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/labs/mcp_actions/MCPActionsDashboardPage"
+    ),
+  "MCPActionsDashboardPage"
+);
+const TranscriptsPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/labs/TranscriptsPage"),
+  "TranscriptsPage"
+);
+const MembersPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
+  "MembersPage"
+);
+const ProfilePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/ProfilePage"),
+  "ProfilePage"
+);
+const ManageSubscriptionPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/subscription/ManageSubscriptionPage"
+    ),
+  "ManageSubscriptionPage"
+);
+const PaymentProcessingPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/subscription/PaymentProcessingPage"
+    ),
+  "PaymentProcessingPage"
+);
+const SubscriptionPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/subscription/SubscriptionPage"
+    ),
+  "SubscriptionPage"
+);
+const WorkspaceSettingsPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/WorkspaceSettingsPage"),
+  "WorkspaceSettingsPage"
+);
+
+// Conversation pages (lazy loaded)
+const ConversationPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/conversation/ConversationPage"),
+  "ConversationPage"
+);
+const SpaceConversationsPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/conversation/SpaceConversationsPage"
+    ),
+  "SpaceConversationsPage"
+);
+
+// Space pages (lazy loaded)
+const DataSourceViewPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/DataSourceViewPage"),
+  "DataSourceViewPage"
+);
+const SpaceActionsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/SpaceActionsPage"),
+  "SpaceActionsPage"
+);
+const SpaceAppsListPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/SpaceAppsListPage"),
+  "SpaceAppsListPage"
+);
+const SpaceCategoryPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/SpaceCategoryPage"),
+  "SpaceCategoryPage"
+);
+const SpacePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/SpacePage"),
+  "SpacePage"
+);
+const SpacesRedirectPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/SpacesRedirectPage"),
+  "SpacesRedirectPage"
+);
+const SpaceTriggersPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/SpaceTriggersPage"),
+  "SpaceTriggersPage"
+);
+
+// App pages (lazy loaded)
+const AppSettingsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/apps/AppSettingsPage"),
+  "AppSettingsPage"
+);
+const AppSpecificationPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/spaces/apps/AppSpecificationPage"),
+  "AppSpecificationPage"
+);
+const AppViewPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/apps/AppViewPage"),
+  "AppViewPage"
+);
+const DatasetPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/apps/DatasetPage"),
+  "DatasetPage"
+);
+const DatasetsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/apps/DatasetsPage"),
+  "DatasetsPage"
+);
+const NewDatasetPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/apps/NewDatasetPage"),
+  "NewDatasetPage"
+);
+const RunPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/apps/RunPage"),
+  "RunPage"
+);
+const RunsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/spaces/apps/RunsPage"),
+  "RunsPage"
+);
+
+// Builder/Agents pages (lazy loaded)
+const CreateAgentPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/agents/CreateAgentPage"),
+  "CreateAgentPage"
+);
+const EditAgentPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/builder/agents/EditAgentPage"),
+  "EditAgentPage"
+);
+const ManageAgentsPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/agents/ManageAgentsPage"),
+  "ManageAgentsPage"
+);
+const NewAgentPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/builder/agents/NewAgentPage"),
+  "NewAgentPage"
+);
+
+// Builder/Skills pages (lazy loaded)
+const CreateSkillPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/skills/CreateSkillPage"),
+  "CreateSkillPage"
+);
+const EditSkillPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/builder/skills/EditSkillPage"),
+  "EditSkillPage"
+);
+const ManageSkillsPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/skills/ManageSkillsPage"),
+  "ManageSkillsPage"
+);
+
+// Onboarding pages (lazy loaded)
+const WelcomePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/WelcomePage"),
+  "WelcomePage"
+);
+const SubscribePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/SubscribePage"),
+  "SubscribePage"
+);
+const TrialPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/TrialPage"),
+  "TrialPage"
+);
+const TrialEndedPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/TrialEndedPage"),
+  "TrialEndedPage"
+);
+const VerifyPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/VerifyPage"),
+  "VerifyPage"
+);
+const JoinPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/JoinPage"),
+  "JoinPage"
+);
+const LoginErrorPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/LoginErrorPage"),
+  "LoginErrorPage"
+);
+const InviteChoosePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/InviteChoosePage"),
+  "InviteChoosePage"
+);
+const MaintenancePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/MaintenancePage"),
+  "MaintenancePage"
+);
+const NoWorkspacePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/NoWorkspacePage"),
+  "NoWorkspacePage"
+);
+const SsoEnforcedPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/SsoEnforcedPage"),
+  "SsoEnforcedPage"
+);
+
+const router = createBrowserRouter(
+  [
+    { path: "/", element: <IndexPage /> },
+    {
+      path: "/w/:wId",
+      element: <WorkspacePage />,
+      children: [
+        // Routes WITH shared AppContentLayout (navigation, sidebar, title bar)
+        {
+          element: <AppContentRouterLayout />,
+          children: [
+            // Index - redirect to conversation/new
+            {
+              index: true,
+              element: <RedirectWithSearchParams to="conversation/new" />,
+            },
+
+            // Profile
+            { path: "me", element: <ProfilePage /> },
+
+            // Conversation (wrapped with ConversationLayout)
+            {
+              path: "conversation",
+              element: <ConversationRouterLayout />,
+              children: [
+                { path: ":cId", element: <ConversationPage /> },
+                {
+                  path: "space/:spaceId",
+                  element: <SpaceConversationsPage />,
+                },
+              ],
+            },
+
+            {
+              element: <AdminRouterLayout />,
+              children: [
+                { path: "members", element: <MembersPage /> },
+                { path: "workspace", element: <WorkspaceSettingsPage /> },
+                { path: "analytics", element: <AnalyticsPage /> },
+                { path: "subscription", element: <SubscriptionPage /> },
+                {
+                  path: "subscription/manage",
+                  element: <ManageSubscriptionPage />,
+                },
+                {
+                  path: "subscription/payment_processing",
+                  element: <PaymentProcessingPage />,
+                },
+                { path: "developers/api-keys", element: <APIKeysPage /> },
+                {
+                  path: "developers/credits-usage",
+                  element: <CreditsUsagePage />,
+                },
+                { path: "developers/providers", element: <ProvidersPage /> },
+                { path: "developers/dev-secrets", element: <SecretsPage /> },
+              ],
+            },
+
+            // Labs
+            { path: "labs", element: <LabsPage /> },
+            { path: "labs/transcripts", element: <TranscriptsPage /> },
+            { path: "labs/mcp_actions", element: <MCPActionsDashboardPage /> },
+            {
+              path: "labs/mcp_actions/:agentId",
+              element: <AgentMCPActionsPage />,
+            },
+
+            // Spaces
+            {
+              path: "spaces/:spaceId",
+              element: <SpaceRouterLayout />,
+              children: [
+                { index: true, element: <SpacePage /> },
+                { path: "categories/actions", element: <SpaceActionsPage /> },
+                { path: "categories/apps", element: <SpaceAppsListPage /> },
+                {
+                  path: "categories/triggers",
+                  element: <SpaceTriggersPage />,
+                },
+                {
+                  path: "categories/:category",
+                  element: <SpaceCategoryPage />,
+                },
+                {
+                  path: "categories/:category/data_source_views/:dataSourceViewId",
+                  element: <DataSourceViewPage />,
+                },
+              ],
+            },
+
+            // Apps
+            {
+              path: "spaces/:spaceId/apps/:aId",
+              element: <DustAppRouterLayout />,
+              children: [
+                { index: true, element: <AppViewPage /> },
+                { path: "settings", element: <AppSettingsPage /> },
+                { path: "specification", element: <AppSpecificationPage /> },
+                { path: "datasets", element: <DatasetsPage /> },
+                { path: "datasets/new", element: <NewDatasetPage /> },
+                { path: "datasets/:name", element: <DatasetPage /> },
+                { path: "runs", element: <RunsPage /> },
+                { path: "runs/:runId", element: <RunPage /> },
+              ],
+            },
+
+            // Builder (pages with sidebar layout)
+            { path: "builder/agents", element: <ManageAgentsPage /> },
+            { path: "builder/agents/create", element: <CreateAgentPage /> },
+            { path: "builder/skills", element: <ManageSkillsPage /> },
+
+            // Spaces redirect (inside layout to preserve sidebar)
+            { path: "spaces", element: <SpacesRedirectPage /> },
+          ],
+        },
+
+        // Routes WITHOUT AppContentLayout (no sidebar/navigation chrome)
+
+        // Builder (full-page editors without sidebar)
+        { path: "builder/agents/new", element: <NewAgentPage /> },
+        { path: "builder/agents/:aId", element: <EditAgentPage /> },
+        { path: "builder/skills/new", element: <CreateSkillPage /> },
+        { path: "builder/skills/:sId", element: <EditSkillPage /> },
+
+        // Legacy assistants -> agents redirects
+        {
+          path: "builder/assistants",
+          element: <RedirectWithSearchParams to="../builder/agents" />,
+        },
+        {
+          path: "builder/assistants/create",
+          element: <RedirectWithSearchParams to="../builder/agents/create" />,
+        },
+        {
+          path: "builder/assistants/new",
+          element: <RedirectWithSearchParams to="../builder/agents/new" />,
+        },
+        {
+          path: "builder/assistants/dust",
+          element: (
+            <RedirectWithSearchParams to="../builder/agents#?selectedTab=global" />
+          ),
+        },
+        {
+          path: "builder/assistants/:aId",
+          element: <AssistantAgentRedirect />,
+        },
+
+        // Onboarding (paywall-whitelisted: accessible even when canUseProduct is false)
+        {
+          path: "welcome",
+          element: <WelcomePage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "subscribe",
+          element: <SubscribePage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "trial",
+          element: <TrialPage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "trial-ended",
+          element: <TrialEndedPage />,
+          handle: { requireCanUseProduct: false },
+        },
+        {
+          path: "verify",
+          element: <VerifyPage />,
+          handle: { requireCanUseProduct: false },
+        },
+      ],
+    },
+    {
+      element: <AuthenticatedPage />,
+      children: [
+        { path: "/invite-choose", element: <InviteChoosePage /> },
+        { path: "/no-workspace", element: <NoWorkspacePage /> },
+        { path: "/sso-enforced", element: <SsoEnforcedPage /> },
+      ],
+    },
+    // Redirect /poke/* to the poke app (e.g., poke.dust.tt)
+    { path: "/poke/*", element: <PokeRedirect /> },
+    {
+      element: <UnauthenticatedPage />,
+      children: [
+        { path: "/w/:wId/join", element: <JoinPage /> },
+        { path: "/login-error", element: <LoginErrorPage /> },
+        { path: "/maintenance", element: <MaintenancePage /> },
+        { path: "*", element: <Custom404 /> },
+      ],
+    },
+  ],
+  {
+    basename: import.meta.env?.VITE_BASE_PATH ?? "",
+  }
+);
+
+export default function App() {
+  return (
+    <AppReadyProvider>
+      <RegionProvider>
+        <RootLayout>
+          <ErrorBoundary fallback={<GlobalErrorFallback />}>
+            <RouterProvider router={router} />
+          </ErrorBoundary>
+        </RootLayout>
+      </RegionProvider>
+    </AppReadyProvider>
+  );
+}

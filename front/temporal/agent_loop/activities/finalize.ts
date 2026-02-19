@@ -1,3 +1,7 @@
+import {
+  sendEmailReplyOnCompletion,
+  sendEmailReplyOnError,
+} from "@app/lib/api/assistant/email/email_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
@@ -20,6 +24,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
+    sendEmailReplyOnCompletion(authType, agentLoopArgs),
   ]);
 }
 
@@ -33,6 +38,11 @@ export async function finalizeCancelledAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    sendEmailReplyOnError(
+      authType,
+      agentLoopArgs,
+      "Agent execution was cancelled."
+    ),
   ]);
 }
 
@@ -47,5 +57,10 @@ export async function finalizeErroredAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    sendEmailReplyOnError(
+      authType,
+      agentLoopArgs,
+      `Agent execution failed: ${error.message}`
+    ),
   ]);
 }

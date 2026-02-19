@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import {
   GithubCodeDirectoryModel,
   GithubCodeFileModel,
@@ -16,8 +14,11 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
-export class GithubConnectorStrategy implements ConnectorProviderStrategy<"github"> {
+export class GithubConnectorStrategy
+  implements ConnectorProviderStrategy<"github">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<GithubConnectorStateModel>,

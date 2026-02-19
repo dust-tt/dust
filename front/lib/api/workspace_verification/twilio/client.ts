@@ -1,6 +1,5 @@
-import Twilio from "twilio";
-
 import config from "@app/lib/api/config";
+import Twilio from "twilio";
 
 let twilioClientInstance: ReturnType<typeof Twilio> | null = null;
 

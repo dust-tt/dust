@@ -1,13 +1,12 @@
-import type { RequestMethod } from "node-mocks-http";
-import { assert, describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { RequestMethod } from "node-mocks-http";
+import { assert, describe, expect, it } from "vitest";
 
 import handler from "./tools";
 
@@ -70,7 +69,6 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       systemView: systemView1,
       space: globalSpace,
     });
-    assert(mcpServerView1, "MCP server view not found");
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
@@ -81,7 +79,6 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       systemView: systemView2,
       space: globalSpace,
     });
-    assert(mcpServerView2, "MCP server view not found");
 
     // Create conversation relationships - one enabled, one disabled
     await ConversationResource.upsertMCPServerViews(auth, {

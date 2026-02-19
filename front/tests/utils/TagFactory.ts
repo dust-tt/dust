@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 export class TagFactory {
   static async create(

@@ -1,81 +1,96 @@
-import {
-  Button,
-  CardGrid,
-  ContentMessage,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-  LoadingBlock,
-  Separator,
-  Spinner,
-  ValueCard,
-} from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
-
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-
-// Dynamic imports for chart components to exclude recharts from server bundle
-const DatasourceRetrievalTreemapChart = dynamic(
-  () =>
-    import("@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart").then(
-      (mod) => mod.DatasourceRetrievalTreemapChart
-    ),
-  { ssr: false }
-);
-const LatencyChart = dynamic(
-  () =>
-    import("@app/components/agent_builder/observability/charts/LatencyChart").then(
-      (mod) => mod.LatencyChart
-    ),
-  { ssr: false }
-);
-const SourceChart = dynamic(
-  () =>
-    import("@app/components/agent_builder/observability/charts/SourceChart").then(
-      (mod) => mod.SourceChart
-    ),
-  { ssr: false }
-);
-const ToolUsageChart = dynamic(
-  () =>
-    import("@app/components/agent_builder/observability/charts/ToolUsageChart").then(
-      (mod) => mod.ToolUsageChart
-    ),
-  { ssr: false }
-);
-const UsageMetricsChart = dynamic(
-  () =>
-    import("@app/components/agent_builder/observability/charts/UsageMetricsChart").then(
-      (mod) => mod.UsageMetricsChart
-    ),
-  { ssr: false }
-);
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  CardGrid,
+  ContentMessage,
+  LoadingBlock,
+  Spinner,
+  safeLazy,
+  ValueCard,
+} from "@dust-tt/sparkle";
+import { Suspense } from "react";
+
+// Dynamic imports for chart components to exclude recharts from server bundle
+
+const DatasourceRetrievalTreemapChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart"
+  ).then((mod) => ({
+    default: mod.DatasourceRetrievalTreemapChart,
+  }))
+);
+const LatencyChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/LatencyChart"
+  ).then((mod) => ({
+    default: mod.LatencyChart,
+  }))
+);
+const SourceChart = safeLazy(() =>
+  import("@app/components/agent_builder/observability/charts/SourceChart").then(
+    (mod) => ({
+      default: mod.SourceChart,
+    })
+  )
+);
+const SkillUsageChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/SkillUsageChart"
+  ).then((mod) => ({
+    default: mod.SkillUsageChart,
+  }))
+);
+const ToolUsageChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/ToolUsageChart"
+  ).then((mod) => ({
+    default: mod.ToolUsageChart,
+  }))
+);
+const ToolExecutionTimeChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/ToolExecutionTimeChart"
+  ).then((mod) => ({
+    default: mod.ToolExecutionTimeChart,
+  }))
+);
+const UsageMetricsChart = safeLazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/UsageMetricsChart"
+  ).then((mod) => ({
+    default: mod.UsageMetricsChart,
+  }))
+);
+
+function ChartFallback() {
+  return (
+    <div className="h-64 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
+  );
+}
 
 interface AgentObservabilityProps {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   agentConfigurationId: string;
   isCustomAgent: boolean;
 }
 
 export function AgentObservability({
-  workspaceId,
+  owner,
   agentConfigurationId,
   isCustomAgent,
 }: AgentObservabilityProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId });
 
   const isTimeRangeMode = mode === "timeRange";
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
-    workspaceId,
+    workspaceId: owner.sId,
     agentConfigurationId,
     period,
     version:
@@ -91,23 +106,14 @@ export function AgentObservability({
 
   const { summaryText, isSummaryLoading, isSummaryError, refetchSummary } =
     useAgentObservabilitySummary({
-      workspaceId,
+      workspaceId: owner.sId,
       agentConfigurationId,
       days: period,
       disabled: !isTimeRangeMode,
     });
 
   return (
-    <TabContentLayout
-      title="Insights"
-      headerAction={
-        <SharedObservabilityFilterSelector
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-      }
-    >
+    <div className="flex flex-col gap-6 pt-4">
       <TabContentChildSectionLayout title="Overview">
         {isTimeRangeMode && (
           <div className="mb-4">
@@ -193,67 +199,61 @@ export function AgentObservability({
                 </div>
               }
             />
-            <ValueCard
-              title="Reactions"
-              className="h-24"
-              content={
-                <div className="flex flex-row gap-4 text-lg">
-                  {isCustomAgent && agentAnalytics?.feedbacks ? (
-                    <>
-                      <div className="flex flex-row items-center">
-                        <HandThumbUpIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
-                        <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
-                      </div>
-                      <div className="flex flex-row items-center">
-                        <HandThumbDownIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
-                        <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
-                      </div>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              }
-            />
           </CardGrid>
         )}
       </TabContentChildSectionLayout>
 
       <TabContentChildSectionLayout title="Details">
-        <UsageMetricsChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-        <Separator />
-        <SourceChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-        {featureFlags.includes("agent_tool_outputs_analytics") && (
-          <>
-            <Separator />
-            <DatasourceRetrievalTreemapChart
-              workspaceId={workspaceId}
-              agentConfigurationId={agentConfigurationId}
-              isCustomAgent={isCustomAgent}
-            />
-          </>
-        )}
-        <Separator />
-        <ToolUsageChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-        <Separator />
-        <LatencyChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
+        <Suspense fallback={<ChartFallback />}>
+          <UsageMetricsChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <SourceChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <LatencyChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <DatasourceRetrievalTreemapChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <ToolUsageChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <SkillUsageChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
+        <Suspense fallback={<ChartFallback />}>
+          <ToolExecutionTimeChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </Suspense>
       </TabContentChildSectionLayout>
-    </TabContentLayout>
+    </div>
   );
 }

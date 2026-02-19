@@ -1,19 +1,16 @@
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  CoreAPISearchTagsResponse,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { CoreAPI } from "@app/types";
+import type { CoreAPISearchTagsResponse } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const PostTagSearchBodySchema = t.type({
   query: t.string,

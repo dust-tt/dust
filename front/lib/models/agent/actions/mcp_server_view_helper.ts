@@ -1,6 +1,3 @@
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -10,7 +7,9 @@ import {
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 export const destroyMCPServerViewDependencies = async (
   auth: Authenticator,

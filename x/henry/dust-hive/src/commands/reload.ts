@@ -2,39 +2,36 @@ import { unlink } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
 import { isErrnoException } from "../lib/errors";
 import { logger } from "../lib/logger";
-import { getZellijLayoutPath } from "../lib/paths";
+import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
 import { openCommand } from "./open";
 
-export const reloadCommand = withEnvironment("reload", async (env) => {
-  const sessionName = `dust-hive-${env.name}`;
+interface ReloadOptions {
+  unifiedLogs?: boolean | undefined;
+}
+
+export const reloadCommand = withEnvironment("reload", async (env, options: ReloadOptions = {}) => {
+  const multiplexer = await getConfiguredMultiplexer();
+  const sessionName = getSessionName(env.name);
 
   logger.step("Killing existing session...");
 
   // Kill session first (stops it)
-  const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await killProc.exited;
+  await multiplexer.killSession(sessionName);
 
   // Then delete it (removes from list)
-  const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await deleteProc.exited;
+  await multiplexer.deleteSession(sessionName);
 
   // Remove old layout
-  const layoutPath = getZellijLayoutPath();
+  const layoutPath = multiplexer.getLayoutPath("layout.kdl");
   try {
     await unlink(layoutPath);
   } catch (error) {
     if (isErrnoException(error) && error.code === "ENOENT") {
-      return openCommand(env.name);
+      return openCommand(env.name, { unifiedLogs: options.unifiedLogs });
     }
     throw error;
   }
 
   // Open fresh
-  return openCommand(env.name);
+  return openCommand(env.name, { unifiedLogs: options.unifiedLogs });
 });

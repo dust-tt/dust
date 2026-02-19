@@ -1,25 +1,23 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import uniq from "lodash/uniq";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getSkillIconSuggestion } from "@app/lib/api/skill/icon_suggestion";
+import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isBuilder } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isBuilder } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import uniq from "lodash/uniq";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetSkillsResponseBody = {
   skills: SkillType[];
@@ -80,17 +78,6 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("skills")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Skills are not enabled for this workspace.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const { withRelations, status, globalSpaceOnly } = req.query;
@@ -107,7 +94,7 @@ async function handler(
       }
       const skillStatus = statusValidation.right;
 
-      const skills = await SkillResource.listSkills(auth, {
+      const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
       });
@@ -245,11 +232,20 @@ async function handler(
         })
       );
 
-      const requestedSpaceIds =
+      const spaceIdsFromMcpServerViews =
         await MCPServerViewResource.listSpaceRequirementsByIds(
           auth,
           mcpServerViewIds
         );
+
+      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
+        (dsv) => dsv.space.id
+      );
+
+      const requestedSpaceIds = uniq([
+        ...spaceIdsFromMcpServerViews,
+        ...spaceIdsFromAttachedKnowledge,
+      ]);
 
       const extendedSkill = body.extendedSkillId
         ? await SkillResource.fetchById(auth, body.extendedSkillId)

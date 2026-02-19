@@ -1,3 +1,9 @@
+import { getPriceAsString } from "@app/lib/client/subscription";
+import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import { usePurchaseCredits } from "@app/lib/swr/credits";
+import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
   Checkbox,
@@ -19,13 +25,6 @@ import {
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
-
-import { getPriceAsString } from "@app/lib/client/subscription";
-import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
-import { usePurchaseCredits } from "@app/lib/swr/credits";
-import { assertNever } from "@app/types";
-import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
-import type { StripePricingData } from "@app/types/stripe/pricing";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 
@@ -261,27 +260,29 @@ export function BuyCreditDialog({
               >
                 Credits amount
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                  $
-                </span>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="10"
-                  value={amountDollars}
-                  onChange={(e) => setAmountDollars(e.target.value)}
-                  min="0"
-                  max={maxAmountDollars ?? undefined}
-                  step="1"
-                  className="pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  isError={amountExceedsMax}
-                  message={
-                    amountExceedsMax
-                      ? `Maximum purchase amount is ${maxAmountFormatted}`
-                      : undefined
-                  }
-                />
+              <div className="flex flex-col gap-1">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
+                    $
+                  </span>
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="10"
+                    value={amountDollars}
+                    onChange={(e) => setAmountDollars(e.target.value)}
+                    min="0"
+                    max={maxAmountDollars ?? undefined}
+                    step="1"
+                    className="pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    isError={amountExceedsMax}
+                  />
+                </div>
+                {amountExceedsMax && (
+                  <span className="text-xs text-foreground-warning dark:text-foreground-warning-night">
+                    Maximum purchase amount is {maxAmountFormatted}
+                  </span>
+                )}
               </div>
             </div>
 

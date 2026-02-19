@@ -1,5 +1,12 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import config from "@app/lib/api/config";
+import type { AppType } from "@app/types/app";
+import type { RunConfig, RunType } from "@app/types/run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ClipboardIcon,
@@ -13,17 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 const cleanUpConfig = (config: RunConfig) => {
   if (!config) {
@@ -59,7 +56,7 @@ export function ViewAppAPIModal({
   const cURLRequest = (type: "run") => {
     switch (type) {
       case "run":
-        return `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs \\
+        return `curl ${config.getApiBaseUrl()}/api/v1/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs \\
     -H "Authorization: Bearer YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -118,8 +115,9 @@ export function ViewAppAPIModal({
               <Page.P>
                 <ul className="text-gray-500">
                   <li>
-                    spaceId:{" "}
-                    <span className="font-bold">{app.space.sId}</span>{" "}
+                    spaceId: <span className="font-bold">
+                      {app.space.sId}
+                    </span>{" "}
                   </li>
                   <li>
                     appId: <span className="font-bold">{app.sId}</span>
@@ -134,7 +132,7 @@ export function ViewAppAPIModal({
                 Use the following cURL command to run the app{" "}
                 <span className="italic">{app.name}</span>:
               </Page.P>
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("run")}`}

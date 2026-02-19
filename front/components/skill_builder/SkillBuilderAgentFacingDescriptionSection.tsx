@@ -1,15 +1,13 @@
-import { TextArea } from "@dust-tt/sparkle";
-import type { ChangeEvent } from "react";
-import { useCallback, useState } from "react";
-
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkillsDisplay";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { TextArea } from "@dust-tt/sparkle";
+import type { ChangeEvent } from "react";
+import { useCallback, useState } from "react";
 
 const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
@@ -17,8 +15,6 @@ const MIN_DESCRIPTION_LENGTH = 10;
 
 export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const isSimilarSkillsEnabled = hasFeature("skills_similar_display");
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({
@@ -36,7 +32,10 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         return;
       }
 
-      const result = await getSimilarSkills(description, signal);
+      const result = await getSimilarSkills(description, {
+        excludeSkillId: skillId, // Exclude the skill being edited.
+        signal,
+      });
 
       // Only update state if the request was not aborted
       if (!signal.aborted) {
@@ -44,9 +43,8 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         if (result.isOk()) {
           const similarSkillIds = result.value;
           const similarSkillIdsSet = new Set(similarSkillIds);
-          const matchedSkills = skills.filter(
-            (skill) =>
-              similarSkillIdsSet.has(skill.sId) && skill.sId !== skillId
+          const matchedSkills = skills.filter((skill) =>
+            similarSkillIdsSet.has(skill.sId)
           );
           setSimilarSkills(matchedSkills);
         }
@@ -98,12 +96,11 @@ export function SkillBuilderAgentFacingDescriptionSection() {
               );
             }}
           />
-          {isSimilarSkillsEnabled && (
-            <SimilarSkillsDisplay
-              similarSkills={similarSkills}
-              isLoading={isLoading}
-            />
-          )}
+          <SimilarSkillsDisplay
+            owner={owner}
+            similarSkills={similarSkills}
+            isLoading={isLoading}
+          />
         </div>
       )}
     </BaseFormFieldSection>

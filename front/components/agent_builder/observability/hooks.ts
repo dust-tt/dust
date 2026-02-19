@@ -5,18 +5,28 @@ import {
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
   ChartDatum,
+  SkillSourceItem,
   ToolChartModeType,
   ToolChartUsageDatum,
+  ToolLatencyDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
+import type { SkillExecutionByVersion } from "@app/lib/api/assistant/observability/skill_execution";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
+import type {
+  ToolLatencyRow,
+  ToolLatencyView,
+} from "@app/lib/api/assistant/observability/tool_latency";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
   useAgentLatency,
+  useAgentSkillExecution,
   useAgentToolExecution,
+  useAgentToolLatency,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 type ToolUsageResult = {
   chartData: ChartDatum[];
@@ -49,6 +59,12 @@ export type LatencyPoint = {
 
 type LatencyDataResult = {
   data: LatencyPoint[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
+};
+
+type ToolLatencyDataResult = {
+  data: ToolLatencyDatum[];
   isLoading: boolean;
   errorMessage: string | undefined;
 };
@@ -310,6 +326,116 @@ export function useToolUsageData(params: {
   }
 }
 
+const SOURCE_DISPLAY_LABELS: Record<string, string> = {
+  agent_enabled: "Agent",
+  conversation: "Conversation",
+};
+
+function normalizeSkillVersionData(
+  data: SkillExecutionByVersion[]
+): ToolDataItem[] {
+  return data.map((item) => ({
+    label: `v${item.version}`,
+    tools: Object.fromEntries(
+      Object.entries(item.skills).map(([skillName, metrics]) => [
+        skillName,
+        { count: metrics.count },
+      ])
+    ),
+  }));
+}
+
+export function useSkillVersionData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  filterVersion?: string | null;
+  disabled?: boolean;
+}): ToolUsageResult {
+  const { workspaceId, agentConfigurationId, period, filterVersion, disabled } =
+    params;
+
+  const exec = useAgentSkillExecution({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    version: filterVersion ?? undefined,
+    disabled,
+  });
+
+  const rawData = exec.skillExecutionByVersion;
+  let normalizedData = normalizeSkillVersionData(rawData);
+  if (filterVersion) {
+    const vv = `v${filterVersion}`;
+    normalizedData = normalizedData.filter((d) => d.label === vv);
+  }
+  const isLoading = disabled ? false : exec.isSkillExecutionLoading;
+  const errorMessage = exec.isSkillExecutionError
+    ? "Failed to load skill execution data."
+    : undefined;
+
+  return processToolUsageData(
+    normalizedData,
+    "Version",
+    filterVersion
+      ? "No skill execution data for the selected version."
+      : "No skill execution data available for this period.",
+    "Usage frequency of skills for each agent version.",
+    isLoading,
+    errorMessage
+  );
+}
+
+type SkillSourceDataResult = {
+  items: SkillSourceItem[];
+  skillNames: string[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
+};
+
+export function useSkillSourceData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  filterVersion?: string | null;
+  disabled?: boolean;
+}): SkillSourceDataResult {
+  const { workspaceId, agentConfigurationId, period, filterVersion, disabled } =
+    params;
+
+  const exec = useAgentSkillExecution({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    version: filterVersion ?? undefined,
+    disabled,
+  });
+
+  const isLoading = disabled ? false : exec.isSkillExecutionLoading;
+  const errorMessage = exec.isSkillExecutionError
+    ? "Failed to load skill source data."
+    : undefined;
+
+  const rawData = exec.skillExecutionBySource;
+
+  const items: SkillSourceItem[] = rawData
+    .map((item) => {
+      const sources: Record<string, number> = {};
+      let totalCount = 0;
+      for (const [source, count] of Object.entries(item.sources)) {
+        const label = SOURCE_DISPLAY_LABELS[source] ?? source;
+        sources[label] = (sources[label] ?? 0) + count;
+        totalCount += count;
+      }
+      return { skillName: item.skillName, totalCount, sources };
+    })
+    .sort((a, b) => b.totalCount - a.totalCount);
+
+  const skillNames = items.map((item) => item.skillName);
+
+  return { items, skillNames, isLoading, errorMessage };
+}
+
 export function useLatencyData(params: {
   workspaceId: string;
   agentConfigurationId: string;
@@ -332,5 +458,62 @@ export function useLatencyData(params: {
     data: latency,
     isLoading: isLatencyLoading,
     errorMessage: isLatencyError ? "Failed to load latency data." : undefined,
+  };
+}
+
+function buildToolLatencyData(rows: ToolLatencyRow[]): ToolLatencyDatum[] {
+  const sortedRows = [...rows].sort((a, b) => {
+    const countDiff = b.count - a.count;
+    return countDiff !== 0 ? countDiff : a.name.localeCompare(b.name);
+  });
+
+  return sortedRows.map((row) => ({
+    name: row.name,
+    label: asDisplayToolName(row.name),
+    count: row.count,
+    avgLatencyMs: row.avgLatencyMs,
+    p50LatencyMs: row.p50LatencyMs,
+    p95LatencyMs: row.p95LatencyMs,
+  }));
+}
+
+export function useToolLatencyData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  view: ToolLatencyView;
+  filterVersion?: string | null;
+  serverName?: string | null;
+  disabled?: boolean;
+}): ToolLatencyDataResult {
+  const {
+    workspaceId,
+    agentConfigurationId,
+    period,
+    view,
+    filterVersion,
+    serverName,
+    disabled,
+  } = params;
+
+  const { toolLatencyRows, isToolLatencyLoading, isToolLatencyError } =
+    useAgentToolLatency({
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      version: filterVersion ?? undefined,
+      view,
+      serverName: serverName ?? undefined,
+      disabled: disabled ?? (view === "tool" && !serverName),
+    });
+
+  const data = buildToolLatencyData(toolLatencyRows);
+
+  return {
+    data,
+    isLoading: isToolLatencyLoading,
+    errorMessage: isToolLatencyError
+      ? "Failed to load tool execution time data."
+      : undefined,
   };
 }

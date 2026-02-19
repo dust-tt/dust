@@ -1,8 +1,8 @@
-import { ContentMessage, Markdown, Separator } from "@dust-tt/sparkle";
-
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import type { LightWorkspaceType, ParsedContentItem } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { ParsedContentItem } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
+import { ContentMessage, Markdown, Separator } from "@dust-tt/sparkle";
 
 interface AgentStepProps {
   stepNumber: number;
@@ -80,7 +80,7 @@ export function PanelAgentStep({
         return (
           <div key={`action-${entry.action.id}`}>
             <MCPActionDetails
-              viewType="sidebar"
+              displayContext="sidebar"
               action={entry.action}
               lastNotification={streamProgress ?? null}
               owner={owner}
@@ -102,7 +102,7 @@ export function PanelAgentStep({
             return (
               <div key={`streaming-action-${action.id}`} className="mb-4">
                 <MCPActionDetails
-                  viewType="sidebar"
+                  displayContext="sidebar"
                   action={action}
                   lastNotification={lastNotification}
                   owner={owner}

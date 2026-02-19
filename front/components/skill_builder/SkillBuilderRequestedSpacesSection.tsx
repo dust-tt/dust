@@ -1,20 +1,21 @@
-import { ContentMessage } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import type { SpaceType } from "@app/types";
-import { pluralize, removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
+import { ContentMessage } from "@dust-tt/sparkle";
+import { useMemo } from "react";
+import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderRequestedSpacesSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
 
   const tools = watch("tools");
+  const attachedKnowledge = watch("attachedKnowledge");
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { spaces } = useSpacesContext();
@@ -28,16 +29,44 @@ export function SkillBuilderRequestedSpacesSection() {
     return getSpaceIdToActionsMap(tools, mcpServerViews);
   }, [tools, mcpServerViews]);
 
+  const spaceIdsFromKnowledge = useMemo(() => {
+    return new Set(attachedKnowledge?.map((k) => k.spaceId) ?? []);
+  }, [attachedKnowledge]);
+
   const nonGlobalSpacesUsedInActions = useMemo(() => {
     return spaces.filter(
-      (s) => s.kind !== "global" && spaceIdToActions[s.sId]?.length > 0
+      (s) =>
+        s.kind !== "global" &&
+        (spaceIdToActions[s.sId]?.length > 0 ||
+          spaceIdsFromKnowledge.has(s.sId))
     );
-  }, [spaceIdToActions, spaces]);
+  }, [spaceIdToActions, spaceIdsFromKnowledge, spaces]);
+
+  const knowledgeToRemoveBySpaceId = useMemo(() => {
+    const map: Record<string, NonNullable<typeof attachedKnowledge>> = {};
+    for (const k of attachedKnowledge ?? []) {
+      if (!map[k.spaceId]) {
+        map[k.spaceId] = [];
+      }
+      map[k.spaceId].push(k);
+    }
+    return map;
+  }, [attachedKnowledge]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     const actionsToRemove = spaceIdToActions[space.sId] || [];
+    const knowledgeInSpace = knowledgeToRemoveBySpaceId[space.sId] || [];
 
-    const confirmed = await confirmRemoveSpace(space, actionsToRemove);
+    // Don't show confirmation if nothing to remove.
+    if (actionsToRemove.length === 0 && knowledgeInSpace.length === 0) {
+      return;
+    }
+
+    const confirmed = await confirmRemoveSpace({
+      space,
+      actions: actionsToRemove,
+      knowledgeInInstructions: knowledgeInSpace,
+    });
 
     if (!confirmed) {
       return;
@@ -45,7 +74,7 @@ export function SkillBuilderRequestedSpacesSection() {
 
     const actionIdsToRemove = new Set(actionsToRemove.map((a) => a.id));
 
-    // Filter out the tools to remove and set the new value
+    // Filter out the tools to remove and set the new value.
     const newTools = tools.filter((t) => !actionIdsToRemove.has(t.id));
     setValue("tools", newTools, { shouldDirty: true });
   };

@@ -1,0 +1,177 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
+  "root": true,
+  "plugins": [
+    "./biome-plugins/noRawSql.grit",
+    "./biome-plugins/noBulkLodash.grit",
+    "./biome-plugins/noDirectSparkleNotification.grit",
+    "./biome-plugins/noNextImports.grit",
+    "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
+    "./biome-plugins/noMcpServerInstructions.grit",
+    "./biome-plugins/enforceClientTypesInPublicApi.grit",
+    "./biome-plugins/nextjsPageComponentNaming.grit",
+    "./biome-plugins/nextjsNoDataFetchingInGetssp.grit"
+  ],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**/*.{js,jsx,ts,tsx}",
+      "**/package.json",
+      "**/biome.json",
+      "!!**/.next",
+      "!!**/node_modules",
+      "!!**/workers-build",
+      "!!**/dist",
+      "!!**/build",
+      "!!**/coverage",
+      "!**/.yalc/**/*.{js,jsx,ts,tsx}",
+      "!!**/x/**",
+      "!!extension/shared/lib/swr.ts",
+      "!!extension/packages",
+      "!!**/package-lock.json",
+      "!!**/__snapshots__",
+      "lefthook.yml",
+      ".github/**/*.yml"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 80,
+    "attributePosition": "auto",
+    "bracketSameLine": false,
+    "bracketSpacing": true,
+    "expand": "auto",
+    "useEditorconfig": true
+  },
+  "linter": {
+    "includes": [
+      "sdks/js/**",
+      "viz/**",
+      "extension/**",
+      "cli/**",
+      "firebase-functions/**",
+      "sparkle/**",
+      "connectors/**",
+      "front-spa/**",
+      "front/**"
+    ],
+    "rules": {
+      "recommended": false,
+      "correctness": {
+        "noUnusedImports": { "fix": "safe", "level": "error" },
+        "noUnusedVariables": "error"
+      },
+      "style": {
+        "useBlockStatements": "error",
+        "useImportType": "error"
+      },
+      "suspicious": {
+        "noImportCycles": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["cli/**", "sparkle/**"],
+      "javascript": {
+        "jsxRuntime": "reactClassic"
+      }
+    },
+    {
+      "includes": ["front-spa/**", "front/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "error",
+            "useExhaustiveDependencies": "warn"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "front/migrations/**",
+        "front/mailing/**",
+        "connectors/migrations/**"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": [
+        "sparkle/**/*.stories.tsx",
+        "sparkle/.storybook/**",
+        "sparkle/playground/**",
+        "sparkle/scripts/**",
+        "sparkle/rollup.config.js",
+        "sparkle/svgr.config.js",
+        "sparkle/postcss.config.js",
+        "sparkle/tailwind.config.js",
+        "sparkle/svgr-*-template.js"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
+      }
+    }
+  ],
+  "javascript": {
+    "formatter": {
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "trailingCommas": "es5",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "bracketSameLine": false,
+      "quoteStyle": "double",
+      "attributePosition": "auto",
+      "bracketSpacing": true
+    }
+  },
+  "html": {
+    "formatter": {
+      "indentScriptAndStyle": false,
+      "selfCloseVoidElements": "always"
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": false
+    }
+  },
+  "assist": {
+    "includes": [
+      "sdks/js/**",
+      "viz/**",
+      "extension/**",
+      "cli/**",
+      "firebase-functions/**",
+      "sparkle/**",
+      "connectors/**",
+      "front-spa/**",
+      "front/**"
+    ],
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}

@@ -1,6 +1,3 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -8,8 +5,10 @@ import type {
   GetAgentEditorsResponseBody,
   PatchAgentEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
-import type { LightWorkspaceType } from "@app/types";
-import { pluralize } from "@app/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
 
 export function useEditors({
   owner,

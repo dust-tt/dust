@@ -1,4 +1,4 @@
-import { useRouter } from "next/router";
+import { useAppRouter } from "@app/lib/platform";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ParamValue = {
@@ -15,7 +15,7 @@ type UseQueryParamsResult<T extends string[]> = {
 export function useQueryParams<T extends string[]>(
   paramNames: T
 ): UseQueryParamsResult<T> {
-  const router = useRouter();
+  const router = useAppRouter();
   const [values, setValues] = useState<Record<string, string | undefined>>({});
 
   useEffect(() => {

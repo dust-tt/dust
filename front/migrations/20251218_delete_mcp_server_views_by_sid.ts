@@ -12,7 +12,7 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { dangerouslyMakeSIdWithCustomFirstPrefix } from "@app/lib/resources/string_ids";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type {
   ModelStaticWorkspaceAware,
   SoftDeletableWorkspaceAwareModel,
@@ -20,7 +20,7 @@ import type {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 type SoftDeletableWithBypass<M extends SoftDeletableWorkspaceAwareModel> =
   ModelStatic<M> & {
@@ -37,12 +37,9 @@ const PREFIX = 1;
 const BATCH_SIZE = 100;
 
 async function getAllWorkspaceIds(): Promise<ModelId[]> {
-  const workspaces = await WorkspaceModel.findAll({
-    attributes: ["id"],
-    order: [["id", "ASC"]],
-  });
-  assert(workspaces.length > 0, "No workspaces found - cannot proceed");
-  return workspaces.map((w) => w.id);
+  const workspaceIds = await WorkspaceResource.listAllModelIds("ASC");
+  assert(workspaceIds.length > 0, "No workspaces found - cannot proceed");
+  return workspaceIds;
 }
 
 function generateSIds(workspaceIds: ModelId[]): string[] {

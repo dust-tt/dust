@@ -1,30 +1,6 @@
-import {
-  BoltIcon,
-  Button,
-  cn,
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Icon,
-  MoreIcon,
-  PencilSquareIcon,
-  Tooltip,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, { useCallback, useContext, useMemo, useState } from "react";
-
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
-import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
@@ -41,13 +17,41 @@ import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Icon,
+  LinkIcon,
+  MoreIcon,
+  PencilSquareIcon,
+  Toolbar,
+  Tooltip,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
+import { EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import type React from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -85,7 +89,11 @@ function UserMessageEditor({
       />
 
       <BubbleMenu editor={editor} className="hidden sm:flex">
-        <Toolbar editor={editor} className="hidden sm:inline-flex" />
+        {editor && (
+          <Toolbar className="hidden sm:inline-flex">
+            <ToolBarContent editor={editor} />
+          </Toolbar>
+        )}
       </BubbleMenu>
 
       <div className="flex justify-end gap-2">
@@ -110,7 +118,6 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
-  enableReactions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
@@ -121,7 +128,6 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
-  enableReactions,
   currentUserId,
   isLastMessage,
   message,
@@ -141,10 +147,6 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
-
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const reactionsEnabled =
-    featureFlags.hasFeature("projects") && enableReactions;
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
@@ -188,9 +190,16 @@ export function UserMessage({
     return (
       message.mentions.length === 0 &&
       isLastMessage &&
-      !hasHumansInteracting(methods.data.get())
+      !hasHumansInteracting(methods.data.get()) &&
+      message.user?.sId === currentUserId
     );
-  }, [message.mentions.length, isLastMessage, methods.data]);
+  }, [
+    message.mentions.length,
+    message.user?.sId,
+    isLastMessage,
+    methods.data,
+    currentUserId,
+  ]);
 
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;
@@ -266,9 +275,7 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative",
-            "s-pb-6",
-            "s-pb-4"
+            "relative min-w-60 max-w-3xl"
           )}
           ref={userMessageHoveredRef}
         >
@@ -324,11 +331,12 @@ export function UserMessage({
             isUserMessageHovered={isUserMessageHovered}
             message={message}
             onReactionToggle={onReactionToggle}
-            reactionsEnabled={reactionsEnabled}
             handleEditMessage={handleEditMessage}
             handleDeleteMessage={handleDeleteMessage}
             canDelete={canDelete}
             canEdit={canEdit}
+            conversationId={conversationId}
+            owner={owner}
           />
         </ConversationMessageContainer>
       )}
@@ -390,7 +398,6 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
 
 function ActionMenu({
   isDeleted,
-  reactionsEnabled,
   showActions,
   canEdit,
   canDelete,
@@ -399,9 +406,10 @@ function ActionMenu({
   message,
   onReactionToggle,
   isUserMessageHovered,
+  conversationId,
+  owner,
 }: {
   isDeleted: boolean;
-  reactionsEnabled: boolean;
   showActions: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -410,11 +418,37 @@ function ActionMenu({
   message: UserMessageTypeWithContentFragments;
   onReactionToggle: (emoji: string) => void;
   isUserMessageHovered: boolean;
+  conversationId: string;
+  owner: WorkspaceType;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const sendNotification = useSendNotification();
+  const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
+    useHover();
+  const shouldHideActions =
+    !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
+
+  const handleCopyMessageLink = () => {
+    const messageUrl = `${getConversationRoute(
+      owner.sId,
+      conversationId,
+      undefined,
+      config.getAppUrl()
+    )}#${message.sId}`;
+    void navigator.clipboard.writeText(messageUrl);
+    sendNotification({
+      type: "success",
+      title: "Message link copied to clipboard",
+    });
+  };
 
   const actions = showActions
     ? [
+        {
+          icon: LinkIcon,
+          label: "Copy message link",
+          onClick: handleCopyMessageLink,
+        },
         ...(canEdit
           ? [
               {
@@ -437,8 +471,13 @@ function ActionMenu({
     : [];
 
   return (
-    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
-      {!isDeleted && reactionsEnabled && (
+    <div
+      className={cn(
+        "absolute -bottom-6 left-2.5 flex flex-wrap items-center gap-1 pb-3"
+      )}
+      ref={isReactionsHoveredRef}
+    >
+      {!isDeleted && (
         <>
           <MessageReactions
             reactions={message.reactions ?? []}
@@ -449,7 +488,7 @@ function ActionMenu({
             onEmojiSelect={onReactionToggle}
             className={cn(
               "opacity-100 transition-opacity duration-200",
-              !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+              shouldHideActions && "sm:opacity-0"
             )}
           />
         </>
@@ -462,12 +501,12 @@ function ActionMenu({
           <DropdownMenuTrigger asChild>
             <Button
               icon={MoreIcon}
-              size="xs"
+              size="icon-xs"
               variant="outline"
               aria-label="Message actions"
               className={cn(
                 "opacity-100 transition-opacity duration-200",
-                !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+                shouldHideActions && "sm:opacity-0"
               )}
             />
           </DropdownMenuTrigger>

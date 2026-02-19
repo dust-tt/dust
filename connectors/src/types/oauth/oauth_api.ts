@@ -4,10 +4,10 @@ import { Err, Ok } from "@dust-tt/client";
 import type {
   ConnectionCredentials,
   CredentialsProvider,
-  OauthAPIGetCredentialsResponse,
-  OauthAPIPostCredentialsResponse,
   OAuthConnectionType,
   OAuthProvider,
+  OauthAPIGetCredentialsResponse,
+  OauthAPIPostCredentialsResponse,
 } from "../oauth/lib";
 
 export type OAuthAPIError = {

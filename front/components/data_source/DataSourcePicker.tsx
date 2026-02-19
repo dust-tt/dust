@@ -1,6 +1,12 @@
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import { classNames } from "@app/lib/utils";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Hoverable,
+  LinkWrapper,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -8,12 +14,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import Link from "next/link";
 import { useEffect, useState } from "react";
-
-import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
-import type { DataSourceViewType, SpaceType, WorkspaceType } from "@app/types";
 
 export default function DataSourcePicker({
   owner,
@@ -66,6 +67,7 @@ export default function DataSourcePicker({
       )
     : undefined;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !isSpaceDataSourceViewsLoading &&
@@ -161,7 +163,7 @@ export default function DataSourcePicker({
                   size="xs"
                 />
               ) : (
-                <Link
+                <LinkWrapper
                   href={`/w/${owner.sId}/spaces/${space.sId}`}
                   className={classNames(
                     readOnly
@@ -170,7 +172,7 @@ export default function DataSourcePicker({
                   )}
                 >
                   Create DataSource
-                </Link>
+                </LinkWrapper>
               )}
             </PopoverTrigger>
 

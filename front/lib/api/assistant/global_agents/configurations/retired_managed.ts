@@ -1,7 +1,10 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { BREVITY_PROMPT } from "@app/lib/api/assistant/global_agents/guidelines";
-import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
+import type {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -9,13 +12,13 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  ConnectorProvider,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 import {
+  GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  GLOBAL_AGENTS_SID,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
+import type { ConnectorProvider } from "@app/types/data_source";
 
 function _getManagedDataSourceAgent(
   auth: Authenticator,
@@ -65,6 +68,7 @@ function _getManagedDataSourceAgent(
     name: name,
     description,
     instructions,
+    instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,
@@ -135,6 +139,7 @@ function _getManagedDataSourceAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
   }
 
@@ -151,11 +156,11 @@ export function _getGoogleDriveGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    searchMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    searchMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ): AgentConfigurationType | null {
   const agentId = GLOBAL_AGENTS_SID.GOOGLE_DRIVE;
@@ -172,7 +177,7 @@ export function _getGoogleDriveGlobalAgent(
       "Assist the user based on the retrieved data from their Google Drives." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
-    searchMCPServerView,
+    searchMCPServerView: mcpServerViews.search,
   });
 }
 
@@ -181,11 +186,11 @@ export function _getSlackGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    searchMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    searchMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.SLACK;
@@ -202,7 +207,7 @@ export function _getSlackGlobalAgent(
       "Assist the user based on the retrieved data from their Slack channels." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
-    searchMCPServerView,
+    searchMCPServerView: mcpServerViews.search,
   });
 }
 
@@ -211,11 +216,11 @@ export function _getGithubGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    searchMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    searchMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.GITHUB;
@@ -232,7 +237,7 @@ export function _getGithubGlobalAgent(
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
-    searchMCPServerView,
+    searchMCPServerView: mcpServerViews.search,
   });
 }
 
@@ -241,11 +246,11 @@ export function _getNotionGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    searchMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    searchMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.NOTION;
@@ -262,7 +267,7 @@ export function _getNotionGlobalAgent(
       "Assist the user based on the retrieved data from their Notion Spaces." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
-    searchMCPServerView,
+    searchMCPServerView: mcpServerViews.search,
   });
 }
 
@@ -271,11 +276,11 @@ export function _getIntercomGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    searchMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    searchMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.INTERCOM;
@@ -292,6 +297,6 @@ export function _getIntercomGlobalAgent(
       "Assist the user based on the retrieved data from their Intercom Workspace." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
-    searchMCPServerView,
+    searchMCPServerView: mcpServerViews.search,
   });
 }

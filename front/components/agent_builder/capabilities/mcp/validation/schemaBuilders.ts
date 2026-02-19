@@ -1,10 +1,9 @@
-import { z } from "zod";
-
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
 import {
   childAgentIdSchema,
   dataSourceConfigurationSchema,
   dustAppConfigurationSchema,
+  dustProjectSchema,
   jsonSchemaFieldSchema,
   jsonSchemaStringSchema,
   mcpServerViewIdSchema,
@@ -12,6 +11,7 @@ import {
   secretNameSchema,
 } from "@app/components/shared/tools_picker/types";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { z } from "zod";
 
 /**
  * Creates base form validation schema with consistent error messages
@@ -64,6 +64,11 @@ export function createDynamicConfigurationFields(
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
+    dustProject: requirements.requiresDustProjectConfiguration
+      ? dustProjectSchema.refine((val) => val !== null, {
+          message: VALIDATION_MESSAGES.dustProject.required,
+        })
+      : dustProjectSchema,
     secretName: requirements.developerSecretSelection
       ? requirements.developerSecretSelection === "required"
         ? secretNameSchema.refine((val) => val !== null, {
@@ -169,6 +174,7 @@ export function createDefaultConfigurationSchema() {
     ...createBaseConfigurationFields(),
     childAgentId: childAgentIdSchema,
     dustAppConfiguration: dustAppConfigurationSchema,
+    dustProject: dustProjectSchema,
     additionalConfiguration: z.object({}),
   });
 }

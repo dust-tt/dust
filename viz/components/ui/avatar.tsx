@@ -1,9 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
-
-import { cn } from "@viz/lib/utils"
+import * as AvatarPrimitive from "@radix-ui/react-avatar";
+import { cn } from "@viz/lib/utils";
+import type * as React from "react";
 
 function Avatar({
   className,
@@ -18,7 +17,7 @@ function Avatar({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function AvatarImage({
@@ -31,7 +30,7 @@ function AvatarImage({
       className={cn("aspect-square size-full", className)}
       {...props}
     />
-  )
+  );
 }
 
 function AvatarFallback({
@@ -47,7 +46,7 @@ function AvatarFallback({
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Avatar, AvatarImage, AvatarFallback }
+export { Avatar, AvatarImage, AvatarFallback };

@@ -12,7 +12,7 @@ import type {
   PokeDataSourceViewType,
   PokeMCPServerViewType,
   PokeSpaceType,
-} from "@app/types";
+} from "@app/types/poke";
 
 export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
   return {
@@ -32,7 +32,7 @@ export async function dataSourceToPokeJSON(
   return {
     ...dataSource.toJSON(),
     link: workspace
-      ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${dataSource.sId}`
+      ? `${config.getPokeAppUrl()}/${workspace.sId}/data_sources/${dataSource.sId}`
       : null,
     name:
       (workspace ? `${workspace.name}'s ` : "") +
@@ -55,7 +55,7 @@ export async function dataSourceViewToPokeJSON(
     ...dataSourceView.toJSON(),
     dataSource: await dataSourceToPokeJSON(dataSourceView.dataSource),
     link: workspace
-      ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
+      ? `${config.getPokeAppUrl()}/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
     name:
       (workspace ? `${workspace.name}'s ` : "") +
@@ -106,7 +106,7 @@ export async function mcpServerViewToPokeJSON(
       developerSecretSelection: null,
     },
     link: workspace
-      ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`
+      ? `${config.getPokeAppUrl()}/${workspace.sId}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`
       : null,
     name: json.server.name,
     type: "MCP Server View",

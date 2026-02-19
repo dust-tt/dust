@@ -1,13 +1,13 @@
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isAdmin, removeNulls } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { isAdmin } from "@app/types/user";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const DEFAULT_SUGGESTIONS = [
   "Writing",

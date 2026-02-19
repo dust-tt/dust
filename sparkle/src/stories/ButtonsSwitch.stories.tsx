@@ -32,3 +32,25 @@ export const Controlled: Story = {
     </ButtonsSwitchList>
   ),
 };
+
+export const Sizes: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-4 s-p-4">
+      <ButtonsSwitchList defaultValue="time" size="xs" className="s-w-fit">
+        <ButtonsSwitch value="time" label="Time range" />
+        <ButtonsSwitch value="version" label="Version" />
+        <ButtonsSwitch value="other" label="Other" />
+      </ButtonsSwitchList>
+      <ButtonsSwitchList defaultValue="time" size="sm" className="s-w-fit">
+        <ButtonsSwitch value="time" label="Time range" />
+        <ButtonsSwitch value="version" label="Version" />
+        <ButtonsSwitch value="other" label="Other" />
+      </ButtonsSwitchList>
+      <ButtonsSwitchList defaultValue="time" size="md" className="s-w-fit">
+        <ButtonsSwitch value="time" label="Time range" />
+        <ButtonsSwitch value="version" label="Version" />
+        <ButtonsSwitch value="other" label="Other" />
+      </ButtonsSwitchList>
+    </div>
+  ),
+};

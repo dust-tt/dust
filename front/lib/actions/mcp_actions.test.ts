@@ -1,25 +1,161 @@
-import { assert, describe, expect, it } from "vitest";
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import type {
+  LightServerSideMCPToolConfigurationType,
+  ServerSideMCPServerConfigurationType,
+  ToolNotificationEvent,
+} from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
   getToolExtraFields,
   listToolsForServerSideMCPServer,
-  TOOL_NAME_SEPARATOR,
+  tryCallMCPTool,
 } from "@app/lib/actions/mcp_actions";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import {
+  autoInternalMCPServerNameToSId,
+  internalMCPServerNameToSId,
+} from "@app/lib/actions/mcp_helper";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { assert, describe, expect, it, vi } from "vitest";
+
+// Mock Temporal activity context and heartbeat
+vi.mock("@temporalio/activity", () => ({
+  Context: {
+    current: vi.fn(() => ({
+      info: { attempt: 1 },
+      cancellationSignal: { aborted: false },
+    })),
+  },
+  heartbeat: vi.fn(),
+}));
+
+// Mock the searchFunction to return extra properties
+// This must be at the top level, before any imports that use it
+const { mockSearchFunction } = vi.hoisted(() => {
+  return {
+    mockSearchFunction: vi.fn(),
+  };
+});
+
+// Spy ref so we can assert withToolResultProcessing was called. Must be set in a mock
+// that runs when wrappers is first loaded (search server loads at test file load time).
+const { withToolResultProcessingSpyRef } = vi.hoisted(() => ({
+  withToolResultProcessingSpyRef: {
+    current: null as ReturnType<typeof vi.fn> | null,
+  },
+}));
+
+vi.mock(
+  "@app/lib/actions/mcp_internal_actions/wrappers",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+        typeof import("@app/lib/actions/mcp_internal_actions/wrappers")
+      >();
+    const spy = vi.fn(actual.withToolResultProcessing);
+    withToolResultProcessingSpyRef.current = spy;
+    // registerTool closes over the original withToolResultProcessing, so we must inject the spy
+    // by wrapping registerTool to pass tool handlers through the spy.
+    return {
+      ...actual,
+      withToolResultProcessing: spy,
+      registerTool: (
+        auth: Parameters<typeof actual.registerTool>[0],
+        agentLoopContext: Parameters<typeof actual.registerTool>[1],
+        server: Parameters<typeof actual.registerTool>[2],
+        tool: Parameters<typeof actual.registerTool>[3],
+        opts: Parameters<typeof actual.registerTool>[4]
+      ) => {
+        actual.registerTool(
+          auth,
+          agentLoopContext,
+          server,
+          {
+            ...tool,
+            handler: (params, extra) => spy(tool.handler(params, extra)),
+          },
+          opts
+        );
+      },
+    };
+  }
+);
+
+vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
+  const actual = await vi.importActual(
+    "@app/lib/api/actions/servers/search/tools"
+  );
+  const { buildTools } = await import(
+    "@app/lib/actions/mcp_internal_actions/tool_definition"
+  );
+  const {
+    SEARCH_TOOL_METADATA_WITH_TAGS,
+    SEARCH_TOOLS_METADATA,
+    SEARCH_TOOL_NAME,
+  } = await import("@app/lib/api/actions/servers/search/metadata");
+  const { executeFindTags } = await import(
+    "@app/lib/api/actions/tools/find_tags"
+  );
+  const { FIND_TAGS_TOOL_NAME } = await import(
+    "@app/lib/api/actions/tools/find_tags/metadata"
+  );
+
+  // Rebuild handlers so they call mockSearchFunction (the real handlers close
+  // over the real searchFunction, so replacing only the export doesn't work).
+  const handlers = {
+    [SEARCH_TOOL_NAME]: (params: unknown, extra: unknown) =>
+      mockSearchFunction({
+        ...(params as object),
+        auth: (extra as { auth?: unknown }).auth,
+        agentLoopContext: (extra as { agentLoopContext?: unknown })
+          .agentLoopContext,
+      }),
+  };
+  const handlersWithTags = {
+    ...handlers,
+    [FIND_TAGS_TOOL_NAME]: (
+      params: {
+        query: string;
+        dataSources: DataSourcesToolConfigurationType;
+      },
+      { auth }: { auth: Authenticator }
+    ) => executeFindTags(auth, params.query, params.dataSources),
+  };
+
+  return {
+    ...actual,
+    searchFunction: mockSearchFunction,
+    TOOLS_WITHOUT_TAGS: buildTools(SEARCH_TOOLS_METADATA, handlers as never),
+    TOOLS_WITH_TAGS: buildTools(
+      SEARCH_TOOL_METADATA_WITH_TAGS,
+      handlersWithTags as never
+    ),
+  };
+});
 
 // Sets up test environment with workspace, auth, MCP server, client connection, and configuration.
 async function setupTest() {
@@ -76,6 +212,7 @@ async function setupTest() {
     dustAppConfiguration: null,
     internalMCPServerId: internalMCPServer.id,
     secretName: null,
+    dustProject: null,
   };
 
   return {
@@ -196,6 +333,7 @@ describe("getPrefixedToolName", () => {
     dustAppConfiguration: null,
     internalMCPServerId: null,
     secretName: null,
+    dustProject: null,
   };
 
   it("should correctly prefix and slugify tool names", () => {
@@ -288,15 +426,19 @@ describe("makeToolsWithStakesAndTimeout", () => {
         list_calendars: "high",
         list_events: "never_ask",
         get_event: "never_ask",
-        create_event: "low",
-        update_event: "low",
-        delete_event: "low",
+        create_event: "medium",
+        update_event: "medium",
+        delete_event: "medium",
         check_availability: "never_ask",
         get_user_timezones: "never_ask",
       },
       toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
-      toolsArgumentsRequiringApproval: undefined,
+      toolsArgumentsRequiringApproval: {
+        create_event: ["calendarId"],
+        update_event: ["calendarId"],
+        delete_event: ["calendarId"],
+      },
     });
   });
 
@@ -349,5 +491,326 @@ describe("makeToolsWithStakesAndTimeout", () => {
     expect(() => {
       getToolExtraFields("invalid_server_id", metadata);
     }).toThrow("Invalid MCP server ID: invalid_server_id");
+  });
+});
+
+describe("tryCallMCPTool", () => {
+  it("should preserve extra properties from internal MCP server tool results", async () => {
+    // The in-memory transport strips extra properties from tool results (like the real MCP SDK).
+    // withToolResultProcessing (in wrappers) moves extras to _meta before the result goes over
+    // the transport, so they survive; tryCallMCPTool then moves _meta back to root.
+    mockSearchFunction.mockResolvedValue(
+      new Ok([
+        {
+          type: "resource" as const,
+          resource: {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+            uri: "https://example.com/doc1",
+            text: "Document 1",
+            id: "doc1",
+            ref: "ref1",
+            chunks: ["chunk1", "chunk2"],
+            source: {
+              provider: "slack",
+              data_source_id: "ds1",
+              data_source_view_id: "dsv1",
+            },
+            tags: ["tag1"],
+            customProperty: "customValue",
+            anotherExtraProperty: 123,
+          },
+        },
+      ])
+    );
+    const user = await UserFactory.basic();
+    const workspace = await WorkspaceFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "admin",
+    });
+    const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await SpaceResource.makeDefaultsForWorkspace(auth, {
+      globalGroup,
+      systemGroup,
+    });
+
+    // Create search MCP server
+    const internalMCPServer = await InternalMCPServerInMemoryResource.makeNew(
+      auth,
+      {
+        name: "search",
+        useCase: null,
+      }
+    );
+
+    // Create MCPServerViewResource for the internal server
+    // Fetch the system space
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    const mcpServerId = autoInternalMCPServerNameToSId({
+      name: "search",
+      workspaceId: workspace.id,
+    });
+
+    // Get or create the system view
+    let systemView = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+      auth,
+      mcpServerId
+    );
+
+    if (!systemView) {
+      // Create system view if it doesn't exist using MCPServerViewModel directly
+      const { MCPServerViewModel } = await import(
+        "@app/lib/models/agent/actions/mcp_server_view"
+      );
+      const systemViewModel = await MCPServerViewModel.create({
+        workspaceId: workspace.id,
+        serverType: "internal",
+        internalMCPServerId: mcpServerId,
+        vaultId: systemSpace.id,
+        editedAt: new Date(),
+        editedByUserId: auth.user()?.id ?? null,
+        oAuthUseCase: null,
+      });
+      systemView = new MCPServerViewResource(
+        MCPServerViewModel,
+        systemViewModel.get(),
+        systemSpace
+      );
+    }
+
+    // Check if a view already exists for this space
+    const existingViews = await MCPServerViewResource.listByMCPServer(
+      auth,
+      mcpServerId
+    );
+    const existingView = existingViews.find(
+      (v) => v.vaultId === systemSpace.id
+    );
+
+    const mcpServerView =
+      existingView ??
+      (await MCPServerViewResource.create(auth, {
+        systemView,
+        space: systemSpace,
+      }));
+
+    // Create agent configuration and conversation
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Fetch the existing agent message from the conversation
+    // The conversation.create already created messages at rank 0 (user) and rank 1 (agent)
+    const messageRow = await MessageModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        rank: 1, // Agent message is at rank 1
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+        },
+      ],
+    });
+    assert(messageRow && messageRow.agentMessage);
+
+    // Create AgentMessageType from the fetched data
+    const agentMessage: AgentMessageType = {
+      id: messageRow.id,
+      agentMessageId: messageRow.agentMessage.id,
+      created: messageRow.agentMessage.createdAt.getTime(),
+      completedTs: null,
+      sId: messageRow.sId,
+      type: "agent_message",
+      visibility: messageRow.visibility,
+      version: messageRow.version,
+      parentMessageId: "",
+      parentAgentMessageId: null,
+      status: messageRow.agentMessage.status,
+      content: null,
+      chainOfThought: null,
+      error: null,
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [],
+      contents: [],
+      reactions: [],
+      modelInteractionDurationMs: null,
+      completionDurationMs: null,
+      rank: messageRow.rank,
+      richMentions: [],
+    };
+
+    // Create tool configuration
+    const toolConfiguration: LightServerSideMCPToolConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_configuration",
+      name: "search",
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: mcpServerView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: internalMCPServer.id,
+      secretName: null,
+      dustProject: null,
+      originalName: "semantic_search",
+      mcpServerName: "search",
+      availability: "auto",
+      permission: "never_ask",
+      toolServerId: internalMCPServer.id,
+      retryPolicy: "retry_on_interrupt",
+      timeoutMs: undefined,
+    };
+
+    // Create agent loop run context
+    const agentLoopRunContext: AgentLoopRunContextType = {
+      agentConfiguration: agentConfig,
+      agentMessage,
+      conversation,
+      stepContext: {
+        citationsCount: 10,
+        citationsOffset: 0,
+        retrievalTopK: 10,
+        resumeState: null,
+        websearchResultCount: 0,
+      },
+      toolConfiguration,
+    };
+
+    // Create a mock action for the notification event
+    const mockAction: AgentMCPActionWithOutputType = {
+      id: agentMessage.agentMessageId as number, // Use the agentMessageId as the action id
+      sId: generateRandomModelSId(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      agentMessageId: agentMessage.agentMessageId as number,
+      internalMCPServerName: "search",
+      toolName: "semantic_search",
+      mcpServerId: internalMCPServer.id,
+      functionCallName: "semantic_search",
+      functionCallId: generateRandomModelSId(),
+      params: {
+        query: "test query",
+        relativeTimeFrame: "all",
+        dataSources: [],
+      },
+      citationsAllocated: 0,
+      status: "running",
+      step: 0,
+      executionDurationMs: null,
+      displayLabels: null,
+      output: null,
+      generatedFiles: [],
+    };
+
+    // Call tryCallMCPTool
+    const resultGenerator = tryCallMCPTool(
+      auth,
+      {
+        query: "test query",
+        relativeTimeFrame: "all",
+        dataSources: [],
+      },
+      agentLoopRunContext,
+      {
+        progressToken: agentMessage.agentMessageId as number,
+        makeToolNotificationEvent: async () => ({
+          type: "tool_notification",
+          created: Date.now(),
+          configurationId: agentConfig.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          action: mockAction,
+          notification: {
+            progress: 0,
+            total: 100,
+            progressToken: generateRandomModelSId(),
+            _meta: {
+              data: {
+                label: "Test",
+                output: {
+                  type: "text",
+                  text: "Test notification",
+                },
+              },
+            },
+          },
+        }),
+      }
+    );
+
+    // Collect all yielded notifications and get the return value
+    const notifications: ToolNotificationEvent[] = [];
+    let result = await resultGenerator.next();
+    while (!result.done) {
+      notifications.push(result.value);
+      result = await resultGenerator.next();
+    }
+    // result.value is the CallToolResult return value
+    const toolCallResult = result.value;
+    assert(toolCallResult);
+    if (toolCallResult.isError) {
+      console.error(
+        "Tool call error:",
+        JSON.stringify(toolCallResult.content, null, 2)
+      );
+      throw new Error("Tool call failed");
+    }
+    expect(toolCallResult.isError).toBe(false);
+    expect(toolCallResult.content).toHaveLength(1);
+
+    const resourceItem = toolCallResult.content[0];
+    assert(resourceItem.type === "resource");
+
+    // Type assertion for extra properties that are added back from _meta
+    // The resource type is a union, so we assert it has text (not blob) and extra properties
+
+    const resource = resourceItem.resource as any;
+
+    // Verify standard properties are present
+    expect(resource.mimeType).toBe(
+      INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
+    );
+    expect(resource.uri).toBe("https://example.com/doc1");
+    expect(resource.text).toBe("Document 1");
+
+    // Verify extra properties are preserved (moved back from _meta)
+    expect(resource.id).toBe("doc1");
+    expect(resource.ref).toBe("ref1");
+    expect(resource.chunks).toEqual(["chunk1", "chunk2"]);
+    expect(resource.source).toEqual({
+      provider: "slack",
+      data_source_id: "ds1",
+      data_source_view_id: "dsv1",
+    });
+    expect(resource.tags).toEqual(["tag1"]);
+
+    // Verify additional extra properties are preserved
+    expect(resource.customProperty).toBe("customValue");
+    expect(resource.anotherExtraProperty).toBe(123);
+
+    // Verify _meta is removed (properties moved back to root)
+    expect(resource._meta).toBeUndefined();
+
+    // Ensure the code path went through withToolResultProcessing (spy is set in wrappers mock so it's in place when search server loads).
+    const withToolResultProcessingSpy = withToolResultProcessingSpyRef.current;
+    expect(withToolResultProcessingSpy).not.toBeNull();
+    expect(
+      withToolResultProcessingSpy,
+      "withToolResultProcessing was not called — tool result path may not use wrappers"
+    ).toHaveBeenCalled();
   });
 });

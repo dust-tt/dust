@@ -1,3 +1,16 @@
+import { PokeForm } from "@app/components/poke/shadcn/ui/form";
+import {
+  InputField,
+  SelectField,
+} from "@app/components/poke/shadcn/ui/form/fields";
+import { clientFetch } from "@app/lib/egress/client";
+import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
+import { usePokePlans } from "@app/lib/swr/poke";
+import type { FreePlanUpgradeFormType } from "@app/types/plan";
+import { FreePlanUpgradeFormSchema } from "@app/types/plan";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Dialog,
@@ -11,32 +24,20 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useRouter } from "next/router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-
-import { PokeForm } from "@app/components/poke/shadcn/ui/form";
-import {
-  InputField,
-  SelectField,
-} from "@app/components/poke/shadcn/ui/form/fields";
-import { clientFetch } from "@app/lib/egress/client";
-import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
-import { usePokePlans } from "@app/lib/swr/poke";
-import type { FreePlanUpgradeFormType, WorkspaceType } from "@app/types";
-import { FreePlanUpgradeFormSchema, removeNulls } from "@app/types";
 
 export default function FreePlanUpgradeDialog({
   owner,
 }: {
   owner: WorkspaceType;
 }) {
+  const router = useAppRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
   const { plans } = usePokePlans();
-  const router = useRouter();
 
   const form = useForm<FreePlanUpgradeFormType>({
     resolver: ioTsResolver(FreePlanUpgradeFormSchema),

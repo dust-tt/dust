@@ -1,3 +1,11 @@
+import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
+import {
+  KNOWLEDGE_NODE_TYPE,
+  KnowledgeNode,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -7,16 +15,6 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo, useRef } from "react";
 
-import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import {
-  KNOWLEDGE_NODE_TYPE,
-  KnowledgeNode,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
-
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 export function buildSkillInstructionsExtensions(
@@ -25,8 +23,16 @@ export function buildSkillInstructionsExtensions(
   const baseExtensions: Extensions = [
     Markdown,
     StarterKit.configure({
-      orderedList: false,
-      listItem: false,
+      orderedList: {
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      },
+      listItem: {
+        HTMLAttributes: {
+          class: markdownStyles.list(),
+        },
+      },
       bulletList: {
         HTMLAttributes: {
           class: markdownStyles.unorderedList(),
@@ -51,17 +57,13 @@ export function buildSkillInstructionsExtensions(
         },
       },
     }),
+    HeadingExtension.configure({
+      levels: [1, 2, 3],
+      HTMLAttributes: {
+        class: "mt-4 mb-3",
+      },
+    }),
     KnowledgeNode,
-    OrderedListExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.orderedList(),
-      },
-    }),
-    ListItemExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.list(),
-      },
-    }),
   ];
 
   if (!isReadOnly) {

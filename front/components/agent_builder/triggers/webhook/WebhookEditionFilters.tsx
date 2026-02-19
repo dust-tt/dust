@@ -1,15 +1,3 @@
-import {
-  Button,
-  ContentMessage,
-  ContentMessageInline,
-  Label,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import Link from "next/link";
-import React, { useMemo, useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
-
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
@@ -17,13 +5,26 @@ import {
   useTriggerEstimation,
   useWebhookFilterGenerator,
 } from "@app/lib/swr/agent_triggers";
-import type { LightWorkspaceType } from "@app/types";
-import { normalizeError, pluralize } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
   PresetWebhook,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  Button,
+  ContentMessage,
+  ContentMessageInline,
+  Label,
+  LinkWrapper,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo, useState } from "react";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface WebhookEditionFiltersProps {
   isEditor: boolean;
@@ -209,14 +210,14 @@ export function WebhookEditionFilters({
             to specify conditions on your webhook's payload.
             <br />
             See documentation on{" "}
-            <Link
+            <LinkWrapper
               href="https://docs.dust.tt/docs/filter-webhooks-payload#/"
               target="_blank"
               rel="noreferrer"
               className="underline"
             >
               filter expressions
-            </Link>{" "}
+            </LinkWrapper>{" "}
             to learn how to write them.
           </ContentMessage>
           <TextArea

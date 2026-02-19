@@ -1,9 +1,10 @@
-import { cva } from "class-variance-authority";
-import React, { ComponentType, MouseEventHandler } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
-import { Tooltip } from "@sparkle/components";
-import { Button, BUTTON_VARIANTS } from "@sparkle/components/Button";
+import type { Tooltip } from "@sparkle/components";
+import { BUTTON_VARIANTS, Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { type ComponentType, type MouseEventHandler } from "react";
 
 export const ICON_BUTTON_VARIANTS = BUTTON_VARIANTS;
 export type IconButtonVariantType = (typeof ICON_BUTTON_VARIANTS)[number];
@@ -69,10 +70,11 @@ const iconButtonVariants = cva(
   }
 );
 
-export interface IconButtonProps extends Omit<
-  React.ComponentPropsWithoutRef<typeof Button>,
-  "label" | "variant"
-> {
+export interface IconButtonProps
+  extends Omit<
+    React.ComponentPropsWithoutRef<typeof Button>,
+    "label" | "variant"
+  > {
   variant?: IconButtonVariantType;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   tooltip?: string;

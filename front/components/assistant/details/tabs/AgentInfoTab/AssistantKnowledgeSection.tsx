@@ -1,23 +1,3 @@
-import {
-  BracesIcon,
-  Button,
-  Chip,
-  ExternalLinkIcon,
-  FolderIcon,
-  IconButton,
-  Label,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  SparklesIcon,
-  Spinner,
-  TableIcon,
-  Tree,
-} from "@dust-tt/sparkle";
-import _ from "lodash";
-import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
-
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -34,22 +14,41 @@ import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { ConnectorProvider, DataSourceTag } from "@app/types/data_source";
 import type {
-  AgentConfigurationType,
-  ConnectorProvider,
-  ContentNodesViewType,
-  DataSourceTag,
   DataSourceViewType,
-  LightWorkspaceType,
   TagsFilter,
-} from "@app/types";
-import { DocumentViewRawContentKey } from "@app/types";
+} from "@app/types/data_source_view";
+import { DocumentViewRawContentKey } from "@app/types/sheets";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  BracesIcon,
+  Button,
+  Chip,
+  ExternalLinkIcon,
+  FolderIcon,
+  IconButton,
+  Label,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  SparklesIcon,
+  Spinner,
+  TableIcon,
+  Tree,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import { useMemo, useState } from "react";
 
 interface AssistantKnowledgeSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -337,7 +336,7 @@ function DataSourceViewsSection({
   viewType,
   isLoading,
 }: DataSourceViewsSectionProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { isDark } = useTheme();
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);

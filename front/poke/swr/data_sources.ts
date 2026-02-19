@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListDataSources } from "@app/pages/api/poke/workspaces/[wId]/data_sources";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { Fetcher } from "swr";
 
 export function usePokeDataSources({
   disabled,

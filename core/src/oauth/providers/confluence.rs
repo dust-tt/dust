@@ -143,11 +143,17 @@ impl Provider for ConfluenceConnectionProvider {
             },
             _ => Err(anyhow!("Missing `expires_in` in response from Confluence"))?,
         };
-        let refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => token,
-            None => Err(anyhow!(
-                "Missing `refresh_token` in response from Confluence"
-            ))?,
+        // Use new refresh token if provided, otherwise keep the existing one.
+        // Atlassian sometimes doesn't return a new refresh token in the response.
+        let final_refresh_token = match raw_json["refresh_token"].as_str() {
+            Some(token) => token.to_string(),
+            None => {
+                info!(
+                    connection_id = connection.connection_id(),
+                    "No refresh_token in Confluence response, keeping existing token"
+                );
+                refresh_token
+            }
         };
 
         Ok(RefreshResult {
@@ -155,7 +161,7 @@ impl Provider for ConfluenceConnectionProvider {
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
-            refresh_token: Some(refresh_token.to_string()),
+            refresh_token: Some(final_refresh_token),
             raw_json,
         })
     }

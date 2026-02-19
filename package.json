@@ -1,0 +1,42 @@
+{
+  "name": "dust-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "front",
+    "front-spa",
+    "sparkle",
+    "connectors",
+    "cli",
+    "extension",
+    "viz",
+    "sdks/js"
+  ],
+  "scripts": {
+    "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
+    "install:all": "npm install",
+    "knip": "knip",
+    "format": "biome check --write .",
+    "format:check": "biome check .",
+    "format:lefthook": "biome format --write",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --fix .",
+    "lint:lefthook": "biome lint",
+    "biome": "biome check .",
+    "biome:lefthook": "biome check --write"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.0",
+    "knip": "^5.80.0",
+    "lefthook": "^2.1.0"
+  },
+  "engines": {
+    "node": "20.19.2"
+  },
+  "overrides": {
+    "eslint-plugin-react-hooks": {
+      "zod-validation-error": "^4.0.0"
+    },
+    "@types/react": "^18.3.18"
+  }
+}

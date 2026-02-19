@@ -1,14 +1,14 @@
+import config from "@app/lib/file_storage/config";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import { frameContentType } from "@app/types/files";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
 import isNumber from "lodash/isNumber";
 import { pipeline } from "stream/promises";
-
-import config from "@app/lib/file_storage/config";
-import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import type { AllSupportedFileContentType } from "@app/types";
-import { frameContentType, stripNullBytes } from "@app/types";
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
@@ -112,10 +112,10 @@ export class FileStorage {
   async getSignedUrl(
     filename: string,
     {
-      expirationDelay,
+      expirationDelayMs,
       promptSaveAs,
-    }: { expirationDelay: number; promptSaveAs?: string } = {
-      expirationDelay: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
+    }: { expirationDelayMs: number; promptSaveAs?: string } = {
+      expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
     }
   ): Promise<string> {
     const gcsFile = this.file(filename);
@@ -123,7 +123,7 @@ export class FileStorage {
     const signedUrl = await gcsFile.getSignedUrl({
       version: "v4",
       action: "read",
-      expires: new Date().getTime() + expirationDelay,
+      expires: new Date().getTime() + expirationDelayMs,
       promptSaveAs,
     });
 

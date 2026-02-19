@@ -1,6 +1,6 @@
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { TagsFilter } from "@app/types/data_source_view";
 import type { Order } from "sequelize";
-
-import type { AgentConfigurationType, TagsFilter } from "@app/types";
 
 export type DataSourceFilter = {
   parents: { in: string[] | null; not: string[] | null } | null;
@@ -19,6 +19,11 @@ export type TableDataSourceConfiguration = {
   workspaceId: string;
   dataSourceViewId: string;
   tableId: string;
+};
+
+export type ProjectConfiguration = {
+  workspaceId: string; // The sId of the workspace (organization)
+  projectId: string; // The sId of the project (space)
 };
 
 export type SortStrategyType = "alphabetical" | "priority" | "updatedAt";

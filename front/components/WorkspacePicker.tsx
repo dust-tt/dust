@@ -1,3 +1,11 @@
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import config from "@app/lib/api/config";
+import { useAppRouter } from "@app/lib/platform";
+import { isDevelopment } from "@app/types/shared/env";
+import type {
+  LightWorkspaceType,
+  UserTypeWithWorkspaces,
+} from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -7,10 +15,6 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-
-import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
 
 interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;
@@ -22,32 +26,55 @@ export const WorkspacePickerRadioGroup = ({
   workspace,
 }: WorkspacePickerRadioGroupProps) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
+
+  const organizations = user.organizations;
+  const hasOrganizations = organizations && organizations.length > 0;
 
   return (
     <DropdownMenuRadioGroup value={workspace.sId}>
-      {user.organizations &&
-        user.organizations.map((org) => {
-          return (
-            <DropdownMenuRadioItem
-              key={org.id}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              value={org.externalId || ""}
-              onClick={async () => {
-                if (org.externalId && org.externalId !== workspace.sId) {
-                  await setNavigationSelection({
-                    lastWorkspaceId: org.externalId,
-                  });
-                  await router.push(
-                    `/api/workos/login?organizationId=${org.id}`
-                  );
-                }
-              }}
-            >
-              {org.name}
-            </DropdownMenuRadioItem>
-          );
-        })}
+      {hasOrganizations
+        ? organizations.map((org) => {
+            return (
+              <DropdownMenuRadioItem
+                key={org.id}
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                value={org.externalId || ""}
+                onClick={async () => {
+                  if (org.externalId && org.externalId !== workspace.sId) {
+                    await setNavigationSelection({
+                      lastWorkspaceId: org.externalId,
+                    });
+                    await router.push(
+                      `${config.getApiBaseUrl()}/api/workos/login?organizationId=${org.id}`
+                    );
+                  }
+                }}
+              >
+                {org.name}
+              </DropdownMenuRadioItem>
+            );
+          })
+        : isDevelopment()
+          ? user.workspaces.map((ws) => {
+              return (
+                <DropdownMenuRadioItem
+                  key={ws.sId}
+                  value={ws.sId}
+                  onClick={async () => {
+                    if (ws.sId !== workspace.sId) {
+                      await setNavigationSelection({
+                        lastWorkspaceId: ws.sId,
+                      });
+                      await router.push(`/w/${ws.sId}/`);
+                    }
+                  }}
+                >
+                  {ws.name}
+                </DropdownMenuRadioItem>
+              );
+            })
+          : null}
     </DropdownMenuRadioGroup>
   );
 };

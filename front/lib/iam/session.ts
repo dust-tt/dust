@@ -1,11 +1,3 @@
-import assert from "assert";
-import type {
-  GetServerSidePropsContext,
-  GetServerSidePropsResult,
-  PreviewData,
-} from "next";
-import type { ParsedUrlQuery } from "querystring";
-
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -17,8 +9,15 @@ import {
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces } from "@app/types";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
+import assert from "assert";
+import type {
+  GetServerSidePropsContext,
+  GetServerSidePropsResult,
+  PreviewData,
+} from "next";
+import type { ParsedUrlQuery } from "querystring";
 
 /**
  * Retrieves the user for a given session
@@ -50,7 +49,6 @@ interface MakeGetServerSidePropsRequirementsWrapperOptions<
   enableLogging?: boolean;
   requireUserPrivilege: R;
   requireCanUseProduct?: boolean;
-  allowUserOutsideCurrentWorkspace?: boolean;
 }
 
 export type CustomGetServerSideProps<
@@ -122,7 +120,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
   enableLogging = true,
   requireUserPrivilege,
   requireCanUseProduct = false,
-  allowUserOutsideCurrentWorkspace,
 }: MakeGetServerSidePropsRequirementsWrapperOptions<RequireUserPrivilege>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
     getServerSideProps: CustomGetServerSideProps<
@@ -219,7 +216,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
         }
 
         // If we target a workspace and the user is not in the workspace, return not found.
-        if (!allowUserOutsideCurrentWorkspace && workspace && !auth?.isUser()) {
+        if (workspace && !auth?.isUser()) {
           return {
             notFound: true,
           };
@@ -268,31 +265,21 @@ export const withDefaultUserAuthPaywallWhitelisted =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: false,
-    allowUserOutsideCurrentWorkspace: false,
   });
 
 export const withDefaultUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,
-    allowUserOutsideCurrentWorkspace: false,
-  });
-
-/**
- * This should only be used for pages that don't require
- * the current user to be in the current workspace.
- */
-export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
-  makeGetServerSidePropsRequirementsWrapper({
-    requireUserPrivilege: "user",
-    requireCanUseProduct: true,
-    // This is a special case where we don't want to check if the user is in the current workspace.
-    allowUserOutsideCurrentWorkspace: true,
   });
 
 export const withSuperUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "superuser",
     requireCanUseProduct: false,
-    allowUserOutsideCurrentWorkspace: false,
+  });
+
+export const withPublicAuthRequirements =
+  makeGetServerSidePropsRequirementsWrapper({
+    requireUserPrivilege: "none",
   });

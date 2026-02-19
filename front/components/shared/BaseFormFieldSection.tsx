@@ -52,7 +52,7 @@ export function BaseFormFieldSection<
   return (
     <div className="space-y-4">
       {(!!title || !!description || !!headerActions) && (
-        <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
+        <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-end">
           <div>
             {title && (
               <h3

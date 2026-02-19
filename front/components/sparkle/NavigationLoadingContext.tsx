@@ -1,4 +1,4 @@
-import { useRouter } from "next/router";
+import { useAppRouter } from "@app/lib/platform";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 
 interface NavigationLoadingContextType {
@@ -23,7 +23,7 @@ export function NavigationLoadingProvider({
   children,
 }: NavigationLoadingProviderProps) {
   const [isNavigating, setIsNavigating] = useState(false);
-  const router = useRouter();
+  const router = useAppRouter();
 
   const showNavigationLoader = useCallback(() => {
     setIsNavigating(true);

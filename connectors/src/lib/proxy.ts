@@ -1,10 +1,9 @@
+import { apiConfig } from "@connectors/lib/api/config";
 import type {
   RequestInfo as UndiciRequestInfo,
   RequestInit as UndiciRequestInit,
 } from "undici";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
-
-import { apiConfig } from "@connectors/lib/api/config";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 /**
  * Creates a fetch function with proxy support if configured.

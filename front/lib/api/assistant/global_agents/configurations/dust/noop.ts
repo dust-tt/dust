@@ -1,10 +1,8 @@
-import type { AgentConfigurationType } from "@app/types";
-import {
-  GLOBAL_AGENTS_SID,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-  NOOP_MODEL_CONFIG,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 
 export function _getNoopAgent(): AgentConfigurationType | null {
   return {
@@ -16,6 +14,7 @@ export function _getNoopAgent(): AgentConfigurationType | null {
     name: "noop",
     description: NOOP_MODEL_CONFIG.description,
     instructions: "",
+    instructionsHtml: null,
     pictureUrl: DUST_AVATAR_URL,
     status: "active",
     scope: "global",

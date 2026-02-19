@@ -17,7 +17,7 @@ const BATCH_SIZE = 128;
 
 makeScript({}, async ({ execute }, logger) => {
   // Fetch all conversations with bogus updatedAt field
-  // eslint-disable-next-line dust/no-raw-sql
+
   const conversations =
     await frontSequelize.query<ConversationWithBogusUpdatedAt>(
       `
@@ -79,7 +79,6 @@ makeScript({}, async ({ execute }, logger) => {
         conv.max_message_created_at.toISOString()
       );
 
-      // eslint-disable-next-line dust/no-raw-sql
       await frontSequelize.query(
         `
         UPDATE conversations c

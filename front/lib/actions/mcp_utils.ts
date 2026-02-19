@@ -1,7 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isSupportedImageContentType } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {
@@ -11,9 +8,10 @@ import {
   isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
+import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import {
   uploadBase64DataToFileStorage,
   uploadBase64ImageToFileStorage,
@@ -25,16 +23,30 @@ import logger from "@app/logger/logger";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
-  Result,
   SupportedFileContentType,
   SupportedImageContentType,
-} from "@app/types";
-import {
-  Err,
-  hasNullUnicodeCharacter,
-  isSupportedFileContentType,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import { isSupportedFileContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isSupportedImageContentType } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+type ResourceInfo =
+  | { type: "image"; contentType: SupportedImageContentType }
+  | { type: "file"; contentType: SupportedFileContentType };
+
+function getResourceInfo(mimeType: string): ResourceInfo | null {
+  if (isSupportedImageContentType(mimeType)) {
+    return { type: "image", contentType: mimeType };
+  }
+  if (isSupportedFileContentType(mimeType)) {
+    return { type: "file", contentType: mimeType };
+  }
+  return null;
+}
 
 export function hideFileFromActionOutput({
   file,
@@ -81,7 +93,7 @@ export function rewriteContentForModel(
     isToolGeneratedFile(content) &&
     isSupportedFileContentType(content.resource.contentType)
   ) {
-    const attachment = getAttachmentFromToolOutput({
+    const attachment = getAttachmentFromFile({
       fileId: content.resource.fileId,
       contentType: content.resource.contentType,
       title: content.resource.title,
@@ -149,13 +161,9 @@ export async function handleBase64Upload(
   content: CallToolResult["content"][number];
   file: FileResource | null;
 }> {
-  const resourceType = isSupportedFileContentType(mimeType)
-    ? "file"
-    : isSupportedImageContentType(mimeType)
-      ? "image"
-      : null;
+  const resourceInfo = getResourceInfo(mimeType);
 
-  if (!resourceType) {
+  if (!resourceInfo) {
     return {
       content: {
         type: "text",
@@ -169,74 +177,61 @@ export async function handleBase64Upload(
     return {
       content: {
         type: "text",
-        text: `The generated ${resourceType} was too large to be stored.`,
+        text: `The generated ${resourceInfo.type} was too large to be stored.`,
       },
       file: null,
     };
   }
 
-  try {
-    const uploadResult =
-      resourceType === "image"
-        ? await uploadBase64ImageToFileStorage(auth, {
-            base64: base64Data,
-            // Cast is valid because of the previous check.
-            contentType: mimeType as SupportedImageContentType,
-            fileName,
-            useCase: fileUseCase,
-            useCaseMetadata: fileUseCaseMetadata,
-          })
-        : await uploadBase64DataToFileStorage(auth, {
-            base64: base64Data,
-            // Cast is valid because of the previous check.
-            contentType: mimeType as SupportedFileContentType,
-            fileName,
-            useCase: fileUseCase,
-            useCaseMetadata: fileUseCaseMetadata,
-          });
+  let uploadResult: Result<FileResource, ProcessAndStoreFileError>;
 
-    if (uploadResult.isErr()) {
-      logger.error(
-        { error: uploadResult.error },
-        `Error upserting ${resourceType} from base64`
-      );
-      return {
-        content: {
-          type: "text",
-          text: `Failed to upsert the generated ${resourceType} as a file.`,
-        },
-        file: null,
-      };
-    }
+  if (resourceInfo.type === "image") {
+    uploadResult = await uploadBase64ImageToFileStorage(auth, {
+      base64: base64Data,
+      contentType: resourceInfo.contentType,
+      fileName,
+      useCase: fileUseCase,
+      useCaseMetadata: fileUseCaseMetadata,
+    });
+  } else {
+    uploadResult = await uploadBase64DataToFileStorage(auth, {
+      base64: base64Data,
+      contentType: resourceInfo.contentType,
+      fileName,
+      useCase: fileUseCase,
+      useCaseMetadata: fileUseCaseMetadata,
+    });
+  }
 
-    return {
-      content: {
-        ...block,
-        // Remove the data from the block to avoid storing it in the database.
-        ...(block.type === "image" ? { data: "" } : {}),
-        ...(isBlobResource(block)
-          ? { resource: { ...block.resource, blob: "" } }
-          : {}),
-      },
-      file: uploadResult.value,
-    };
-  } catch (error) {
+  if (uploadResult.isErr()) {
     logger.error(
       {
         action: "mcp_tool",
-        tool: `generate_${resourceType}`,
+        tool: `generate_${resourceInfo.type}`,
         workspaceId: auth.getNonNullableWorkspace().sId,
-        error,
+        error: uploadResult.error,
       },
-      `Failed to save the generated ${resourceType}.`
+      `Failed to save the generated ${resourceInfo.type}.`
     );
 
     return {
       content: {
         type: "text",
-        text: `Failed to save the generated ${resourceType}.`,
+        text: `Failed to save the generated ${resourceInfo.type}.`,
       },
       file: null,
     };
   }
+
+  return {
+    content: {
+      ...block,
+      // Remove the data from the block to avoid storing it in the database.
+      ...(block.type === "image" ? { data: "" } : {}),
+      ...(isBlobResource(block)
+        ? { resource: { ...block.resource, blob: "" } }
+        : {}),
+    },
+    file: uploadResult.value,
+  };
 }

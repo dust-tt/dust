@@ -1,3 +1,21 @@
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import {
+  KnowledgeChip,
+  KnowledgeErrorChip,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
+import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import {
+  getLocationForDataSourceViewContentNodeWithSpace,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useUnifiedSearch } from "@app/lib/swr/search";
+import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   cn,
   DoubleIcon,
@@ -10,43 +28,58 @@ import {
 } from "@dust-tt/sparkle";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper } from "@tiptap/react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import {
-  KnowledgeChip,
-  KnowledgeErrorChip,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
-import type {
-  FullKnowledgeItem,
-  KnowledgeItem,
-  KnowledgeNodeAttributes,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import {
-  computeHasChildren,
-  isFullKnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
-import {
-  getLocationForDataSourceViewContentNodeWithSpace,
-  getVisualForDataSourceViewContentNode,
-} from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useUnifiedSearch } from "@app/lib/swr/search";
-import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+// Minimal data from serialization.
+export interface BaseKnowledgeItem {
+  dataSourceViewId: string;
+  hasChildren: boolean;
+  label: string;
+  nodeId: string;
+  spaceId: string;
+}
+
+// Fresh selection from search with complete node data.
+export interface FullKnowledgeItem extends BaseKnowledgeItem {
+  node: DataSourceViewContentNode;
+}
+
+export type KnowledgeItem = BaseKnowledgeItem | FullKnowledgeItem;
+
+export function isFullKnowledgeItem(
+  item: KnowledgeItem
+): item is FullKnowledgeItem {
+  return "node" in item && item.node !== undefined;
+}
+
+/**
+ * Computes whether a node has children, with special handling for Notion.
+ * For Notion: pages and databases can have children even if they're currently empty.
+ * For others: uses expandable field or node type.
+ */
+export function computeHasChildren(node: DataSourceViewContentNode): boolean {
+  const isNotion =
+    node.dataSourceView.dataSource.connectorProvider === "notion";
+
+  if (isNotion) {
+    // In Notion, pages (documents) and databases (tables) can have children.
+    // Folders always can have children (though Notion doesn't actually use folders).
+    return (
+      node.type === "folder" ||
+      node.type === "document" ||
+      node.type === "table"
+    );
+  }
+
+  // For non-Notion sources, use the childrenCount field.
+  return node.childrenCount > 0;
+}
 
 interface KnowledgeDisplayProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
+  isSpacesLoading?: boolean;
   onRemove?: () => void;
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
@@ -54,6 +87,7 @@ interface KnowledgeDisplayProps {
 export function KnowledgeDisplayComponent({
   item,
   owner,
+  isSpacesLoading = false,
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
@@ -62,7 +96,7 @@ export function KnowledgeDisplayComponent({
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
     dataSourceViewId: item.dataSourceViewId,
-    disabled: !needsFetch,
+    disabled: !needsFetch || isSpacesLoading,
     owner,
     spaceId: item.spaceId,
   });
@@ -158,6 +192,7 @@ function KnowledgeSearchComponent({
   // Get spaces for location display.
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: false,
   });
 
@@ -177,8 +212,9 @@ function KnowledgeSearchComponent({
       // Tables can't be attached to a skill.
       viewType: "document",
       includeDataSources: false,
-      searchSourceUrls: false,
+      searchSourceUrls: true,
       includeTools: false,
+      prioritizeSpaceAccess: true,
     }
   );
 
@@ -307,12 +343,12 @@ function KnowledgeSearchComponent({
 
   // Delete empty node helper.
   const deleteIfEmpty = useCallback(
-    (delay: number = 50) => {
+    (delayMs: number = 50) => {
       setTimeout(() => {
         if (!searchQuery.trim()) {
           onCancel();
         }
-      }, delay);
+      }, delayMs);
     },
     [searchQuery, onCancel]
   );
@@ -466,7 +502,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
-  const { owner } = useSpacesContext();
+  const { owner, isSpacesLoading } = useSpacesContext();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -512,6 +548,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
         <KnowledgeDisplayComponent
           item={selectedItems[0]}
           owner={owner}
+          isSpacesLoading={isSpacesLoading}
           onRemove={editor.isEditable ? handleRemove : undefined}
           updateAttributes={updateAttributes}
         />

@@ -4,7 +4,7 @@ import React from "react";
 import { ListGroup, ListItem, ListItemSection } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/ListItem",
+  title: "List/ListItem",
   component: ListItem,
   tags: ["autodocs"],
   argTypes: {

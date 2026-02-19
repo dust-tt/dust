@@ -1,44 +1,71 @@
 import "@testing-library/jest-dom/vitest";
 import "vitest-canvas-mock";
 
+import { frontSequelize } from "@app/lib/resources/storage";
+import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { cleanup } from "@testing-library/react";
 import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
 
-import { frontSequelize } from "@app/lib/resources/storage";
-
 // Mock Redis - must be at module level
+const createMockRedisClient = () => ({
+  get: vi.fn(),
+  set: vi.fn(),
+  del: vi.fn(),
+  ttl: vi.fn(),
+  zAdd: vi.fn(),
+  expire: vi.fn(),
+  zRange: vi.fn(),
+  hGetAll: vi.fn().mockResolvedValue([]),
+  hGet: vi.fn(),
+  quit: vi.fn().mockResolvedValue(undefined),
+  on: vi.fn(),
+  xAdd: vi.fn().mockResolvedValue("0-0"),
+  xRead: vi.fn().mockResolvedValue(null),
+  xDel: vi.fn().mockResolvedValue(1),
+  publish: vi.fn().mockResolvedValue(1),
+  subscribe: vi.fn().mockResolvedValue(undefined),
+  unsubscribe: vi.fn().mockResolvedValue(undefined),
+  ping: vi.fn().mockResolvedValue("PONG"),
+});
+
+const mockRunOnRedisImpl = async (
+  opts: unknown,
+  fn: (client: ReturnType<typeof createMockRedisClient>) => Promise<unknown>
+) => {
+  const mockRedisClient = createMockRedisClient();
+  return fn(mockRedisClient);
+};
+
 vi.mock("@app/lib/api/redis", () => ({
-  getRedisClient: vi.fn().mockResolvedValue({
-    get: vi.fn(),
-    set: vi.fn(),
-    ttl: vi.fn(),
-    zAdd: vi.fn(),
-    expire: vi.fn(),
-    zRange: vi.fn(),
-    hGetAll: vi.fn().mockResolvedValue([]),
-    hGet: vi.fn(),
-  }),
-  runOnRedis: vi
+  getRedisStreamClient: vi.fn().mockResolvedValue(createMockRedisClient()),
+  createRedisStreamClient: vi.fn().mockResolvedValue(createMockRedisClient()),
+  getRedisCacheClient: vi.fn().mockResolvedValue(createMockRedisClient()),
+  runOnRedis: vi.fn().mockImplementation(mockRunOnRedisImpl),
+  runOnRedisCache: vi.fn().mockImplementation(mockRunOnRedisImpl),
+  closeRedisClients: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/utils/cache", () => ({
+  cacheWithRedis: vi
     .fn()
     .mockImplementation(
-      async (opts: unknown, fn: (client: any) => Promise<unknown>) => {
-        // Mock Redis client
-        const mockRedisClient = {
-          get: vi.fn(),
-          set: vi.fn(),
-          ttl: vi.fn(),
-          zAdd: vi.fn(),
-          expire: vi.fn(),
-          zRange: vi.fn(),
-          hGetAll: vi.fn().mockResolvedValue([]),
-          hGet: vi.fn(),
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>
+      ): ((...args: Args) => Promise<JsonSerializable<T>>) => {
+        return async function (...args: Args): Promise<JsonSerializable<T>> {
+          const result = await fn(...args);
+          return result;
         };
-
-        return fn(mockRedisClient);
       }
     ),
+  invalidateCacheWithRedis: vi.fn().mockImplementation(() => {
+    return async () => {};
+  }),
+  batchInvalidateCacheWithRedis: vi.fn().mockImplementation(() => {
+    return async () => {};
+  }),
 }));
 
 // Mock Temporal - must be at module level
@@ -63,7 +90,7 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   return {
     ...mod,
     launchIndexUserSearchWorkflow: vi.fn(async () => {
-      const { Ok } = await import("@app/types");
+      const { Ok } = await import("@app/types/shared/result");
       return new Ok(undefined);
     }),
   };
@@ -94,9 +121,13 @@ beforeEach(async (c) => {
 });
 
 afterEach(async (c2) => {
-  // @ts-expect-error - storing context in the test context
-  c2["transaction"].rollback();
-  // @ts-expect-error - storing context in the test context
-  c2["namespace"].exit(c2["context"]);
+  if ("transaction" in c2) {
+    // @ts-expect-error - storing context in the test context
+    c2["transaction"].rollback();
+  }
+  if ("namespace" in c2) {
+    // @ts-expect-error - storing context in the test context
+    c2["namespace"].exit(c2["context"]);
+  }
   cleanup();
 });

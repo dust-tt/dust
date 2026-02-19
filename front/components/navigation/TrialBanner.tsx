@@ -1,9 +1,7 @@
-import { Button, cn } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useMemo, useRef } from "react";
-
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import type { SubscriptionType } from "@app/types";
+import type { SubscriptionType } from "@app/types/plan";
+import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
+import { useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
 const THRESHOLD_MS =
@@ -86,7 +84,7 @@ export function SubscriptionEndBanner({
         </span>
       </div>
       {isAdmin && (
-        <Link
+        <LinkWrapper
           href={`/w/${owner.sId}/subscription`}
           className="shrink-0 no-underline"
         >
@@ -99,7 +97,7 @@ export function SubscriptionEndBanner({
             )}
             size="sm"
           />
-        </Link>
+        </LinkWrapper>
       )}
     </div>
   );

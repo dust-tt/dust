@@ -1,8 +1,7 @@
-import { proxyActivities, sleep } from "@temporalio/workflow";
-
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/usage_queue/activities";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { proxyActivities, sleep } from "@temporalio/workflow";
 
 const { recordUsageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",

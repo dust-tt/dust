@@ -27,10 +27,12 @@ export function DesktopNavigationProvider({
 }: DesktopNavigationProviderProps) {
   const [isNavigationBarOpen, setIsNavigationBarOpen] = useState(defaultOpen);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleNavigationBar = useCallback(() => {
     setIsNavigationBarOpen((prev) => !prev);
   }, [setIsNavigationBarOpen]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value = useMemo(
     () => ({
       setIsNavigationBarOpen,

@@ -5,12 +5,12 @@
  * tool directives in markdown content, enabling the :tool[name]{sId=xxx} syntax.
  */
 
-import React from "react";
-import { visit } from "unist-util-visit";
-
 import { ToolSetupCard } from "@app/components/markdown/tool/ToolSetupCard";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
+import { visit } from "unist-util-visit";
 
 /**
  * Remark directive plugin for parsing tool directives.

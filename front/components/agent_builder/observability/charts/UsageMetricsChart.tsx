@@ -1,4 +1,24 @@
 import {
+  CHART_HEIGHT,
+  USAGE_METRICS_LEGEND,
+  USAGE_METRICS_PALETTE,
+} from "@app/components/agent_builder/observability/constants";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
+import {
+  filterTimeSeriesByVersionWindow,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import {
+  useAgentUsageMetrics,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
+import {
   CartesianGrid,
   Line,
   LineChart,
@@ -7,27 +27,6 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import {
-  CHART_HEIGHT,
-  USAGE_METRICS_LEGEND,
-  USAGE_METRICS_PALETTE,
-} from "@app/components/agent_builder/observability/constants";
-import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
-import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
-import {
-  filterTimeSeriesByVersionWindow,
-  padSeriesToTimeRange,
-} from "@app/components/agent_builder/observability/utils";
-import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
-import {
-  useAgentUsageMetrics,
-  useAgentVersionMarkers,
-} from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
   timestamp: number;
@@ -241,6 +240,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="count"
           name="Messages"
           className={USAGE_METRICS_PALETTE.messages}
@@ -253,6 +253,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="conversations"
           name="Conversations"
           className={USAGE_METRICS_PALETTE.conversations}
@@ -265,6 +266,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="activeUsers"
           name="Active users"
           className={USAGE_METRICS_PALETTE.activeUsers}

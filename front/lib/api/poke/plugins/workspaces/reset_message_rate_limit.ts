@@ -1,6 +1,6 @@
 import { resetMessageRateLimitForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const resetMessageRateLimitPlugin = createPlugin({
   manifest: {

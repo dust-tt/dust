@@ -1,7 +1,5 @@
-import type { ParsedUrlQuery } from "querystring";
-import querystring from "querystring";
-
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -11,9 +9,16 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { isString } from "@app/types";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
+import type { ParsedUrlQuery } from "querystring";
+import querystring from "querystring";
 
 export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -28,7 +33,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     };
   }) {
     if (relatedCredential) {
-      return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
+      return `${config.getAppUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
       const scopes = [
         "User.Read",
@@ -77,18 +82,18 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       workspaceId: string;
       userId: string;
     }
-  ): Promise<RelatedCredential | undefined> {
+  ): Promise<Result<RelatedCredential, OAuthError> | undefined> {
     const { client_id, client_secret } = extraConfig;
     if (!client_id || !client_secret) {
       return undefined;
     }
-    return {
+    return new Ok({
       content: {
         client_id,
         client_secret,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
-    };
+    });
   }
 
   async getUpdatedExtraConfig(

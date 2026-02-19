@@ -1,8 +1,3 @@
-import { Avatar, ContentMessage, Markdown } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
@@ -15,11 +10,15 @@ import {
   getAgentMentionPlugin,
 } from "@app/lib/mentions/markdown/plugin";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import { Avatar, ContentMessage, Markdown } from "@dust-tt/sparkle";
+import { useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export function MCPDeepDiveActionDetails({
   owner,
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const handoffResource =
     toolOutput?.find(isAgentPauseOutputResourceType) ?? null;
@@ -44,7 +43,7 @@ export function MCPDeepDiveActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName="Hand off to Deep dive"
       visual={() => <Avatar visual={DUST_AVATAR_URL} size="xs" busy={isBusy} />}
     >

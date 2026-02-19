@@ -40,10 +40,8 @@ When no command is provided, the `chat` command will be used by default.
   - `dust status`
 - **`logout`**: Log out from your Dust account.
   - `dust logout`
-- **`agents-mcp`**: Select Dust agents and launch a Model Context Protocol server (via SSE transport) to interact with them.
-  - `dust agents-mcp`
-  - Optional: `--port <number>` or `-p <number>` to specify the listening port (defaults to auto-selection)
-  - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly (can be repeated)
+- **`skill:init`**: Install the dust skill for coding CLIs (Claude Code, Codex).
+  - `dust skill:init`
 - **`chat`**: Chat with a Dust agent (default command).
   - `dust chat` or simply `dust`
   - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly
@@ -99,8 +97,8 @@ export DUST_WORKSPACE_ID="ws_abc123"
 # Chat with headless auth
 dust chat
 
-# Launch agents-mcp with headless auth
-dust agents-mcp --port 8080
+# Install the dust skill
+dust skill:init
 
 # Use with specific agent
 dust chat --sId 1234567890
@@ -112,8 +110,8 @@ dust chat --sId 1234567890
 # Chat with headless auth
 dust chat --wId ws_abc123 --api-key sk_your_api_key_here
 
-# Launch agents-mcp with headless auth
-dust agents-mcp --wId ws_abc123 --api-key sk_your_api_key_here --port 8080
+# Install the dust skill with headless auth
+dust skill:init --wId ws_abc123 --api-key sk_your_api_key_here
 
 # Use with specific agent
 dust chat --sId 1234567890 --wId ws_abc123 --api-key sk_your_api_key_here
@@ -156,9 +154,7 @@ While chatting with an agent, you can use these commands by typing them with a f
 
 - `dust` (starts a chat with a Dust agent)
 - `dust login`
-- `dust agents-mcp`
-- `dust agents-mcp --port 8080`
-- `dust agents-mcp --sId 1234567890`
+- `dust skill:init`
 - `dust chat`
 - `dust chat --sId 1234567890`
 - `dust chat --auto` (automatically accept all file edits)

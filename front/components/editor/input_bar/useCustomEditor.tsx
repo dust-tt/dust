@@ -1,21 +1,10 @@
-import { markdownStyles } from "@dust-tt/sparkle";
-import { Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
-import type { Editor } from "@tiptap/react";
-import { useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import { useEffect, useMemo } from "react";
-
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
@@ -28,7 +17,15 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
-import type { RichMention, WorkspaceType } from "@app/types";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
+import { markdownStyles } from "@dust-tt/sparkle";
+import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
+import type { Editor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { useEffect, useMemo } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 
@@ -172,9 +169,11 @@ export interface CustomEditorProps {
     setLoading: (loading: boolean) => void
   ) => void;
   disableAutoFocus: boolean;
+  disableUserMentions?: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
+  spaceId?: string;
   // If provided, large pasted text will be routed to this callback along with selection bounds
   onLongTextPaste?: (payload: {
     text: string;
@@ -188,11 +187,15 @@ export interface CustomEditorProps {
 export const buildEditorExtensions = ({
   owner,
   conversationId,
+  spaceId,
+  disableUserMentions,
   onInlineText,
   onUrlDetected,
 }: {
   owner: WorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
+  spaceId?: string;
+  disableUserMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
@@ -202,13 +205,25 @@ export const buildEditorExtensions = ({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
       link: false, // Disable built-in Link extension, using custom LinkExtension instead
-      paragraph: false, // Disable built-in paragraph, use custom EmptyLineParagraphExtension instead
+      paragraph: {
+        HTMLAttributes: {
+          class: markdownStyles.paragraph(),
+        },
+      },
       heading: {
         levels: [1],
       },
       blockquote: false, // Disable default blockquote, we use a custom one
-      orderedList: false, // Disable default orderedList, we use custom OrderedListExtension
-      listItem: false, // Disable default listItem, we use custom ListItemExtension
+      orderedList: {
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      },
+      listItem: {
+        HTMLAttributes: {
+          class: markdownStyles.list(),
+        },
+      },
       // Markdown styles configuration.
       code: {
         HTMLAttributes: {
@@ -226,24 +241,6 @@ export const buildEditorExtensions = ({
         },
       },
     }),
-    // Custom ordered list and list item extensions to preserve start attribute
-    OrderedListExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.orderedList(),
-      },
-    }),
-    ListItemExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.list(),
-      },
-    }),
-    // Custom paragraph extension to preserve empty lines in markdown
-    // See: https://github.com/ueberdosis/tiptap/issues/7269
-    EmptyLineParagraphExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.paragraph(),
-      },
-    }),
     BlockquoteExtension.configure({
       HTMLAttributes: {
         class: markdownStyles.blockquote(),
@@ -256,6 +253,7 @@ export const buildEditorExtensions = ({
         class: "text-blue-600 hover:underline hover:text-blue-800",
       },
       autolink: false,
+      openOnClick: false,
     }),
     MentionExtension.configure({
       owner,
@@ -266,17 +264,23 @@ export const buildEditorExtensions = ({
       suggestion: createMentionSuggestion({
         owner,
         conversationId,
+        spaceId,
         select: {
           agents: true,
-          users: true,
+          users: !disableUserMentions,
         },
       }),
     }),
     EmojiExtension,
     Placeholder.configure({
-      placeholder: "Ask an @agent a question, or get some @help",
+      placeholder: ({ node }) => {
+        if (node.type.name !== "paragraph") {
+          return "";
+        }
+        return "Ask an @agent a question, or get some @help";
+      },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     PastedAttachmentExtension.configure({
       onInlineText,
@@ -297,46 +301,54 @@ export const buildEditorExtensions = ({
 const useCustomEditor = ({
   onEnterKeyDown,
   disableAutoFocus,
+  disableUserMentions,
   onUrlDetected,
   owner,
   conversationId,
+  spaceId,
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
 }: CustomEditorProps) => {
-  const editor = useEditor({
-    autofocus: disableAutoFocus ? false : "end",
-    extensions: buildEditorExtensions({
-      owner,
-      conversationId,
-      onInlineText,
-      onUrlDetected,
-    }),
-    shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
-    editorProps: {
-      attributes: {
-        class:
-          "border-0 outline-none overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
-      },
-      // cleans up incoming HTML to remove all style that could mess up with our theme
-      transformPastedHTML(html: string) {
-        return cleanupPastedHTML(html);
-      },
-      handlePaste: (view, event) => {
-        const text = event.clipboardData?.getData("text/plain") ?? "";
-        if (!text || !onLongTextPaste) {
+  const editor = useEditor(
+    {
+      autofocus: disableAutoFocus ? false : "end",
+      extensions: buildEditorExtensions({
+        owner,
+        conversationId,
+        spaceId,
+        disableUserMentions,
+        onInlineText,
+        onUrlDetected,
+      }),
+      shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
+      editorProps: {
+        attributes: {
+          class:
+            "border-0 outline-none overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
+        },
+        // cleans up incoming HTML to remove all style that could mess up with our theme
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
+        handlePaste: (view, event) => {
+          const text = event.clipboardData?.getData("text/plain") ?? "";
+          if (!text || !onLongTextPaste) {
+            return false;
+          }
+          if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
+            const { from, to } = view.state.selection;
+            onLongTextPaste({ text, from, to });
+            return true;
+          }
           return false;
-        }
-        if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
-          const { from, to } = view.state.selection;
-          onLongTextPaste({ text, from, to });
-          return true;
-        }
-        return false;
+        },
       },
+      immediatelyRender: false,
     },
-    immediatelyRender: false,
-  });
+    // Important to watch for conversationId changes to reset the editor state when switching conversations.
+    [conversationId]
+  );
 
   const editorService = useEditorService(editor);
 

@@ -10,9 +10,9 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -25,17 +25,18 @@ import type {
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type {
-  AgentConfigurationType,
   DataSourcesConfigurationsCodecType,
-  DataSourceViewSelectionConfigurations,
-  LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/api/internal/agent_configuration";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { DataSourceViewSelectionConfigurations } from "@app/types/data_source_view";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 function processDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,
@@ -440,6 +441,7 @@ export async function submitAgentBuilderForm({
               : {},
           dustAppConfiguration: action.configuration.dustAppConfiguration,
           secretName: action.configuration.secretName,
+          dustProject: action.configuration.dustProject,
         };
       },
       { concurrency: 3 }
@@ -462,6 +464,7 @@ export async function submitAgentBuilderForm({
       name: formData.agentSettings.name,
       description: formData.agentSettings.description,
       instructions: formData.instructions,
+      instructionsHtml: formData.instructionsHtml ?? null,
       pictureUrl: pictureUrlToUse,
       status: isDraft ? "draft" : "active",
       scope: formData.agentSettings.scope,

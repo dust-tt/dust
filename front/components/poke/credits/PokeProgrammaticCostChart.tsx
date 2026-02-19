@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import type { DisplayMode } from "@app/components/workspace/ProgrammaticCostChart";
 import {
   BaseProgrammaticCostChart,
@@ -8,7 +6,8 @@ import {
 import type { GroupByType } from "@app/lib/api/analytics/programmatic_cost";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { usePokeProgrammaticCost } from "@app/poke/swr/credits";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { useState } from "react";
 
 interface PokeProgrammaticCostChartProps {
   owner: WorkspaceType;
@@ -24,6 +23,7 @@ export function PokeProgrammaticCostChart({
   billingCycleStartDay,
 }: PokeProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+  const [groupByCount, setGroupByCount] = useState<number>(5);
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
@@ -37,7 +37,7 @@ export function PokeProgrammaticCostChart({
   const currentBillingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     now,
-    false
+    true
   );
   const [selectedPeriod, setSelectedPeriod] = useState<string>(
     formatPeriod(currentBillingCycle.cycleStart)
@@ -52,16 +52,20 @@ export function PokeProgrammaticCostChart({
     selectedPeriod,
     billingCycleStartDay,
     groupBy,
+    groupByCount,
     filter,
   });
 
   return (
     <BaseProgrammaticCostChart
+      workspaceId={owner.sId}
       programmaticCostData={programmaticCostData}
       isProgrammaticCostLoading={isProgrammaticCostLoading}
       isProgrammaticCostError={!!isProgrammaticCostError}
       groupBy={groupBy}
       setGroupBy={setGroupBy}
+      groupByCount={groupByCount}
+      setGroupByCount={setGroupByCount}
       filter={filter}
       setFilter={setFilter}
       selectedPeriod={selectedPeriod}

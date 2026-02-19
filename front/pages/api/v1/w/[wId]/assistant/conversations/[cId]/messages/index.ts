@@ -1,8 +1,3 @@
-import type { PostMessagesResponseBody } from "@dust-tt/client";
-import { PublicPostMessagesRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   isUserMessageContextValid,
@@ -16,15 +11,21 @@ import {
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import {
-  hasReachedProgrammaticUsageLimits,
+  checkProgrammaticUsageLimits,
   isProgrammaticUsage,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
+import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { UserMessageContext, WithAPIErrorResponse } from "@app/types";
-import { isEmptyString } from "@app/types";
+import type { UserMessageContext } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isEmptyString } from "@app/types/shared/utils/general";
+import type { PostMessagesResponseBody } from "@dust-tt/client";
+import { PublicPostMessagesRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger
@@ -137,24 +138,17 @@ async function handler(
 
       const origin = context.origin ?? "api";
 
-      const hasReachedLimits = isProgrammaticUsage(auth, {
-        userMessageOrigin: origin,
-      })
-        ? await hasReachedProgrammaticUsageLimits(auth)
-        : false;
-      if (hasReachedLimits) {
-        const errorMessage = auth.isAdmin()
-          ? "Your workspace has run out of programmatic usage credits. " +
-            "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
-          : "Your workspace has run out of programmatic usage credits. " +
-            "Please ask a Dust workspace admin to purchase more credits.";
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message: errorMessage,
-          },
-        });
+      if (isProgrammaticUsage(auth, { userMessageOrigin: origin })) {
+        const limitsResult = await checkProgrammaticUsageLimits(auth);
+        if (limitsResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message: limitsResult.error.message,
+            },
+          });
+        }
       }
 
       if (isEmptyString(context.username)) {
@@ -263,7 +257,9 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
-        agentMessages: messageRes.value.agentMessages,
+        agentMessages: messageRes.value.agentMessages.map(
+          addBackwardCompatibleAgentMessageFields
+        ),
       });
       return;
 

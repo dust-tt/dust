@@ -1,28 +1,22 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Input, Label } from "@dust-tt/sparkle";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import dynamic from "next/dynamic";
-import { useState } from "react";
-import TextareaAutosize from "react-textarea-autosize";
-
 import ModelPicker from "@app/components/app/ModelPicker";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
 import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
-} from "@app/types";
-import type { BlockType, RunType } from "@app/types";
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
+import { Input, Label } from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 
 import Block from "./Block";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 export default function LLM({
   owner,
@@ -441,7 +435,7 @@ export default function LLM({
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.prompt}

@@ -1,3 +1,26 @@
+import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetails";
+import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
+import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useAppRouter } from "@app/lib/platform";
+import { useTags } from "@app/lib/swr/tags";
+import {
+  classNames,
+  formatTimestampToFriendlyDate,
+  tagsSorter,
+} from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import type {
+  AgentConfigurationScope,
+  AgentUsageType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { TagType } from "@app/types/tag";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -12,32 +35,8 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-
-import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
-import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetails";
-import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
-import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
-import { assistantUsageMessage } from "@app/components/assistant/Usage";
-import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
-import { useTags } from "@app/lib/swr/tags";
-import {
-  classNames,
-  formatTimestampToFriendlyDate,
-  tagsSorter,
-} from "@app/lib/utils";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
-import type {
-  AgentConfigurationScope,
-  AgentUsageType,
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@app/types";
-import { isAdmin, pluralize } from "@app/types";
-import type { TagType } from "@app/types/tag";
-import type { UserType } from "@app/types/user";
 
 type RowData = {
   sId: string;
@@ -179,6 +178,7 @@ const getTableColumns = ({
               items: editors.map((editor) => ({
                 name: editor.fullName,
                 visual: editor.image,
+                isRounded: true,
               })),
               nbVisibleItems: 4,
             }}
@@ -352,9 +352,10 @@ export function AssistantsTable({
     open: false,
     agentConfiguration: undefined,
   });
-  const router = useRouter();
+  const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {

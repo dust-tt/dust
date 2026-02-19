@@ -1,12 +1,11 @@
-import type { Voice } from "@elevenlabs/elevenlabs-js/api/types";
-import type { Logger } from "pino";
-
+import { getElevenLabsClient } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/utils";
 import type {
   VoiceGender,
   VoiceUseCase,
-} from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/utils";
-import { getElevenLabsClient } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/utils";
+} from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { makeScript } from "@app/scripts/helpers";
+import type { Voice } from "@elevenlabs/elevenlabs-js/api/types";
+import type { Logger } from "pino";
 
 interface CandidateVoice {
   voiceId: string;

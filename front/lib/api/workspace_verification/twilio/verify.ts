@@ -1,5 +1,7 @@
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { getTwilioClient, getTwilioVerifyServiceSid } from "./client";
 
@@ -26,6 +28,10 @@ export async function sendOtp(
       });
   } catch (error) {
     const err = normalizeError(error);
+    logger.error(
+      { err, phoneNumber: phoneNumber.slice(0, 6) + "***" },
+      "Twilio sendOtp error"
+    );
     if (err.message.includes("Invalid parameter `To`")) {
       return new Err(new Error("Invalid phone number format"));
     }
@@ -33,8 +39,15 @@ export async function sendOtp(
       err.message.includes("Max send attempts reached") ||
       err.message.includes("rate limit")
     ) {
-      throw new Error("Too many attempts. Please try again later.");
+      return new Err(new Error("Too many attempts. Please try again later."));
     }
+    if (err.message.includes("60220")) {
+      return new Err(new Error("Dust doesn't operate in China."));
+    }
+    logger.error(
+      { err, phoneNumber: phoneNumber.slice(0, 6) + "***" },
+      "Twilio sendOtp error, investigate and ask @jd"
+    );
     throw new Error("Failed to send verification code. Please try again.");
   }
 

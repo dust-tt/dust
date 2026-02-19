@@ -1,21 +1,23 @@
-import type * as t from "io-ts";
-import { useCallback } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
-  ContentFragmentsType,
+  InternalPostConversationsRequestBodySchema,
+  SupportedContentNodeContentType,
+} from "@app/types/api/internal/assistant";
+import { isSupportedContentNodeFragmentContentType } from "@app/types/api/internal/assistant";
+import type {
+  ConversationMetadata,
   ConversationType,
   ConversationVisibility,
-  InternalPostConversationsRequestBodySchema,
-  MentionType,
-  Result,
   SubmitMessageError,
-  SupportedContentNodeContentType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import type * as t from "io-ts";
+import { useCallback } from "react";
 
 export function useCreateConversationWithMessage({
   owner,
@@ -27,9 +29,11 @@ export function useCreateConversationWithMessage({
   return useCallback(
     async ({
       messageData,
-      visibility = "unlisted",
-      title,
+      metadata,
+      skipToolsValidation = false,
       spaceId,
+      title,
+      visibility = "unlisted",
     }: {
       messageData: {
         input: string;
@@ -38,10 +42,13 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
         selectedSkillIds?: string[];
+        origin?: "web" | "agent_copilot" | "project_kickoff";
       };
       visibility?: ConversationVisibility;
       title?: string;
       spaceId?: string | null;
+      metadata?: ConversationMetadata;
+      skipToolsValidation?: boolean;
     }): Promise<Result<ConversationType, SubmitMessageError>> => {
       if (!user) {
         return new Err({
@@ -58,6 +65,7 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
         selectedSkillIds,
+        origin,
       } = messageData;
 
       const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> =
@@ -65,6 +73,8 @@ export function useCreateConversationWithMessage({
           title: title ?? null,
           visibility,
           spaceId: spaceId ?? null,
+          metadata,
+          skipToolsValidation,
           message: {
             content: input,
             context: {
@@ -74,6 +84,7 @@ export function useCreateConversationWithMessage({
               clientSideMCPServerIds,
               selectedMCPServerViewIds,
               selectedSkillIds,
+              origin,
             },
             mentions,
           },

@@ -1,14 +1,14 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import { NumberFromString, withFallback } from "io-ts-types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import { NumberFromString, withFallback } from "io-ts-types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 150;

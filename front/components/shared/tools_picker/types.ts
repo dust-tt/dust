@@ -1,11 +1,15 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
-import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+
+export type CapabilityFilterType = "all" | "skills" | "tools";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
@@ -60,6 +64,13 @@ export const dustAppConfigurationSchema = z
 
 export const secretNameSchema = z.string().nullable();
 
+export const dustProjectSchema = z
+  .object({
+    workspaceId: z.string(),
+    projectId: z.string(),
+  })
+  .nullable();
+
 export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
 
 export const jsonSchemaStringSchema = z.string().nullable();
@@ -108,6 +119,7 @@ export const mcpServerConfigurationSchema = z.object({
   timeFrame: mcpTimeFrameSchema,
   additionalConfiguration: additionalConfigurationSchema,
   dustAppConfiguration: dustAppConfigurationSchema,
+  dustProject: dustProjectSchema,
   secretName: secretNameSchema,
   jsonSchema: jsonSchemaFieldSchema,
   _jsonSchemaString: jsonSchemaStringSchema,

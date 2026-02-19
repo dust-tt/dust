@@ -535,10 +535,19 @@ export const ProgressNotificationContentSchema = z.object({
   progress: z.number(),
   total: z.number(),
   progressToken: z.union([z.string(), z.number()]),
+  // This one is deprecated, use _meta.data instead
+  data: z
+    .object({
+      label: z.string(),
+      output: ProgressNotificationOutputSchema,
+    })
+    .optional(),
   // Custom data.
-  data: z.object({
-    label: z.string(),
-    output: ProgressNotificationOutputSchema,
+  _meta: z.object({
+    data: z.object({
+      label: z.string(),
+      output: ProgressNotificationOutputSchema,
+    }),
   }),
 });
 
@@ -578,6 +587,7 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "notion"
   | "slack"
   | "slack_tools"
+  | "snowflake"
   | "gong"
   | "microsoft"
   | "microsoft_tools"
@@ -586,11 +596,10 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "ukg_ready"
   | "vanta"
   | "productboard"
 >();
-
-// Internal tool output.
 
 export const AuthRequiredOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
@@ -618,10 +627,22 @@ export const EarlyExitOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export const FileAuthRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_file_auth_required"),
+  fileId: z.string(),
+  fileName: z.string(),
+  connectionId: z.string(),
+  mimeType_file: z.string(),
+  text: z.string(),
+  uri: z.string(),
+});
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
+  FileAuthRequiredOutputResourceSchema,
 ]);
 
 export type AgentPauseOutputResourceType = z.infer<

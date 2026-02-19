@@ -275,8 +275,7 @@ const ConnectMenuConfig: MenuConfig = {
     },
     {
       title: "Become a Partner",
-      href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
-      isExternal: true,
+      href: "/home/partner",
     },
   ],
 };
@@ -290,13 +289,16 @@ const ResourcesMenuConfig: MenuConfig = {
     BuildMenuConfig.items[0],
     BuildMenuConfig.items[1],
     {
+      title: "",
+    },
+    {
+      title: "",
+    },
+    {
       title: ExploreMenuConfig.title,
     },
     ExploreMenuConfig.items[0],
     ExploreMenuConfig.items[1],
-    {
-      title: "",
-    },
     ExploreMenuConfig.items[2],
     ExploreMenuConfig.items[3],
     {
@@ -304,10 +306,10 @@ const ResourcesMenuConfig: MenuConfig = {
     },
     ConnectMenuConfig.items[0],
     ConnectMenuConfig.items[1],
+    ConnectMenuConfig.items[2],
     {
       title: "",
     },
-    ConnectMenuConfig.items[2],
   ],
 };
 
@@ -334,7 +336,7 @@ export const menuConfig: DocsConfig = {
     {
       title: ResourcesMenuConfig.title,
       label: "Resources",
-      rows: 3,
+      rows: 5,
       items: ResourcesMenuConfig.items,
     },
     {
@@ -404,40 +406,11 @@ export const menuConfig: DocsConfig = {
           title: "Security",
           href: "/home/security",
         },
-        {
-          title: DevelopersMenuConfig.title,
-        },
-        ...DevelopersMenuConfig.items,
       ],
     },
     {
-      title: "Compare",
-      items: [
-        {
-          title: "Dust vs ChatGPT Enterprise",
-          href: "/compare/chatgpt",
-        },
-        {
-          title: "Dust vs Gemini Enterprise",
-          href: "/compare/gemini",
-        },
-        {
-          title: "Dust vs Glean",
-          href: "/compare/glean",
-        },
-        {
-          title: "Dust vs Langdock",
-          href: "/compare/langdock",
-        },
-        {
-          title: "Dust vs n8n",
-          href: "/compare/n8n",
-        },
-        {
-          title: "Dust vs Notion AI",
-          href: "/compare/notion",
-        },
-      ],
+      title: DevelopersMenuConfig.title,
+      items: DevelopersMenuConfig.items,
     },
     {
       title: "Company",
@@ -461,8 +434,7 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Become a Partner",
-          href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
-          isExternal: true,
+          href: "/home/partner",
         },
       ],
     },

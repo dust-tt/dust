@@ -1,7 +1,7 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { RegionType } from "@app/lib/api/regions/config";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import type {
   AgentMessageType,
@@ -20,13 +20,15 @@ type PokeItemType =
   | "Data Source"
   | "Data Source View"
   | "Connector"
-  | "MCP Server View";
+  | "MCP Server View"
+  | "Frame";
 
 export interface PokeItemBase {
   id: ModelId;
   link: string | null;
   name: string;
   type: PokeItemType;
+  region?: RegionType;
 }
 
 export type PokeSpaceType = SpaceType & {

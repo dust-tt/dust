@@ -1,9 +1,7 @@
-import { Readable } from "stream";
-
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
 import {
   download as githubDownload,
@@ -40,8 +38,11 @@ import type {
   ToolSearchResult,
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
-import type { ConnectorProvider, FileType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { FileType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { Readable } from "stream";
 
 const SEARCHABLE_TOOLS = {
   github: { search: githubSearch, download: githubDownload },
@@ -91,14 +92,14 @@ async function _getToolAndAccessTokenForView(
     connectionType,
   });
 
-  if (!connectionResult) {
+  if (connectionResult.isErr()) {
     return null;
   }
 
   return {
     tool: SEARCHABLE_TOOLS[r.value.name],
-    accessToken: connectionResult.access_token,
-    metadata: connectionResult.connection.metadata,
+    accessToken: connectionResult.value.access_token,
+    metadata: connectionResult.value.connection.metadata,
   };
 }
 

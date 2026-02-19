@@ -1,8 +1,9 @@
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
   ImageModelIdType,
-  ModelIdType as BaseModelIdType,
-} from "@app/types";
+  StaticModelIdType,
+} from "@app/types/assistant/models/models";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
 type PricingEntry = {
@@ -24,8 +25,8 @@ export const MAX_DISCOUNT_PERCENT = Math.ceil(
 );
 
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
-// This record must contain all BaseModelIdType values.
-const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
+// This record contains all static model IDs. Custom models use default pricing.
+const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
   "gpt-5.2": {
     input: 1.75,
@@ -126,6 +127,18 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 6.25,
     cache_read_input_tokens: 0.5,
   },
+  "claude-opus-4-6": {
+    input: 5.0,
+    output: 25.0,
+    cache_creation_input_tokens: 6.25,
+    cache_read_input_tokens: 0.5,
+  },
+  "claude-sonnet-4-6": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
   "claude-3-opus-20240229": {
     input: 15.0,
     output: 75.0,
@@ -187,7 +200,7 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   // Conservative: pricing is 2/12 for first 200k tokens
   // then 4/18 beyond that.
   "gemini-3-pro-preview": {
-    input: 2,
+    input: 4,
     output: 18,
   },
   "gemini-3-flash-preview": {
@@ -239,17 +252,41 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.55,
     output: 2.19,
   },
+  // https://app.fireworks.ai/models/fireworks/deepseek-r1-0528
   "accounts/fireworks/models/deepseek-r1-0528": {
     input: 1.35,
     output: 5.4,
+    cache_read_input_tokens: 0.68,
   },
+  // https://fireworks.ai/models/fireworks/deepseek-v3p2
   "accounts/fireworks/models/deepseek-v3p2": {
-    input: 1.2,
-    output: 1.2,
+    input: 0.56,
+    output: 1.68,
+    cache_read_input_tokens: 0.28,
   },
+  // https://fireworks.ai/models/fireworks/kimi-k2-instruct-0905
   "accounts/fireworks/models/kimi-k2-instruct-0905": {
-    input: 0.4,
-    output: 0.4,
+    input: 0.6,
+    output: 2.5,
+    cache_read_input_tokens: 0.3,
+  },
+  // https://fireworks.ai/models/fireworks/kimi-k2p5
+  "accounts/fireworks/models/kimi-k2p5": {
+    input: 0.6,
+    output: 3.0,
+    cache_read_input_tokens: 0.1,
+  },
+  // https://app.fireworks.ai/models/fireworks/minimax-m2p5
+  "accounts/fireworks/models/minimax-m2p5": {
+    input: 0.3,
+    output: 0.2,
+    cache_read_input_tokens: 0.029,
+  },
+  // https://app.fireworks.ai/models/fireworks/glm-5
+  "accounts/fireworks/models/glm-5": {
+    input: 0.01,
+    output: 0.2,
+    cache_read_input_tokens: 0.002,
   },
   "grok-3-latest": {
     input: 2.0,
@@ -286,9 +323,9 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
 };
 
 const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
-  "gemini-2.5-flash-image": {
-    input: 0.3,
-    output: 30.0,
+  "gemini-3-pro-image-preview": {
+    input: 20.0,
+    output: 120.0,
   },
 };
 
@@ -446,7 +483,7 @@ export const MODEL_PRICING: Record<string, PricingEntry> = {
 };
 
 // If model is not found in the MODEL_PRICING, use the default pricing.
-const DEFAULT_PRICING_MODEL_ID: BaseModelIdType = "gpt-4o";
+const DEFAULT_PRICING_MODEL_ID: StaticModelIdType = "gpt-4o";
 
 const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
@@ -462,7 +499,7 @@ export function computeTokensCostForUsageInMicroUsd({
   cachedTokens,
   cacheCreationTokens,
 }: {
-  modelId: BaseModelIdType | ImageModelIdType;
+  modelId: ModelIdType | ImageModelIdType;
   promptTokens: number;
   completionTokens: number;
   cachedTokens: number | null;

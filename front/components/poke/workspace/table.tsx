@@ -1,6 +1,3 @@
-import { Chip } from "@dust-tt/sparkle";
-import Link from "next/link";
-
 import {
   PokeTable,
   PokeTableBody,
@@ -11,12 +8,11 @@ import {
 import type { DataRetentionConfig } from "@app/lib/data_retention";
 import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type {
-  ExtensionConfigurationType,
-  WorkspaceDomain,
-  WorkspaceType,
-} from "@app/types";
-import { asDisplayName } from "@app/types";
+import type { ExtensionConfigurationType } from "@app/types/extension";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
+import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 export function WorkspaceInfoTable({
   owner,
@@ -88,26 +84,26 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Workspace Health</PokeTableCell>
               <PokeTableCell>
-                <Link
+                <LinkWrapper
                   href={`https://metabase.dust.tt/dashboard/34-snowflake-workspace-health?end_date=2030-12-31&start_date=2024-01-01&tab=30-executive-summary&workspace_size_difference_margin=0.2&workspacesid=${owner.sId}`}
                   target="_blank"
                   className="text-xs text-highlight-400"
                 >
                   Metabase
-                </Link>
+                </LinkWrapper>
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>WorkOS dashboard</PokeTableCell>
               <PokeTableCell>
                 {owner.workOSOrganizationId && (
-                  <Link
+                  <LinkWrapper
                     href={`https://dashboard.workos.com/${workosEnvironmentId}/organizations/${owner.workOSOrganizationId}`}
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >
                     {owner.workOSOrganizationId}
-                  </Link>
+                  </LinkWrapper>
                 )}
               </PokeTableCell>
             </PokeTableRow>

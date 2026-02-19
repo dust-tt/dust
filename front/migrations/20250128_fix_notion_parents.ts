@@ -7,8 +7,9 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { CoreAPI, Ok } from "@app/types";
-import { withRetries } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Ok } from "@app/types/shared/result";
+import { withRetries } from "@app/types/shared/retries";
 
 const QUERY_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;

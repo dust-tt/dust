@@ -1,9 +1,3 @@
-import sgMail from "@sendgrid/mail";
-import { escape } from "html-escaper";
-import { sign } from "jsonwebtoken";
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import config from "@app/lib/api/config";
 import {
   getMembers,
@@ -17,17 +11,23 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { SubscriptionType } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { sanitizeString } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
-  APIErrorWithStatusCode,
   LightWorkspaceType,
-  MembershipInvitationType,
-  Result,
-  SubscriptionType,
   UserType,
   WorkspaceType,
-} from "@app/types";
-import { Err, Ok, sanitizeString } from "@app/types";
+} from "@app/types/user";
+import sgMail from "@sendgrid/mail";
+import { escape } from "html-escaper";
+import { sign } from "jsonwebtoken";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
@@ -111,7 +111,7 @@ function getMembershipInvitationUrlForToken(
   owner: LightWorkspaceType,
   invitationToken: string
 ) {
-  return `${config.getClientFacingUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
+  return `${config.getAppUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
 }
 
 export function getMembershipInvitationUrl(

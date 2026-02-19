@@ -1,22 +1,3 @@
-import {
-  BoltIcon,
-  Button,
-  CloudArrowLeftRightIcon,
-  CommandLineIcon,
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-  PlusIcon,
-  ToolsIcon,
-  Tree,
-} from "@dust-tt/sparkle";
-import type { ReturnTypeOf } from "@octokit/core/types";
-import sortBy from "lodash/sortBy";
-import uniqBy from "lodash/uniqBy";
-import { useRouter } from "next/router";
-import type { ComponentType, ReactElement } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -31,6 +12,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
 import {
   CATEGORY_DETAILS,
@@ -51,16 +34,36 @@ import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
-  AppType,
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
+} from "@app/types/api/public/spaces";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type { AppType } from "@app/types/app";
+import type {
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-  WhitelistableFeature,
-} from "@app/types";
-import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+} from "@app/types/data_source_view";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  CloudArrowLeftRightIcon,
+  CommandLineIcon,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+  PlusIcon,
+  ToolsIcon,
+  Tree,
+} from "@dust-tt/sparkle";
+import type { ReturnTypeOf } from "@octokit/core/types";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
+import type { ComponentType, ReactElement } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -85,6 +88,7 @@ export default function SpaceSideBarMenu({
 
   const { spaces: spacesAsUser, isSpacesLoading: isSpacesAsUserLoading } =
     useSpaces({
+      kinds: ["global", "regular"],
       workspaceId: owner.sId,
     });
 
@@ -153,10 +157,6 @@ export default function SpaceSideBarMenu({
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <NavigationList className="w-full px-3">
         {sortedGroupedSpaces.map(({ section, spaces }, index) => {
-          if (section === "public" && !spaces.length) {
-            return null;
-          }
-
           if (section === "restricted" && !spaces.length && !isAdmin) {
             return null;
           }
@@ -231,9 +231,6 @@ const getSpaceSectionDetails = (
 
     case "system":
       return { label: "Administration", displayCreateSpaceButton: false };
-
-    case "public":
-      return { label: "Public", displayCreateSpaceButton: false };
 
     default:
       assertNever(kind);
@@ -317,7 +314,7 @@ const SystemSpaceItem = ({
   visual: IconType;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
 
@@ -373,7 +370,7 @@ const SpaceMenuItem = ({
   isMember: boolean;
   hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
@@ -458,15 +455,17 @@ const SpaceDataSourceViewItem = ({
   owner,
   space,
   node,
+  disambiguateForNode,
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
   space: SpaceType;
   node?: DataSourceViewContentNode;
+  disambiguateForNode?: boolean;
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const { isNodesLoading, nodes, totalNodesCountIsAccurate, totalNodesCount } =
@@ -523,6 +522,12 @@ const SpaceDataSourceViewItem = ({
   const expandableNodes = nodes.filter((node) => node.expandable);
   const hiddenNodesCount = Math.max(0, totalNodesCount - nodes.length);
 
+  const label = node
+    ? getDisplayTitleForDataSourceViewContentNode(node, {
+        disambiguate: disambiguateForNode === true,
+      })
+    : getDataSourceNameFromView(item);
+
   return (
     <Tree.Item
       isNavigatable
@@ -538,19 +543,20 @@ const SpaceDataSourceViewItem = ({
         void router.push(dataSourceViewPath);
       }}
       collapsed={!isExpanded || isEmpty}
-      label={node ? node.title : getDataSourceNameFromView(item)}
+      label={label}
       visual={LogoComponent}
       areActionsFading={false}
     >
       {isExpanded && (
         <Tree isLoading={isNodesLoading}>
-          {expandableNodes.map((node) => (
+          {expandableNodes.map((childNode) => (
             <SpaceDataSourceViewItem
               item={item}
-              key={node.internalId}
+              key={childNode.internalId}
               owner={owner}
               space={space}
-              node={node}
+              node={childNode}
+              disambiguateForNode={node === undefined}
             />
           ))}
           {hiddenNodesCount > 0 && (
@@ -581,7 +587,7 @@ const SpaceDataSourceViewSubMenu = ({
   category: DataSourceViewCategoryWithoutApps;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
@@ -647,7 +653,7 @@ const SpaceAppItem = ({
   owner: LightWorkspaceType;
 }): ReactElement => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const appPath = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`;
 
@@ -700,7 +706,7 @@ const SpaceAppSubMenu = ({
   category: "apps";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceCategoryPath,
@@ -752,7 +758,7 @@ const SpaceActionsSubMenu = ({
   category: "actions";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceCategoryPath,
@@ -824,7 +830,7 @@ const SpaceTriggersSubMenu = ({
   space: SpaceType;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceTriggersPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${TRIGGERS_CATEGORY}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceTriggersPath,

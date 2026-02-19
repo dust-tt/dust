@@ -9,7 +9,7 @@ export type EnvironmentState = "stopped" | "cold" | "warm";
 export interface StateInfo {
   state: EnvironmentState;
   warnings: string[];
-  sdkRunning: boolean;
+  buildWatchersRunning: boolean;
   dockerRunning: boolean;
   appServicesRunning: boolean;
 }
@@ -34,21 +34,21 @@ export async function isDockerRunning(envName: string): Promise<boolean> {
 
 // Determine the base state from running status (exported for testing)
 export function determineState(
-  sdkRunning: boolean,
+  buildWatchersRunning: boolean,
   dockerRunning: boolean,
   appServicesRunning: boolean
 ): EnvironmentState {
-  const nothingRunning = !(sdkRunning || dockerRunning || appServicesRunning);
+  const nothingRunning = !(buildWatchersRunning || dockerRunning || appServicesRunning);
   if (nothingRunning) {
     return "stopped";
   }
 
-  const onlySdkRunning = sdkRunning && !dockerRunning && !appServicesRunning;
-  if (onlySdkRunning) {
+  const onlyBuildWatchersRunning = buildWatchersRunning && !dockerRunning && !appServicesRunning;
+  if (onlyBuildWatchersRunning) {
     return "cold";
   }
 
-  const allRunning = sdkRunning && dockerRunning && appServicesRunning;
+  const allRunning = buildWatchersRunning && dockerRunning && appServicesRunning;
   if (allRunning) {
     return "warm";
   }
@@ -59,7 +59,7 @@ export function determineState(
 
 // Detect warnings for inconsistent states (exported for testing)
 export function detectWarnings(
-  sdkRunning: boolean,
+  buildWatchersRunning: boolean,
   dockerRunning: boolean,
   appServicesRunning: boolean,
   runningAppServices: ServiceName[]
@@ -67,16 +67,16 @@ export function detectWarnings(
   const warnings: string[] = [];
 
   const allConsistent =
-    !(sdkRunning || dockerRunning || appServicesRunning) ||
-    (sdkRunning && !dockerRunning && !appServicesRunning) ||
-    (sdkRunning && dockerRunning && appServicesRunning);
+    !(buildWatchersRunning || dockerRunning || appServicesRunning) ||
+    (buildWatchersRunning && !dockerRunning && !appServicesRunning) ||
+    (buildWatchersRunning && dockerRunning && appServicesRunning);
 
   if (allConsistent) {
     return warnings;
   }
 
-  if (!sdkRunning && (dockerRunning || appServicesRunning)) {
-    warnings.push("SDK not running");
+  if (!buildWatchersRunning && (dockerRunning || appServicesRunning)) {
+    warnings.push("Build watchers not running");
   }
 
   if (dockerRunning && !appServicesRunning) {
@@ -98,15 +98,19 @@ export function detectWarnings(
 
 // Get detailed state info for an environment
 export async function getStateInfo(env: Environment): Promise<StateInfo> {
-  const sdkRunning = await isServiceRunning(env.name, "sdk");
+  const [sparkleRunning, sdkRunning] = await Promise.all([
+    isServiceRunning(env.name, "sparkle"),
+    isServiceRunning(env.name, "sdk"),
+  ]);
+  const buildWatchersRunning = sparkleRunning && sdkRunning;
   const dockerRunning = await isDockerRunning(env.name);
   const runningServices = await getRunningServices(env.name);
-  const runningAppServices = runningServices.filter((s) => s !== "sdk");
+  const runningAppServices = runningServices.filter((s) => s !== "sparkle" && s !== "sdk");
   const appServicesRunning = runningAppServices.length > 0;
 
-  const state = determineState(sdkRunning, dockerRunning, appServicesRunning);
+  const state = determineState(buildWatchersRunning, dockerRunning, appServicesRunning);
   const warnings = detectWarnings(
-    sdkRunning,
+    buildWatchersRunning,
     dockerRunning,
     appServicesRunning,
     runningAppServices
@@ -115,7 +119,7 @@ export async function getStateInfo(env: Environment): Promise<StateInfo> {
   return {
     state,
     warnings,
-    sdkRunning,
+    buildWatchersRunning,
     dockerRunning,
     appServicesRunning,
   };

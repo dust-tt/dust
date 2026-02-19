@@ -1,8 +1,3 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-import type { SWRMutationConfiguration } from "swr/mutation";
-import useSWRMutation from "swr/mutation";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -15,15 +10,83 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
-import type { GetSkillWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
+import type {
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+} from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
-import type { LightWorkspaceType } from "@app/types";
-import { Ok } from "@app/types";
 import type {
   SkillStatus,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
+import type { SWRMutationConfiguration } from "swr/mutation";
+import useSWRMutation from "swr/mutation";
+
+export function useSkill(options: {
+  workspaceId: string;
+  skillId: string | null;
+  withRelations: true;
+  disabled?: boolean;
+}): {
+  skill: SkillWithRelationsType | null;
+  isSkillLoading: boolean;
+  isSkillError: boolean;
+  mutateSkill: () => void;
+};
+export function useSkill(options: {
+  workspaceId: string;
+  skillId: string | null;
+  withRelations?: false;
+  disabled?: boolean;
+}): {
+  skill: SkillType | null;
+  isSkillLoading: boolean;
+  isSkillError: boolean;
+  mutateSkill: () => void;
+};
+export function useSkill({
+  workspaceId,
+  skillId,
+  withRelations = false,
+  disabled = false,
+}: {
+  workspaceId: string;
+  skillId: string | null;
+  withRelations?: boolean;
+  disabled?: boolean;
+}): {
+  skill: SkillType | SkillWithRelationsType | null;
+  isSkillLoading: boolean;
+  isSkillError: boolean;
+  mutateSkill: () => void;
+} {
+  const skillFetcher: Fetcher<
+    GetSkillResponseBody | GetSkillWithRelationsResponseBody
+  > = fetcher;
+
+  const url = skillId
+    ? `/api/w/${workspaceId}/skills/${skillId}${withRelations ? "?withRelations=true" : ""}`
+    : null;
+
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+    url,
+    skillFetcher,
+    { disabled }
+  );
+
+  return {
+    skill: data?.skill ?? null,
+    isSkillLoading: isLoading,
+    isSkillError: !!error,
+    mutateSkill: mutate,
+  };
+}
 
 export function useSkills({
   owner,
@@ -87,7 +150,13 @@ export function useSkillsWithRelations({
 
 export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
   const getSimilarSkills = useCallback(
-    async (naturalDescription: string, signal?: AbortSignal) => {
+    async (
+      naturalDescription: string,
+      options: {
+        excludeSkillId: string | null;
+        signal?: AbortSignal;
+      }
+    ) => {
       const response: GetSimilarSkillsResponseBody = await fetcher(
         `/api/w/${owner.sId}/skills/similar`,
         {
@@ -95,8 +164,11 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ naturalDescription }),
-          signal,
+          body: JSON.stringify({
+            naturalDescription,
+            excludeSkillId: options?.excludeSkillId ?? undefined,
+          }),
+          signal: options?.signal,
         }
       );
       return new Ok(response.similar_skills);
@@ -257,7 +329,7 @@ export function useSkillWithRelations(
   owner: LightWorkspaceType,
   options?: SWRMutationConfiguration<
     GetSkillWithRelationsResponseBody,
-    any,
+    Error,
     string,
     string
   >

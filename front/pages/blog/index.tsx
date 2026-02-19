@@ -1,9 +1,4 @@
-import type { GetStaticProps } from "next";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useEffect, useMemo, useState } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   BLOG_PAGE_SIZE,
   BlogHeader,
@@ -15,15 +10,17 @@ import {
 import { BlogPagination } from "@app/components/blog/BlogPagination";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  CONTENTFUL_REVALIDATE_SECONDS,
-  getAllBlogPosts,
-} from "@app/lib/contentful/client";
+import { getAllBlogPosts } from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-export const getStaticProps: GetStaticProps<
+export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
 > = async () => {
   const postsResult = await getAllBlogPosts();
@@ -38,7 +35,6 @@ export const getStaticProps: GetStaticProps<
         posts: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
-      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -47,10 +43,10 @@ export const getStaticProps: GetStaticProps<
       posts: postsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
-    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogListing({ posts }: BlogListingPageProps) {
   const router = useRouter();
   const initialTag = isString(router.query.tag) ? router.query.tag : null;
@@ -84,10 +80,21 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
     return posts.filter((post) => post.tags.includes(selectedTag));
   }, [posts, selectedTag]);
 
-  const hasFeaturedCandidate = !selectedTag && filteredPosts.length > 0;
-  const remainingPool = hasFeaturedCandidate
-    ? filteredPosts.slice(1)
-    : filteredPosts;
+  // Featured post is the first non-SEO post.
+  const featuredPost = useMemo(() => {
+    if (selectedTag) {
+      return null;
+    }
+    return filteredPosts.find((post) => !post.isSeoArticle) ?? null;
+  }, [filteredPosts, selectedTag]);
+
+  // Remaining pool excludes the featured post.
+  const remainingPool = useMemo(() => {
+    if (!featuredPost) {
+      return filteredPosts;
+    }
+    return filteredPosts.filter((post) => post.id !== featuredPost.id);
+  }, [filteredPosts, featuredPost]);
 
   const totalPages = Math.max(
     1,
@@ -96,11 +103,19 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * BLOG_PAGE_SIZE;
   const endIndex = startIndex + BLOG_PAGE_SIZE;
-  const paginatedPosts = remainingPool.slice(startIndex, endIndex);
 
-  const showFeatured =
-    hasFeaturedCandidate && currentPage === 1 && filteredPosts.length > 0;
-  const featuredPost = showFeatured ? filteredPosts[0] : null;
+  // Sort within each page: regular articles first, SEO articles at the bottom.
+  const paginatedPosts = useMemo(() => {
+    const pageSlice = remainingPool.slice(startIndex, endIndex);
+    return [...pageSlice].sort((a, b) => {
+      if (a.isSeoArticle !== b.isSeoArticle) {
+        return a.isSeoArticle ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [remainingPool, startIndex, endIndex]);
+
+  const showFeatured = featuredPost && currentPage === 1;
 
   return (
     <>
@@ -128,7 +143,7 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
         <BlogHeader />
         <BlogTagFilter allTags={allTags} selectedTag={selectedTag} />
 
-        {featuredPost && <FeaturedPost post={featuredPost} />}
+        {showFeatured && featuredPost && <FeaturedPost post={featuredPost} />}
 
         <BlogPostGrid
           posts={paginatedPosts}

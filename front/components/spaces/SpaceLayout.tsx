@@ -1,3 +1,14 @@
+import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
+import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
+import {
+  useSetContentWidth,
+  useSetNavChildren,
+} from "@app/components/sparkle/AppLayoutContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter, usePathParams } from "@app/lib/platform";
+import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
   Chip,
   Dialog,
@@ -8,68 +19,38 @@ import {
   DialogTitle,
   InformationCircleIcon,
   Page,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import React, { useCallback, useState } from "react";
-
-import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
-import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
-import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
-import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
-import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
-
-export interface SpaceLayoutPageProps {
-  canReadInSpace: boolean;
-  canWriteInSpace: boolean;
-  category?: DataSourceViewCategory;
-  dataSourceView?: DataSourceViewType;
-  isAdmin: boolean;
-  owner: WorkspaceType;
-  parentId?: string;
-  plan: PlanType;
-  space: SpaceType;
-  subscription: SubscriptionType;
-}
+import type React from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface SpaceLayoutProps {
   children: React.ReactNode;
-  pageProps: SpaceLayoutPageProps;
-  useBackendSearch?: boolean;
 }
 
-export function SpaceLayout({
-  children,
-  pageProps,
-  useBackendSearch = false,
-}: SpaceLayoutProps) {
+export function SpaceLayout({ children }: SpaceLayoutProps) {
+  const params = usePathParams();
+  const spaceId = params.spaceId;
+
+  const owner = useWorkspace();
+  const { subscription, isAdmin } = useAuth();
+  const plan = subscription.plan;
+
+  const router = useAppRouter();
+
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
     defaultRestricted: false,
   });
 
   const {
-    category,
+    spaceInfo: space,
     canReadInSpace,
-    canWriteInSpace,
-    dataSourceView,
-    isAdmin,
-    owner,
-    parentId,
-    plan,
-    space,
-    subscription,
-  } = pageProps;
-  const router = useRouter();
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: spaceId ?? null,
+  });
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -90,48 +71,47 @@ export function SpaceLayout({
     []
   );
 
+  const navChildren = useMemo(
+    () => (
+      <SpaceSideBarMenu
+        owner={owner}
+        isAdmin={isAdmin}
+        openSpaceCreationModal={openSpaceCreationModal}
+      />
+    ),
+    [owner, isAdmin, openSpaceCreationModal]
+  );
+
+  useSetContentWidth("wide");
+  useSetNavChildren(navChildren);
+
   return (
-    <AppWideModeLayout
-      subscription={subscription}
-      owner={owner}
-      navChildren={
-        <SpaceSideBarMenu
-          owner={owner}
-          isAdmin={isAdmin}
-          openSpaceCreationModal={openSpaceCreationModal}
-        />
-      }
-    >
-      <div className="flex w-full flex-col">
-        <Page.Vertical gap="lg" align="stretch">
-          {
-            // Message to admins that are not members of the space.
-            // No need to show it for system space since it's a no-member space.
-            !canReadInSpace && space.kind !== "system" && (
-              <div>
-                <Chip
-                  color="rose"
-                  label="You are not a member of this space."
-                  size="sm"
-                  icon={InformationCircleIcon}
-                />
-              </div>
-            )
-          }
-          <SpaceSearchInput
-            category={category}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-            owner={owner}
-            useBackendSearch={useBackendSearch}
-            space={space}
-            dataSourceView={dataSourceView}
-            parentId={parentId}
-          >
+    <>
+      {isSpaceInfoLoading || !space ? (
+        <div className="flex h-full items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="flex w-full flex-col">
+          <Page.Vertical gap="lg" align="stretch">
+            {
+              // Message to admins that are not members of the space.
+              // No need to show it for system space since it's a no-member space.
+              !canReadInSpace && space.kind !== "system" && (
+                <div>
+                  <Chip
+                    color="rose"
+                    label="You are not a member of this space."
+                    size="sm"
+                    icon={InformationCircleIcon}
+                  />
+                </div>
+              )
+            }
             {children}
-          </SpaceSearchInput>
-        </Page.Vertical>
-      </div>
+          </Page.Vertical>
+        </div>
+      )}
 
       {isAdmin && !isLimitReached && (
         <CreateOrEditSpaceModal
@@ -174,6 +154,6 @@ export function SpaceLayout({
           </DialogContent>
         </Dialog>
       )}
-    </AppWideModeLayout>
+    </>
   );
 }

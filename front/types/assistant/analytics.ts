@@ -1,6 +1,8 @@
 import type { ThumbReaction } from "@app/components/assistant/conversation/FeedbackSelector";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
-import type { AgentMessageStatus, UserMessageOrigin } from "@app/types";
+
+import type { AgentMessageStatus, UserMessageOrigin } from "./conversation";
+import type { ConversationSkillOrigin } from "./conversation_skills";
 
 /**
  * Types for agent analytics data stored in Elasticsearch
@@ -33,6 +35,13 @@ export interface AgentMessageAnalyticsFeedback {
   created_at: string; // ISO date string.
 }
 
+export interface AgentMessageAnalyticsSkillUsed {
+  skill_id: string;
+  skill_name: string;
+  skill_type: "custom" | "global";
+  source: ConversationSkillOrigin;
+}
+
 export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_id: string;
   agent_version: string;
@@ -41,6 +50,7 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   context_origin: UserMessageOrigin | null;
   latency_ms: number;
   message_id: string;
+  skills_used: AgentMessageAnalyticsSkillUsed[];
   status: AgentMessageStatus;
   timestamp: string; // ISO date string.
   tokens: AgentMessageAnalyticsTokens;
@@ -50,14 +60,17 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   workspace_id: string;
 }
 
-export interface AgentRetrievalOutputAnalyticsData extends ElasticsearchBaseDocument {
+export interface AgentRetrievalOutputAnalyticsData
+  extends ElasticsearchBaseDocument {
   message_id: string;
   workspace_id: string;
   conversation_id: string;
   agent_id: string;
   agent_version: string;
   timestamp: string; // ISO date string.
-  mcp_server_configuration_id: string;
+  // Optional: not present for internal servers like data_sources_file_system
+  // that don't have persistent configurations.
+  mcp_server_configuration_id?: number;
   mcp_server_name: string;
   data_source_view_id: string;
   data_source_id: string;

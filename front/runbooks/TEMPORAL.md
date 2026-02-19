@@ -168,8 +168,9 @@ import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/your_queue/config";
 import { makeYourWorkflowId } from "@app/temporal/your_queue/helpers";
 import { yourWorkflow } from "@app/temporal/your_queue/workflows";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function launchYourWorkflow({
   entityId,

@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
@@ -24,6 +22,7 @@ import {
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -36,7 +35,11 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, isGlobalAgentId, removeNulls } from "@app/types";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { removeNulls } from "@app/types/shared/utils/general";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -120,6 +123,7 @@ export async function scrubWorkspaceData({
     dangerouslyRequestAllGroups: true,
   });
   await deleteAllConversations(auth);
+  await deleteKeys(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
   await deleteOnboardingTasks(auth);
@@ -154,7 +158,10 @@ export async function pauseAllTriggers({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const disableResult = await TriggerResource.disableAllForWorkspace(auth);
+  const disableResult = await TriggerResource.disableAllForWorkspace(
+    auth,
+    "downgraded"
+  );
   if (disableResult.isErr()) {
     // Don't fail the whole scrub workflow if we can't disable triggers, just log it.
     logger.error(
@@ -164,11 +171,14 @@ export async function pauseAllTriggers({
   }
 }
 
+export async function deleteKeys(auth: Authenticator) {
+  await KeyResource.deleteAllForWorkspace(auth);
+}
+
 export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const conversations = await ConversationResource.listAll(auth, {
     includeDeleted: true,
-    includeTest: true,
   });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
@@ -248,7 +258,9 @@ async function deleteDatasources(auth: Authenticator) {
 
   for (const ds of dataSources) {
     // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
-    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, ds);
+    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+      dataSource: ds,
+    });
     if (r.isErr()) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }
@@ -258,7 +270,9 @@ async function deleteDatasources(auth: Authenticator) {
 // Remove all user-created spaces and their associated groups,
 // preserving only the system and global spaces.
 async function deleteSpaces(auth: Authenticator) {
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces: true,
+  });
 
   // Filter out system and global spaces.
   const filteredSpaces = spaces.filter(
@@ -310,9 +324,9 @@ async function cleanupCustomerio(auth: Authenticator) {
   );
 
   // Finally, fetch all the subscriptions for the workspaces.
-  const subscriptionsByWorkspaceSid =
-    await SubscriptionResource.fetchActiveByWorkspaces(
-      Object.values(workspaceById)
+  const subscriptionsByWorkspaceModelId =
+    await SubscriptionResource.fetchActiveByWorkspacesModelId(
+      Object.values(workspaceById).map((w) => w.id)
     );
 
   // Process the workspace users in chunks of 4.
@@ -332,7 +346,7 @@ async function cleanupCustomerio(auth: Authenticator) {
         );
         if (
           workspacesOfUser.some((w) => {
-            const subscription = subscriptionsByWorkspaceSid[w.sId];
+            const subscription = subscriptionsByWorkspaceModelId[w.id];
             return (
               subscription &&
               ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(

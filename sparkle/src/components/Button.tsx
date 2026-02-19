@@ -1,23 +1,20 @@
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
+import { Slot } from "@radix-ui/react-slot";
 import {
   Counter,
   Icon,
   LinkWrapper,
-  LinkWrapperProps,
+  type LinkWrapperProps,
   Spinner,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
+  Tooltip,
 } from "@sparkle/components/";
-import { SpinnerProps } from "@sparkle/components/Spinner";
+import type { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const PULSE_ANIMATION_DURATION = 1;
 
@@ -34,8 +31,28 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
-export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
+export const REGULAR_BUTTON_SIZES = [
+  "xmini",
+  "mini",
+  "xs",
+  "sm",
+  "md",
+] as const;
+export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
+export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
+
+export type RegularButtonSize = (typeof REGULAR_BUTTON_SIZES)[number];
+export type IconOnlySize = (typeof ICON_ONLY_SIZES)[number];
+export type ButtonSize = RegularButtonSize | IconOnlySize;
+
+function isSmallButtonSize(
+  size: ButtonSize | undefined
+): size is (typeof SMALL_BUTTON_SIZES)[number] {
+  return (
+    size !== undefined &&
+    SMALL_BUTTON_SIZES.includes(size as (typeof SMALL_BUTTON_SIZES)[number])
+  );
+}
 
 // Define button styling with cva
 const buttonVariants = cva(
@@ -48,6 +65,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: cn(
+          "s-border s-border-transparent",
           "s-bg-primary-800 dark:s-bg-primary-800-night",
           "s-text-primary-50 dark:s-text-primary-50-night",
           "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
@@ -55,6 +73,7 @@ const buttonVariants = cva(
           "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
         ),
         highlight: cn(
+          "s-border s-border-transparent",
           "s-bg-highlight",
           "s-text-highlight-50",
           "hover:s-bg-highlight-light",
@@ -77,6 +96,7 @@ const buttonVariants = cva(
           "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
         ),
         warning: cn(
+          "s-border s-border-transparent",
           "s-bg-warning",
           "s-text-warning-50",
           "hover:s-bg-warning-light",
@@ -141,13 +161,17 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        xmini: "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
-        xs: "s-h-7 s-px-2.5 s-label-xs s-gap-1.5 s-shrink-0",
-        sm: "s-h-9 s-px-3 s-label-sm s-gap-2 s-shrink-0",
-        md: "s-h-12 s-px-4 s-py-2 s-label-base s-gap-2.5 s-shrink-0",
+        "icon-xs": "s-h-6 s-w-6 s-gap-1 s-shrink-0",
+        icon: "s-h-7 s-w-7 s-gap-1.5 s-shrink-0",
+        xmini: "s-h-6 s-px-1.5 s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-px-2 s-gap-1.5 s-shrink-0",
+        xs: "s-h-7 s-px-2.5 s-gap-1.5 s-shrink-0",
+        sm: "s-h-9 s-px-3 s-gap-2 s-shrink-0",
+        md: "s-h-12 s-px-4 s-py-2 s-gap-2.5 s-shrink-0",
       },
       rounded: {
+        "icon-xs": "s-rounded-lg",
+        icon: "s-rounded-lg",
         xmini: "s-rounded-lg",
         mini: "s-rounded-lg",
         xs: "s-rounded-lg",
@@ -167,13 +191,43 @@ const buttonVariants = cva(
 const labelVariants = cva("", {
   variants: {
     size: {
-      xmini: "s-label-xs s-hidden",
-      mini: "s-label-xs s-hidden",
-      xs: "s-label-xs",
-      sm: "s-label-sm",
-      md: "s-label-base",
+      "icon-xs": "s-hidden",
+      icon: "s-hidden",
+      xmini: "",
+      mini: "",
+      xs: "",
+      sm: "",
+      md: "",
+    },
+    hasLighterFont: {
+      true: "",
+      false: "",
     },
   },
+  compoundVariants: [
+    { size: "xmini", hasLighterFont: false, className: "s-label-xs" },
+    { size: "mini", hasLighterFont: false, className: "s-label-xs" },
+    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
+    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
+    { size: "md", hasLighterFont: false, className: "s-label-base" },
+    {
+      size: "xmini",
+      hasLighterFont: true,
+      className: "s-text-xs s-font-normal",
+    },
+    {
+      size: "mini",
+      hasLighterFont: true,
+      className: "s-text-xs s-font-normal",
+    },
+    { size: "xs", hasLighterFont: true, className: "s-text-xs s-font-normal" },
+    { size: "sm", hasLighterFont: true, className: "s-text-sm s-font-normal" },
+    {
+      size: "md",
+      hasLighterFont: true,
+      className: "s-text-base s-font-normal",
+    },
+  ],
   defaultVariants: {
     size: "sm",
   },
@@ -204,8 +258,7 @@ const chevronVariantMap = {
 } as const;
 
 export interface MetaButtonProps
-  extends
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isRounded?: boolean;
@@ -245,7 +298,9 @@ MetaButton.displayName = "MetaButton";
 type IconSizeType = "xs" | "sm" | "md";
 type CounterSizeType = "xs" | "sm" | "md";
 
-export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
+export const ICON_SIZE_MAP: Record<ButtonSize, IconSizeType> = {
+  "icon-xs": "xs",
+  icon: "sm",
   xmini: "xs",
   mini: "sm",
   xs: "xs",
@@ -253,13 +308,49 @@ export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
   md: "md",
 };
 
-const COUNTER_SIZE_MAP: Record<ButtonSizeType, CounterSizeType> = {
+const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
+  "icon-xs": "xs",
+  icon: "xs",
   xmini: "xs",
   mini: "xs",
   xs: "xs",
   sm: "sm",
   md: "md",
 };
+
+const loadingContainerVariants = cva("-s-mx-0.5", {
+  variants: {
+    size: {
+      "icon-xs": "s-w-5 s-px-0.5",
+      icon: "s-w-5 s-px-0.5",
+      xmini: "s-w-5 s-px-0.5",
+      mini: "s-w-5 s-px-0.5",
+      xs: "s-w-5 s-px-0.5",
+      sm: "",
+      md: "",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
+
+const selectButtonSizeVariants = cva("", {
+  variants: {
+    size: {
+      "icon-xs": "s-w-auto s-px-1.5",
+      xmini: "s-w-auto s-px-1.5",
+      mini: "s-w-auto s-px-2",
+      icon: "s-w-auto s-px-2",
+      xs: "",
+      sm: "",
+      md: "",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
 
 type CommonButtonProps = Omit<MetaButtonProps, "children"> &
   Omit<LinkWrapperProps, "children"> & {
@@ -268,24 +359,26 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isPulsing?: boolean;
     briefPulse?: boolean;
     tooltip?: string;
+    tooltipShortcut?: string;
     isCounter?: boolean;
     counterValue?: string;
     isRounded?: boolean;
+    hasLighterFont?: boolean;
   };
 
-export type MiniButtonProps = CommonButtonProps & {
-  size: "mini";
+export type IconOnlyButtonProps = CommonButtonProps & {
+  size: IconOnlySize;
   icon: React.ComponentType;
   label?: never;
 };
 
 export type RegularButtonProps = CommonButtonProps & {
-  size?: Exclude<ButtonSizeType, "mini">;
+  size?: RegularButtonSize;
   icon?: React.ComponentType;
   label?: string;
 };
 
-export type ButtonProps = MiniButtonProps | RegularButtonProps;
+export type ButtonProps = IconOnlyButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -296,6 +389,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isLoading = false,
       variant = "primary",
       tooltip,
+      tooltipShortcut,
       isSelect = false,
       isPulsing = false,
       briefPulse = false,
@@ -303,6 +397,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       counterValue,
       size = "sm",
       isRounded = false,
+      hasLighterFont = false,
       href,
       target,
       rel,
@@ -349,15 +444,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const content = (
       <>
         {isLoading ? (
-          <div
-            className={cn(
-              "-s-mx-0.5",
-              size === "mini" && "s-w-5 s-px-0.5",
-              size === "xmini" && "s-w-5 s-px-0.5"
-            )}
-          >
+          <div className={loadingContainerVariants({ size })}>
             <Spinner
-              size={size === "mini" || size === "xmini" ? "xs" : iconSize}
+              size={isSmallButtonSize(size) ? "xs" : iconSize}
               variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
             />
           </div>
@@ -369,7 +458,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div
             className={cn(
               "s-flex s-items-center s-gap-2",
-              labelVariants({ size })
+              labelVariants({ size, hasLighterFont })
             )}
           >
             {label}
@@ -415,6 +504,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isLoading || props.disabled}
         className={cn(
           (isPulsing || isPulsingBriefly) && "s-animate-pulse",
+          isSelect && selectButtonSizeVariants({ size }),
           className
         )}
         aria-label={ariaLabel || tooltip || label}
@@ -433,14 +523,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
 
     const wrappedContent = tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent>{tooltip}</TooltipContent>
-          </TooltipPortal>
-        </TooltipRoot>
-      </TooltipProvider>
+      <Tooltip
+        trigger={innerButton}
+        tooltipTriggerAsChild={true}
+        label={tooltip}
+        shortcut={tooltipShortcut}
+      />
     ) : (
       innerButton
     );

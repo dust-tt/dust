@@ -1,8 +1,3 @@
-import { startObservation } from "@langfuse/tracing";
-import { randomUUID } from "crypto";
-import pickBy from "lodash/pickBy";
-import startCase from "lodash/startCase";
-
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -18,23 +13,54 @@ import type {
   LLMClientMetadata,
   LLMParameters,
   LLMStreamParameters,
+  SystemPromptInput,
 } from "@app/lib/api/llm/types/options";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
+import type { Content } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 import type {
+  ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
+} from "@app/types/assistant/models/types";
+import { startObservation } from "@langfuse/tracing";
+import { randomUUID } from "crypto";
+import pickBy from "lodash/pickBy";
+import startCase from "lodash/startCase";
+
+function contentToText(contents: Content[]): string {
+  return contents
+    .filter(isTextContent)
+    .map((c) => c.text)
+    .join("\n");
+}
+
+function buildDefaultTraceInput(
+  prompt: SystemPromptInput,
+  conversation: LLMStreamParameters["conversation"]
+): unknown[] {
+  return [
+    { role: "system", content: systemPromptToText(prompt) },
+    ...conversation.messages.map((message): unknown => {
+      if (message.role !== "user") {
+        return message;
+      }
+
+      return { ...message, content: contentToText(message.content) };
+    }),
+  ];
+}
 
 export abstract class LLM {
   protected modelId: ModelIdType;
-  protected modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
+  protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
   protected reasoningEffort: ReasoningEffort | null;
   protected responseFormat: string | null;
@@ -50,28 +76,35 @@ export abstract class LLM {
 
   protected constructor(
     auth: Authenticator,
+    providerId: ModelProviderIdType,
     {
       bypassFeatureFlag = false,
       context,
-      clientId,
       getTraceInput,
       getTraceOutput,
       modelId,
       reasoningEffort = "none",
       responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters & { clientId: ModelProviderIdType }
+    }: LLMParameters
   ) {
     this.modelId = modelId;
-    this.modelConfig = getSupportedModelConfig({
+    const modelConfig = getSupportedModelConfig({
       modelId: this.modelId,
-      providerId: clientId,
+      providerId,
     });
+    if (!modelConfig) {
+      throw new Error(`Model config not found for ${modelId}/${providerId}`);
+    }
+    this.modelConfig = modelConfig;
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
     this.responseFormat = responseFormat;
     this.bypassFeatureFlag = bypassFeatureFlag;
-    this.metadata = { clientId, modelId };
+    this.metadata = {
+      clientId: providerId,
+      modelId: this.modelId,
+    };
 
     // Initialize tracing.
     this.authenticator = auth;
@@ -119,10 +152,17 @@ export abstract class LLM {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
+    // Use custom trace input if provided, otherwise use the full conversation.
+    // Full conversation with system prompt for observation (actual LLM call details).
+    const observationInput = buildDefaultTraceInput(prompt, conversation);
+
+    // Simplified input for trace if custom getter provided.
+    const traceInput = this.getTraceInput?.(conversation) ?? observationInput;
+
     const generation = startObservation(
       "llm-completion",
       {
-        input: [{ role: "system", content: prompt }, ...conversation.messages],
+        input: observationInput,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -135,12 +175,6 @@ export abstract class LLM {
       },
       { asType: "generation" }
     );
-
-    // Use custom trace input if provided, otherwise use the full conversation.
-    const traceInput = this.getTraceInput?.(conversation) ?? [
-      { role: "system", content: prompt },
-      ...conversation.messages,
-    ];
 
     generation.updateTrace({
       name: startCase(this.context.operationType),
@@ -184,6 +218,7 @@ export abstract class LLM {
       `client_id:${this.metadata.clientId}`,
       `operation_type:${this.context.operationType}`,
     ];
+
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
     let currentEvent: LLMEvent | null = null;
@@ -269,7 +304,8 @@ export abstract class LLM {
       if (tokenUsage) {
         generation.update({
           usageDetails: {
-            input: tokenUsage.inputTokens,
+            // Report the uncached input tokens if provider supports it.
+            input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
             output: tokenUsage.outputTokens,
             total: tokenUsage.totalTokens,
             cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
@@ -317,6 +353,13 @@ export abstract class LLM {
    */
   getTraceId(): LLMTraceId {
     return this.traceId;
+  }
+
+  /**
+   * Get the metadata for this LLM instance
+   */
+  getMetadata(): LLMClientMetadata {
+    return this.metadata;
   }
 
   async *stream(

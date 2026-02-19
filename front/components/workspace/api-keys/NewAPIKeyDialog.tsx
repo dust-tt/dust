@@ -1,3 +1,11 @@
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import {
+  dollarsToMicroUsd,
+  monthlyCapDollarsSchema,
+  prettifyGroupName,
+} from "@app/components/workspace/api-keys/utils";
+import type { GroupType } from "@app/types/groups";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import {
   Button,
   DropdownMenu,
@@ -15,21 +23,29 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { prettifyGroupName } from "@app/components/workspace/api-keys/utils";
-import type { GroupType } from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
+const formSchema = z.object({
+  name: z.string().min(1, "API key name is required"),
+  monthlyCapDollars: monthlyCapDollarsSchema,
+});
 
-type NewAPIKeyDialogProps = {
+type FormValues = z.infer<typeof formSchema>;
+
+interface NewAPIKeyDialogProps {
   groups: GroupType[];
   isGenerating: boolean;
   isRevoking: boolean;
   onCreate: (params: {
     name: string;
     group: GroupType | null;
+    monthlyCapMicroUsd: number | null;
   }) => Promise<void>;
-};
+}
 
 export const NewAPIKeyDialog = ({
   groups,
@@ -37,9 +53,21 @@ export const NewAPIKeyDialog = ({
   isRevoking,
   onCreate,
 }: NewAPIKeyDialogProps) => {
-  const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyRestrictedGroup, setNewApiKeyRestrictedGroup] =
-    useState<GroupType | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [restrictedGroup, setRestrictedGroup] = useState<GroupType | null>(
+    null
+  );
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      monthlyCapDollars: "",
+    },
+  });
+
+  const { handleSubmit, reset, formState } = form;
 
   const nonGlobalGroups = useMemo(
     () => groups.filter((g) => g.kind !== "global"),
@@ -47,18 +75,25 @@ export const NewAPIKeyDialog = ({
   );
 
   const handleClose = () => {
-    setNewApiKeyName("");
-    setNewApiKeyRestrictedGroup(null);
+    reset();
+    setRestrictedGroup(null);
+    setIsOpen(false);
+  };
+
+  const onSubmit = async (data: FormValues) => {
+    const dollars =
+      data.monthlyCapDollars === "" ? null : parseFloat(data.monthlyCapDollars);
+
+    await onCreate({
+      name: data.name,
+      group: restrictedGroup,
+      monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
+    });
+    handleClose();
   };
 
   return (
-    <Sheet
-      onOpenChange={(open) => {
-        if (!open) {
-          handleClose();
-        }
-      }}
-    >
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
           label="Create API Key"
@@ -71,63 +106,88 @@ export const NewAPIKeyDialog = ({
           <SheetTitle>New API Key</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-2">
-              <Label>API Key Name</Label>
-              <Input
-                name="API Key"
-                placeholder="Type an API key name"
-                value={newApiKeyName}
-                onChange={(e) => setNewApiKeyName(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Default Space</Label>
-              <div>
-                <Button
-                  label={GLOBAL_SPACE_NAME}
-                  size="sm"
-                  variant="outline"
-                  disabled={true}
-                  tooltip={`${GLOBAL_SPACE_NAME} is mandatory.`}
-                />
+          <FormProvider {...form}>
+            <div className="space-y-4">
+              <BaseFormFieldSection title="API Key Name" fieldName="name">
+                {({ registerRef, registerProps, onChange, errorMessage }) => (
+                  <Input
+                    ref={registerRef}
+                    {...registerProps}
+                    onChange={onChange}
+                    placeholder="Type an API key name"
+                    isError={!!errorMessage}
+                    message={errorMessage}
+                    messageStatus="error"
+                  />
+                )}
+              </BaseFormFieldSection>
+
+              <div className="flex flex-col gap-2">
+                <Label>Default Space</Label>
+                <div>
+                  <Button
+                    label={GLOBAL_SPACE_NAME}
+                    size="sm"
+                    variant="outline"
+                    disabled={true}
+                    tooltip={`${GLOBAL_SPACE_NAME} is mandatory.`}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Add optional additional Space</Label>
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      label={
-                        newApiKeyRestrictedGroup
-                          ? prettifyGroupName(newApiKeyRestrictedGroup)
-                          : "Add a space"
-                      }
-                      size="sm"
-                      variant="outline"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {nonGlobalGroups
-                      .sort((a, b) =>
-                        prettifyGroupName(a)
-                          .toLowerCase()
-                          .localeCompare(prettifyGroupName(b).toLowerCase())
-                      )
-                      .map((group: GroupType) => (
-                        <DropdownMenuItem
-                          key={group.id}
-                          label={prettifyGroupName(group)}
-                          onClick={() => setNewApiKeyRestrictedGroup(group)}
-                        />
-                      ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+
+              <div className="flex flex-col gap-2">
+                <Label>Add optional additional Space</Label>
+                <div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={
+                          restrictedGroup
+                            ? prettifyGroupName(restrictedGroup)
+                            : "Add a space"
+                        }
+                        size="sm"
+                        variant="outline"
+                        isSelect
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {nonGlobalGroups
+                        .sort((a, b) =>
+                          prettifyGroupName(a)
+                            .toLowerCase()
+                            .localeCompare(prettifyGroupName(b).toLowerCase())
+                        )
+                        .map((group: GroupType) => (
+                          <DropdownMenuItem
+                            key={group.id}
+                            label={prettifyGroupName(group)}
+                            onClick={() => setRestrictedGroup(group)}
+                          />
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
+
+              <BaseFormFieldSection
+                title="Monthly cap (USD)"
+                fieldName="monthlyCapDollars"
+              >
+                {({ registerRef, registerProps, onChange, errorMessage }) => (
+                  <Input
+                    ref={registerRef}
+                    {...registerProps}
+                    onChange={onChange}
+                    placeholder="Leave empty for unlimited"
+                    isError={!!errorMessage}
+                    message={errorMessage}
+                    messageStatus="error"
+                  />
+                )}
+              </BaseFormFieldSection>
             </div>
-          </div>
+          </FormProvider>
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
@@ -138,13 +198,8 @@ export const NewAPIKeyDialog = ({
           rightButtonProps={{
             label: "Create",
             variant: "primary",
-            onClick: async () => {
-              await onCreate({
-                name: newApiKeyName,
-                group: newApiKeyRestrictedGroup,
-              });
-              handleClose();
-            },
+            disabled: !formState.isValid,
+            onClick: handleSubmit(onSubmit),
           }}
         />
       </SheetContent>

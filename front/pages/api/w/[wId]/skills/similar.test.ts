@@ -1,9 +1,7 @@
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { Ok } from "@app/types/shared/result";
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
-
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { Ok } from "@app/types";
 
 import handler from "./similar";
 
@@ -15,8 +13,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 
 async function setupTest(
   role: "builder" | "user" | "admin" = "builder",
-  method: RequestMethod = "POST",
-  withFeatureFlags = true
+  method: RequestMethod = "POST"
 ) {
   const { req, res, workspace } = await createPrivateApiMockRequest({
     role,
@@ -24,11 +21,6 @@ async function setupTest(
   });
 
   req.query.wId = workspace.sId;
-
-  if (withFeatureFlags) {
-    await FeatureFlagFactory.basic("skills", workspace);
-    await FeatureFlagFactory.basic("skills_similar_display", workspace);
-  }
 
   return { req, res, workspace };
 }

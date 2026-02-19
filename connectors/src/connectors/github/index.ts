@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
-
 import {
   getRepo,
   getReposPage,
@@ -26,6 +23,7 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   GithubCodeDirectoryModel,
   GithubCodeFileModel,
@@ -44,6 +42,8 @@ import type {
   DataSourceConfig,
 } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child({ provider: "github" });
 
@@ -279,219 +279,232 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (!parentInternalId) {
-      // No parentInternalId: we return the repositories.
+    try {
+      if (!parentInternalId) {
+        // No parentInternalId: we return the repositories.
 
-      let nodes: ContentNode[] = [];
-      let pageNumber = 1; // 1-indexed
-      for (;;) {
-        const pageRes = await getReposPage(
-          c,
-          pageNumber,
-          MAX_REPOSITORIES_PAGE_SIZE
-        );
-
-        if (pageRes.isErr()) {
-          return new Err(
-            new ConnectorManagerError(
-              "EXTERNAL_OAUTH_TOKEN_ERROR",
-              pageRes.error.message
-            )
+        let nodes: ContentNode[] = [];
+        let pageNumber = 1; // 1-indexed
+        for (;;) {
+          const pageRes = await getReposPage(
+            c,
+            pageNumber,
+            MAX_REPOSITORIES_PAGE_SIZE
           );
-        }
 
-        const page = pageRes.value;
-        pageNumber += 1;
-        if (page.length === 0) {
-          break;
-        }
-
-        nodes = nodes.concat(
-          page.map((repo) => ({
-            internalId: getRepositoryInternalId(repo.id),
-            parentInternalId: null,
-            type: "folder",
-            title: repo.name,
-            sourceUrl: repo.url,
-            expandable: true,
-            permission: "read",
-            lastUpdatedAt: null,
-            mimeType: INTERNAL_MIME_TYPES.GITHUB.REPOSITORY,
-          }))
-        );
-      }
-
-      nodes.sort((a, b) => {
-        return a.title.localeCompare(b.title);
-      });
-
-      return new Ok(nodes);
-    } else {
-      const { type, repoId } = matchGithubInternalIdType(parentInternalId);
-      if (isNaN(repoId)) {
-        return new Err(
-          new ConnectorManagerError(
-            "INVALID_PARENT_INTERNAL_ID",
-            `Invalid parentInternalId Github repoId: ${parentInternalId}`
-          )
-        );
-      }
-
-      switch (type) {
-        case "REPO_FULL": {
-          const [latestDiscussion, latestIssue, repoRes, codeRepo] =
-            await Promise.all([
-              GithubDiscussionModel.findOne({
-                where: {
-                  connectorId: c.id,
-                  repoId: repoId.toString(),
-                },
-                order: [["updatedAt", "DESC"]],
-              }),
-              GithubIssueModel.findOne({
-                where: {
-                  connectorId: c.id,
-                  repoId: repoId.toString(),
-                },
-                order: [["updatedAt", "DESC"]],
-              }),
-              getRepo(c, repoId),
-              GithubCodeRepositoryModel.findOne({
-                where: {
-                  connectorId: c.id,
-                  repoId: repoId.toString(),
-                },
-              }),
-            ]);
-
-          if (repoRes.isErr()) {
+          if (pageRes.isErr()) {
             return new Err(
               new ConnectorManagerError(
                 "EXTERNAL_OAUTH_TOKEN_ERROR",
-                repoRes.error.message
+                pageRes.error.message
               )
             );
           }
 
-          const repo = repoRes.value;
-
-          const nodes: ContentNode[] = [];
-
-          if (latestIssue) {
-            nodes.push({
-              internalId: getIssuesInternalId(repoId),
-              parentInternalId,
-              type: "folder",
-              title: "Issues",
-              sourceUrl: getIssuesUrl(repo.url),
-              expandable: false,
-              permission: "read",
-              lastUpdatedAt: latestIssue.updatedAt.getTime(),
-              mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUES,
-            });
+          const page = pageRes.value;
+          pageNumber += 1;
+          if (page.length === 0) {
+            break;
           }
 
-          if (latestDiscussion) {
-            nodes.push({
-              internalId: getDiscussionsInternalId(repoId),
-              parentInternalId,
+          nodes = nodes.concat(
+            page.map((repo) => ({
+              internalId: getRepositoryInternalId(repo.id),
+              parentInternalId: null,
               type: "folder",
-              title: "Discussions",
-              sourceUrl: getDiscussionsUrl(repo.url),
-              expandable: false,
-              permission: "read",
-              lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
-              mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
-            });
-          }
-
-          if (codeRepo) {
-            nodes.push({
-              internalId: getCodeRootInternalId(repoId),
-              parentInternalId,
-              type: "folder",
-              title: "Code",
+              title: repo.name,
               sourceUrl: repo.url,
               expandable: true,
               permission: "read",
-              lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
-              mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT,
-            });
-          }
-
-          return new Ok(nodes);
+              lastUpdatedAt: null,
+              mimeType: INTERNAL_MIME_TYPES.GITHUB.REPOSITORY,
+            }))
+          );
         }
-        case "REPO_CODE":
-        case "REPO_CODE_DIR": {
-          const [files, directories] = await Promise.all([
-            GithubCodeFileModel.findAll({
-              where: {
-                connectorId: c.id,
-                parentInternalId,
-              },
-            }),
-            GithubCodeDirectoryModel.findAll({
-              where: {
-                connectorId: c.id,
-                parentInternalId,
-              },
-            }),
-          ]);
 
-          files.sort((a, b) => {
-            return a.fileName.localeCompare(b.fileName);
-          });
-          directories.sort((a, b) => {
-            return a.dirName.localeCompare(b.dirName);
-          });
+        nodes.sort((a, b) => {
+          return a.title.localeCompare(b.title);
+        });
 
-          const nodes: ContentNode[] = [];
-
-          directories.forEach((directory) => {
-            nodes.push({
-              internalId: directory.internalId,
-              parentInternalId,
-              type: "folder",
-              title: directory.dirName,
-              sourceUrl: directory.sourceUrl,
-              expandable: true,
-              permission: "read",
-              lastUpdatedAt: directory.codeUpdatedAt.getTime(),
-              mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY,
-            });
-          });
-
-          files.forEach((file) => {
-            nodes.push({
-              internalId: file.documentId,
-              parentInternalId,
-              type: "document",
-              title: file.fileName,
-              sourceUrl: file.sourceUrl,
-              expandable: false,
-              permission: "read",
-              lastUpdatedAt: file.codeUpdatedAt.getTime(),
-              mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
-            });
-          });
-
-          return new Ok(nodes);
-        }
-        // we should never be getting issues, discussions, code files, single issues or discussions as parent
-        case "REPO_ISSUES":
-        case "REPO_DISCUSSIONS":
-        case "REPO_CODE_FILE":
-        case "REPO_DISCUSSION":
-        case "REPO_ISSUE":
+        return new Ok(nodes);
+      } else {
+        const { type, repoId } = matchGithubInternalIdType(parentInternalId);
+        if (isNaN(repoId)) {
           return new Err(
             new ConnectorManagerError(
               "INVALID_PARENT_INTERNAL_ID",
-              `Invalid parentInternalId Github type: ${type}`
+              `Invalid parentInternalId Github repoId: ${parentInternalId}`
             )
           );
-        default:
-          assertNever(type);
+        }
+
+        switch (type) {
+          case "REPO_FULL": {
+            const [latestDiscussion, latestIssue, repoRes, codeRepo] =
+              await Promise.all([
+                GithubDiscussionModel.findOne({
+                  where: {
+                    connectorId: c.id,
+                    repoId: repoId.toString(),
+                  },
+                  order: [["updatedAt", "DESC"]],
+                }),
+                GithubIssueModel.findOne({
+                  where: {
+                    connectorId: c.id,
+                    repoId: repoId.toString(),
+                  },
+                  order: [["updatedAt", "DESC"]],
+                }),
+                getRepo(c, repoId),
+                GithubCodeRepositoryModel.findOne({
+                  where: {
+                    connectorId: c.id,
+                    repoId: repoId.toString(),
+                  },
+                }),
+              ]);
+
+            if (repoRes.isErr()) {
+              return new Err(
+                new ConnectorManagerError(
+                  "EXTERNAL_OAUTH_TOKEN_ERROR",
+                  repoRes.error.message
+                )
+              );
+            }
+
+            const repo = repoRes.value;
+
+            const nodes: ContentNode[] = [];
+
+            if (latestIssue) {
+              nodes.push({
+                internalId: getIssuesInternalId(repoId),
+                parentInternalId,
+                type: "folder",
+                title: "Issues",
+                sourceUrl: getIssuesUrl(repo.url),
+                expandable: false,
+                permission: "read",
+                lastUpdatedAt: latestIssue.updatedAt.getTime(),
+                mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUES,
+              });
+            }
+
+            if (latestDiscussion) {
+              nodes.push({
+                internalId: getDiscussionsInternalId(repoId),
+                parentInternalId,
+                type: "folder",
+                title: "Discussions",
+                sourceUrl: getDiscussionsUrl(repo.url),
+                expandable: false,
+                permission: "read",
+                lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+                mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
+              });
+            }
+
+            if (codeRepo) {
+              nodes.push({
+                internalId: getCodeRootInternalId(repoId),
+                parentInternalId,
+                type: "folder",
+                title: "Code",
+                sourceUrl: repo.url,
+                expandable: true,
+                permission: "read",
+                lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+                mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT,
+              });
+            }
+
+            return new Ok(nodes);
+          }
+          case "REPO_CODE":
+          case "REPO_CODE_DIR": {
+            const [files, directories] = await Promise.all([
+              GithubCodeFileModel.findAll({
+                where: {
+                  connectorId: c.id,
+                  parentInternalId,
+                },
+              }),
+              GithubCodeDirectoryModel.findAll({
+                where: {
+                  connectorId: c.id,
+                  parentInternalId,
+                },
+              }),
+            ]);
+
+            files.sort((a, b) => {
+              return a.fileName.localeCompare(b.fileName);
+            });
+            directories.sort((a, b) => {
+              return a.dirName.localeCompare(b.dirName);
+            });
+
+            const nodes: ContentNode[] = [];
+
+            directories.forEach((directory) => {
+              nodes.push({
+                internalId: directory.internalId,
+                parentInternalId,
+                type: "folder",
+                title: directory.dirName,
+                sourceUrl: directory.sourceUrl,
+                expandable: true,
+                permission: "read",
+                lastUpdatedAt: directory.codeUpdatedAt.getTime(),
+                mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY,
+              });
+            });
+
+            files.forEach((file) => {
+              nodes.push({
+                internalId: file.documentId,
+                parentInternalId,
+                type: "document",
+                title: file.fileName,
+                sourceUrl: file.sourceUrl,
+                expandable: false,
+                permission: "read",
+                lastUpdatedAt: file.codeUpdatedAt.getTime(),
+                mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
+              });
+            });
+
+            return new Ok(nodes);
+          }
+          // we should never be getting issues, discussions, code files, single issues or discussions as parent
+          case "REPO_ISSUES":
+          case "REPO_DISCUSSIONS":
+          case "REPO_CODE_FILE":
+          case "REPO_DISCUSSION":
+          case "REPO_ISSUE":
+            return new Err(
+              new ConnectorManagerError(
+                "INVALID_PARENT_INTERNAL_ID",
+                `Invalid parentInternalId Github type: ${type}`
+              )
+            );
+          default:
+            assertNever(type);
+        }
       }
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "GitHub authorization error, please re-authorize."
+          )
+        );
+      }
+      // Unhandled error, throwing to get a 500.
+      throw e;
     }
   }
 

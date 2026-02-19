@@ -1,3 +1,4 @@
+/* Commented out as the code has changed since the migration was run.
 import { Op } from "sequelize";
 
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
@@ -62,14 +63,18 @@ async function processBlockedAuthAgentMessages(
     // Process each agent message
     for (const agentMessage of agentMessages) {
       if (execute) {
-        await markAgentMessageAsFailed(agentMessage, {
-          code: "personal_authentication_required",
-          message:
-            "Agent message failed due to missing personal authentication.",
-          metadata: {
-            category: "migration",
-            reason: "blocked_authentication_required_cleanup",
-            migrationDate: new Date().toISOString(),
+        await markAgentMessageAsFailed(auth, {
+          workspaceId: agentMessage.workspaceId,
+          agentMessageId: agentMessage.id,
+          error: {
+            code: "personal_authentication_required",
+            message:
+              "Agent message failed due to missing personal authentication.",
+            metadata: {
+              category: "migration",
+              reason: "blocked_authentication_required_cleanup",
+              migrationDate: new Date().toISOString(),
+            },
           },
         });
 
@@ -114,3 +119,4 @@ makeScript({}, async ({ execute }, logger) => {
     "Completed migration to mark blocked authentication agent messages as failed"
   );
 });
+*/

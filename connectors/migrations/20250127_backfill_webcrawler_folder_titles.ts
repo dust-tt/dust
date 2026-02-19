@@ -1,8 +1,4 @@
 import assert from "node:assert";
-
-import _ from "lodash";
-import { makeScript } from "scripts/helpers";
-
 import { getDisplayNameForFolder } from "@connectors/connectors/webcrawler/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -10,6 +6,8 @@ import { WebCrawlerFolderModel } from "@connectors/lib/models/webcrawler";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
+import _ from "lodash";
+import { makeScript } from "scripts/helpers";
 
 async function migrateConnector(
   connector: ConnectorResource,

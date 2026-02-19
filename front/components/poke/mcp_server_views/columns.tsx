@@ -1,8 +1,7 @@
-import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { LinkWrapper } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface MCPServerView {
   sId: string;
@@ -29,7 +28,9 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
 
         return <LinkWrapper href={mcpServerViewLink}>{sId}</LinkWrapper>;
       },
-      header: "sId",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "server.name",
@@ -40,20 +41,9 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
           <LinkWrapper href={mcpServerViewLink}>{server.name}</LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Server Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Server name" />
+      ),
     },
     {
       accessorKey: "space",
@@ -61,31 +51,24 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
         const { spaceLink, spaceId } = row.original;
         return <LinkWrapper href={spaceLink}>{spaceId}</LinkWrapper>;
       },
-      header: "Space",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Space" />
+      ),
     },
     {
       accessorKey: "editedBy",
-      header: "Last edited by",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last edited by" />
+      ),
     },
     {
       accessorKey: "createdAt",
       cell: ({ row }) => {
         return formatTimestampToFriendlyDate(row.original.createdAt);
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Created At</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
     },
     {
       accessorKey: "editedAt",
@@ -94,20 +77,9 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
           ? formatTimestampToFriendlyDate(row.original.editedAt)
           : "";
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Last edited at</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last edited at" />
+      ),
     },
   ];
 }

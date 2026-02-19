@@ -1,11 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { startVerification } from "@app/lib/api/workspace_verification/start_verification";
 import { validateVerification } from "@app/lib/api/workspace_verification/validate_verification";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockLookupPhoneNumber } = vi.hoisted(() => {
   return {
@@ -59,7 +58,7 @@ vi.mock("@app/lib/utils/rate_limiter", () => ({
 
 import { PhoneLookupError } from "@app/lib/api/workspace_verification/persona";
 import { VerifyOtpError } from "@app/lib/api/workspace_verification/twilio";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 describe("workspace_verification", () => {
   let authW1: Authenticator;
@@ -192,6 +191,27 @@ describe("workspace_verification", () => {
         expect(result.error.type).toBe("invalid_request_error");
         expect(result.error.message).toBe(
           "Only mobile phone numbers are accepted for verification."
+        );
+      }
+    });
+
+    it("should return error if phone lookup fails with prepaid_not_accepted", async () => {
+      mockLookupPhoneNumber.mockResolvedValue(
+        new Err(
+          new PhoneLookupError(
+            "prepaid_not_accepted",
+            "Prepaid phone numbers are not accepted for verification."
+          )
+        )
+      );
+
+      const result = await startVerification(authW1, validPhoneNumber);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.message).toBe(
+          "Prepaid phone numbers are not accepted for verification."
         );
       }
     });

@@ -1,18 +1,19 @@
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ProgrammaticUsageConfigurationResource extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}
+export interface ProgrammaticUsageConfigurationResource
+  extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProgrammaticUsageConfigurationResource extends BaseResource<ProgrammaticUsageConfigurationModel> {
@@ -106,6 +107,7 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
       freeCreditMicroUsd: number | null;
       defaultDiscountPercent: number;
       paygCapMicroUsd: number | null;
+      dailyCapMicroUsd: number | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -150,6 +152,7 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
       freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygCapMicroUsd: this.paygCapMicroUsd,
+      dailyCapMicroUsd: this.dailyCapMicroUsd,
     };
   }
 
@@ -160,6 +163,7 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
       freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygCapMicroUsd: this.paygCapMicroUsd,
+      dailyCapMicroUsd: this.dailyCapMicroUsd,
     };
   }
 

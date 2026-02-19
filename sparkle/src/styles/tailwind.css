@@ -12,3 +12,10 @@
     @apply s-bg-purple-100;
   }
 }
+
+@layer utilities {
+  .s-scrollarea-viewport > div {
+    display: block !important;
+    height: 100%;
+  }
+}

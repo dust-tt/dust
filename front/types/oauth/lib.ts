@@ -1,7 +1,10 @@
-import * as t from "io-ts";
-
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
+import * as t from "io-ts";
+
+// Extra config type for OAuth setup - generic key-value pairs for provider-specific config
+export const ExtraConfigTypeSchema = t.record(t.string, t.string);
+export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
 
 export const OAUTH_USE_CASES = [
   "connection",
@@ -48,8 +51,10 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
+  "ukg_ready",
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
+  "snowflake", // Snowflake OAuth for MCP server integration.
   "vanta",
 ] as const;
 
@@ -77,8 +82,10 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   zendesk: "Zendesk",
   salesforce: "Salesforce",
   hubspot: "Hubspot",
+  ukg_ready: "UKG Ready",
   mcp: "MCP",
   mcp_static: "MCP",
+  snowflake: "Snowflake",
   vanta: "Vanta",
 };
 
@@ -89,12 +96,18 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "resource",
   "token_endpoint",
+  "token_endpoint_auth_method",
   "authorization_endpoint",
   "freshservice_domain",
   "freshworks_org_url",
   "zendesk_subdomain",
   "databricks_workspace_url",
+  "snowflake_account",
+  "snowflake_role",
+  "snowflake_warehouse",
+  "ukg_ready_company_id",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -111,7 +124,14 @@ export type OAuthCredentialInput = {
   value: string | undefined;
   helpMessage?: string;
   validator?: (value: string) => boolean;
-};
+} & (
+  | {
+      overridableAtPersonalAuth: true;
+      personalAuthLabel: string;
+      personalAuthHelpMessage: string;
+    }
+  | { overridableAtPersonalAuth?: false }
+);
 
 export type OAuthCredentialInputs = Partial<
   Record<SupportedOAuthCredentials, OAuthCredentialInput>
@@ -121,13 +141,36 @@ export type OAuthCredentials = Partial<
   Record<SupportedOAuthCredentials, string>
 >;
 
-export const getProviderRequiredOAuthCredentialInputs = async ({
+export function getOverridablePersonalAuthInputs({
+  provider,
+}: {
+  provider: OAuthProvider;
+}): OAuthCredentialInputs | null {
+  const allInputs = getProviderRequiredOAuthCredentialInputs({
+    provider,
+    useCase: "personal_actions",
+  });
+  if (!allInputs) {
+    return null;
+  }
+
+  const filtered: OAuthCredentialInputs = {};
+  for (const [key, input] of Object.entries(allInputs)) {
+    if (input.overridableAtPersonalAuth && isSupportedOAuthCredential(key)) {
+      filtered[key] = input;
+    }
+  }
+
+  return Object.keys(filtered).length > 0 ? filtered : null;
+}
+
+export function getProviderRequiredOAuthCredentialInputs({
   provider,
   useCase,
 }: {
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-}): Promise<OAuthCredentialInputs | null> => {
+}): OAuthCredentialInputs | null {
   switch (provider) {
     case "salesforce":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
@@ -234,6 +277,33 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
+    case "ukg_ready":
+      if (useCase === "personal_actions") {
+        // UKG Ready uses PKCE authorization code flow (no client_secret needed)
+        const result: OAuthCredentialInputs = {
+          instance_url: {
+            label: "UKG Ready Instance URL",
+            value: undefined,
+            helpMessage:
+              "Your UKG Ready instance URL (e.g., https://secure0.saashr.com)",
+            validator: isValidUrl,
+          },
+          ukg_ready_company_id: {
+            label: "Company ID",
+            value: undefined,
+            helpMessage: "Your UKG Ready company identifier",
+            validator: isValidClientIdOrSecret,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your UKG Ready OAuth app",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
+      }
+      return null;
     case "hubspot":
     case "slack":
     case "slack_tools":
@@ -305,6 +375,60 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             helpMessage: "The scope(s) to request (space separated list).",
             validator: isValidScope,
           },
+          token_endpoint_auth_method: {
+            label: "Token Endpoint Authentication Method",
+            value: "client_secret_post",
+            helpMessage:
+              "How to send the client ID/secret when exchanging tokens.",
+            validator: isValidTokenEndpointAuthMethod,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "snowflake":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          snowflake_account: {
+            label: "Snowflake Account",
+            value: undefined,
+            helpMessage:
+              "Your Snowflake account identifier (e.g., abc123.us-east-1 or myorg-myaccount).",
+            validator: isValidSnowflakeAccount,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage:
+              "The client ID from your Snowflake security integration.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage:
+              "The client secret from your Snowflake security integration.",
+            validator: isValidClientIdOrSecret,
+          },
+          snowflake_role: {
+            label: "Default Snowflake Role",
+            value: undefined,
+            helpMessage:
+              useCase === "platform_actions"
+                ? "The Snowflake role for all users (e.g., ANALYST)."
+                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
+            validator: isValidSnowflakeRole,
+            overridableAtPersonalAuth: true,
+            personalAuthLabel: "Snowflake Role",
+            personalAuthHelpMessage:
+              "Enter a role to override the default, or leave empty to use the workspace default.",
+          },
+          snowflake_warehouse: {
+            label: "Snowflake Warehouse",
+            value: undefined,
+            helpMessage: "The warehouse to use for queries (e.g., COMPUTE_WH).",
+            validator: isValidSnowflakeWarehouse,
+          },
         };
         return result;
       }
@@ -312,7 +436,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     default:
       assertNever(provider);
   }
-};
+}
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
@@ -347,6 +471,7 @@ export function isOAuthConnectionType(
 
 // OAuth Providers utils
 
+// FIXME: Duplicated from lib/api.
 export function isValidZendeskSubdomain(s: unknown): s is string {
   return (
     typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)
@@ -372,6 +497,76 @@ export function isValidOptionalClientSecret(s: unknown): s is string {
 
 export function isValidUrl(s: unknown): s is string {
   return typeof s === "string" && validateUrl(s).valid;
+}
+
+export function isValidTokenEndpointAuthMethod(s: unknown): s is string {
+  return (
+    typeof s === "string" &&
+    (s === "client_secret_post" || s === "client_secret_basic")
+  );
+}
+
+export function isValidSnowflakeAccount(s: unknown): s is string {
+  // Snowflake account identifiers can be in formats like:
+  // - abc123 (legacy locator)
+  // - abc123.us-east-1 (locator with region)
+  // - myorg-myaccount (org name format)
+  // - myorg-myaccount.privatelink (privatelink)
+  // Users sometimes paste a full hostname/URL; we explicitly reject those.
+  // The connectors/oauth layers expect the account identifier only.
+  // Allow alphanumeric, hyphens, underscores, and dots
+  if (typeof s !== "string") {
+    return false;
+  }
+
+  const v = s.trim();
+  if (v.length === 0) {
+    return false;
+  }
+
+  const lower = v.toLowerCase();
+  if (
+    lower.includes("snowflakecomputing.com") ||
+    lower.startsWith("http://") ||
+    lower.startsWith("https://")
+  ) {
+    return false;
+  }
+
+  // Common typos / hostnames.
+  if (v.includes("..") || v.includes("/") || v.includes(":")) {
+    return false;
+  }
+
+  // Snowflake account identifiers are either:
+  // - account locators (include digits), optionally with region/cloud suffix
+  // - org-account format (contains a hyphen)
+  // If it's only letters/underscores/dots, it is almost certainly user input noise.
+  if (!/[-0-9]/.test(v)) {
+    return false;
+  }
+
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(v);
+}
+
+export function isValidSnowflakeRole(s: unknown): s is string {
+  // Snowflake role names are uppercase identifiers
+  // Allow alphanumeric and underscores
+  return (
+    typeof s === "string" &&
+    s.trim().length > 0 &&
+    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
+  );
+}
+
+export function isValidSnowflakeWarehouse(s: unknown): s is string {
+  // Snowflake warehouse names follow same rules as roles
+  // Allow alphanumeric and underscores
+  return (
+    typeof s === "string" &&
+    s.trim().length > 0 &&
+    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
+  );
 }
 
 // Credentials Providers
@@ -409,10 +604,16 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
+const SnowflakeAccountSchema = t.refinement(
+  t.string,
+  isValidSnowflakeAccount,
+  "SnowflakeAccount"
+);
+
 // Base schema with common fields
 const SnowflakeBaseCredentialsSchema = t.type({
   username: t.string,
-  account: t.string,
+  account: SnowflakeAccountSchema,
   role: t.string,
   warehouse: t.string,
 });

@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -14,8 +9,12 @@ import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -23,7 +22,9 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
+  // `isActive` is deprecated in favor of `status`, kept for backward compatibility.
   isActive: t.boolean,
+  status: t.union([t.literal("active"), t.literal("disabled")]),
   dataSourceViewId: t.union([t.string, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
@@ -110,6 +111,7 @@ async function handler(
       const {
         agentConfigurationId: patchAgentId,
         isActive,
+        status,
         dataSourceViewId,
       } = patchBodyValidation.right;
 
@@ -119,16 +121,25 @@ async function handler(
         });
       }
 
-      if (isActive !== undefined) {
+      // Handle status update: prefer `status` over deprecated `isActive`
+      const newStatus =
+        status ??
+        (isActive !== undefined
+          ? isActive
+            ? "active"
+            : "disabled"
+          : undefined);
+
+      if (newStatus !== undefined) {
         logger.info(
           {
             transcriptsConfigurationId: transcriptsConfiguration.id,
             transcriptsConfigurationSid: transcriptsConfiguration.sId,
-            isActive,
+            status: newStatus,
           },
-          "Setting transcript configuration active status."
+          "Setting transcript configuration status."
         );
-        await transcriptsConfiguration.setIsActive(isActive);
+        await transcriptsConfiguration.setStatus(newStatus);
       }
 
       if (dataSourceViewId !== undefined) {
@@ -184,7 +195,7 @@ async function handler(
       }
 
       const shouldStartWorkflow =
-        !!updatedTranscriptsConfiguration.isActive ||
+        updatedTranscriptsConfiguration.isActive() ||
         !!updatedTranscriptsConfiguration.dataSourceViewId;
 
       if (shouldStartWorkflow) {

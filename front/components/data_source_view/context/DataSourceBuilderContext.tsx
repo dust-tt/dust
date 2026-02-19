@@ -30,14 +30,6 @@
  * to work with simple boolean selection states.
  */
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useReducer,
-} from "react";
-
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type {
   DataSourceBuilderTreeItemType,
@@ -53,15 +45,22 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
+import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type {
-  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
-  SpaceType,
   TagsFilter,
   TagsFilterMode,
-} from "@app/types";
-import { assertNever } from "@app/types";
+} from "@app/types/data_source_view";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceType } from "@app/types/space";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useReducer,
+} from "react";
 
 type StateType = {
   /**

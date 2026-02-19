@@ -1,3 +1,15 @@
+import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
+import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
+import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
+import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
+import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
+import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
+import type {
+  SkillRelations,
+  SkillType,
+  SkillWithRelationsType,
+} from "@app/types/assistant/skill_configuration";
+import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   ArrowPathIcon,
   Button,
@@ -17,19 +29,6 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
-import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
-import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
-import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
-import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
-import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
-import type { UserType, WorkspaceType } from "@app/types";
-import type {
-  SkillRelations,
-  SkillType,
-  SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
-
 type SkillDetailsProps = {
   skill: SkillWithRelationsType | null;
   onClose: () => void;
@@ -45,7 +44,7 @@ export function SkillDetailsSheet({
 }: SkillDetailsProps) {
   return (
     <Sheet open={skill !== null} onOpenChange={onClose}>
-      <SheetContent size="lg">
+      <SheetContent size="lg" className="pb-4">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>

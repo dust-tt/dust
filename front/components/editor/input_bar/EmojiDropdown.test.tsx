@@ -1,7 +1,6 @@
+import { EmojiDropdown } from "@app/components/editor/input_bar/EmojiDropdown";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-
-import { EmojiDropdown } from "@app/components/editor/input_bar/EmojiDropdown";
 
 describe("EmojiDropdown", () => {
   const mockCommand = vi.fn();

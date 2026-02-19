@@ -1,5 +1,5 @@
-import type { AgentMessageEventType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+// This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events
+// via next.config.js. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -10,7 +10,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { AgentMessageEventType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger
@@ -80,7 +82,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 async function handler(
   req: NextApiRequest,
   // This endpoint only returns void as it is used only for streaming, so no need to use @dust-tt/client types.
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
@@ -165,13 +167,42 @@ async function handler(
         controller.abort();
       });
 
-      const eventStream: AsyncGenerator<AgentMessageEventType> =
-        getMessagesEvents(auth, { messageId: mId, lastEventId, signal });
+      const eventStream = getMessagesEvents(auth, {
+        messageId: mId,
+        lastEventId,
+        signal,
+      });
 
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
-        const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
+        let publicEvent: AgentMessageEventType | undefined;
+
+        if (event.data.type === "tool_notification") {
+          publicEvent = {
+            eventId: event.eventId,
+            data: {
+              ...event.data,
+              notification: {
+                ...event.data.notification,
+                // For backward compatibility, we need to move the _meta.data to the root level.
+                data: {
+                  label: event.data.notification._meta.data.label,
+                  output: event.data.notification._meta.data.output,
+                },
+              },
+            },
+          };
+        } else {
+          publicEvent = {
+            eventId: event.eventId,
+            data: event.data,
+          };
+        }
+
+        const writeSuccessful = res.write(
+          `data: ${JSON.stringify(publicEvent)}\n\n`
+        );
         if (!writeSuccessful) {
           backpressureCount++;
           statsDClient.increment("streaming.backpressure.count", 1, [

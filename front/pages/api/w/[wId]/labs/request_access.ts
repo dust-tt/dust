@@ -1,9 +1,3 @@
-import { isLeft } from "fp-ts/Either";
-import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
@@ -11,6 +5,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import { isLeft } from "fp-ts/Either";
+import { escape } from "html-escaper";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const PostRequestFeatureAccessBodySchema = t.type({
   emailMessage: t.string,

@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
@@ -7,6 +5,7 @@ import type {
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { Fetcher } from "swr";
 
 export type PokeCreditsData = {
   credits: PokeListCreditsResponseBody["credits"];
@@ -38,12 +37,14 @@ export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
 export function usePokeProgrammaticCost({
   owner,
   groupBy,
+  groupByCount,
   selectedPeriod,
   billingCycleStartDay,
   filter,
   disabled,
 }: PokeConditionalFetchProps & {
   groupBy?: GroupByType;
+  groupByCount?: number;
   selectedPeriod?: string;
   billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
@@ -57,6 +58,9 @@ export function usePokeProgrammaticCost({
   }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
   }
   if (filter && Object.keys(filter).length > 0) {
     queryParams.set("filter", JSON.stringify(filter));

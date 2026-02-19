@@ -1,8 +1,9 @@
-import { cva } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Avatar, CitationGrid } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
 
 type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";
@@ -31,7 +32,8 @@ const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   },
 });
 
-interface ConversationMessageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContainerProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   messageType: MessageType;
   type: ConversationMessageType;
 }
@@ -51,7 +53,8 @@ export const ConversationMessageContainer = React.forwardRef<
 
 ConversationMessageContainer.displayName = "ConversationMessageContainer";
 
-interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContentProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
   type: ConversationMessageType;
@@ -80,7 +83,8 @@ export const ConversationMessageContent = React.forwardRef<
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 
-interface ConversationMessageAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageAvatarProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;
   isDisabled?: boolean;
@@ -127,7 +131,8 @@ export const ConversationMessageAvatar = React.forwardRef<
 
 ConversationMessageAvatar.displayName = "ConversationMessageAvatar";
 
-interface ConversationMessageTitleProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageTitleProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   name?: string;
   timestamp?: string;
   infoChip?: React.ReactNode;

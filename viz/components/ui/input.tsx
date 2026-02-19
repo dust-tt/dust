@@ -1,6 +1,5 @@
-import * as React from "react"
-
-import { cn } from "@viz/lib/utils"
+import { cn } from "@viz/lib/utils";
+import type * as React from "react";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
@@ -15,7 +14,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Input }
+export { Input };

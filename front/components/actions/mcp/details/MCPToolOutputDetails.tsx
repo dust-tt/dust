@@ -1,3 +1,24 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import type {
+  SqlQueryOutputType,
+  ThinkingOutputType,
+  ToolGeneratedFileType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isDataSourceNodeContentType,
+  isDataSourceNodeListType,
+  isIncludeResultResourceType,
+  isSearchResultResourceType,
+  isWarningResourceType,
+  isWebsearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import config from "@app/lib/api/config";
+import { getDocumentIcon } from "@app/lib/content_nodes";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   CodeBlock,
@@ -13,27 +34,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import type {
-  ReasoningSuccessOutputType,
-  SqlQueryOutputType,
-  ThinkingOutputType,
-  ToolGeneratedFileType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  isDataSourceNodeContentType,
-  isDataSourceNodeListType,
-  isIncludeResultResourceType,
-  isSearchResultResourceType,
-  isWarningResourceType,
-  isWebsearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getDocumentIcon } from "@app/lib/content_nodes";
-import type { LightWorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
@@ -57,28 +57,6 @@ export function ThinkingBlock({ resource }: ThinkingBlockProps) {
             isLastMessage={false}
           />
         </ContentMessage>
-      </div>
-    )
-  );
-}
-
-interface ReasoningSuccessBlockProps {
-  resource: ReasoningSuccessOutputType;
-}
-
-export function ReasoningSuccessBlock({
-  resource,
-}: ReasoningSuccessBlockProps) {
-  return (
-    resource.text && (
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        <Markdown
-          content={resource.text}
-          textColor="text-muted-foreground dark:text-muted-foreground-night"
-          isStreaming={false}
-          forcedTextSize="md"
-          isLastMessage={false}
-        />
       </div>
     )
   );
@@ -114,7 +92,7 @@ export function ToolGeneratedFileDetails({
 }: ToolGeneratedFileDetailsProps) {
   const file = {
     ...resource,
-    sourceUrl: `/api/w/${owner.sId}/files/${resource.fileId}`,
+    sourceUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
   };
   return (
     <AttachmentCitation
@@ -129,14 +107,14 @@ interface SearchResultProps {
   actionName: string;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
-  viewType: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
   query: string | null;
 }
 
 export function SearchResultDetails({
   actionName,
   visual,
-  viewType,
+  displayContext,
   actionOutput,
   query,
 }: SearchResultProps) {
@@ -214,11 +192,11 @@ export function SearchResultDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={actionName}
       visual={visual}
     >
-      {viewType === "conversation" ? (
+      {displayContext === "conversation" ? (
         <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           {displayQuery}
         </div>
@@ -238,7 +216,7 @@ export function SearchResultDetails({
               />
             )}
           </div>
-          {actionOutput && viewType === "sidebar" && (
+          {actionOutput && displayContext === "sidebar" && (
             <div>
               <Collapsible defaultOpen={false}>
                 <CollapsibleTrigger>

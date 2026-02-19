@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
@@ -8,12 +6,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type {
-  CoreAPISearchFilter,
-  Result,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { CoreAPISearchFilter } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 type LookupDataSourceResponseBody = {
   project_id: number;

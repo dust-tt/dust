@@ -1,48 +1,58 @@
-import moment from "moment-timezone";
-
 import {
-  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  DEFAULT_PROJECT_SEARCH_ACTION_NAME,
   ENABLE_SKILL_TOOL_NAME,
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
+  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
-import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  isMCPConfigurationForInternalNotion,
-  isMCPConfigurationForInternalSlack,
-  isMCPConfigurationForInternalWebsearch,
-  isMCPConfigurationForRunAgent,
-  isMCPConfigurationWithDataSource,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
+  SEARCH_SERVER_NAME,
+  SKILL_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  areDataSourcesConfigured,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
+import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import type {
+  SystemPromptContext,
+  SystemPromptSections,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
-  ModelConfigurationType,
-  UserMessageType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import type {
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WorkspaceType } from "@app/types/user";
+import moment from "moment-timezone";
 
+// This section is included in the system prompt, which benefits from prompt caching.
+// To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
+// user specific information). The current date (without time) is an acceptable
+// trade-off, but adding more volatile data would reduce cache effectiveness.
 function constructContextSection({
   userMessage,
   agentConfiguration,
   model,
-  conversationId,
   owner,
   errorContext,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentConfigurationType;
   model: ModelConfigurationType;
-  conversationId?: string;
   owner: WorkspaceType | null;
   errorContext?: string;
 }): string {
@@ -52,17 +62,8 @@ function constructContextSection({
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
-  if (conversationId) {
-    context += `conversation_id: ${conversationId}\n`;
-  }
   if (owner) {
     context += `workspace: ${owner.name}\n`;
-    if (userMessage.context.fullName) {
-      context += `user_full_name: ${userMessage.context.fullName}\n`;
-    }
-    if (userMessage.context.email) {
-      context += `user_email: ${userMessage.context.email}\n`;
-    }
   }
 
   if (model.formattingMetaPrompt) {
@@ -79,22 +80,53 @@ function constructContextSection({
   return context;
 }
 
+export function constructProjectContextSection(
+  conversation?: ConversationWithoutContentType
+): string | null {
+  if (!conversation?.spaceId) {
+    return null;
+  }
+  return `# PROJECT CONTEXT
+
+This conversation is associated with a project. The project provides:
+- Persistent file storage shared across all conversations in this project
+- Project metadata (description and URLs) for organizational context
+- Semantic search capabilities over project files
+- Collaborative context that persists beyond individual conversations
+
+## Using Project Tools
+
+**project_manager**: Use these tools to manage persistent project files, metadata, and conversations
+**${DEFAULT_PROJECT_SEARCH_ACTION_NAME}**: Use this tool to semantically search across all project files when you need to:
+- Find relevant information within the project
+- Locate specific content across multiple files
+- Answer questions based on project knowledge
+
+## Tool Usage Priority
+
+When answering questions that require searching for information, follow this priority order:
+1. **First**, use \`${DEFAULT_PROJECT_SEARCH_ACTION_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
+2. **Second**, use \`${PROJECT_MANAGER_SERVER_NAME}\` to gather more context on the project.
+2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` to search across the broader company data sources.
+
+## Project Files vs Conversation Attachments
+- **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
+- **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
+
+When information should be preserved for future conversations or context, add it to project files.
+`;
+}
+
 function constructToolsSection({
   hasAvailableActions,
   model,
   agentConfiguration,
   serverToolsAndInstructions,
-  enabledSkills,
-  equippedSkills,
-  featureFlags,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
-  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
-  equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -130,31 +162,11 @@ function constructToolsSection({
   // whether their server has explicit instructions or is detailed in this specific prompt overview.
   let toolServersPrompt = "";
 
-  const areInstructionsAlreadyIncludedInSkillSection = ({
-    serverName,
-  }: ServerToolsAndInstructions): boolean => {
-    if (serverName !== "interactive_content" && serverName !== "deep_dive") {
-      return false;
-    }
-    return equippedSkills
-      .concat(enabledSkills)
-      .some((skill) => skill.sId === serverName);
-  };
-
   if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
     toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
-      if (
-        featureFlags.includes("skills") &&
-        areInstructionsAlreadyIncludedInSkillSection(serverData)
-      ) {
-        // When skills feature flag is enabled, prevent interactive_content and deep_dive server instructions
-        // from being duplicated in the prompt if they are already included in the skills section.
-        continue;
-      }
-
       toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
       if (serverData.instructions) {
         toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
@@ -201,16 +213,10 @@ function getEnabledSkillInstructions(
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
-  featureFlags,
 }: {
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
-  if (!featureFlags.includes("skills")) {
-    return "";
-  }
-
   let skillsSection =
     "\n## SKILLS\n" +
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
@@ -223,8 +229,12 @@ function constructSkillsSection({
     "tool when they become relevant to the conversation.\n" +
     "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
     "for the rest of the conversation.\n\n" +
-    "Enable skills proactively when a user's request matches a skill's purpose. " +
-    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n";
+    "Enable skills proactively when a user's request matches a skill's purpose.\n" +
+    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
+    "If you need to enable multiple skills, enable them in parallel.\n\n" +
+    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
+    "perspective on the currently available context.\n" +
+    "Decisions taken prior to enabling a skill may need to be revisited after enabling it.\n";
 
   if (!enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
@@ -269,7 +279,7 @@ function constructAttachmentsSection(): string {
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
     "Three flags indicate how an attachment can be used:\n\n" +
-    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
+    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
     `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
     " contents of this attachment will be considered in the search.\n" +
@@ -287,24 +297,24 @@ function constructPastedContentSection(): string {
 
 export function constructGuidelinesSection({
   agentConfiguration,
-  userMessage,
 }: {
   agentConfiguration: AgentConfigurationType;
-  userMessage: UserMessageType;
 }): string {
   let guidelinesSection = "# GUIDELINES\n";
 
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isMCPConfigurationWithDataSource(action) ||
-      isMCPConfigurationForInternalWebsearch(action) ||
-      isMCPConfigurationForRunAgent(action) ||
-      isMCPConfigurationForInternalSlack(action) ||
-      isMCPConfigurationForInternalNotion(action)
+      areDataSourcesConfigured(action) ||
+      INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+        isServerSideMCPServerConfigurationWithName(action, n)
+      ) ||
+      isServerSideMCPServerConfigurationWithName(action, "run_agent") ||
+      isServerSideMCPServerConfigurationWithName(action, "slack") ||
+      isServerSideMCPServerConfigurationWithName(action, "notion")
   );
 
   const isUsingRunAgent = agentConfiguration.actions.some((action) =>
-    isMCPConfigurationForRunAgent(action)
+    isServerSideMCPServerConfigurationWithName(action, "run_agent")
   );
 
   if (canRetrieveDocuments) {
@@ -324,44 +334,20 @@ export function constructGuidelinesSection({
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
-    'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history.' +
-    'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
+    'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history. ' +
+    'Also, always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
-  const isSlackOrTeams =
-    userMessage.context.origin === "slack" ||
-    userMessage.context.origin === "teams";
-
-  if (!isSlackOrTeams) {
-    guidelinesSection +=
-      `\n## MENTIONING USERS\n` +
-      "You have the abillity to mention users in a message using the markdown directive." +
-      '\nUsers can also refer to mention as "ping".' +
-      `\nUse the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available to the conversation.` +
-      `\nUse the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use to mention a user in a message.` +
-      "\nImportant:" +
-      "\n - In conversation with more than one user talking, always answer to users by prefixing your message with their markdown mention directive in order to address them directly, avoid confusion and ensure users are happy." +
-      "\n - Use the markdown directive only when you want to ping the user, if you just want to refer to them, use their name only.";
-  } else {
-    guidelinesSection +=
-      `\n## MENTIONING USERS\n` +
-      "You have the abillity to mention users in a message using the markdown directive." +
-      '\nUsers can also refer to mention as "ping".' +
-      `\nDo not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.\n` +
-      "\nUse a simple @username to mention users in your messages in this conversation.";
-  }
   return guidelinesSection;
 }
 
 function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
-  userMessage,
   agentsList,
 }: {
   agentConfiguration: AgentConfigurationType;
   fallbackPrompt?: string;
-  userMessage: UserMessageType;
   agentsList: LightAgentConfigurationType[] | null;
 }): string {
   let instructions = "# INSTRUCTIONS\n\n";
@@ -371,13 +357,6 @@ function constructInstructionsSection({
   } else if (fallbackPrompt) {
     instructions += `${fallbackPrompt}\n`;
   }
-
-  // Replacement if instructions include "{USER_FULL_NAME}".
-  instructions = instructions.replaceAll(
-    "{USER_FULL_NAME}",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    userMessage.context.fullName || "Unknown user"
-  );
 
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
   if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
@@ -400,9 +379,9 @@ function constructInstructionsSection({
 /**
  * Generation of the prompt for agents with multiple actions.
  *
- * `agentsList` is passed by caller so that if there's an {ASSISTANTS_LIST} in
+ * `agentsList` is passed by the caller so that if there's an {ASSISTANTS_LIST} in
  * the instructions, it can be replaced appropriately. The Extract action
- * doesn't need that replacement, and needs to avoid a dependency on
+ * doesn't need that replacement and needs to avoid a dependency on
  * getAgentConfigurations here, so it passes null.
  */
 export function constructPromptMultiActions(
@@ -415,11 +394,12 @@ export function constructPromptMultiActions(
     hasAvailableActions,
     errorContext,
     agentsList,
-    conversationId,
+    conversation,
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
-    featureFlags,
+    memoriesContext,
+    toolsetsContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -428,49 +408,102 @@ export function constructPromptMultiActions(
     hasAvailableActions: boolean;
     errorContext?: string;
     agentsList: LightAgentConfigurationType[] | null;
-    conversationId?: string;
+    conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
-    featureFlags: WhitelistableFeature[];
+    memoriesContext?: string;
+    toolsetsContext?: string;
   }
-) {
+): SystemPromptSections {
   const owner = auth.workspace();
 
-  return [
-    constructContextSection({
-      userMessage,
-      agentConfiguration,
-      model,
-      conversationId,
-      owner,
-      errorContext,
-    }),
-    constructToolsSection({
-      hasAvailableActions,
-      model,
-      agentConfiguration,
-      serverToolsAndInstructions,
-      enabledSkills,
-      equippedSkills,
-      featureFlags,
-    }),
-    constructSkillsSection({
-      enabledSkills,
-      equippedSkills,
-      featureFlags,
-    }),
-    constructAttachmentsSection(),
-    constructPastedContentSection(),
-    constructGuidelinesSection({
-      agentConfiguration,
-      userMessage,
-    }),
-    constructInstructionsSection({
-      agentConfiguration,
-      fallbackPrompt,
-      userMessage,
-      agentsList,
-    }),
-  ].join("\n");
+  // The system prompt is composed of multiple sections that provide instructions and context to the model.
+  // Global agents with fully static instructions (no per-user data baked in) use the tuple form
+  // [instructions, context] which enables extended prompt caching. Per-user dynamic content like
+  // memories is passed as a separate context section so it doesn't pollute instruction caching.
+  // Only enabled for `deep-dive` and `dust(-x)` agents.
+  const hasStaticInstructions =
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
+    isDustLikeAgent(agentConfiguration.sId);
+
+  const instructionsContent = constructInstructionsSection({
+    agentConfiguration,
+    fallbackPrompt,
+    agentsList,
+  });
+
+  const contextSection = constructContextSection({
+    agentConfiguration,
+    errorContext,
+    model,
+    owner,
+    userMessage,
+  });
+  const projectContextSection =
+    constructProjectContextSection(conversation) ?? "";
+  const toolsSection = constructToolsSection({
+    hasAvailableActions,
+    model,
+    agentConfiguration,
+    serverToolsAndInstructions,
+  });
+  const skillsSection = constructSkillsSection({
+    enabledSkills,
+    equippedSkills,
+  });
+  const attachmentsSection = constructAttachmentsSection();
+  const pastedContentSection = constructPastedContentSection();
+  const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
+
+  if (hasStaticInstructions) {
+    // Tuple form [instructions, context] for prompt caching.
+    //
+    // The instructions block is cached across calls. It contains content that is
+    // stable for a given agent configuration: agent instructions, tools
+    // (directives + server listing), skills, format docs, and guidelines.
+    // Tools and skills can vary when JIT servers or mid-conversation skill
+    // activation occur, but this is uncommon enough that the cache hit rate
+    // is still favorable.
+    //
+    // The context block contains per-call dynamic content: date, conversation
+    // project, and user memories.
+    const fullInstructions = [
+      instructionsContent,
+      toolsSection,
+      skillsSection,
+      attachmentsSection,
+      pastedContentSection,
+      guidelinesSection,
+    ]
+      .filter((s) => s.trim() !== "")
+      .join("\n");
+
+    const dynamicContext: SystemPromptContext[] = [
+      { role: "context" as const, content: contextSection },
+      { role: "context" as const, content: projectContextSection },
+      { role: "context" as const, content: memoriesContext ?? "" },
+      { role: "context" as const, content: toolsetsContext ?? "" },
+    ].filter((s) => s.content.trim() !== "");
+
+    return [
+      [{ role: "instruction", content: fullInstructions }],
+      dynamicContext,
+    ];
+  }
+
+  // Flat context-only form: everything goes into context. Original section order.
+  const allSections: SystemPromptContext[] = [
+    { role: "context" as const, content: instructionsContent },
+    { role: "context" as const, content: contextSection },
+    { role: "context" as const, content: projectContextSection },
+    { role: "context" as const, content: toolsSection },
+    { role: "context" as const, content: skillsSection },
+    { role: "context" as const, content: attachmentsSection },
+    { role: "context" as const, content: pastedContentSection },
+    { role: "context" as const, content: guidelinesSection },
+    { role: "context" as const, content: memoriesContext ?? "" },
+  ].filter((s) => s.content.trim() !== "");
+
+  return allSections;
 }

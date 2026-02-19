@@ -1,9 +1,9 @@
-import assert from "assert";
-
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ModelId, ResourcePermission } from "@app/types";
+import type { ResourcePermission } from "@app/types/resource_permissions";
+import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 
 /**
  * Creates a space id to group ids mapping for efficient permission resolution.

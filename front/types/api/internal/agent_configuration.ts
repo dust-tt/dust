@@ -1,6 +1,3 @@
-import * as t from "io-ts";
-import type { JSONSchema7 } from "json-schema";
-
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import { ModelIdCodec } from "@app/types/assistant/models/models";
@@ -9,6 +6,8 @@ import { ReasoningEffortCodec } from "@app/types/assistant/models/reasoning";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "@app/types/shared/utils/time_frame";
+import * as t from "io-ts";
+import type { JSONSchema7 } from "json-schema";
 
 const LimitCodec = createRangeCodec(0, 100);
 
@@ -90,6 +89,13 @@ const TablesConfigurationsCodec = t.array(
   })
 );
 
+// Projects
+
+const ProjectConfigurationCodec = t.type({
+  workspaceId: t.string,
+  projectId: t.string,
+});
+
 // Actions
 
 const DustAppRunActionConfigurationSchema = t.type({
@@ -140,6 +146,7 @@ const MCPServerActionConfigurationSchema = t.type({
   ),
   dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
   secretName: t.union([t.string, t.null]),
+  dustProject: t.union([t.null, ProjectConfigurationCodec]),
 });
 
 const multiActionsCommonFields = {
@@ -192,6 +199,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         t.literal("active"),
         t.literal("archived"),
         t.literal("draft"),
+        t.literal("pending"),
       ]),
       scope: t.union([t.literal("hidden"), t.literal("visible")]),
       model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
@@ -204,6 +212,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       // temporary partial so opened windows can save without refreshing
       skills: t.array(SkillSchema),
       additionalRequestedSpaceIds: t.array(t.string),
+      instructionsHtml: t.union([t.string, t.null]),
     }),
   ]),
 });

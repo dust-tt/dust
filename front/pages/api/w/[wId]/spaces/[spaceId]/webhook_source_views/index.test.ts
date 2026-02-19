@@ -1,10 +1,9 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

@@ -1,16 +1,19 @@
 import { setCacheSource } from "../lib/cache";
 import { withEnvironment } from "../lib/commands";
-import { getDockerProjectName, startDocker } from "../lib/docker";
+import { startDocker } from "../lib/docker";
+import type { Environment } from "../lib/environment";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
-import { cleanupServicePorts } from "../lib/ports";
+import { getEnvFilePath, getWorktreeDir } from "../lib/paths";
+import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
 import type { ServiceName } from "../lib/services";
+import { buildShell } from "../lib/shell";
 import { isDockerRunning } from "../lib/state";
 
 interface WarmOptions {
@@ -21,10 +24,15 @@ interface WarmOptions {
 // Routes to pre-compile when warming the front service
 // These compile in parallel with the health check to minimize total wait time
 const CRITICAL_ROUTES = [
-  "/",
-  "/w/precompile", // Will 404/redirect but still triggers compilation
-  "/w/precompile/conversation/precompile", // Same - triggers compilation
+  "/api/auth-context", // Auth context API (no workspace)
+  "/api/w/precompile/auth-context", // Auth context API (with workspace)
+  "/api/poke/auth-context", // Poke auth context API (no workspace)
+  "/api/poke/workspaces/precompile/auth-context", // Poke auth context API (with workspace)
 ];
+
+const ENSURE_MCP_SERVER_VIEWS_COMMAND =
+  "npx tsx ./scripts/ensure_all_mcp_server_views_created.ts --execute";
+const MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN = /Migration completed with \d+ errors/;
 
 // Start pre-warming critical Next.js routes immediately (with retry)
 // Uses curl --retry to wait for server to be available, then triggers compilation
@@ -71,6 +79,48 @@ async function isTemporalRunning(): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
+async function ensureAllMCPServerViewsCreated(env: Environment): Promise<void> {
+  const envShPath = getEnvFilePath(env.name);
+  const worktreePath = getWorktreeDir(env.name);
+
+  const command = buildShell({
+    sourceEnv: envShPath,
+    sourceNvm: true,
+    run: ENSURE_MCP_SERVER_VIEWS_COMMAND,
+  });
+
+  const proc = Bun.spawn(["bash", "-c", command], {
+    cwd: `${worktreePath}/front`,
+    env: process.env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    logger.warn("Failed to ensure MCP server views are created. Continuing.");
+    if (stdout.trim()) {
+      logger.info(`MCP server views ensure stdout:\n${stdout.trim()}`);
+    }
+    if (stderr.trim()) {
+      logger.warn(`MCP server views ensure stderr:\n${stderr.trim()}`);
+    }
+    return;
+  }
+
+  if (MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN.test(stdout + stderr)) {
+    logger.warn(
+      "MCP server view ensure script completed with workspace errors. Check script logs for details."
+    );
+    return;
+  }
+
+  logger.success("Ensured MCP server views are created for all workspaces");
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
 export const warmCommand = withEnvironment("warm", async (env, options: WarmOptions) => {
   const startTime = Date.now();
@@ -80,11 +130,25 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   // Set cache source to use binaries from main repo
   await setCacheSource(env.metadata.repoRoot);
 
-  // Check if SDK is running (should be in cold state)
-  const sdkRunning = await isServiceRunning(env.name, "sdk");
-  if (!sdkRunning) {
-    return Err(new CommandError("SDK watch is not running. Run 'dust-hive start' first."));
+  // Check if build watchers are running (should be in cold state)
+  const [sparkleRunning, sdkRunning] = await Promise.all([
+    isServiceRunning(env.name, "sparkle"),
+    isServiceRunning(env.name, "sdk"),
+  ]);
+  if (!(sparkleRunning && sdkRunning)) {
+    const missing = [];
+    if (!sparkleRunning) missing.push("sparkle");
+    if (!sdkRunning) missing.push("SDK");
+    return Err(
+      new CommandError(
+        `${missing.join(" and ")} watch is not running. Run 'dust-hive start' first.`
+      )
+    );
   }
+
+  // Wait for SDK to be ready (first build complete) before starting front
+  // Front's TypeScript compiler needs SDK types from dist/
+  await waitForServiceReady(env, "sdk");
 
   // Check if already warm
   const dockerRunning = await isDockerRunning(env.name);
@@ -109,14 +173,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   });
 
   if (blockedPorts.length > 0) {
-    const details = blockedPorts
-      .map(({ port, processes }) => {
-        const procInfo = processes
-          .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
-          .join(", ");
-        return `${port}: ${procInfo}`;
-      })
-      .join("; ");
+    const details = formatBlockedPorts(blockedPorts);
     return Err(
       new CommandError(
         `Ports in use by other processes: ${details}. Stop them or rerun with --force-ports to terminate.`
@@ -130,7 +187,6 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
-  const projectName = getDockerProjectName(env.name);
 
   // Start Docker + front + pre-warming all in parallel
   // Front can compile pages while Docker starts and init runs
@@ -157,7 +213,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     console.log();
 
     // Run all init tasks in parallel with Rust service compilation
-    const dbInitPromise = runAllDbInits(env, projectName);
+    const dbInitPromise = runAllDbInits(env);
     const temporalRunningPromise = isTemporalRunning();
     const [, , temporalRunning] = await Promise.all([
       // Start Rust services - they'll compile while init runs
@@ -193,7 +249,12 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
     // Start remaining services
     logger.info("Starting remaining services...");
-    await Promise.all([startService(env, "connectors"), startService(env, "front-workers")]);
+    await Promise.all([
+      startService(env, "connectors"),
+      startService(env, "front-workers"),
+      startService(env, "front-spa-poke"),
+      startService(env, "front-spa-app"),
+    ]);
   } else {
     // Not first warm - start remaining services in parallel
     const [, temporalRunning] = await Promise.all([
@@ -202,6 +263,8 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
         startService(env, "oauth"),
         startService(env, "connectors"),
         startService(env, "front-workers"),
+        startService(env, "front-spa-poke"),
+        startService(env, "front-spa-app"),
       ]),
       isTemporalRunning(),
     ]);
@@ -227,6 +290,11 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   ]);
   logger.success("All services healthy");
 
+  if (needsInit) {
+    logger.step("Ensuring MCP server views are created for all workspaces...");
+    await ensureAllMCPServerViewsCreated(env);
+  }
+
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log();
   logger.success(`Environment '${env.name}' is now warm! (${elapsed}s)`);
@@ -234,13 +302,15 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   console.log(`  Front:       http://localhost:${env.ports.front}`);
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
+  console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);
+  console.log(`  Front poke:  http://localhost:${env.ports.frontSpaPoke}`);
   if (!noForward) {
     console.log();
     console.log(`  Forwarded:   ports ${FORWARDER_PORTS.join(", ")} → env (for OAuth)`);
   }
   console.log();
   console.log("Next steps:");
-  console.log(`  dust-hive open ${env.name}      # Open zellij session`);
+  console.log(`  dust-hive open ${env.name}      # Open terminal session`);
   console.log(`  dust-hive status ${env.name}    # Check service health`);
   console.log(`  dust-hive cool ${env.name}      # Stop services, keep SDK`);
   console.log();

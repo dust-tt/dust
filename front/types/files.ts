@@ -79,7 +79,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   data: 50 * 1024 * 1024, // 50MB.
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
-  image: 5 * 1024 * 1024, // 5 MB
+  image: 20 * 1024 * 1024, // 20MB - Gemini limit due to base64 conversion overhead
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
@@ -165,6 +165,8 @@ export const FILE_FORMATS = {
   "image/png": { cat: "image", exts: [".png"], isSafeToDisplay: true },
   "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
+  "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: true },
+  "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
 
   // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },
@@ -341,6 +343,8 @@ export const FILE_FORMATS = {
     isSafeToDisplay: true,
   },
   "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
+  // Legacy MIME type for WAV files, still reported by some browsers.
+  "audio/x-wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
   "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
   "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
@@ -475,6 +479,18 @@ export function isSupportedImageContentType(
   return false;
 }
 
+/**
+ * Returns true for images that can be sent to LLM vision APIs.
+ * SVG is categorized as "image" for UI display but is vector-based and not supported by vision APIs.
+ */
+export function isLLMVisionSupportedImageContentType(
+  contentType: string
+): contentType is SupportedImageContentType {
+  return (
+    isSupportedImageContentType(contentType) && contentType !== "image/svg+xml"
+  );
+}
+
 export function isSupportedDelimitedTextContentType(
   contentType: string
 ): contentType is SupportedDelimitedTextContentType {
@@ -564,4 +580,41 @@ export function getSupportedNonImageMimeTypes() {
       )
     )
   );
+}
+
+// Browsers may report incorrect MIME types for certain file extensions.
+// For example, it seems that it's likely that Windows, with Excel installed,
+// reports .csv files as application/vnd.ms-excel, which causes them
+// to be routed to the Tika text extraction pipeline instead of the native CSV parser.
+const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
+  string,
+  SupportedFileContentType
+> = {
+  ".csv": "text/csv",
+  ".tsv": "text/tsv",
+};
+
+// This function overrides the browser-reported content type with a more accurate one based on the file extension, if applicable.
+export function resolveFileContentType(
+  browserContentType: string,
+  fileName: string
+): string {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex !== -1) {
+    const extension = fileName.slice(dotIndex).toLowerCase();
+    const override = EXTENSION_CONTENT_TYPE_OVERRIDES[extension];
+    if (override) {
+      return override;
+    }
+  }
+
+  return browserContentType;
+}
+
+export function isPdfContentType(contentType: string): boolean {
+  return contentType === "application/pdf";
+}
+
+export function isMarkdownContentType(contentType: string): boolean {
+  return contentType === "text/markdown";
 }

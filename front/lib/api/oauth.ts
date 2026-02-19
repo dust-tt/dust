@@ -1,5 +1,3 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
 import type {
   BaseOAuthStrategyProvider,
@@ -29,26 +27,31 @@ import { ProductboardOAuthProvider } from "@app/lib/api/oauth/providers/productb
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
+import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
+import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type {
-  OAuthAPIError,
+  ExtraConfigType,
   OAuthConnectionType,
   OAuthProvider,
   OAuthUseCase,
-  Result,
-} from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
+} from "@app/types/oauth/lib";
+import type { OAuthAPIError } from "@app/types/oauth/oauth_api";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
 
 export type OAuthError = {
   code:
     | "connection_creation_failed"
     | "connection_not_implemented"
-    | "connection_finalization_failed";
+    | "connection_finalization_failed"
+    | "credential_retrieval_failed";
   message: string;
   oAuthAPIError?: OAuthAPIError;
 };
@@ -79,11 +82,13 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
   slack_tools: new SlackToolsOAuthProvider(),
+  snowflake: new SnowflakeOAuthProvider(),
+  ukg_ready: new UkgReadyOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
   vanta: new VantaOAuthProvider(),
 };
 
-function getProviderStrategy(
+export function getProviderStrategy(
   provider: OAuthProvider
 ): BaseOAuthStrategyProvider {
   return _PROVIDER_STRATEGIES[provider];
@@ -93,7 +98,8 @@ export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
   useCase: OAuthUseCase,
-  extraConfig: ExtraConfigType
+  extraConfig: ExtraConfigType,
+  openerOrigin?: string
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
@@ -117,12 +123,25 @@ export async function createConnectionAndGetSetupUrl(
   const userId = auth.getNonNullableUser().sId;
 
   if (providerStrategy.getRelatedCredential) {
-    const credentials = await providerStrategy.getRelatedCredential!(auth, {
-      extraConfig,
-      workspaceId,
-      userId,
-      useCase,
-    });
+    const credentialResult = await providerStrategy.getRelatedCredential!(
+      auth,
+      {
+        extraConfig,
+        workspaceId,
+        userId,
+        useCase,
+      }
+    );
+
+    // If getRelatedCredential returned an error, propagate it
+    if (credentialResult && credentialResult.isErr()) {
+      return new Err(credentialResult.error);
+    }
+
+    // credentialResult is either undefined or Ok at this point
+    const credentials = credentialResult?.isOk()
+      ? credentialResult.value
+      : undefined;
     if (credentials) {
       if (!providerStrategy.getUpdatedExtraConfig) {
         // You probably need to clean up the extra config to remove any sensitive data (such as client_secret).
@@ -173,6 +192,8 @@ export async function createConnectionAndGetSetupUrl(
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
     ...extraConfig,
+    // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
+    ...(openerOrigin && { opener_origin: openerOrigin }),
   };
 
   const cRes = await api.createConnection({

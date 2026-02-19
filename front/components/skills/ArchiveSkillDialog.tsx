@@ -1,3 +1,7 @@
+import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -8,11 +12,6 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
-import type { LightWorkspaceType } from "@app/types";
-import { pluralize } from "@app/types";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 interface DeleteSkillDialogProps {
   skill: SkillWithRelationsType;
@@ -53,7 +52,9 @@ export function ArchiveSkillDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <div className="font-bold">Are you sure you want to proceed?</div>
+          <div className="text-sm font-medium">
+            Are you sure you want to proceed?
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

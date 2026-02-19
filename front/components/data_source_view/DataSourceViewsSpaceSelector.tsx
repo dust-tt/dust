@@ -1,18 +1,17 @@
-import { Spinner } from "@dust-tt/sparkle";
-import type { Dispatch, SetStateAction } from "react";
-import { useMemo } from "react";
-
 import type { useCaseDataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { SpaceSelector } from "@app/components/spaces/SpaceSelector";
 import { useSpaces } from "@app/lib/swr/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type {
-  ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import type { Dispatch, SetStateAction } from "react";
+import { useMemo } from "react";
 
 interface DataSourceViewsSpaceSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -39,7 +38,10 @@ export const DataSourceViewsSpaceSelector = ({
   isRootSelectable,
   selectionMode = "checkbox",
 }: DataSourceViewsSpaceSelectorProps) => {
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({
+    kinds: "all",
+    workspaceId: owner.sId,
+  });
 
   const defaultSpace = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;

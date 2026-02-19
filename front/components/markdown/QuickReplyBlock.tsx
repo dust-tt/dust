@@ -1,12 +1,12 @@
-import { Button, ChatBubbleLeftRightIcon } from "@dust-tt/sparkle";
-import React, { useState } from "react";
-import { visit } from "unist-util-visit";
-
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
+import { Button, ChatBubbleLeftRightIcon } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
+import { visit } from "unist-util-visit";
 
 interface QuickReplyBlockProps {
   label: string;

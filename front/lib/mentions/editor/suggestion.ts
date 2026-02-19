@@ -1,9 +1,12 @@
+import {
+  compareAgentsForSort,
+  GLOBAL_AGENTS_SID,
+} from "@app/types/assistant/assistant";
 import type {
   RichAgentMention,
   RichAgentMentionInConversation,
   RichUserMentionInConversation,
-} from "@app/types";
-import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
+} from "@app/types/assistant/mentions";
 
 import { compareForFuzzySort, subFilter } from "../../utils";
 
@@ -102,6 +105,17 @@ export function sortEditorSuggestionUsers(
     }
     // If both are participants, we sort by last activity.
     if (a.isParticipant && b.isParticipant) {
+      return (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0);
+    }
+    // If project members, we move them up.
+    if (a.isProjectMember && !b.isProjectMember) {
+      return -1;
+    }
+    if (b.isProjectMember && !a.isProjectMember) {
+      return 1;
+    }
+    // If both are project members, we sort by last activity.
+    if (a.isProjectMember && b.isProjectMember) {
       return (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0);
     }
     return 0;

@@ -1,6 +1,3 @@
-import { Input } from "@dust-tt/sparkle";
-import type { Control, FieldValues, Path } from "react-hook-form";
-
 import {
   PokeFormControl,
   PokeFormField,
@@ -15,6 +12,8 @@ import {
   PokeSelectTrigger,
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
+import { Input } from "@dust-tt/sparkle";
+import type { Control, FieldValues, Path } from "react-hook-form";
 
 interface SelectFieldOption {
   value: string;
@@ -94,6 +93,16 @@ export function InputField<T extends FieldValues>({
               type={type}
               {...field}
               value={field.value}
+              onChange={
+                type === "number"
+                  ? (e) => {
+                      const parsed = Number(e.target.value);
+                      if (isFinite(parsed)) {
+                        field.onChange(parsed);
+                      }
+                    }
+                  : field.onChange
+              }
             />
           </PokeFormControl>
           <PokeFormMessage />

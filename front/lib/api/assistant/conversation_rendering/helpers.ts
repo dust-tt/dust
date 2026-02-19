@@ -5,30 +5,32 @@
 
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
   serializeMention,
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageType,
-  ConversationType,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelConfigurationType,
-  ModelMessageTypeMultiActions,
-  UserMessageType,
-  UserMessageTypeModel,
-} from "@app/types";
-import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
   AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type {
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelMessageTypeMultiActions,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * Type for a step in agent message processing
@@ -104,7 +106,7 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export async function getSteps(
+export function getSteps(
   auth: Authenticator,
   {
     model,
@@ -119,8 +121,11 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
   }
-): Promise<Step[]> {
+): Step[] {
   const supportedModel = getSupportedModelConfig(model);
+  if (!supportedModel) {
+    return [];
+  }
   const actions = removeNulls(message.actions);
 
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including
@@ -240,7 +245,10 @@ export async function getSteps(
 /**
  * Renders a user message with metadata
  */
-export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
+export function renderUserMessage(
+  conversation: ConversationWithoutContentType,
+  m: UserMessageType
+): UserMessageTypeModel {
   const content = replaceMentionsWithAt(m.content);
 
   const metadataItems: string[] = [];
@@ -274,6 +282,9 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
   if (identityTokens.length > 0) {
     metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
   }
+
+  // TODO(2026-02-01 flav): Move this to another system message.
+  metadataItems.push(`- Conversation: ${conversation.sId}`);
 
   const timeZone =
     m.context.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -309,6 +320,10 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
       additionalInstructions +=
         "This message originated from Slack: make sure to retrieve the context from the attached thread content.";
     }
+    if (["slack", "teams"].includes(m.context.origin)) {
+      additionalInstructions +=
+        "If you need to ping or mention a user, tag them using @username.";
+    }
   }
 
   const systemContext = [];
@@ -337,19 +352,52 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
 }
 
 /**
+ * Renders an agent message from a different agent as a user message with system tags.
+ * This is used when the `agent_bound_loop_rendering` feature flag is enabled.
+ * Only the final text output is rendered, not the full agentic loop (actions/tool calls).
+ */
+export function renderOtherAgentMessageAsUserMessage(
+  message: AgentMessageType
+): UserMessageTypeModel | null {
+  // Only render if there's actual content
+  const content = message.content?.trim();
+  if (!content) {
+    return null;
+  }
+
+  const agentName = message.configuration.name;
+
+  const systemContext = `<dust_system>
+This is the output of another agent "@${agentName}" that was invoked in this conversation.
+You are seeing the final response only, not the full reasoning or tool execution steps.
+</dust_system>
+
+`;
+
+  return {
+    role: "user" as const,
+    name: agentName,
+    content: [
+      {
+        type: "text",
+        text: systemContext + content,
+      },
+    ],
+  };
+}
+
+/**
  * Renders a content fragment message
  */
 export async function renderContentFragment(
   auth: Authenticator,
   m: any, // ContentFragmentType
-  conversation: ConversationType,
   model: ModelConfigurationType,
   excludeImages: boolean
 ): Promise<ModelMessageTypeMultiActions | null> {
   const renderedContentFragment = await renderLightContentFragmentForModel(
     auth,
     m,
-    conversation,
     model,
     {
       excludeImages: Boolean(excludeImages),

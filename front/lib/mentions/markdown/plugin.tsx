@@ -5,11 +5,9 @@
  * mentions in markdown content, enabling the :mention[name]{sId=xxx} syntax.
  */
 
+import { MentionDisplay } from "@app/components/mentions/MentionDisplay";
+import type { WorkspaceType } from "@app/types/user";
 import { visit } from "unist-util-visit";
-
-import type { WorkspaceType } from "@app/types";
-
-import { MentionDisplay } from "../ui/MentionDisplay";
 
 /*
  * Remark directive plugin for parsing mention directives.

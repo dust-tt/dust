@@ -1,12 +1,11 @@
-import { useState } from "react";
-import type { Fetcher } from "swr";
-import useSWR from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher } from "@app/lib/swr/swr";
 import type { GetProductionChecksResponseBody } from "@app/pages/api/poke/production-checks";
 import type { GetCheckHistoryResponseBody } from "@app/pages/api/poke/production-checks/[checkName]/history";
+import { useState } from "react";
+import type { Fetcher } from "swr";
+import useSWR from "swr";
 
 const REFRESH_INTERVAL_MS = 30000;
 const REFETCH_DELAY_MS = 2000;

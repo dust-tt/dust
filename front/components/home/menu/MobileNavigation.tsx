@@ -1,3 +1,6 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { menuConfig } from "@app/components/home/menu/config";
+import { classNames } from "@app/lib/utils";
 import {
   Button,
   ChevronRightIcon,
@@ -15,10 +18,6 @@ import {
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
-
-import { menuConfig } from "@app/components/home/menu/config";
-import { classNames } from "@app/lib/utils";
-import { appendUTMParams } from "@app/lib/utils/utm";
 
 export function MobileNavigation() {
   const [open, setOpen] = React.useState(false);
@@ -112,11 +111,10 @@ function MobileLink({
 }: MobileLinkProps) {
   return (
     <Link
-      href={isExternal ? href : appendUTMParams(href.toString())}
+      href={href}
       onClick={() => {
         onOpenChange?.(false);
       }}
-      shallow={!isExternal}
       target={isExternal ? "_blank" : undefined}
       className={classNames(
         "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-slate-700 no-underline outline-none transition-colors",

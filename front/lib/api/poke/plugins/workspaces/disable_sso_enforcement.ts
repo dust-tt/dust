@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const disableSSOPlugin = createPlugin({
   manifest: {

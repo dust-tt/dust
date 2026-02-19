@@ -1,5 +1,5 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 export const reasoningLLMEvents: LLMEvent[] = [
   {
@@ -79,6 +79,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
       cachedTokens: 0,
       cacheCreationTokens: 0,
       totalTokens: 2680,
+      uncachedInputTokens: 2500,
     },
     metadata: {
       clientId: "anthropic" as const,

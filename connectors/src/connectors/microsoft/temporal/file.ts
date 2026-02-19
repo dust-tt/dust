@@ -1,6 +1,4 @@
-import type { Result } from "@dust-tt/client";
-import axios from "axios";
-
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
@@ -16,6 +14,7 @@ import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mi
 import {
   deleteAllSheets,
   handleSpreadSheet,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import {
   handleCsvFile,
@@ -56,6 +55,8 @@ import {
   INTERNAL_MIME_TYPES,
   WithRetriesError,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import axios from "axios";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
 

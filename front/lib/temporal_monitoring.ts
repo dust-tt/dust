@@ -1,14 +1,13 @@
+import type logger from "@app/logger/logger";
+import type { Logger } from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
+import tracer from "@app/logger/tracer";
 import type { Context } from "@temporalio/activity";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-import tracer from "dd-trace";
-
-import type { Logger } from "@app/logger/logger";
-import type logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -26,7 +25,9 @@ export type WorkflowError = {
   __is_dust_error: boolean;
 };
 
-export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterceptor {
+export class ActivityInboundLogInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   public readonly logger: Logger;
   private readonly context: Context;
 
@@ -89,30 +90,22 @@ export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterc
       const durationMs = new Date().getTime() - startTime.getTime();
       if (error) {
         let errorType = "unhandled_internal_activity_error";
-        if (error.__is_dust_error !== undefined) {
-          // this is a dust error
+        const isDustError = error.__is_dust_error !== undefined;
+        if (isDustError) {
           errorType = error.type;
-          this.logger.error(
-            {
-              error,
-              dustError: error,
-              durationMs,
-              attempt: this.context.info.attempt,
-            },
-            "Activity failed"
-          );
-        } else {
-          // unknown error type
-          this.logger.error(
-            {
-              error,
-              error_stack: error?.stack,
-              durationMs: durationMs,
-              attempt: this.context.info.attempt,
-            },
-            "Unhandled activity error"
-          );
         }
+
+        this.logger.error(
+          {
+            error,
+            dustError: isDustError ? error : undefined,
+            error_stack: error?.stack,
+            errorType,
+            durationMs,
+            attempt: this.context.info.attempt,
+          },
+          "Activity failed"
+        );
 
         tags.push(`error_type:${errorType}`);
         statsDClient.increment("activity_failed.count", 1, tags);

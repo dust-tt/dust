@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import uniqBy from "lodash/uniqBy";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -15,29 +10,33 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgentsUsageType,
-  SpaceType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES,
-  isString,
-  PatchSpaceRequestBodySchema,
-} from "@app/types";
+import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { SpaceUserType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import uniqBy from "lodash/uniqBy";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SpaceCategoryInfo = {
   usage: AgentsUsageType;
   count: number;
 };
 
+export type RichSpaceType = SpaceType & {
+  categories: { [key: string]: SpaceCategoryInfo };
+  canWrite: boolean;
+  canRead: boolean;
+  isMember: boolean;
+  members: SpaceUserType[];
+  isEditor: boolean;
+};
 export type GetSpaceResponseBody = {
-  space: SpaceType & {
-    categories: { [key: string]: SpaceCategoryInfo };
-    isMember: boolean;
-    members: UserType[];
-  };
+  space: RichSpaceType;
 };
 
 export type PatchSpaceResponseBody = {
@@ -107,18 +106,39 @@ async function handler(
       categories["apps"].count = apps.length;
       categories["actions"].count = actionsCount;
 
-      const includeAllMembers = req.query.includeAllMembers === "true";
-      const currentMembers = uniqBy(
+      const { includeAllMembers } = req.query;
+      const shouldIncludeAllMembers = includeAllMembers === "true";
+
+      const { groupsToProcess, allGroupMemberships } =
+        await space.fetchManualGroupsMemberships(auth, {
+          shouldIncludeAllMembers,
+        });
+
+      const membershipMap = new Map<number, Map<number, string>>();
+      for (const membership of allGroupMemberships) {
+        if (!membershipMap.has(membership.groupId)) {
+          membershipMap.set(membership.groupId, new Map());
+        }
+        membershipMap
+          .get(membership.groupId)
+          ?.set(membership.userId, membership.startAt.toDateString());
+      }
+
+      const currentMembers: SpaceUserType[] = uniqBy(
         (
           await concurrentExecutor(
-            // Get members from the regular group only.
-            space.groups.filter((g) => {
-              return g.kind === "regular";
-            }),
-            (group) =>
-              includeAllMembers
-                ? group.getAllMembers(auth)
-                : group.getActiveMembers(auth),
+            groupsToProcess,
+            async (group) => {
+              const members = shouldIncludeAllMembers
+                ? await group.getAllMembers(auth)
+                : await group.getActiveMembers(auth);
+              const groupMemberships = membershipMap.get(group.id);
+              return members.map((member) => ({
+                ...member.toJSON(),
+                isEditor: group.group_vaults?.kind === "project_editor", // we rely on the information stored in group_vaults to know if the group is an editor group
+                joinedAt: groupMemberships?.get(member.id),
+              }));
+            },
             { concurrency: 10 }
           )
         ).flat(),
@@ -129,8 +149,11 @@ async function handler(
         space: {
           ...space.toJSON(),
           categories,
-          isMember: space.canRead(auth),
-          members: currentMembers.map((member) => member.toJSON()),
+          canWrite: space.canWrite(auth),
+          canRead: space.canRead(auth),
+          isMember: space.isMember(auth),
+          isEditor: space.canAdministrate(auth),
+          members: currentMembers,
         },
       });
     }

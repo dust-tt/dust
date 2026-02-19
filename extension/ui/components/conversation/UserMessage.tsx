@@ -18,7 +18,8 @@ import {
 } from "@app/ui/components/markdown/UserMentionBlock";
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
+import type React from "react";
+import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 

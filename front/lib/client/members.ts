@@ -1,4 +1,5 @@
-import type { RoleType, UserTypeWithWorkspace } from "@app/types";
+import { clientFetch } from "@app/lib/egress/client";
+import type { RoleType, UserTypeWithWorkspace } from "@app/types/user";
 
 export async function handleMembersRoleChange({
   members,
@@ -13,8 +14,7 @@ export async function handleMembersRoleChange({
     return;
   }
   const promises = members.map((member) =>
-    // eslint-disable-next-line no-restricted-globals
-    fetch(`/api/w/${member.workspace.sId}/members/${member.sId}`, {
+    clientFetch(`/api/w/${member.workspace.sId}/members/${member.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

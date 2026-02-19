@@ -1,18 +1,16 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationParticipantModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ConversationParticipantsType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { ConversationError } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type FetchConversationParticipantsResponse = {
   participants: ConversationParticipantsType;
@@ -70,8 +68,8 @@ async function handler(
       break;
 
     case "POST":
-      const user = auth.user();
-      if (!user) {
+      const u = auth.user();
+      if (!u) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -81,26 +79,15 @@ async function handler(
         });
       }
 
-      const owner = auth.workspace();
-      if (!owner) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "app_auth_error",
-            message: "Workspace not found",
-          },
+      const user = u.toJSON();
+
+      const isAlreadyParticipant =
+        await ConversationResource.isConversationParticipant(auth, {
+          conversation: conversationWithoutContent,
+          user,
         });
-      }
 
-      const existingParticipant = await ConversationParticipantModel.findOne({
-        where: {
-          conversationId: conversationWithoutContent.id,
-          workspaceId: owner.id,
-          userId: user.id,
-        },
-      });
-
-      if (existingParticipant !== null) {
+      if (isAlreadyParticipant) {
         return apiErrorForConversation(
           req,
           res,
@@ -108,13 +95,11 @@ async function handler(
         );
       }
 
-      await ConversationParticipantModel.create({
-        conversationId: conversationWithoutContent.id,
-        workspaceId: owner.id,
-        userId: user.id,
+      await ConversationResource.upsertParticipation(auth, {
+        conversation: conversationWithoutContent,
+        user,
         action: "subscribed",
-        unread: false,
-        actionRequired: false,
+        lastReadAt: new Date(),
       });
 
       res.status(201).end();

@@ -1,18 +1,16 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { Readable } from "stream";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import {
-  Err,
   isTextExtractionSupportedContentType,
-  normalizeError,
-  Ok,
-} from "@app/types";
-import { TextExtraction } from "@app/types/shared/text_extraction";
+  TextExtraction,
+} from "@app/types/shared/text_extraction";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { Readable } from "stream";
 
 /**
  * Extract text from a buffer using the text extraction service
@@ -121,7 +119,7 @@ export async function processAttachment({
       type: "resource" as const,
       resource: {
         blob: buffer.toString("base64"),
-        text: `Attachment: ${sanitizeFilename(filename)}`,
+        _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
         mimeType,
         uri: "",
       },

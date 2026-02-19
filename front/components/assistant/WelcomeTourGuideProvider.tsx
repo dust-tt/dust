@@ -18,6 +18,7 @@ export function WelcomeTourGuideProvider({
   const spaceMenuButtonRef = useRef<HTMLDivElement>(null);
   const createAgentButtonRef = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value = useMemo(() => {
     return {
       startConversationRef,

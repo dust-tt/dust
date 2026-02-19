@@ -1,10 +1,5 @@
-import { stringify } from "csv-stringify/sync";
-import { format } from "date-fns/format";
-import { Op, QueryTypes, Sequelize } from "sequelize";
-
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   ConversationModel,
@@ -12,18 +7,18 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  ModelId,
-  WorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceType } from "@app/types/user";
+import { stringify } from "csv-stringify/sync";
+import { format } from "date-fns/format";
+import { Op, QueryTypes, Sequelize } from "sequelize";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
@@ -45,8 +40,6 @@ interface MessageUsageQueryResult {
   created_at: Date;
   assistant_id: string;
   assistant_name: string;
-  workspace_id: number;
-  workspace_name: string;
   conversation_id: number;
   parent_message_id: number | null;
   user_message_id: number | null;
@@ -121,7 +114,7 @@ export async function unsafeGetUsageData(
 
   const readReplica = getFrontReplicaDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
       SELECT TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
@@ -209,7 +202,7 @@ export async function getMessageUsageData(
 ): Promise<string> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const results = await readReplica.query<MessageUsageQueryResult>(
     `
       SELECT am."id"                                                     AS "message_id",
@@ -222,9 +215,7 @@ export async function getMessageUsageData(
                WHEN ac."scope" = 'hidden' THEN 'unpublished'
                ELSE 'unknown'
                END                                                       AS "assistant_settings",
-             w."id"                                                      AS "workspace_id",
-             w."name"                                                    AS "workspace_name",
-             c."id"                                                      AS "conversation_id",
+             m."conversationId"                                          AS "conversation_id",
              m."parentId"                                                AS "parent_message_id",
              um."id"                                                     AS "user_message_id",
              um."userId"                                                 AS "user_id",
@@ -233,10 +224,6 @@ export async function getMessageUsageData(
       FROM "agent_messages" am
              JOIN
            "messages" m ON am."id" = m."agentMessageId"
-             JOIN
-           "conversations" c ON m."conversationId" = c."id"
-             JOIN
-           "workspaces" w ON c."workspaceId" = w."id"
              LEFT JOIN
            "agent_configurations" ac
            ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
@@ -245,7 +232,7 @@ export async function getMessageUsageData(
              LEFT JOIN
            "user_messages" um on m2."userMessageId" = um."id"
       WHERE am."status" = 'succeeded'
-        AND w."id" = :wId
+        AND am."workspaceId" = :wId
         AND am."createdAt" BETWEEN :startDate AND :endDate
     `,
     {
@@ -397,6 +384,10 @@ export async function getUserUsageData(
             where: {
               userId: {
                 [Op.not]: null,
+              },
+              // Filter out "fake" user messages created by the system (new system that replaced the "origin" field for detection of agent messages)
+              agenticMessageType: {
+                [Op.is]: null,
               },
             },
           },
@@ -639,7 +630,7 @@ export async function getAssistantUsageData(
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const mentions = await readReplica.query<{ messages: number }>(
     `
       SELECT COUNT(a."id") AS "messages"
@@ -679,7 +670,7 @@ export async function getAssistantsUsageData(
   // Include unpublished agents for workspace admins.
   const scopeFilter =
     workspace.role === "admin" ? "" : "AND ac.\"scope\" != 'hidden'";
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // biome-ignore lint/plugin/noRawSql: Leggit
   const agents = await readReplica.query<AgentUsageQueryResult>(
     `
       SELECT ac."name",
@@ -784,7 +775,7 @@ function reconstructConversationUrl(
     workspace.sId,
     conversationId,
     undefined,
-    config.getClientFacingUrl()
+    config.getAppUrl()
   );
 }
 
@@ -811,33 +802,4 @@ function generateCsvFromQueryResult(
       date: (value) => value.toISOString(),
     },
   });
-}
-
-/**
- * Check if a workspace is active during a trial based on the following conditions:
- *   - Existence of a connected data source
- *   - Existence of a custom agent
- *   - A conversation occurred within the past 7 days
- */
-export async function checkWorkspaceActivity(auth: Authenticator) {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const hasDataSource =
-    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
-
-  const hasCreatedAssistant = await AgentConfigurationModel.findOne({
-    where: { workspaceId: auth.getNonNullableWorkspace().id },
-  });
-
-  // INFO: keep accessing the model for now to avoid circular deps warning
-  const owner = auth.getNonNullableWorkspace();
-  const hasRecentConversation = await ConversationModel.findAll({
-    where: {
-      workspaceId: owner.id,
-      updatedAt: { [Op.gte]: sevenDaysAgo },
-    },
-  });
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }

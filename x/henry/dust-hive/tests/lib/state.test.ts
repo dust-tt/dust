@@ -15,7 +15,7 @@ describe("state", () => {
       expect(state).toBe("stopped");
     });
 
-    it("returns cold when only SDK is running", () => {
+    it("returns cold when only build watchers are running", () => {
       const state = determineState(true, false, false);
       expect(state).toBe("cold");
     });
@@ -26,31 +26,31 @@ describe("state", () => {
     });
 
     describe("inconsistent states", () => {
-      it("returns warm when docker is running but SDK is not", () => {
+      it("returns warm when docker is running but build watchers are not", () => {
         // Docker running without SDK is still "warm" (infrastructure up)
         const state = determineState(false, true, false);
         expect(state).toBe("warm");
       });
 
-      it("returns warm when app services running but SDK is not", () => {
+      it("returns warm when app services running but build watchers are not", () => {
         const state = determineState(false, false, true);
         expect(state).toBe("warm");
       });
 
-      it("returns warm when docker and app services running but SDK is not", () => {
+      it("returns warm when docker and app services running but build watchers are not", () => {
         const state = determineState(false, true, true);
         expect(state).toBe("warm");
       });
 
-      it("returns cold when SDK and docker running but no app services", () => {
-        // This is inconsistent - SDK + docker but no app services
+      it("returns cold when build watchers and docker running but no app services", () => {
+        // This is inconsistent - build watchers + docker but no app services
         const state = determineState(true, true, false);
         // Docker is infrastructure, so still considered warm
         expect(state).toBe("warm");
       });
 
-      it("returns cold when SDK running with app services but no docker", () => {
-        // SDK + app services but no docker - app services are running
+      it("returns cold when build watchers running with app services but no docker", () => {
+        // build watchers + app services but no docker - app services are running
         const state = determineState(true, false, true);
         expect(state).toBe("warm");
       });
@@ -63,7 +63,7 @@ describe("state", () => {
       expect(warnings).toEqual([]);
     });
 
-    it("returns empty array for cold state (SDK only)", () => {
+    it("returns empty array for cold state (build watchers only)", () => {
       const warnings = detectWarnings(true, false, false, []);
       expect(warnings).toEqual([]);
     });
@@ -74,14 +74,14 @@ describe("state", () => {
       expect(warnings).toEqual([]);
     });
 
-    it("warns when SDK not running but docker is", () => {
+    it("warns when Build watchers not running but docker is", () => {
       const warnings = detectWarnings(false, true, false, []);
-      expect(warnings).toContain("SDK not running");
+      expect(warnings).toContain("Build watchers not running");
     });
 
-    it("warns when SDK not running but app services are", () => {
+    it("warns when Build watchers not running but app services are", () => {
       const warnings = detectWarnings(false, false, true, ["front"]);
-      expect(warnings).toContain("SDK not running");
+      expect(warnings).toContain("Build watchers not running");
     });
 
     it("warns when docker running but no app services", () => {
@@ -95,14 +95,14 @@ describe("state", () => {
     });
 
     it("warns about missing services when some are running in inconsistent state", () => {
-      // SDK not running creates an inconsistent state where missing services warning triggers
+      // Build watchers not running creates an inconsistent state where missing services warning triggers
       const partial: ServiceName[] = ["front", "core"];
       const warnings = detectWarnings(false, true, true, partial);
       expect(warnings.some((w) => w.includes("Missing services"))).toBe(true);
     });
 
     it("lists specific missing services in inconsistent state", () => {
-      // SDK not running creates an inconsistent state where missing services warning triggers
+      // Build watchers not running creates an inconsistent state where missing services warning triggers
       const partial: ServiceName[] = ["front"];
       const warnings = detectWarnings(false, true, true, partial);
       const missingWarning = warnings.find((w) => w.includes("Missing services"));
@@ -112,7 +112,7 @@ describe("state", () => {
     });
 
     it("does not warn about missing services in consistent warm state", () => {
-      // When all consistent (sdk + docker + appServices all true), even with partial
+      // When all consistent (buildWatchers + docker + appServices all true), even with partial
       // services, the early return prevents missing services warning
       const partial: ServiceName[] = ["front", "core"];
       const warnings = detectWarnings(true, true, true, partial);
@@ -126,11 +126,11 @@ describe("state", () => {
     });
 
     it("can have multiple warnings", () => {
-      // SDK not running, no docker, but app services running
+      // Build watchers not running, no docker, but app services running
       const warnings = detectWarnings(false, false, true, ["front"]);
       expect(warnings.length).toBeGreaterThanOrEqual(1);
-      // Should have both "SDK not running" and "App services running but Docker is not"
-      expect(warnings).toContain("SDK not running");
+      // Should have both "Build watchers not running" and "App services running but Docker is not"
+      expect(warnings).toContain("Build watchers not running");
       expect(warnings).toContain("App services running but Docker is not");
     });
   });
@@ -140,7 +140,7 @@ describe("state", () => {
       const stateInfo: StateInfo = {
         state: "stopped",
         warnings: [],
-        sdkRunning: false,
+        buildWatchersRunning: false,
         dockerRunning: false,
         appServicesRunning: false,
       };
@@ -151,7 +151,7 @@ describe("state", () => {
       const stateInfo: StateInfo = {
         state: "cold",
         warnings: [],
-        sdkRunning: true,
+        buildWatchersRunning: true,
         dockerRunning: false,
         appServicesRunning: false,
       };
@@ -162,7 +162,7 @@ describe("state", () => {
       const stateInfo: StateInfo = {
         state: "warm",
         warnings: [],
-        sdkRunning: true,
+        buildWatchersRunning: true,
         dockerRunning: true,
         appServicesRunning: true,
       };
@@ -172,8 +172,8 @@ describe("state", () => {
     it("adds warning indicator when warnings present", () => {
       const stateInfo: StateInfo = {
         state: "warm",
-        warnings: ["SDK not running"],
-        sdkRunning: false,
+        warnings: ["Build watchers not running"],
+        buildWatchersRunning: false,
         dockerRunning: true,
         appServicesRunning: true,
       };
@@ -185,8 +185,8 @@ describe("state", () => {
     it("adds warning indicator for multiple warnings", () => {
       const stateInfo: StateInfo = {
         state: "warm",
-        warnings: ["SDK not running", "Missing services: oauth"],
-        sdkRunning: false,
+        warnings: ["Build watchers not running", "Missing services: oauth"],
+        buildWatchersRunning: false,
         dockerRunning: true,
         appServicesRunning: true,
       };
@@ -207,14 +207,14 @@ describe("state", () => {
       const info: StateInfo = {
         state: "cold",
         warnings: [],
-        sdkRunning: true,
+        buildWatchersRunning: true,
         dockerRunning: false,
         appServicesRunning: false,
       };
 
       expect(info.state).toBeDefined();
       expect(info.warnings).toBeDefined();
-      expect(typeof info.sdkRunning).toBe("boolean");
+      expect(typeof info.buildWatchersRunning).toBe("boolean");
       expect(typeof info.dockerRunning).toBe("boolean");
       expect(typeof info.appServicesRunning).toBe("boolean");
     });

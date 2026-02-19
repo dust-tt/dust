@@ -1,6 +1,3 @@
-import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
-import { Op } from "sequelize";
-
 import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
 import { pageOrDbIdFromUrl } from "@connectors/connectors/notion/lib/utils";
@@ -25,11 +22,11 @@ import {
   NotionPageModel,
 } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import mainLogger from "@connectors/logger/logger";
-import { default as topLogger } from "@connectors/logger/logger";
+import mainLogger, { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
   AdminSuccessResponseType,
+  ModelId,
   NotionApiRequestResponseType,
   NotionCheckUrlResponseType,
   NotionCommandType,
@@ -39,7 +36,8 @@ import type {
   NotionSearchPagesResponseType,
   NotionUpsertResponseType,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
+import { Op } from "sequelize";
 
 import { getParsedDatabase, retrievePage } from "./notion_api";
 
@@ -509,7 +507,13 @@ export const notion = async ({
     // Clearing the parentsLastUpdatedAt field will force a resync of all parents at the end of the next sync
     case "clear-parents-last-updated-at": {
       const connector = await getConnector(args);
-      await clearParentsLastUpdatedAt({ connectorId: connector.id });
+      const resetToDate = args.resetToDate
+        ? new Date(args.resetToDate)
+        : undefined;
+      await clearParentsLastUpdatedAt({
+        connectorId: connector.id,
+        resetToDate,
+      });
       return { success: true };
     }
 

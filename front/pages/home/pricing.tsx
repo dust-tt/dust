@@ -1,8 +1,4 @@
-import { Button, RocketIcon } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import React from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -10,11 +6,17 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
   withTracking,
 } from "@app/lib/tracking";
+import { appendUTMParams } from "@app/lib/utils/utm";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 export async function getStaticProps() {
   return {
@@ -24,6 +26,7 @@ export async function getStaticProps() {
   };
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Pricing() {
   const router = useRouter();
 
@@ -53,7 +56,9 @@ export default function Pricing() {
                 "hero_start_trial",
                 () => {
                   // eslint-disable-next-line react-hooks/immutability
-                  window.location.href = "/api/workos/login?screenHint=sign-up";
+                  window.location.href = appendUTMParams(
+                    "/api/workos/login?screenHint=sign-up"
+                  );
                 }
               )}
             />
@@ -70,7 +75,9 @@ export default function Pricing() {
                 object: "plan_card_start_trial",
                 action: TRACKING_ACTIONS.CLICK,
               });
-              window.location.href = "/api/workos/login?screenHint=sign-up";
+              window.location.href = appendUTMParams(
+                "/api/workos/login?screenHint=sign-up"
+              );
             }}
           />
         </div>

@@ -6,15 +6,21 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 
 ## Quick Reference
 
-### Minimal Files Needed
+### File Structure
 
-1. `lib/actions/mcp_internal_actions/constants.ts` - Add server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` and `INTERNAL_MCP_SERVERS`
-2. `lib/actions/mcp_internal_actions/servers/{provider}.ts` - Server implementation with tools
-3. `lib/actions/mcp_internal_actions/servers/index.ts` - Register server in switch statement
+```
+front/lib/api/actions/servers/{provider}/
+├── metadata.ts           # Tool metadata and server info using createToolsRecord
+├── tools/index.ts        # Tool handlers with exhaustive Record type
+├── index.ts              # Server creation and tool registration
+├── client.ts             # API client (optional)
+└── helpers.ts            # Helper functions (optional)
+```
 
-If the server code does not fit in one file, it can be split into multiple files.
-In that case, they should be placed into a folder that contains a file `index.ts` from where
-the `createServer` function that creates the server will be default exported.
+### Registration Files
+
+1. `lib/actions/mcp_internal_actions/constants.ts` - Add server config with `metadata: YOUR_SERVER`
+2. `lib/actions/mcp_internal_actions/servers/index.ts` - Import and register in switch statement
 
 ### OAuth Requirements (if the platform requires OAuth)
 
@@ -78,73 +84,243 @@ Document the operations you want to expose:
 
 ---
 
-## File Structure
-
-For each internal MCP server, you'll create:
-
-```
-front/lib/actions/mcp_internal_actions/servers/{provider}/
-├── index.ts                    # Main server with tool definitions
-├── {provider}_api_helper.ts    # API client and helper functions
-├── {provider}_utils.ts         # Utility functions (optional)
-└── types.ts                    # TypeScript types (optional)
-```
-
----
-
 ## Step-by-Step Implementation
 
-### Step 1: Add Server to Constants
+### Step 1: Create Metadata File
+
+Create `lib/api/actions/servers/{provider}/metadata.ts`:
+
+```typescript
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+
+export const YOUR_PROVIDER_TOOL_NAME = "your_provider" as const;
+
+// Tools metadata with exhaustive keys
+// Adding a tool here without implementing its handler will cause a type error
+export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
+  list_items: {
+    description: "List all items accessible to the user.",
+    schema: {
+      pageToken: z.string().optional().describe("Page token for pagination."),
+      maxResults: z.number().optional().describe("Maximum results to return."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Items",
+      done: "List items",
+    },
+  },
+  get_item: {
+    description: "Get a single item by ID.",
+    schema: {
+      itemId: z.string().describe("The ID of the item to retrieve."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving item",
+      done: "Retrieve item",
+    },
+  },
+  create_item: {
+    description: "Create a new item.",
+    schema: {
+      name: z.string().describe("Name of the item."),
+      description: z.string().optional().describe("Description of the item."),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating item",
+      done: "Create item",
+    },
+  },
+});
+
+// Server metadata - used in constants.ts
+export const YOUR_PROVIDER_SERVER = {
+  serverInfo: {
+    name: "your_provider",
+    version: "1.0.0",
+    description: "Short description of what this integration does.",
+    authorization: {
+      provider: "your_provider",
+      supported_use_cases: ["personal_actions", "platform_actions"],
+      // Optional: scope: "specific:scope",
+    },
+    icon: "YourProviderLogo",
+    documentationUrl: "https://docs.dust.tt/docs/your-provider",
+    instructions: null,
+  },
+  tools: Object.values(YOUR_PROVIDER_TOOLS_METADATA).map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
+  })),
+  tools_stakes: Object.fromEntries(
+    Object.values(YOUR_PROVIDER_TOOLS_METADATA).map((t) => [t.name, t.stake])
+  ),
+} as const satisfies ServerMetadata;
+```
+
+**Key points:**
+
+- `createToolsRecord` automatically adds the `name` property from the object key
+- Tool keys become the source of truth - no duplication
+- `stake` values: `"never_ask"` (read), `"low"` (write), `"medium"` (important write), `"high"` (destructive)
+
+### Step 2: Create Tool Handlers
+
+Create `lib/api/actions/servers/{provider}/tools/index.ts`:
+
+```typescript
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { YOUR_PROVIDER_TOOLS_METADATA } from "@app/lib/api/actions/servers/your_provider/metadata";
+import { Err, Ok } from "@app/types/shared/result";
+
+// Handlers object - TypeScript enforces exhaustivity via ToolHandlers<T>
+// Missing a handler = compile error
+const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
+  list_items: async ({ pageToken, maxResults }, { authInfo }) => {
+    const token = authInfo?.token;
+    if (!token) {
+      return new Err(new MCPError("No access token provided"));
+    }
+
+    try {
+      // Call your API
+      const items = []; // await yourApiClient.listItems(token, { pageToken, maxResults });
+
+      return new Ok([
+        { type: "text" as const, text: `Found ${items.length} items` },
+        { type: "text" as const, text: JSON.stringify({ items }, null, 2) },
+      ]);
+    } catch (e) {
+      return new Err(new MCPError("Failed to list items"));
+    }
+  },
+
+  get_item: async ({ itemId }, { authInfo }) => {
+    const token = authInfo?.token;
+    if (!token) {
+      return new Err(new MCPError("No access token provided"));
+    }
+
+    try {
+      // Call your API
+      const item = {}; // await yourApiClient.getItem(token, itemId);
+
+      return new Ok([
+        { type: "text" as const, text: `Retrieved item ${itemId}` },
+        { type: "text" as const, text: JSON.stringify(item, null, 2) },
+      ]);
+    } catch (e) {
+      return new Err(new MCPError("Failed to get item"));
+    }
+  },
+
+  create_item: async ({ name, description }, { authInfo }) => {
+    const token = authInfo?.token;
+    if (!token) {
+      return new Err(new MCPError("No access token provided"));
+    }
+
+    try {
+      // Call your API
+      const item = {}; // await yourApiClient.createItem(token, { name, description });
+
+      return new Ok([
+        { type: "text" as const, text: `Created item "${name}"` },
+        { type: "text" as const, text: JSON.stringify(item, null, 2) },
+      ]);
+    } catch (e) {
+      return new Err(new MCPError("Failed to create item"));
+    }
+  },
+};
+
+// Export tools array using buildTools helper
+export const TOOLS = buildTools(YOUR_PROVIDER_TOOLS_METADATA, handlers);
+```
+
+**Key points:**
+
+- `ToolHandlers<T>` generic type enforces exhaustivity - defined in `tool_definition.ts`
+- `buildTools` helper combines metadata and handlers into a `ToolDefinition[]` array
+- If you add a tool to metadata without a handler, you get: `Property 'new_tool' is missing in type '...'`
+- Each handler receives typed params inferred from the tool's schema
+- Access auth token via `extra.authInfo?.token`
+
+### Step 3: Create Server Entry Point
+
+Create `lib/api/actions/servers/{provider}/index.ts`:
+
+```typescript
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { YOUR_PROVIDER_TOOL_NAME } from "@app/lib/api/actions/servers/your_provider/metadata";
+import { TOOLS } from "@app/lib/api/actions/servers/your_provider/tools";
+import type { Authenticator } from "@app/lib/auth";
+
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
+  const server = makeInternalMCPServer("your_provider");
+
+  for (const tool of TOOLS) {
+    registerTool(auth, agentLoopContext, server, tool, {
+      monitoringName: YOUR_PROVIDER_TOOL_NAME,
+    });
+  }
+
+  return server;
+}
+
+export default createServer;
+```
+
+### Step 4: Register in Constants
 
 Edit `lib/actions/mcp_internal_actions/constants.ts`:
 
 ```typescript
-// 1. Add to AVAILABLE_INTERNAL_MCP_SERVER_NAMES array
+// Add import at the top
+import { YOUR_PROVIDER_SERVER } from "@app/lib/api/actions/servers/your_provider/metadata";
+
+// Add to AVAILABLE_INTERNAL_MCP_SERVER_NAMES array
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // ... existing servers
-  "your_provider", // <- Add here (alphabetically sorted helps)
-  // ... more servers
+  "your_provider",
+  // ...
 ] as const;
 
-// 2. Add to INTERNAL_MCP_SERVERS object
+// Add to INTERNAL_MCP_SERVERS object
 export const INTERNAL_MCP_SERVERS = {
   // ... existing servers
 
   your_provider: {
-    id: 99, // Use a unique ID - check existing IDs and pick the next available
-    availability: "manual", // or "auto" for always-available servers
-    allowMultipleInstances: true, // true for OAuth-based servers (multiple connections)
-    isRestricted: undefined, // or a function for feature flag gating
-    isPreview: false, // true if this is a preview feature
-    tools_stakes: {
-      // Read operations - typically "never_ask"
-      get_item: "never_ask",
-      list_items: "never_ask",
-      search_items: "never_ask",
-
-      // Write operations - "low" or "high" based on impact
-      create_item: "low",
-      update_item: "low",
-      delete_item: "high",
-    },
+    id: 99, // Use unique ID - check existing IDs
+    availability: "manual",
+    allowMultipleInstances: true, // true for OAuth-based
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "your_provider",
-      version: "1.0.0",
-      description: "Short description of what this integration does.",
-      authorization: {
-        provider: "your_provider" as const, // Must match OAuth provider name
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-        // Optional: scope: "specific:scope" as const,
-      },
-      icon: "YourProviderLogo", // Must exist in resources_icons.tsx
-      documentationUrl: "https://docs.dust.tt/docs/your-provider", // Optional
-      instructions: null, // Optional server-level instructions
-    },
+    metadata: YOUR_PROVIDER_SERVER, // <-- Use the metadata export
   },
 
-  // ... more servers
+  // ...
 };
 ```
 
@@ -157,119 +333,157 @@ export const INTERNAL_MCP_SERVERS = {
 | `allowMultipleInstances` | `true` for OAuth-based (multiple connections), `false` for singleton servers                              |
 | `isRestricted`           | Function to check feature flags/plan restrictions, or `undefined`                                         |
 | `isPreview`              | `true` for beta features                                                                                  |
-| `tools_stakes`           | Map of tool names to stake levels (`"never_ask"`, `"low"`, `"high"`)                                      |
-| `authorization`          | OAuth provider configuration                                                                              |
-
-### Step 2: Create API Helper
-
-Create `lib/actions/mcp_internal_actions/servers/{provider}/{provider}_api_helper.ts`.
-
-This file is a thin wrapper around the platform's REST API. It should:
-
-- Define TypeScript interfaces for the API responses
-- Export async functions for each API operation (e.g., `listItems`, `getItem`, `createItem`)
-- Use `Result<T, Error>` return types from `@app/types` for consistent error handling
-- Handle HTTP errors and return meaningful error messages
-- Accept `accessToken` as the first parameter for OAuth-based APIs
-
-**Key patterns:**
-
-- Use `fetch` with proper headers (`Authorization: Bearer ${accessToken}`)
-- Return `new Ok(data)` on success, `new Err(new Error(...))` on failure
-- Keep functions focused on a single API endpoint
-
-See `servers/jira/jira_api_helper.ts` or `servers/hubspot/hubspot_api_helper.ts` for complete examples.
-
-### Step 3: Create Utility Functions (Optional)
-
-Create `lib/actions/mcp_internal_actions/servers/{provider}/{provider}_utils.ts`.
-
-This file contains helper functions shared across tools. The most important pattern is the `withAuth` helper that:
-
-- Extracts the OAuth access token from `authInfo`
-- Returns a proper error if the token is missing
-- Wraps the tool action in try/catch for consistent error handling
-
-You can also define:
-
-- Error message constants for common errors
-- Response formatting helpers
-- Data transformation utilities
-
-See `servers/hubspot/hubspot_utils.ts` for a reference implementation.
-
-### Step 4: Create Server Implementation
-
-Create `lib/actions/mcp_internal_actions/servers/{provider}/index.ts`.
-
-This is the main file that defines the MCP server and its tools. It should:
-
-1. **Export a default function** that creates and returns the McpServer
-2. **Use `makeInternalMCPServer("your_provider")`** to create the server instance
-3. **Register tools using `server.tool()`** with:
-   - Tool name (must match the key in `tools_stakes`)
-   - Description (clear, actionable, explains what the tool does)
-   - Zod schema for input parameters (with `.describe()` for each field)
-   - Async handler function that calls API helpers and returns results
-
-**Tool handler pattern:**
-
-- Use the `withAuth` wrapper for OAuth-protected tools
-- Call API helper functions
-- Return `{ isError: boolean, content: [{ type: "text", text: "..." }] }`
-- Provide a summary message first, then the data
-
-See `servers/jira/index.ts` or `servers/notion.ts` for complete examples with multiple tools.
 
 ### Step 5: Register Server in Index
 
 Edit `lib/actions/mcp_internal_actions/servers/index.ts`:
 
-1. **Add import** at the top of the file
-2. **Add a case** in the `getInternalMCPServer` switch statement
+```typescript
+// Add import
+import { default as yourProviderServer } from "@app/lib/api/actions/servers/your_provider";
 
-The switch statement must be exhaustive - TypeScript will error if you add the server name to constants but forget to add the case here.
+// Add case in getInternalMCPServer switch
+case "your_provider":
+  return yourProviderServer(auth, agentLoopContext);
+```
 
-### Step 6: Icon
+---
+
+## Optional: API Client and Helpers
+
+For servers that call external APIs, consider creating additional files to keep your code organized.
+
+### `client.ts` - API Client
+
+Create when you have multiple API endpoints to call. This file handles:
+
+- Authentication headers (Bearer token from OAuth)
+- Request/response handling with proper error normalization
+- Response validation with Zod schemas
+- Rate limiting and retry logic (if needed)
+
+```typescript
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
+export class YourProviderClient {
+  constructor(private accessToken: string) {}
+
+  async getItem(itemId: string): Promise<Result<Item, Error>> {
+    const response = await fetch(`https://api.provider.com/items/${itemId}`, {
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return new Err(new Error(`Failed to get item: ${response.statusText}`));
+    }
+
+    const data = await response.json();
+    return new Ok(data);
+  }
+}
+```
+
+### `helpers.ts` - Helper Functions
+
+Create for shared logic across tools:
+
+- The `withAuth` pattern for OAuth token extraction and error handling
+- Response formatting functions for LLM consumption
+- Data transformation utilities
+
+```typescript
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import type {
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { Err } from "@app/types/shared/result";
+
+// withAuth pattern - extracts token and provides consistent error handling
+export async function withAuth<T>(
+  { authInfo }: ToolHandlerExtra,
+  action: (token: string) => Promise<ToolHandlerResult>
+): Promise<ToolHandlerResult> {
+  const token = authInfo?.token;
+  if (!token) {
+    return new Err(new MCPError("No access token provided"));
+  }
+
+  try {
+    return await action(token);
+  } catch (e) {
+    return new Err(
+      new MCPError(`Operation failed: ${normalizeError(e).message}`)
+    );
+  }
+}
+
+// Response formatting for consistent LLM output
+export function formatItemAsText(item: Item): string {
+  return [
+    `**${item.name}**`,
+    `ID: ${item.id}`,
+    `Status: ${item.status}`,
+    item.description ? `Description: ${item.description}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+```
+
+**When to use these patterns:**
+
+| Scenario                         | Recommendation                                               |
+| -------------------------------- | ------------------------------------------------------------ |
+| No external API (internal tools) | Skip client/helpers, keep logic in `tools/index.ts`          |
+| 1-2 simple API calls             | Inline in handlers, maybe add `helpers.ts` for `withAuth`    |
+| Multiple API endpoints           | Create `client.ts` with a class, `helpers.ts` for formatting |
+| Complex response formatting      | Create dedicated `rendering.ts` (see `zendesk/rendering.ts`) |
+
+See `google_calendar/helpers.ts` and `github/tools/index.ts` for reference implementations.
+
+---
+
+## Alternative: Function-Based Tools (When Auth is Needed in Closure)
+
+If your handlers need access to `Authenticator` directly (not just the token), use a function instead of a constant:
+
+```typescript
+// In tools/index.ts
+export function createYourProviderTools(auth: Authenticator): ToolDefinition[] {
+  const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
+    some_tool: async (params, extra) => {
+      // Can use `auth` here from closure
+      const workspace = auth.getNonNullableWorkspace();
+      // ...
+    },
+  };
+
+  return buildTools(YOUR_PROVIDER_TOOLS_METADATA, handlers);
+}
+
+// In index.ts
+const tools = createYourProviderTools(auth);
+for (const tool of tools) {
+  registerTool(auth, agentLoopContext, server, tool, {
+    monitoringName: YOUR_PROVIDER_TOOL_NAME,
+  });
+}
+```
+
+See `lib/api/actions/servers/github/tools/index.ts` for a complete example.
+
+---
+
+## Icon
 
 For the icon, use an existing similar icon temporarily (e.g., `ActionDocumentTextIcon` or a similar provider's logo).
 
 **Important:** Request the final icon from a designer who will add it to the Sparkle design system. Once the icon is available in Sparkle, update the `icon` field in the server configuration.
-
----
-
-## OAuth Implementation (If Needed)
-
-If the platform requires OAuth and doesn't have an existing provider, you'll need to implement it in `core` first.
-
-**Check existing providers:**
-
-- `core/src/oauth/providers/` - Rust implementations (token exchange, refresh)
-- `front/lib/api/oauth/providers/` - TypeScript implementations (authorization URL)
-
-**What's needed:**
-
-1. Create `core/src/oauth/providers/{provider}.rs` - Implements token exchange and refresh
-2. Register in `core/src/oauth/providers/mod.rs`
-3. Create `front/lib/api/oauth/providers/{provider}.ts` - Builds authorization URL
-4. Register in `front/lib/api/oauth/providers/index.ts`
-5. Add client ID/secret environment variables
-
-See existing providers like `hubspot.rs`/`hubspot.ts` or `jira.rs`/`jira.ts` for reference.
-
-**Note:** A dedicated OAuth runbook for `core` will be created separately with detailed implementation steps.
-
----
-
-## Tool Stakes Guide
-
-Configure tool stakes appropriately:
-
-| Stake Level | When to Use                               | Example                                              |
-| ----------- | ----------------------------------------- | ---------------------------------------------------- |
-| `never_ask` | Read-only operations with no side effects | `list_items`, `get_item`, `search`                   |
-| `low`       | Write operations with minimal impact      | `create_comment`, `add_tag`, `create_draft`          |
-| `high`      | Destructive or high-impact operations     | `delete_item`, `send_email`, `update_critical_field` |
 
 ---
 
@@ -306,11 +520,7 @@ your_provider: {
 
 ## Best Practices
 
-### 1. Error Handling
-
-Always use Result types and provide meaningful error messages. Don't expose raw API errors to users - translate them into actionable messages.
-
-### 2. Response Rendering (Important for Token Efficiency)
+### 1. Response Rendering (Important for Token Efficiency)
 
 Always implement functions that convert the output from the API into a clean, focused, and Markdown-formatted text.
 See `lib/actions/mcp_internal_actions/servers/zendesk/rendering.ts` for an example.
@@ -331,18 +541,39 @@ The rendering serves two purposes: selecting the relevant fields and formatting 
 - Include pagination metadata, rate limit info, or API versioning details
 - Return the same data in multiple formats
 
-### 3. Tool Descriptions
+### 2. Error Handling
 
-Write clear, actionable descriptions that help the LLM understand when to use each tool. Include:
+Always return `Err` with meaningful messages. Don't expose raw API errors to users - translate them into actionable messages:
 
-- What the tool does
-- What parameters are required vs. optional
-- What the tool returns
-- Any limitations or prerequisites
+```typescript
+try {
+  // API call
+} catch (e) {
+  return new Err(
+    new MCPError(`Failed to create item: ${normalizeError(e).message}`)
+  );
+}
+```
 
-### 4. Input Validation
+### 3. Tool Stakes
 
-Use Zod schemas with `.describe()` for each parameter. This helps the LLM understand what values are expected and improves tool calling accuracy.
+| Stake       | Use Case                                  |
+| ----------- | ----------------------------------------- |
+| `never_ask` | Read-only operations with no side effects |
+| `low`       | Write operations with minimal impact      |
+| `medium`    | Important writes (create, update)         |
+| `high`      | Destructive or high-impact operations     |
+
+### 4. Schema Descriptions
+
+Always add `.describe()` to schema fields - this helps the LLM understand what values to provide:
+
+```typescript
+schema: {
+  query: z.string().describe("Search query to find items by name or description."),
+  limit: z.number().optional().describe("Maximum number of results (default: 50, max: 100)."),
+}
+```
 
 ### 5. Validate External API Responses
 
@@ -398,29 +629,21 @@ See `servers/zendesk/types.ts` and `servers/zendesk/client.ts` for a complete ex
 
 ---
 
-## Reference Implementations
-
-Study these existing implementations for patterns:
-
-- **Simple OAuth integration**: `servers/hubspot/` - Shows basic OAuth with many CRUD operations
-- **Complex API with pagination**: `servers/jira/` - GraphQL-like queries, pagination, transitions
-- **Multiple auth use cases**: `servers/github/` - Platform and personal actions
-
----
-
 ## Validation Checklist
 
 Before marking implementation complete:
 
+- [ ] `metadata.ts` created with `createToolsRecord`
+- [ ] `tools/index.ts` created with `ToolHandlers<typeof METADATA>`
+- [ ] `index.ts` created with `createServer` default export
 - [ ] Server added to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
-- [ ] Server configuration added to `INTERNAL_MCP_SERVERS`
+- [ ] Server config added to `INTERNAL_MCP_SERVERS` with `metadata` field
 - [ ] Server registered in `servers/index.ts` switch statement
-- [ ] API helper functions created with proper error handling
-- [ ] All tools defined with appropriate stakes
-- [ ] Response pruning implemented (only return the necessary fields)
-- [ ] OAuth provider configured (if needed)
+- [ ] Response rendering implemented (only return necessary fields)
 - [ ] Temporary icon set (request final icon from designer)
 - [ ] Feature flag configured (if preview)
+- [ ] Type check passes (`npx tsgo --noEmit`)
+- [ ] Lint passes (`npm run lint`)
 - [ ] Manual testing completed
 - [ ] Documentation URL added (if public)
 
@@ -444,19 +667,31 @@ Before marking implementation complete:
 ### Tools Not Working
 
 - Verify tool is registered in server
-- Check `tools_stakes` includes the tool name
+- Check `tools_stakes` includes the tool name (if not using `metadata`)
 - Test API helper functions directly
 - Check authInfo.token is being passed correctly
 
 ### Type Errors
 
 - Ensure server name is added to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` (affects type inference)
-- Run `npm run type-check` to catch issues early
+- Run `npx tsgo --noEmit` to catch issues early
+- If handler type is wrong, check the mapped type definition matches metadata
+
+---
+
+## Reference Implementations
+
+- **GitHub**: `lib/api/actions/servers/github/` - Function-based tools with auth closure
+- **Snowflake**: `lib/api/actions/servers/snowflake/` - Constant tools with token from authInfo
+- **Google Calendar**: `lib/api/actions/servers/google_calendar/` - Complex tools with helpers
+- **Agent Copilot Context**: `lib/api/actions/servers/agent_copilot_context/` - Internal tools without OAuth
+- **Agent Copilot Agent State**: `lib/api/actions/servers/agent_copilot_agent_state/` - Simple internal server
 
 ---
 
 ## Additional Resources
 
 - [MCP SDK Documentation](https://modelcontextprotocol.io/)
-- Existing server implementations in `lib/actions/mcp_internal_actions/servers/`
+- Existing server implementations in `lib/api/actions/servers/`
+- Legacy server implementations in `lib/actions/mcp_internal_actions/servers/`
 - OAuth provider implementations in `core/src/oauth/providers/`

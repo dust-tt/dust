@@ -3,7 +3,7 @@ import type { AugmentedMessageFromLLM } from "@app/lib/api/assistant/voice_agent
 import { findAgentsInMessageGeneration } from "@app/lib/api/assistant/voice_agent_finder";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type AugmentedMessage =
   | {

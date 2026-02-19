@@ -1,14 +1,15 @@
-import { Button, SearchInput, Spinner } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
-import type { CapabilityFilterType } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
+import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { SearchInput, Spinner } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo, useState } from "react";
 
 type CapabilitiesSelectionPageProps = {
   onStateChange: (state: SheetState) => void;
@@ -81,26 +82,7 @@ export function CapabilitiesSelectionPageContent({
         name="capability-search"
       />
 
-      <div className="flex gap-2">
-        <Button
-          label="All"
-          variant={filter === "all" ? "primary" : "outline"}
-          size="sm"
-          onClick={() => setFilter("all")}
-        />
-        <Button
-          label="Skills"
-          variant={filter === "skills" ? "primary" : "outline"}
-          size="sm"
-          onClick={() => setFilter("skills")}
-        />
-        <Button
-          label="Tools"
-          variant={filter === "tools" ? "primary" : "outline"}
-          size="sm"
-          onClick={() => setFilter("tools")}
-        />
-      </div>
+      <CapabilityFilterButtons filter={filter} setFilter={setFilter} />
 
       {isCapabilitiesLoading ? (
         <div className="flex h-40 items-center justify-center">

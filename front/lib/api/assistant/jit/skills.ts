@@ -1,40 +1,26 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
-import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type {
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the skill_management MCP server if agent has configured skills.
- * Only available with "skills" feature flag.
+ * Get the skill_management MCP server if the agent has configured skills.
  */
 export async function getSkillManagementServer(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
+  agentConfiguration: AgentConfigurationType,
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
+  const refs = await SkillResource.getSkillReferencesForAgent(
+    auth,
+    agentConfiguration
+  );
 
-  if (!featureFlags.includes("skills")) {
-    return null;
-  }
-
-  // Check if agent has any skills configured.
-  const skillCount = await AgentSkillModel.count({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId: owner.id,
-    },
-  });
-
-  if (skillCount === 0) {
+  if (refs.length === 0) {
     return null;
   }
 
@@ -67,6 +53,7 @@ export async function getSkillManagementServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: skillManagementView.sId,
     dustAppConfiguration: null,

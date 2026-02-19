@@ -1,3 +1,7 @@
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
+import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type {
   GenerateContentResponse,
   GenerateContentResponseUsageMetadata,
@@ -7,11 +11,6 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 import flatMap from "lodash/flatMap";
-
-import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
-import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
-import { EventError } from "@app/lib/api/llm/types/events";
-import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 function newId(): string {
   const uuid = crypto.randomUUID();
@@ -188,7 +187,7 @@ export async function* streamLLMEvents({
         }
         textContentParts = "";
         yield tokenUsage(generateContentResponse.usageMetadata, metadata);
-        // emit success event after token usage
+
         yield {
           type: "success",
           aggregated: aggregate.aggregated,
@@ -199,23 +198,100 @@ export async function* streamLLMEvents({
         };
         break;
       }
+      case FinishReason.MAX_TOKENS: {
+        yield new EventError(
+          {
+            type: "stop_error",
+            isRetryable: true,
+            message: "The maximum response length was reached",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
+      }
+      case FinishReason.SAFETY:
+      case FinishReason.RECITATION:
+      case FinishReason.PROHIBITED_CONTENT:
+      case FinishReason.SPII:
+      case FinishReason.IMAGE_PROHIBITED_CONTENT:
+      case FinishReason.BLOCKLIST:
+      case FinishReason.IMAGE_SAFETY:
+      case FinishReason.LANGUAGE: {
+        yield new EventError(
+          {
+            type: "refusal_error",
+            isRetryable: false,
+            message: "Google refused to generate a response for this request",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
+      }
+      case FinishReason.MALFORMED_FUNCTION_CALL:
+      case FinishReason.UNEXPECTED_TOOL_CALL: {
+        yield new EventError(
+          {
+            type: "server_error",
+            isRetryable: true,
+            message: "Error encountered related with tool call",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
+      }
+      case FinishReason.NO_IMAGE:
+      case FinishReason.OTHER:
+      case FinishReason.FINISH_REASON_UNSPECIFIED: {
+        yield new EventError(
+          {
+            type: "unknown_error",
+            isRetryable: false,
+            message: "Unknown error",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
+      }
       default: {
-        // yield error event after all received events
         yield* yieldEvents(events);
-        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
-        reasoningContentParts = "";
-        textContentParts = "";
-        yield* yieldEvents([
-          new EventError(
+        if (reasoningContentParts) {
+          yield* yieldEvents([
             {
-              type: "stop_error",
-              isRetryable: false,
-              message: "An error occurred during completion",
-              originalError: { finishReason: candidate.finishReason },
+              type: "reasoning_generated" as const,
+              content: { text: reasoningContentParts },
+              metadata: {
+                ...metadata,
+                encrypted_content: stateContainer.thinkingSignature,
+              },
             },
-            metadata
-          ),
-        ]);
+          ]);
+        }
+        reasoningContentParts = "";
+        if (textContentParts) {
+          yield* yieldEvents([
+            {
+              type: "text_generated" as const,
+              content: { text: textContentParts },
+              metadata,
+            },
+          ]);
+        }
+        textContentParts = "";
+        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
+
+        yield new EventError(
+          {
+            type: "unknown_error",
+            isRetryable: false,
+            message: "Unknown error",
+            originalError: { candidate },
+          },
+          metadata
+        );
         break;
       }
     }

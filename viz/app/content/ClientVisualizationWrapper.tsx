@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  VisualizationWrapperWithErrorBoundary,
   makeSendCrossDocumentMessage,
+  VisualizationWrapperWithErrorBoundary,
 } from "@viz/app/components/VisualizationWrapper";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
-import { VisualizationConfig } from "@viz/app/lib/visualization-api";
+import type { VisualizationConfig } from "@viz/app/lib/visualization-api";
 import { useMemo } from "react";
 
 interface ClientVisualizationWrapperProps {
@@ -41,6 +41,7 @@ export function ClientVisualizationWrapper({
     allowedOrigins,
     identifier,
     isFullHeight,
+    isPdfMode: false,
     dataAPI,
   };
 

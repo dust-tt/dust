@@ -1,5 +1,15 @@
 import assert from "node:assert";
-
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type {
+  Content,
+  FunctionMessageTypeModel,
+  ModelConversationTypeMultiActions,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   ChatCompletionContentPartImage,
   ChatCompletionContentPartText,
@@ -8,20 +18,6 @@ import type {
   ChatCompletionToolChoiceOption,
 } from "openai/resources/chat/completions";
 import type { ResponseFormatJSONSchema } from "openai/resources/shared";
-
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
-import type {
-  ModelConversationTypeMultiActions,
-  ReasoningEffort,
-} from "@app/types";
-import type {
-  Content,
-  FunctionMessageTypeModel,
-  UserMessageTypeModel,
-} from "@app/types";
-import { assertNever } from "@app/types";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 type ChatCompletionContentPart =
   | ChatCompletionContentPartText

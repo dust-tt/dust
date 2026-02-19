@@ -1,3 +1,6 @@
+import { classNames } from "@app/lib/utils";
+import type { SpecificationType } from "@app/types/app";
+import type { BlockType } from "@app/types/run";
 import {
   Button,
   cn,
@@ -7,9 +10,6 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
 } from "@dust-tt/sparkle";
-
-import { classNames } from "@app/lib/utils";
-import type { BlockType, SpecificationType } from "@app/types";
 
 export default function NewBlock({
   spec,
@@ -130,7 +130,7 @@ export default function NewBlock({
             icon={PlusIcon}
             disabled={disabled}
             variant="ghost-secondary"
-            size="mini"
+            size="icon"
           />
         ) : (
           <Button

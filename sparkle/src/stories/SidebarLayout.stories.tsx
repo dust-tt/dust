@@ -38,7 +38,7 @@ const SampleSidebar = ({
       {onToggle && (
         <Button
           variant="ghost-secondary"
-          size="mini"
+          size="icon"
           icon={isCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
           onClick={onToggle}
         />
@@ -132,7 +132,7 @@ const ComplexSidebar = ({
       {onToggle && (
         <Button
           variant="ghost-secondary"
-          size="mini"
+          size="icon"
           icon={isCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
           onClick={onToggle}
         />

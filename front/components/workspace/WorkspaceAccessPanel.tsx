@@ -1,3 +1,14 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import UserProvisioning from "@app/components/workspace/DirectorySync";
+import SSOConnection from "@app/components/workspace/SSOConnection";
+import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import {
+  useRemoveWorkspaceDomain,
+  useWorkspaceDomains,
+} from "@app/lib/swr/workos";
+import type { PlanType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 import {
   ActionGlobeAltIcon,
   Button,
@@ -14,16 +25,6 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
-
-import { ConfirmContext } from "@app/components/Confirm";
-import UserProvisioning from "@app/components/workspace/DirectorySync";
-import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
-import SSOConnection from "@app/components/workspace/SSOConnection";
-import {
-  useRemoveWorkspaceDomain,
-  useWorkspaceDomains,
-} from "@app/lib/swr/workos";
-import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
 
 import { WorkspaceSection } from "./WorkspaceSection";
 
@@ -85,9 +86,9 @@ function DomainVerification({
   return (
     <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
       <Page.P variant="secondary">
-        Verify one or multiple company domains to enable Single Sign-On (SSO)
-        and allow team members to automatically join your workspace when they
-        sign up with their work email address.
+        Verify your company domains to enable Single Sign-On (SSO), automatic
+        workspace enrollment for team members, and secure connections to your
+        internal MCP servers.
       </Page.P>
       {isDomainsLoading ? (
         <LoadingBlock className="h-32 w-full rounded-xl" />
@@ -193,7 +194,7 @@ function DomainVerificationTable({
       {
         header: "",
         accessorKey: "actions",
-        meta: { className: "w-14" },
+        meta: { className: "w-12" },
         cell: ({ row }: CellContext<DomainRowData, string>) => {
           return (
             <IconButton
@@ -229,7 +230,6 @@ function DomainVerificationTable({
             label="Add Domain"
             variant="primary"
             href={addDomainLink}
-            target="_blank"
             icon={PlusIcon}
           />
         </div>

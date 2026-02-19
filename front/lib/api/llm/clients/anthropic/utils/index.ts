@@ -1,4 +1,7 @@
-import type { BetaJSONOutputFormat } from "@anthropic-ai/sdk/resources/beta.mjs";
+import type {
+  BetaJSONOutputFormat,
+  BetaOutputConfig,
+} from "@anthropic-ai/sdk/resources/beta.mjs";
 import type {
   ThinkingConfigParam,
   ToolChoice,
@@ -7,8 +10,8 @@ import type {
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
-import type { ReasoningEffort } from "@app/types";
-import { assertNever } from "@app/types";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // thinking.enabled.budget_tokens: Input should be greater than or equal to 1024
 const ANTHROPIC_MINIMUM_THINKING_BUDGET = 1024;
@@ -21,27 +24,75 @@ export const ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING = {
   high: 4096,
 };
 
-export function toThinkingConfig(
+export const ANTHROPIC_THINKING_EFFORT_MAPPING: Record<
+  Exclude<ReasoningEffort, "none">,
+  "low" | "medium" | "high"
+> = {
+  // All Claude models have useNativeLightReasoning set to false,
+  // so light budget token should not be used.
+  light: "low",
+  medium: "medium",
+  high: "high",
+};
+
+export function toAutoThinkingConfig(
   reasoningEffort: ReasoningEffort | null,
   useNativeLightReasoning?: boolean
-): ThinkingConfigParam | undefined {
+): {
+  thinking: ThinkingConfigParam;
+  output_config?: BetaOutputConfig;
+} {
   // Use meta prompt chain of thoughts for performance
   if (reasoningEffort === "light" && !useNativeLightReasoning) {
-    return { type: "disabled" };
+    return { thinking: { type: "disabled" } };
   }
 
   switch (reasoningEffort) {
     case null:
-      return undefined;
+      return { thinking: { type: "adaptive" } };
     case "none":
-      return { type: "disabled" };
+      return { thinking: { type: "disabled" } };
     case "light":
     case "medium":
     case "high":
       return {
-        type: "enabled",
-        budget_tokens:
-          ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING[reasoningEffort],
+        thinking: {
+          type: "adaptive",
+        },
+        output_config: {
+          effort: ANTHROPIC_THINKING_EFFORT_MAPPING[reasoningEffort],
+        },
+      };
+    default:
+      assertNever(reasoningEffort);
+  }
+}
+
+export function toThinkingConfig(
+  reasoningEffort: ReasoningEffort | null,
+  useNativeLightReasoning?: boolean
+): {
+  thinking?: ThinkingConfigParam;
+} {
+  // Use meta prompt chain of thoughts for performance
+  if (reasoningEffort === "light" && !useNativeLightReasoning) {
+    return { thinking: { type: "disabled" } };
+  }
+
+  switch (reasoningEffort) {
+    case null:
+      return { thinking: undefined };
+    case "none":
+      return { thinking: { type: "disabled" } };
+    case "light":
+    case "medium":
+    case "high":
+      return {
+        thinking: {
+          type: "enabled",
+          budget_tokens:
+            ANTHROPIC_THINKING_BUDGET_TOKENS_MAPPING[reasoningEffort],
+        },
       };
     default:
       assertNever(reasoningEffort);

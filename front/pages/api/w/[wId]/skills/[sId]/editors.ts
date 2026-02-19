@@ -1,15 +1,16 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const PatchSkillEditorsRequestBodySchema = t.intersection([
   t.type({}),
@@ -152,7 +153,21 @@ async function handler(
         }
       }
 
-      const addRes = await editorGroup.addMembers(auth, usersToAdd);
+      // Check authorization for modifying group members
+      if (!editorGroup.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "You are not authorized to modify the skill editors group.",
+          },
+        });
+      }
+
+      const addRes = await editorGroup.dangerouslyAddMembers(auth, {
+        users: usersToAdd,
+      });
       if (addRes.isErr()) {
         switch (addRes.error.code) {
           case "unauthorized":
@@ -203,7 +218,9 @@ async function handler(
         }
       }
 
-      const removeRes = await editorGroup.removeMembers(auth, usersToRemove);
+      const removeRes = await editorGroup.dangerouslyRemoveMembers(auth, {
+        users: usersToRemove,
+      });
       if (removeRes.isErr()) {
         switch (removeRes.error.code) {
           case "unauthorized":

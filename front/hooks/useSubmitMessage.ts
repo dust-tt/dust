@@ -1,16 +1,12 @@
-import { useCallback } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
-import type {
-  ContentFragmentsType,
-  MentionType,
-  Result,
-  SubmitMessageError,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { SubmitMessageError } from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
 
 export function useSubmitMessage({
   owner,
@@ -27,6 +23,7 @@ export function useSubmitMessage({
       mentions: MentionType[];
       contentFragments: ContentFragmentsType;
       clientSideMCPServerIds?: string[];
+      skipToolsValidation?: boolean;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
       if (!conversationId) {
         return new Err({
@@ -36,8 +33,13 @@ export function useSubmitMessage({
         });
       }
 
-      const { input, mentions, contentFragments, clientSideMCPServerIds } =
-        messageData;
+      const {
+        input,
+        mentions,
+        contentFragments,
+        clientSideMCPServerIds,
+        skipToolsValidation,
+      } = messageData;
 
       // Create a new content fragment.
       if (
@@ -122,6 +124,7 @@ export function useSubmitMessage({
               clientSideMCPServerIds,
             },
             mentions,
+            skipToolsValidation,
           }),
         }
       );

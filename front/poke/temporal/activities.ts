@@ -1,11 +1,9 @@
-import assert from "assert";
-import { Op } from "sequelize";
-
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
+import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
@@ -27,6 +25,7 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -43,6 +42,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -59,20 +59,22 @@ import {
   UserMetadataModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import assert from "assert";
+import { Op } from "sequelize";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -173,6 +175,25 @@ export async function scrubSpaceActivity({
   // Won't scale if there's tons of conversations in spaces.
   await deleteSpaceConversations(auth, space);
 
+  // Delete all user project digests for this space.
+  await UserProjectDigestModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: space.id,
+    },
+  });
+
+  // Delete project metadata for this space.
+  if (space.isProject()) {
+    const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+    if (metadata) {
+      const metadataRes = await metadata.delete(auth, {});
+      if (metadataRes.isErr()) {
+        throw metadataRes.error;
+      }
+    }
+  }
+
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
   await hardDeleteSpace(auth, space);
@@ -184,7 +205,14 @@ async function deleteSpaceConversations(
 ) {
   const conversations = await ConversationResource.listConversationsInSpace(
     auth,
-    { spaceId: space.sId, options: { includeDeleted: true } }
+    {
+      spaceId: space.sId,
+      options: {
+        includeDeleted: true,
+
+        dangerouslySkipPermissionFiltering: true,
+      },
+    }
   );
 
   hardDeleteLogger.info(
@@ -252,6 +280,8 @@ export async function deleteAgentsActivity({
       workspaceId: workspace.id,
     },
   });
+
+  await AgentSuggestionResource.deleteAllForWorkspace(auth);
 
   await GlobalAgentSettingsModel.destroy({
     where: {
@@ -532,11 +562,7 @@ export async function deleteWebhookSourcesActivity({
 
   const webhookSources = await WebhookSourceResource.listByWorkspace(auth);
   for (const webhookSource of webhookSources) {
-    await WebhookRequestResource.deleteByWebhookSourceId(
-      auth,
-      webhookSource.id
-    );
-    await webhookSource.delete(auth);
+    await deleteWebhookSource(auth, webhookSource);
   }
 }
 
@@ -548,6 +574,7 @@ export async function deleteSpacesActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
+    includeProjectSpaces: true,
     includeDeleted: true,
   });
 
@@ -647,6 +674,7 @@ export async function deleteWorkspaceActivity({
   try {
     auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     hardDeleteLogger.warn(
       { workspaceId },
@@ -698,11 +726,11 @@ export async function deleteWorkspaceActivity({
   await AgentDataRetentionModel.destroy({
     where: { workspaceId: workspace.id },
   });
-  await WorkspaceModel.destroy({
-    where: {
-      id: workspace.id,
-    },
-  });
+
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (workspaceResource) {
+    await workspaceResource.delete(auth, {});
+  }
 }
 
 export async function deleteTranscriptsActivity({
@@ -751,9 +779,7 @@ export async function deleteWorkspaceUserMetadataActivity({
 }: {
   workspaceId: string;
 }) {
-  const workspace = await WorkspaceModel.findOne({
-    where: { sId: workspaceId },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
 
   if (!workspace) {
     logger.warn(

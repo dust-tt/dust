@@ -1,7 +1,4 @@
-import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared";
-
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType, ReasoningEffort } from "@app/types";
 import {
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_1_MINI_MODEL_ID,
@@ -19,7 +16,12 @@ import {
   O3_MINI_MODEL_ID,
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/openai";
+import type {
+  ModelIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
+import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared";
 
 export const OPENAI_PROVIDER_ID = "openai";
 
@@ -91,13 +93,10 @@ export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: OpenAIWhitelistedModelId;
   }
-): LLMParameters & { modelId: OpenAIWhitelistedModelId } & {
-  clientId: typeof OPENAI_PROVIDER_ID;
-} {
+): LLMParameters & { modelId: OpenAIWhitelistedModelId } {
   return {
     ...llmParameters,
     ...OPENAI_MODEL_CONFIGS[llmParameters.modelId].overwrites,
-    clientId: OPENAI_PROVIDER_ID,
   };
 }
 

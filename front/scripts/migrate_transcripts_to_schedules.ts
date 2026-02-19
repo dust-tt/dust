@@ -1,5 +1,3 @@
-import { WorkflowNotFoundError } from "@temporalio/client";
-
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -7,6 +5,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 type MigrationStatus = {
   configSId: string;
@@ -141,7 +140,7 @@ async function migrateConfiguration(
     workspaceId: config.workspaceId,
     workspaceName: workspace.name,
     provider: config.provider,
-    isActive: config.isActive,
+    isActive: config.status === "active",
     hasDataSource: config.dataSourceViewId !== null,
     workflowId: makeRetrieveTranscriptWorkflowId(config),
   };
@@ -150,7 +149,7 @@ async function migrateConfiguration(
   const oldWorkflowStatus = await checkOldWorkflowStatus(config, logger);
 
   // Only migrate if configuration is active or has a data source
-  if (!config.isActive && !config.dataSourceViewId) {
+  if (config.status !== "active" && !config.dataSourceViewId) {
     return {
       ...baseStatus,
       oldWorkflowStatus,
@@ -256,7 +255,7 @@ makeScript(
 
       for (const config of configs) {
         // Migrate if configuration is active OR has a data source (for storage-only configs)
-        if (config.isActive || config.dataSourceViewId !== null) {
+        if (config.status === "active" || config.dataSourceViewId !== null) {
           // Filter by provider if specified
           if (provider && config.provider !== provider) {
             continue;
@@ -279,7 +278,7 @@ makeScript(
     logger.info("📋 CONFIGURATIONS TO MIGRATE:");
     logger.info("─".repeat(80));
     for (const { config, workspace } of configsToMigrate) {
-      const processing = config.isActive ? "✓" : "✗";
+      const processing = config.status === "active" ? "✓" : "✗";
       const storing = config.dataSourceViewId ? "✓" : "✗";
       logger.info(
         `  • ${workspace.name} | ${config.provider} | Config: ${config.sId}`

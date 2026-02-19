@@ -1,9 +1,3 @@
-import type { NodeViewProps } from "@tiptap/core";
-import type { MentionOptions } from "@tiptap/extension-mention";
-import Mention from "@tiptap/extension-mention";
-import { Plugin, TextSelection } from "@tiptap/pm/state";
-import { ReactNodeViewRenderer } from "@tiptap/react";
-
 import { MentionComponent } from "@app/components/editor/input_bar/MentionComponent";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -11,7 +5,19 @@ import {
   USER_MENTION_REGEX_BEGINNING,
 } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import type { NodeViewProps } from "@tiptap/core";
+import type { MentionOptions } from "@tiptap/extension-mention";
+import Mention from "@tiptap/extension-mention";
+import { Plugin, TextSelection } from "@tiptap/pm/state";
+import { ReactNodeViewRenderer } from "@tiptap/react";
+
+const MENTION_TYPE_ATTRIBUTE = "data-mention-type";
+const MENTION_DESCRIPTION_ATTRIBUTE = "data-description";
+const MENTION_PICTURE_URL_ATTRIBUTE = "data-picture-url";
+
+// Legacy attribute written by older versions of the extension. Kept for backward compat in parseHTML.
+const LEGACY_TYPE_ATTRIBUTE = "data-type";
 
 interface MentionExtensionOptions extends MentionOptions {
   owner: WorkspaceType;
@@ -30,37 +36,41 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
       ...this.parent?.(),
       type: {
         default: "agent",
-        parseHTML: (element) => element.getAttribute("data-type"),
+        parseHTML: (element) =>
+          element.getAttribute(MENTION_TYPE_ATTRIBUTE) ??
+          element.getAttribute(LEGACY_TYPE_ATTRIBUTE),
         renderHTML: (attributes) => {
           if (!attributes.type) {
             return {};
           }
           return {
-            "data-type": attributes.type,
+            [MENTION_TYPE_ATTRIBUTE]: attributes.type,
           };
         },
       },
       description: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-description"),
+        parseHTML: (element) =>
+          element.getAttribute(MENTION_DESCRIPTION_ATTRIBUTE),
         renderHTML: (attributes) => {
           if (!attributes.description) {
             return {};
           }
           return {
-            "data-description": attributes.description,
+            [MENTION_DESCRIPTION_ATTRIBUTE]: attributes.description,
           };
         },
       },
       pictureUrl: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-picture-url"),
+        parseHTML: (element) =>
+          element.getAttribute(MENTION_PICTURE_URL_ATTRIBUTE),
         renderHTML: (attributes) => {
           if (!attributes.pictureUrl) {
             return {};
           }
           return {
-            "data-picture-url": attributes.pictureUrl,
+            [MENTION_PICTURE_URL_ATTRIBUTE]: attributes.pictureUrl,
           };
         },
       },
@@ -187,8 +197,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
 
           // If we're in inline code, just paste as plain text with the code mark
           if (isInInlineCode) {
-            const transaction = state.tr.insertText(text, from, to);
-            view.dispatch(transaction);
+            // Safety check for Safari: ensure editor is not destroyed before dispatch
+            if (!editor.isDestroyed) {
+              const transaction = state.tr.insertText(text, from, to);
+              view.dispatch(transaction);
+            }
             return true;
           }
 
@@ -214,8 +227,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
             .catch((error: unknown) => {
               logger.error("Failed to parse mentions:", error);
               // Fallback to the default paste behavior.
-              const transaction = state.tr.replaceRange(from, to, slice);
-              view.dispatch(transaction);
+              // Safety check for Safari: ensure editor is not destroyed before dispatch
+              if (!editor.isDestroyed) {
+                const transaction = state.tr.replaceRange(from, to, slice);
+                view.dispatch(transaction);
+              }
             });
 
           return true;

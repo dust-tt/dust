@@ -3,13 +3,17 @@ import {
   pauseAllManagedDataSources,
   unpauseAllManagedDataSources,
 } from "@app/lib/api/data_sources";
-import { pauseAllLabsWorkflows } from "@app/lib/api/labs";
+import {
+  pauseAllLabsWorkflows,
+  unpauseAllLabsWorkflows,
+} from "@app/lib/api/labs";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   config,
   isRegionType,
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
+import { invalidateWorkspaceRegionCache } from "@app/lib/api/regions/lookup";
 import {
   deleteWorkspace,
   isWorkspaceRelocationDone,
@@ -20,9 +24,10 @@ import {
 } from "@app/lib/api/workspace";
 import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
 import { Authenticator } from "@app/lib/auth";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const RELOCATION_STEPS = [
   "relocate",
@@ -116,15 +121,30 @@ makeScript(
             return;
           }
 
-          // 3) Pause all labs workflows.
-          const pauseLabsRes = await pauseAllLabsWorkflows(auth);
+          // 3) Pause all triggers.
+          const triggerRes = await TriggerResource.disableAllForWorkspace(
+            auth,
+            "relocating"
+          );
+          if (triggerRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: triggerRes.error,
+              },
+              "Failed to disable workspace triggers during relocation."
+            );
+          }
+
+          // 4) Pause all labs workflows.
+          const pauseLabsRes = await pauseAllLabsWorkflows(auth, "relocating");
           if (pauseLabsRes.isErr()) {
             logger.error(
               `Failed to pause labs workflows: ${pauseLabsRes.error}`
             );
           }
 
-          // 4) Launch the relocation workflow.
+          // 5) Launch the relocation workflow.
           await launchWorkspaceRelocationWorkflow({
             workspaceId: owner.sId,
             sourceRegion,
@@ -146,7 +166,10 @@ makeScript(
 
           await removeAllWorkspaceDomains(owner);
 
-          // 2) Update all users' region metadata.
+          // 2) Invalidate workspace region cache so lookups re-resolve.
+          await invalidateWorkspaceRegionCache(owner.sId);
+
+          // 3) Update all users' region metadata.
           const updateUsersRegionToDestRes =
             await updateWorkspaceRegionMetadata(auth, logger, {
               execute,
@@ -163,7 +186,10 @@ makeScript(
         case "resume-in-destination":
           assertCorrectRegion(destinationRegion);
 
-          // 1) Remove the maintenance metadata.
+          // 1) Invalidate workspace region cache so lookups re-resolve.
+          await invalidateWorkspaceRegionCache(owner.sId);
+
+          // 2) Remove the maintenance metadata.
           const clearDestWorkspaceMetadataRes = await updateWorkspaceMetadata(
             owner,
             {
@@ -177,7 +203,7 @@ makeScript(
             return;
           }
 
-          // 2) Unpause all webcrawler connectors in the destination region.
+          // 3) Unpause all webcrawler connectors in the destination region.
           const unpauseDestConnectorsRes = await unpauseAllManagedDataSources(
             auth,
             ["webcrawler"]
@@ -187,6 +213,34 @@ makeScript(
               `Failed to unpause connectors: ${unpauseDestConnectorsRes.error.message}`
             );
             return;
+          }
+
+          // 4) Unpause all triggers.
+          const unpauseDestTriggerRes =
+            await TriggerResource.enableAllForWorkspace(auth, "relocating");
+          if (unpauseDestTriggerRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: unpauseDestTriggerRes.error,
+              },
+              "Failed to re-enable workspace triggers after relocation."
+            );
+          }
+
+          // 5) Unpause all labs workflows.
+          const unpauseDestLabsRes = await unpauseAllLabsWorkflows(
+            auth,
+            "relocating"
+          );
+          if (unpauseDestLabsRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: unpauseDestLabsRes.error,
+              },
+              "Failed to re-enable workspace labs workflows after relocation."
+            );
           }
 
           break;
@@ -218,7 +272,37 @@ makeScript(
             return;
           }
 
-          // 3) Update all users' region metadata.
+          // 3) Unpause all triggers.
+          const unpauseTriggerRes = await TriggerResource.enableAllForWorkspace(
+            auth,
+            "relocating"
+          );
+          if (unpauseTriggerRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: unpauseTriggerRes.error,
+              },
+              "Failed to re-enable workspace triggers after relocation rollback."
+            );
+          }
+
+          // 4) Unpause all labs workflows.
+          const unpauseLabsRes = await unpauseAllLabsWorkflows(
+            auth,
+            "relocating"
+          );
+          if (unpauseLabsRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: unpauseLabsRes.error,
+              },
+              "Failed to re-enable workspace labs workflows after relocation rollback."
+            );
+          }
+
+          // 5) Update all users' region metadata.
           const updateUsersRegionToSrcRes = await updateWorkspaceRegionMetadata(
             auth,
             logger,

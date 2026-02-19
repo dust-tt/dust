@@ -1,11 +1,3 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -16,14 +8,25 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { ModelId, Result, TemplateVisibility } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { TemplateVisibility } from "@app/types/assistant/templates";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface TemplateResource extends ReadonlyAttributesType<TemplateModel> {}
+export interface TemplateResource
+  extends ReadonlyAttributesType<TemplateModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TemplateResource extends BaseResource<TemplateModel> {
@@ -81,7 +84,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   static async listAll({
     visibility,
-  }: { visibility?: TemplateVisibility } = {}) {
+  }: {
+    visibility?: TemplateVisibility;
+  } = {}) {
     const where: WhereOptions<TemplateModel> = {};
     if (visibility) {
       where.visibility = visibility;
@@ -161,7 +166,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
   toListJSON() {
     return {
       id: this.id,
-      description: this.description,
+      userFacingDescription: this.userFacingDescription,
       handle: this.handle,
       pictureUrl: this.pictureUrl,
       sId: this.sId,
@@ -173,12 +178,14 @@ export class TemplateResource extends BaseResource<TemplateModel> {
   toJSON() {
     return {
       id: this.id,
+      agentFacingDescription: this.agentFacingDescription,
       backgroundColor: this.backgroundColor,
-      description: this.description,
+      userFacingDescription: this.userFacingDescription,
       emoji: this.emoji,
       handle: this.handle,
       helpActions: this.helpActions,
       helpInstructions: this.helpInstructions,
+      copilotInstructions: this.copilotInstructions,
       pictureUrl: this.pictureUrl,
       presetActions: this.presetActions,
       timeFrameDuration: this.timeFrameDuration,

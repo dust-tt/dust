@@ -1,7 +1,4 @@
-import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
-import Link from "next/link";
-import * as React from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4, Strong } from "@app/components/home/ContentComponents";
 import { menuConfig } from "@app/components/home/menu/config";
 import {
@@ -14,7 +11,9 @@ import {
   navigationMenuTriggerStyle,
 } from "@app/components/home/menu/NavigationMenu";
 import { classNames } from "@app/lib/utils";
-import { appendUTMParams } from "@app/lib/utils/utm";
+import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
+import Link from "next/link";
+import * as React from "react";
 
 export function MainNavigation() {
   const [nav, setNav] = React.useState("");
@@ -27,9 +26,7 @@ export function MainNavigation() {
             <NavigationMenuItem key={index} value={item.title}>
               {item.href ? (
                 <Link
-                  href={
-                    item.isExternal ? item.href : appendUTMParams(item.href)
-                  }
+                  href={item.href}
                   target={item.isExternal ? "_blank" : undefined}
                   legacyBehavior
                   passHref
@@ -102,9 +99,8 @@ const ListItem = React.forwardRef<
             "label-base block cursor-pointer select-none space-y-1 text-foreground no-underline outline-none transition-colors hover:text-highlight hover:underline hover:underline-offset-4 active:text-highlight-600",
             className
           )}
-          href={isExternal ? href : appendUTMParams(href)}
+          href={href}
           target={isExternal ? "_blank" : undefined}
-          shallow={!isExternal}
           {...props}
         >
           <div className="flex h-6 items-center gap-0.5">

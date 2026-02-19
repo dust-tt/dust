@@ -1,15 +1,15 @@
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
@@ -129,10 +129,7 @@ async function handler(
 
       let agentConfigurations = await getAgentConfigurationsForView({
         auth,
-        agentsGetView:
-          agentsGetView === "workspace"
-            ? "published" // workspace is deprecated, return all visible agents
-            : agentsGetView,
+        agentsGetView: normalizeAgentView(agentsGetView),
         variant: "light",
       });
 

@@ -1,33 +1,22 @@
-import { heartbeat } from "@temporalio/activity";
-import { Op } from "sequelize";
-
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import { heartbeat } from "@temporalio/activity";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
-
+const HEARTBEAT_RATE = 100;
 /**
  * Get workspace ids with conversations retention policy.
  */
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
-  const workspaces = await WorkspaceModel.findAll({
-    attributes: ["id"],
-    where: {
-      conversationsRetentionDays: {
-        [Op.not]: null,
-      },
-    },
-  });
-  return workspaces.map((w) => w.id);
+  return WorkspaceResource.listModelIdsWithConversationsRetention();
 }
 
 /**
@@ -69,61 +58,62 @@ export async function purgeConversationsBatchActivity({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    let conversations: ConversationResource[];
-    let nbConversationsDeleted = 0;
-
-    do {
-      conversations = await ConversationResource.listAllBeforeDate(auth, {
+    const conversations = await ConversationResource.listAllBeforeDate(
+      auth,
+      cutoffDate,
+      {
         batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
-        cutoffDate,
         includeDeleted: true,
-        includeTest: true,
-      });
+      }
+    );
 
-      logger.info(
-        {
-          workspaceId,
-          retentionDays,
-          cutoffDate,
-          nbConversations: conversations.length,
-        },
-        "Purging conversations for workspace."
-      );
+    logger.info(
+      {
+        workspaceId,
+        retentionDays,
+        cutoffDate,
+        nbConversations: conversations.length,
+      },
+      "Purging conversations for workspace."
+    );
+    heartbeat();
 
-      await concurrentExecutor(
-        conversations,
-        async (c) => {
-          const result = await destroyConversation(auth, {
-            conversationId: c.sId,
-          });
-          if (result.isErr()) {
-            if (result.error.type === "conversation_not_found") {
-              logger.warn(
-                {
-                  workspaceId,
-                  conversationId: c.sId,
-                  error: result.error,
-                },
-                "Attempting to delete a non-existing conversation."
-              );
-              return;
-            }
-            throw result.error;
+    let deletedCount = 0;
+    await concurrentExecutor(
+      conversations,
+      async (c) => {
+        const result = await destroyConversation(auth, {
+          conversationId: c.sId,
+        });
+        if (result.isErr()) {
+          if (result.error.type === "conversation_not_found") {
+            logger.warn(
+              {
+                workspaceId,
+                conversationId: c.sId,
+                error: result.error,
+              },
+              "Attempting to delete a non-existing conversation."
+            );
+            return;
           }
-        },
-        {
-          concurrency: 2,
+          throw result.error;
         }
-      );
-
-      nbConversationsDeleted += conversations.length;
-      heartbeat();
-    } while (conversations.length === WORKSPACE_CONVERSATIONS_BATCH_SIZE);
+        deletedCount++;
+        if (deletedCount % HEARTBEAT_RATE === 0) {
+          heartbeat();
+        }
+      },
+      {
+        concurrency: 2,
+      }
+    );
+    heartbeat();
 
     res.push({
       workspaceModelId: workspace.id,
       workspaceId: workspace.sId,
-      nbConversationsDeleted,
+      nbConversationsDeleted: conversations.length,
     });
   }
 
@@ -185,7 +175,6 @@ export async function purgeAgentConversationsBatchActivity({
       },
       {
         includeDeleted: true,
-        includeTest: true,
       }
     );
 

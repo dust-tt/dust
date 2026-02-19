@@ -1,12 +1,15 @@
 "use client";
 
-import { Dialog, DialogContent, MagnifyingGlassIcon } from "@dust-tt/sparkle";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  LinkWrapper,
+  MagnifyingGlassIcon,
+} from "@dust-tt/sparkle";
 import type { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
-import Link from "next/link";
 import * as React from "react";
-
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 const CommandContext = React.createContext<{
   selectedIndex: number;
@@ -107,6 +110,7 @@ const CommandDialog = ({
   }, [open, onOpenChange, selectedIndex]);
 
   // Reset selection when dialog opens/closes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     setSelectedIndex(0);
   }, [open]);
@@ -250,9 +254,9 @@ const CommandItem = React.forwardRef<
   );
 
   return href ? (
-    <Link ref={linkRef} href={href} className="block">
+    <LinkWrapper ref={linkRef} href={href} className="block">
       {content}
-    </Link>
+    </LinkWrapper>
   ) : (
     content
   );

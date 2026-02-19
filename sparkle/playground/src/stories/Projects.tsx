@@ -1,5 +1,4 @@
 import {
-  AtomIcon,
   Avatar,
   BoltOffIcon,
   BookOpenIcon,
@@ -7,22 +6,22 @@ import {
   Card,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
+  CheckDoubleIcon,
   Cog6ToothIcon,
-  ContactsRobotIcon,
   ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FullscreenExitIcon,
+  FullscreenIcon,
   HeartIcon,
-  InboxIcon,
   LightbulbIcon,
   ListSelectIcon,
   LogoutIcon,
@@ -45,7 +44,6 @@ import {
   SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
-  StarStrokeIcon,
   Tabs,
   TabsContent,
   TabsList,
@@ -56,14 +54,19 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
+import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
+import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { ProfilePanel } from "../components/Profile";
 import {
   type Agent,
   type Conversation,
   createConversationsWithMessages,
+  createSpace,
   getAgentById,
   getConversationsBySpaceId,
+  getMembersBySpaceId,
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
@@ -130,10 +133,38 @@ function DustMain() {
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
+  const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
+  const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
+  const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
+    null
+  );
+  const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
+  const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
+    new Map()
+  );
+  const [spaceEditors, setSpaceEditors] = useState<Map<string, string[]>>(
+    new Map()
+  );
+  const [spacePublicSettings, setSpacePublicSettings] = useState<
+    Map<string, boolean>
+  >(new Map());
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showProfileView, setShowProfileView] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
+
+  // Initialize space members with generated members when a space is first selected
+  useEffect(() => {
+    if (selectedSpaceId && !spaceMembers.has(selectedSpaceId)) {
+      const generatedMembers = getMembersBySpaceId(selectedSpaceId);
+      setSpaceMembers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(selectedSpaceId, generatedMembers);
+        return newMap;
+      });
+    }
+  }, [selectedSpaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const randomUser = getRandomUsers(1)[0];
@@ -169,6 +200,15 @@ function DustMain() {
     const convsWithMessages = createConversationsWithMessages(randomUser.id);
     setConversationsWithMessages(convsWithMessages);
   }, []);
+
+  // Auto-select newly created space when it's added to the spaces array
+  useEffect(() => {
+    if (lastCreatedSpaceId && spaces.find((s) => s.id === lastCreatedSpaceId)) {
+      setSelectedSpaceId(lastCreatedSpaceId);
+      setSelectedConversationId(null);
+      setLastCreatedSpaceId(null);
+    }
+  }, [spaces, lastCreatedSpaceId]);
 
   // Combine mock conversations with conversations that have messages
   const allConversations = useMemo(() => {
@@ -273,18 +313,32 @@ function DustMain() {
     });
   }, [searchText, sortedCollaborators]);
 
+  // Derive count and hasActivity deterministically from space ID.
+  const getSpaceActivity = (space: Space) => {
+    const charCode = space.id.charCodeAt(space.id.length - 1);
+    const count = charCode % 3 === 0 ? (charCode % 9) + 1 : undefined;
+    const hasActivity = count ? true : charCode % 2 !== 0;
+    return { count, hasActivity };
+  };
+
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
-      // Determine if restricted based on space ID
-      const isRestrictedA = a.id.charCodeAt(a.id.length - 1) % 2 === 0;
-      const isRestrictedB = b.id.charCodeAt(b.id.length - 1) % 2 === 0;
+      const actA = getSpaceActivity(a);
+      const actB = getSpaceActivity(b);
 
-      // First sort by type: Open (false) first, Restricted (true) second
-      if (isRestrictedA !== isRestrictedB) {
-        return isRestrictedA ? 1 : -1;
+      // 1. Items with count come first, highest count first
+      const countA = actA.count ?? 0;
+      const countB = actB.count ?? 0;
+      if (countA !== countB) {
+        return countB - countA;
       }
 
-      // Then sort alphabetically by name
+      // 2. Items with hasActivity (but no count) come next
+      if (actA.hasActivity !== actB.hasActivity) {
+        return actA.hasActivity ? -1 : 1;
+      }
+
+      // 3. Alphabetical by name
       return a.name.localeCompare(b.name);
     });
   }, [spaces]);
@@ -321,6 +375,26 @@ function DustMain() {
     return getConversationsBySpaceId(selectedSpaceId);
   }, [selectedSpaceId]);
 
+  // Select 2-5 random conversations for inbox with status assignment
+  const inboxConversations = useMemo(() => {
+    if (filteredConversations.length === 0) return [];
+
+    // Randomly select 2-5 conversations
+    const count = Math.floor(Math.random() * 4) + 2; // 2-5
+    const shuffled = [...filteredConversations].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(
+      0,
+      Math.min(count, filteredConversations.length)
+    );
+
+    // Assign statuses: ~25% probability of "blocked", rest "idle"
+    return selected.map((conversation) => {
+      const status: "idle" | "unread" | "blocked" | "error" =
+        Math.random() < 0.25 ? "blocked" : "idle";
+      return { conversation, status };
+    });
+  }, [filteredConversations]);
+
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
     return (
@@ -335,7 +409,6 @@ function DustMain() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Rename conversation:", conversation.id);
             }}
           />
           <DropdownMenuSub>
@@ -379,11 +452,6 @@ function DustMain() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log(
-                          "View participant:",
-                          participant.type,
-                          participant.data.id
-                        );
                       }}
                     />
                   ))
@@ -402,7 +470,6 @@ function DustMain() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Delete conversation:", conversation.id);
             }}
           />
         </DropdownMenuContent>
@@ -430,7 +497,7 @@ function DustMain() {
         }
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-mt-2 s-px-2">
+        <TabsList className="s-mt-3 s-px-2">
           <TabsTrigger
             value="chat"
             label="Chat"
@@ -462,13 +529,51 @@ function DustMain() {
                 label="New"
               />
             </div>
+            {inboxConversations.length > 0 && (
+              <NavigationListCollapsibleSection
+                label="Inbox"
+                className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+                actionOnHover={false}
+                action={
+                  <Button
+                    size="xmini"
+                    icon={CheckDoubleIcon}
+                    variant="ghost"
+                    aria-label="Mark all as read"
+                    tooltip="Mark all as read"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Add action logic here
+                    }}
+                  />
+                }
+              >
+                {inboxConversations.map(({ conversation, status }) => (
+                  <NavigationListItem
+                    key={conversation.id}
+                    label={conversation.title}
+                    selected={conversation.id === selectedConversationId}
+                    status={status}
+                    moreMenu={getConversationMoreMenu(conversation)}
+                    onClick={() => {
+                      setShowProfileView(false);
+                      setPreviousSpaceId(null);
+                      setSelectedConversationId(conversation.id);
+                      setSelectedSpaceId(null);
+                    }}
+                  />
+                ))}
+              </NavigationListCollapsibleSection>
+            )}
             {/* Collapsible Sections */}
             <NavigationList className="s-px-2">
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Rooms"
+                  label="Projects"
                   type="collapse"
                   defaultOpen={true}
+                  visibleItems={4}
                   action={
                     <>
                       <Button
@@ -479,6 +584,7 @@ function DustMain() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          setIsCreateRoomDialogOpen(true);
                         }}
                       />
                       <DropdownMenu>
@@ -501,7 +607,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Manage Spaces");
                             }}
                           />
                           <DropdownMenuItem
@@ -510,7 +615,7 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Create Space");
+                              setIsCreateRoomDialogOpen(true);
                             }}
                           />
                         </DropdownMenuContent>
@@ -522,10 +627,7 @@ function DustMain() {
                     // Deterministically assign open or restricted status based on space ID
                     const isRestricted =
                       space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                    // Deterministically assign count to some spaces based on space ID
-                    const spaceIndex = space.id.charCodeAt(space.id.length - 1);
-                    const count =
-                      spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
+                    const { count, hasActivity } = getSpaceActivity(space);
                     return (
                       <NavigationListItem
                         key={space.id}
@@ -533,6 +635,7 @@ function DustMain() {
                         icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
                         selected={space.id === selectedSpaceId}
                         count={count}
+                        hasActivity={hasActivity}
                         moreMenu={
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -545,7 +648,6 @@ function DustMain() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log("Edit space:", space.id);
                                 }}
                               />
                               <DropdownMenuItem
@@ -554,13 +656,13 @@ function DustMain() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log("Explore space:", space.id);
                                 }}
                               />
                             </DropdownMenuContent>
                           </DropdownMenu>
                         }
                         onClick={() => {
+                          setShowProfileView(false);
                           setSelectedSpaceId(space.id);
                           setSelectedConversationId(null);
                         }}
@@ -608,7 +710,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Edit Conversations");
                             }}
                           />
                           <DropdownMenuItem
@@ -617,7 +718,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Edit Conversations");
                             }}
                           />
                           <DropdownMenuItem
@@ -627,7 +727,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Clear history");
                             }}
                           />
                         </DropdownMenuContent>
@@ -644,7 +743,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -663,7 +762,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -682,7 +781,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -701,7 +800,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -767,7 +866,9 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("View profile");
+                setShowProfileView(true);
+                setSelectedConversationId(null);
+                setSelectedSpaceId(null);
               }}
             />
             <DropdownMenuItem
@@ -776,7 +877,6 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Administration");
               }}
             />
             <DropdownMenuSub>
@@ -790,7 +890,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Quickstart Guide");
                     }}
                   />
                   <DropdownMenuItem
@@ -799,7 +898,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Guides & Documentation");
                     }}
                   />
                   <DropdownMenuItem
@@ -808,7 +906,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Join the Slack Community");
                     }}
                   />
                   <DropdownMenuLabel label="Ask questions" />
@@ -819,7 +916,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Ask @help");
                     }}
                   />
                   <DropdownMenuItem
@@ -828,7 +924,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to invite new users?");
                     }}
                   />
                   <DropdownMenuItem
@@ -837,7 +932,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to use agents in Slack workflow?");
                     }}
                   />
                   <DropdownMenuItem
@@ -846,7 +940,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to manage billing?");
                     }}
                   />
                 </DropdownMenuSubContent>
@@ -859,14 +952,13 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Signout");
               }}
             />
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
           variant="ghost-secondary"
-          size="mini"
+          size="icon"
           icon={isSidebarCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
           onClick={() => sidebarLayoutRef.current?.toggle()}
         />
@@ -876,6 +968,7 @@ function DustMain() {
 
   // Handle back button from conversation view
   const handleConversationBack = () => {
+    setShowProfileView(false);
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
@@ -884,13 +977,94 @@ function DustMain() {
     }
   };
 
+  // Handle room creation flow
+  const handleRoomNameNext = (name: string, isPublic: boolean) => {
+    // Create the new space directly
+    const newSpace = createSpace(name, undefined, isPublic);
+
+    // Update spaces state
+    setSpaces((prev) => [...prev, newSpace]);
+
+    // Store the public setting
+    setSpacePublicSettings((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(newSpace.id, isPublic);
+      return newMap;
+    });
+
+    // Track the newly created space ID for auto-selection
+    setLastCreatedSpaceId(newSpace.id);
+
+    // Close dialog
+    setIsCreateRoomDialogOpen(false);
+  };
+
+  // Handle invite members for a space
+  const handleInviteMembers = (spaceId: string) => {
+    setInviteSpaceId(spaceId);
+    setIsInviteUsersScreenOpen(true);
+  };
+
+  const handleInviteUsersComplete = (
+    selectedUserIds: string[],
+    editorUserIds: string[]
+  ) => {
+    // Store invited members for the space
+    if (inviteSpaceId) {
+      setSpaceMembers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, selectedUserIds);
+        return newMap;
+      });
+      setSpaceEditors((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, editorUserIds);
+        return newMap;
+      });
+    }
+    // Close the invite dialog
+    setIsInviteUsersScreenOpen(false);
+    setInviteSpaceId(null);
+  };
+
+  // Handle space name update
+  const handleUpdateSpaceName = (spaceId: string, newName: string) => {
+    // For prototype, just log the update
+    // In a real implementation, this would update the space in the backend
+    setSpaces((prev) =>
+      prev.map((space) =>
+        space.id === spaceId ? { ...space, name: newName } : space
+      )
+    );
+  };
+
+  // Handle space public setting update
+  const handleUpdateSpacePublic = (spaceId: string, isPublic: boolean) => {
+    // Update the public setting state
+    setSpacePublicSettings((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(spaceId, isPublic);
+      return newMap;
+    });
+    // Also update the space object
+    setSpaces((prev) =>
+      prev.map((space) =>
+        space.id === spaceId ? { ...space, isPublic } : space
+      )
+    );
+    // For prototype, just log the update
+  };
+
   // Main content
   const mainContent =
-    // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
+    // Priority 0: Show profile when opened from user menu
+    showProfileView && user ? (
+      <ProfilePanel user={user} />
+    ) : // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
     selectedConversationId &&
-    selectedConversationId !== "new-conversation" &&
-    selectedConversation &&
-    user ? (
+      selectedConversationId !== "new-conversation" &&
+      selectedConversation &&
+      user ? (
       <ConversationView
         conversation={selectedConversation}
         locutor={user}
@@ -899,6 +1073,7 @@ function DustMain() {
         conversationsWithMessages={conversationsWithMessages}
         showBackButton={!!previousSpaceId}
         onBack={handleConversationBack}
+        projectTitle={selectedSpace?.name}
       />
     ) : // Priority 2: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
@@ -907,17 +1082,30 @@ function DustMain() {
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
+        spaceMemberIds={
+          spaceMembers.has(selectedSpaceId)
+            ? spaceMembers.get(selectedSpaceId)!
+            : getMembersBySpaceId(selectedSpaceId)
+        }
+        editorUserIds={
+          spaceEditors.has(selectedSpaceId)
+            ? spaceEditors.get(selectedSpaceId)!
+            : []
+        }
         onConversationClick={(conversation) => {
-          // Store the current space ID before navigating to conversation
+          setShowProfileView(false);
           setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
-          // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
+        onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
+        onUpdateSpaceName={handleUpdateSpaceName}
+        onUpdateSpacePublic={handleUpdateSpacePublic}
+        spacePublicSettings={spacePublicSettings}
       />
     ) : (
       // Priority 3: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-px-4 s-py-8">
+        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
             Welcome, Edouard!{" "}
           </div>
@@ -950,6 +1138,34 @@ function DustMain() {
         maxSidebarWidth={400}
         collapsible={true}
         onSidebarToggle={setIsSidebarCollapsed}
+      />
+      <CreateRoomDialog
+        isOpen={isCreateRoomDialogOpen}
+        onClose={() => {
+          setIsCreateRoomDialogOpen(false);
+        }}
+        onNext={handleRoomNameNext}
+      />
+      <InviteUsersScreen
+        isOpen={isInviteUsersScreenOpen}
+        spaceId={inviteSpaceId}
+        onClose={() => {
+          setIsInviteUsersScreenOpen(false);
+          setInviteSpaceId(null);
+        }}
+        onInvite={handleInviteUsersComplete}
+        actionLabel="Save"
+        initialSelectedUserIds={
+          inviteSpaceId && spaceMembers.has(inviteSpaceId)
+            ? spaceMembers.get(inviteSpaceId)
+            : []
+        }
+        initialEditorUserIds={
+          inviteSpaceId && spaceEditors.has(inviteSpaceId)
+            ? spaceEditors.get(inviteSpaceId)
+            : []
+        }
+        hasMultipleSelect={true}
       />
     </div>
   );

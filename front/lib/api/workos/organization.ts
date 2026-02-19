@@ -1,3 +1,16 @@
+import { config } from "@app/lib/api/regions/config";
+import { getWorkOS } from "@app/lib/api/workos/client";
+import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
+import { getWorkOSOrganization } from "@app/lib/api/workos/organization_primitives";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkOSPortalIntent } from "@app/lib/types/workos";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { Connection, Directory, Organization } from "@workos-inc/node";
 import {
   DomainDataState,
@@ -6,46 +19,6 @@ import {
 } from "@workos-inc/node";
 import assert from "assert";
 import uniqueId from "lodash/uniqueId";
-
-import { config } from "@app/lib/api/regions/config";
-import { getWorkOS } from "@app/lib/api/workos/client";
-import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { WorkOSPortalIntent } from "@app/lib/types/workos";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
-
-function isWorkOSNotFoundEntityError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    "status" in error &&
-    error.status === 404 &&
-    "code" in error &&
-    error.code === "entity_not_found"
-  );
-}
-
-export async function getWorkOSOrganization(
-  workspace: LightWorkspaceType
-): Promise<Result<Organization | undefined, Error>> {
-  try {
-    const result = await getWorkOS().organizations.getOrganizationByExternalId(
-      workspace.sId
-    );
-
-    return new Ok(result);
-  } catch (error) {
-    // If the organization is not found, return undefined.
-    if (isWorkOSNotFoundEntityError(error)) {
-      return new Ok(undefined);
-    }
-
-    return new Err(new Error("Failed to get WorkOS organization."));
-  }
-}
 
 export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
@@ -162,57 +135,6 @@ export async function addWorkOSOrganizationDomain(
   return new Ok(undefined);
 }
 
-export async function removeWorkOSOrganizationDomain(
-  workspace: LightWorkspaceType,
-  { domain }: { domain: string }
-): Promise<Result<void, Error>> {
-  const organizationRes = await getWorkOSOrganization(workspace);
-  if (organizationRes.isErr()) {
-    return new Err(organizationRes.error);
-  }
-
-  const organization = organizationRes.value;
-  if (!organization) {
-    return new Err(
-      new Error("WorkOS organization not found for this workspace.")
-    );
-  }
-
-  return removeWorkOSOrganizationDomainFromOrganization(organization, {
-    domain,
-  });
-}
-
-export async function removeWorkOSOrganizationDomainFromOrganization(
-  organization: Organization,
-  { domain }: { domain: string }
-): Promise<Result<void, Error>> {
-  await getWorkOS().organizations.updateOrganization({
-    organization: organization.id,
-    domainData: organization.domains
-      .filter(
-        (d) =>
-          d.domain !== domain && d.state === OrganizationDomainState.Verified
-      )
-      .map((d) => ({
-        domain: d.domain,
-        state: DomainDataState.Verified,
-      })),
-  });
-
-  // WARN: Hacky update done after the domain data, so that it trigger
-  // the webhook. Should be remove once WorkOS send us webhook when just
-  // the domains change.
-  await getWorkOS().organizations.updateOrganization({
-    organization: organization.id,
-    metadata: {
-      _webhookTrigger: uniqueId(),
-    },
-  });
-
-  return new Ok(undefined);
-}
-
 export async function updateWorkOSOrganizationName(
   workspace: LightWorkspaceType
 ): Promise<Result<void, Error>> {
@@ -248,18 +170,6 @@ export async function updateWorkOSOrganizationName(
   }
 
   return new Ok(undefined);
-}
-
-export async function listWorkOSOrganizationsWithDomain(
-  domain: string
-): Promise<Organization[]> {
-  const workOS = getWorkOS();
-  const organizations = await workOS.organizations.listOrganizations({
-    domains: [domain],
-    limit: 100,
-  });
-
-  return organizations.data;
 }
 
 // Mapping WorkOSPortalIntent to GeneratePortalLinkIntent,
@@ -370,6 +280,97 @@ export async function deleteWorkOSOrganizationDSyncConnection(
   }
 }
 
+/**
+ * Disables SSO and/or SCIM for a workspace by deleting WorkOS SSO connections
+ * and/or SCIM directories, and disabling SSO enforcement.
+ * Called when a workspace downgrades to a plan that doesn't allow SSO/SCIM.
+ */
+export async function disableWorkOSSSOAndSCIM(
+  workspace: LightWorkspaceType,
+  { disableSSO, disableSCIM }: { disableSSO: boolean; disableSCIM: boolean }
+): Promise<void> {
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+    workOSOrganizationId: workspace.workOSOrganizationId,
+  });
+
+  if (!workspace.workOSOrganizationId) {
+    localLogger.info("No WorkOS organization, skipping SSO/SCIM cleanup");
+    return;
+  }
+
+  if (disableSSO) {
+    // Delete all SSO connections.
+    const connectionsRes = await getWorkOSOrganizationSSOConnections({
+      workspace,
+    });
+    if (connectionsRes.isOk()) {
+      for (const connection of connectionsRes.value) {
+        const deleteRes =
+          await deleteWorkOSOrganizationSSOConnection(connection);
+        if (deleteRes.isErr()) {
+          localLogger.error(
+            { connectionId: connection.id, error: deleteRes.error },
+            "Failed to delete SSO connection"
+          );
+        } else {
+          localLogger.info(
+            { connectionId: connection.id },
+            "Deleted SSO connection"
+          );
+        }
+      }
+    } else {
+      localLogger.error(
+        { error: connectionsRes.error },
+        "Failed to list SSO connections"
+      );
+    }
+
+    // Disable SSO enforcement.
+    const disableRes = await WorkspaceResource.disableSSOEnforcement(
+      workspace.id
+    );
+    if (disableRes.isErr()) {
+      localLogger.error(
+        { error: disableRes.error },
+        "Failed to disable SSO enforcement"
+      );
+    } else {
+      localLogger.info("Disabled SSO enforcement");
+    }
+  }
+
+  if (disableSCIM) {
+    // Delete all SCIM directories.
+    const directoriesRes = await getWorkOSOrganizationDSyncDirectories({
+      workspace,
+    });
+    if (directoriesRes.isOk()) {
+      for (const directory of directoriesRes.value) {
+        const deleteRes =
+          await deleteWorkOSOrganizationDSyncConnection(directory);
+        if (deleteRes.isErr()) {
+          localLogger.error(
+            { directoryId: directory.id, error: deleteRes.error },
+            "Failed to delete SCIM directory"
+          );
+        } else {
+          localLogger.info(
+            { directoryId: directory.id },
+            "Deleted SCIM directory"
+          );
+        }
+      }
+    } else {
+      localLogger.error(
+        { error: directoriesRes.error },
+        "Failed to list SCIM directories"
+      );
+    }
+  }
+}
+
 export async function deleteWorksOSOrganizationWithWorkspace(
   workspaceId: string
 ): Promise<Result<undefined, Error>> {
@@ -382,6 +383,7 @@ export async function deleteWorksOSOrganizationWithWorkspace(
     organization =
       await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (err) {
     localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
     return new Ok(undefined);

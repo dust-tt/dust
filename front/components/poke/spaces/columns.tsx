@@ -1,9 +1,9 @@
-import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import { LinkWrapper } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 export function makeColumnsForSpaces(
   owner: WorkspaceType
@@ -20,54 +20,21 @@ export function makeColumnsForSpaces(
           </LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>sId</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       accessorKey: "kind",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Kind</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Kind" />
+      ),
     },
     {
       accessorKey: "isRestricted",
@@ -76,23 +43,15 @@ export function makeColumnsForSpaces(
 
         return isRestricted ? "Yes" : "No";
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Is Restricted</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Is restricted" />
+      ),
     },
     {
       accessorKey: "createdAt",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
       cell: ({ row }) => {
         const createdAt: number = row.getValue("createdAt");
 
@@ -101,6 +60,9 @@ export function makeColumnsForSpaces(
     },
     {
       accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Updated at" />
+      ),
       cell: ({ row }) => {
         const updatedAt: number = row.getValue("updatedAt");
 

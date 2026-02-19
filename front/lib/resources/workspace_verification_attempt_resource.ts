@@ -1,7 +1,3 @@
-import { createHash } from "crypto";
-import type { Attributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
@@ -9,12 +5,16 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { VerificationStatus } from "@app/types/workspace_verification";
+import { createHash } from "crypto";
+import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WorkspaceVerificationAttemptResource extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
+export interface WorkspaceVerificationAttemptResource
+  extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceVerificationAttemptResource extends BaseResource<WorkspaceVerificationAttemptModel> {
   static model: ModelStaticWorkspaceAware<WorkspaceVerificationAttemptModel> =
@@ -49,6 +49,7 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
     const existing = await this.model.findOne({
       where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
       // WORKSPACE_ISOLATION_BYPASS: Global uniqueness check - a verified phone can only be used by one workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return existing !== null;
@@ -71,6 +72,25 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
         phoneNumberHash,
         twilioVerificationSid,
         attemptNumber: 1,
+      },
+      { transaction }
+    );
+
+    return new this(this.model, attempt.get());
+  }
+
+  static async makeVerified(
+    auth: Authenticator,
+    { phoneNumberHash }: { phoneNumberHash: string },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<WorkspaceVerificationAttemptResource> {
+    const attempt = await this.model.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        phoneNumberHash,
+        twilioVerificationSid: null,
+        attemptNumber: 1,
+        verifiedAt: new Date(),
       },
       { transaction }
     );
@@ -127,7 +147,9 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
 
   async markVerified({
     transaction,
-  }: { transaction?: Transaction } = {}): Promise<void> {
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<void> {
     if (this.verifiedAt) {
       throw new Error("Verification attempt already marked as verified");
     }

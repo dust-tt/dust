@@ -1,6 +1,5 @@
-import * as React from "react"
-
-import { cn } from "@viz/lib/utils"
+import { cn } from "@viz/lib/utils";
+import type * as React from "react";
 
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -12,7 +11,7 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
@@ -25,7 +24,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
@@ -35,7 +34,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("leading-none font-semibold", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
@@ -45,7 +44,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("text-muted-foreground text-sm", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CardAction({ className, ...props }: React.ComponentProps<"div">) {
@@ -58,7 +57,7 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CardContent({ className, ...props }: React.ComponentProps<"div">) {
@@ -68,7 +67,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("px-6", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -78,7 +77,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -89,4 +88,4 @@ export {
   CardAction,
   CardDescription,
   CardContent,
-}
+};

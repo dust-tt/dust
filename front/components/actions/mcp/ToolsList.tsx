@@ -1,3 +1,11 @@
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Card,
@@ -14,14 +22,6 @@ import {
 } from "@dust-tt/sparkle";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName, isAdmin } from "@app/types";
 
 interface ToolsListProps {
   owner: LightWorkspaceType;
@@ -77,15 +77,13 @@ const ToolItem = memo(
 
     const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
       high: "High (always ask for confirmation)",
-      medium: "Medium (per-agent per-argument confirmation saves)",
-      low: "Low (per-tool confirmation saves)",
+      medium: "Medium (allows per-agent confirmation save)",
+      low: "Low (allows user-global confirmation save)",
       never_ask: "Never ask (automatic execution)",
     };
 
     return (
-      <div
-        className={`flex flex-col gap-1 pb-2 ${!toolEnabled ? "opacity-50" : ""}`}
-      >
+      <div className="flex flex-col gap-1 pb-2">
         <div className="flex items-center gap-2">
           {mayUpdate && (
             <Checkbox checked={toolEnabled} onClick={handleToggle} />
@@ -117,16 +115,14 @@ const ToolItem = memo(
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  {availableStakeLevels
-                    .filter((v) => v !== "medium")
-                    .map((permission) => (
-                      <DropdownMenuItem
-                        key={permission}
-                        onClick={() => handlePermissionChange(permission)}
-                        label={toolPermissionLabel[permission]}
-                        disabled={!toolEnabled}
-                      />
-                    ))}
+                  {availableStakeLevels.map((permission) => (
+                    <DropdownMenuItem
+                      key={permission}
+                      onClick={() => handlePermissionChange(permission)}
+                      label={toolPermissionLabel[permission]}
+                      disabled={!toolEnabled}
+                    />
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -164,7 +160,7 @@ export const ToolsList = memo(
             <CollapsibleContent>
               <>
                 <ContentMessage
-                  className="mb-4 w-full"
+                  className="mb-4 mt-2 w-full"
                   variant="blue"
                   size="lg"
                   icon={InformationCircleIcon}
@@ -175,8 +171,12 @@ export const ToolsList = memo(
                       <b>High stake</b> tools need explicit user approval.
                     </li>
                     <li>
-                      Users can disable confirmations for <b>low stake</b>{" "}
-                      tools.
+                      <b>Medium stake</b> tools allow users to save per-agent
+                      confirmations.
+                    </li>
+                    <li>
+                      Users can completely disable confirmations for{" "}
+                      <b>low stake</b> tools.
                     </li>
                     <li>
                       <b>Never ask</b> tools run automatically.

@@ -4,8 +4,14 @@ import logger from "@app/logger/logger";
 import { untrustedFetch } from "../egress/server";
 
 export async function resolveCountryCode(ip: string): Promise<string> {
-  // Handle localhost IPs in development
-  if (ip === "::1" || ip === "127.0.0.1" || ip.startsWith("192.168.")) {
+  // Handle localhost IPs in development (including IPv4-mapped IPv6 format)
+  if (
+    ip === "::1" ||
+    ip === "127.0.0.1" ||
+    ip === "::ffff:127.0.0.1" ||
+    ip.startsWith("192.168.") ||
+    ip.startsWith("::ffff:192.168.")
+  ) {
     return "US";
   }
 

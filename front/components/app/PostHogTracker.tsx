@@ -1,13 +1,18 @@
-import { useRouter } from "next/router";
+import {
+  DUST_COOKIES_ACCEPTED,
+  DUST_HAS_SESSION,
+  hasCookiesAccepted,
+  hasSessionIndicator,
+} from "@app/lib/cookies";
+import { useAppRouter } from "@app/lib/platform";
+import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
+import { isString } from "@app/types/shared/utils/general";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
-
-import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
-import { useUser } from "@app/lib/swr/user";
-import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
-import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_INITIALIZED_KEY = "dust-ph-init";
@@ -26,9 +31,12 @@ interface PostHogTrackerProps {
 }
 
 export function PostHogTracker({ children }: PostHogTrackerProps) {
-  const router = useRouter();
-  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
-  const { user } = useUser();
+  const router = useAppRouter();
+  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION]);
+  const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
+
+  // Only fetch user if session indicator is present to avoid 401 errors on public pages.
+  const { user } = useUser({ disabled: !hasSession });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const hasAcceptedCookies = hasCookiesAccepted(cookieValue, user);
@@ -103,6 +111,16 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         if (!event) {
           return null;
         }
+
+        // Read marketing parameters from sessionStorage (populated by useStripUtmParams).
+        const storedParams = getStoredUTMParams();
+        for (const param of MARKETING_PARAMS) {
+          const storedValue = storedParams[param];
+          if (storedValue) {
+            event.properties[param] = storedValue;
+          }
+        }
+
         // Strip query parameters from URLs for privacy.
         if (event.properties.$current_url) {
           event.properties.$current_url =

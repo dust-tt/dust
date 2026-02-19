@@ -1,11 +1,10 @@
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
-import { cva, VariantProps } from "class-variance-authority";
-import * as React from "react";
-
 import { Icon } from "@sparkle/components/Icon";
 import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 export const radioStyles = cva(
   cn(
@@ -63,8 +62,7 @@ const RadioGroup = React.forwardRef<
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
 interface RadioGroupItemProps
-  extends
-    Omit<
+  extends Omit<
       React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
       "children"
     >,
@@ -128,8 +126,7 @@ const RadioGroupItem = React.forwardRef<
 type IconPosition = "start" | "center" | "end";
 
 interface RadioGroupCustomItemProps
-  extends
-    React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+  extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
     VariantProps<typeof radioStyles> {
   iconPosition?: IconPosition;
   customItem: React.ReactNode;

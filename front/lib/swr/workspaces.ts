@@ -1,21 +1,51 @@
-import { useCallback, useMemo } from "react";
-import type { Fetcher } from "swr";
-
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
+import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
+import type { GetWorkspaceActiveUsersResponse } from "@app/pages/api/w/[wId]/analytics/active-users";
+import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
+import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
+import type { GetWorkspaceToolUsageResponse } from "@app/pages/api/w/[wId]/analytics/tool-usage";
+import type { GetWorkspaceToolsResponse } from "@app/pages/api/w/[wId]/analytics/tools";
+import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analytics/top-agents";
+import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
+import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
+import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
+import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
+import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
 import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
 import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/pages/api/w/[wId]/verified-domains";
+import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
+import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
-import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
+import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
+import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useMemo } from "react";
+import type { Fetcher } from "swr";
+
+// Type guard to check if response is a region redirect
+export function isRegionRedirect(data: unknown): data is RegionRedirectError {
+  return (
+    typeof data === "object" && data !== null && "redirect" in data
+    // typeof (data as RegionRedirectError).redirect === "object" &&
+    // (data as RegionRedirectError).redirect !== null &&
+    // "region" in (data as RegionRedirectError).redirect &&
+    // "url" in (data as RegionRedirectError).redirect
+  );
+}
 
 export function useWorkspace({
   owner,
@@ -83,6 +113,218 @@ export function useWorkspaceAnalytics({
     analytics: data ? data : null,
     isMemberCountLoading: !error && !data,
     isMemberCountError: error,
+  };
+}
+
+export function useWorkspaceUsageMetrics({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  interval = "day",
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  interval?: "day" | "week";
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    usageMetrics: data?.points ?? emptyArray(),
+    isUsageMetricsLoading: !error && !data && !disabled,
+    isUsageMetricsError: error,
+    isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceActiveUsersMetrics({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    activeUsersMetrics: data?.points ?? emptyArray(),
+    isActiveUsersMetricsLoading: !error && !data && !disabled,
+    isActiveUsersMetricsError: error,
+    isActiveUsersMetricsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceContextOrigin({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceContextOriginResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/source?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    contextOrigin: data ?? { total: 0, buckets: emptyArray() },
+    isContextOriginLoading: !error && !data && !disabled,
+    isContextOriginError: error,
+    isContextOriginValidating: isValidating,
+  };
+}
+
+export function useWorkspaceTools({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceToolsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/tools?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    tools: data?.tools ?? emptyArray(),
+    isToolsLoading: !error && !data && !disabled,
+    isToolsError: error,
+    isToolsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceToolUsage({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  serverName,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  serverName?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceToolUsageResponse> = fetcher;
+  const params = new URLSearchParams({ days: String(days) });
+  if (serverName) {
+    params.set("serverName", serverName);
+  }
+  const key = `/api/w/${workspaceId}/analytics/tool-usage?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolUsage: data?.points ?? emptyArray(),
+    isToolUsageLoading: !error && !data && !disabled,
+    isToolUsageError: error,
+    isToolUsageValidating: isValidating,
+  };
+}
+
+export function useWorkspaceTopUsers({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 10,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceTopUsersResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/top-users?days=${days}&limit=${limit}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    topUsers: data?.users ?? emptyArray(),
+    isTopUsersLoading: !error && !data && !disabled,
+    isTopUsersError: error,
+    isTopUsersValidating: isValidating,
+  };
+}
+
+export function useWorkspaceTopAgents({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 10,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceTopAgentsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/top-agents?days=${days}&limit=${limit}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    topAgents: data?.agents ?? emptyArray(),
+    isTopAgentsLoading: !error && !data && !disabled,
+    isTopAgentsError: error,
+    isTopAgentsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceAnalyticsOverview({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceAnalyticsOverviewResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/overview?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    overview: data ?? null,
+    isOverviewLoading: !error && !data && !disabled,
+    isOverviewError: error,
+    isOverviewValidating: isValidating,
   };
 }
 
@@ -161,6 +403,7 @@ export function useFeatureFlags({
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
+  groupByCount,
   selectedPeriod,
   billingCycleStartDay,
   filter,
@@ -168,6 +411,7 @@ export function useWorkspaceProgrammaticCost({
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
+  groupByCount?: number;
   selectedPeriod?: string;
   billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
@@ -182,6 +426,9 @@ export function useWorkspaceProgrammaticCost({
   }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
   }
   if (filter && Object.keys(filter).length > 0) {
     queryParams.set("filter", JSON.stringify(filter));
@@ -316,5 +563,203 @@ export function useWorkspaceSeatsCount({
     isSeatsCountLoading: !error && !data && !disabled,
     isSeatsCountError: error,
     mutateSeatsCount: mutate,
+  };
+}
+
+interface UseAuthContextResult<T> {
+  authContext: T | undefined;
+  isAuthenticated: boolean;
+  isAuthContextLoading: boolean;
+  authContextError: APIErrorResponse | Error | undefined;
+  mutateAuthContext: () => Promise<T | undefined>;
+}
+
+export function useAuthContext(options?: {
+  disabled?: boolean;
+}): UseAuthContextResult<
+  Exclude<GetNoWorkspaceAuthContextResponseType, RegionRedirectError>
+>;
+
+export function useAuthContext(options: {
+  workspaceId: string;
+  disabled?: boolean;
+}): UseAuthContextResult<
+  Exclude<GetWorkspaceAuthContextResponseType, RegionRedirectError>
+>;
+
+export function useAuthContext(
+  options: { workspaceId?: string; disabled?: boolean } = {}
+) {
+  const { workspaceId, disabled } = options;
+  const regionContext = useRegionContextSafe();
+
+  const url = workspaceId
+    ? `/api/w/${workspaceId}/auth-context`
+    : `/api/auth-context`;
+
+  const authContextFetcher: Fetcher<
+    GetNoWorkspaceAuthContextResponseType | GetWorkspaceAuthContextResponseType
+  > = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, authContextFetcher, {
+    disabled,
+  });
+
+  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
+  const regionRedirect = isRegionRedirectResponse
+    ? error.error.redirect
+    : undefined;
+  const isFetching = !error && !data && !disabled;
+  const isAuthenticated = !isRegionRedirectResponse && !!data?.user;
+
+  // Handle region redirect.
+  useEffect(() => {
+    if (regionRedirect && regionContext) {
+      regionContext.setRegionInfo({
+        name: regionRedirect.region,
+        url: regionRedirect.url,
+      });
+      void mutate();
+    }
+  }, [regionRedirect, mutate, regionContext]);
+
+  return {
+    authContext: isRegionRedirectResponse ? undefined : data,
+    isAuthenticated,
+    isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
+    authContextError: error,
+    mutateAuthContext: mutate,
+  };
+}
+
+export function useSubscriptionStatus({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const statusFetcher: Fetcher<GetSubscriptionStatusResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions/status`,
+    statusFetcher
+  );
+
+  return {
+    shouldRedirect: data?.shouldRedirect ?? false,
+    redirectUrl: data?.redirectUrl ?? null,
+    isSubscriptionStatusLoading: !error && !data,
+    isSubscriptionStatusError: error,
+  };
+}
+
+export function useWelcomeData({ workspaceId }: { workspaceId: string }) {
+  const welcomeFetcher: Fetcher<GetWelcomeResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/welcome`,
+    welcomeFetcher
+  );
+
+  return {
+    welcomeData: data ?? null,
+    isFirstAdmin: data?.isFirstAdmin ?? false,
+    emailProvider: data?.emailProvider ?? "other",
+    isWelcomeDataLoading: !error && !data,
+    isWelcomeDataError: error,
+  };
+}
+
+export function useVerifyData({ workspaceId }: { workspaceId: string }) {
+  const verifyFetcher: Fetcher<GetVerifyResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/verify`,
+    verifyFetcher
+  );
+
+  return {
+    verifyData: data ?? null,
+    isEligibleForTrial: data?.isEligibleForTrial ?? false,
+    initialCountryCode: data?.initialCountryCode ?? "US",
+    isVerifyDataLoading: !error && !data,
+    isVerifyDataError: error,
+  };
+}
+
+export function useJoinData({
+  wId,
+  token,
+  conversationId,
+}: {
+  wId: string;
+  token: string | null;
+  conversationId: string | null;
+}) {
+  const regionContext = useRegionContextSafe();
+  const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
+
+  const params = new URLSearchParams();
+  if (token) {
+    params.set("t", token);
+  }
+  if (conversationId) {
+    params.set("cId", conversationId);
+  }
+  const queryString = params.toString();
+  const url = `/api/w/${wId}/join${queryString ? `?${queryString}` : ""}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, joinFetcher);
+
+  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
+  const regionRedirect = isRegionRedirectResponse
+    ? error.error.redirect
+    : undefined;
+
+  // Handle region redirect.
+  useEffect(() => {
+    if (regionRedirect && regionContext) {
+      regionContext.setRegionInfo({
+        name: regionRedirect.region,
+        url: regionRedirect.url,
+      });
+      void mutate();
+    }
+  }, [regionRedirect, mutate, regionContext]);
+
+  return {
+    joinData: data ?? null,
+    isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
+    isJoinDataError: isRegionRedirectResponse ? undefined : error,
+  };
+}
+
+export function usePendingInvitations() {
+  const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsLookupResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    "/api/invitations",
+    pendingInvitationsFetcher
+  );
+
+  return {
+    pendingInvitations: data?.pendingInvitations ?? emptyArray(),
+    isPendingInvitationsLoading: !error && !data,
+  };
+}
+
+export function useWorkspaceLookup({ flow }: { flow: string | null }) {
+  const workspaceLookupFetcher: Fetcher<GetWorkspaceLookupResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    flow ? `/api/workspace-lookup?flow=${encodeURIComponent(flow)}` : null,
+    workspaceLookupFetcher
+  );
+
+  return {
+    workspaceLookup: data ?? null,
+    isWorkspaceLookupLoading: !error && !data && !!flow,
+    isWorkspaceLookupError: error,
   };
 }

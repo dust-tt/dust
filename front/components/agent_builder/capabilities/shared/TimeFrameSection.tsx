@@ -1,3 +1,5 @@
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import {
   Button,
   Checkbox,
@@ -9,9 +11,6 @@ import {
   Input,
 } from "@dust-tt/sparkle";
 import { useController, useFormContext } from "react-hook-form";
-
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import type { TimeFrame } from "@app/types";
 
 const TIME_FRAME_UNITS = ["hour", "day", "week", "month", "year"] as const;
 

@@ -42,6 +42,10 @@ export const PastedAttachmentExtension = Node.create<PastedAttachmentOptions>({
     ];
   },
 
+  renderText({ node }) {
+    return node.attrs.title ?? "[pasted text]";
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(PastedAttachmentComponent);
   },

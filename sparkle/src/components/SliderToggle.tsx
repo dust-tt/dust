@@ -1,6 +1,5 @@
-import React, { MouseEventHandler } from "react";
-
 import { classNames, cn } from "@sparkle/lib/utils";
+import React, { type MouseEventHandler } from "react";
 
 type SliderToggleProps = {
   onClick?: MouseEventHandler<HTMLElement>;

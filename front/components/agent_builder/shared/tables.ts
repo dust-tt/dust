@@ -5,13 +5,12 @@ import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-} from "@app/types";
-import { assertNever, normalizeError } from "@app/types";
+import type { LightContentNode } from "@app/types/api/public/spaces";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function getTableIdForContentNode(
   dataSource: DataSourceType,

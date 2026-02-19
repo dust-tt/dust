@@ -1,10 +1,12 @@
-import type { ParsedUrlQuery } from "querystring";
-
+import type { OAuthError } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import type { Result } from "@app/types";
-import type { OAuthConnectionType } from "@app/types/oauth/lib";
-import type { OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
 
 // Use this if you need to associate credentials with the connection (eg: custom client_secret).
 export type RelatedCredential = {
@@ -13,6 +15,15 @@ export type RelatedCredential = {
 };
 
 export interface BaseOAuthStrategyProvider {
+  /**
+   * When true, personal auth setup (useCase: "personal_actions") requires a
+   * workspace-level MCP server connection to already exist.
+   *
+   * This is used to gate client-side UX (avoid opening the OAuth popup only to
+   * immediately fail server-side).
+   */
+  requiresWorkspaceConnectionForPersonalAuth?: boolean;
+
   setupUri: ({
     connection,
     useCase,
@@ -42,6 +53,10 @@ export interface BaseOAuthStrategyProvider {
   ) => boolean;
 
   // If the provider has a method for getting the related credential and/or if we need to update the config.
+  // Returns:
+  // - Ok(credential) if credentials were successfully retrieved
+  // - Err(error) if credentials retrieval failed (e.g., token revoked)
+  // - undefined if no related credential is needed for this provider/useCase
   getRelatedCredential?: (
     auth: Authenticator,
     {
@@ -55,7 +70,7 @@ export interface BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ) => Promise<RelatedCredential | undefined>;
+  ) => Promise<Result<RelatedCredential, OAuthError> | undefined>;
 
   getUpdatedExtraConfig?: (
     auth: Authenticator,

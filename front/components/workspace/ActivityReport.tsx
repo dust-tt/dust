@@ -4,7 +4,6 @@ import {
   ContextItem,
   GoogleSpreadsheetLogo,
   Icon,
-  Page,
   Pagination,
 } from "@dust-tt/sparkle";
 import { DownloadIcon } from "lucide-react";
@@ -57,12 +56,14 @@ export function ActivityReport({
   return (
     <>
       {!!monthOptions.length && (
-        <div className="flex-grow">
+        <div className="flex-grow rounded-lg border border-border bg-card p-4 dark:border-border-night">
           <div className="flex flex-col gap-3">
-            <Page.H variant="h6">Detailed activity report</Page.H>
-            <Page.P variant="secondary">
+            <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
+              Detailed activity report
+            </h3>
+            <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
               Download workspace activity details.
-            </Page.P>
+            </p>
             <div className="flex flex-row items-center gap-2">
               <Checkbox
                 aria-label="Include inactive users and assistants"

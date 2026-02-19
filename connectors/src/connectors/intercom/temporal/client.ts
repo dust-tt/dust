@@ -1,11 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WorkflowHandle } from "@temporalio/client";
-import {
-  ScheduleOverlapPolicy,
-  WorkflowNotFoundError,
-} from "@temporalio/client";
-
 import { QUEUE_NAME } from "@connectors/connectors/intercom/temporal/config";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 import { intercomUpdatesSignal } from "@connectors/connectors/intercom/temporal/signals";
@@ -30,6 +22,13 @@ import {
   makeIntercomHelpCenterScheduleId,
   normalizeError,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 export async function launchIntercomFullSyncWorkflow({
   connectorId,
@@ -38,6 +37,7 @@ export async function launchIntercomFullSyncWorkflow({
   teamIds = [],
   hasUpdatedSelectAllConversations = false,
   forceResync = false,
+  cursor = null,
 }: {
   connectorId: ModelId;
   fromTs?: number | null;
@@ -45,6 +45,7 @@ export async function launchIntercomFullSyncWorkflow({
   teamIds?: string[];
   hasUpdatedSelectAllConversations?: boolean;
   forceResync?: boolean;
+  cursor?: string | null;
 }): Promise<Result<string, Error>> {
   if (fromTs) {
     throw new Error("[Intercom] Workflow does not support fromTs.");
@@ -78,6 +79,7 @@ export async function launchIntercomFullSyncWorkflow({
             type: "all_conversations",
             intercomId: "all_conversations",
             forceResync: false,
+            cursor,
           },
         ]
       : [];

@@ -7,6 +7,18 @@ const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 
+const REMOVE_INDEX_WARNING =
+  "\n\nBefore deleting an index, make sure it is actually not used by running:" +
+  "\n```sql" +
+  "\nSELECT s.relname AS table_name," +
+  "\n       indexrelname AS index_name," +
+  "\n       i.indisunique," +
+  "\n       idx_scan AS index_scans" +
+  "\nFROM   pg_catalog.pg_stat_user_indexes s," +
+  "\n       pg_index i" +
+  "\nWHERE  i.indexrelid = s.indexrelid;" +
+  "\n```";
+
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
 };
@@ -18,7 +30,8 @@ function failMigrationAck() {
       ` 1. Addition: migrate and deploy\n` +
       ` 2. Deletion: deploy and migrate\n\n` +
       `Please add the \`${migrationAckLabel}\` label to acknowledge ` +
-      `that a migration will be needed once merged into 'main'.`
+      `that a migration will be needed once merged into 'main'.` +
+      REMOVE_INDEX_WARNING
   );
 }
 
@@ -26,7 +39,8 @@ function warnMigrationAck(migrationAckLabel: string) {
   warn(
     "Files in `**/lib/models/` have been modified and the PR has the `" +
       migrationAckLabel +
-      "` label. Don't forget to run the migration from prodbox."
+      "` label. Don't forget to run the migration from prodbox." +
+      REMOVE_INDEX_WARNING
   );
 }
 

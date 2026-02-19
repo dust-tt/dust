@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference, uses removed getWorkspacePublicAPILimits
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
@@ -8,11 +9,12 @@ import {
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const BASE_TOKEN_MARKUP_PERCENT = 30;
 
@@ -34,8 +36,9 @@ async function backfillWorkspace(
   const workspaceLogger = logger.child({ workspaceId: workspace.sId });
 
   // Get active subscription and check if it's enterprise.
-  const subscription =
-    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
 
   if (!subscription || !subscription.stripeSubscriptionId) {
     workspaceLogger.info("Skipping: no active subscription found");
@@ -164,7 +167,7 @@ makeScript(
     );
 
     if (wId) {
-      const workspace = await WorkspaceModel.findOne({ where: { sId: wId } });
+      const workspace = await WorkspaceResource.fetchById(wId);
 
       if (!workspace) {
         throw new Error(`Workspace not found: ${wId}`);

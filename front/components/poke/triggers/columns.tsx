@@ -1,15 +1,12 @@
-import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wId]/triggers";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 type TriggerDisplayType = TriggerWithProviderType;
 
@@ -41,54 +38,21 @@ export function makeColumnsForTriggers(
           </LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Id</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       id: "agentName",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Agent Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Agent name" />
+      ),
       accessorFn: (row) => {
         const agent = agentConfigMap.get(row.agentConfigurationId);
         return agent?.name ?? row.agentConfigurationId;
@@ -96,24 +60,32 @@ export function makeColumnsForTriggers(
     },
     {
       accessorKey: "kind",
-      header: "Kind",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Kind" />
+      ),
+    },
+    {
+      accessorKey: "origin",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Origin" />
+      ),
+      cell: ({ row }) => {
+        const trigger = row.original;
+        return (
+          <Chip
+            color={trigger.origin === "agent" ? "info" : "primary"}
+            size="xs"
+          >
+            {trigger.origin}
+          </Chip>
+        );
+      },
     },
     {
       accessorKey: "provider",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Provider</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Provider" />
+      ),
       cell: ({ row }) => {
         const trigger = row.original;
         if (trigger.kind === "webhook") {
@@ -127,18 +99,33 @@ export function makeColumnsForTriggers(
     },
     {
       accessorKey: "configuration",
-      header: "Configuration",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Configuration" />
+      ),
       cell: ({ row }) => {
         const trigger = row.original;
         if (trigger.kind === "schedule") {
           return `${trigger.configuration.cron} (${trigger.configuration.timezone})`;
         }
-        return JSON.stringify(trigger.configuration);
+        // Webhook: show event + filter summary
+        const parts: string[] = [];
+        if (trigger.configuration.event) {
+          parts.push(trigger.configuration.event);
+        }
+        if (trigger.configuration.filter) {
+          parts.push("+ filter");
+        }
+        if (trigger.configuration.includePayload) {
+          parts.push("w/ payload");
+        }
+        return parts.length > 0 ? parts.join(" ") : "All events";
       },
     },
     {
       accessorKey: "enabled",
-      header: "Enabled",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Enabled" />
+      ),
       cell: ({ row }) => {
         return row.getValue("enabled") ? "Yes" : "No";
       },
@@ -151,20 +138,9 @@ export function makeColumnsForTriggers(
         }
         return row.editor?.toString() ?? "";
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Editor</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Editor" />
+      ),
       cell: ({ row }) => {
         const trigger = row.original;
         if (trigger.editorUser) {
@@ -175,20 +151,9 @@ export function makeColumnsForTriggers(
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Created At</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
       cell: ({ row }) => {
         const trigger = row.original;
         return formatTimestampToFriendlyDate(trigger.createdAt);

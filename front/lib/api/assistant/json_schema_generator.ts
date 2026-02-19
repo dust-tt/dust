@@ -1,16 +1,16 @@
-import type { JSONSchema7 } from "json-schema";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import { isJSONSchemaObject } from "@app/lib/utils/json_schemas";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
-  Result,
-} from "@app/types";
-import { Err, Ok, safeParseJSON } from "@app/types";
+} from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import type { JSONSchema7 } from "json-schema";
 
 const PROMPT = `Based on the instructions provided, generate a JSON schema that will be embedded in the following JSON schema:
 \`\`\`

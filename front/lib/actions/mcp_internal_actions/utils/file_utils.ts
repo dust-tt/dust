@@ -1,22 +1,18 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import {
-  isAgentMessageType,
-  isContentFragmentType,
-  isInteractiveContentFileContentType,
-  normalizeError,
-} from "@app/types";
+import { streamToBuffer } from "@app/lib/utils/streams";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 export function sanitizeFilename(filename: string): string {
   return filename
@@ -71,12 +67,8 @@ export async function getFileFromConversationAttachment(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        if (isInteractiveContentFileContentType(f.contentType)) {
-          continue;
-        }
-
         if (f.fileId === fileId) {
-          attachment = getAttachmentFromToolOutput({
+          attachment = getAttachmentFromFile({
             fileId: f.fileId,
             contentType: f.contentType,
             title: f.title,
@@ -123,24 +115,4 @@ export async function getFileFromConversationAttachment(
     contentType: attachment.contentType || "application/octet-stream",
     fileResource,
   });
-}
-
-export async function streamToBuffer(
-  readStream: NodeJS.ReadableStream
-): Promise<Result<Buffer, string>> {
-  try {
-    const chunks: Buffer[] = [];
-    for await (const chunk of readStream) {
-      if (Buffer.isBuffer(chunk)) {
-        chunks.push(chunk);
-      } else {
-        chunks.push(Buffer.from(chunk));
-      }
-    }
-    return new Ok(Buffer.concat(chunks));
-  } catch (error) {
-    return new Err(
-      `Failed to read file stream: ${normalizeError(error).message}`
-    );
-  }
 }

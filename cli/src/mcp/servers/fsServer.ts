@@ -2,6 +2,7 @@ import type { DustAPI, Result } from "@dust-tt/client";
 import { DustMcpServerTransport, Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { CLI_VERSION } from "../../utils/version.js";
 import { EditFileTool } from "../tools/editFile.js";
 import { ReadFileTool } from "../tools/readFile.js";
 import { RunCommandTool } from "../tools/runCommand.js";
@@ -30,7 +31,7 @@ export const useFileSystemServer = async (
 
   const server = new McpServer({
     name: "fs-cli",
-    version: process.env.npm_package_version || "0.1.0",
+    version: CLI_VERSION,
   });
 
   const readFileTool = new ReadFileTool();
@@ -43,42 +44,24 @@ export const useFileSystemServer = async (
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
   }
 
-  // File operations
-  server.tool(
-    readFileTool.name,
-    readFileTool.description,
-    readFileTool.inputSchema.shape,
-    readFileTool.execute.bind(readFileTool)
-  );
+  const tools = [
+    readFileTool,
+    searchFilesTool,
+    searchContentTool,
+    editFileTool,
+    runCommandTool,
+  ];
 
-  // Development utilities
-  server.tool(
-    searchFilesTool.name,
-    searchFilesTool.description,
-    searchFilesTool.inputSchema.shape,
-    searchFilesTool.execute.bind(searchFilesTool)
-  );
-
-  server.tool(
-    searchContentTool.name,
-    searchContentTool.description,
-    searchContentTool.inputSchema.shape,
-    searchContentTool.execute.bind(searchContentTool)
-  );
-
-  server.tool(
-    editFileTool.name,
-    editFileTool.description,
-    editFileTool.inputSchema.shape,
-    editFileTool.execute.bind(editFileTool)
-  );
-
-  server.tool(
-    runCommandTool.name,
-    runCommandTool.description,
-    runCommandTool.inputSchema.shape,
-    runCommandTool.execute.bind(runCommandTool)
-  );
+  for (const tool of tools) {
+    server.registerTool(
+      tool.name,
+      {
+        description: tool.description,
+        inputSchema: tool.inputSchema.shape,
+      },
+      tool.execute.bind(tool)
+    );
+  }
 
   // Connect to Dust with enhanced error handling
   const transport = new DustMcpServerTransport(

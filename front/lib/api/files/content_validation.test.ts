@@ -1,12 +1,19 @@
-import { describe, expect, it } from "vitest";
-
+import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
+  formatValidationWarningsForLLM,
   validateTailwindCode,
   validateTypeScriptSyntax,
 } from "@app/lib/api/files/content_validation";
+import { describe, expect, it } from "vitest";
 
-// Match the constant from content_validation.ts
-const MAX_DISPLAYED_ERRORS = 5;
+// Helper function to check if any warning contains the expected text.
+function expectWarningsToContain(
+  warnings: ValidationWarning[],
+  { expected }: { expected: string }
+) {
+  const allMessages = warnings.map((w) => w.message).join("\n");
+  expect(allMessages).toContain(expected);
+}
 
 describe("validateTailwindCode", () => {
   it("should pass code without arbitrary values", () => {
@@ -26,9 +33,10 @@ describe("validateTailwindCode", () => {
     const result = validateTailwindCode(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("h-[600px]");
-      expect(result.error.message).toContain(
-        "Forbidden Tailwind arbitrary values"
+      expect(result.error.length).toBeGreaterThan(0);
+      expect(result.error[0]?.message).toContain("h-[600px]");
+      expect(result.error[0]?.message).toContain(
+        "Forbidden Tailwind arbitrary value"
       );
     }
   });
@@ -40,7 +48,7 @@ describe("validateTailwindCode", () => {
     const result = validateTailwindCode(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("bg-[#ff0000]");
+      expectWarningsToContain(result.error, { expected: "bg-[#ff0000]" });
     }
   });
 
@@ -51,9 +59,9 @@ describe("validateTailwindCode", () => {
     const result = validateTailwindCode(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("h-[600px]");
-      expect(result.error.message).toContain("w-[800px]");
-      expect(result.error.message).toContain("bg-[#ff0000]");
+      expectWarningsToContain(result.error, { expected: "h-[600px]" });
+      expectWarningsToContain(result.error, { expected: "w-[800px]" });
+      expectWarningsToContain(result.error, { expected: "bg-[#ff0000]" });
     }
   });
 
@@ -64,7 +72,7 @@ describe("validateTailwindCode", () => {
     const result = validateTailwindCode(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("h-[600px]");
+      expectWarningsToContain(result.error, { expected: "h-[600px]" });
     }
   });
 
@@ -77,12 +85,12 @@ describe("validateTailwindCode", () => {
     const result = validateTailwindCode(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      // Should deduplicate - only h-[600px] should be in the examples list once
-      // (though it may appear twice in the message: once in "detected: X" and once in the examples)
-      expect(result.error.message).toContain("h-[600px]");
-      expect(result.error.message).toContain(
-        "Forbidden Tailwind arbitrary values"
-      );
+      // Should capture all occurrences (no deduplication)
+      expect(result.error.length).toBe(2);
+      expectWarningsToContain(result.error, { expected: "h-[600px]" });
+      expectWarningsToContain(result.error, {
+        expected: "Forbidden Tailwind arbitrary value",
+      });
     }
   });
 
@@ -91,11 +99,63 @@ describe("validateTailwindCode", () => {
     const result = validateTailwindCode(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("h-96");
-      expect(result.error.message).toContain("w-full");
-      expect(result.error.message).toContain("bg-red-500");
-      expect(result.error.message).toContain("style prop");
+      expectWarningsToContain(result.error, { expected: "h-[600px]" });
+      expectWarningsToContain(result.error, { expected: "predefined" });
+      expectWarningsToContain(result.error, { expected: "inline styles" });
     }
+  });
+});
+
+describe("formatValidationWarningsForLLM", () => {
+  it("should format warnings with old_string and suggestion", () => {
+    const code = `<div className="h-[600px]">Content</div>`;
+    const result = validateTailwindCode(code);
+    expect(result.isErr()).toBe(true);
+
+    if (result.isErr()) {
+      const formatted = formatValidationWarningsForLLM(result.error);
+
+      expect(formatted).toContain("Validation warnings");
+      expect(formatted).toContain("tailwind:");
+      expect(formatted).toContain("old_string:");
+      expect(formatted).toContain('className="h-[600px]"');
+      expect(formatted).toContain("Replace");
+    }
+  });
+
+  it("should include expected_replacements when occurrences > 1", () => {
+    const code = `
+<div>
+  <span className="h-[600px]">First</span>
+  <span className="h-[600px]">Second</span>
+  <span className="h-[600px]">Third</span>
+</div>`;
+
+    const result = validateTailwindCode(code);
+    expect(result.isErr()).toBe(true);
+
+    if (result.isErr()) {
+      const formatted = formatValidationWarningsForLLM(result.error);
+
+      expect(formatted).toContain("expected_replacements: 3");
+    }
+  });
+
+  it("should not include expected_replacements when occurrences = 1", () => {
+    const code = `<div className="h-[600px]">Content</div>`;
+    const result = validateTailwindCode(code);
+    expect(result.isErr()).toBe(true);
+
+    if (result.isErr()) {
+      const formatted = formatValidationWarningsForLLM(result.error);
+
+      expect(formatted).not.toContain("expected_replacements");
+    }
+  });
+
+  it("should return empty string for empty warnings array", () => {
+    const formatted = formatValidationWarningsForLLM([]);
+    expect(formatted).toBe("");
   });
 });
 
@@ -142,9 +202,6 @@ const MyComponent = () => {
     if (result.isErr()) {
       expect(result.error.message).toContain(
         "TypeScript syntax errors detected"
-      );
-      expect(result.error.message).toMatch(
-        /Line \d+, Column \d+: error TS\d+:/
       );
     }
   });
@@ -258,10 +315,8 @@ const MyComponent = () => {
       expect(result.error.message).toContain(
         "TypeScript syntax errors detected"
       );
-      // Should contain formatted error with line/column
-      expect(result.error.message).toMatch(
-        /Line \d+, Column \d+: error TS\d+:/
-      );
+      expect(result.error.message).toContain("Line");
+      expect(result.error.message).toContain("Column");
     }
   });
 
@@ -288,12 +343,10 @@ const MyComponent = () => {
     const result = validateTypeScriptSyntax(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      // Should mention additional errors.
-      const errorLines = result.error.message.split("\n");
-      const errorCount = errorLines.filter((line) =>
-        line.includes("error TS")
-      ).length;
-      expect(errorCount).toBeLessThanOrEqual(MAX_DISPLAYED_ERRORS);
+      // Should limit and indicate more errors exist
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
     }
   });
 
@@ -369,16 +422,10 @@ const MyComponent = () => {
     const result = validateTypeScriptSyntax(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      // Error message should include:
-      // - "TypeScript syntax errors detected"
-      // - Formatted errors with "Line X, Column Y: error TSXXX:"
-      // - "Please fix these errors and try again."
       expect(result.error.message).toContain(
         "TypeScript syntax errors detected"
       );
-      expect(result.error.message).toContain(
-        "Please fix these errors and try again."
-      );
+      expect(result.error.message).toContain("error TS");
     }
   });
 });

@@ -1,4 +1,4 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
 
@@ -40,21 +40,6 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
 }
 
-type PublicAPILimitsEnabled = {
-  enabled: true;
-  markup: number;
-  monthlyLimit: number; // in USD
-  billingDay: number; // Best-effort, represents the day of the month when the billing period starts.
-};
-
-type PublicAPILimitsDisabled = {
-  enabled: false;
-};
-
-export type PublicAPILimitsType =
-  | PublicAPILimitsEnabled
-  | PublicAPILimitsDisabled;
-
 export type LightWorkspaceType = {
   id: ModelId;
   sId: string;
@@ -64,7 +49,6 @@ export type LightWorkspaceType = {
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   metadata: {
-    publicApiLimits?: PublicAPILimitsType;
     [key: string]: string | number | boolean | object | undefined;
   } | null;
   workOSOrganizationId?: string | null;
@@ -118,6 +102,11 @@ export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
   organizations: WorkOSOrganizationType[];
   selectedWorkspace?: string;
+};
+
+export type SpaceUserType = UserType & {
+  isEditor?: boolean;
+  joinedAt?: string;
 };
 
 export type UserMetadataType = {

@@ -1,12 +1,9 @@
-import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
+import { LinkWrapper } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 export function makeColumnsForConversations(
   owner: LightWorkspaceType
@@ -14,20 +11,9 @@ export function makeColumnsForConversations(
   return [
     {
       accessorKey: "sId",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>sId</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
       cell: ({ row }) => {
         const conversation = row.original;
 
@@ -42,18 +28,24 @@ export function makeColumnsForConversations(
     },
     {
       accessorKey: "createdAt",
-      header: "Created At",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
       cell: ({ row }) => {
         return formatTimestampToFriendlyDate(row.original.created);
       },
     },
     {
       accessorKey: "title",
-      header: "Title",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Title" />
+      ),
     },
     {
       accessorKey: "visibility",
-      header: "Visibility",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Visibility" />
+      ),
     },
   ];
 }

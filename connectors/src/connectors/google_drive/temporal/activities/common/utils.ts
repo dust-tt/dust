@@ -1,6 +1,4 @@
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
-
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { internalDeleteFile } from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import type { LightGoogleDrive } from "@connectors/connectors/google_drive/temporal/activities/common/types";
@@ -16,6 +14,8 @@ import {
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 
 export async function deleteOneFile(
   connectorId: ModelId,

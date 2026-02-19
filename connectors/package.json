@@ -1,10 +1,15 @@
 {
   "name": "connectors",
   "version": "0.1.0",
+  "engines": {
+    "node": "22.22.0"
+  },
   "scripts": {
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint .",
+    "format": "npm run format:lefthook -- .",
+    "format:lefthook": "biome format --write",
+    "format:check": "biome format .",
+    "lint": "npm run lint:lefthook -- .",
+    "lint:lefthook": "biome lint",
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",
@@ -34,11 +39,11 @@
     "@notionhq/client": "^2.2.15",
     "@octokit/graphql": "^7.0.2",
     "@slack/web-api": "^7.10.0",
-    "@temporalio/activity": "^1.12.1",
-    "@temporalio/client": "^1.12.1",
-    "@temporalio/common": "^1.12.1",
-    "@temporalio/worker": "^1.12.1",
-    "@temporalio/workflow": "^1.12.1",
+    "@temporalio/activity": "1.12.1",
+    "@temporalio/client": "1.12.1",
+    "@temporalio/common": "1.12.1",
+    "@temporalio/worker": "1.12.1",
+    "@temporalio/workflow": "1.12.1",
     "@types/cls-hooked": "^4.3.9",
     "@types/express": "^4.17.17",
     "@types/fs-extra": "^11.0.1",
@@ -50,7 +55,7 @@
     "body-parser": "^1.20.2",
     "botbuilder": "^4.23.3",
     "cls-hooked": "^4.2.2",
-    "crawlee": "^3.13.3-beta.10",
+    "crawlee": "3.14.1",
     "csv-parse": "^6.1.0",
     "csv-stringify": "^6.5.0",
     "dd-trace": "^5.52.0",
@@ -85,6 +90,7 @@
     "sequelize": "^6.31.0",
     "slackify-markdown": "^4.4.0",
     "snowflake-sdk": "^2.0.2",
+    "stream-json": "^1.9.1",
     "talisman": "^1.1.4",
     "tar-stream": "^3.1.7",
     "turndown": "^7.1.2",
@@ -96,38 +102,20 @@
     "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
-    "@types/eslint": "^8.56.10",
     "@types/gunzip-maybe": "^1.4.2",
     "@types/lodash": "^4.17.7",
     "@types/morgan": "^1.9.9",
-    "@types/node": "^20.12.12",
+    "@types/node": "^22.19.11",
+    "@types/stream-json": "^1.7.8",
     "@types/tar-stream": "^3.1.4",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260105.1",
+    "@typescript/native-preview": "7.0.0-dev.20260105.1",
+    "danger": "^13.0.4",
     "esbuild": "^0.27.2",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-simple-import-sort": "^12.1.0",
-    "eslint-plugin-unused-imports": "^4.3.0",
-    "knip": "^5.80.0",
-    "lint-staged": "^16.1.6",
-    "prettier": "^3.7.4",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.48.0",
     "vitest": "^4.0.16"
-  },
-  "lint-staged": {
-    "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
-      "prettier --check"
-    ],
-    "**/*.{js,jsx,ts,tsx}": [
-      "eslint"
-    ]
   }
 }

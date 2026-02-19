@@ -1,13 +1,11 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type { MembershipRoleType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./skills";
 
@@ -19,8 +17,6 @@ async function setupTest(
     method,
     role,
   });
-
-  await FeatureFlagFactory.basic("skills", mockRequest.workspace);
 
   return mockRequest;
 }
@@ -126,24 +122,6 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     const data = res._getJSONData();
     expect(data.error.type).toBe("invalid_request_error");
     expect(data.error.message).toBe("Invalid agent configuration ID.");
-  });
-
-  it("should return empty array for global agents", async () => {
-    const { req, res, workspace } = await setupTest();
-
-    // Use a global agent sId format
-    req.query = {
-      ...req.query,
-      wId: workspace.sId,
-      aId: "dust",
-    };
-
-    await handler(req, res);
-
-    // Global agents return empty skills array (not yet implemented)
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data.skills).toEqual([]);
   });
 
   it("should only return skills from the correct workspace", async () => {

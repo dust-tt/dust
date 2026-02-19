@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { describe, expect, it } from "vitest";
 
 import { getSpaceIdToActionsMap } from "./getSpaceIdToActionsMap";
 
@@ -17,16 +16,14 @@ const createMockMCPAction = (
   name,
   description: `Description for ${name}`,
   configuration: {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    mcpServerViewId: mcpServerViewId || "",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    dataSourceConfigurations: dataSourceConfigurations || null,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    tablesConfigurations: tablesConfigurations || null,
+    mcpServerViewId: mcpServerViewId ?? "",
+    dataSourceConfigurations: dataSourceConfigurations ?? null,
+    tablesConfigurations: tablesConfigurations ?? null,
     childAgentId: null,
     timeFrame: null,
     additionalConfiguration: {},
     dustAppConfiguration: null,
+    dustProject: null,
     jsonSchema: null,
     _jsonSchemaString: null,
     secretName: null,

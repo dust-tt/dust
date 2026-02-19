@@ -1,12 +1,13 @@
-import React, { useMemo } from "react";
-
 import { useScrollSpy } from "@app/components/blog/useScrollSpy";
 import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import { classNames } from "@app/lib/utils";
+import type React from "react";
+import { useMemo } from "react";
 
 interface TableOfContentsProps {
   items: TocItem[];
   className?: string;
+  onItemClick?: () => void;
 }
 
 interface TocItemWithChildren extends TocItem {
@@ -101,9 +102,21 @@ function TocItemComponent({
   );
 }
 
-export function TableOfContents({ items, className }: TableOfContentsProps) {
+export function TableOfContents({
+  items,
+  className,
+  onItemClick,
+}: TableOfContentsProps) {
   const { activeId, handleClick } = useScrollSpy(items);
   const hierarchy = useMemo(() => buildHierarchy(items), [items]);
+
+  const handleItemClick = (
+    itemId: string,
+    e: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    handleClick(itemId, e);
+    onItemClick?.();
+  };
 
   if (items.length === 0) {
     return null;
@@ -112,7 +125,7 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
   return (
     <div
       className={classNames(
-        "sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto",
+        "sticky top-5 max-h-[calc(100vh-8rem)] overflow-y-auto",
         className ?? null
       )}
     >
@@ -125,7 +138,7 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
             key={item.id}
             item={item}
             activeId={activeId}
-            onItemClick={handleClick}
+            onItemClick={handleItemClick}
           />
         ))}
       </nav>

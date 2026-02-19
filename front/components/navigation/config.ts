@@ -1,3 +1,8 @@
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { AppType } from "@app/types/app";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BarChartIcon,
   BracesIcon,
@@ -14,9 +19,30 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+/**
+ * Check if an actual route path matches any of the given route patterns.
+ * Supports both Next.js patterns like "/w/[wId]/members" and actual paths like "/w/abc123/members".
+ * @param currentRoute - The actual route path (e.g., "/w/abc123/members")
+ * @param patterns - Array of route patterns to match against
+ */
+function matchesRoutePattern(
+  currentRoute: string,
+  patterns: string[]
+): boolean {
+  // First try exact match (works for Next.js where pathname is the pattern)
+  if (patterns.includes(currentRoute)) {
+    return true;
+  }
+
+  // Convert patterns to regexes and try matching (works for SPA where pathname is actual path)
+  return patterns.some((pattern) => {
+    // Escape special regex chars except [ and ]
+    const escaped = pattern.replace(/[.*+?^${}()|\\]/g, "\\$&");
+    // Convert [paramName] to [^/]+ to match any segment
+    const regexStr = "^" + escaped.replace(/\[[^\]]+\]/g, "[^/]+") + "$";
+    return new RegExp(regexStr).test(currentRoute);
+  });
+}
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -52,8 +78,18 @@ export type SubNavigationAdminId =
   | "api_keys"
   | "dev_secrets"
   | "analytics"
-  | "actions"
   | "credits_usage";
+
+export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
+  members: ["/w/[wId]/members"],
+  workspace: ["/w/[wId]/workspace"],
+  analytics: ["/w/[wId]/analytics"],
+  subscription: ["/w/[wId]/subscription"],
+  api_keys: ["/w/[wId]/developers/api-keys"],
+  credits_usage: ["/w/[wId]/developers/credits-usage"],
+  providers: ["/w/[wId]/developers/providers"],
+  dev_secrets: ["/w/[wId]/developers/dev-secrets"],
+};
 
 export type SubNavigationAppId =
   | "specification"
@@ -77,8 +113,6 @@ export type AppLayoutNavigation = {
   sizing?: "hug" | "expand";
   hasSeparator?: boolean;
   current: boolean;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
   featureFlag?: WhitelistableFeature;
 };
 
@@ -97,8 +131,6 @@ export type TabAppLayoutNavigation = {
   hasSeparator?: boolean;
   current?: never;
   isCurrent: (currentRoute: string) => boolean;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
   ref?: React.RefObject<HTMLDivElement>;
 };
 
@@ -128,11 +160,11 @@ export const getTopNavigationTabs = (
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
     isCurrent: (currentRoute) =>
-      [
+      matchesRoutePattern(currentRoute, [
         "/w/[wId]/conversation/new",
         "/w/[wId]/conversation/[cId]",
         "/w/[wId]/conversation/space/[spaceId]",
-      ].includes(currentRoute),
+      ]),
   });
 
   nav.push({
@@ -141,7 +173,8 @@ export const getTopNavigationTabs = (
     icon: PlanetIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
-      currentRoute.startsWith("/w/[wId]/spaces/"),
+      currentRoute.startsWith("/w/[wId]/spaces") ||
+      /^\/w\/[^/]+\/spaces/.test(currentRoute),
     sizing: "hug",
     ref: spaceMenuButtonRef,
   });
@@ -153,7 +186,7 @@ export const getTopNavigationTabs = (
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
-        [
+        matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
@@ -163,7 +196,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
-        ].includes(currentRoute),
+        ]),
       sizing: "hug",
     });
   }
@@ -173,22 +206,21 @@ export const getTopNavigationTabs = (
 
 export const subNavigationAdmin = ({
   owner,
-  current,
-  subMenuLabel,
-  subMenu,
+  currentRoute,
   featureFlags: _featureFlags,
 }: {
   owner: WorkspaceType;
-  current: SubNavigationAdminId;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
+  currentRoute: string;
   featureFlags: WhitelistableFeature[];
-}) => {
+}): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
   if (!isBuilder(owner)) {
     return nav;
   }
+
+  const isCurrent = (id: SubNavigationAdminId): boolean =>
+    matchesRoutePattern(currentRoute, ADMIN_ROUTE_PATTERNS[id]);
 
   if (isAdmin(owner)) {
     nav.push({
@@ -201,36 +233,28 @@ export const subNavigationAdmin = ({
           label: "People & Security",
           icon: UserIcon,
           href: `/w/${owner.sId}/members`,
-          current: current === "members",
-          subMenuLabel: current === "members" ? subMenuLabel : undefined,
-          subMenu: current === "members" ? subMenu : undefined,
+          current: isCurrent("members"),
         },
         {
           id: "workspace",
           label: "Workspace Settings",
           icon: GlobeAltIcon,
           href: `/w/${owner.sId}/workspace`,
-          current: current === "workspace",
-          subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
-          subMenu: current === "workspace" ? subMenu : undefined,
+          current: isCurrent("workspace"),
         },
         {
           id: "analytics",
           label: "Analytics",
           icon: BarChartIcon,
           href: `/w/${owner.sId}/analytics`,
-          current: current === "analytics",
-          subMenuLabel: current === "analytics" ? subMenuLabel : undefined,
-          subMenu: current === "analytics" ? subMenu : undefined,
+          current: isCurrent("analytics"),
         },
         {
           id: "subscription",
           label: "Subscription",
           icon: ShapesIcon,
           href: `/w/${owner.sId}/subscription`,
-          current: current === "subscription",
-          subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
-          subMenu: current === "subscription" ? subMenu : undefined,
+          current: isCurrent("subscription"),
         },
       ],
     });
@@ -245,18 +269,14 @@ export const subNavigationAdmin = ({
           label: "API Keys",
           icon: LockIcon,
           href: `/w/${owner.sId}/developers/api-keys`,
-          current: current === "api_keys",
-          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-          subMenu: current === "api_keys" ? subMenu : undefined,
+          current: isCurrent("api_keys"),
         },
         {
           id: "credits_usage",
           label: "Programmatic usage",
           icon: CardIcon,
           href: `/w/${owner.sId}/developers/credits-usage`,
-          current: current === "credits_usage",
-          subMenuLabel: current === "credits_usage" ? subMenuLabel : undefined,
-          subMenu: current === "credits_usage" ? subMenu : undefined,
+          current: isCurrent("credits_usage"),
         },
       ],
     });
@@ -271,18 +291,14 @@ export const subNavigationAdmin = ({
           label: "Providers",
           icon: ShapesIcon,
           href: `/w/${owner.sId}/developers/providers`,
-          current: current === "providers",
-          subMenuLabel: current === "providers" ? subMenuLabel : undefined,
-          subMenu: current === "providers" ? subMenu : undefined,
+          current: isCurrent("providers"),
         },
         {
           id: "dev_secrets",
           label: "Secrets",
           icon: BracesIcon,
           href: `/w/${owner.sId}/developers/dev-secrets`,
-          current: current === "dev_secrets",
-          subMenuLabel: current === "dev_secrets" ? subMenuLabel : undefined,
-          subMenu: current === "dev_secrets" ? subMenu : undefined,
+          current: isCurrent("dev_secrets"),
         },
       ],
     });

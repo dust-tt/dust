@@ -1,26 +1,27 @@
 // Public API types are okay to use here because it's front/connectors communication.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isConnectorsAPIError } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { deleteNovuSlackChannelSetup } from "@app/lib/notifications";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import {
   ConnectorsAPI,
-  isAPIError,
-  sendUserOperationMessage,
   UpdateConnectorRequestBodySchema,
-} from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isAPIError } from "@app/types/error";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isConnectorsAPIError } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
@@ -156,6 +157,13 @@ async function handler(
             },
           });
         }
+      }
+
+      // We need to delete the novu channel connection because the slack
+      // token may have changed. The connection will be re-created with
+      // the new token when the user receives a notification.
+      if (dataSource.connectorProvider === "slack_bot") {
+        await deleteNovuSlackChannelSetup(user.sId);
       }
 
       await dataSource.setEditedBy(auth);

@@ -1,21 +1,20 @@
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   BigQueryCredentialsWithLocationSchema,
   NotionCredentialsSchema,
-  OAuthAPI,
   SalesforceCredentialsSchema,
   SnowflakeCredentialsSchema,
-} from "@app/types";
+} from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const PostSnowflakeCredentialsBodySchema = t.type({
   provider: t.literal("snowflake"),

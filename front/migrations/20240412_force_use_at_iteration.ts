@@ -1,4 +1,4 @@
-// import { assertNever, removeNulls } from "@app/types";
+// import { removeNulls } from "@app/types";
 // import * as _ from "lodash";
 
 // import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
@@ -10,6 +10,7 @@
 // } from "@app/lib/models/assistant/agent";
 // import logger from "@app/logger/logger";
 // import { makeScript } from "@app/scripts/helpers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // // Fetch all agents, with all generation configs and all actions.
 // // Goal is to backfill forceUseAtIteration for all generations and actions.

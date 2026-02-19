@@ -1,12 +1,5 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import uniq from "lodash/uniq";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -14,12 +7,17 @@ import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import uniq from "lodash/uniq";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetSkillResponseBody = {
   skill: SkillType;
@@ -75,17 +73,6 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("skills")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Skill builder is not enabled for this workspace.",
-      },
-    });
-  }
 
   const { sId } = req.query;
   if (!isString(sId)) {
@@ -221,12 +208,6 @@ async function handler(
         });
       }
 
-      const requestedSpaceIds =
-        await MCPServerViewResource.listSpaceRequirementsByIds(
-          auth,
-          mcpServerViewIds
-        );
-
       // Validate all data source views from attached knowledge exist and user has access.
       const { attachedKnowledge } = body;
       const dataSourceViewIds = uniq(
@@ -256,6 +237,14 @@ async function handler(
           dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
           nodeId: attachment.nodeId,
         })
+      );
+
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        auth,
+        {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        }
       );
 
       // When saving a suggested skill, automatically activate it.

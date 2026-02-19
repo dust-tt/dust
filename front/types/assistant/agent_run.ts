@@ -5,14 +5,9 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { ConversationError, Err, isGlobalAgentId, Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -24,6 +19,42 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+
+import type { Result } from "../shared/result";
+import { Err, Ok } from "../shared/result";
+import { isGlobalAgentId } from "./assistant";
+import { ConversationError } from "./conversation";
+
+/**
+ * Error types for getAgentLoopData that indicate soft-deleted resources.
+ * These are safe to ignore in callers since the resource was intentionally deleted.
+ */
+export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
+  "conversation_deleted",
+  "agent_message_deleted",
+  "user_message_deleted",
+] as const;
+
+export type AgentLoopDataSoftDeleteErrorType =
+  (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
+
+export class AgentLoopDataError extends Error {
+  readonly type: AgentLoopDataSoftDeleteErrorType;
+
+  constructor(type: AgentLoopDataSoftDeleteErrorType) {
+    super(`Agent loop data unavailable: ${type}`);
+    this.type = type;
+  }
+}
+
+export function isAgentLoopDataSoftDeleteError(
+  error: Error
+): error is AgentLoopDataError {
+  return (
+    error instanceof AgentLoopDataError &&
+    AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES.includes(error.type)
+  );
+}
 
 export type ConversationCaching =
   | { useCachedGetConversation: false }
@@ -79,7 +110,6 @@ export type AgentMessageRef = {
 export type AgentLoopExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessageModel;
   conversation: ConversationType;
   userMessage: UserMessageType;
 };
@@ -91,7 +121,12 @@ export type AgentLoopArgsWithTiming = AgentLoopArgs & {
 export async function getAgentLoopData(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
-): Promise<Result<AgentLoopExecutionData & { auth: Authenticator }, Error>> {
+): Promise<
+  Result<
+    AgentLoopExecutionData & { auth: Authenticator },
+    AgentLoopDataError | Error
+  >
+> {
   let authResult = await Authenticator.fromJSON(authType);
 
   // If subscription changed while the message was running, get a fresh auth with the current
@@ -139,6 +174,20 @@ export async function getAgentLoopData(
         caching.unicitySuffix
       );
     } catch (error) {
+      if (
+        error instanceof ConversationError &&
+        error.type === "conversation_not_found"
+      ) {
+        // Check if the conversation was soft-deleted.
+        const conv = await ConversationResource.fetchById(
+          auth,
+          conversationId,
+          { includeDeleted: true }
+        );
+        if (conv?.visibility === "deleted") {
+          return new Err(new AgentLoopDataError("conversation_deleted"));
+        }
+      }
       if (error instanceof ConversationError) {
         return new Err(error);
       }
@@ -147,6 +196,17 @@ export async function getAgentLoopData(
   } else {
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
+      if (conversationRes.error.type === "conversation_not_found") {
+        // Check if the conversation was soft-deleted.
+        const conv = await ConversationResource.fetchById(
+          auth,
+          conversationId,
+          { includeDeleted: true }
+        );
+        if (conv?.visibility === "deleted") {
+          return new Err(new AgentLoopDataError("conversation_deleted"));
+        }
+      }
       return conversationRes;
     }
     conversation = conversationRes.value;
@@ -173,6 +233,11 @@ export async function getAgentLoopData(
     return new Err(new Error("Agent message not found"));
   }
 
+  // Check if the agent message was soft-deleted.
+  if (agentMessage.visibility === "deleted") {
+    return new Err(new AgentLoopDataError("agent_message_deleted"));
+  }
+
   // Find the user message group by searching in reverse order.
   const userMessageGroup = conversation.content.findLast((messageGroup) =>
     messageGroup.some((m) => m.sId === userMessageId)
@@ -190,27 +255,9 @@ export async function getAgentLoopData(
     return new Err(new Error("Unexpected: User message not found"));
   }
 
-  // Get the AgentMessage database row by querying through Message model.
-  const agentMessageRow = await MessageModel.findOne({
-    where: {
-      // Leveraging the index on workspaceId, conversationId, sId.
-      conversationId: conversation.id,
-      sId: agentMessageId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-      // No proper index on version.
-      version: agentMessageVersion,
-    },
-    include: [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!agentMessageRow?.agentMessage) {
-    return new Err(new Error("Agent message database row not found"));
+  // Check if the user message was soft-deleted.
+  if (userMessage.visibility === "deleted") {
+    return new Err(new AgentLoopDataError("user_message_deleted"));
   }
 
   // Fetch the agent configuration as we need the full version of the agent configuration.
@@ -229,7 +276,6 @@ export async function getAgentLoopData(
   return new Ok({
     agentConfiguration,
     agentMessage,
-    agentMessageRow: agentMessageRow.agentMessage,
     auth,
     conversation,
     userMessage,

@@ -1,21 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  cn,
-  FolderIcon,
-  GlobeAltIcon,
-  InformationCircleIcon,
-  ListCheckIcon,
-  SearchInputWithPopover,
-  Tree,
-} from "@dust-tt/sparkle";
-import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
-import _ from "lodash";
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   ContentNodeTreeItemStatus,
@@ -50,23 +33,39 @@ import {
   useInfiniteDataSourceViewContentNodes,
 } from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
+import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type {
-  ContentNode,
-  ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  LightWorkspaceType,
-  SearchWarningCode,
-  SpaceType,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import { defaultSelectionConfiguration } from "@app/types/data_source_view";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
-  assertNever,
-  defaultSelectionConfiguration,
-  MIN_SEARCH_QUERY_SIZE,
-  removeNulls,
-} from "@app/types";
+  Button,
+  CloudArrowLeftRightIcon,
+  cn,
+  FolderIcon,
+  GlobeAltIcon,
+  InformationCircleIcon,
+  ListCheckIcon,
+  SearchInputWithPopover,
+  Tree,
+} from "@dust-tt/sparkle";
+import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;
@@ -408,13 +407,17 @@ export function DataSourceViewsSelector({
       }));
     });
 
+    if (useCase === "transcriptsProcessing") {
+      return processedResults.filter((node) => !node.dataSource.connectorId);
+    }
+
     // Filter results based on URL match if we have a URL candidate
     return nodeOrUrlCandidate && !isNodeCandidate(nodeOrUrlCandidate)
       ? processedResults.filter(
           (node) => node.sourceUrl === nodeOrUrlCandidate.url
         )
       : processedResults;
-  }, [rawSearchResultNodes, filteredDSVs, nodeOrUrlCandidate]);
+  }, [rawSearchResultNodes, filteredDSVs, nodeOrUrlCandidate, useCase]);
 
   useEffect(() => {
     if (searchResult) {

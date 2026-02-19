@@ -1,18 +1,18 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
-// import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import { JustUseDustSection as ProductJustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { QuoteSection } from "@app/components/home/ContentBlocks";
 import {
   CloudConnectorsSection,
   SecurityComplianceSection,
 } from "@app/components/home/ContentComponents";
+
+// import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+import { IntroSection } from "@app/components/home/content/Product/IntroSection";
+import { JustUseDustSection as ProductJustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import UTMPageWrapper from "@app/components/UTMPageWrapper";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {
@@ -27,7 +27,7 @@ export function Landing() {
   const router = useRouter();
 
   return (
-    <UTMPageWrapper>
+    <>
       <PageMetadata
         title="Dust - Build Custom AI Agents for Your Organization"
         description="Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI agents. Deploy in minutes, no coding required."
@@ -46,10 +46,11 @@ export function Landing() {
         {/* <BlogSection /> */}
         <ProductJustUseDustSection />
       </div>
-    </UTMPageWrapper>
+    </>
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Home() {
   return <Landing />;
 }

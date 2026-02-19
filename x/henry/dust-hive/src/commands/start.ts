@@ -3,6 +3,7 @@ import { logger } from "../lib/logger";
 import { isServiceRunning } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { Ok } from "../lib/result";
+import { COLD_STATE_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
 export const startCommand = withEnvironment("start", async (env) => {
@@ -19,20 +20,28 @@ export const startCommand = withEnvironment("start", async (env) => {
   logger.info(`Starting environment '${env.name}'...`);
   console.log();
 
-  // Start SDK watch using registry
-  if (!(await isServiceRunning(env.name, "sdk"))) {
-    await startService(env, "sdk");
-    await waitForServiceReady(env, "sdk");
-  } else {
-    logger.info("SDK watch already running");
+  // Start build watchers (sparkle and SDK) using registry
+  const servicesToStart: (typeof COLD_STATE_SERVICES)[number][] = [];
+  for (const service of COLD_STATE_SERVICES) {
+    const running = await isServiceRunning(env.name, service);
+    if (!running) {
+      servicesToStart.push(service);
+    } else {
+      logger.info(`${service} watch already running`);
+    }
+  }
+
+  if (servicesToStart.length > 0) {
+    await Promise.all(servicesToStart.map((s) => startService(env, s)));
+    await Promise.all(servicesToStart.map((s) => waitForServiceReady(env, s)));
   }
 
   console.log();
-  logger.success(`Environment '${env.name}' is now cold (SDK running)`);
+  logger.success(`Environment '${env.name}' is now cold (sparkle and SDK running)`);
   console.log();
   console.log("Next steps:");
   console.log(`  dust-hive warm ${env.name}    # Start all services`);
-  console.log(`  dust-hive open ${env.name}    # Open zellij session`);
+  console.log(`  dust-hive open ${env.name}    # Open terminal session`);
   console.log();
 
   return Ok(undefined);

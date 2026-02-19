@@ -1,4 +1,5 @@
 import * as t from "io-ts";
+import { z } from "zod";
 
 export const ContentSchema = t.type({
   dataSourceId: t.string,
@@ -35,4 +36,12 @@ export const GetPostNotionSyncResponseBodySchema = t.type({
 
 export type GetPostNotionSyncResponseBody = t.TypeOf<
   typeof GetPostNotionSyncResponseBodySchema
+>;
+
+export const PatchProjectMetadataBodySchema = z.object({
+  description: z.string().optional(),
+});
+
+export type PatchProjectMetadataBodyType = z.infer<
+  typeof PatchProjectMetadataBodySchema
 >;

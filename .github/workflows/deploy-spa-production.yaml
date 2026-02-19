@@ -1,0 +1,93 @@
+name: Deploy SPA to production
+
+on:
+  repository_dispatch:
+    types: [deploy-spa-production]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "SPA to deploy to production (app, poke, or all)"
+        type: choice
+        options:
+          - app
+          - poke
+          - all
+        required: true
+      run_id:
+        description: "Run ID of the deploy workflow that uploaded the SPA artifacts"
+        type: string
+        required: true
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJson(
+          (github.event.client_payload.app || inputs.app) == 'all'
+            && '["app","poke"]'
+            || format('["{0}"]', github.event.client_payload.app || inputs.app)
+          ) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spa-dist-${{ matrix.app }}
+          path: front-spa/dist/${{ matrix.app }}
+          run-id: ${{ github.event.client_payload.run_id || inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy to production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: pages deploy dist/${{ matrix.app }} --project-name=${{ matrix.app }}-dust-tt
+
+      - name: Create deploy tag
+        if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const tag = `refs/tags/spa/${{ matrix.app }}/${{ github.event.client_payload.image_tag }}`;
+            try {
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: tag,
+                sha: '${{ github.event.client_payload.sha }}',
+              });
+            } catch (e) {
+              // Tag already exists (redeployment of same commit) — ignore.
+              if (e.status !== 422) throw e;
+            }
+
+      - name: Notify Deploy Success
+        if: ${{ github.event.client_payload.slack_thread_ts }}
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "spa_production_success"
+          channel: ${{ github.event.client_payload.slack_channel }}
+          thread_ts: ${{ github.event.client_payload.slack_thread_ts }}
+          component: spa-${{ matrix.app }}
+          image_tag: ${{ github.event.client_payload.image_tag }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          preview_url: https://${{ matrix.app }}.dust.tt
+
+      - name: Notify Deploy Failure
+        if: ${{ failure() && github.event.client_payload.slack_thread_ts }}
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ github.event.client_payload.slack_channel }}
+          thread_ts: ${{ github.event.client_payload.slack_thread_ts }}
+          component: spa-${{ matrix.app }}
+          image_tag: ${{ github.event.client_payload.image_tag || 'unknown' }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}

@@ -1,10 +1,9 @@
-import type { WhereOptions } from "sequelize";
-
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WhereOptions } from "sequelize";
 
 /**
  * Activity to publish events that were deferred during tool execution.
@@ -92,6 +91,19 @@ export async function publishDeferredEventsActivity(
             isLastBlockingEventForStep: isLastEvent,
           };
         }
+        break;
+
+      case "tool_file_auth_required":
+        // Publish the file auth required event.
+        // Similar to tool_personal_auth_required but for file-specific authorization.
+        eventToPublish = {
+          ...event,
+          metadata: {
+            ...event.metadata,
+            // Override the message id to root the event to the right channel.
+            pubsubMessageId: deferredEvent.context.agentMessageId,
+          },
+        };
         break;
 
       case "tool_approve_execution":

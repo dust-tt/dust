@@ -4,9 +4,12 @@ import inspector from "node:inspector/promises";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { Authenticator } from "@app/lib/auth";
+import {
+  getModelConfigByModelId,
+  getSupportedModelConfigs,
+} from "@app/lib/llms/model_configurations";
 import { saveProfile } from "@app/pages/api/debug/profiler";
 import { makeScript } from "@app/scripts/helpers";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 makeScript(
   {
@@ -26,7 +29,7 @@ makeScript(
       type: "string",
       alias: "m",
       description: "Model to use for rendering",
-      options: SUPPORTED_MODEL_CONFIGS.map((m) => m.modelId),
+      options: getSupportedModelConfigs().map((m) => m.modelId),
       required: true,
     },
   },
@@ -60,7 +63,7 @@ makeScript(
 
     console.timeEnd("Fetching conversation");
 
-    const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
+    const model = getModelConfigByModelId(modelId);
     assert(model, `Model not found for ${modelId}`);
 
     console.time("Rendering conversation");

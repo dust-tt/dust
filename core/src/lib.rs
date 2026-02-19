@@ -167,6 +167,8 @@ pub mod oauth {
         pub mod salesforce;
         pub mod slack;
         pub mod slack_tools;
+        pub mod snowflake;
+        pub mod ukg_ready;
         pub mod utils;
         pub mod vanta;
         pub mod zendesk;

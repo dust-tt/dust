@@ -1,3 +1,10 @@
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
+import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
+import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
+import { hasRelations } from "@app/lib/skill";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   InformationCircleIcon,
@@ -7,15 +14,8 @@ import {
   TabsTrigger,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
-
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
-import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
-import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { hasRelations } from "@app/lib/skill";
-import type { UserType, WorkspaceType } from "@app/types";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 type SkillTabType = "info" | "editors";
 

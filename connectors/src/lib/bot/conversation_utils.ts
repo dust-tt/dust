@@ -1,7 +1,7 @@
 import { apiConfig } from "@connectors/lib/api/config";
 
 export function makeDustAppUrl(path: string) {
-  return `${apiConfig.getDustClientFacingUrl()}${path}`;
+  return `${apiConfig.getDustAppUrl()}${path}`;
 }
 
 export function makeConversationUrl(

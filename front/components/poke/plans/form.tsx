@@ -1,3 +1,10 @@
+import { classNames } from "@app/lib/utils";
+import type { PlanType } from "@app/types/plan";
+import {
+  isMaxMessagesTimeframeType,
+  MAX_MESSAGE_TIMEFRAMES,
+} from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   Checkbox,
   ConfluenceLogo,
@@ -11,14 +18,6 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
-
-import { classNames } from "@app/lib/utils";
-import type { PlanType } from "@app/types";
-import {
-  assertNever,
-  isMaxMessagesTimeframeType,
-  MAX_MESSAGE_TIMEFRAMES,
-} from "@app/types";
 
 export type EditingPlanType = {
   code: string;

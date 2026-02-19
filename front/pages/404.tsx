@@ -1,11 +1,12 @@
+import { LinkWrapper } from "@app/lib/platform";
 import {
   Button,
   ExclamationCircleIcon,
   Icon,
   LoginIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Custom404() {
   return (
     <div className="flex h-dvh items-center justify-center">
@@ -25,9 +26,9 @@ export default function Custom404() {
             Looks like this page took an unscheduled coffee break.
           </p>
         </div>
-        <Link href="/">
+        <LinkWrapper href="/">
           <Button variant="outline" label="Back to homepage" icon={LoginIcon} />
-        </Link>
+        </LinkWrapper>
       </div>
     </div>
   );

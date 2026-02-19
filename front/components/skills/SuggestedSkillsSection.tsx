@@ -1,3 +1,10 @@
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { useAppRouter } from "@app/lib/platform";
+import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   Card,
@@ -6,15 +13,7 @@ import {
   SparklesIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
-
-import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType, UserType } from "@app/types";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 type SuggestedSkillCardProps = {
   skill: SkillWithRelationsType;
@@ -29,8 +28,9 @@ function SuggestedSkillCard({
   owner,
   user,
 }: SuggestedSkillCardProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [isAddingSkill, setIsAddingSkill] = useState(false);
   const SkillAvatar = getSkillAvatarIcon(skill.icon);
   const updateSkillEditors = useUpdateSkillEditors({
     owner,
@@ -38,8 +38,16 @@ function SuggestedSkillCard({
   });
 
   const handleAddSkillClick = async () => {
-    await updateSkillEditors({ addEditorIds: [user.sId], removeEditorIds: [] });
-    void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
+    setIsAddingSkill(true);
+    try {
+      await updateSkillEditors({
+        addEditorIds: [user.sId],
+        removeEditorIds: [],
+      });
+      void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
+    } finally {
+      setIsAddingSkill(false);
+    }
   };
 
   return (
@@ -55,7 +63,7 @@ function SuggestedSkillCard({
         onClick={onMoreInfoClick}
         action={
           <CardActionButton
-            size="mini"
+            size="icon"
             icon={XMarkIcon}
             onClick={(e) => {
               e.stopPropagation();
@@ -67,7 +75,6 @@ function SuggestedSkillCard({
         <div className="flex h-full w-full flex-col justify-between gap-3">
           <div className="flex flex-col">
             <div className="mb-2 flex items-center gap-2">
-              {/* eslint-disable-next-line react-hooks/static-components */}
               <SkillAvatar size="sm" />
               <span className="truncate text-sm font-medium">{skill.name}</span>
             </div>
@@ -80,7 +87,8 @@ function SuggestedSkillCard({
               size="xs"
               variant="outline"
               icon={PlusIcon}
-              label="Add skill" // TODO(skills): decide if this is the right label
+              label="Add skill"
+              isLoading={isAddingSkill}
               onClick={(e) => {
                 e.stopPropagation();
                 void handleAddSkillClick();

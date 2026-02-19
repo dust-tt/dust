@@ -1,11 +1,10 @@
-import { QueryTypes, Sequelize } from "sequelize";
-
 import config from "@app/lib/production_checks/config";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import { QueryTypes, Sequelize } from "sequelize";
 
 interface ConnectorBlob {
   id: number;
@@ -36,10 +35,10 @@ makeScript(
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-    const keyToRotate = await KeyResource.fetchByWorkspaceAndId(
-      lightWorkspace,
-      keyId
-    );
+    const keyToRotate = await KeyResource.fetchByWorkspaceAndId({
+      workspace: lightWorkspace,
+      id: keyId,
+    });
 
     if (!keyToRotate) {
       logger.error("Key not found.");
@@ -55,6 +54,7 @@ makeScript(
       }
     );
 
+    // biome-ignore lint/plugin/noRawSql: script uses raw SQL for cross-db query
     const connectorsToUpdate: ConnectorBlob[] = await connectorsDb.query(
       `SELECT * FROM connectors WHERE "workspaceId" = :workspaceId AND "workspaceAPIKey" = :workspaceAPIKey`,
       {
@@ -101,6 +101,7 @@ makeScript(
           }
 
           if (connectorsToUpdate.length > 0) {
+            // biome-ignore lint/plugin/noRawSql: script uses raw SQL for cross-db query
             await connectorsDb.query(
               `UPDATE connectors SET "workspaceAPIKey" = :workspaceAPIKey WHERE "id" IN (:ids)`,
               {

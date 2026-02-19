@@ -1,6 +1,5 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@app/poke/temporal/activities";
+import { proxyActivities } from "@temporalio/workflow";
 
 // Create a single proxy with all normal and long activities
 const normalActivityProxies = proxyActivities<typeof activities>({
@@ -78,8 +77,8 @@ export async function deleteWorkspaceWorkflow({
   await deleteMembersActivity({ workspaceId });
   await deleteWorkspaceUserMetadataActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
-  await deleteSpacesActivity({ workspaceId });
   await deleteWebhookSourcesActivity({ workspaceId });
+  await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });

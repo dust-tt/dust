@@ -1,11 +1,3 @@
-import type {
-  GetConversationsResponseType,
-  PostConversationsResponseType,
-} from "@dust-tt/client";
-import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
@@ -21,33 +13,45 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
 import {
-  hasReachedProgrammaticUsageLimits,
+  checkProgrammaticUsageLimits,
   isProgrammaticUsage,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
+import {
+  addBackwardCompatibleConversationFields,
+  addBackwardCompatibleConversationWithoutContentFields,
+  normalizeConversationVisibility,
+} from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgenticMessageData,
-  ContentFragmentType,
-  UserMessageContext,
-  UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
 import {
-  ConversationError,
   isContentFragmentInput,
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isContentFragmentInputWithInlinedContent,
-  isEmptyString,
-} from "@app/types";
+} from "@app/types/api/internal/assistant";
+import type {
+  AgenticMessageData,
+  UserMessageContext,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isInteractiveContentFileContentType } from "@app/types/files";
+import { isEmptyString } from "@app/types/shared/utils/general";
+import type {
+  GetConversationsResponseType,
+  PostConversationsResponseType,
+} from "@dust-tt/client";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export const MAX_CONVERSATION_DEPTH = 4;
 
@@ -96,6 +100,10 @@ export const MAX_CONVERSATION_DEPTH = 4;
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message. If true the query will wait for the agent's answer. If false (default), the API will return a conversation ID directly and you will need to use streaming events to get the messages.
  *                 example: true
+ *               spaceId:
+ *                 type: string
+ *                 description: The sId of the space (project) in which to create the conversation (optional). If not provided, the conversation is created outside projects
+ *                 example: space_abc123
  *     responses:
  *       200:
  *         description: Conversation created successfully.
@@ -145,6 +153,7 @@ async function handler(
         contentFragments,
         skipToolsValidation,
         blocking,
+        spaceId,
       } = r.data;
 
       if (
@@ -166,23 +175,17 @@ async function handler(
       const origin = message?.context.origin ?? "api";
 
       if (message) {
-        const hasReachedLimits =
-          isProgrammaticUsage(auth, {
-            userMessageOrigin: origin,
-          }) && (await hasReachedProgrammaticUsageLimits(auth));
-        if (hasReachedLimits) {
-          const errorMessage = auth.isAdmin()
-            ? "Your workspace has run out of programmatic usage credits. " +
-              "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
-            : "Your workspace has run out of programmatic usage credits. " +
-              "Please ask a Dust workspace admin to purchase more credits.";
-          return apiError(req, res, {
-            status_code: 429,
-            api_error: {
-              type: "rate_limit_error",
-              message: errorMessage,
-            },
-          });
+        if (isProgrammaticUsage(auth, { userMessageOrigin: origin })) {
+          const limitsResult = await checkProgrammaticUsageLimits(auth);
+          if (limitsResult.isErr()) {
+            return apiError(req, res, {
+              status_code: 429,
+              api_error: {
+                type: "rate_limit_error",
+                message: limitsResult.error.message,
+              },
+            });
+          }
         }
 
         if (isUserMessageContextOverflowing(message.context)) {
@@ -299,12 +302,27 @@ async function handler(
         }
       }
 
+      // Resolve space if spaceId is provided
+      let resolvedSpaceModelId: number | null = null;
+      if (spaceId) {
+        const space = await SpaceResource.fetchById(auth, spaceId);
+        if (!space || !space.isMember(auth)) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: "Space not found or access denied",
+            },
+          });
+        }
+        resolvedSpaceModelId = space.id;
+      }
+
       let conversation = await createConversation(auth, {
         title: title ?? null,
-        // Temporary translation layer for deprecated "workspace" visibility.
-        visibility: visibility === "workspace" ? "unlisted" : visibility,
+        visibility: normalizeConversationVisibility(visibility),
         depth,
-        spaceId: null,
+        spaceId: resolvedSpaceModelId,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
@@ -481,18 +499,16 @@ async function handler(
       }
 
       res.status(200).json({
-        conversation: {
-          ...conversation,
-          url: getConversationRoute(
-            conversation.owner.sId,
-            conversation.sId,
-            undefined,
-            config.getClientFacingUrl()
-          ),
-          requestedGroupIds: [], // Remove once all old SDKs users are updated
-        },
+        conversation: addBackwardCompatibleConversationFields(conversation),
         message: newMessage ?? undefined,
-        contentFragment: newContentFragment ?? undefined,
+        contentFragment:
+          !newContentFragment ||
+          isInteractiveContentFileContentType(newContentFragment.contentType)
+            ? undefined
+            : {
+                ...newContentFragment,
+                contentType: newContentFragment.contentType,
+              },
       });
       return;
     case "GET":
@@ -507,19 +523,14 @@ async function handler(
         });
       }
       const conversations =
-        await ConversationResource.listConversationsForUser(auth);
+        await ConversationResource.listPrivateConversationsForUser(auth);
       res.status(200).json({
-        conversations: conversations.map((c) => ({
-          ...c.toJSON(),
-
-          // Theses 2 properties are excluded from the ConversationWithoutContentType used internally (as they are not needed anywhere).
-          // They are still returned for the public API to stay backward compatible.
-          visibility: "unlisted", // Hardcoded as "deleted" conversations are not returned by the API
-          owner: auth.getNonNullableWorkspace(),
-
-          // This one is no excluded (yet)
-          requestedGroupIds: [], // No need to leak to the public API. Hardcoded as an empty array. Can be removed once the chrome extension is updated.
-        })),
+        conversations: conversations.map((c) =>
+          addBackwardCompatibleConversationWithoutContentFields(
+            auth,
+            c.toJSON()
+          )
+        ),
       });
       return;
 

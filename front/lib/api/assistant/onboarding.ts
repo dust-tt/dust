@@ -1,5 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  getInternalMCPServerInfo,
   getInternalMCPServerNameFromSId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -10,15 +11,14 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import type {
-  APIErrorWithStatusCode,
-  Result,
-  UserMessageContext,
-} from "@app/types";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { UserMessageContext } from "@app/types/assistant/conversation";
+import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 import { createConversation, postUserMessage } from "./conversation";
@@ -28,39 +28,43 @@ function getOnboardingAvailableTools(): Array<{
   name: string;
   description: string;
 }> {
-  return Object.entries(INTERNAL_MCP_SERVERS)
-    .filter(([, server]) => {
-      const { availability, isRestricted, isPreview, serverInfo } = server;
+  return (
+    Object.keys(INTERNAL_MCP_SERVERS) as InternalMCPServerNameType[]
+  ).flatMap((serverName) => {
+    const { availability, isRestricted, isPreview } =
+      INTERNAL_MCP_SERVERS[serverName];
+    const serverInfo = getInternalMCPServerInfo(serverName);
 
-      // Only include manually connected tools.
-      if (availability !== "manual") {
-        return false;
-      }
+    // Only include manually connected tools.
+    if (availability !== "manual") {
+      return [];
+    }
 
-      // Exclude tools gated behind feature flags.
-      if (isRestricted !== undefined) {
-        return false;
-      }
+    // Exclude tools gated behind feature flags.
+    if (isRestricted !== undefined) {
+      return [];
+    }
 
-      // Exclude preview tools.
-      if (isPreview) {
-        return false;
-      }
+    // Exclude preview tools.
+    if (isPreview) {
+      return [];
+    }
 
-      // Only include tools that support personal_actions.
-      const supportedUseCases: readonly string[] =
-        serverInfo.authorization?.supported_use_cases ?? [];
-      if (!supportedUseCases.includes("personal_actions")) {
-        return false;
-      }
+    // Only include tools that support personal_actions.
+    const supportedUseCases: readonly string[] =
+      serverInfo.authorization?.supported_use_cases ?? [];
+    if (!supportedUseCases.includes("personal_actions")) {
+      return [];
+    }
 
-      return true;
-    })
-    .map(([sId, server]) => ({
-      sId,
-      name: server.serverInfo.name,
-      description: server.serverInfo.description,
-    }));
+    return [
+      {
+        sId: serverName,
+        name: serverInfo.name,
+        description: serverInfo.description,
+      },
+    ];
+  });
 }
 
 const ONBOARDING_AVAILABLE_TOOLS = getOnboardingAvailableTools();
@@ -167,9 +171,8 @@ function buildOnboardingPrompt(options: {
 
   const topToolsWithDescriptions = topTools
     .map((sId) => {
-      const server = INTERNAL_MCP_SERVERS[sId];
-      const description = server?.serverInfo?.description ?? "";
-      return `- ${asDisplayName(sId)}: ${description}`;
+      const serverInfo = getInternalMCPServerInfo(sId);
+      return `- ${asDisplayName(sId)}: ${serverInfo.description}`;
     })
     .join("\n");
 
@@ -284,6 +287,17 @@ ${firstMessageSection}
 
 ## HANDLING SUBSEQUENT MESSAGES
 
+### When user already has something in mind
+If the user says they already have an idea of what they want to do with Dust (e.g., "I already have an idea", "I know what I want to do"):
+1. Acknowledge enthusiastically (one line)
+2. Ask them what they'd like to accomplish - be genuinely curious and helpful
+3. End with a quick reply to go back to tool setup if they change their mind
+
+Example ending:
+:quickReply[Actually, let's connect tools first]{message="I'd like to connect some tools first"}
+
+Once they share their goal, help them achieve it. If their goal would benefit from connecting a specific tool, mention it naturally as part of helping them (e.g., "To help you with that, connecting Gmail would let me access your emails directly").
+
 ### When user wants to skip initial tool setup
 1. Acknowledge briefly (one line)
 2. List available tools by category:
@@ -341,20 +355,21 @@ ${toolsWithDescriptions}
 
 Write a SHORT welcome message (3-4 lines max):
 1. "# Welcome to Dust 👋" (or similar short greeting)
-2. One sentence inviting them to connect their tools
-3. Briefly mention the recommended tool(s) above
-4. End with the tool setup cards and skip option
+2. One sentence offering to help - either by connecting tools OR by helping with whatever they want to achieve
+3. Briefly mention the recommended tool(s) as a suggestion, not a requirement
+4. End with the tool setup cards AND an option for users who already know what they want to do
 
 You MUST end your message EXACTLY like this:
 ${toolSetupDirectives}
-:quickReply[Skip for now]{message="I'd like to skip connecting tools for now"}
+:quickReply[I have something in mind]{message="I already have an idea of what I want to do with Dust"} :quickReply[Skip for now]{message="I'd like to skip connecting tools for now"}
 
 **DO NOT:**
 - Explain what Dust is at length
 - List features or capabilities beyond the tools
 - Invent use cases or scenarios specific to their role
 - Promise cross-tool functionality
-- Write more than 4 lines before the buttons`;
+- Write more than 4 lines before the buttons
+- Be pushy about connecting tools - present it as an option, not a requirement`;
 }
 
 function buildFirstMessageWithConfiguredTool(

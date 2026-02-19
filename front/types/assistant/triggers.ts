@@ -1,8 +1,7 @@
-import * as t from "io-ts";
-
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
+import * as t from "io-ts";
 
 export type ScheduleConfig = {
   cron: string;
@@ -40,7 +39,6 @@ export type TriggerType = {
   editor: UserType["id"];
   customPrompt: string | null;
   status: TriggerStatus;
-  enabled: boolean; // deprecated, for backward compatibility (BACK12)
   createdAt: number;
   naturalLanguageDescription: string | null;
   origin: TriggerOrigin;
@@ -65,6 +63,16 @@ export type TriggerStatus = (typeof TRIGGER_STATUSES)[number];
 export function isValidTriggerStatus(status: string): status is TriggerStatus {
   return (TRIGGER_STATUSES as readonly string[]).includes(status);
 }
+
+export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
+  "workflow_start_succeeded",
+  "workflow_start_failed",
+  "not_matched",
+  "rate_limited",
+] as const;
+
+export type WebhookRequestTriggerStatus =
+  (typeof WEBHOOK_REQUEST_TRIGGER_STATUSES)[number];
 
 export type TriggerOrigin = "user" | "agent";
 
@@ -118,9 +126,6 @@ const TriggerStatusSchema = t.union([
   t.literal("downgraded"),
 ]);
 
-// Note: Both enabled and status are optional for backward compatibility (BACK12).
-// Old clients send enabled: boolean, new clients send status: TriggerStatus.
-// The API handler should convert enabled to status using: status ?? (enabled ? "enabled" : "disabled") ?? "enabled"
 export const TriggerSchema = t.union([
   t.intersection([
     t.type({
@@ -133,7 +138,6 @@ export const TriggerSchema = t.union([
     }),
     t.partial({
       status: TriggerStatusSchema,
-      enabled: t.boolean, // deprecated, for backward compatibility
     }),
   ]),
   t.intersection([
@@ -149,7 +153,6 @@ export const TriggerSchema = t.union([
     }),
     t.partial({
       status: TriggerStatusSchema,
-      enabled: t.boolean, // deprecated, for backward compatibility
     }),
   ]),
 ]);

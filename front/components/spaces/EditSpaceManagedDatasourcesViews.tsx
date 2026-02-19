@@ -1,3 +1,26 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPermissionsModal";
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
+import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import { useKillSwitches } from "@app/lib/swr/kill";
+import {
+  useSpaceDataSourceViews,
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
@@ -11,7 +34,7 @@ import {
   PlusIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
   useCallback,
   useContext,
@@ -19,29 +42,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-
-import { ConfirmContext } from "@app/components/Confirm";
-import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPermissionsModal";
-import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
-import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
-import { useKillSwitches } from "@app/lib/swr/kill";
-import {
-  useSpaceDataSourceViews,
-  useSpaceDataSourceViewsWithDetails,
-} from "@app/lib/swr/spaces";
-import type {
-  APIError,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { removeNulls } from "@app/types";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
@@ -73,7 +73,7 @@ export function EditSpaceManagedDataSourcesViews({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showNoConnectionDialog, setShowNoConnectionDialog] = useState(false);
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
 

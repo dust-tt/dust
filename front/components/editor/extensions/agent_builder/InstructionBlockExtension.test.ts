@@ -1,8 +1,7 @@
-import type { Editor } from "@tiptap/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
+import type { Editor } from "@tiptap/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("InstructionBlockExtension", () => {
   let editor: Editor;
@@ -52,7 +51,7 @@ hello
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with headings to markdown", () => {
@@ -95,7 +94,7 @@ hello
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with code blocks to markdown", () => {
@@ -151,7 +150,7 @@ code block
         "\n" +
         "</instructions>\n" +
         "\n" +
-        "<br>"
+        "&nbsp;"
     );
   });
 
@@ -180,11 +179,11 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions>
 
-<br>
+&nbsp;
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with mentions", () => {
@@ -231,7 +230,7 @@ code block
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with _", () => {
@@ -246,6 +245,11 @@ code block
           isCollapsed: false,
           type: "instructions_toto",
         },
+        content: [
+          {
+            type: "paragraph",
+          },
+        ],
         type: "instructionBlock",
       },
       {
@@ -256,11 +260,11 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions_toto>
 
-
+&nbsp;
 
 </instructions_toto>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block to markdown with paragraph then list", () => {
@@ -359,6 +363,49 @@ Toto:
 
 </instructions>
 
-<br>`);
+&nbsp;`);
+  });
+
+  it("should not throw on tags with only whitespace content", () => {
+    expect(() => {
+      editor.commands.setContent("<foo>\n</foo>\n\nHello", {
+        contentType: "markdown",
+      });
+    }).not.toThrow();
+
+    const text = editor.getText();
+    expect(text).toContain("Hello");
+  });
+
+  it("should work on deep-nested instruction blocks with NBSP", () => {
+    editor.commands.setContent(
+      // Contains NBSP before the `1. something`
+      // eslint-disable-next-line no-irregular-whitespace
+      `<prompt>\n<instructions>\n<do>\n    1. something\n</do>\n</instructions>\n</prompt>`,
+      {
+        contentType: "markdown",
+      }
+    );
+
+    // check it doesn't fail
+    void editor.getJSON();
+
+    const markdown = editor.getMarkdown();
+    // We loose the <do> but at least the content can be displayed
+    expect(markdown).toEqual(`<prompt>
+
+<instructions>
+
+<do>
+
+1. something
+
+</do>
+
+</instructions>
+
+</prompt>
+
+&nbsp;`);
   });
 });

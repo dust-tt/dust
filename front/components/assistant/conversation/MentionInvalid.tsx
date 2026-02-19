@@ -1,3 +1,12 @@
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useDismissMention } from "@app/lib/swr/mentions";
+import type {
+  ConversationWithoutContentType,
+  RichMentionWithStatus,
+} from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
@@ -6,15 +15,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { useDismissMention } from "@app/lib/swr/mentions";
-import { useUser } from "@app/lib/swr/user";
-import type {
-  LightWorkspaceType,
-  RichMentionWithStatus,
-  UserType,
-} from "@app/types";
 
 interface MentionInvalidProps {
   triggeringUser: UserType | null;
@@ -27,7 +27,7 @@ interface MentionInvalidProps {
         | "agent_restricted_by_space_usage";
     }
   >;
-  conversationId: string;
+  conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
 }
 
@@ -35,15 +35,15 @@ export function MentionInvalid({
   triggeringUser,
   mention,
   owner,
-  conversationId,
+  conversation,
   message,
 }: MentionInvalidProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { dismissMention } = useDismissMention({
     workspaceId: owner.sId,
-    conversationId,
+    conversationId: conversation.sId,
     messageId: message.sId,
   });
 
@@ -68,14 +68,18 @@ export function MentionInvalid({
   switch (mention.status) {
     case "user_restricted_by_conversation_access": {
       // Show warning message without approve/reject buttons
+      // Different message for project conversations (non-editor can't add members)
+      const isProjectConv = isProjectConversation(conversation);
+      const message = isProjectConv
+        ? "is not a member of this project and only project editors can add new members."
+        : "doesn't have access to this conversation's spaces and won't be able to view it nor be invited.";
+
       return (
         <ContentMessage variant="warning" className="my-3 w-full max-w-full">
           <div className="flex items-center gap-2">
             <Icon visual={ExclamationCircleIcon} className="hidden sm:block" />
             <div>
-              <span className="font-semibold">{mention.label}</span> doesn't
-              have access to this conversation's spaces and won't be able to
-              view it nor be invited.
+              <span className="font-semibold">{mention.label}</span> {message}
             </div>
             <div className="ml-auto">
               <Button

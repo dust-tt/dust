@@ -1,4 +1,4 @@
-import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization";
+import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { renderLightWorkspaceType } from "@app/lib/workspace";

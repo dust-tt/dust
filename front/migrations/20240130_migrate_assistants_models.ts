@@ -1,7 +1,7 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { GPT_4_TURBO_MODEL_ID } from "@app/types";
-import { Err } from "@app/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { GPT_4_TURBO_MODEL_ID } from "@app/types/assistant/models/openai";
+import { Err } from "@app/types/shared/result";
 
 const { LIVE, WORKSPACE } = process.env;
 
@@ -22,7 +22,7 @@ const TO_MODEL = GPT_4_TURBO_MODEL_ID;
 async function updateWorkspaceAssistants(wId: string) {
   // console.log(`Updating agents for workspace ${wId}...`);
 
-  const w = await WorkspaceModel.findOne({ where: { sId: wId } });
+  const w = await WorkspaceResource.fetchById(wId);
   if (!w) {
     throw new Error(`Workspace ${wId} not found`);
   }
@@ -61,7 +61,7 @@ async function main() {
   const wId = WORKSPACE;
 
   if (wId === "all") {
-    const workspaces = await WorkspaceModel.findAll();
+    const workspaces = await WorkspaceResource.listAll();
 
     const chunks = [];
     for (let i = 0; i < workspaces.length; i += 32) {

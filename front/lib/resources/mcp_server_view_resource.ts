@@ -1,14 +1,3 @@
-import assert from "assert";
-import { tracer } from "dd-trace";
-import uniq from "lodash/uniq";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import {
   autoInternalMCPServerNameToSId,
   getServerTypeAndIdFromSId,
@@ -42,24 +31,35 @@ import type {
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { MCPOAuthUseCase, ModelId, Result } from "@app/types";
-import {
-  assertNever,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { tracer } from "@app/logger/tracer";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { formatUserFullName } from "@app/types/user";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MCPServerViewResource extends ReadonlyAttributesType<MCPServerViewModel> {}
+export interface MCPServerViewResource
+  extends ReadonlyAttributesType<MCPServerViewModel> {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
-  readonly internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
-  readonly remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
+  private internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
+  private remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteMCPServer?: RemoteMCPServerResource;
   private internalMCPServer?: InternalMCPServerInMemoryResource;
 
@@ -167,6 +167,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return resource;
   }
 
+  /**
+   * Check whether creating a view for `systemView` in `space` would conflict
+   * with an existing view that resolves to the same effective name. We fetch
+   * all views in the target space because different internalMCPServerIds can
+   * actually point to the same MCP server and thus share the same display name.
+   */
+  static async hasNameConflictInSpace(
+    auth: Authenticator,
+    systemView: MCPServerViewResource,
+    space: SpaceResource
+  ): Promise<{ hasConflict: boolean; name: string }> {
+    const viewJson = systemView.toJSON();
+    const name = viewJson.name ?? viewJson.server.name;
+
+    const existingViews = await this.listBySpace(auth, space);
+    const hasConflict = existingViews.some((v) => {
+      const view = v.toJSON();
+      return (view.name ?? view.server.name) === name;
+    });
+
+    return { hasConflict, name };
+  }
+
   public static async create(
     auth: Authenticator,
     {
@@ -176,7 +199,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       systemView: MCPServerViewResource;
       space: SpaceResource;
     }
-  ) {
+  ): Promise<MCPServerViewResource> {
     if (systemView.space.kind !== "system") {
       throw new Error(
         "You must pass the system view to create a new MCP server view"
@@ -195,7 +218,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     }
 
-    return this.makeNew(
+    const view = await this.makeNew(
       auth,
       {
         serverType,
@@ -210,6 +233,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       space,
       auth.user() ?? undefined
     );
+
+    return view;
   }
 
   // Fetching.
@@ -225,27 +250,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        ...(options.includes || []),
+        ...(options.includes ?? []),
         {
           model: UserModel,
           as: "editedByUser",
-        },
-        {
-          model: RemoteMCPServerToolMetadataModel,
-          as: "internalToolsMetadata",
-          required: false,
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-        },
-        {
-          model: RemoteMCPServerToolMetadataModel,
-          as: "remoteToolsMetadata",
-          required: false,
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
         },
       ],
     });
@@ -270,7 +278,80 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       );
     }
 
+    if (filteredViews.length > 0) {
+      await this.populateToolsMetadata(auth, filteredViews);
+    }
+
     return filteredViews;
+  }
+
+  /**
+   * Batch-fetch tool metadata for all views in one SQL query.
+   */
+  private static async populateToolsMetadata(
+    auth: Authenticator,
+    views: MCPServerViewResource[]
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const internalServerIds = removeNulls(
+      views.map((v) => v.internalMCPServerId)
+    );
+    const remoteServerIds = removeNulls(views.map((v) => v.remoteMCPServerId));
+
+    const [internalMetadata, remoteMetadata] = await Promise.all([
+      internalServerIds.length > 0
+        ? RemoteMCPServerToolMetadataModel.findAll({
+            where: {
+              workspaceId,
+              internalMCPServerId: { [Op.in]: internalServerIds },
+            },
+          })
+        : [],
+      remoteServerIds.length > 0
+        ? RemoteMCPServerToolMetadataModel.findAll({
+            where: {
+              workspaceId,
+              remoteMCPServerId: { [Op.in]: remoteServerIds },
+            },
+          })
+        : [],
+    ]);
+
+    const metadataByInternalId = new Map<
+      string,
+      Attributes<RemoteMCPServerToolMetadataModel>[]
+    >();
+    for (const m of internalMetadata) {
+      if (m.internalMCPServerId) {
+        const list = metadataByInternalId.get(m.internalMCPServerId) ?? [];
+        list.push(m.get());
+        metadataByInternalId.set(m.internalMCPServerId, list);
+      }
+    }
+
+    const metadataByRemoteId = new Map<
+      ModelId,
+      Attributes<RemoteMCPServerToolMetadataModel>[]
+    >();
+    for (const m of remoteMetadata) {
+      if (m.remoteMCPServerId) {
+        const list = metadataByRemoteId.get(m.remoteMCPServerId) ?? [];
+        list.push(m.get());
+        metadataByRemoteId.set(m.remoteMCPServerId, list);
+      }
+    }
+
+    for (const view of views) {
+      if (view.internalMCPServerId) {
+        view.internalToolsMetadata =
+          metadataByInternalId.get(view.internalMCPServerId) ?? [];
+      }
+      if (view.remoteMCPServerId) {
+        view.remoteToolsMetadata =
+          metadataByRemoteId.get(view.remoteMCPServerId) ?? [];
+      }
+    }
   }
 
   static async fetchById(
@@ -363,7 +444,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     spaceIds: string[],
     { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
-  ) {
+  ): Promise<MCPServerViewResource[]> {
     const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
 
     if (includeGlobalSpace) {
@@ -385,26 +466,68 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async listForSystemSpace(
     auth: Authenticator,
     options?: ResourceFindOptions<MCPServerViewModel>
-  ) {
+  ): Promise<MCPServerViewResource[]> {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     return this.listBySpace(auth, systemSpace, options);
+  }
+
+  static async listByMCPServers(
+    auth: Authenticator,
+    mcpServerIds: string[]
+  ): Promise<MCPServerViewResource[]> {
+    const serverTypesAndIds = mcpServerIds.map((mcpServerId) => ({
+      ...getServerTypeAndIdFromSId(mcpServerId),
+      mcpServerId,
+    }));
+
+    return this.baseFetch(auth, {
+      where: {
+        [Op.or]: [
+          {
+            serverType: "internal" as const,
+            internalMCPServerId: {
+              [Op.in]: serverTypesAndIds
+                .filter(({ serverType }) => serverType === "internal")
+                .map(({ mcpServerId }) => mcpServerId),
+            },
+          },
+          {
+            serverType: "remote",
+            remoteMCPServerId: {
+              [Op.in]: serverTypesAndIds
+                .filter(({ serverType }) => serverType === "remote")
+                .map(({ id }) => id),
+            },
+          },
+        ],
+      },
+    });
   }
 
   static async listByMCPServer(
     auth: Authenticator,
     mcpServerId: string
   ): Promise<MCPServerViewResource[]> {
+    return this.listByMCPServers(auth, [mcpServerId]);
+  }
+
+  static async getByMCPServerAndSpace(
+    auth: Authenticator,
+    mcpServerId: string,
+    space: SpaceResource
+  ): Promise<MCPServerViewResource | null> {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
-    if (serverType === "internal") {
-      return this.baseFetch(auth, {
-        where: { serverType: "internal", internalMCPServerId: mcpServerId },
-      });
-    } else {
-      return this.baseFetch(auth, {
-        where: { serverType: "remote", remoteMCPServerId: id },
-      });
-    }
+    const where =
+      serverType === "internal"
+        ? { serverType: "internal" as const, internalMCPServerId: mcpServerId }
+        : { serverType: "remote" as const, remoteMCPServerId: id };
+
+    const views = await this.baseFetch(auth, {
+      where: { ...where, vaultId: space.id },
+    });
+
+    return views[0] ?? null;
   }
 
   // Auto internal MCP server are supposed to be created in the global space.
@@ -412,7 +535,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async getMCPServerViewForAutoInternalTool(
     auth: Authenticator,
     name: AutoInternalMCPServerNameType
-  ) {
+  ): Promise<MCPServerViewResource | null> {
     const views = await this.listByMCPServer(
       auth,
       autoInternalMCPServerNameToSId({
@@ -422,6 +545,23 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     return views.find((view) => view.space.kind === "global") ?? null;
+  }
+
+  static async getMCPServerViewsForAutoInternalTools(
+    auth: Authenticator,
+    names: AutoInternalMCPServerNameType[]
+  ): Promise<MCPServerViewResource[]> {
+    const views = await this.listByMCPServers(
+      auth,
+      names.map((name) =>
+        autoInternalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
+      )
+    );
+
+    return views.filter((view) => view.space.kind === "global");
   }
 
   static async listMCPServerViewsAutoInternalForSpaces(

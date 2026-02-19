@@ -1,13 +1,14 @@
-import uniq from "lodash/uniq";
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
-
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import {
   getCompletionDuration,
   getRichMentionsWithStatusForMessage,
 } from "@app/lib/api/assistant/messages";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
+import {
+  publishAgentMessagesEvents,
+  publishMessageEventsOnMessagePostOrEdit,
+} from "@app/lib/api/assistant/streaming/events";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -18,7 +19,8 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -29,33 +31,49 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  ContentFragmentInputWithContentNode,
   ConversationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MentionType,
   MessageVisibility,
-  ModelId,
   RichMentionWithStatus,
   UserMessageContext,
+  UserMessageOrigin,
   UserMessageType,
   UserMessageTypeWithoutMentions,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
-  assertNever,
+  isAgentMessageType,
+  isProjectConversation,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import {
   isAgentMention,
+  isRichUserMention,
   isUserMention,
-  removeNulls,
-} from "@app/types";
+  toMentionType,
+} from "@app/types/assistant/mentions";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import assert from "assert";
+import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
-import { runAgentLoopWorkflow } from "./agent_loop";
+import { getConversation } from "./fetch";
 
 /**
  * Check if a user can access a conversation based on space permissions.
@@ -85,6 +103,112 @@ async function canUserAccessConversation(
   return canAccess === "allowed";
 }
 
+/**
+ * Check if a user is a member of a space (project).
+ */
+async function isUserMemberOfSpace(
+  auth: Authenticator,
+  {
+    userId,
+    spaceId,
+  }: {
+    userId: string;
+    spaceId: string;
+  }
+): Promise<boolean> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return false;
+  }
+
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    auth.getNonNullableWorkspace().sId
+  );
+
+  if (!userAuth) {
+    return false;
+  }
+
+  return space.isMember(userAuth);
+}
+
+/**
+ * Check if the current user can add members to a project space.
+ */
+async function canCurrentUserAddProjectMembers(
+  auth: Authenticator,
+  spaceId: string,
+  mentionedUserId: string
+): Promise<boolean> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return false;
+  }
+  return space.canAddMember(auth, mentionedUserId);
+}
+
+export async function getMentionStatus(
+  auth: Authenticator,
+  data: {
+    conversation: ConversationType;
+    message: UserMessageTypeWithoutMentions | AgentMessageTypeWithoutMentions;
+    isParticipant: boolean;
+    mentionedUser: UserResource;
+  }
+): Promise<MentionStatusType> {
+  const { conversation, message, isParticipant, mentionedUser } = data;
+  // For project conversations we do not have to check if the mentioned user
+  // can access the conversation. If the project is open, they can access it.
+  // If it is closed, the only requested space will be the project itself by design.
+  if (isProjectConversation(conversation)) {
+    const isProjectMember = await isUserMemberOfSpace(auth, {
+      userId: mentionedUser.sId,
+      spaceId: conversation.spaceId,
+    });
+    if (isProjectMember) {
+      return "approved";
+    }
+    const canAddMember = await canCurrentUserAddProjectMembers(
+      auth,
+      conversation.spaceId,
+      mentionedUser.sId
+    );
+    if (canAddMember) {
+      return "pending_project_membership";
+    }
+    return "user_restricted_by_conversation_access";
+  }
+
+  const canAccess = await canUserAccessConversation(auth, {
+    userId: mentionedUser.sId,
+    conversationId: conversation.sId,
+  });
+  if (!canAccess) {
+    return "user_restricted_by_conversation_access";
+  }
+  if (isParticipant) {
+    return "approved";
+  }
+  // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
+  if (
+    conversation.triggerId &&
+    message.type === "agent_message" &&
+    message.configuration.instructions
+  ) {
+    const isUserMentionedInInstructions = extractFromString(
+      message.configuration.instructions
+    )
+      .filter(isUserMention)
+      .some((mention) => mention.userId === mentionedUser.sId);
+
+    if (isUserMentionedInInstructions) {
+      return "approved";
+    }
+  }
+  return "pending_conversation_access";
+}
+
 export const createUserMentions = async (
   auth: Authenticator,
   {
@@ -100,84 +224,60 @@ export const createUserMentions = async (
   }
 ): Promise<RichMentionWithStatus[]> => {
   const usersById = new Map<ModelId, UserType>();
+
+  // Deduplicate mentions before processing
+  const uniqueMentions = uniqBy(
+    mentions.filter(isUserMention),
+    (mention) => mention.userId
+  );
+
   // Store user mentions in the database
   const mentionModels = await Promise.all(
-    mentions.map(async (mention) => {
-      if (isUserMention(mention)) {
-        // check if the user exists in the workspace before creating the mention
-        const user = await getUserForWorkspace(auth, {
-          userId: mention.userId,
-        });
-        if (user) {
-          usersById.set(user.id, user.toJSON());
+    uniqueMentions.map(async (mention) => {
+      // check if the user exists in the workspace before creating the mention
+      const user = await getUserForWorkspace(auth, {
+        userId: mention.userId,
+      });
+      if (user) {
+        usersById.set(user.id, user.toJSON());
 
-          const isParticipant =
-            await ConversationResource.isConversationParticipant(auth, {
-              conversation,
-              user: user.toJSON(),
-            });
-
-          const canAccess = await canUserAccessConversation(auth, {
-            userId: user.sId,
-            conversationId: conversation.sId,
+        const isParticipant =
+          await ConversationResource.isConversationParticipant(auth, {
+            conversation,
+            user: user.toJSON(),
           });
 
-          // Always auto approve mentions for existing participants.
-          let autoApprove = isParticipant;
-          // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
-          if (
-            !autoApprove &&
-            conversation.triggerId &&
-            message.type === "agent_message" &&
-            message.configuration.instructions
-          ) {
-            const isUserMentionedInInstructions = extractFromString(
-              message.configuration.instructions
-            )
-              .filter(isUserMention)
-              .some((mention) => mention.userId === user.sId);
+        // TODO: Alternative approach would be to always set pending_project_membership for
+        // project conversations and decide at render time whether to show "add to project"
+        // (for editors) or "request access" (for non-editors). This would require building
+        // a request access flow. See https://github.com/dust-tt/dust/issues/20852
+        const status = await getMentionStatus(auth, {
+          conversation,
+          message,
+          isParticipant,
+          mentionedUser: user,
+        });
 
-            if (isUserMentionedInInstructions) {
-              autoApprove = true;
-            }
-          }
+        const mentionModel = await MentionModel.create(
+          {
+            messageId: message.id,
+            userId: user.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            status,
+          },
+          { transaction }
+        );
 
-          const status: MentionStatusType = !canAccess
-            ? "user_restricted_by_conversation_access"
-            : autoApprove
-              ? "approved"
-              : "pending";
-
-          const mentionModel = await MentionModel.create(
-            {
-              messageId: message.id,
-              userId: user.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-              status,
-            },
-            { transaction }
-          );
-
-          if (!isParticipant && status === "approved") {
-            const status = await ConversationResource.upsertParticipation(
-              auth,
-              {
-                conversation,
-                action: "subscribed",
-                user: user.toJSON(),
-                transaction,
-              }
-            );
-
-            if (status === "added") {
-              await triggerConversationAddedAsParticipantNotification(auth, {
-                conversation,
-                addedUserId: user.sId,
-              });
-            }
-          }
-          return mentionModel;
+        if (!isParticipant && status === "approved") {
+          await ConversationResource.upsertParticipation(auth, {
+            conversation,
+            action: "subscribed",
+            user: user.toJSON(),
+            lastReadAt: null,
+            transaction,
+          });
         }
+        return mentionModel;
       }
     })
   );
@@ -212,6 +312,41 @@ async function attributeUserFromWorkspaceAndEmail(
   return membership ? matchingUser.toJSON() : null;
 }
 
+export async function canAgentBeUsedInProjectConversation(
+  auth: Authenticator,
+  {
+    configuration,
+    conversation,
+  }: {
+    configuration: LightAgentConfigurationType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<boolean> {
+  if (!isProjectConversation(conversation)) {
+    throw new Error("Unexpected: conversation is not a project conversation");
+  }
+  // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or open spaces, otherwise we reject the mention and do not create the agent message.
+  // Check to skip heavy work if the agent configuration is only using the project space.
+  if (
+    configuration.requestedSpaceIds.some(
+      (spaceId) => spaceId !== conversation.spaceId
+    )
+  ) {
+    // Need to load all the spaces to check if they are restricted.
+    const spaces = await SpaceResource.fetchByIds(
+      auth,
+      configuration.requestedSpaceIds.filter(
+        (spaceId) => spaceId !== conversation.spaceId
+      )
+    );
+    if (spaces.some((space) => !space.isOpen())) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /**
  * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
  * additive - requirements are never removed.
@@ -237,7 +372,32 @@ export async function updateConversationRequirements(
     t?: Transaction;
   }
 ): Promise<void> {
+  // !!! IMPORTANT !!!
+  // By design, project conversations are always visible to everyone that have READ permission to the project.
+  // Therefor we strip all the space requirements from the conversation.
+  // It means that we rely on agents and content fragments permissions checking to have happened before.
+  // It also means that if we "move" a conversation to a project, we need to update the conversation requirements and we make it visibel
+  if (isProjectConversation(conversation)) {
+    const spaceModelId = getResourceIdFromSId(conversation.spaceId);
+    if (spaceModelId === null) {
+      throw new Error("Unexpected: invalid space sId in conversation.");
+    }
+    if (
+      conversation.requestedSpaceIds.length !== 1 ||
+      conversation.requestedSpaceIds[0] !== conversation.spaceId
+    ) {
+      await ConversationResource.updateRequirements(
+        auth,
+        conversation.sId,
+        [spaceModelId],
+        t
+      );
+    }
+    return;
+  }
+
   let newSpaceRequirements: string[] = [];
+
   if (agents) {
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
@@ -414,6 +574,8 @@ export async function createUserMessage(
       userContextLastTriggerRunAt: context.lastTriggerRunAt
         ? new Date(context.lastTriggerRunAt)
         : null,
+      userContextApiKeyId: context.apiKeyId ?? null,
+      userContextAuthMethod: context.authMethod ?? null,
       agenticMessageType,
       agenticOriginMessageId,
       userId: user?.id,
@@ -589,8 +751,14 @@ export const createAgentMessages = async (
 
     case "create":
       {
-        await concurrentExecutor(
+        // Deduplicate agent mentions before processing
+        const uniqueAgentMentions = uniqBy(
           metadata.mentions.filter(isAgentMention),
+          (mention) => mention.configurationId
+        );
+
+        await concurrentExecutor(
+          uniqueAgentMentions,
           async (mention) => {
             const configuration = metadata.agentConfigurations.find(
               (ac) => ac.sId === mention.configurationId
@@ -599,44 +767,39 @@ export const createAgentMessages = async (
               return;
             }
 
-            // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces, otherwise we reject the mention and do not create the agent message.
-            if (conversation.spaceId) {
-              // Check to skip heavy work if the agent configuration is only using the project space.
-              if (
-                configuration.requestedSpaceIds.some(
-                  (spaceId) => spaceId !== conversation.spaceId
-                )
-              ) {
-                // Need to load all the spaces to check if they are restricted.
-                const spaces = await SpaceResource.fetchByIds(
-                  auth,
-                  configuration.requestedSpaceIds.filter(
-                    (spaceId) => spaceId !== conversation.spaceId
-                  )
-                );
-                if (spaces.some((space) => !space.isOpen())) {
-                  // This create the mentions from the original user message.
-                  // Not to be mixed with the mentions from the agent message (which will be filled later).
-                  const mentionRow = await MentionModel.create(
-                    {
-                      messageId: metadata.userMessage.id,
-                      agentConfigurationId: configuration.sId,
-                      workspaceId: owner.id,
-                      status: "agent_restricted_by_space_usage",
-                    },
-                    { transaction }
-                  );
-
-                  results.push({
-                    mentionRow,
-                    agentAnswer: null,
-                    parentMessageId: metadata.userMessage.sId,
-                    parentAgentMessageId: null,
-                    configuration,
-                  });
-
-                  return;
+            // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces/
+            // Otherwise we reject the mention and do not create the agent message.
+            if (isProjectConversation(conversation)) {
+              const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
+                auth,
+                {
+                  configuration,
+                  conversation,
                 }
+              );
+
+              if (!canAgentBeUsed) {
+                // This create the mentions from the original user message.
+                // Not to be mixed with the mentions from the agent message (which will be filled later).
+                const mentionRow = await MentionModel.create(
+                  {
+                    messageId: metadata.userMessage.id,
+                    agentConfigurationId: configuration.sId,
+                    workspaceId: owner.id,
+                    status: "agent_restricted_by_space_usage",
+                  },
+                  { transaction }
+                );
+
+                results.push({
+                  mentionRow,
+                  agentAnswer: null,
+                  parentMessageId: metadata.userMessage.sId,
+                  parentAgentMessageId: null,
+                  configuration,
+                });
+
+                return;
               }
             }
 
@@ -776,16 +939,497 @@ export const createAgentMessages = async (
     t: transaction,
   });
 
-  if (metadata.type === "create") {
-    if (agentMessages.length > 0) {
-      await runAgentLoopWorkflow({
-        auth,
-        agentMessages,
-        conversation,
-        userMessage: metadata.userMessage,
+  return { agentMessages, richMentions };
+};
+
+export async function getUserMessageIdFromMessageId(
+  auth: Authenticator,
+  { messageId }: { messageId: string }
+): Promise<{
+  agentMessageId: string;
+  agentMessageVersion: number;
+  userMessageId: string;
+  userMessageVersion: number;
+  userMessageUserId: number | null;
+  userMessageOrigin: UserMessageOrigin;
+}> {
+  // Query 1: Get the message and its parentId.
+  const agentMessage = await MessageModel.findOne({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: messageId,
+      agentMessageId: { [Op.ne]: null },
+    },
+    attributes: ["parentId", "version", "sId"],
+  });
+
+  assert(
+    agentMessage?.parentId,
+    "Agent message is expected to have a parentId"
+  );
+
+  // Query 2: Get the parent message's sId (which is the user message).
+  const parentMessage = await MessageModel.findOne({
+    where: {
+      id: agentMessage.parentId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    attributes: ["sId", "version"],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+        attributes: ["userId", "userContextOrigin"],
+      },
+    ],
+  });
+
+  assert(
+    parentMessage && parentMessage.userMessage,
+    "A user message is expected for the agent message's parent"
+  );
+
+  return {
+    agentMessageId: agentMessage.sId,
+    agentMessageVersion: agentMessage.version,
+    userMessageId: parentMessage.sId,
+    userMessageVersion: parentMessage.version,
+    userMessageUserId: parentMessage.userMessage.userId,
+    userMessageOrigin: parentMessage.userMessage.userContextOrigin,
+  };
+}
+
+export async function validateUserMention(
+  auth: Authenticator,
+  {
+    conversationId,
+    userId,
+    messageId,
+    approvalState,
+  }: {
+    conversationId: string;
+    userId: string;
+    messageId: string;
+    approvalState: "approved" | "rejected";
+  }
+): Promise<Result<void, APIErrorWithStatusCode>> {
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
+  }
+
+  const conversation = conversationRes.value;
+  const isApproval = approvalState === "approved";
+
+  // For project conversations, add user to project space first when approving.
+  if (isProjectConversation(conversation) && isApproval) {
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "Project space not found",
+        },
+      });
+    }
+
+    const currentUser = auth.user();
+    if (!currentUser) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: "User not authenticated",
+        },
+      });
+    }
+
+    const addResult = await space.addMembers(auth, { userIds: [userId] });
+    if (addResult.isErr()) {
+      const error = addResult.error;
+      return new Err({
+        status_code: error.code === "unauthorized" ? 403 : 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+
+    // Notify the user they were added to the project.
+    notifyProjectMembersAdded(auth, {
+      project: space.toJSON(),
+      addedUserIds: [userId],
+    });
+  }
+
+  const mentionStatus: "approved" | "rejected" = approvalState;
+
+  // Verify the message exists
+  const message = conversation.content.flat().find((m) => m.sId === messageId);
+
+  if (!message) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: "Message not found",
+      },
+    });
+  }
+  if (isApproval) {
+    const auditMessage = conversation.spaceId
+      ? "User approved a mention and added user to project"
+      : "User approved a mention";
+    auditLog(
+      {
+        author: auth.getNonNullableUser().toJSON(),
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        messageId: message.sId,
+        userId,
+        approvalState,
+      },
+      auditMessage
+    );
+  }
+
+  if (isUserMessageType(message)) {
+    // Verify user is authorized to edit the message by checking the message user.
+    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to edit this mention",
+        },
+      });
+    }
+  } else if (isAgentMessageType(message)) {
+    // Verify user is authorized to edit the message by going back to the user message.
+    const { userMessageUserId } = await getUserMessageIdFromMessageId(auth, {
+      messageId,
+    });
+    if (
+      userMessageUserId !== null &&
+      userMessageUserId !== auth.getNonNullableUser().id
+    ) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to edit this mention",
+        },
+      });
+    }
+  } else if (isContentFragmentType(message)) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid message type",
+      },
+    });
+  } else {
+    assertNever(message);
+  }
+  const user = await getUserForWorkspace(auth, {
+    userId,
+  });
+  if (!user) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "User not found",
+      },
+    });
+  }
+
+  const updatedMessages: {
+    userMessages: UserMessageType[];
+    agentMessages: AgentMessageType[];
+  } = {
+    userMessages: [],
+    agentMessages: [],
+  };
+  const isPendingStatus = (status: MentionStatusType): boolean =>
+    status === "pending_conversation_access" ||
+    status === "pending_project_membership";
+
+  // Find all pending mentions for the same user on conversation messages latest versions.
+  for (const messageVersions of conversation.content) {
+    const latestMessage = messageVersions[messageVersions.length - 1];
+
+    if (
+      latestMessage.visibility !== "deleted" &&
+      !isContentFragmentType(latestMessage) &&
+      latestMessage.richMentions.some(
+        (m) => isPendingStatus(m.status) && m.id === userId
+      )
+    ) {
+      const mentionModel = await MentionModel.findOne({
+        where: {
+          workspaceId: conversation.owner.id,
+          messageId: latestMessage.id,
+          userId: user.id,
+        },
+      });
+      if (!mentionModel) {
+        continue;
+      }
+      await mentionModel.update({ status: mentionStatus });
+      const newRichMentions = latestMessage.richMentions.map((m) =>
+        isRichUserMention(m) && m.id === userId
+          ? {
+              ...m,
+              status: mentionStatus,
+            }
+          : m
+      );
+      if (isUserMessageType(latestMessage)) {
+        updatedMessages.userMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+          mentions: newRichMentions.map(toMentionType),
+        });
+      } else if (isAgentMessageType(latestMessage)) {
+        updatedMessages.agentMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+        });
+      }
+    }
+  }
+
+  for (const userMessage of updatedMessages.userMessages) {
+    await publishMessageEventsOnMessagePostOrEdit(
+      conversation,
+      {
+        ...userMessage,
+        contentFragments: getRelatedContentFragments(conversation, userMessage),
+      },
+      []
+    );
+  }
+
+  if (updatedMessages.agentMessages.length > 0) {
+    await publishAgentMessagesEvents(
+      conversation,
+      updatedMessages.agentMessages
+    );
+  }
+
+  const isParticipant = await ConversationResource.isConversationParticipant(
+    auth,
+    {
+      conversation,
+      user: user.toJSON(),
+    }
+  );
+
+  if (!isParticipant && isApproval) {
+    const status = await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "subscribed",
+      user: user.toJSON(),
+      lastReadAt: null,
+    });
+
+    if (status === "added") {
+      await triggerConversationUnreadNotifications(auth, {
+        conversationId: conversation.sId,
+        messageId,
+        userToNotifyId: user.sId,
       });
     }
   }
 
-  return { agentMessages, richMentions };
-};
+  return new Ok(undefined);
+}
+
+export async function dismissMention(
+  auth: Authenticator,
+  {
+    messageId,
+    conversationId,
+    type,
+    id,
+  }: {
+    messageId: string;
+    conversationId: string;
+    type: "user" | "agent";
+    id: string;
+  }
+): Promise<Result<void, APIErrorWithStatusCode>> {
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
+  }
+
+  const conversation = conversationRes.value;
+
+  // Verify the message exists
+  const message = conversation.content.flat().find((m) => m.sId === messageId);
+
+  if (!message) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: "Message not found",
+      },
+    });
+  }
+
+  if (isUserMessageType(message)) {
+    // Verify user is authorized to edit the message by checking the message user.
+    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to dismiss this mention",
+        },
+      });
+    }
+  } else if (isAgentMessageType(message)) {
+    // Verify user is authorized to edit the message by going back to the user message.
+    const { userMessageUserId } = await getUserMessageIdFromMessageId(auth, {
+      messageId,
+    });
+    if (
+      userMessageUserId !== null &&
+      userMessageUserId !== auth.getNonNullableUser().id
+    ) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to dismiss this mention",
+        },
+      });
+    }
+  } else if (isContentFragmentType(message)) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid message type",
+      },
+    });
+  } else {
+    assertNever(message);
+  }
+
+  const updatedMessages: {
+    userMessages: UserMessageType[];
+    agentMessages: AgentMessageType[];
+  } = {
+    userMessages: [],
+    agentMessages: [],
+  };
+
+  // For user mentions, convert sId to database ID
+  let userIdForQuery: number | undefined;
+  if (type === "user") {
+    const user = await getUserForWorkspace(auth, {
+      userId: id,
+    });
+    if (!user) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "user_not_found",
+          message: "User not found",
+        },
+      });
+    }
+    userIdForQuery = user.id;
+  }
+
+  const predicate = (m: RichMentionWithStatus) =>
+    (m.status === "agent_restricted_by_space_usage" ||
+      m.status === "user_restricted_by_conversation_access") &&
+    m.type === type &&
+    m.id === id;
+
+  // Find all restricted mentions for the same user/agent on conversation messages latest versions.
+  for (const messageVersions of conversation.content) {
+    const latestMessage = messageVersions[messageVersions.length - 1];
+
+    if (
+      latestMessage.visibility !== "deleted" &&
+      !isContentFragmentType(latestMessage) &&
+      latestMessage.richMentions.some(predicate)
+    ) {
+      const mentionModel = await MentionModel.findOne({
+        where: {
+          workspaceId: conversation.owner.id,
+          messageId: latestMessage.id,
+          ...(type === "user"
+            ? { userId: userIdForQuery }
+            : { agentConfigurationId: id }),
+        },
+      });
+      if (!mentionModel) {
+        continue;
+      }
+      await mentionModel.update({ dismissed: true });
+      const newRichMentions = latestMessage.richMentions.map((m) =>
+        predicate(m)
+          ? {
+              ...m,
+              dismissed: true,
+            }
+          : m
+      );
+      if (isUserMessageType(latestMessage)) {
+        updatedMessages.userMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+          mentions: newRichMentions.map(toMentionType),
+        });
+      } else if (isAgentMessageType(latestMessage)) {
+        updatedMessages.agentMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+        });
+      }
+    }
+  }
+
+  for (const userMessage of updatedMessages.userMessages) {
+    await publishMessageEventsOnMessagePostOrEdit(
+      conversation,
+      {
+        ...userMessage,
+        contentFragments: getRelatedContentFragments(conversation, userMessage),
+      },
+      []
+    );
+  }
+
+  if (updatedMessages.agentMessages.length > 0) {
+    await publishAgentMessagesEvents(
+      conversation,
+      updatedMessages.agentMessages
+    );
+  }
+
+  return new Ok(undefined);
+}

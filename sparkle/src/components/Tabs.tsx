@@ -1,25 +1,47 @@
-import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { cva, VariantProps } from "class-variance-authority";
-import * as React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
+import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { ScrollArea, ScrollBar } from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
-import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 const Tabs = TabsPrimitive.Root;
 
-const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
-  variants: {
-    size: {
-      full: "s-w-full",
+const tabsTriggerVariants = cva(
+  [
+    "s-relative",
+    "after:s-absolute after:s-bottom-[-10px] after:s-left-1/2 after:s-h-[2px]",
+    "after:s-w-full after:s--translate-x-1/2",
+    "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100",
+    "dark:after:s-bg-foreground-night",
+  ],
+  {
+    variants: {
+      variant: {
+        ghost:
+          "data-[state=inactive]:s-text-muted-foreground data-[state=inactive]:hover:s-text-primary-900 data-[state=inactive]:dark:s-text-muted-foreground-night data-[state=inactive]:dark:hover:s-text-primary-900-night",
+        primary: "",
+        highlight: "",
+        "highlight-secondary": "",
+        warning: "",
+        "warning-secondary": "",
+        outline: "",
+        "ghost-secondary": "",
+      },
     },
+  }
+);
+
+const tabsListVariants = cva("s-flex s-h-[45px] s-gap-2 s-w-full", {
+  variants: {
     border: {
       true: "s-border-b s-border-border dark:s-border-border-night",
     },
   },
   defaultVariants: {
-    size: "full",
     border: true,
   },
 });
@@ -30,11 +52,11 @@ type TabsListProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> &
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   TabsListProps
->(({ className, size, border, ...props }, ref) => (
+>(({ className, border, ...props }, ref) => (
   <ScrollArea>
     <TabsPrimitive.List
       ref={ref}
-      className={cn(tabsListVariants({ size, border }), className)}
+      className={cn(tabsListVariants({ border }), className)}
       {...props}
     />
     <ScrollBar orientation="horizontal" className="s-hidden" />
@@ -76,7 +98,7 @@ const TabsTrigger = React.forwardRef<
     return (
       <TabsPrimitive.Trigger
         ref={ref}
-        className={cn("s-h-11", "disabled:s-pointer-events-none", className)}
+        className={cn("disabled:s-pointer-events-none", className)}
         disabled={disabled}
         asChild
         {...props}
@@ -96,9 +118,8 @@ const TabsTrigger = React.forwardRef<
           isCounter={isCounter}
           counterValue={counterValue}
           className={cn(
-            "s-relative",
-            "after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",
-            "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100 dark:after:s-bg-foreground-night"
+            tabsTriggerVariants({ variant: variant ?? undefined }),
+            className
           )}
         />
       </TabsPrimitive.Trigger>

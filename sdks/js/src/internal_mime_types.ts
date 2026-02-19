@@ -64,6 +64,9 @@ export const DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE =
 export type DataSourceFolderSpreadsheetMimeType =
   typeof DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE;
 
+export const DUST_TABLE_MIME_TYPE = "application/vnd.dust.table" as const;
+type DustTableMimeType = typeof DUST_TABLE_MIME_TYPE;
+
 type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
 type DataWarehouseMimeType = typeof DATA_WAREHOUSE_MIME_TYPE;
 
@@ -71,6 +74,7 @@ export const CONTENT_NODE_MIME_TYPES = {
   GENERIC: {
     DATA_SOURCE: DATA_SOURCE_MIME_TYPE,
     DATA_WAREHOUSE: DATA_WAREHOUSE_MIME_TYPE,
+    TABLE: DUST_TABLE_MIME_TYPE,
   },
   FOLDER: {
     SPREADSHEET: DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
@@ -163,7 +167,11 @@ export const CONTENT_NODE_MIME_TYPES = {
   }),
   DUST_PROJECT: generateConnectorRelativeMimeTypes({
     provider: "dust_project",
-    resourceTypes: ["CONVERSATION_FOLDER", "CONVERSATION_MESSAGES"],
+    resourceTypes: [
+      "CONVERSATION_FOLDER",
+      "CONVERSATION_MESSAGES",
+      "CONTEXT_FOLDER",
+    ],
   }),
 };
 
@@ -194,7 +202,10 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
   BIGQUERY: [],
   SALESFORCE: [],
   GONG: [],
-  DUST_PROJECT: [CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONVERSATION_MESSAGES],
+  DUST_PROJECT: [
+    CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONVERSATION_MESSAGES,
+    CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
+  ],
 };
 
 function generateToolMimeTypes<
@@ -243,6 +254,7 @@ const TOOL_MIME_TYPES = {
       "TIME_FRAME",
       "JSON_SCHEMA",
       "SECRET",
+      "DUST_PROJECT",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({
@@ -365,7 +377,8 @@ export type DustMimeType =
   | DustProjectMimeType
   | DataSourceMimeType
   | DataWarehouseMimeType
-  | DataSourceFolderSpreadsheetMimeType;
+  | DataSourceFolderSpreadsheetMimeType
+  | DustTableMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
   return (INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);

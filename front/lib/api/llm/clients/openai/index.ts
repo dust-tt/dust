@@ -1,5 +1,3 @@
-import { APIError, OpenAI } from "openai";
-
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import {
   OPENAI_PROVIDER_ID,
@@ -8,10 +6,10 @@ import {
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
@@ -22,23 +20,21 @@ import {
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { APIError, OpenAI } from "openai";
 
 import { handleGenericError } from "../../types/errors";
 
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
   protected modelId: OpenAIWhitelistedModelId;
-  protected metadata: LLMClientMetadata = {
-    clientId: "openai_responses",
-    modelId: this.modelId,
-  };
 
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: OpenAIWhitelistedModelId }
   ) {
-    super(auth, overwriteLLMParameters(llmParameters));
+    const params = overwriteLLMParameters(llmParameters);
+    super(auth, OPENAI_PROVIDER_ID, params);
     this.modelId = llmParameters.modelId;
 
     const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
@@ -51,6 +47,10 @@ export class OpenAIResponsesLLM extends LLM {
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
       baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+      defaultHeaders: {
+        "Content-Type": "application/json; charset=utf-8",
+        Accept: "application/json; charset=utf-8",
+      },
     });
   }
 
@@ -61,10 +61,11 @@ export class OpenAIResponsesLLM extends LLM {
     forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
+      const promptText = systemPromptToText(prompt);
       const reasoning = toReasoning(this.modelId, this.reasoningEffort);
       const events = await this.client.responses.create({
         model: this.modelId,
-        input: toInput(prompt, conversation),
+        input: toInput(promptText, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
         reasoning,

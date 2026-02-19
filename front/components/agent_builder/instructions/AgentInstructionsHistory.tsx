@@ -1,3 +1,6 @@
+import { useMembersLookup } from "@app/lib/swr/memberships";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -12,13 +15,8 @@ import {
 } from "@dust-tt/sparkle";
 import { compareDesc } from "date-fns";
 import { format } from "date-fns/format";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo } from "react";
-
-import { useMembersLookup } from "@app/lib/swr/memberships";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
 
 interface AgentInstructionsHistoryProps {
   history: LightAgentConfigurationType[];
@@ -115,9 +113,9 @@ export function AgentInstructionsHistory({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost-secondary"
           icon={HistoryIcon}
-          size="sm"
+          size="icon"
           tooltip="Compare with previous versions"
           isSelect
         />

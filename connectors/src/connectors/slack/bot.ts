@@ -1,30 +1,10 @@
-import type {
-  AgentMessageSuccessEvent,
-  APIError,
-  ConversationPublicType,
-  LightAgentConfigurationType,
-  PublicPostContentFragmentRequestBody,
-  PublicPostMessagesRequestBody,
-  Result,
-  SupportedFileContentType,
-  UserMessageType,
-} from "@dust-tt/client";
-import {
-  DustAPI,
-  Err,
-  isSupportedFileContentType,
-  Ok,
-  removeNulls,
-} from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
-import removeMarkdown from "remove-markdown";
-
 import {
   makeErrorBlock,
   makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
   getBotUserIdMemoized,
@@ -72,6 +52,27 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
+import type {
+  AgentMessageSuccessEvent,
+  APIError,
+  ConversationPublicType,
+  LightAgentConfigurationType,
+  PublicPostContentFragmentRequestBody,
+  PublicPostMessagesRequestBody,
+  Result,
+  SupportedFileContentType,
+  UserMessageType,
+} from "@dust-tt/client";
+import {
+  DustAPI,
+  Err,
+  isSupportedFileContentType,
+  Ok,
+  removeNulls,
+} from "@dust-tt/client";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
+import removeMarkdown from "remove-markdown";
 
 const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
   "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";
@@ -1277,7 +1278,6 @@ async function makeContentFragments(
         fileSize: f.size!,
         useCase: "conversation",
         useCaseMetadata: conversationId ? { conversationId } : undefined,
-        // @ts-expect-error -- migration to tsgo
         fileObject: new File([fileContent], fileName, {
           type: f.mimetype,
         }),

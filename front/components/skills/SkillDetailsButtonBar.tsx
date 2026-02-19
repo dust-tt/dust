@@ -1,3 +1,8 @@
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { useAppRouter } from "@app/lib/platform";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ClipboardIcon,
@@ -9,13 +14,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
-
-import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 interface SkillDetailsButtonBarProps {
   skill: SkillWithRelationsType;
@@ -28,7 +27,7 @@ export function SkillDetailsButtonBar({
   owner,
   onClose,
 }: SkillDetailsButtonBarProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
   if (!skill.canWrite && !skill.isExtendable) {

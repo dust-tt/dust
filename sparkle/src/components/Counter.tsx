@@ -1,7 +1,6 @@
+import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 export const COUNTER_SIZES = ["xs", "sm", "md"] as const;
 
@@ -94,8 +93,7 @@ const counterVariants = cva(
 );
 
 export interface CounterProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof counterVariants> {
   value: number;
 }

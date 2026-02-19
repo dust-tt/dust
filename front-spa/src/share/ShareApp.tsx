@@ -1,0 +1,33 @@
+import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
+import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { SWRConfig } from "swr";
+
+const router = createBrowserRouter(
+  [
+    // Frame: /share/frame/:token
+    {
+      path: "/share/frame/:token",
+      element: <SharedFramePage />,
+    },
+    // File: /share/file/:token (redirects to frame)
+    {
+      path: "/share/file/:token",
+      element: <SharedFilePage />,
+    },
+  ],
+  {
+    basename: import.meta.env.VITE_BASE_PATH ?? "",
+  }
+);
+
+export default function ShareApp() {
+  return (
+    <RegionProvider>
+      <SWRConfig>
+        <RouterProvider router={router} />
+      </SWRConfig>
+    </RegionProvider>
+  );
+}

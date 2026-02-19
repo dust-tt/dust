@@ -1,5 +1,16 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { shallowBlockClone } from "@app/lib/utils";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Checkbox,
   Chip,
@@ -9,26 +20,9 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { shallowBlockClone } from "@app/lib/utils";
-import type {
-  AppType,
-  BlockType,
-  RunType,
-  SpecificationBlockType,
-  SpecificationType,
-  WorkspaceType,
-} from "@app/types";
-
 import Block from "./Block";
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 export default function DataSource({
   owner,
@@ -271,7 +265,7 @@ export default function DataSource({
           <Label>Query</Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.query}
@@ -297,7 +291,7 @@ export default function DataSource({
             <CollapsibleContent>
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
-                  <CodeEditor
+                  <SuspensedCodeEditor
                     data-color-mode={isDark ? "dark" : "light"}
                     readOnly={readOnly}
                     value={block.spec.filter_code}

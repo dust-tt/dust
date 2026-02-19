@@ -1,14 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isGlobalAgentId, isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetAgentSkillsResponseBody {
   skills: SkillType[];
@@ -19,19 +17,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetAgentSkillsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("skills")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Skill builder is not enabled for this workspace.",
-      },
-    });
-  }
-
   const { aId } = req.query;
   if (!isString(aId)) {
     return apiError(req, res, {
@@ -45,7 +30,7 @@ async function handler(
 
   const agent = await getAgentConfiguration(auth, {
     agentId: aId,
-    variant: "light",
+    variant: "full",
   });
   if (!agent) {
     return apiError(req, res, {
@@ -59,13 +44,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      if (isGlobalAgentId(agent.sId)) {
-        // TODO(skills 2025-12-09): Implement fetching skills for global agents.
-        return res.status(200).json({
-          skills: [],
-        });
-      }
-
       const skills = await SkillResource.listByAgentConfiguration(auth, agent);
 
       return res.status(200).json({

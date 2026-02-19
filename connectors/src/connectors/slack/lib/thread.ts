@@ -1,9 +1,9 @@
-import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-import type { ConversationsRepliesResponse } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
-
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import mainLogger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 
 import { reportSlackUsage, withSlackErrorHandling } from "./slack_client";
 
@@ -39,16 +39,28 @@ export async function getRepliesFromThread({
       useCase,
     });
 
-    const replies: ConversationsRepliesResponse = await withSlackErrorHandling(
+    const replies = await throttleWithRedis(
+      RATE_LIMITS["conversations.replies"],
+      `${connectorId}-conversations-replies`,
+      { canBeIgnored: false },
       () =>
-        slackClient.conversations.replies({
-          channel: channelId,
-          ts: threadTs,
-          cursor: next_cursor,
-          limit: 200,
-        })
+        withSlackErrorHandling(() =>
+          slackClient.conversations.replies({
+            channel: channelId,
+            ts: threadTs,
+            cursor: next_cursor,
+            limit: 200,
+          })
+        ),
+      { source: "getRepliesFromThread" }
     );
 
+    // With canBeIgnored: false, throttleWithRedis will always return a value.
+    if (!replies) {
+      throw new Error(
+        "Unexpected undefined response from conversations.replies"
+      );
+    }
     if (replies.error) {
       throw new Error(replies.error);
     }

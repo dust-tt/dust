@@ -1,6 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
@@ -10,8 +7,12 @@ import {
   getLatestNodeFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import type { ContentNodesViewType } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { Spinner } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useCallback, useMemo } from "react";
 
 const PAGE_SIZE = 50;
 
@@ -27,6 +28,12 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const dataSourceView =
     findDataSourceViewFromNavigationHistory(navigationHistory);
 
+  const parentId =
+    traversedNode !== null && traversedNode.parentInternalIds !== null
+      ? traversedNode.internalId
+      : undefined;
+  const isTopLevelInView = !parentId;
+
   const {
     nodes: childNodes,
     isNodesLoading,
@@ -37,10 +44,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     owner,
     dataSourceView:
       traversedNode?.dataSourceView ?? dataSourceView ?? undefined,
-    parentId:
-      traversedNode !== null && traversedNode.parentInternalIds !== null
-        ? traversedNode.internalId
-        : undefined,
+    parentId,
     viewType,
     pagination: { limit: PAGE_SIZE, cursor: null },
     sorting: [{ field: "title", direction: "asc" }],
@@ -57,7 +61,9 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
       childNodes.map((node) => {
         return {
           id: node.internalId,
-          title: node.title,
+          title: getDisplayTitleForDataSourceViewContentNode(node, {
+            disambiguate: isTopLevelInView,
+          }),
           icon: getVisualForDataSourceViewContentNode(node),
           onClick: node.expandable ? () => addNodeEntry(node) : undefined,
           entry: {
@@ -67,7 +73,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           },
         };
       }),
-    [childNodes, addNodeEntry]
+    [childNodes, addNodeEntry, isTopLevelInView]
   );
 
   if (isNodesLoading) {

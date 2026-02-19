@@ -1,5 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -19,7 +17,10 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { EditedByUser } from "@app/types/user";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;
@@ -41,10 +42,18 @@ export function getRetryPolicyFromToolConfiguration(
       DEFAULT_MCP_TOOL_RETRY_POLICY;
 }
 
+export type ToolDisplayLabels = {
+  running: string; // e.g. "Searching data"
+  done: string; // e.g. "Search data"
+};
+
 export type MCPToolType = {
   name: string;
   description: string;
   inputSchema?: JSONSchema;
+  // Optional for remote MCP servers (external sources may not have this).
+  // Mandatory for internal MCP servers (enforced via ServerMetadata type).
+  displayLabels?: ToolDisplayLabels;
 };
 
 export type MCPToolWithAvailabilityType = MCPToolType & {
@@ -66,10 +75,13 @@ export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
 export type MCPServerType = {
-  sId: string;
+  // This will be part of the MCP server metadata at the protocol level.
   name: string;
   version: string;
   description: string;
+
+  // Everything below is only internal.
+  sId: string;
   icon: CustomResourceIconType | InternalAllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];

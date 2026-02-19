@@ -1,16 +1,23 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import * as ts from "typescript";
 
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+export interface ValidationWarning {
+  type: "tailwind" | "typescript";
+  message: string;
+  oldString?: string;
+  suggestion?: string;
+  occurrences?: number;
+}
 
 // Maximum number of syntax errors to display in validation error messages.
 // Additional errors beyond this limit are summarized with a count.
 const MAX_DISPLAYED_ERRORS = 5;
 
-// Regular expressions to capture the value inside a className attribute.
+// Regular expression to capture the value inside a className attribute.
 // We check both double and single quotes separately to handle mixed usage.
-const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
-const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
+const classNameRegex = /className\s*=\s*["']([^"']*)["']/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -20,47 +27,60 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
 /**
  * Validates that the generated code doesn't contain Tailwind arbitrary values.
  *
- * Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] cause visualization failures
- * because they're not included in our pre-built CSS. This validation fails fast with
- * a clear error message that gets exposed to the user, allowing them to retry which
- * provides the error details to the model for correction.
+ * Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] cause visualization failures because
+ * they're not included in our pre-built CSS. Returns structured warnings with context that
+ * can be used directly in edit operations.
  */
-export function validateTailwindCode(code: string): Result<undefined, Error> {
-  const matches: string[] = [];
+export function validateTailwindCode(
+  code: string
+): Result<undefined, ValidationWarning[]> {
+  const warnings: ValidationWarning[] = [];
 
-  // Check double-quoted className attributes
-  let classMatch: RegExpExecArray | null = null;
-  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
-    const classContent = classMatch[1];
-    if (classContent) {
-      // Find all matching arbitrary values within the class attribute's value.
-      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
-      matches.push(...arbitraryMatches);
+  // Find all className attributes in the code (single pass).
+  const matches = [...code.matchAll(classNameRegex)];
+
+  // Count occurrences of each unique className attribute.
+  const occurrenceCounts = new Map<string, number>();
+  for (const match of matches) {
+    const fullMatch = match[0];
+    occurrenceCounts.set(fullMatch, (occurrenceCounts.get(fullMatch) ?? 0) + 1);
+  }
+
+  for (const match of matches) {
+    const classContent = match[1];
+    if (!classContent) {
+      continue;
+    }
+
+    // Check if this className contains arbitrary values.
+    const arbitraryMatches = [...classContent.matchAll(arbitraryRegex)];
+    if (arbitraryMatches.length === 0) {
+      continue;
+    }
+
+    // Get the full className attribute as context.
+    const fullMatch = match[0]; // e.g., 'className="h-[600px] w-[800px]"'.
+    const occurrences = occurrenceCounts.get(fullMatch);
+
+    // For each arbitrary value in this className, create a warning.
+    // We use the full className attribute as the oldString to avoid overlaps.
+    for (const arbMatch of arbitraryMatches) {
+      const arbitraryValue = arbMatch[0];
+
+      warnings.push({
+        type: "tailwind",
+        message: `Forbidden Tailwind arbitrary value '${arbitraryValue}'. Use predefined classes or inline styles instead.`,
+        oldString: fullMatch,
+        suggestion: `Replace '${arbitraryValue}' with a predefined Tailwind class or use the style prop.`,
+        occurrences,
+      });
     }
   }
 
-  // Check single-quoted className attributes
-  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
-    const classContent = classMatch[1];
-    if (classContent) {
-      // Find all matching arbitrary values within the class attribute's value.
-      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
-      matches.push(...arbitraryMatches);
-    }
+  if (warnings.length > 0) {
+    return new Err(warnings);
   }
 
-  // If we found any, remove duplicates and throw an error with up to three examples.
-  if (matches.length > 0) {
-    const uniqueMatches = Array.from(new Set(matches));
-    const examples = uniqueMatches.slice(0, 3).join(", ");
-    return new Err(
-      new Error(
-        `Forbidden Tailwind arbitrary values detected: ${examples}. ` +
-          `Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. ` +
-          `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
-      )
-    );
-  }
   return new Ok(undefined);
 }
 
@@ -158,4 +178,37 @@ export function validateTypeScriptSyntax(
       )
     );
   }
+}
+
+/**
+ * Formats validation warnings into a message that the LLM can use to make targeted edits.
+ * The formatted message includes the old_string that can be directly used in edit operations.
+ *
+ * @param warnings - Array of validation warnings from content validation
+ * @returns Formatted warning message for LLM consumption
+ */
+export function formatValidationWarningsForLLM(
+  warnings: ValidationWarning[]
+): string {
+  if (warnings.length === 0) {
+    return "";
+  }
+
+  let message = "\n\nValidation warnings:\n";
+
+  for (const warning of warnings) {
+    message += `\n${warning.type}: ${warning.message}\n`;
+
+    if (warning.oldString) {
+      message += `  old_string: """${warning.oldString}"""\n`;
+      if (warning.occurrences && warning.occurrences > 1) {
+        message += `  expected_replacements: ${warning.occurrences}\n`;
+      }
+      if (warning.suggestion) {
+        message += `  ${warning.suggestion}\n`;
+      }
+    }
+  }
+
+  return message;
 }

@@ -22,8 +22,10 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType, ModelId, TimeFrame } from "@app/types";
-import { isGlobalAgentId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;
@@ -181,8 +183,10 @@ function createResultOutputItem(
   const extractResult =
     "PROCESSED OUTPUTS:\n" +
     (outputs.data && outputs.data.length > 0
-      ? // @ts-ignore
-        outputs.data.map((d) => JSON.stringify(d)).join("\n")
+      ? outputs.data
+          // @ts-ignore
+          .map((d) => JSON.stringify(d))
+          .join("\n")
       : "(none)");
 
   const resultResource: ExtractResultResourceType = {

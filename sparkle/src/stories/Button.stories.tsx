@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
+import {
+  REGULAR_BUTTON_SIZES,
+  BUTTON_VARIANTS,
+} from "@sparkle/components/Button";
 
 import { Button, PlusIcon, RobotIcon, Separator } from "../index_with_tw_base";
 
@@ -24,7 +27,7 @@ const meta = {
     size: {
       description:
         "The size of the button (Note: 'mini' size requires an icon and cannot have a label)",
-      options: BUTTON_SIZES,
+      options: REGULAR_BUTTON_SIZES,
       control: { type: "select" },
     },
     icon: {
@@ -64,6 +67,10 @@ const meta = {
       description: "Whether the button should display a brief pulse",
       control: "boolean",
     },
+    hasLighterFont: {
+      description: "Whether the label uses a normal font weight",
+      control: "boolean",
+    },
     counterValue: {
       description: "Value to display in the counter (if isCounter is true)",
       control: "text",
@@ -94,6 +101,7 @@ export const ExampleButton: Story = {
     isPulsing: false,
     isSelect: false,
     briefPulse: false,
+    hasLighterFont: false,
     disabled: false,
     isCounter: false,
     counterValue: "1",
@@ -101,13 +109,14 @@ export const ExampleButton: Story = {
 };
 
 export const MiniButton: Story = {
-  render: () => <Button size="mini" icon={PlusIcon} />,
+  render: () => <Button size="icon" icon={PlusIcon} />,
 };
 
 const ButtonBySize = ({
   size,
 }: {
-  size: Exclude<React.ComponentProps<typeof Button>["size"], "mini">;
+  // Only regular button sizes that support a label (no icon-only or mini)
+  size: Exclude<(typeof REGULAR_BUTTON_SIZES)[number], "mini">;
 }) => (
   <>
     <Separator />

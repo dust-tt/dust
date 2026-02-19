@@ -27,21 +27,13 @@ export default defineConfig({
       if (isDebug) {
         return {
           pool: "threads",
-          poolOptions: {
-            threads: {
-              singleThread: true, // Run everything in a single worker to allow debugger attach.
-            },
-          },
+          maxWorkers: 1, // Run everything in a single worker to allow debugger attach.
+          isolate: false,
         };
       }
       return {
         pool: "forks",
-        poolOptions: {
-          forks: {
-            singleFork: false, // Use multiple forks for parallelism
-            isolate: true, // Each test file gets its own process
-          },
-        },
+        isolate: true, // Each test file gets its own process
       };
     })(),
   },

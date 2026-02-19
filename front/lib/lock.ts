@@ -1,11 +1,9 @@
-import type { redisClient } from "@app/lib/utils/redis_client";
-
-import { getRedisClient } from "./api/redis";
+import { getRedisStreamClient, type RedisClientType } from "./api/redis";
 
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
 export async function distributedLock(
-  redisCli: Awaited<ReturnType<typeof redisClient>>,
+  redisCli: RedisClientType,
   key: string
 ): Promise<string | undefined> {
   const lockKey = `lock:${key}`;
@@ -28,7 +26,7 @@ export async function distributedLock(
 }
 
 export async function distributedUnlock(
-  redisCli: Awaited<ReturnType<typeof redisClient>>,
+  redisCli: RedisClientType,
   key: string,
   lockValue: string
 ): Promise<void> {
@@ -54,9 +52,9 @@ const WAIT_BETWEEN_RETRIES = 100;
 export const executeWithLock = async <T>(
   lockName: string,
   callback: () => Promise<T>,
-  timeoutMs: number = 30000
+  timeoutMs: number = 30_000
 ): Promise<T> => {
-  const client = await getRedisClient({ origin: "lock" });
+  const client = await getRedisStreamClient({ origin: "lock" });
 
   const start = Date.now();
   let lockValue: string | undefined;

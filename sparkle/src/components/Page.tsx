@@ -1,9 +1,10 @@
-import React, { ComponentType } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Separator } from "@sparkle/components/Separator";
 import { classNames } from "@sparkle/lib/utils";
+import React, { type ComponentType } from "react";
 
-import { Button, ButtonProps } from "./Button";
+import { Button, type ButtonProps } from "./Button";
 import { Icon } from "./Icon";
 
 interface PageProps {
@@ -46,7 +47,11 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
         className="s-text-primary-400 dark:s-text-primary-500"
         size="lg"
       />
-      <Page.H variant="h3">{title}</Page.H>
+      {typeof title === "string" ? (
+        <Page.H variant="h3">{title}</Page.H>
+      ) : (
+        <>{title}</>
+      )}
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>
   );

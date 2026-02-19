@@ -1,6 +1,3 @@
-import type Stripe from "stripe";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -18,7 +15,9 @@ import {
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import type Stripe from "stripe";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/plans/stripe", async () => {
   const actual = await vi.importActual("@app/lib/plans/stripe");
@@ -80,7 +79,7 @@ describe("PAYG Credits Database Tests", () => {
 
   // Requires migration_419.sql to be run (unique index on type, workspaceId, startDate, expirationDate)
   describe("unique constraint on (type, workspaceId, startDate, expirationDate)", () => {
-    it("should throw when creating duplicate credits with same dates", async () => {
+    it("should return error when creating duplicate credits with same dates", async () => {
       const startTimestampSeconds = 1700000000;
       const endTimestampSeconds = 1702678400;
       const startDate = new Date(startTimestampSeconds * 1000);
@@ -102,12 +101,17 @@ describe("PAYG Credits Database Tests", () => {
         consumedAmountMicroUsd: 0,
       });
 
-      await expect(
-        credit2.start(auth, {
-          startDate,
-          expirationDate,
-        })
-      ).rejects.toThrow(/unique|Validation error/i);
+      const result = await credit2.start(auth, {
+        startDate,
+        expirationDate,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain(
+          "A credit with the same type and dates already exists"
+        );
+      }
     });
   });
 

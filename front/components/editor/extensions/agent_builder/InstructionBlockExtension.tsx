@@ -1,7 +1,14 @@
+import {
+  CLOSING_TAG_REGEX,
+  INSTRUCTION_BLOCK_REGEX,
+  OPENING_TAG_BEGINNING_REGEX,
+  OPENING_TAG_REGEX,
+} from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
 import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
-import { InputRule } from "@tiptap/core";
-import { mergeAttributes, Node } from "@tiptap/core";
+import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 import {
@@ -9,14 +16,8 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React, { useEffect, useRef, useState } from "react";
-
-import {
-  CLOSING_TAG_REGEX,
-  INSTRUCTION_BLOCK_REGEX,
-  OPENING_TAG_BEGINNING_REGEX,
-  OPENING_TAG_REGEX,
-} from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -286,10 +287,6 @@ export const InstructionBlockExtension =
             const type = match[1] ? match[1].toLowerCase() : "";
             const tagType = type || "instructions";
 
-            if (this.editor.isActive(this.name)) {
-              return;
-            }
-
             const content = {
               type: this.name,
               attrs: { type: tagType, isCollapsed: false },
@@ -374,6 +371,11 @@ export const InstructionBlockExtension =
             return false;
           }
 
+          // Safety check for Safari: ensure editor is not destroyed before dispatch
+          if (this.editor.isDestroyed) {
+            return false;
+          }
+
           const tr = state.tr;
           const fromPos = $from.before(blockDepth);
           const toPos = fromPos + blockNode.nodeSize;
@@ -391,7 +393,7 @@ export const InstructionBlockExtension =
           }
 
           this.editor.view.dispatch(tr);
-          // Safety check for Safari: ensure editor and docView are available
+          // Focus after dispatch
           if (!this.editor.isDestroyed) {
             this.editor.commands.focus();
           }
@@ -455,6 +457,11 @@ export const InstructionBlockExtension =
             return false;
           }
 
+          // Safety check for Safari: ensure editor is not destroyed before dispatch
+          if (this.editor.isDestroyed) {
+            return false;
+          }
+
           // Exit the block by creating a new paragraph after it
           const tr = state.tr;
           const posBeforeBlock = $from.before(blockDepth);
@@ -468,7 +475,7 @@ export const InstructionBlockExtension =
           tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
 
           this.editor.view.dispatch(tr);
-          // Safety check for Safari: ensure editor and docView are available
+          // Focus after dispatch
           if (!this.editor.isDestroyed) {
             this.editor.commands.focus();
           }
@@ -497,6 +504,35 @@ export const InstructionBlockExtension =
 
         const tagName = match[1] || "instructions";
 
+        let tokens;
+        try {
+          // Attempt to tokenize nested content with original text in a try-catch
+          // Sometimes we can't tokenize with non-breakable-space content, hence
+          // the .trim() fallback
+          tokens = lexer.blockTokens(match[2]);
+        } catch (error) {
+          try {
+            tokens = lexer.blockTokens(match[2].trim());
+            logger.warn("Marked lexer state corruption, passed with trim()", {
+              error: normalizeError(error),
+              sourceString: src,
+              match2: match[2],
+            });
+          } catch (error) {
+            // Marked lexer state corruption - fallback to treating as undefined, so we still at least display the content
+            // but not the `<instructions>`
+            logger.error(
+              "Marked lexer state corruption, failed with trim(). Fallbacking...",
+              {
+                error: normalizeError(error),
+                sourceString: src,
+                match2: match[2].trim(),
+              }
+            );
+            return undefined;
+          }
+        }
+
         return {
           type: "instructionBlock",
           raw: match[0],
@@ -504,13 +540,14 @@ export const InstructionBlockExtension =
             type: tagName.toLowerCase(),
           },
           text: match[2],
-          tokens: lexer.blockTokens(match[2]),
+          tokens,
         };
       },
     },
 
     parseMarkdown: (token, helpers) => {
       const tagType = token.attrs?.type ?? "instructions";
+      const content = helpers.parseChildren(token.tokens ?? []);
 
       return {
         type: "instructionBlock",
@@ -518,8 +555,10 @@ export const InstructionBlockExtension =
           type: tagType,
           isCollapsed: false,
         },
-        // The content markdown will be parsed by the markdown parser
-        content: helpers.parseChildren(token.tokens ?? []),
+        // When tags contain only whitespace (e.g. "<foo>\n</foo>"), blockTokens("\n") produces
+        // tokens that parseChildren can't convert to valid blocks, returning an empty array. This
+        // violates the "block+" schema and crashes ProseMirror. Fall back to an empty paragraph.
+        content: content.length > 0 ? content : [{ type: "paragraph" }],
       };
     },
 

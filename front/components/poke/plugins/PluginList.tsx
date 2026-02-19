@@ -1,6 +1,3 @@
-import { Button, cn, Input, Tooltip } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
-
 import { PluginRunsList } from "@app/components/poke/plugins/PluginRunsList";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import {
@@ -11,7 +8,10 @@ import {
 } from "@app/components/poke/shadcn/ui/card";
 import type { PluginListItem } from "@app/lib/api/poke/types";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
-import type { PluginResourceTarget } from "@app/types";
+import type { PluginResourceTarget } from "@app/types/poke/plugins";
+import { Button, cn, Input, Tooltip } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo, useState } from "react";
 
 interface PluginCardProps {
   onClick: () => void;

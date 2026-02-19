@@ -1,5 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -12,30 +10,32 @@ import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_action
 import type {
   MCPApproveExecutionEvent,
   ToolExecution,
+  ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
+import type { FileAuthorizationInfo } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
+  ProjectConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
-import type {
-  DustAppRunConfigurationType,
-  ModelId,
-  PersonalAuthenticationRequiredErrorContent,
-  TimeFrame,
-  ToolErrorEvent,
-} from "@app/types";
-import {
-  assertNever,
-  isPersonalAuthenticationRequiredErrorContent,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { DustAppRunConfigurationType } from "@app/types/app";
+import type {
+  PersonalAuthenticationRequiredErrorContent,
+  ToolErrorEvent,
+} from "@app/types/assistant/agent";
+import { isPersonalAuthenticationRequiredErrorContent } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type ActionApprovalStateType =
   | "approved"
@@ -67,6 +67,7 @@ export type ServerSideMCPServerConfigurationType =
     mcpServerViewId: string;
     dustAppConfiguration: DustAppRunConfigurationType | null;
     secretName: string | null;
+    dustProject: ProjectConfiguration | null;
     // Out of convenience, we hold the sId of the internal server if it is an internal server.
     internalMCPServerId: string | null;
   };
@@ -142,6 +143,8 @@ export type LightMCPToolConfigurationType =
   | LightServerSideMCPToolConfigurationType
   | LightClientSideMCPToolConfigurationType;
 
+export type { FileAuthorizationInfo };
+
 export type BlockedToolExecution = ToolExecution &
   (
     | {
@@ -161,6 +164,14 @@ export type BlockedToolExecution = ToolExecution &
           mcpServerDisplayName: string;
         };
         authorizationInfo: AuthorizationInfo;
+      }
+    | {
+        status: "blocked_file_authorization_required";
+        metadata: MCPValidationMetadataType & {
+          mcpServerId: string;
+          mcpServerDisplayName: string;
+        };
+        fileAuthorizationInfo: FileAuthorizationInfo;
       }
   );
 
@@ -282,15 +293,30 @@ function isToolPersonalAuthRequiredEvent(
   );
 }
 
+function isToolFileAuthRequiredEvent(
+  event: unknown
+): event is ToolFileAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_file_auth_required"
+  );
+}
+
 export function isBlockedActionEvent(
   event: unknown
-): event is MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent {
+): event is
+  | MCPApproveExecutionEvent
+  | ToolPersonalAuthRequiredEvent
+  | ToolFileAuthRequiredEvent {
   return (
     typeof event === "object" &&
     event !== null &&
     "type" in event &&
     (isMCPApproveExecutionEvent(event) ||
       isToolPersonalAuthRequiredEvent(event) ||
+      isToolFileAuthRequiredEvent(event) ||
       isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

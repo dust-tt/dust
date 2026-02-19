@@ -1,14 +1,13 @@
-import { Cell, Pie, PieChart, Tooltip } from "recharts";
-
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
   buildSourceChartData,
   getSourceColor,
 } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface SourceChartProps {
   workspaceId: string;
@@ -112,7 +111,9 @@ export function SourceChart({
             dominantBaseline="middle"
             className="fill-foreground dark:fill-foreground-night"
           >
-            <tspan className="text-2xl font-semibold">{total}</tspan>
+            <tspan className="text-2xl font-semibold">
+              {total.toLocaleString()}
+            </tspan>
             <tspan x="50%" dy="1.2em" className="text-sm">
               Messages
             </tspan>

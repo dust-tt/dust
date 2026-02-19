@@ -1,25 +1,8 @@
-import {
-  Chip,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  Pagination,
-} from "@dust-tt/sparkle";
-import type { GetStaticProps } from "next";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  CONTENTFUL_REVALIDATE_SECONDS,
-  getAllCustomerStories,
-} from "@app/lib/contentful/client";
+import { getAllCustomerStories } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type {
   CustomerStoryFilterOptions,
@@ -27,7 +10,21 @@ import type {
   CustomerStorySummary,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import {
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Pagination,
+} from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const GRID_PAGE_SIZE = 12;
 
@@ -72,7 +69,7 @@ function extractFilterOptions(
   };
 }
 
-export const getStaticProps: GetStaticProps<
+export const getServerSideProps: GetServerSideProps<
   CustomerStoryListingPageProps
 > = async () => {
   const storiesResult = await getAllCustomerStories();
@@ -93,7 +90,6 @@ export const getStaticProps: GetStaticProps<
         },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
-      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -105,7 +101,6 @@ export const getStaticProps: GetStaticProps<
       filterOptions: extractFilterOptions(stories),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
-    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
@@ -176,6 +171,7 @@ function FilterSection({
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function CustomerStoriesListing({
   stories,
   filterOptions,
@@ -223,6 +219,7 @@ export default function CustomerStoriesListing({
     return Array.isArray(param) ? param : [param];
   }, [router.query.region]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [

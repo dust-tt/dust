@@ -1,15 +1,10 @@
-import { Spinner, TestTubeIcon } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef } from "react";
-import { useWatch } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -17,19 +12,21 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
-import { useUser } from "@app/lib/swr/user";
-import type {
-  ContentFragmentsType,
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  Result,
-  RichMention,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { toRichAgentMentionType } from "@app/types";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
+import type { Result } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef } from "react";
+import { useWatch } from "react-hook-form";
 
 interface EmptyStateProps {
   message: string;
@@ -65,7 +62,7 @@ function LoadingState({ message }: LoadingStateProps) {
 }
 
 interface PreviewContentProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   user: UserType | null;
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
@@ -77,6 +74,8 @@ interface PreviewContentProps {
   ) => Promise<Result<undefined, DustError>>;
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
+  isTrialPlan: boolean;
+  isAdmin: boolean;
 }
 
 function PreviewContent({
@@ -88,11 +87,18 @@ function PreviewContent({
   createConversation,
   draftAgent,
   isSavingDraftAgent,
+  isTrialPlan,
+  isAdmin,
 }: PreviewContentProps) {
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
         <div className="flex-1 overflow-y-auto">
+          {isTrialPlan && (
+            <div className="px-4 pt-4">
+              <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
+            </div>
+          )}
           {conversation && user && (
             <ConversationViewer
               owner={owner}
@@ -100,12 +106,19 @@ function PreviewContent({
               conversationId={conversation.sId}
               agentBuilderContext={{
                 draftAgent: draftAgent ?? undefined,
-                isSavingDraftAgent,
+                isSubmitting: isSavingDraftAgent,
                 resetConversation,
                 actionsToShow: ["attachment"],
               }}
               key={conversation.sId}
             />
+          )}
+          {!conversation && (
+            <div className="flex h-full items-center justify-center px-6 text-center">
+              <div className="text-base font-medium text-muted-foreground">
+                Preview your agent here
+              </div>
+            </div>
           )}
         </div>
 
@@ -119,7 +132,7 @@ function PreviewContent({
               stickyMentions={
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
-              conversationId={null}
+              draftKey={`agent-${draftAgent?.name}-builder-preview`}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
@@ -141,8 +154,11 @@ function PreviewContent({
 }
 
 export function AgentBuilderPreview() {
-  const { owner } = useAgentBuilderContext();
-  const { user } = useUser();
+  const { owner, isAdmin } = useAgentBuilderContext();
+  const { user } = useAuth();
+  const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
+  const isTrialPlan =
+    activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -154,9 +170,10 @@ export function AgentBuilderPreview() {
 
   const [instructions, actions, agentName] = watchedFields;
 
-  const hasContent = useMemo(() => {
-    return !!instructions?.trim() || (actions?.length ?? 0) > 0;
-  }, [instructions, actions]);
+  const hasContent = useMemo(
+    () => !!instructions?.trim() || !!actions?.length,
+    [instructions, actions]
+  );
 
   const {
     draftAgent,
@@ -245,13 +262,11 @@ export function AgentBuilderPreview() {
   const renderContent = () => {
     if (!hasContent) {
       return (
-        <TabContentLayout title="Testing">
-          <EmptyPlaceholder
-            icon={TestTubeIcon}
-            title="Ready to test your agent?"
-            description="Add some instructions or actions to your agent to start testing it here."
-          />
-        </TabContentLayout>
+        <div className="flex h-full flex-1 items-center justify-center px-6 text-center">
+          <div className="text-base font-medium text-muted-foreground">
+            Preview your agent here
+          </div>
+        </div>
       );
     }
 
@@ -278,6 +293,8 @@ export function AgentBuilderPreview() {
         createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
+        isTrialPlan={!!isTrialPlan}
+        isAdmin={isAdmin}
       />
     );
   };

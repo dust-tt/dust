@@ -1,3 +1,7 @@
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   Checkbox,
@@ -12,13 +16,9 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
-
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
-import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { asDisplayName } from "@app/types";
 
 function formatKeyForDisplay(key: string): string {
   const segments = key.split(".");
@@ -91,10 +91,8 @@ function BooleanConfigurationInput({
   );
 }
 
-interface BooleanConfigurationSectionProps extends Pick<
-  MCPServerRequirements,
-  "requiredBooleans"
-> {}
+interface BooleanConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredBooleans"> {}
 
 function BooleanConfigurationSection({
   requiredBooleans,
@@ -160,10 +158,8 @@ function NumberConfigurationInput({
   );
 }
 
-interface NumberConfigurationSectionProps extends Pick<
-  MCPServerRequirements,
-  "requiredNumbers"
-> {}
+interface NumberConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredNumbers"> {}
 
 function NumberConfigurationSection({
   requiredNumbers,
@@ -229,10 +225,8 @@ function StringConfigurationInput({
   );
 }
 
-interface StringConfigurationSectionProps extends Pick<
-  MCPServerRequirements,
-  "requiredStrings"
-> {}
+interface StringConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredStrings"> {}
 
 function StringConfigurationSection({
   requiredStrings,
@@ -330,10 +324,8 @@ function EnumConfigurationInput({
   );
 }
 
-interface EnumConfigurationSectionProps extends Pick<
-  MCPServerRequirements,
-  "requiredEnums"
-> {}
+interface EnumConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredEnums"> {}
 
 function EnumConfigurationSection({
   requiredEnums,
@@ -452,10 +444,8 @@ function ListConfigurationInput({
   );
 }
 
-interface ListConfigurationSectionProps extends Pick<
-  MCPServerRequirements,
-  "requiredLists"
-> {}
+interface ListConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredLists"> {}
 
 function ListConfigurationSection({
   requiredLists,
@@ -476,14 +466,15 @@ function ListConfigurationSection({
   );
 }
 
-interface GroupedConfigurationSectionProps extends Pick<
-  MCPServerRequirements,
-  | "requiredStrings"
-  | "requiredNumbers"
-  | "requiredBooleans"
-  | "requiredEnums"
-  | "requiredLists"
-> {
+interface GroupedConfigurationSectionProps
+  extends Pick<
+    MCPServerRequirements,
+    | "requiredStrings"
+    | "requiredNumbers"
+    | "requiredBooleans"
+    | "requiredEnums"
+    | "requiredLists"
+  > {
   prefix: string;
 }
 
@@ -524,14 +515,15 @@ function GroupedConfigurationSection({
   );
 }
 
-interface AdditionalConfigurationSectionProps extends Pick<
-  MCPServerRequirements,
-  | "requiredStrings"
-  | "requiredNumbers"
-  | "requiredBooleans"
-  | "requiredEnums"
-  | "requiredLists"
-> {}
+interface AdditionalConfigurationSectionProps
+  extends Pick<
+    MCPServerRequirements,
+    | "requiredStrings"
+    | "requiredNumbers"
+    | "requiredBooleans"
+    | "requiredEnums"
+    | "requiredLists"
+  > {}
 
 export function AdditionalConfigurationSection({
   requiredStrings,

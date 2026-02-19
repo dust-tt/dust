@@ -1,10 +1,14 @@
-import { Button } from "@dust-tt/sparkle";
+import config from "@app/lib/api/config";
+import { timeAgoFrom } from "@app/lib/utils";
+import type { GroupType } from "@app/types/groups";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
+import { Button, cn } from "@dust-tt/sparkle";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import { classNames, timeAgoFrom } from "@app/lib/utils";
-import type { GroupType, KeyType, ModelId } from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
 
 import { prettifyGroupName } from "./utils";
 
@@ -14,6 +18,7 @@ type APIKeysListProps = {
   isRevoking: boolean;
   isGenerating: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
+  onEditCap: (key: KeyType) => void;
 };
 
 const getKeySpaces = (
@@ -39,6 +44,7 @@ export const APIKeysList = ({
   isRevoking,
   isGenerating,
   onRevoke,
+  onEditCap,
 }: APIKeysListProps) => {
   return (
     <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
@@ -51,7 +57,7 @@ export const APIKeysList = ({
                   <div className="flex flex-row">
                     <div className="my-auto mr-2 mt-0.5 flex flex-shrink-0">
                       <p
-                        className={classNames(
+                        className={cn(
                           "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                           key.status === "active"
                             ? "bg-green-100 text-green-800"
@@ -63,7 +69,7 @@ export const APIKeysList = ({
                     </div>
                     <div className="dd-privacy-mask">
                       <p
-                        className={classNames(
+                        className={cn(
                           "truncate font-mono text-sm",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -71,18 +77,15 @@ export const APIKeysList = ({
                         Name: <strong>{key.name ?? "Unnamed"}</strong>
                       </p>
                       <p
-                        className={classNames(
+                        className={cn(
                           "truncate font-mono text-sm",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
                       >
-                        Domain:{" "}
-                        <strong>
-                          {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
-                        </strong>
+                        Domain: <strong>{config.getApiBaseUrl()}</strong>
                       </p>
                       <p
-                        className={classNames(
+                        className={cn(
                           "truncate font-mono text-sm",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -92,9 +95,22 @@ export const APIKeysList = ({
                           {getKeySpaces(key, groupsById).join(", ")}
                         </strong>
                       </p>
+                      <p
+                        className={cn(
+                          "truncate font-mono text-sm",
+                          "text-muted-foreground dark:text-muted-foreground-night"
+                        )}
+                      >
+                        Monthly cap:{" "}
+                        <strong>
+                          {key.monthlyCapMicroUsd !== null
+                            ? `$${(key.monthlyCapMicroUsd / 1_000_000).toFixed(2)}`
+                            : "Unlimited"}
+                        </strong>
+                      </p>
                       <pre className="text-sm">{key.secret}</pre>
                       <p
-                        className={classNames(
+                        className={cn(
                           "front-normal text-xs",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -106,7 +122,7 @@ export const APIKeysList = ({
                         ago.
                       </p>
                       <p
-                        className={classNames(
+                        className={cn(
                           "front-normal text-xs",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -128,12 +144,16 @@ export const APIKeysList = ({
                 </div>
               </div>
               {key.status === "active" ? (
-                <div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={isRevoking || isGenerating}
+                    onClick={() => onEditCap(key)}
+                    label="Edit cap"
+                  />
                   <Button
                     variant="warning"
-                    disabled={
-                      key.status != "active" || isRevoking || isGenerating
-                    }
+                    disabled={isRevoking || isGenerating}
                     onClick={async () => {
                       await onRevoke(key);
                     }}

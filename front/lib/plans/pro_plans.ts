@@ -1,11 +1,10 @@
-import type { Attributes } from "sequelize";
-
 import { PlanModel } from "@app/lib/models/plan";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { isDevelopment, isTest } from "@app/types";
+import { isDevelopment, isTest } from "@app/types/shared/env";
+import type { Attributes } from "sequelize";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,
@@ -86,6 +85,7 @@ if (isDevelopment() || isTest()) {
 
 /**
  * Function to call when we edit something in PRO_PLANS_DATA to update the database. It will create or update the plans.
+ * Uses atomic upsert to avoid race conditions when called concurrently (e.g., in parallel tests).
  * @param planCode - Optional plan code to upsert. If not provided, all plans are upserted.
  */
 export const upsertProPlans = async (planCode?: string) => {
@@ -94,17 +94,8 @@ export const upsertProPlans = async (planCode?: string) => {
     : PRO_PLANS_DATA;
 
   for (const planData of plansToUpsert) {
-    const plan = await PlanModel.findOne({
-      where: {
-        code: planData.code,
-      },
+    await PlanModel.upsert(planData, {
+      conflictFields: ["code"],
     });
-    if (plan === null) {
-      await PlanModel.create(planData);
-      // console.log(`Pro plan ${planData.code} created.`);
-    } else {
-      await plan.update(planData);
-      // console.log(`Pro plan ${planData.code} updated.`);
-    }
   }
 };

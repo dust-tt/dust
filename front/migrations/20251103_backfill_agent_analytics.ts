@@ -17,7 +17,8 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { storeAgentAnalytics } from "@app/temporal/analytics_queue/activities";
-import { LightWorkspaceType } from "@app/types";
+import { LightWorkspaceType } from "@app/types/user";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 async function backfillAgentAnalytics(
   workspace: LightWorkspaceType,
@@ -207,6 +208,7 @@ async function backfillAgentAnalytics(
               agentMessageRow,
               agentAgentMessageRow,
               userModel: userUserMessageRow.user ?? null,
+              userMessageModel: userUserMessageRow,
               conversationRow,
               contextOrigin: userUserMessageRow.userContextOrigin ?? null,
             });
@@ -275,11 +277,7 @@ makeScript(
   async ({ execute, workspaceId }, logger) => {
     if (workspaceId) {
       // Run on a single workspace
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      });
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
 
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);

@@ -3,7 +3,7 @@
  * ISC License
  */
 
-import { useRouter } from "next/router";
+import { useAppRouter } from "@app/lib/platform";
 import { useCallback, useEffect, useState } from "react";
 
 const getUrlFromLocation = (location: Location) => {
@@ -48,7 +48,7 @@ export const useHashParam = (
   key: string,
   defaultValue?: string
 ): [string | undefined, Setter] => {
-  const router = useRouter();
+  const router = useAppRouter();
 
   // Hold the internal value for the search param defined by "key" in the hash.
   const [innerValue, setInnerValue] = useState<{
@@ -63,6 +63,7 @@ export const useHashParam = (
   });
 
   // Listen to hash change events and update the internal value if the hash is removed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const onEventComplete = (url: string) => {
       const hash = getHashFromUrl(url);
@@ -81,6 +82,7 @@ export const useHashParam = (
   }, [router.events, innerValue, setInnerValue]);
 
   // Listen to innerValue changes and update the hash in the router if there is a mismatch.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (typeof window !== "undefined" && router.isReady) {
       // get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
@@ -105,14 +107,7 @@ export const useHashParam = (
         const newUrl = `${pathname}${search}${hash ? `#${hash}` : ""}`;
 
         if (innerValue.options.history === "replace") {
-          void router
-            .replace(newUrl, undefined, { shallow: true })
-            .catch((e) => {
-              // workaround for https://github.com/vercel/next.js/issues/37362
-              if (!e.cancelled) {
-                throw e;
-              }
-            });
+          window.history.replaceState(window.history.state, "", newUrl);
         } else {
           void router.push(newUrl);
         }

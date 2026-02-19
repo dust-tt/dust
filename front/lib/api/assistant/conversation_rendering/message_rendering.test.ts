@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentMessageType,
   ConversationType,
-  ModelConfigurationType,
+  ConversationWithoutContentType,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the helpers module
 vi.mock(import("./helpers"), async (importOriginal) => {
@@ -20,7 +20,7 @@ vi.mock(import("./helpers"), async (importOriginal) => {
   };
 });
 
-import type { UserMessageTypeModel } from "@app/types";
+import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
 import { getSteps, renderContentFragment, renderUserMessage } from "./helpers";
 
@@ -38,7 +38,7 @@ describe("renderAllMessages", () => {
     } as unknown as ModelConfigurationType;
 
     vi.mocked(renderUserMessage).mockImplementation(
-      (m: UserMessageType) =>
+      (conversation: ConversationWithoutContentType, m: UserMessageType) =>
         ({
           role: "user",
           name: m.context.username,
@@ -46,7 +46,7 @@ describe("renderAllMessages", () => {
         }) as UserMessageTypeModel
     );
 
-    vi.mocked(getSteps).mockResolvedValue([
+    vi.mocked(getSteps).mockReturnValue([
       {
         contents: [{ type: "text_content", value: "Agent response" }],
         actions: [],
@@ -115,9 +115,7 @@ describe("renderAllMessages", () => {
             } as AgentMessageType["configuration"],
             skipToolsValidation: false,
             actions: [],
-            rawContents: [],
             contents: [],
-            parsedContents: {},
             modelInteractionDurationMs: null,
             richMentions: [],
             completionDurationMs: null,
@@ -132,6 +130,7 @@ describe("renderAllMessages", () => {
       created: Date.now(),
       updated: Date.now(),
       unread: false,
+      lastReadMs: Date.now(),
       actionRequired: false,
       hasError: false,
       sId: "conv_1",
@@ -146,6 +145,7 @@ describe("renderAllMessages", () => {
       visibility: "unlisted",
       content: content as ConversationType["content"],
       triggerId: null,
+      metadata: {},
     } as ConversationType;
   }
 
@@ -268,7 +268,7 @@ describe("renderAllMessages", () => {
       ]);
 
       // Mock getSteps to return a step with both text_content and function_call
-      vi.mocked(getSteps).mockResolvedValue([
+      vi.mocked(getSteps).mockReturnValue([
         {
           contents: [
             { type: "text_content", value: "Agent response" },
@@ -320,7 +320,7 @@ describe("renderAllMessages", () => {
       ]);
 
       // Mock getSteps to return a step with both text_content and function_call
-      vi.mocked(getSteps).mockResolvedValue([
+      vi.mocked(getSteps).mockReturnValue([
         {
           contents: [
             { type: "text_content", value: "Agent response" },

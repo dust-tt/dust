@@ -1,9 +1,11 @@
 import { Slot } from "@radix-ui/react-slot";
+import {
+  LinkWrapper,
+  type LinkWrapperProps,
+} from "@sparkle/components/LinkWrapper";
+import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import { cn } from "@sparkle/lib/utils";
 
 export const HOVERABLE_VARIANTS = [
   "invisible",
@@ -42,7 +44,8 @@ const variantStyle = cva(
 );
 
 interface MetaHoverableProps
-  extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof variantStyle> {
+  extends React.HTMLAttributes<HTMLElement>,
+    VariantProps<typeof variantStyle> {
   asChild?: boolean;
 }
 
@@ -63,7 +66,8 @@ const MetaHoverable = React.forwardRef<HTMLElement, MetaHoverableProps>(
 MetaHoverable.displayName = "MetaHoverable";
 
 export interface HoverableProps
-  extends MetaHoverableProps, Omit<LinkWrapperProps, "children"> {}
+  extends MetaHoverableProps,
+    Omit<LinkWrapperProps, "children"> {}
 
 const Hoverable = React.forwardRef<HTMLElement, HoverableProps>(
   ({ href, target, rel, children, variant, className, ...props }, ref) => {

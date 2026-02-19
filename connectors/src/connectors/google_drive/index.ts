@@ -1,9 +1,4 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok, removeNulls } from "@dust-tt/client";
-import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
-import type { InferAttributes, WhereOptions } from "sequelize";
-
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { isDriveObjectExpandable } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
@@ -12,6 +7,7 @@ import {
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import {
   launchGoogleDriveFullSyncWorkflow,
@@ -65,6 +61,11 @@ import {
   INTERNAL_MIME_TYPES,
   normalizeError,
 } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
+import type { InferAttributes, WhereOptions } from "sequelize";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "google_drive";
@@ -115,7 +116,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       pdfEnabled: false,
       largeFilesEnabled: false,
       csvEnabled: false,
-      useParallelSync: false,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -584,19 +584,13 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    if (addedFolderIds.length > 0) {
+    if (addedFolderIds.length > 0 || removedFolderIds.length > 0) {
       const res = await launchGoogleDriveFullSyncWorkflow(
         this.connectorId,
         null,
-        addedFolderIds
+        addedFolderIds,
+        removedFolderIds
       );
-      if (res.isErr()) {
-        return res;
-      }
-    } else if (removedFolderIds.length > 0) {
-      // If we have added folders, the garbage collector will be automatically at the end of the full sync,
-      // but if we only removed folders, we need launch it manually.
-      const res = await launchGoogleGarbageCollector(this.connectorId);
       if (res.isErr()) {
         return res;
       }
@@ -648,8 +642,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -662,8 +655,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -676,20 +668,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
-        );
-        if (workflowRes.isErr()) {
-          return workflowRes;
-        }
-        return new Ok(void 0);
-      }
-      case "useParallelSync": {
-        await config.update({
-          useParallelSync: configValue === "true",
-        });
-        const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
-          this.connectorId
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -784,9 +763,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       case "csvEnabled": {
         return new Ok(config.csvEnabled ? "true" : "false");
       }
-      case "useParallelSync": {
-        return new Ok(config.useParallelSync ? "true" : "false");
-      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -831,7 +807,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs, []);
+    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs);
   }
 
   async configure(): Promise<Result<void, Error>> {

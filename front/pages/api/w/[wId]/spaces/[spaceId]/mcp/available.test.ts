@@ -1,17 +1,16 @@
-import { describe, expect, it } from "vitest";
-
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WhitelistableFeature } from "@app/types";
-import type { PlanType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { describe, expect, it } from "vitest";
 
 import handler from "./available";
 

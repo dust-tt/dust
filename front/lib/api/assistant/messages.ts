@@ -1,14 +1,11 @@
-import assert from "assert";
-
-import {
-  AgentMessageContentParser,
-  getCoTDelimitersConfiguration,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageContentParser,
+  getCoTDelimitersConfiguration,
+} from "@app/lib/llms/agent_message_content_parser";
 import {
   AgentMessageModel,
   MentionModel,
@@ -21,47 +18,40 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageType,
-  ContentFragmentType,
-  ConversationWithoutContentType,
-  LegacyLightMessageType,
-  LightAgentConfigurationType,
-  LightAgentMessageType,
-  MessageType,
-  ModelId,
-  Result,
-  UserMessageType,
-  UserType,
-} from "@app/types";
-import {
-  ConversationError,
-  Err,
-  isContentFragmentType,
-  isUserMessageType,
-  Ok,
-  removeNulls,
-  toMentionType,
-  toRichAgentMentionType,
-  toRichUserMentionType,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentContentItemType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
-import {
-  isAgentFunctionCallContent,
-  isAgentReasoningContent,
-  isAgentTextContent,
-} from "@app/types/assistant/agent_message_content";
 import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+  LegacyLightMessageType,
+  LightAgentMessageType,
   LightMessageType,
-  ParsedContentItem,
+  MessageType,
   RichMentionWithStatus,
+  UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import {
+  ConversationError,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import {
+  toMentionType,
+  toRichAgentMentionType,
+  toRichUserMentionType,
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
+import assert from "assert";
 
 export function getCompletionDuration(
   created: number,
@@ -71,16 +61,53 @@ export function getCompletionDuration(
   if (!completedTs) {
     return null;
   }
-  // Estimate wait time for the agent message by checking the difference
-  // between action execution duration and full completion time.
-  const waitTime = actions.reduce(
-    (acc, a) =>
-      a.executionDurationMs
-        ? acc + a.updatedAt - a.createdAt - a.executionDurationMs
-        : acc,
+
+  // Assumption: Each action has two phases: wait period, then execution period
+  // Action timeline: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
+  // Where executionStart = updatedAt - executionDurationMs
+  //
+  // Message timeline: [created] ---blank---[action 1] --- blank --- [action 2] --- blank --- [completedTs]
+
+  const waitRanges: Array<{ start: number; end: number }> = actions
+    .filter((a) => a.executionDurationMs !== null)
+    .map((a) => ({
+      start: a.createdAt,
+      end: a.updatedAt - a.executionDurationMs!,
+    }))
+    .filter((r) => r.end > r.start) // Filter out actions with no wait time
+    .sort((a, b) => a.start - b.start);
+
+  if (waitRanges.length === 0) {
+    return completedTs - created;
+  }
+
+  // Merge overlapping wait periods
+  const mergedWaitRanges: Array<{ start: number; end: number }> = [];
+  let currentRange = waitRanges[0];
+
+  for (let i = 1; i < waitRanges.length; i++) {
+    const range = waitRanges[i];
+    if (range.start <= currentRange.end) {
+      // Overlapping or adjacent - merge by extending the end
+      currentRange = {
+        start: currentRange.start,
+        end: Math.max(currentRange.end, range.end),
+      };
+    } else {
+      // Non-overlapping - save current and start new range
+      mergedWaitRanges.push(currentRange);
+      currentRange = range;
+    }
+  }
+  mergedWaitRanges.push(currentRange);
+
+  // Calculate total wait time
+  const totalWaitTimeMs = mergedWaitRanges.reduce(
+    (sum, range) => sum + (range.end - range.start),
     0
   );
-  return completedTs - created - waitTime;
+
+  return completedTs - created - totalWaitTimeMs;
 }
 
 export function getRichMentionsWithStatusForMessage(
@@ -122,61 +149,6 @@ export function getRichMentionsWithStatusForMessage(
         }
       })
   );
-}
-
-export async function generateParsedContents(
-  actions: AgentMCPActionWithOutputType[],
-  agentConfiguration: LightAgentConfigurationType,
-  messageId: string,
-  contents: { step: number; content: AgentContentItemType }[]
-): Promise<Record<number, ParsedContentItem[]>> {
-  const parsedContents: Record<number, ParsedContentItem[]> = {};
-  const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
-
-  for (const c of contents) {
-    const step = c.step + 1; // Convert to 1-indexed for display
-    if (!parsedContents[step]) {
-      parsedContents[step] = [];
-    }
-
-    if (isAgentReasoningContent(c.content)) {
-      const reasoning = c.content.value.reasoning;
-      if (reasoning && reasoning.trim()) {
-        parsedContents[step].push({ kind: "reasoning", content: reasoning });
-      }
-      continue;
-    }
-
-    if (isAgentTextContent(c.content)) {
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        messageId,
-        getDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents([
-        c.content.value,
-      ]);
-
-      if (parsedContent.chainOfThought && parsedContent.chainOfThought.trim()) {
-        parsedContents[step].push({
-          kind: "reasoning",
-          content: parsedContent.chainOfThought,
-        });
-      }
-      continue;
-    }
-
-    if (isAgentFunctionCallContent(c.content)) {
-      const functionCallId = c.content.value.id;
-      const matchingAction = actionsByCallId.get(functionCallId);
-
-      if (matchingAction) {
-        parsedContents[step].push({ kind: "action", action: matchingAction });
-      }
-    }
-  }
-
-  return parsedContents;
 }
 
 // Ensure at least one whitespace boundary between adjacent text fragments when
@@ -491,13 +463,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             content: sc.value,
           })) ?? [];
 
-      const parsedContents = await generateParsedContents(
-        actions,
-        agentConfiguration,
-        message.sId,
-        agentStepContents
-      );
-
       const textContents: Array<{
         step: number;
         content: AgentTextContentType;
@@ -555,33 +520,34 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       assert(message.parentId !== null, "Agent message must have a parentId.");
 
-      let parentMessage = message.parentId
-        ? (messagesById.get(message.parentId) ?? null)
-        : null;
+      let parentMessage = messagesById.get(message.parentId) ?? null;
 
+      // Fallback to fetch the parent message from the database if it's not in the messages map, it can happen if you are only rendering a subset of the messages.
+      parentMessage ??= await MessageModel.findOne({
+        where: {
+          id: message.parentId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: message.conversationId,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: true,
+          },
+        ],
+      });
+
+      // Log an error if the parent message is not found, this should not happen (hence the assert below).
       if (!parentMessage) {
-        logger.info(
+        logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             conversationSId: message.sId,
             agentMessageId: agentMessage.id,
           },
-          "Couldn't find parent message for agent message in the messages map, can happen if you are only rendering a subset of the messages. Falling back to fetch the message from the database."
+          "Couldn't find parent message for agent message."
         );
-        parentMessage = await MessageModel.findOne({
-          where: {
-            id: message.parentId,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            conversationId: message.conversationId,
-          },
-          include: [
-            {
-              model: UserMessageModel,
-              as: "userMessage",
-              required: true,
-            },
-          ],
-        });
       }
 
       assert(!!parentMessage, "Parent message must be found.");
@@ -623,12 +589,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         actions,
         content,
         chainOfThought,
-        rawContents: textContents.map((c) => ({
-          step: c.step,
-          content: c.content.value,
-        })),
         contents: agentStepContents,
-        parsedContents,
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
@@ -640,6 +601,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           actions
         ),
         reactions: reactionsByMessageId[message.id] ?? [],
+        prunedContext: agentMessage.prunedContext ?? false,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {
@@ -669,27 +631,10 @@ async function batchRenderContentFragment(
   conversationId: string,
   messages: MessageModel[]
 ): Promise<ContentFragmentType[]> {
-  const messagesWithContentFragment = messages.filter(
-    (m) => !!m.contentFragment
-  );
-  if (messagesWithContentFragment.find((m) => !m.contentFragment)) {
-    throw new Error(
-      "Unreachable: batchRenderContentFragment must be called with only content fragments"
-    );
-  }
-
-  return Promise.all(
-    messagesWithContentFragment.map(async (message: MessageModel) => {
-      const contentFragment = ContentFragmentResource.fromMessage(message);
-      const render = await contentFragment.renderFromMessage({
-        auth,
-        conversationId,
-        message,
-      });
-
-      return render;
-    })
-  );
+  return ContentFragmentResource.batchRenderFromMessages(auth, {
+    conversationId,
+    messages,
+  });
 }
 
 type RenderMessageVariant = "legacy-light" | "full" | "light";

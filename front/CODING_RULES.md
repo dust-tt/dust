@@ -51,6 +51,34 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
+### [GEN6] Prefer exhaustive switch + assertNever over if/else on union types
+
+When branching on a discriminated union or string union, prefer an exhaustive `switch` with
+`assertNever` (from `@app/types/shared/utils/assert_never`) over chains of `if`/`else` or nested
+ternaries. This keeps the code readable and ensures TypeScript enforces exhaustiveness when cases
+are added.
+
+Example:
+
+```
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
+type Status = "approved" | "rejected" | "expired";
+
+function titleForStatus(status: Status): string {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "expired":
+      return "Expired";
+    default:
+      return assertNever(status);
+  }
+}
+```
+
 ### [GEN7] Avoid loops with quadratic or worse complexity
 
 Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
@@ -166,6 +194,40 @@ const priceCents = 1999;
 const timeoutMs = 5000;
 const delaySeconds = 30;
 ```
+
+### [GEN10] Using config for environment variables
+
+Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
+module which provides type-safe access to environment variables.
+
+Example:
+
+```
+// BAD
+const apiUrl = process.env.API_URL;
+const isProduction = process.env.NODE_ENV === "production";
+
+// GOOD
+import config from "@app/lib/api/config";
+
+const apiUrl = config.getApiUrl();
+const isProduction = config.getNodeEnv() === "production";
+```
+
+### [GEN11] Dynamic imports are forbidden by default in production code
+
+In production TypeScript/TSX code, prefer static imports at the top of the file.
+
+Use dynamic `import()` only when strictly necessary (e.g., runtime gating between Node/Edge,
+optional dependencies, or excluding client-only code from server bundles).
+
+This rule does not apply to CommonJS config files (e.g., `next.config.js`, `tailwind.config.js`)
+or to Vitest patterns such as `vi.mock(import("..."), ...)`.
+
+If a dynamic import is strictly necessary, it must:
+
+- Use a string literal module specifier (no computed paths).
+- Be accompanied by a short comment explaining why a static import is not acceptable.
 
 ## SECURITY
 
@@ -499,6 +561,9 @@ export function useCreateFolder({
   };
 };
 ```
+
+In NextJS pages, getServerSideProps should not fetch data and return more that what's
+available in authenticator. Rather rely on API endpoint and SWR calls.
 
 ### [REACT3] Any async network operation should have a visual loading state
 

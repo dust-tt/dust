@@ -1,3 +1,16 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import {
+  Grid,
+  H1,
+  H2,
+  H3,
+  P,
+  Strong,
+} from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
+import { classNames } from "@app/lib/utils";
 import {
   ArrowRightIcon,
   Button,
@@ -11,19 +24,6 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-
-import {
-  Grid,
-  H1,
-  H2,
-  H3,
-  P,
-  Strong,
-} from "@app/components/home/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
-import { PageMetadata } from "@app/components/home/PageMetadata";
-import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
@@ -291,7 +291,7 @@ const PEOPLE: Record<
   nicole: {
     name: "Nicole Kreider",
     title: "Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U096T3FG7HU-4967c6b16ae2-512",
+    image: "https://avatars.githubusercontent.com/u/222190268?v=4",
     github: "https://github.com/nkreider-dot",
     linkedIn: "https://www.linkedin.com/in/nkreider",
   },
@@ -506,6 +506,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/rfrenoy/",
     github: "https://github.com/rfrenoy",
   },
+  matteo: {
+    name: "Matteo Trabattoni",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/31540320?v=4",
+    github: "https://github.com/matteotrab",
+    linkedIn: "https://linkedin.com/in/matteo-trabattoni",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
@@ -589,6 +596,7 @@ const VideoPlayer = () => {
   );
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function About() {
   const router = useRouter();
 

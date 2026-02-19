@@ -1,22 +1,19 @@
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import type {
-  LightWorkspaceType,
-  Result,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
-import { Ok } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface FeatureFlagResource extends ReadonlyAttributesType<FeatureFlagModel> {}
+export interface FeatureFlagResource
+  extends ReadonlyAttributesType<FeatureFlagModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   static model: ModelStatic<FeatureFlagModel> = FeatureFlagModel;
@@ -122,11 +119,14 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   async delete(
-    _auth: Authenticator,
+    auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<number | undefined, Error>> {
     await this.model.destroy({
-      where: { id: this.id },
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       transaction,
     });
 

@@ -13,6 +13,7 @@ export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
   created: { jqlField: "created", supportsOperators: true },
+  creator: { jqlField: "creator" },
   dueDate: { jqlField: "dueDate", supportsOperators: true },
   fixVersion: { jqlField: "fixVersion" },
   issueType: { jqlField: "issueType" },
@@ -24,6 +25,9 @@ export const FIELD_MAPPINGS = {
   resolved: { jqlField: "resolved", supportsOperators: true },
   status: { jqlField: "status" },
   summary: { jqlField: "summary", supportsFuzzy: true },
+  updated: { jqlField: "updated", supportsOperators: true },
+  votes: { jqlField: "votes", supportsOperators: true },
+  watchers: { jqlField: "watchers", supportsOperators: true },
   customField: {
     jqlField: "customField",
     isCustomField: true,
@@ -207,11 +211,90 @@ export const ADFRuleNodeSchema = z.object({
 
 export type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
 
+// Explicit schemas for inline nodes we actively render
+export const ADFEmojiNodeSchema = z.object({
+  type: z.literal("emoji"),
+  attrs: z
+    .object({
+      shortName: z.string().optional(),
+      id: z.string().optional(),
+      text: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export const ADFMentionNodeSchema = z.object({
+  type: z.literal("mention"),
+  attrs: z
+    .object({
+      id: z.string().optional(),
+      text: z.string().optional(),
+      accessLevel: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export const ADFInlineCardNodeSchema = z.object({
+  type: z.literal("inlineCard"),
+  attrs: z
+    .object({
+      url: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export const ADFBlockCardNodeSchema = z.object({
+  type: z.literal("blockCard"),
+  attrs: z
+    .object({
+      url: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export const ADFStatusNodeSchema = z.object({
+  type: z.literal("status"),
+  attrs: z
+    .object({
+      text: z.string().optional(),
+      color: z.string().optional(),
+      localId: z.string().optional(),
+      style: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export const ADFDateNodeSchema = z.object({
+  type: z.literal("date"),
+  attrs: z
+    .object({
+      timestamp: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
 export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
-  z.discriminatedUnion("type", [
+  z.union([
+    // Text and basic inline nodes
     ADFTextNodeSchema,
     ADFHardBreakNodeSchema,
+    ADFRuleNodeSchema,
 
+    // Inline nodes we explicitly handle in rendering
+    ADFEmojiNodeSchema,
+    ADFMentionNodeSchema,
+    ADFInlineCardNodeSchema,
+    ADFBlockCardNodeSchema,
+    ADFStatusNodeSchema,
+    ADFDateNodeSchema,
+
+    // Block nodes with content
     z.object({
       type: z.enum([
         "paragraph",
@@ -221,11 +304,16 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
         "bulletList",
         "orderedList",
         "listItem",
+        "expand",
+        "nestedExpand",
+        "mediaSingle",
+        "mediaGroup",
       ]),
       attrs: z.record(z.any()).optional(),
       content: z.array(ADFContentNodeSchema).optional(),
     }),
 
+    // Code block (special case - content is text nodes only)
     z.object({
       type: z.literal("codeBlock"),
       attrs: z.record(z.any()).optional(),
@@ -239,13 +327,31 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
         .optional(),
     }),
 
-    ADFRuleNodeSchema,
-
+    // Table nodes
     z.object({
       type: z.enum(["table", "tableRow", "tableCell", "tableHeader"]),
       attrs: z.record(z.any()).optional(),
       content: z.array(ADFContentNodeSchema).optional(),
     }),
+
+    // Media nodes (no content, just attrs)
+    z.object({
+      type: z.enum(["media", "mediaInline"]),
+      attrs: z.record(z.any()).optional(),
+    }),
+
+    // Catch-all for any other ADF node types (future-proofing)
+    // This allows unknown ADF nodes to pass validation and be handled
+    // by the rendering layer's default case
+    z
+      .object({
+        type: z.string(),
+        attrs: z.record(z.any()).optional(),
+        content: z.array(ADFContentNodeSchema).optional(),
+        text: z.string().optional(),
+        marks: z.array(ADFMarkSchema).optional(),
+      })
+      .passthrough(),
   ])
 );
 
@@ -549,3 +655,7 @@ export type JiraAttachmentsResult = z.infer<typeof JiraAttachmentsResultSchema>;
 export type JiraIssueWithAttachments = z.infer<
   typeof JiraIssueWithAttachmentsSchema
 >;
+
+export function isADFDocument(value: unknown): value is ADFDocument {
+  return ADFDocumentSchema.safeParse(value).success;
+}

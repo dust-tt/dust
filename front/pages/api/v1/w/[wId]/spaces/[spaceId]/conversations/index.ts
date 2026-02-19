@@ -1,9 +1,7 @@
-import type { GetSpaceConversationsForDataSourceResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -11,8 +9,11 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationType, WithAPIErrorResponse } from "@app/types";
-import { isString, removeNulls } from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type { GetSpaceConversationsForDataSourceResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger
@@ -105,12 +106,7 @@ async function handler(
         // Return the full conversation object as-is (matches ConversationSchema)
         return {
           ...c,
-          url: getConversationRoute(
-            wId,
-            c.sId,
-            undefined,
-            config.getClientFacingUrl()
-          ),
+          url: getConversationRoute(wId, c.sId, undefined, config.getAppUrl()),
         };
       });
 
@@ -125,7 +121,9 @@ async function handler(
       );
 
       return res.status(200).json({
-        conversations: responseConversations,
+        conversations: responseConversations.map(
+          addBackwardCompatibleConversationFields
+        ),
       });
     }
 

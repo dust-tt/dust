@@ -1,7 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
-import { Err, Ok } from "@app/types";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const webhookSettingsPlugin = createPlugin({
   manifest: {
@@ -81,21 +80,14 @@ export const webhookSettingsPlugin = createPlugin({
       );
     }
 
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Update the trigger in the database
-    await TriggerModel.update(
-      {
-        executionPerDayLimitOverride: executionPerDayLimitOverride,
-        executionMode: executionMode ?? null,
-      },
-      {
-        where: {
-          workspaceId: workspace.id,
-          id: resource.id,
-        },
-      }
+    // Update the trigger using the resource method
+    const updateResult = await resource.updateWebhookSettings(
+      executionPerDayLimitOverride,
+      executionMode ?? null
     );
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
 
     const limitText = `${executionPerDayLimitOverride} per day`;
     const modeText = executionMode ?? "not set";

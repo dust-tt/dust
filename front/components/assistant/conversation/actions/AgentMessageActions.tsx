@@ -1,25 +1,26 @@
-import {
-  AnimatedText,
-  Card,
-  cn,
-  ContentMessage,
-  Markdown,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useEffect, useRef } from "react";
-
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
+import { MCPImageGenerationGroupedDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
   ActionProgressState,
   AgentStateClassification,
 } from "@app/components/assistant/conversation/types";
+import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
-  LightWorkspaceType,
-} from "@app/types";
-import { isLightAgentMessageWithActionsType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  AnimatedText,
+  Card,
+  ContentMessage,
+  cn,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
@@ -41,6 +42,14 @@ export function AgentMessageActions({
   const lastAction = isAgentMessageWithActions
     ? agentMessage.actions[agentMessage.actions.length - 1]
     : null;
+
+  const imageGenerationActions = isAgentMessageWithActions
+    ? agentMessage.actions.filter(
+        (a) =>
+          a.internalMCPServerName === "image_generation" &&
+          a.toolName === GENERATE_IMAGE_TOOL_NAME
+      )
+    : [];
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const chainOfThought = agentMessage.chainOfThought || "";
@@ -86,13 +95,21 @@ export function AgentMessageActions({
     >
       {lastAction && lastAgentStateClassification === "acting" ? (
         <Card variant="secondary" className="max-w-xl">
-          <MCPActionDetails
-            viewType="conversation"
-            action={lastAction}
-            owner={owner}
-            lastNotification={lastNotification}
-            messageStatus={agentMessage.status}
-          />
+          {imageGenerationActions.length > 1 ? (
+            <MCPImageGenerationGroupedDetails
+              displayContext="conversation"
+              actions={imageGenerationActions}
+              owner={owner}
+            />
+          ) : (
+            <MCPActionDetails
+              displayContext="conversation"
+              action={lastAction}
+              owner={owner}
+              lastNotification={lastNotification}
+              messageStatus={agentMessage.status}
+            />
+          )}
         </Card>
       ) : (
         <div>

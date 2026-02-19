@@ -1,17 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { getOrCreateProjectContextDataSourceFromFile } from "@app/lib/api/data_sources";
-import { getProjectContextDatasourceName } from "@app/lib/api/projects";
-import { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
+import type { Authenticator } from "@app/lib/auth";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { LightWorkspaceType } from "@app/types";
-import { CoreAPI, Ok } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock distributed lock to avoid Redis dependency
 vi.mock("@app/lib/lock", () => ({
@@ -67,232 +64,155 @@ vi.spyOn(CoreAPI.prototype, "createDataSource").mockImplementation(
   }
 );
 
-describe("Project Context DataSource", () => {
-  let auth: Authenticator;
-  let workspace: LightWorkspaceType;
-  let user: UserResource;
-  let space: SpaceResource;
+// Mock the dependencies
+vi.mock("@app/poke/temporal/client", () => ({
+  launchScrubDataSourceWorkflow: vi.fn(),
+}));
+
+describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
+  let builderAuth: Authenticator;
+  let userAuth: Authenticator;
+  let folderDataSource: DataSourceResource;
 
   beforeEach(async () => {
-    workspace = await WorkspaceFactory.basic();
-    user = await UserFactory.basic();
-    auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
+    // Setup builder user
+    const builderSetup = await createResourceTest({ role: "builder" });
+    builderAuth = builderSetup.authenticator;
+
+    // Setup regular user
+    const userSetup = await createResourceTest({
+      role: "user",
+    });
+    userAuth = userSetup.authenticator;
+
+    // Create a folder data source owned by the builder in their workspace
+    const dataSourceView = await DataSourceViewFactory.folder(
+      builderSetup.workspace,
+      builderSetup.globalSpace,
+      builderSetup.user
+    );
+    folderDataSource = dataSourceView.dataSource;
+
+    // Spy on the view listing to return empty array by default
+    vi.spyOn(DataSourceViewResource, "listForDataSources").mockResolvedValue(
+      []
     );
 
-    // Create a project space
-    space = await SpaceFactory.project(workspace);
+    // Clear mocks before each test
+    vi.clearAllMocks();
   });
 
-  afterEach(async () => {
-    // Clean up datasources created during tests
-    const dataSources = await DataSourceResource.listByWorkspace(auth);
-    for (const ds of dataSources) {
-      if (ds.name === getProjectContextDatasourceName(space.id)) {
-        await ds.delete(auth, { hardDelete: true });
-      }
-    }
-  });
+  describe("authorization checks", () => {
+    it("should not allow user to delete folder created by another user", async () => {
+      // Create another user
+      const anotherUser = await UserFactory.basic();
+      const anotherUserSetup = await createResourceTest({ role: "user" });
 
-  describe("getOrCreateProjectContextDataSourceFromFile", () => {
-    it("should create a new datasource for a project context file", async () => {
-      const file = await FileResource.makeNew({
-        contentType: "text/plain",
-        fileName: "test-file.txt",
-        fileSize: 1024,
-        userId: user.id,
-        workspaceId: workspace.id,
-        useCase: "project_context",
-        useCaseMetadata: {
-          spaceId: space.sId,
-        },
-      });
-
-      const result = await getOrCreateProjectContextDataSourceFromFile(
-        auth,
-        file
+      // Create a folder owned by the other user
+      const otherUserDataSourceView = await DataSourceViewFactory.folder(
+        anotherUserSetup.workspace,
+        anotherUserSetup.globalSpace,
+        anotherUser
       );
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const dataSource = result.value;
-        expect(dataSource.name).toBe(getProjectContextDatasourceName(space.id));
-        expect(dataSource.vaultId).toBe(space.id);
-      }
-
-      await file.delete(auth);
-    });
-
-    it("should return the same datasource when called twice", async () => {
-      // Create two files with the same space
-      const file1 = await FileResource.makeNew({
-        contentType: "text/plain",
-        fileName: "test-file-1.txt",
-        fileSize: 1024,
-        userId: user.id,
-        workspaceId: workspace.id,
-        useCase: "project_context",
-        useCaseMetadata: {
-          spaceId: space.sId,
-        },
-      });
-
-      const file2 = await FileResource.makeNew({
-        contentType: "text/plain",
-        fileName: "test-file-2.txt",
-        fileSize: 2048,
-        userId: user.id,
-        workspaceId: workspace.id,
-        useCase: "project_context",
-        useCaseMetadata: {
-          spaceId: space.sId,
-        },
-      });
-
-      // Get datasource for both files
-      const result1 = await getOrCreateProjectContextDataSourceFromFile(
-        auth,
-        file1
-      );
-      const result2 = await getOrCreateProjectContextDataSourceFromFile(
-        auth,
-        file2
-      );
-
-      expect(result1.isOk()).toBe(true);
-      expect(result2.isOk()).toBe(true);
-
-      if (result1.isOk() && result2.isOk()) {
-        expect(result1.value.id).toBe(result2.value.id);
-        expect(result1.value.name).toBe(result2.value.name);
-      }
-
-      // Clean up
-      await file1.delete(auth);
-      await file2.delete(auth);
-    });
-
-    it("should return an error if spaceId is missing from metadata", async () => {
-      // Create a file without spaceId in metadata
-      const file = await FileResource.makeNew({
-        contentType: "text/plain",
-        fileName: "test-file.txt",
-        fileSize: 1024,
-        userId: user.id,
-        workspaceId: workspace.id,
-        useCase: "project_context",
-        useCaseMetadata: {},
-      });
-
-      // Attempt to get datasource
-      const result = await getOrCreateProjectContextDataSourceFromFile(
-        auth,
-        file
+      const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
+        userAuth,
+        { dataSource: otherUserDataSourceView.dataSource }
       );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.code).toBe("invalid_request_error");
-        expect(result.error.message).toContain("spaceId");
+        expect(result.error.code).toBe("unauthorized_deletion");
+        expect(result.error.message).toContain(
+          "Only builders can delete data sources"
+        );
       }
-
-      await file.delete(auth);
+      expect(launchScrubDataSourceWorkflow).not.toHaveBeenCalled();
     });
 
-    it("should create different datasources for different spaces", async () => {
-      // Create a second project space
-      const space2 = await SpaceFactory.project(workspace);
+    it("should not allow user to delete connector-based data source", async () => {
+      // Create a mock connector data source
+      const connectorDataSource = {
+        ...folderDataSource,
+        connectorProvider: "slack",
+        connectorId: "conn-123",
+      } as unknown as DataSourceResource;
 
-      // Create files in different spaces
-      const file1 = await FileResource.makeNew({
-        contentType: "text/plain",
-        fileName: "test-file-1.txt",
-        fileSize: 1024,
-        userId: user.id,
-        workspaceId: workspace.id,
-        useCase: "project_context",
-        useCaseMetadata: {
-          spaceId: space.sId,
-        },
-      });
-
-      const file2 = await FileResource.makeNew({
-        contentType: "text/plain",
-        fileName: "test-file-2.txt",
-        fileSize: 2048,
-        userId: user.id,
-        workspaceId: workspace.id,
-        useCase: "project_context",
-        useCaseMetadata: {
-          spaceId: space2.sId,
-        },
-      });
-
-      const result1 = await getOrCreateProjectContextDataSourceFromFile(
-        auth,
-        file1
-      );
-      const result2 = await getOrCreateProjectContextDataSourceFromFile(
-        auth,
-        file2
+      const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
+        userAuth,
+        { dataSource: connectorDataSource }
       );
 
-      expect(result1.isOk()).toBe(true);
-      expect(result2.isOk()).toBe(true);
-
-      if (result1.isOk() && result2.isOk()) {
-        expect(result1.value.id).not.toBe(result2.value.id);
-        expect(result1.value.name).toBe(
-          getProjectContextDatasourceName(space.id)
-        );
-        expect(result1.value.space.sId).toBe(space.sId);
-        expect(result2.value.name).toBe(
-          getProjectContextDatasourceName(space2.id)
-        );
-        expect(result2.value.space.sId).toBe(space2.sId);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("unauthorized_deletion");
       }
-
-      // Clean up
-      await file1.delete(auth);
-      await file2.delete(auth);
+      expect(launchScrubDataSourceWorkflow).not.toHaveBeenCalled();
     });
   });
 
-  describe("DataSourceResource.fetchByName", () => {
-    it("should fetch a datasource by name", async () => {
-      const file = await FileResource.makeNew({
-        contentType: "text/plain",
-        fileName: "test-file.txt",
-        fileSize: 1024,
-        userId: user.id,
-        workspaceId: workspace.id,
-        useCase: "project_context",
-        useCaseMetadata: {
-          spaceId: space.sId,
-        },
-      });
-
-      const createResult = await getOrCreateProjectContextDataSourceFromFile(
-        auth,
-        file
+  describe("successful deletions", () => {
+    it("should allow builder to delete folder data source", async () => {
+      const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
+        builderAuth,
+        { dataSource: folderDataSource }
       );
-      expect(createResult.isOk()).toBe(true);
 
-      if (createResult.isOk()) {
-        const fetchedDataSource = await DataSourceResource.fetchByProjectId(
-          auth,
-          space.id
-        );
+      expect(result.isOk()).toBe(true);
+      expect(launchScrubDataSourceWorkflow).toHaveBeenCalledWith(
+        builderAuth.workspace(),
+        folderDataSource
+      );
+      expect(launchScrubDataSourceWorkflow).toHaveBeenCalledTimes(1);
+    });
 
-        expect(fetchedDataSource?.name).toBe(
-          getProjectContextDatasourceName(space.id)
-        );
-        expect(fetchedDataSource?.id).toBe(createResult.value.id);
+    it("should soft delete all data source views before deleting data source", async () => {
+      // Create multiple views for the data source
+      const view1 = {
+        id: 1,
+        delete: vi.fn().mockResolvedValue({ isErr: () => false }),
+      };
+      const view2 = {
+        id: 2,
+        delete: vi.fn().mockResolvedValue({ isErr: () => false }),
+      };
+
+      vi.spyOn(DataSourceViewResource, "listForDataSources").mockResolvedValue([
+        view1,
+        view2,
+      ] as any);
+
+      const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
+        builderAuth,
+        { dataSource: folderDataSource }
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(view1.delete).toHaveBeenCalledWith(builderAuth, {
+        transaction: undefined,
+        hardDelete: false,
+      });
+      expect(view2.delete).toHaveBeenCalledWith(builderAuth, {
+        transaction: undefined,
+        hardDelete: false,
+      });
+      expect(launchScrubDataSourceWorkflow).toHaveBeenCalled();
+    });
+
+    it("should launch scrub workflow with correct workspace and data source", async () => {
+      const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
+        builderAuth,
+        { dataSource: folderDataSource }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.sId).toBe(folderDataSource.sId);
       }
-
-      // Clean up
-      await file.delete(auth);
+      expect(launchScrubDataSourceWorkflow).toHaveBeenCalledWith(
+        builderAuth.workspace(),
+        folderDataSource
+      );
     });
   });
 });

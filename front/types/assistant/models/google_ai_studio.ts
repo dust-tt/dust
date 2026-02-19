@@ -1,9 +1,9 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
-export const GEMINI_2_5_FLASH_IMAGE_MODEL_ID =
-  "gemini-2.5-flash-image" as const;
 export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
+export const GEMINI_3_PRO_IMAGE_MODEL_ID =
+  "gemini-3-pro-image-preview" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 export const GEMINI_3_PRO_MODEL_ID = "gemini-3-pro-preview" as const;
 export const GEMINI_3_FLASH_MODEL_ID = "gemini-3-flash-preview" as const;

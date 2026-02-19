@@ -1,6 +1,7 @@
 import { configEnvExists } from "../lib/config";
 import { createConfigEnvTemplate } from "../lib/installer";
 import { logger } from "../lib/logger";
+import { getConfiguredMultiplexer } from "../lib/multiplexer";
 import { CONFIG_ENV_PATH, findRepoRoot } from "../lib/paths";
 import { getInstallInstructions } from "../lib/platform";
 import { confirm } from "../lib/prompt";
@@ -10,8 +11,8 @@ interface CheckResult {
   name: string;
   ok: boolean;
   message: string;
-  fix?: string;
-  optional?: boolean; // If true, failing this check doesn't fail the overall doctor
+  fix?: string | undefined;
+  optional?: boolean | undefined; // If true, failing this check doesn't fail the overall doctor
 }
 
 export interface SetupOptions {
@@ -68,13 +69,16 @@ async function checkLsof(): Promise<CheckResult> {
   };
 }
 
-async function checkZellij(): Promise<CheckResult> {
-  const version = await getCommandVersion("zellij");
+async function checkMultiplexer(): Promise<CheckResult> {
+  const multiplexer = await getConfiguredMultiplexer();
+  const result = await multiplexer.checkInstalled();
+  const name = multiplexer.type.charAt(0).toUpperCase() + multiplexer.type.slice(1); // Capitalize
+
   return {
-    name: "Zellij",
-    ok: version !== null,
-    message: version ?? "Not found",
-    fix: getInstallInstructions("zellij"),
+    name,
+    ok: result.ok,
+    message: result.ok ? (result.version ?? "Unknown version") : (result.error ?? "Not found"),
+    fix: result.ok ? undefined : multiplexer.getInstallInstructions(),
   };
 }
 
@@ -265,6 +269,26 @@ async function checkConfig(): Promise<CheckResult> {
   };
 }
 
+async function checkPsql(): Promise<CheckResult> {
+  const version = await getCommandVersion("psql");
+  return {
+    name: "psql",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("psql"),
+  };
+}
+
+async function checkFzf(): Promise<CheckResult> {
+  const version = await getCommandVersion("fzf");
+  return {
+    name: "fzf",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("fzf"),
+  };
+}
+
 function printResults(results: CheckResult[]): boolean {
   console.log("Prerequisites:");
   console.log();
@@ -294,10 +318,12 @@ async function runAllChecks(): Promise<CheckResult[]> {
   return [
     await checkBun(),
     await checkLsof(),
-    await checkZellij(),
+    await checkMultiplexer(),
     await checkDocker(),
     await checkDockerCompose(),
     await checkTemporalCli(),
+    await checkPsql(),
+    await checkFzf(),
     await checkNvm(),
     await checkCargo(),
     await checkCmake(),

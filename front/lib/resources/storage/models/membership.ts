@@ -1,10 +1,12 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { MembershipOriginType, MembershipRoleType } from "@app/types";
+import type {
+  MembershipOriginType,
+  MembershipRoleType,
+} from "@app/types/memberships";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare createdAt: CreationOptional<Date>;
@@ -56,6 +58,12 @@ MembershipModel.init(
       { fields: ["startAt"] },
       { fields: ["endAt"] },
       { fields: ["workspaceId", "userId", "startAt", "endAt"] },
+      // Prevent duplicate active memberships for same user/workspace.
+      {
+        fields: ["userId", "workspaceId"],
+        unique: true,
+        where: { endAt: null },
+      },
     ],
   }
 );

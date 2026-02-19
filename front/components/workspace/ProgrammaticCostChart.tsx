@@ -1,4 +1,27 @@
 import {
+  CHART_HEIGHT,
+  COST_PALETTE,
+  OTHER_LABEL,
+  USER_MESSAGE_ORIGIN_LABELS,
+} from "@app/components/agent_builder/observability/constants";
+import {
+  getIndexedColor,
+  getSourceColor,
+  isUserMessageOrigin,
+} from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import type {
+  AvailableGroup,
+  GetWorkspaceProgrammaticCostResponse,
+  GroupByType,
+} from "@app/lib/api/analytics/programmatic_cost";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
+import { clientFetch } from "@app/lib/egress/client";
+import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
+import {
+  ArrowDownOnSquareIcon,
   Button,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -23,28 +46,6 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import {
-  CHART_HEIGHT,
-  COST_PALETTE,
-  OTHER_LABEL,
-  USER_MESSAGE_ORIGIN_LABELS,
-} from "@app/components/agent_builder/observability/constants";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import type { LegendItem } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import {
-  getIndexedColor,
-  getSourceColor,
-  isUserMessageOrigin,
-} from "@app/components/agent_builder/observability/utils";
-import type {
-  AvailableGroup,
-  GetWorkspaceProgrammaticCostResponse,
-  GroupByType,
-} from "@app/lib/api/analytics/programmatic_cost";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
-import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
-
 interface ProgrammaticCostChartProps {
   workspaceId: string;
   billingCycleStartDay: number;
@@ -53,11 +54,14 @@ interface ProgrammaticCostChartProps {
 export type DisplayMode = "cumulative" | "daily";
 
 export interface BaseProgrammaticCostChartProps {
+  workspaceId: string;
   programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
   isProgrammaticCostLoading: boolean;
   isProgrammaticCostError: boolean;
   groupBy: GroupByType | undefined;
   setGroupBy: (groupBy: GroupByType | undefined) => void;
+  groupByCount: number;
+  setGroupByCount: (count: number) => void;
   filter: Partial<Record<GroupByType, string[]>>;
   setFilter: React.Dispatch<
     React.SetStateAction<Partial<Record<GroupByType, string[]>>>
@@ -81,13 +85,21 @@ const GROUP_BY_TYPE_OPTIONS: {
 }[] = [
   { value: "agent", label: "By Agent" },
   { value: "origin", label: "By Source" },
-  { value: "apiKey", label: "By Api Key" },
+  { value: "apiKey", label: "By API Key" },
 ];
 
 const GROUP_BY_OPTIONS: {
   value: "global" | GroupByType;
   label: string;
 }[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
+
+const TOP_K_OPTIONS = [
+  { value: 5, label: "Top 5" },
+  { value: 10, label: "Top 10" },
+  { value: 15, label: "Top 15" },
+  { value: 20, label: "Top 20" },
+  { value: 30, label: "Top 30" },
+];
 
 function getColorClassName(
   groupBy: GroupByType | undefined,
@@ -193,11 +205,14 @@ const DISPLAY_MODE_OPTIONS: {
 ];
 
 export function BaseProgrammaticCostChart({
+  workspaceId,
   programmaticCostData,
   isProgrammaticCostLoading,
   isProgrammaticCostError,
   groupBy,
   setGroupBy,
+  groupByCount,
+  setGroupByCount,
   filter,
   setFilter,
   selectedPeriod,
@@ -237,15 +252,16 @@ export function BaseProgrammaticCostChart({
   // Format period label based on billing cycle
   // cycleEnd is exclusive (first day of next cycle), so we subtract 1 day for display
   const inclusiveEndDate = new Date(billingCycle.cycleEnd);
-  inclusiveEndDate.setDate(inclusiveEndDate.getDate() - 1);
+  inclusiveEndDate.setUTCDate(inclusiveEndDate.getUTCDate() - 1);
   const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(inclusiveEndDate)}`;
 
   // Calculate next and previous period dates
+  // Use UTC methods since currentDate is a UTC date
   const nextPeriodDate = new Date(
-    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
   );
   const previousPeriodDate = new Date(
-    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
   );
 
   // Check if we can go to next period (not in the future)
@@ -540,6 +556,29 @@ export function BaseProgrammaticCostChart({
     [setFilter]
   );
 
+  const handleExportCsv = useCallback(async () => {
+    const params = new URLSearchParams({
+      billingCycleStartDay: billingCycleStartDay.toString(),
+      selectedPeriod,
+    });
+
+    const response = await clientFetch(
+      `/api/w/${workspaceId}/analytics/programmatic-cost-export?${params}`
+    );
+
+    if (!response.ok) {
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `programmatic-cost-${selectedPeriod}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [workspaceId, billingCycleStartDay, selectedPeriod]);
+
   return (
     <ChartContainer
       title={
@@ -565,6 +604,14 @@ export function BaseProgrammaticCostChart({
               tooltip="Next period"
             />
           )}
+          <Button
+            icon={ArrowDownOnSquareIcon}
+            size="xs"
+            variant="ghost"
+            onClick={handleExportCsv}
+            tooltip="Export cost data from this period as CSV"
+            disabled={isProgrammaticCostLoading || isProgrammaticCostError}
+          />
         </div>
       }
       description={groupBy ? "Filter by clicking on legend items." : undefined}
@@ -637,6 +684,30 @@ export function BaseProgrammaticCostChart({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {groupBy && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  label={
+                    TOP_K_OPTIONS.find((opt) => opt.value === groupByCount)
+                      ?.label ?? "Top 5"
+                  }
+                  size="xs"
+                  variant="outline"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {TOP_K_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    label={option.label}
+                    onClick={() => setGroupByCount(option.value)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       }
       bottomControls={
@@ -782,6 +853,7 @@ export function ProgrammaticCostChart({
   billingCycleStartDay,
 }: ProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+  const [groupByCount, setGroupByCount] = useState<number>(5);
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
@@ -795,7 +867,7 @@ export function ProgrammaticCostChart({
   const currentBillingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     now,
-    false
+    true
   );
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>(
@@ -811,16 +883,20 @@ export function ProgrammaticCostChart({
     selectedPeriod,
     billingCycleStartDay,
     groupBy,
+    groupByCount,
     filter,
   });
 
   return (
     <BaseProgrammaticCostChart
+      workspaceId={workspaceId}
       programmaticCostData={programmaticCostData}
       isProgrammaticCostLoading={isProgrammaticCostLoading}
       isProgrammaticCostError={!!isProgrammaticCostError}
       groupBy={groupBy}
       setGroupBy={setGroupBy}
+      groupByCount={groupByCount}
+      setGroupByCount={setGroupByCount}
       filter={filter}
       setFilter={setFilter}
       selectedPeriod={selectedPeriod}

@@ -1,5 +1,3 @@
-import TurndownService from "turndown";
-
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
@@ -19,6 +17,7 @@ import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
+import TurndownService from "turndown";
 
 const turndownService = new TurndownService();
 

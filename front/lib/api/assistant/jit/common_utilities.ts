@@ -3,10 +3,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type {
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
  * Get the common_utilities MCP server (random numbers, timers, etc.).
@@ -52,6 +50,7 @@ export async function getCommonUtilitiesServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: commonUtilitiesViewJSON.sId,
     dustAppConfiguration: null,

@@ -1,23 +1,23 @@
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import { datadogLogs } from "@datadog/browser-logs";
-import { useRouter } from "next/router";
 import { useEffect } from "react";
 
-import { useUser } from "@app/lib/swr/user";
-
 export function useDatadogLogs() {
-  const { user } = useUser();
+  const { user } = useAuth();
   const userId = user?.sId;
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { wId } = router.query;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (userId) {
       datadogLogs.setUser({
         id: userId,
       });
-      window.DD_RUM.onReady(() => {
-        window.DD_RUM.setUser({
+      window.DD_RUM?.onReady(() => {
+        window.DD_RUM?.setUser({
           id: user.sId,
         });
       });
@@ -30,15 +30,15 @@ export function useDatadogLogs() {
       datadogLogs.setGlobalContext({
         workspaceId: wId,
       });
-      window.DD_RUM.onReady(() => {
-        window.DD_RUM.setGlobalContext({
+      window.DD_RUM?.onReady(() => {
+        window.DD_RUM?.setGlobalContext({
           workspaceId: wId,
         });
       });
     } else {
       datadogLogs.setGlobalContext({});
-      window.DD_RUM.onReady(() => {
-        window.DD_RUM.setGlobalContext({});
+      window.DD_RUM?.onReady(() => {
+        window.DD_RUM?.setGlobalContext({});
       });
     }
   }, [wId]);

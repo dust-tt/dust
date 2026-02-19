@@ -1,12 +1,14 @@
-import { Spinner } from "@dust-tt/sparkle";
-import React from "react";
-
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useUser } from "@app/lib/swr/user";
+import { Spinner } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
+import { useCookies } from "react-cookie";
 
 interface PublicFrameRendererProps {
   fileId: string;
@@ -26,9 +28,13 @@ export function PublicFrameRenderer({
       shareToken,
     });
 
+  const [cookies] = useCookies([DUST_HAS_SESSION]);
+  const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
+
   const { user } = useUser({
     revalidateOnFocus: false,
     revalidateIfStale: false,
+    disabled: !hasSession,
   });
 
   if (isFrameLoading) {

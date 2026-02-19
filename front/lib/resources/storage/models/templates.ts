@@ -1,23 +1,25 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { AssistantCreativityLevel } from "@app/types/assistant/builder";
 import type {
-  AssistantCreativityLevel,
   ModelIdType,
   ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import type {
   TemplateActionPreset,
   TemplateTagCodeType,
   TemplateVisibility,
-  TimeframeUnit,
-} from "@app/types";
+} from "@app/types/assistant/templates";
+import type { TimeframeUnit } from "@app/types/shared/utils/time_frame";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare description: string | null;
+  declare userFacingDescription: string | null;
+  declare agentFacingDescription: string | null;
 
   declare visibility: TemplateVisibility;
 
@@ -37,6 +39,7 @@ export class TemplateModel extends BaseModel<TemplateModel> {
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
+  declare copilotInstructions: string | null;
 
   declare tags: TemplateTagCodeType[];
 }
@@ -53,7 +56,10 @@ TemplateModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    description: {
+    userFacingDescription: {
+      type: DataTypes.TEXT,
+    },
+    agentFacingDescription: {
       type: DataTypes.TEXT,
     },
     backgroundColor: {
@@ -107,6 +113,9 @@ TemplateModel.init(
       type: DataTypes.TEXT,
     },
     helpActions: {
+      type: DataTypes.TEXT,
+    },
+    copilotInstructions: {
       type: DataTypes.TEXT,
     },
     tags: {

@@ -1,27 +1,4 @@
 import {
-  BracesIcon,
-  Button,
-  Chip,
-  ContentMessage,
-  ContextItem,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  ExternalLinkIcon,
-  MagnifyingGlassIcon,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import { JsonViewer } from "@textea/json-viewer";
-import Link from "next/link";
-import { useState } from "react";
-
-import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
@@ -37,14 +14,34 @@ import {
   timeAgoFrom,
 } from "@app/lib/utils";
 import type { CheckStuckResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/check-stuck";
-import type {
-  CoreAPIDataSource,
-  DataSourceType,
-  DataSourceViewType,
-  InternalConnectorType,
-  WorkspaceType,
-} from "@app/types";
-import { pluralize } from "@app/types";
+import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
+import type { CoreAPIDataSource } from "@app/types/core/data_source";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  BracesIcon,
+  Button,
+  Chip,
+  ContentMessage,
+  ContextItem,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  ExternalLinkIcon,
+  LinkWrapper,
+  MagnifyingGlassIcon,
+  ScrollArea,
+  ScrollBar,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import { JsonViewer } from "@textea/json-viewer";
+import { useState } from "react";
 
 export function ViewDataSourceTable({
   connector,
@@ -149,15 +146,15 @@ export function ViewDataSourceTable({
                 <PokeTableRow>
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>
-                    <Link
+                    <LinkWrapper
                       href={`https://app.datadoghq.eu/logs?query=%40connectorId%3A${dataSource.connectorId}`}
                       target="_blank"
                       className="text-sm text-highlight-400"
                     >
                       Datadog(connector)
-                    </Link>{" "}
+                    </LinkWrapper>{" "}
                     /{" "}
-                    <Link
+                    <LinkWrapper
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/${
                         isScheduleBased ? "schedules" : "workflows"
                       }?query=connectorId%3D%22${dataSource.connectorId}%22`}
@@ -165,15 +162,15 @@ export function ViewDataSourceTable({
                       className="text-sm text-highlight-400"
                     >
                       Temporal
-                    </Link>{" "}
+                    </LinkWrapper>{" "}
                     /{" "}
-                    <Link
+                    <LinkWrapper
                       href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%40data_source_internal_id%3A${coreDataSource.data_source_internal_id}%20&agg_m=count&agg_m_source=base&agg_t=count&cols=host%2Cservice&fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&stream_sort=desc&view=spans&viz=stream`}
                       target="_blank"
                       className="text-sm text-highlight-400"
                     >
                       Datadog(Qdrant)
-                    </Link>
+                    </LinkWrapper>
                   </PokeTableCell>
                 </PokeTableRow>
                 {connector && (

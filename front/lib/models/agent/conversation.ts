@@ -1,21 +1,22 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, literal } from "sequelize";
-
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
+  ConversationMetadata,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
   UserMessageOrigin,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes, literal } from "sequelize";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -27,6 +28,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
+  declare metadata: CreationOptional<ConversationMetadata>;
 
   declare requestedSpaceIds: number[];
 
@@ -75,6 +77,11 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    metadata: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
+    },
   },
   {
     modelName: "conversation",
@@ -88,6 +95,10 @@ ConversationModel.init(
       },
       {
         fields: ["workspaceId", "spaceId"],
+      },
+      {
+        fields: ["workspaceId", "createdAt"],
+        name: "conversations_workspace_id_created_at_idx",
       },
     ],
     sequelize: frontSequelize,
@@ -130,7 +141,7 @@ export class ConversationParticipantModel extends WorkspaceAwareModel<Conversati
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
-  declare unread: boolean;
+  declare unread?: boolean;
   declare actionRequired: boolean;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
@@ -203,6 +214,54 @@ ConversationParticipantModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
+export class UserConversationReadsModel extends WorkspaceAwareModel<UserConversationReadsModel> {
+  declare lastReadAt: Date;
+
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
+
+  declare conversation?: NonAttribute<ConversationModel>;
+  declare user?: NonAttribute<UserModel>;
+}
+UserConversationReadsModel.init(
+  {
+    lastReadAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "user_conversation_reads",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "userId", "conversationId"],
+        unique: true,
+      },
+      {
+        fields: ["workspaceId", "conversationId"],
+      },
+      {
+        fields: ["workspaceId", "userId"],
+      },
+    ],
+  }
+);
+ConversationModel.hasMany(UserConversationReadsModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+UserConversationReadsModel.belongsTo(ConversationModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+});
+UserModel.hasMany(UserConversationReadsModel, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+UserConversationReadsModel.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: false },
+});
+
 export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -224,10 +283,13 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare agenticOriginMessageId: string | null;
 
   declare userContextLastTriggerRunAt: Date | null;
+  declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
+  declare userContextAuthMethod: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
   declare user?: NonAttribute<UserModel>;
+  declare key?: NonAttribute<KeyModel>;
 }
 
 UserMessageModel.init(
@@ -286,6 +348,18 @@ UserMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    userContextApiKeyId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: KeyModel,
+        key: "id",
+      },
+    },
+    userContextAuthMethod: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     agenticMessageType: {
       type: DataTypes.STRING(16),
       allowNull: true,
@@ -301,6 +375,12 @@ UserMessageModel.init(
     indexes: [
       { fields: ["userContextOrigin"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["userContextApiKeyId"], concurrently: true },
+      {
+        fields: ["workspaceId", "agenticOriginMessageId"],
+        concurrently: true,
+        name: "user_messages_workspace_agentic_origin_idx",
+      },
       {
         // WARNING we use full capital functions and constants as the query where we want this index to be used is in capital letters, and indices are case-sensitive
         // The query https://github.com/dust-tt/dust/blob/6cb11eecb8c8bb549efc5afb25197606d76672b9/front/pages/api/w/%5BwId%5D/workspace-analytics.ts#L67-L126
@@ -334,6 +414,15 @@ UserMessageModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
 });
 
+KeyModel.hasMany(UserMessageModel, {
+  foreignKey: { name: "userContextApiKeyId", allowNull: true },
+});
+UserMessageModel.belongsTo(KeyModel, {
+  as: "key",
+  foreignKey: { name: "userContextApiKeyId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+
 export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -357,6 +446,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
 
   declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
+  declare prunedContext: boolean | null;
 }
 
 AgentMessageModel.init(
@@ -436,6 +526,11 @@ AgentMessageModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    prunedContext: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
   },
   {
@@ -775,7 +870,8 @@ MessageReactionModel.belongsTo(UserModel, {
 });
 
 export type MentionStatusType =
-  | "pending" // Waiting for user input
+  | "pending_conversation_access" // Waiting for user input to invite to conversation
+  | "pending_project_membership" // Waiting for user input to add to project (mentioning user is project editor)
   | "approved" // Auto or manually approved
   | "rejected" // Auto or manually rejected
   | "user_restricted_by_conversation_access" // The conversation access is restricted to the user (the conversation uses at least one space that the user doesn't have access to)

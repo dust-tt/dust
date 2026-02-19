@@ -1,6 +1,3 @@
-import { Readable } from "stream";
-import { assert, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -10,18 +7,20 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Ok } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
+import { Readable } from "stream";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the upload module.
-vi.mock("@app/lib/api/files/upload", () => ({
+// Mock the processing module.
+vi.mock("@app/lib/api/files/processing", () => ({
   processAndStoreFile: vi.fn(),
 }));
 
 describe("FileResource", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("fetchByShareTokenWithContent", () => {
@@ -201,7 +200,9 @@ describe("FileResource", () => {
       });
 
       // Mock processAndStoreFile to return success.
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
         await file.markAsReady();
@@ -325,8 +326,10 @@ describe("FileResource", () => {
       });
 
       // Mock processAndStoreFile to return an error.
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
-      const { Err } = await import("@app/types");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
+      const { Err } = await import("@app/types/shared/result");
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockResolvedValue(
         new Err({
@@ -375,7 +378,9 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: "conv-1" },
       });
 
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
         await file.markAsReady();

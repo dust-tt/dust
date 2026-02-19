@@ -8,28 +8,13 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import {
-  AGENT_MEMORY_SERVER_NAME,
-  INTERNAL_SERVERS_WITH_WEBSEARCH,
-  isInternalMCPServerOfName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
-  DustAppRunConfigurationType,
   TemplateAgentConfigurationType,
-} from "@app/types";
-
-export function isDustAppRunConfiguration(
-  arg: unknown
-): arg is DustAppRunConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "dust_app_run_configuration"
-  );
-}
+} from "@app/types/assistant/agent";
 
 export function isMCPServerConfiguration(
   arg: unknown
@@ -48,81 +33,6 @@ export function isServerSideMCPServerConfiguration(
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
-export function isMCPConfigurationWithDataSource(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    !!arg.dataSources &&
-    arg.dataSources.length > 0
-  );
-}
-
-export function isMCPConfigurationForInternalInteractiveContent(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "interactive_content")
-  );
-}
-
-export function isMCPConfigurationForInternalWebsearch(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-      isInternalMCPServerOfName(arg.internalMCPServerId, n)
-    )
-  );
-}
-
-export function isMCPConfigurationForInternalSlack(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "slack")
-  );
-}
-
-export function isMCPConfigurationForInternalNotion(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "notion")
-  );
-}
-
-export function isMCPConfigurationForDustAppRun(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "run_dust_app")
-  );
-}
-
-export function isMCPConfigurationForAgentMemory(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, AGENT_MEMORY_SERVER_NAME)
-  );
-}
-
-export function isMCPConfigurationForRunAgent(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "run_agent")
-  );
-}
-
 // MCP Tools
 
 export function isMCPToolConfiguration(
@@ -136,90 +46,10 @@ export function isMCPToolConfiguration(
   );
 }
 
-export function isMCPInternalSearch(
+export function isClientSideMCPToolConfiguration(
   arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return (
-    isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "search")
-  );
-}
-
-export function isMCPInternalInclude(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return (
-    isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "include_data")
-  );
-}
-
-export function isMCPInternalDataSourceFileSystem(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return (
-    isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(
-      arg.internalMCPServerId,
-      "data_sources_file_system"
-    )
-  );
-}
-
-export function isMCPInternalCatTool(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  if (!isMCPInternalDataSourceFileSystem(arg)) {
-    return false;
-  }
-  return arg.originalName === "cat";
-}
-
-export function isMCPInternalWebsearch(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return (
-    isServerSideMCPToolConfiguration(arg) &&
-    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-      isInternalMCPServerOfName(arg.internalMCPServerId, n)
-    )
-  );
-}
-
-export function isMCPInternalRunAgent(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return (
-    isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "run_agent")
-  );
-}
-
-export function isMCPInternalSlack(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return (
-    isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "slack")
-  );
-}
-
-export function isMCPInternalNotion(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return (
-    isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "notion")
-  );
-}
-
-export function isMCPInternalDustAppRun(
-  arg: LightMCPToolConfigurationType
-): arg is LightServerSideMCPToolConfigurationType {
-  return (
-    isLightServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "run_dust_app")
-  );
+): arg is ClientSideMCPToolConfigurationType {
+  return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
 }
 
 export function isServerSideMCPToolConfiguration(
@@ -227,6 +57,8 @@ export function isServerSideMCPToolConfiguration(
 ): arg is ServerSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
 }
+
+// Light tool configuration.
 
 export function isLightServerSideMCPToolConfiguration(
   arg: unknown
@@ -257,10 +89,36 @@ export function isLightMCPToolConfiguration(
   );
 }
 
-export function isClientSideMCPToolConfiguration(
-  arg: MCPToolConfigurationType
-): arg is ClientSideMCPToolConfigurationType {
-  return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
+// Internal (server-side) MCP server checked by name.
+
+export function isServerSideMCPServerConfigurationWithName(
+  config: MCPServerConfigurationType,
+  name: InternalMCPServerNameType
+): config is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(config) &&
+    matchesInternalMCPServerName(config.internalMCPServerId, name)
+  );
+}
+
+export function isServerSideMCPToolConfigurationWithName(
+  config: MCPToolConfigurationType,
+  name: InternalMCPServerNameType
+): config is ServerSideMCPToolConfigurationType {
+  return (
+    isServerSideMCPToolConfiguration(config) &&
+    matchesInternalMCPServerName(config.internalMCPServerId, name)
+  );
+}
+
+export function areDataSourcesConfigured(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    !!arg.dataSources &&
+    arg.dataSources.length > 0
+  );
 }
 
 export function throwIfInvalidAgentConfiguration(

@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type {
   ConnectorProviderConfigurationType,
@@ -9,13 +7,16 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
 import {
   SalesforceConfigurationResource,
   SalesforceSyncedQueryResource,
 } from "../salesforce_resources";
 
-export class SalesforceConnectorStrategy implements ConnectorProviderStrategy<"salesforce"> {
+export class SalesforceConnectorStrategy
+  implements ConnectorProviderStrategy<"salesforce">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<SalesforceConfigurationModel>,

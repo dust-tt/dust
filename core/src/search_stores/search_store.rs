@@ -34,6 +34,12 @@ use crate::{
     utils,
 };
 
+#[derive(Debug, thiserror::Error)]
+pub enum SearchNodesError {
+    #[error("Cursor sort mismatch: {0}")]
+    CursorSortMismatch(String),
+}
+
 const MAX_PAGE_SIZE: u64 = 1000;
 // Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.
 // Note: this is the default value.
@@ -327,6 +333,7 @@ impl SearchStore for ElasticsearchSearchStore {
             Some(_) => self.build_search_nodes_sort(options.sort)?,
             None => self.build_relevance_sort(),
         };
+        let sort_len = sort.len();
 
         // Build and run search
         let mut search = Search::new()
@@ -341,6 +348,15 @@ impl SearchStore for ElasticsearchSearchStore {
             let decoded = URL_SAFE.decode(cursor)?;
             let json_str = String::from_utf8(decoded)?;
             let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
+
+            if search_after.len() != sort_len {
+                return Err(SearchNodesError::CursorSortMismatch(format!(
+                    "cursor has {} value(s) but sort has {}",
+                    search_after.len(),
+                    sort_len
+                ))
+                .into());
+            }
 
             // We replace empty strings with a "high sort" sentinel so that documents with
             // an originally empty title will appear at the end of ascending sort order.
@@ -756,7 +772,7 @@ impl ElasticsearchSearchStore {
         {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-                .filter(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
+                .must(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
 
             should_queries.push(nodes_query);
             indices_to_query.push(DATA_SOURCE_NODE_INDEX_NAME);
@@ -890,11 +906,11 @@ impl ElasticsearchSearchStore {
             // - Stricter matching than regular match query
             // - Perfect for catching exact title matches.
             Query::from(Query::r#match_phrase(field, query).boost(EXACT_MATCH_BOOST)),
-            // Exact keyword match for perfect exact matches (case insensitive)
-            // - Uses term query on keyword field with lowercase
+            // Exact keyword match for perfect exact matches (case-sensitive)
+            // - Uses a term query on keyword field
             // - Highest boost for exact title matches
             Query::from(
-                Query::term(keyword_field, query.to_lowercase())
+                Query::term(keyword_field, query)
                     .boost(EXACT_MATCH_BOOST * EXACT_KEYWORD_MATCH_MULTIPLIER),
             ),
         ];
@@ -1157,7 +1173,7 @@ impl ElasticsearchSearchStore {
         Ok(core_content_nodes)
     }
 
-    // Always add node_id as a tie-breaker
+    // Always add node_id as a tie-breaker for deterministic ordering in pagination.
     fn build_search_nodes_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
         let mut base_sort = match sort {
             Some(sort) => {
@@ -1182,7 +1198,7 @@ impl ElasticsearchSearchStore {
                     .collect()
             }
             // Default to sorting folders first, then both documents and tables
-            // and alphabetically by title (or data source name )
+            // and alphabetically by title (or data source name).
             None => vec![
                 Sort::ScriptSort(
                     ScriptSort::ascending(Script::source(
@@ -1195,6 +1211,13 @@ impl ElasticsearchSearchStore {
                         .order(SortOrder::Asc)
                         .missing(SortMissing::Last)
                         .unmapped_type("keyword")
+                ),
+                // Surface most recent documents first when titles match.
+                // Having the same title is fairly common; e.g. Notion pages.
+                Sort::FieldSort(
+                    FieldSort::new("timestamp")
+                        .order(SortOrder::Desc)
+                        .unmapped_type("date")
                 ),
             ],
         };

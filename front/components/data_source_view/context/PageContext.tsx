@@ -1,7 +1,6 @@
-import { createContext, useContext, useMemo, useReducer } from "react";
-
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { createContext, useContext, useMemo, useReducer } from "react";
 
 type PageState = {
   currentPageId: ConfigurationPagePageId;
@@ -56,6 +55,7 @@ export function KnowledgePageProvider({
     dispatch({ type: "SET_SHEET_CURRENT_PAGE", payload: { pageId } });
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value = useMemo(
     () => ({
       ...state,

@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -9,17 +5,20 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  CoreAPILightDocument,
-  DocumentType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { PostDataSourceDocumentRequestBodySchema } from "@app/types";
+import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
+import type { CoreAPILightDocument } from "@app/types/core/data_source";
+import type { DocumentType } from "@app/types/document";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
+// Next.js config requires literal values (static analysis). 16MB accommodates 5MB document content
+// (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON encoding overhead for escaping.
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "8mb",
+      sizeLimit: "16mb",
     },
   },
 };

@@ -1,3 +1,25 @@
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
+import {
+  MAX_SLACK_MESSAGE_LENGTH,
+  makeAssistantSelectionBlock,
+  makeMessageUpdateBlocksAndText,
+  makeToolAuthenticationBlock,
+  makeToolValidationBlock,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+} from "@connectors/connectors/slack/chat/blocks";
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
+import { apiConfig } from "@connectors/lib/api/config";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { annotateCitations } from "@connectors/lib/bot/citations";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
+import { throttleWithRedis } from "@connectors/lib/throttle";
+import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   AgentActionPublicType,
   ConversationPublicType,
@@ -15,33 +37,17 @@ import {
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { throttle } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
-
-import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
-import {
-  makeAssistantSelectionBlock,
-  makeMessageUpdateBlocksAndText,
-  makeToolAuthenticationBlock,
-  makeToolValidationBlock,
-  MAX_SLACK_MESSAGE_LENGTH,
-} from "@connectors/connectors/slack/chat/blocks";
-import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
-import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
-import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
-import { apiConfig } from "@connectors/lib/api/config";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { annotateCitations } from "@connectors/lib/bot/citations";
-import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
-import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
-import { throttleWithRedis } from "@connectors/lib/throttle";
-import logger from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
 const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
+
+function getActionRunningLabel(action: AgentActionPublicType): string {
+  return action.displayLabels?.running ?? TOOL_RUNNING_LABEL;
+}
 
 // Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
 // Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
@@ -166,7 +172,7 @@ async function streamAgentAnswerToSlack(
             assistantName,
             agentConfigurations,
             text: answer,
-            thinkingAction: TOOL_RUNNING_LABEL,
+            thinkingAction: getActionRunningLabel(event.action),
           },
           ...conversationData,
           canBeIgnored: true,

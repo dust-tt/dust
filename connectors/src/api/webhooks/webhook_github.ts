@@ -1,8 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-
 import {
   GithubWebhookPayloadSchema,
   isCommentPayload,
@@ -28,8 +23,11 @@ import {
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import type { ModelId, WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
+import type { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 
 const HANDLED_WEBHOOKS = {
   installation_repositories: new Set(["added", "removed"]),
@@ -351,20 +349,67 @@ async function syncRepos(
 ) {
   let hasErrors = false;
   await Promise.all(
-    connectors.map((c) =>
-      launchGithubReposSyncWorkflow(c.id, orgLogin, repos).catch((err) => {
-        logger.error(
-          {
-            err,
-            connectorId: c.id,
-            orgLogin,
-            repos,
-          },
-          "Failed to launch github repos sync workflow"
-        );
-        hasErrors = true;
-      })
-    )
+    connectors.map(async (c) => {
+      // Check if code sync enabled for this connector
+      const connectorState = await GithubConnectorStateModel.findOne({
+        where: { connectorId: c.id },
+      });
+
+      if (connectorState?.codeSyncEnabled) {
+        // Create GithubCodeRepository stub records
+        for (const repo of repos) {
+          try {
+            await GithubCodeRepositoryModel.upsert({
+              connectorId: c.id,
+              repoId: repo.id.toString(),
+              repoLogin: orgLogin,
+              repoName: repo.name,
+              sourceUrl: `https://github.com/${orgLogin}/${repo.name}`,
+              lastSeenAt: new Date(0), // Use epoch to indicate needs first sync
+              codeUpdatedAt: new Date(0), // Use epoch to indicate needs first sync
+              skipReason: null,
+              forceDailySync: false,
+            });
+
+            logger.info(
+              {
+                connectorId: c.id,
+                repoId: repo.id,
+                repoName: repo.name,
+              },
+              "Created GithubCodeRepository record from webhook"
+            );
+          } catch (err) {
+            logger.error(
+              {
+                err,
+                connectorId: c.id,
+                repoId: repo.id,
+                repoName: repo.name,
+              },
+              "Failed to create GithubCodeRepository record from webhook"
+            );
+            hasErrors = true;
+          }
+        }
+      }
+
+      // Existing code: trigger repo sync workflow
+      return launchGithubReposSyncWorkflow(c.id, orgLogin, repos).catch(
+        (err) => {
+          logger.error(
+            {
+              err,
+              connectorId: c.id,
+              orgLogin,
+              repos,
+            },
+            "Failed to launch github repos sync workflow"
+          );
+          hasErrors = true;
+        }
+      );
+    })
   );
   if (hasErrors) {
     res.status(500).end();

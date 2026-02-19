@@ -3,8 +3,9 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Safeguards to avoid sending a huge number of skills to the LLM
 const MAX_SKILLS_SENT_TO_LLM = 100;
@@ -33,59 +34,62 @@ const specifications: AgentActionSpecification[] = [
 ];
 
 const PROMPT = `# Role
-The user is creating a new skill to be added to their agents.
-You must find if there are existing similar skills in the user's workspace to avoid duplicates.
+You identify existing skills in a workspace that duplicate or overlap with a new skill being created.
+
+# Similarity Criteria
+Skills are similar when they serve the same user need or solve the same problem.
+Ask yourself: "Would you be confused about which skill to use?"
+
+Examples of similar skills:
+- "Create GitHub issues for bugs" and "Open bug tickets on GitHub" (same outcome)
+- "Send weekly reports via email" and "Email team updates every week" (same purpose)
+
+Examples of skills that are NOT similar:
+- "Read GitHub PRs" and "Create GitHub issues" (different actions, even if same platform)
+- "Create Jira tickets" and "Create GitHub issues" (different tools, even if similar action)
 
 # Instructions
+Return skill IDs that would cause confusion about which skill to use.
+Prefer precision over recall; only return truly overlapping skills.
 
-Given the natural description of the new skill, return a list of similar skill IDs already present in the user's workspace.
-Use the set_similar_skills function to return the similar skill IDs as an array of integers.
+IMPORTANT: Returning an empty array is the expected outcome in most cases.
+Only return skill IDs when you are confident there is a genuine duplicate. When in doubt, return an empty array.
 
-Critically, only return skills that are truly similar to the new skill description.
-If there is no similar skill, return an empty array; THIS IS TOTALLY OK.
+# Examples
+## Example 1 - Clear duplicates
+Input: "Create support tickets on GitHub"
+Existing skills:
+---
+Skill ID abc12: "Open support cards on github.com"
+---
+Skill ID xxx15: "Read and edit Jira tickets"
+---
+Skill ID 20aaa: "Create issues on GitHub repositories"
+---
+Skill ID 25iju: "Manage customer support emails"
 
-Skills are considered similar if they do similar actions over the same platforms or services.
+Output: set_similar_skills({ "similar_skills_array": ["abc12", "20aaa"] })
+Reasoning: abc12 and 20aaa both create issues/tickets on GitHub.
 
-# Example
-## Example 1:
-Input: "This skills handle creation of support ticket on GitHub"
-Existing skill:
+## Example 2 - No duplicates
+Input: "Create PowerPoint-like presentations"
+Existing skills:
 ---
-Skill ID abc12:
-"Open support cards on github.com"
+Skill ID abc12: "Open support cards on github.com"
 ---
-Skill ID xxx15:
-"Read and edit Jira tickets"
----
-Skill ID 20aaa:
-"Create issues on GitHub repositories"
----
-Skill ID 25iju:
-"Manage customer support emails"
+Skill ID xxx15: "Read and edit Jira tickets"
 
-Output:
-set_similar_skills({
-  "similar_skills_array": [abc12, 20aaa]
-})
+Output: set_similar_skills({ "similar_skills_array": [] })
+Reasoning: None of the existing skills handle presentations.
 
-## Example 2:
-Input: "This allow the creation of visualization similar to PowerPoint slides which can be shared with team members"
-Skill ID abc12:
-"Open support cards on github.com"
+## Example 3 - Same platform, different action
+Input: "Delete GitHub repositories"
+Existing skills:
 ---
-Skill ID xxx15:
-"Read and edit Jira tickets"
----
-Skill ID 20aaa:
-"Create issues on GitHub repositories"
----
-Skill ID 25iju:
-"Manage customer support emails"
+Skill ID aaa01: "Create issues on GitHub"
 
-Output:
-set_similar_skills({
-  "similar_skills_array": []
-})
+Output: set_similar_skills({ "similar_skills_array": [] })
+Reasoning: Both use GitHub but actions don't overlap.
 `;
 
 function truncateDescription(description: string): string {
@@ -97,7 +101,10 @@ function truncateDescription(description: string): string {
 
 export async function getSimilarSkills(
   auth: Authenticator,
-  inputs: { naturalDescription: string }
+  inputs: {
+    naturalDescription: string;
+    excludeSkillId: string | null;
+  }
 ): Promise<Result<{ similar_skills: string[] }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -109,15 +116,20 @@ export async function getSimilarSkills(
   }
 
   // Retrieve existing skills
-  const skills: SkillResource[] = await SkillResource.listSkills(auth, {
+  const allSkills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
     limit: MAX_SKILLS_SENT_TO_LLM,
+    onlyCustom: true,
   });
-  if (skills.length === MAX_SKILLS_SENT_TO_LLM) {
+  if (allSkills.length === MAX_SKILLS_SENT_TO_LLM) {
     logger.warn(
       { workspaceId: owner.sId },
       "The number of skills fetched reached the limit. Some skills might not be considered in the similarity check."
     );
   }
+
+  const skills = inputs.excludeSkillId
+    ? allSkills.filter((s) => s.sId !== inputs.excludeSkillId)
+    : allSkills;
 
   const existingSkills = skills
     .map(
@@ -135,7 +147,7 @@ ${existingSkills}
     {
       modelId: model.modelId,
       providerId: model.providerId,
-      temperature: 0.7,
+      temperature: 0.2,
       useCache: false,
     },
     {
@@ -150,6 +162,7 @@ ${existingSkills}
       },
       prompt: PROMPT,
       specifications,
+      forceToolCall: SET_SIMILAR_SKILLS_FUNCTION_NAME,
     },
     {
       context: {

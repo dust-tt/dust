@@ -1,3 +1,4 @@
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   ActionIcons,
   ActionPlusIcon,
@@ -11,8 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController } from "react-hook-form";
-
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 
 const DEFAULT_ICON = ActionPlusIcon;
 
@@ -28,7 +27,7 @@ export function SkillBuilderIconSection() {
   const selectedIconName =
     toActionIconKey(iconField.value) ??
     (DEFAULT_ICON.name as keyof typeof ActionIcons);
-  const IconComponent = ActionIcons[selectedIconName] || DEFAULT_ICON;
+  const IconComponent = ActionIcons[selectedIconName] ?? DEFAULT_ICON;
 
   const closePopover = () => {
     setIsPopoverOpen(false);

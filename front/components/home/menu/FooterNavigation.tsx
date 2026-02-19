@@ -1,11 +1,10 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { A, Grid } from "@app/components/home/ContentComponents";
+import { menuConfig } from "@app/components/home/menu/config";
 import { DustLogoGray } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
-
-import { A, Grid } from "@app/components/home/ContentComponents";
-import { menuConfig } from "@app/components/home/menu/config";
-import { appendUTMParams } from "@app/lib/utils/utm";
 
 export function FooterNavigation() {
   return (
@@ -68,12 +67,7 @@ interface FooterLinkProps extends LinkProps {
 
 function FooterLink({ href, children, isExternal, ...props }: FooterLinkProps) {
   return (
-    <Link
-      href={isExternal ? href : appendUTMParams(href.toString())}
-      shallow={!isExternal}
-      target={isExternal ? "_blank" : undefined}
-      {...props}
-    >
+    <Link href={href} target={isExternal ? "_blank" : undefined} {...props}>
       <A variant="secondary" className="label-sm">
         {children}
       </A>

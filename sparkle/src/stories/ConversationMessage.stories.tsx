@@ -24,7 +24,15 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Modules/ConversationMessage",
+  title: "Conversation/ConversationMessage",
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Deprecated — use ConversationMessages instead. This story remains for legacy usage reference.",
+      },
+    },
+  },
 } satisfies Meta<typeof ConversationMessage>;
 
 export default meta;
@@ -134,7 +142,7 @@ const example = `
 
 This is a paragraph with **bold** text and *italic* text. This is \`code\` block:
 \`\`\`
-Block 
+Block
 \`\`\`
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
@@ -148,7 +156,7 @@ Demo of a list, showcasing our pets of the month:
 - Anakine
 - Goose
 
-Ordered list: 
+Ordered list:
 1. Soupinou
 2. Chawarma
 3. Chalom
@@ -321,8 +329,7 @@ export const ConversationWithActions = () => {
           pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
           timestamp="14:31"
         >
-          This is an agent message with edit and delete actions available in the
-          dropdown menu.
+          <Markdown content="Got it. I can update the instructions and avatar, and keep the tone friendly." />
         </ConversationMessage>
       </ConversationContainer>
     </div>

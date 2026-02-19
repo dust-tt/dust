@@ -1,9 +1,3 @@
-import type { Bucket, File } from "@google-cloud/storage";
-import { Storage } from "@google-cloud/storage";
-import { chunk } from "lodash";
-import type { Readable } from "stream";
-import { pipeline } from "stream/promises";
-
 import { getCodeDirInternalId } from "@connectors/connectors/github/lib/utils";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import {
@@ -13,6 +7,12 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
+import type { Bucket, File } from "@google-cloud/storage";
+import { Storage } from "@google-cloud/storage";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import { chunk } from "lodash";
+import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
 
 export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
 export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
@@ -239,7 +239,6 @@ export class GCSRepositoryManager {
           chunks.push(chunk);
         }
 
-        // @ts-expect-error -- migration to tsgo
         const content = Buffer.concat(chunks);
         // Retry logic for small file uploads to handle transient GCS failures.
         let lastError: unknown;

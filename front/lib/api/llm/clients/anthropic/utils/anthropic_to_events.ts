@@ -5,8 +5,6 @@ import type {
   MessageDeltaUsage,
   MessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
-import cloneDeep from "lodash/cloneDeep";
-
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
@@ -22,7 +20,8 @@ import type {
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import cloneDeep from "lodash/cloneDeep";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
@@ -150,6 +149,7 @@ function handleContentBlockStart(
     case "mcp_tool_use":
     case "mcp_tool_result":
     case "container_upload":
+    case "compaction":
       // We don't use these Anthropic tools
       break;
     default:
@@ -158,7 +158,7 @@ function handleContentBlockStart(
 }
 
 function* handleContentBlockDelta(
-  event: Extract<MessageStreamEvent, { type: "content_block_delta" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "content_block_delta" }>,
   stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
@@ -174,6 +174,7 @@ function* handleContentBlockDelta(
       break;
     case "input_json_delta":
       stateContainer.state.accumulator += event.delta.partial_json;
+      yield { type: "tool_call_delta", metadata };
       break;
     case "signature_delta":
       if (stateContainer.state.accumulatorType === "reasoning") {
@@ -183,6 +184,7 @@ function* handleContentBlockDelta(
       }
       break;
     case "citations_delta":
+    case "compaction_delta":
       // We don't use Anthropic citations, as we have our own citations implementation
       break;
     default:
@@ -247,7 +249,7 @@ function* handleStopReason(
         {
           type: "stop_error",
           message: `Stop reason: ${stopReason}`,
-          isRetryable: false,
+          isRetryable: true,
         },
         metadata
       );
@@ -256,7 +258,7 @@ function* handleStopReason(
     case "refusal":
       yield new EventError(
         {
-          type: "stop_error",
+          type: "refusal_error",
           message:
             "Claude enhanced safety filters prevented this response. This can happen with " +
             "certain images, document IDs, or in longer conversations. Try starting a new " +
@@ -325,9 +327,9 @@ function tokenUsage(
 ): TokenUsageEvent {
   const cachedTokens = usage.cache_read_input_tokens ?? 0;
   const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  const uncachedInputTokens = usage.input_tokens ?? 0;
   // Include all input tokens to keep consistency with core implementation
-  const inputTokens =
-    (usage.input_tokens ?? 0) + cachedTokens + cacheCreationTokens;
+  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
 
   return {
     type: "token_usage",
@@ -336,6 +338,7 @@ function tokenUsage(
       outputTokens: usage.output_tokens,
       cachedTokens,
       cacheCreationTokens,
+      uncachedInputTokens,
       totalTokens: inputTokens + usage.output_tokens,
     },
     metadata,

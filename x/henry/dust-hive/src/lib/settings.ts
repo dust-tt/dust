@@ -1,3 +1,4 @@
+import type { MultiplexerType } from "./multiplexer/types";
 import { SETTINGS_PATH } from "./paths";
 
 export interface Settings {
@@ -5,6 +6,8 @@ export interface Settings {
   branchPrefix?: string;
   // Enable git-spice for branch management (default: false)
   useGitSpice?: boolean;
+  // Terminal multiplexer to use (default: "zellij")
+  multiplexer?: MultiplexerType;
 }
 
 const DEFAULT_SETTINGS: Settings = {};
@@ -22,11 +25,6 @@ export async function loadSettings(): Promise<Settings> {
   } catch {
     return DEFAULT_SETTINGS;
   }
-}
-
-// Save settings to disk
-export async function saveSettings(settings: Settings): Promise<void> {
-  await Bun.write(SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 // Get the branch name for an environment

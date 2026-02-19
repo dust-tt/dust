@@ -1,9 +1,8 @@
-import { cva, VariantProps } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Avatar,
-  Button,
+  type Button,
   ConversationMessageContent,
   IconButton,
 } from "@sparkle/components";
@@ -15,6 +14,8 @@ import {
 } from "@sparkle/components/Dropdown";
 import { MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import React from "react";
 
 export const ConversationContainer = React.forwardRef<
   HTMLDivElement,
@@ -29,7 +30,7 @@ export const ConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
         {children}
       </div>
     </div>
@@ -39,8 +40,7 @@ export const ConversationContainer = React.forwardRef<
 ConversationContainer.displayName = "ConversationContainer";
 
 interface ConversationMessageProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
   actions?: ConversationMessageAction[];
   avatarBusy?: boolean;
@@ -147,7 +147,8 @@ export const ConversationMessage = React.forwardRef<
 
 ConversationMessage.displayName = "ConversationMessage";
 
-interface ConversationMessageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageHeaderProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   actions?: ConversationMessageAction[];
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;

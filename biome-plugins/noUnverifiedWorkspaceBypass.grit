@@ -1,0 +1,17 @@
+engine biome(1.0)
+language js
+
+// Enforces that dangerouslyBypassWorkspaceIsolationSecurity: true requires
+// a preceding comment starting with WORKSPACE_ISOLATION_BYPASS: explaining
+// the security bypass.
+//
+// Note: GritQL cannot inspect preceding comments, so this rule flags ALL
+// uses of dangerouslyBypassWorkspaceIsolationSecurity: true as a warning.
+// Developers must ensure the required comment is present.
+`dangerouslyBypassWorkspaceIsolationSecurity: true` as $prop where {
+    register_diagnostic(
+        span = $prop,
+        message = "Usage of dangerouslyBypassWorkspaceIsolationSecurity requires a preceding comment starting with 'WORKSPACE_ISOLATION_BYPASS:' explaining the security bypass.",
+        severity = "warn"
+    )
+}

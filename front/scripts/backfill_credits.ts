@@ -1,5 +1,3 @@
-import type Stripe from "stripe";
-
 import { Authenticator } from "@app/lib/auth";
 import { grantFreeCreditsFromSubscriptionStateChange } from "@app/lib/credits/free";
 import { startOrResumeEnterprisePAYG } from "@app/lib/credits/payg";
@@ -11,6 +9,7 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
+import type Stripe from "stripe";
 
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
@@ -130,8 +129,9 @@ async function reconcileWorkspaceCredits(
   const workspace = auth.getNonNullableWorkspace();
   const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-  const subscription =
-    await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace);
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    lightWorkspace.id
+  );
 
   const stripeSubscription = subscription?.stripeSubscriptionId
     ? await getStripeSubscription(subscription.stripeSubscriptionId)

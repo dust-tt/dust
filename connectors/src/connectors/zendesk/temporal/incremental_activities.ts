@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { clearOrganizationCache } from "@connectors/connectors/zendesk/lib/in_memory_cache";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
@@ -23,6 +21,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import assert from "assert";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -255,25 +254,84 @@ export async function syncZendeskTicketUpdateBatchActivity({
     subdomain,
   });
 
-  const { tickets, hasMore, nextLink } = await zendeskClient.listTickets(
+  const {
+    tickets: fetchedTickets,
+    hasMore,
+    nextLink,
+  } = await zendeskClient.listTickets(
     url ? { url } : { brandSubdomain, startTime }
   );
 
+  // Exclude system-updated tickets: the incremental API returns tickets whose
+  // internal generated_timestamp changed (e.g. database backfills) but that
+  // were not meaningfully modified.
+  // https://developer.zendesk.com/documentation/api-basics/working-with-data/using-the-incremental-export-api/#excluding-system-updated-tickets-time-based-exports
+  const tickets = fetchedTickets.filter((t) => {
+    const updatedAtEpoch = Math.floor(new Date(t.updated_at).getTime() / 1000);
+    return updatedAtEpoch >= startTime;
+  });
+  if (tickets.length < fetchedTickets.length) {
+    logger.info(
+      {
+        ...loggerArgs,
+        skippedCount: fetchedTickets.length - tickets.length,
+        totalCount: fetchedTickets.length,
+      },
+      "[Zendesk] Skipped system-updated tickets in incremental sync."
+    );
+  }
+
+  let organizationTagsMap = new Map<number, string[]>();
+  if (configuration.enforcesOrganizationTagConstraint()) {
+    organizationTagsMap = await zendeskClient.getOrganizationTagMapForTickets(
+      tickets,
+      { brandSubdomain }
+    );
+  }
+
+  // Handle deleted tickets.
+  await concurrentExecutor(
+    tickets.filter((t) => t.status === "deleted"),
+    (ticket) =>
+      deleteTicket({
+        connectorId,
+        brandId,
+        ticketId: ticket.id,
+        dataSourceConfig,
+        loggerArgs,
+      }),
+    { concurrency: 10 }
+  );
+
+  // Filter tickets to sync before fetching comments to avoid unnecessary API calls.
+  const ticketsToSync = tickets
+    .filter((t) => t.status !== "deleted")
+    .filter((t) => {
+      let organizationTags: string[] = [];
+      if (
+        t.organization_id &&
+        configuration.enforcesOrganizationTagConstraint()
+      ) {
+        const mapValue = organizationTagsMap.get(t.organization_id);
+        assert(mapValue, "Organization tags not found.");
+        organizationTags = mapValue;
+      }
+      return shouldSyncTicket(t, configuration, {
+        brandId,
+        organizationTags,
+        ticketTags: t.tags,
+      }).shouldSync;
+    });
+
+  // Fetch comments only for tickets we will actually sync.
   const commentsPerTicket: Record<number, ZendeskTicketComment[]> = {};
   await concurrentExecutor(
-    tickets,
+    ticketsToSync,
     async (ticket) => {
-      const comments = await zendeskClient.listTicketComments({
+      commentsPerTicket[ticket.id] = await zendeskClient.listTicketComments({
         brandSubdomain,
         ticketId: ticket.id,
       });
-      if (comments.length > 0) {
-        logger.info(
-          { ...loggerArgs, ticketId: ticket.id },
-          "[Zendesk] No comment for ticket."
-        );
-      }
-      commentsPerTicket[ticket.id] = comments;
     },
     { concurrency: 3 }
   );
@@ -293,63 +351,25 @@ export async function syncZendeskTicketUpdateBatchActivity({
         ],
       });
 
-  let organizationTagsMap = new Map<number, string[]>();
-  if (configuration.enforcesOrganizationTagConstraint()) {
-    organizationTagsMap = await zendeskClient.getOrganizationTagMapForTickets(
-      tickets,
-      { brandSubdomain }
-    );
-  }
-
   await concurrentExecutor(
-    tickets,
+    ticketsToSync,
     async (ticket) => {
-      if (ticket.status === "deleted") {
-        return deleteTicket({
-          connectorId,
-          brandId,
-          ticketId: ticket.id,
-          dataSourceConfig,
-          loggerArgs,
-        });
+      const comments = commentsPerTicket[ticket.id];
+      if (!comments) {
+        throw new Error(`[Zendesk] Comments not found for ticket ${ticket.id}`);
       }
-
-      let organizationTags: string[] = [];
-      if (
-        ticket.organization_id &&
-        configuration.enforcesOrganizationTagConstraint()
-      ) {
-        const mapValue = organizationTagsMap.get(ticket.organization_id);
-        assert(mapValue, "Organization tags not found.");
-        organizationTags = mapValue;
-      }
-
-      if (
-        shouldSyncTicket(ticket, configuration, {
-          brandId,
-          organizationTags,
-          ticketTags: ticket.tags,
-        }).shouldSync
-      ) {
-        const comments = commentsPerTicket[ticket.id];
-        if (!comments) {
-          throw new Error(
-            `[Zendesk] Comments not found for ticket ${ticket.id}`
-          );
-        }
-        return syncTicket({
-          ticket,
-          connector,
-          configuration,
-          brandId,
-          users,
-          comments,
-          dataSourceConfig,
-          currentSyncDateMs,
-          loggerArgs,
-          forceResync: false,
-        });
-      }
+      return syncTicket({
+        ticket,
+        connector,
+        configuration,
+        brandId,
+        users,
+        comments,
+        dataSourceConfig,
+        currentSyncDateMs,
+        loggerArgs,
+        forceResync: false,
+      });
     },
     { concurrency: 10 }
   );

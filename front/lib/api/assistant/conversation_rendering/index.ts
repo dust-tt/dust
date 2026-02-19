@@ -3,23 +3,23 @@ import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
-  ConversationType,
-  ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
-  Result,
-} from "@app/types";
+} from "@app/types/assistant/generation";
 import {
-  assertNever,
-  Err,
   isContentFragmentMessageTypeModel,
   isImageContent,
   isTextContent,
-  Ok,
-} from "@app/types";
-
+} from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
   getInteractionTokenCount,
@@ -27,7 +27,7 @@ import {
   prunePreviousInteractions,
 } from "./pruning";
 
-// When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
+// When previous interactions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
 // Fixed number of tokens assumed for image contents
@@ -44,6 +44,8 @@ export async function renderConversationForModel(
     excludeActions,
     excludeImages,
     onMissingAction = "inject-placeholder",
+    agentConfiguration,
+    featureFlags,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -54,12 +56,15 @@ export async function renderConversationForModel(
     excludeImages?: boolean;
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
+    agentConfiguration?: AgentConfigurationType;
+    featureFlags?: WhitelistableFeature[];
   }
 ): Promise<
   Result<
     {
       modelConversation: ModelConversationTypeMultiActions;
       tokensUsed: number;
+      prunedContext: boolean;
     },
     Error
   >
@@ -72,20 +77,26 @@ export async function renderConversationForModel(
     excludeActions,
     excludeImages,
     onMissingAction,
+    agentConfiguration,
+    featureFlags,
   });
 
-  const messagesWithTokensRes = await countTokensForMessages(messages, model);
+  // Tokenize messages and prompt/tools in parallel to reduce latency
+  const [messagesWithTokensRes, promptToolsRes] = await Promise.all([
+    countTokensForMessages(messages, model),
+    tokenCountForTexts([prompt, tools], model),
+  ]);
+
   if (messagesWithTokensRes.isErr()) {
     return messagesWithTokensRes;
   }
 
-  const messagesWithTokens = messagesWithTokensRes.value;
-
-  const res = await tokenCountForTexts([prompt, tools], model);
-  if (res.isErr()) {
-    return new Err(res.error);
+  if (promptToolsRes.isErr()) {
+    return promptToolsRes;
   }
-  const [promptCount, toolDefinitionsCount] = res.value;
+
+  const messagesWithTokens = messagesWithTokensRes.value;
+  const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
 
   // Calculate base token usage.
   const toolDefinitionsCountAdjustmentFactor = 0.7;
@@ -108,6 +119,17 @@ export async function renderConversationForModel(
       currentInteraction,
       availableTokens
     );
+    if (currentInteraction.prunedContext) {
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          currentInteractionTokens,
+          availableTokens,
+        },
+        "Last tool result was pruned to fit in context window."
+      );
+    }
     currentInteractionTokens = getInteractionTokenCount(currentInteraction);
     if (currentInteractionTokens > availableTokens) {
       logger.error(
@@ -205,6 +227,8 @@ export async function renderConversationForModel(
         message.role !== "content_fragment"
     );
 
+  const prunedContext = currentInteraction.prunedContext ?? false;
+
   logger.info(
     {
       workspaceId: conversation.owner.sId,
@@ -213,6 +237,7 @@ export async function renderConversationForModel(
       promptToken: promptCount,
       tokensUsed,
       messageSelected: finalMessages.length,
+      prunedContext,
       elapsed: Date.now() - now,
     },
     "[ASSISTANT_TRACE] renderConversationForModelEnhanced"
@@ -223,6 +248,7 @@ export async function renderConversationForModel(
       messages: finalMessages,
     },
     tokensUsed,
+    prunedContext,
   });
 }
 

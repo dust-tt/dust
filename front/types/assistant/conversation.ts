@@ -1,21 +1,18 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type {
-  AllSupportedWithDustSpecificFileContentType,
-  ContentFragmentType,
-  MentionType,
-  ModelId,
-  RichMention,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
+import type { ContentFragmentType } from "../content_fragment";
+import type { AllSupportedWithDustSpecificFileContentType } from "../files";
+import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
   GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
-import type { AgentContentItemType } from "./agent_message_content";
+import type { MentionType, RichMention } from "./mentions";
 
 export type MessageVisibility = "visible" | "deleted";
 
@@ -93,9 +90,14 @@ export type UserMessageOrigin =
   | "web"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation isn't a message origin. It has been used so as a hack
-  // but should be removed and most likely handled as message metadata (to be created).
-  | "onboarding_conversation";
+  // TODO onboarding_conversation, agent_copilot, and project_kickoff aren't message origins. They
+  // have been used as a hack but should be removed and most likely handled as message metadata
+  // (to be created).
+  | "onboarding_conversation"
+  | "agent_copilot"
+  // for internal use, for the butler in projects
+  | "project_butler"
+  | "project_kickoff";
 
 export type UserMessageContext = {
   username: string;
@@ -108,6 +110,8 @@ export type UserMessageContext = {
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
   selectedSkillIds?: string[];
+  apiKeyId?: number | null;
+  authMethod?: string | null;
 };
 
 export type AgenticMessageData = {
@@ -116,7 +120,11 @@ export type AgenticMessageData = {
 };
 
 export type RichMentionWithStatus =
-  | (RichMention & { dismissed: boolean; status: "pending" })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "pending_conversation_access";
+    })
+  | (RichMention & { dismissed: boolean; status: "pending_project_membership" })
   | (RichMention & { dismissed: boolean; status: "approved" })
   | (RichMention & { dismissed: boolean; status: "rejected" })
   | (RichMention & {
@@ -175,6 +183,11 @@ export type AgentMessageStatus =
   | "failed"
   | "cancelled";
 
+export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  "succeeded",
+  "cancelled",
+];
+
 export interface CitationType {
   description?: string;
   href?: string;
@@ -206,6 +219,8 @@ export type BaseAgentMessageType = {
   visibility: MessageVisibility;
   richMentions: RichMentionWithStatus[];
   completionDurationMs: number | null;
+  reactions: MessageReactionType[];
+  prunedContext?: boolean;
 };
 
 export type ParsedContentItem =
@@ -220,14 +235,8 @@ export type AgentMessageType = BaseAgentMessageType & {
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
   actions: AgentMCPActionWithOutputType[];
-  rawContents: Array<{
-    step: number;
-    content: string;
-  }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
-  parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;
-  reactions: MessageReactionType[];
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -245,7 +254,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
-  reactions: MessageReactionType[];
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -271,11 +279,20 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 
 /**
- * Visibility of a conversation. Test visibility is for conversations happening
- * when a user 'tests' an agent not in their list using the "test" button:
- * those conversations do not show in users' histories.
+ * Visibility of a conversation.
+ *  - 'unlisted' default value
+ *  - 'deleted' conversations are soft-deleted and not visible to any user.
+ *  - 'test' for conversations happening when a user 'tests' an agent not in their list using the "test" button: those conversations do not show in users' histories.
+ *
+ * :warning: test is also used for conversations created by the platform (like the journal entry generation)
+ *
+ * TODO:
+ *  - rename unlisted to visible
+ *  - test to hidden
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
+
+export type ConversationMetadata = Record<string, unknown>;
 
 /**
  * A lighter version of Conversation without the content (for menu display).
@@ -285,6 +302,7 @@ export type ConversationWithoutContentType = {
   created: number;
   updated: number;
   unread: boolean;
+  lastReadMs: number | null;
   actionRequired: boolean;
   hasError: boolean;
   sId: string;
@@ -292,6 +310,7 @@ export type ConversationWithoutContentType = {
   spaceId: string | null;
   triggerId: string | null;
   depth: number;
+  metadata: ConversationMetadata;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -306,6 +325,20 @@ export type ConversationType = ConversationWithoutContentType & {
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
+
+/**
+ * Same as ConversationType but with light agent messages and user messages with content fragments inside.
+ * Only keep the last version of each message.
+ */
+export type LightConversationType = ConversationWithoutContentType & {
+  owner: WorkspaceType;
+  visibility: ConversationVisibility;
+  content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
+};
+
+export const isProjectConversation = <T extends ConversationWithoutContentType>(
+  conversation: T
+): conversation is T & { spaceId: string } => !!conversation.spaceId;
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
 

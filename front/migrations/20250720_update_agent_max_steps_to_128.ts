@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 
 const updateAllAgentMaxSteps = async (execute: boolean) => {
   const agentConfigurations = await AgentConfigurationModel.findAll({

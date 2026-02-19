@@ -1,20 +1,4 @@
-import type {
-  ListScrollLocation,
-  VirtuosoMessageListMethods,
-} from "@virtuoso.dev/message-list";
-import {
-  VirtuosoMessageList,
-  VirtuosoMessageListLicense,
-} from "@virtuoso.dev/message-list";
-import debounce from "lodash/debounce";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
+import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
@@ -30,7 +14,14 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import {
+  useConversation,
+  useConversationFeedbacks,
+  useConversationMarkAsRead,
+  useConversationMessages,
+  useConversationParticipants,
+  useConversations,
+} from "@app/hooks/conversations";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -39,34 +30,51 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
-import {
-  useConversation,
-  useConversationFeedbacks,
-  useConversationMarkAsRead,
-  useConversationMessages,
-  useConversationParticipants,
-  useConversations,
-} from "@app/lib/swr/conversations";
+import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
+} from "@app/types/assistant/agent";
+import type {
   AgentMessageNewEvent,
-  ContentFragmentsType,
   ConversationTitleEvent,
+  ConversationWithoutContentType,
   LightMessageType,
-  Result,
-  RichMention,
   UserMessageNewEvent,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
-  isUserMessageTypeWithContentFragments,
   toMentionType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import type {
+  ListScrollLocation,
+  VirtuosoMessageListMethods,
+} from "@virtuoso.dev/message-list";
+import {
+  VirtuosoMessageList,
+  VirtuosoMessageListLicense,
+} from "@virtuoso.dev/message-list";
+import debounce from "lodash/debounce";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
+
+import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -76,6 +84,8 @@ const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 
 interface ConversationViewerProps {
   conversationId: string;
   agentBuilderContext?: VirtuosoMessageListContext["agentBuilderContext"];
+  additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
   setPlanLimitReached?: (planLimitReached: boolean) => void;
   owner: WorkspaceType;
   user: UserType;
@@ -101,6 +111,8 @@ export const ConversationViewer = ({
   user,
   conversationId,
   agentBuilderContext,
+  additionalMarkdownComponents,
+  additionalMarkdownPlugins,
   setPlanLimitReached,
 }: ConversationViewerProps) => {
   const ref =
@@ -117,6 +129,12 @@ export const ConversationViewer = ({
   } = useConversation({
     conversationId,
     workspaceId: owner.sId,
+  });
+
+  const { spaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: conversation?.spaceId ?? "",
+    disabled: !conversation?.spaceId,
   });
 
   const { markAsRead } = useConversationMarkAsRead({
@@ -142,12 +160,7 @@ export const ConversationViewer = ({
     }
   }, [shouldShowPushNotificationActivation, askForPermission]);
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
-  });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const {
     isLoadingInitialData,
@@ -180,7 +193,12 @@ export const ConversationViewer = ({
     VirtuosoMessage[] | undefined
   >(undefined);
 
+  const [messageIdToScrollTo, setMessageIdToScrollTo] = useState<number | null>(
+    null
+  );
+
   // Setup the initial list data when the conversation is loaded.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
     // Consider this scenario:
@@ -193,8 +211,55 @@ export const ConversationViewer = ({
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
+
+      // Fetch the message to scroll to from the URL hash.
+      const hash = window.location.hash;
+      // If we arrive on an unread conversation from a deep link, we scroll to the linked message.
+      // This is useful when sharing a message link to someone else.
+      if (hash && hash.startsWith("#")) {
+        const messageId = hash.substring(1); // Remove the '#' prefix.
+        if (!messageId) {
+          return;
+        }
+
+        // Find the message index in the current data.
+        const messageIndex = messagesToRender.findIndex(
+          (m) => m.sId === messageId
+        );
+
+        if (messageIndex === -1) {
+          // nothing found to scroll to.
+          return;
+        }
+        setMessageIdToScrollTo(messageIndex);
+      } else if (conversation?.unread) {
+        const lastReadMs = conversation.lastReadMs;
+
+        if (lastReadMs === null) {
+          // Conversation has never been read, scroll to the beginning.
+          return;
+        }
+
+        const firstUnreadIndex = findFirstUnreadMessageIndex(
+          messagesToRender,
+          lastReadMs
+        );
+
+        if (firstUnreadIndex === -1) {
+          return;
+        }
+
+        setMessageIdToScrollTo(firstUnreadIndex);
+      }
     }
-  }, [initialListData, messages, setInitialListData, isValidating]);
+  }, [
+    initialListData,
+    messages,
+    setInitialListData,
+    isValidating,
+    conversation?.unread,
+    conversation?.lastReadMs,
+  ]);
 
   // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {
@@ -305,23 +370,16 @@ export const ConversationViewer = ({
                 );
 
                 void mutateConversations(
-                  (currentData) => {
-                    if (!currentData?.conversations) {
-                      return currentData;
-                    }
-                    return {
-                      conversations: currentData.conversations.map((c) =>
-                        c.sId === conversationId
-                          ? { ...c, hasError: false, unread: false }
-                          : c
-                      ),
-                    };
-                  },
+                  (currentData: ConversationWithoutContentType[] | undefined) =>
+                    currentData?.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, hasError: false, unread: false }
+                        : c
+                    ),
                   { revalidate: false }
                 );
-
-                void debouncedMarkAsRead(conversationId, false);
               }
+              void debouncedMarkAsRead(conversationId);
             }
             break;
           case "agent_message_new":
@@ -360,6 +418,7 @@ export const ConversationViewer = ({
             break;
 
           case "conversation_title":
+            void debouncedMarkAsRead(conversationId);
             void mutateConversation(
               (current) => {
                 if (current) {
@@ -377,18 +436,10 @@ export const ConversationViewer = ({
 
             // to refresh the list of convos in the sidebar (title)
             void mutateConversations(
-              (currentData) => {
-                if (currentData?.conversations) {
-                  return {
-                    ...currentData,
-                    conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId
-                        ? { ...c, title: event.title }
-                        : c
-                    ),
-                  };
-                }
-              },
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === conversationId ? { ...c, title: event.title } : c
+                ),
               { revalidate: false }
             );
 
@@ -396,24 +447,20 @@ export const ConversationViewer = ({
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
-            void debouncedMarkAsRead(event.conversationId, false);
+            void debouncedMarkAsRead(event.conversationId);
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
-              (currentData) => {
-                if (!currentData?.conversations) {
-                  return currentData;
-                }
-                return {
-                  conversations: currentData.conversations.map((c) =>
-                    c.sId === event.conversationId
-                      ? { ...c, hasError: event.status === "error" }
-                      : c
-                  ),
-                };
-              },
+              (currentData: ConversationWithoutContentType[] | undefined) =>
+                currentData?.map((c) =>
+                  c.sId === event.conversationId
+                    ? { ...c, hasError: event.status === "error" }
+                    : c
+                ),
               { revalidate: false }
             );
+
+            window.dispatchEvent(new AgentMessageCompletedEvent());
             break;
           default:
             ((t: never) => {
@@ -458,6 +505,8 @@ export const ConversationViewer = ({
         input,
         mentions: mentions.map(toMentionType),
         contentFragments,
+        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
+        skipToolsValidation: agentBuilderContext?.skipToolsValidation,
       };
 
       const lastMessageRank = Math.max(
@@ -562,30 +611,26 @@ export const ConversationViewer = ({
       );
 
       void mutateConversations(
-        (currentData) => {
-          if (!currentData?.conversations) {
-            return currentData;
-          }
-          return {
-            conversations: currentData.conversations.map((c) =>
-              c.sId === conversationId
-                ? { ...c, updated: new Date().getTime() }
-                : c
-            ),
-          };
-        },
+        (currentData: ConversationWithoutContentType[] | undefined) =>
+          currentData?.map((c) =>
+            c.sId === conversationId
+              ? { ...c, updated: new Date().getTime() }
+              : c
+          ),
         { revalidate: false }
       );
 
       return new Ok(undefined);
     },
     [
-      submitMessage,
-      user,
+      agentBuilderContext?.clientSideMCPServerIds,
+      agentBuilderContext?.skipToolsValidation,
       conversationId,
+      mutateConversations,
       sendNotification,
       setPlanLimitReached,
-      mutateConversations,
+      submitMessage,
+      user,
     ]
   );
 
@@ -621,7 +666,7 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
-      return `conversation-${context.conversationId}-message-rank-${data.rank}`;
+      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}`;
     },
     []
   );
@@ -640,24 +685,39 @@ export const ConversationViewer = ({
     );
   }, [feedbacks]);
 
-  const context = useMemo(() => {
+  const isProjectMember = conversation?.spaceId
+    ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
+    : undefined;
+
+  const context: VirtuosoMessageListContext = useMemo(() => {
     return {
       user,
       owner,
       handleSubmit,
-      conversationId,
-      enableReactions: !!conversation?.spaceId,
+      conversation,
+      draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
+      additionalMarkdownComponents,
+      additionalMarkdownPlugins,
+      isProjectMember,
+      isProjectRestricted: spaceInfo?.isRestricted,
+      projectSpaceId: conversation?.spaceId ?? undefined,
+      projectSpaceName: spaceInfo?.name,
     };
   }, [
     user,
     owner,
     handleSubmit,
+    conversation,
     conversationId,
-    conversation?.spaceId,
     agentBuilderContext,
     feedbacksByMessageId,
+    additionalMarkdownComponents,
+    additionalMarkdownPlugins,
+    isProjectMember,
+    spaceInfo?.isRestricted,
+    spaceInfo?.name,
   ]);
 
   return (
@@ -676,17 +736,12 @@ export const ConversationViewer = ({
             scrollModifier: {
               type: "item-location",
               location: {
-                index: "LAST",
-                align: "end",
+                index: messageIdToScrollTo ?? "LAST",
+                align: messageIdToScrollTo ? "start" : "end",
                 behavior: "instant",
               },
               purgeItemSizes: true,
             },
-          }}
-          initialLocation={{
-            index: "LAST",
-            align: "end",
-            behavior: "instant",
           }}
           ref={ref}
           ItemContent={MessageItem}

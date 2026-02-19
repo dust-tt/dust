@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { cleanupPastedHTML } from "./cleanupPastedHTML";
+import { cleanupPastedHTML, stripHtmlAttributes } from "./cleanupPastedHTML";
 
 describe("cleanupPastedHTML", () => {
   describe("allowed tags", () => {
@@ -168,5 +168,14 @@ describe("cleanupPastedHTML", () => {
     expect(result).toBe(
       `<span><h2 dir="ltr"><span>&lt;h2&gt; hello you &lt;h2/&gt;</span></h2><br><p dir="ltr"><span>Hello </span><span><strong>this is</strong></span><span> me and I’m in </span><span><em>italic</em></span></p><h1 dir="ltr"><span>&lt;H2&gt; totot &lt;/H2&gt;</span></h1><br><p dir="ltr"><span><strong>Again bold </strong></span><span>and not bold</span></p></span>`
     );
+  });
+});
+
+describe("stripHtmlAttributes", () => {
+  test("strips style/class/id but preserves data-block-id", () => {
+    const html =
+      '<p style="color: red;" class="foo" id="bar" data-block-id="abc123">Text</p>';
+    const result = stripHtmlAttributes(html);
+    expect(result).toBe('<p data-block-id="abc123">Text</p>');
   });
 });

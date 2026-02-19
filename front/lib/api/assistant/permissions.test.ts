@@ -1,15 +1,14 @@
-import { describe, expect, it } from "vitest";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { describe, expect, it } from "vitest";
 
 describe("getAgentConfigurationRequirementsFromCapabilities", () => {
   it("should return empty arrays when no actions are provided", async () => {
@@ -71,6 +70,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: "server1",
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
       {
@@ -94,6 +94,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: "server2",
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
     ];
@@ -149,6 +150,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: globalMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
       {
@@ -166,6 +168,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: restrictedMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
     ];
@@ -222,6 +225,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: "server1",
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
       {
@@ -245,6 +249,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: "server2",
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
     ];
@@ -319,6 +324,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
     ];
@@ -385,6 +391,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: autoMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: internalAutoServer.id,
       },
     ];
@@ -415,6 +422,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: autoMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: internalAutoServer.id,
       },
       {
@@ -432,6 +440,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: regularMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
     ];
@@ -536,6 +545,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: "server1",
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
       {
@@ -559,6 +569,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         mcpServerViewId: "server2",
         dustAppConfiguration: null,
         secretName: null,
+        dustProject: null,
         internalMCPServerId: null,
       },
     ];

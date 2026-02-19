@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { DEFAULT_CONVERSATION_SEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
@@ -13,7 +11,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { ConversationWithoutContentType } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import assert from "assert";
 
 /**
  * Get MCP server configurations for conversation-specific tools.
@@ -23,24 +22,24 @@ export async function getConversationMCPServers(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  const servers: ServerSideMCPServerConfigurationType[] = [];
-
   const conversationMCPServerViews =
-    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
+    await ConversationResource.fetchMCPServerViews(auth, conversation, {
+      onlyEnabled: true,
+    });
 
-  for (const conversationMCPServerView of conversationMCPServerViews) {
-    const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
-      auth,
-      conversationMCPServerView.mcpServerViewId
-    );
+  // Batch-fetch all MCP server views.
+  const mcpServerViewIds = conversationMCPServerViews.map(
+    (v) => v.mcpServerViewId
+  );
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    mcpServerViewIds
+  );
 
-    if (!mcpServerViewResource) {
-      continue;
-    }
-
+  return mcpServerViews.map((mcpServerViewResource) => {
     const mcpServerView = mcpServerViewResource.toJSON();
 
-    servers.push({
+    return {
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
@@ -53,6 +52,7 @@ export async function getConversationMCPServers(
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
       additionalConfiguration: {},
       mcpServerViewId: mcpServerView.sId,
       dustAppConfiguration: null,
@@ -60,10 +60,8 @@ export async function getConversationMCPServers(
         mcpServerView.serverType === "internal"
           ? mcpServerView.server.sId
           : null,
-    });
-  }
-
-  return servers;
+    };
+  });
 }
 
 /**
@@ -101,6 +99,7 @@ export async function getConversationFilesServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: conversationFilesView.sId,
     dustAppConfiguration: null,
@@ -188,6 +187,7 @@ export async function getConversationSearchServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: retrievalView.sId,
     dustAppConfiguration: null,

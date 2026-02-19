@@ -1,10 +1,11 @@
 import { Op } from "sequelize";
 
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
-import type { WhitelistableFeature } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 const FEATURE_FLAG_NAME: WhitelistableFeature = "legacy_dust_apps";
 
@@ -70,14 +71,8 @@ makeScript({}, async ({ execute }, logger) => {
     return;
   }
 
-  const targetWorkspaces = await WorkspaceModel.findAll({
-    attributes: ["id", "sId", "name"],
-    where: {
-      id: {
-        [Op.in]: workspaceIdsToFlag,
-      },
-    },
-  });
+  const targetWorkspaces =
+    await WorkspaceResource.fetchByModelIds(workspaceIdsToFlag);
   const missingWorkspaceIds = workspaceIdsToFlag.filter(
     (workspaceId) =>
       !targetWorkspaces.some((workspace) => workspace.id === workspaceId)
@@ -85,10 +80,7 @@ makeScript({}, async ({ execute }, logger) => {
 
   for (const workspace of targetWorkspaces) {
     if (execute) {
-      await FeatureFlagModel.create({
-        workspaceId: workspace.id,
-        name: FEATURE_FLAG_NAME,
-      });
+      await FeatureFlagResource.enable(workspace, FEATURE_FLAG_NAME);
       logger.info(
         {
           workspaceId: workspace.id,

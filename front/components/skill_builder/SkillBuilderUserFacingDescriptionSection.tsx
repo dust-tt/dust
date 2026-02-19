@@ -1,7 +1,3 @@
-import { Button, Input, SparklesIcon, Spinner } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-import { useController, useWatch } from "react-hook-form";
-
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import {
   SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT,
@@ -12,7 +8,10 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { getSkillDescriptionSuggestion } from "@app/components/skill_builder/utils";
 import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { isEmptyString } from "@app/types";
+import { isEmptyString } from "@app/types/shared/utils/general";
+import { Button, Input, SparklesIcon, Spinner } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
+import { useController, useWatch } from "react-hook-form";
 
 const USER_FACING_DESCRIPTION_FIELD_NAME = "userFacingDescription";
 const MIN_INSTRUCTIONS_LENGTH = 20;

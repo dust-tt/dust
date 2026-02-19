@@ -1,0 +1,102 @@
+# Lefthook configuration
+# See https://github.com/evilmartians/lefthook for documentation
+#
+# ===================================================================
+# How to skip hooks:
+# ===================================================================
+#
+# Skip ALL pre-commit hooks:
+#   LEFTHOOK=0 git commit -m "message"
+#
+# Skip specific commands:
+#   LEFTHOOK_EXCLUDE=check-main-branch git commit -m "message"
+#   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
+#
+# Skip only linting/type-checking (front and connectors):
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,biome-format,front-biome-lint,connectors-lint-test-filenames,connectors-typecheck,connectors-biome-lint git commit -m "message"
+#
+# Skip only a project:
+#   LEFTHOOK_EXCLUDE=front git commit -m "message"
+#
+# Interactive mode (choose which commands to run):
+#   lefthook run pre-commit --interactive
+#
+# ===================================================================
+output:
+  - meta           # Print lefthook version
+  - summary        # Print summary block (successful and failed steps)
+  - empty_summary  # Print summary heading when there are no steps to run
+  - success        # Print successful steps
+  - failure        # Print failed steps printing
+  #  - execution      # Print any execution logs
+  #  - execution_out  # Print execution output
+  #  - execution_info # Print `EXECUTE > ...` logging
+  - skips          # Print "skip" (i.e. no files matched)
+
+pre-commit:
+  # Run tasks in parallel for better performance
+  parallel: true
+
+  commands:
+    # Check if committing to main branch
+    check-main-branch:
+      run: |
+        current_branch=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$current_branch" = "main" ]; then
+          echo "Error: Committing to 'main' is not allowed. Use LEFTHOOK_EXCLUDE=check-main-branch to override."
+          exit 1
+        fi
+      priority: 1
+
+    # Optional: ggshield secret scanning (skip with LEFTHOOK_EXCLUDE=ggshield-scan)
+    ggshield-scan:
+      run: |
+        if command -v ggshield 2>&1 >/dev/null; then
+          ggshield secret scan pre-commit
+        else
+          echo "ggshield is not installed. Skipping secret scan. Install ggshield or use LEFTHOOK_EXCLUDE=ggshield-scan"
+          exit 0
+        fi
+      priority: 1
+
+    # Optional: package-lock.json sync check (skip with LEFTHOOK_EXCLUDE=package-lock-check)
+    package-lock-check:
+      glob: "*/{package,package-lock}.json"
+      run: |
+        if ! scripts/check-package-lock-sync.sh; then
+          echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
+          exit 1
+        fi
+      priority: 1
+
+    # Front directory checks
+    front-lint-test-filenames:
+      tags: front
+      glob: "*.{js,jsx,ts,tsx}"
+      root: front/
+      run: npm run lint:test-filenames
+
+    front-typecheck:
+      tags: front
+      glob: "*.{js,jsx,ts,tsx}"
+      root: front/
+      run: npm run tsgo
+
+    front-docs-check:
+      tags: front
+      glob: "front/pages/api/v1/**/*"
+      root: front/
+      run: npm run docs:check
+
+    # Connectors directory checks
+    connectors-typecheck:
+      tags: connectors
+      glob: "*.{js,jsx,ts,tsx}"
+      root: connectors/
+      run: npm run tsgo
+
+    # Biome checks (all JS/TS files in monorepo)
+    biome:
+      glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
+      run: npm run biome:lefthook -- {staged_files}
+      stage_fixed: true

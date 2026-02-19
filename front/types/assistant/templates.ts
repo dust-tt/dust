@@ -1,6 +1,6 @@
 import * as t from "io-ts";
-import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
+import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 
 import { ioTsEnum } from "../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../shared/utils/time_frame";
@@ -159,13 +159,15 @@ export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
 
 export const CreateTemplateFormSchema = t.type({
   backgroundColor: NonEmptyString,
-  description: t.union([t.string, t.undefined]),
+  userFacingDescription: t.union([t.string, t.undefined]),
+  agentFacingDescription: t.union([t.string, t.undefined]),
   emoji: NonEmptyString,
   handle: NonEmptyString,
   timeFrameDuration: t.union([t.string, t.undefined]),
   timeFrameUnit: t.union([TimeframeUnitCodec, t.literal(""), t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
+  copilotInstructions: t.union([t.string, t.undefined]),
   presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,

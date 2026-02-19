@@ -1,11 +1,3 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type {
   ConversationAttachmentType,
@@ -21,7 +13,7 @@ import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { MessageModel } from "@app/lib/models/agent/conversation";
+import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -33,27 +25,31 @@ import {
   getResourceNameAndIdFromSId,
 } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type {
   BaseContentFragmentType,
-  ContentFragmentMessageTypeModel,
   ContentFragmentType,
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
-  ContentNodeType,
-  ConversationType,
   FileContentFragmentType,
-  ModelConfigurationType,
-  ModelId,
-  Result,
-} from "@app/types";
-import {
-  assertNever,
-  CoreAPI,
-  Err,
-  isSupportedImageContentType,
-  normalizeError,
-  Ok,
-} from "@app/types";
+} from "@app/types/content_fragment";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import { CoreAPI } from "@app/types/core/core_api";
+import { isLLMVisionSupportedImageContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
@@ -61,7 +57,8 @@ export const CONTENT_OUTDATED_MSG =
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ContentFragmentResource extends ReadonlyAttributesType<ContentFragmentModel> {}
+export interface ContentFragmentResource
+  extends ReadonlyAttributesType<ContentFragmentModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ContentFragmentResource extends BaseResource<ContentFragmentModel> {
   static model: ModelStatic<ContentFragmentModel> = ContentFragmentModel;
@@ -183,22 +180,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
   }
 
-  static async fromMessageId(auth: Authenticator, id: ModelId) {
-    const message = await MessageModel.findOne({
-      where: {
-        id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: [{ model: ContentFragmentModel, as: "contentFragment" }],
-    });
-    if (!message) {
-      throw new Error(
-        "No message found for the given id when trying to create a ContentFragmentResource"
-      );
-    }
-    return ContentFragmentResource.fromMessage(message);
-  }
-
   static async fetchManyByModelIds(auth: Authenticator, ids: Array<ModelId>) {
     const blobs = await ContentFragmentResource.model.findAll({
       where: {
@@ -211,6 +192,54 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
       (b: ContentFragmentModel) =>
         new ContentFragmentResource(ContentFragmentResource.model, b.get())
+    );
+  }
+
+  /**
+   * Batch render content fragments from messages with optimized file fetching.
+   * This method fetches all files in a single query to avoid N+1 queries.
+   *
+   * This is the recommended way to render content fragments.
+   */
+  static async batchRenderFromMessages(
+    auth: Authenticator,
+    {
+      conversationId,
+      messages,
+    }: {
+      conversationId: string;
+      messages: MessageModel[];
+    }
+  ): Promise<ContentFragmentType[]> {
+    const messagesWithContentFragment = messages.filter(
+      (m) => !!m.contentFragment
+    );
+
+    if (messagesWithContentFragment.length === 0) {
+      return [];
+    }
+
+    // Batch fetch all files to avoid N+1 queries.
+    const fileIds = removeNulls(
+      messagesWithContentFragment.map((m) => m.contentFragment?.fileId)
+    );
+    const files = await FileResource.fetchByModelIdsWithAuth(auth, fileIds);
+    const filesByModelId = new Map(files.map((f) => [f.id, f]));
+
+    // Render all content fragments with pre-fetched files.
+    return Promise.all(
+      messagesWithContentFragment.map(async (message: MessageModel) => {
+        const contentFragment = ContentFragmentResource.fromMessage(message);
+        const file = contentFragment.fileId
+          ? filesByModelId.get(contentFragment.fileId)
+          : undefined;
+
+        return contentFragment.renderFromMessage(auth, {
+          conversationId,
+          message,
+          file,
+        });
+      })
     );
   }
 
@@ -269,15 +298,21 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return this.update({ sourceUrl });
   }
 
-  async renderFromMessage({
-    auth,
-    conversationId,
-    message,
-  }: {
-    auth: Authenticator;
-    conversationId: string;
-    message: MessageModel;
-  }): Promise<ContentFragmentType> {
+  /**
+   * Use batchRenderFromMessages instead to avoid N+1 queries.
+   */
+  async renderFromMessage(
+    auth: Authenticator,
+    {
+      conversationId,
+      message,
+      file,
+    }: {
+      conversationId: string;
+      message: MessageModel;
+      file?: FileResource;
+    }
+  ): Promise<ContentFragmentType> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
@@ -350,18 +385,20 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let generatedTables: string[] = [];
       let sourceProvider: string | null = null;
       let sourceIcon: string | null = null;
-      let file: FileResource | null = null;
-      if (this.fileId) {
-        file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
-      }
-      // TODO(durable_agents): make fileId not optional for file content fragments
 
-      if (file) {
-        fileStringId = file.sId;
-        snippet = file.snippet;
-        generatedTables = file.useCaseMetadata?.generatedTables ?? [];
-        sourceProvider = file.useCaseMetadata?.sourceProvider ?? null;
-        sourceIcon = file.useCaseMetadata?.sourceIcon ?? null;
+      // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
+      const fileResource =
+        file ??
+        (this.fileId
+          ? await FileResource.fetchByModelIdWithAuth(auth, this.fileId)
+          : null);
+
+      if (fileResource) {
+        fileStringId = fileResource.sId;
+        snippet = fileResource.snippet;
+        generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
+        sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
+        sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
       }
 
       return {
@@ -530,7 +567,7 @@ export async function getContentFragmentFromAttachmentFile(
           conversationAttachmentId(attachment)
         );
 
-  if (isSupportedImageContentType(attachment.contentType)) {
+  if (isLLMVisionSupportedImageContentType(attachment.contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
@@ -670,7 +707,6 @@ export async function getContentFragmentFromAttachmentFile(
 export async function renderLightContentFragmentForModel(
   auth: Authenticator,
   message: ContentFragmentType,
-  conversation: ConversationType,
   model: ModelConfigurationType,
   {
     excludeImages,
@@ -678,24 +714,16 @@ export async function renderLightContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<ContentFragmentMessageTypeModel | null> {
-  const { contentType, sId } = message;
+  const { contentType } = message;
 
-  const contentFragment = await ContentFragmentResource.fromMessageId(
-    auth,
-    message.id
-  );
-  if (!contentFragment) {
-    throw new Error(`Content fragment not found for message ${sId}`);
-  }
-
-  if (contentFragment.expiredReason) {
+  if (message.expiredReason) {
     return {
       role: "content_fragment",
       name: `attach_${contentType}`,
       content: [
         {
           type: "text",
-          text: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
+          text: `The content of this file is no longer available. Reason: ${message.expiredReason}`,
         },
       ],
     };
@@ -706,14 +734,9 @@ export async function renderLightContentFragmentForModel(
     return null;
   }
 
-  const { fileId: fileModelId } = contentFragment;
-
-  const fileStringId = fileModelId
-    ? FileResource.modelIdToSId({
-        id: fileModelId,
-        workspaceId: conversation.owner.id,
-      })
-    : null;
+  // Get fileId directly from the message based on content fragment type.
+  const fileStringId =
+    message.contentFragmentType === "file" ? message.fileId : null;
 
   // Check if this is pasted content - render with simplified format
   if (fileStringId && isPastedFile(contentType)) {
@@ -737,7 +760,7 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
-  if (fileStringId && isSupportedImageContentType(contentType)) {
+  if (fileStringId && isLLMVisionSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
         role: "content_fragment",

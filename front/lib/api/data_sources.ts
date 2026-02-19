@@ -1,17 +1,8 @@
 // Okay to use public API types because here front is talking to core API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type {
-  DataSourceFolderSpreadsheetMimeType,
-  DataSourceSearchQuery,
-  DataSourceSearchResponseType,
-} from "@dust-tt/client";
-import assert from "assert";
-import type { Transaction } from "sequelize";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { getProjectContextDatasourceName } from "@app/lib/api/projects";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import {
   getMembers,
@@ -20,6 +11,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
+import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
@@ -37,39 +29,46 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { FrontDataSourceDocumentSectionType } from "@app/types/api/public/data_sources";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import type { AdminCommandType } from "@app/types/connectors/admin/cli";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { CoreAPIError, CoreAPITable } from "@app/types/core/core_api";
+import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import type {
-  AdminCommandType,
-  ConnectorProvider,
-  ConnectorType,
-  ConversationWithoutContentType,
   CoreAPIDataSource,
   CoreAPIDocument,
-  CoreAPIError,
   CoreAPILightDocument,
-  CoreAPITable,
+} from "@app/types/core/data_source";
+import {
+  DEFAULT_QDRANT_CLUSTER,
+  sectionFullText,
+} from "@app/types/core/data_source";
+import type {
+  ConnectorProvider,
+  ConnectorType,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
-  FrontDataSourceDocumentSectionType,
-  PlanType,
-  Result,
   WithConnector,
-  WorkspaceType,
-} from "@app/types";
-import {
-  assertNever,
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  Err,
-  isDataSourceNameValid,
-  OAuthAPI,
-  Ok,
-  sectionFullText,
-  validateUrl,
-} from "@app/types";
+} from "@app/types/data_source";
+import { isDataSourceNameValid } from "@app/types/data_source";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { PlanType } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
+import type { WorkspaceType } from "@app/types/user";
+import type {
+  DataSourceFolderSpreadsheetMimeType,
+  DataSourceSearchQuery,
+  DataSourceSearchResponseType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+} from "@dust-tt/client";
+import assert from "assert";
+import type { Transaction } from "sequelize";
 
 import { ConversationResource } from "../resources/conversation_resource";
 
@@ -167,14 +166,23 @@ export async function getDataSources(
  */
 export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   auth: Authenticator,
-  dataSource: DataSourceResource,
-  transaction?: Transaction
+  {
+    dataSource,
+    transaction,
+  }: {
+    dataSource: DataSourceResource;
+    transaction?: Transaction;
+  }
 ): Promise<
   Result<DataSourceType, { code: "unauthorized_deletion"; message: string }>
 > {
   const owner = auth.getNonNullableWorkspace();
+  const isAuthorized =
+    dataSource.space.canWrite(auth) ||
+    // Only allow to remote database connectors if the user is an admin.
+    (dataSource.space.canAdministrate(auth) && isRemoteDatabase(dataSource));
 
-  if (!auth.isBuilder()) {
+  if (!isAuthorized) {
     return new Err({
       code: "unauthorized_deletion",
       message: "Only builders can delete data sources.",
@@ -387,6 +395,7 @@ export async function augmentDataSourceWithConnectorDetails(
       connector = { ...statusRes.value, connectionId: null };
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
     // the datasources (eventual actions will fail but a 500 just at display is not desirable).
@@ -1240,107 +1249,6 @@ export async function getOrCreateConversationDataSourceFromFile(
   }
 
   return getOrCreateConversationDataSource(auth, cRes.value);
-}
-
-export async function getOrCreateProjectContextDataSource(
-  auth: Authenticator,
-  space: SpaceResource
-): Promise<
-  Result<
-    DataSourceResource,
-    Omit<DustError, "code"> & {
-      code: "internal_server_error" | "invalid_request_error";
-    }
-  >
-> {
-  const lockName = "projectContextDataSource" + space.id;
-
-  const res = await executeWithLock(
-    lockName,
-    async (): Promise<
-      Result<
-        DataSourceResource,
-        Omit<DustError, "code"> & {
-          code: "internal_server_error" | "invalid_request_error";
-        }
-      >
-    > => {
-      // Fetch the datasource linked to the project space...
-      let dataSource = await DataSourceResource.fetchByProjectId(
-        auth,
-        space.id
-      );
-
-      if (!dataSource) {
-        // ...or create a new one.
-        const r = await createDataSourceWithoutProvider(auth, {
-          plan: auth.getNonNullablePlan(),
-          owner: auth.getNonNullableWorkspace(),
-          space: space,
-          name: getProjectContextDatasourceName(space.id),
-          description: `Files uploaded to project ${space.sId}`,
-        });
-
-        if (r.isErr()) {
-          return new Err({
-            name: "dust_error",
-            code: "internal_server_error",
-            message: `Failed to create datasource: ${r.error}`,
-          });
-        }
-
-        dataSource = r.value.dataSource;
-      }
-
-      return new Ok(dataSource);
-    }
-  );
-
-  return res;
-}
-
-function validateFileMetadataForProjectContext(
-  file: FileResource
-): Result<string, Error> {
-  const spaceId = file.useCaseMetadata?.spaceId;
-  if (!spaceId) {
-    return new Err(new Error("Field spaceId is missing from metadata"));
-  }
-
-  return new Ok(spaceId);
-}
-
-export async function getOrCreateProjectContextDataSourceFromFile(
-  auth: Authenticator,
-  file: FileResource
-): Promise<
-  Result<
-    DataSourceResource,
-    Omit<DustError, "code"> & {
-      code: "internal_server_error" | "invalid_request_error";
-    }
-  >
-> {
-  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
-  const metadataResult = validateFileMetadataForProjectContext(file);
-  if (metadataResult.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: metadataResult.error.message,
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, metadataResult.value);
-  if (!space) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to fetch space.`,
-    });
-  }
-
-  return getOrCreateProjectContextDataSource(auth, space);
 }
 
 async function getAllManagedDataSources(auth: Authenticator) {

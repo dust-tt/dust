@@ -1,20 +1,3 @@
-import {
-  ArrowDownIcon,
-  ArrowPathIcon,
-  ArrowUpIcon,
-  Button,
-  ContentMessageAction,
-  ContentMessageInline,
-  IconButton,
-  InformationCircleIcon,
-  StopIcon,
-} from "@dust-tt/sparkle";
-import {
-  useVirtuosoLocation,
-  useVirtuosoMethods,
-} from "@virtuoso.dev/message-list";
-import { useContext, useEffect, useMemo, useState } from "react";
-
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -28,13 +11,31 @@ import {
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
-import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
+import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
+import { useCancelMessage, useConversation } from "@app/hooks/conversations";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   isRichAgentMention,
-  pluralize,
   toRichAgentMentionType,
-} from "@app/types";
+} from "@app/types/assistant/mentions";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  Button,
+  ContentMessageAction,
+  ContentMessageInline,
+  IconButton,
+  InformationCircleIcon,
+  StopIcon,
+  useCopyToClipboard,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import {
+  useVirtuosoLocation,
+  useVirtuosoMethods,
+} from "@virtuoso.dev/message-list";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -44,31 +45,25 @@ export const AgentInputBar = ({
   context: VirtuosoMessageListContext;
 }) => {
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
   const generationContext = useContext(GenerationContext);
   const { getBlockedActions, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
 
-  if (!generationContext) {
-    throw new Error(
-      "AssistantInputBarVirtuoso must be used within a GenerationContextProvider"
-    );
-  }
-
   const { mutateConversation } = useConversation({
-    conversationId: context.conversationId,
+    conversationId: context.conversation?.sId,
     workspaceId: context.owner.sId,
     options: { disabled: true }, // We just want to get the mutation function
   });
   const cancelMessage = useCancelMessage({
     owner: context.owner,
-    conversationId: context.conversationId,
+    conversationId: context.conversation?.sId,
   });
-
-  const generatingMessages =
-    generationContext.getConversationGeneratingMessages(context.conversationId);
 
   const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
+  const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
+
   const lastUserMessage = methods.data
     .get()
     .filter(isUserMessage)
@@ -88,11 +83,9 @@ export const AgentInputBar = ({
       return [toRichAgentMentionType(draftAgent)];
     }
 
-    // we only prefill if there is only one agent mention in user's previous message
+    // We only prefill if there is only agent mentions in user's previous message.
     const shouldPrefill =
-      lastUserMessage &&
-      lastUserMessage.richMentions.length === 1 &&
-      isRichAgentMention(lastUserMessage.richMentions[0]);
+      lastUserMessage && lastUserMessage.richMentions.every(isRichAgentMention);
 
     if (!shouldPrefill) {
       return [];
@@ -100,8 +93,6 @@ export const AgentInputBar = ({
 
     return lastUserMessage.richMentions;
   }, [draftAgent, lastUserMessage]);
-
-  const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
 
   // Calculate positions and determine which user messages are navigable.
   const {
@@ -149,7 +140,9 @@ export const AgentInputBar = ({
     );
 
     const canUp = fullyAboveIndices.length > 0;
-    const canDown = belowTopQuarterIndices.length > 0 || bottomOffset > 0;
+    const canDown =
+      (belowTopQuarterIndices.length > 0 || bottomOffset > 0) &&
+      !methods.getScrollLocation().isAtBottom;
 
     return {
       canScrollUp: canUp,
@@ -189,10 +182,6 @@ export const AgentInputBar = ({
     };
   }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
-  const showClearButton =
-    context.agentBuilderContext?.resetConversation &&
-    generatingMessages.length > 0;
-  const showStopButton = generatingMessages.length > 0;
   const blockedActions = getBlockedActions(context.user.sId);
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
@@ -203,7 +192,50 @@ export const AgentInputBar = ({
     }
   }, [blockedActionIndex, blockedActions.length]);
 
-  const [isStopping, setIsStopping] = useState<boolean>(false);
+  useEffect(() => {
+    if (
+      isStopping &&
+      generationContext &&
+      !generationContext.generatingMessages.some(
+        (m) => m.conversationId === context.conversation?.sId
+      )
+    ) {
+      setIsStopping(false);
+    }
+  }, [isStopping, generationContext, context.conversation]);
+
+  if (!generationContext) {
+    throw new Error(
+      "AssistantInputBarVirtuoso must be used within a GenerationContextProvider"
+    );
+  }
+
+  if (
+    context.isProjectMember === false &&
+    context.projectSpaceId &&
+    context.projectSpaceName
+  ) {
+    return (
+      <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4">
+        <ProjectJoinCTA
+          owner={context.owner}
+          spaceId={context.projectSpaceId}
+          spaceName={context.projectSpaceName}
+          isRestricted={context.isProjectRestricted ?? false}
+          userName={context.user.fullName}
+        />
+      </div>
+    );
+  }
+
+  const generatingMessages =
+    generationContext.getConversationGeneratingMessages(
+      context.conversation?.sId ?? ""
+    );
+
+  const showStopButton = generatingMessages.length > 0;
+  const showMessageNavigation = !context.agentBuilderContext;
+  const showNavigationContainer = showStopButton || showMessageNavigation;
 
   const getStopButtonLabel = () => {
     if (isStopping) {
@@ -214,32 +246,17 @@ export const AgentInputBar = ({
   };
 
   const handleStopGeneration = async () => {
-    if (!context.conversationId) {
+    if (!context.conversation) {
       return;
     }
-    setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
+    setIsStopping(true); // We don't set it back to false immediately cause it takes a bit of time to cancel.
     await cancelMessage(
       generationContext.generatingMessages
-        .filter((m) => m.conversationId === context.conversationId)
+        .filter((m) => m.conversationId === context.conversation?.sId)
         .map((m) => m.messageId)
     );
     void mutateConversation();
   };
-
-  useEffect(() => {
-    if (
-      isStopping &&
-      !generationContext.generatingMessages.some(
-        (m) => m.conversationId === context.conversationId
-      )
-    ) {
-      setIsStopping(false);
-    }
-  }, [
-    isStopping,
-    generationContext.generatingMessages,
-    context.conversationId,
-  ]);
 
   return (
     <div
@@ -247,50 +264,49 @@ export const AgentInputBar = ({
         "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
-      <div
-        className="flex w-full justify-center gap-2"
-        style={{
-          position: "absolute",
-          top: "-2em",
-        }}
-      >
-        <div className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night">
-          {showStopButton && (
-            <>
-              <Button
-                variant="ghost"
-                label={getStopButtonLabel()}
-                icon={StopIcon}
-                onClick={handleStopGeneration}
-                disabled={isStopping}
-                size="xs"
-              />
-              <div className="h-4 w-px bg-border dark:bg-border-night" />
-            </>
-          )}
-          <IconButton
-            icon={ArrowUpIcon}
-            onClick={scrollToPreviousUserMessage}
-            disabled={!canScrollUp}
-            size="xs"
-            tooltip="Previous message"
-          />
-          <IconButton
-            icon={ArrowDownIcon}
-            onClick={scrollToNextUserMessage}
-            disabled={!canScrollDown}
-            size="xs"
-            tooltip="Next message"
-          />
-        </div>
-
-        {showClearButton && (
-          <Button
-            variant="outline"
-            icon={ArrowPathIcon}
-            onClick={context.agentBuilderContext?.resetConversation}
-            label="Clear"
-          />
+      <div className="flex w-full justify-center gap-2">
+        {showNavigationContainer && (
+          <div
+            className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
+            style={{
+              position: "absolute",
+              top: "-2em",
+            }}
+          >
+            {showStopButton && (
+              <>
+                <Button
+                  variant="ghost"
+                  label={getStopButtonLabel()}
+                  icon={StopIcon}
+                  onClick={handleStopGeneration}
+                  disabled={isStopping}
+                  size="xs"
+                />
+                {showMessageNavigation && (
+                  <div className="h-4 w-px bg-border dark:bg-border-night" />
+                )}
+              </>
+            )}
+            {showMessageNavigation && (
+              <>
+                <IconButton
+                  icon={ArrowUpIcon}
+                  onClick={scrollToPreviousUserMessage}
+                  disabled={!canScrollUp}
+                  size="xs"
+                  tooltip="Previous user message"
+                />
+                <IconButton
+                  icon={ArrowDownIcon}
+                  onClick={scrollToNextUserMessage}
+                  disabled={!canScrollDown}
+                  size="xs"
+                  tooltip="Next user message"
+                />
+              </>
+            )}
+          </div>
         )}
       </div>
       {blockedActions.length > 0 && (
@@ -341,11 +357,55 @@ export const AgentInputBar = ({
         user={context.user}
         onSubmit={context.handleSubmit}
         stickyMentions={autoMentions}
-        conversationId={context.conversationId}
+        conversation={context.conversation}
+        draftKey={context.draftKey}
         disableAutoFocus={isMobile}
+        disableUserMentions={!!context.agentBuilderContext}
         actions={context.agentBuilderContext?.actionsToShow}
-        isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
+        isSubmitting={context.agentBuilderContext?.isSubmitting === true}
       />
+      {context.agentBuilderContext?.resetConversation &&
+        context.conversation && (
+          <CopilotConversationFooter
+            conversationId={context.conversation.sId}
+            onReset={context.agentBuilderContext.resetConversation}
+          />
+        )}
+    </div>
+  );
+};
+
+interface CopilotConversationFooterProps {
+  conversationId: string;
+  onReset: () => void;
+}
+
+const CopilotConversationFooter = ({
+  conversationId,
+  onReset,
+}: CopilotConversationFooterProps) => {
+  const [, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopyId = useCallback(async () => {
+    await copyToClipboard(conversationId);
+  }, [copyToClipboard, conversationId]);
+
+  return (
+    <div className="flex items-center justify-center gap-4 pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+      <button
+        onClick={onReset}
+        className="flex items-center gap-1 hover:text-foreground dark:hover:text-foreground-night"
+      >
+        <XMarkIcon className="h-3 w-3" />
+        <span>Reset copilot</span>
+      </button>
+      <button
+        onClick={handleCopyId}
+        className="text-muted-foreground/60 hover:text-muted-foreground dark:text-muted-foreground-night/60 dark:hover:text-muted-foreground-night"
+        title="Click to copy"
+      >
+        ID: {conversationId}
+      </button>
     </div>
   );
 };

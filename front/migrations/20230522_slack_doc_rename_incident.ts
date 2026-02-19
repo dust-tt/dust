@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
 
 async function main() {
   const dataSources = await DataSourceModel.findAll({

@@ -1,11 +1,11 @@
-import { Separator } from "@dust-tt/sparkle";
-import type React from "react";
-
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   AgentMessageType,
   LightAgentMessageWithActionsType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { Separator } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import type React from "react";
 
 export function AgentActionSummary({
   agentMessageToRender,
@@ -16,14 +16,13 @@ export function AgentActionSummary({
 }) {
   // Do not display summary if we did not store the completion time.
   // All new agent messages should have a completion time as of now.
-  if (!agentMessageToRender.completedTs) {
+  if (!agentMessageToRender.completionDurationMs) {
     return null;
   }
 
   const nbActions = agentMessageToRender.actions.length;
   const showSeparator = nbActions > 0;
-  const completedInMs =
-    agentMessageToRender.completedTs - agentMessageToRender.created;
+  const completedInMs = agentMessageToRender.completionDurationMs;
 
   let statusText = "Completed in";
   if (agentMessageToRender.status === "failed") {

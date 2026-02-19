@@ -168,7 +168,7 @@
 
 //     if (doAll) {
 //       const sql = `SELECT distinct(w."sId") as "workspaceId" FROM agent_mcp_server_configurations amsc JOIN workspaces w ON w.id = amsc."workspaceId" WHERE amsc."internalMCPServerId" is not null AND id_from_sid(amsc."internalMCPServerId") = 4`;
-//       // eslint-disable-next-line dust/no-raw-sql
+//
 //       const workspaces = await frontSequelize.query<{ workspaceId: string }>(
 //         sql,
 //         { type: QueryTypes.SELECT }

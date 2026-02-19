@@ -1,17 +1,18 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class MCPServerConnectionModel extends WorkspaceAwareModel<MCPServerConnectionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectionId: string;
+  declare connectionId: string | null;
+  declare credentialId: string | null;
   declare connectionType: "workspace" | "personal";
 
   declare userId: ForeignKey<UserModel["id"]>;
@@ -39,7 +40,11 @@ MCPServerConnectionModel.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
+    },
+    credentialId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     connectionType: {
       type: DataTypes.STRING,
@@ -96,6 +101,17 @@ MCPServerConnectionModel.init(
     ],
     hooks: {
       beforeValidate: (config: MCPServerConnectionModel) => {
+        const hasConnectionId =
+          isString(config.connectionId) && config.connectionId !== "";
+        const hasCredentialId =
+          isString(config.credentialId) && config.credentialId !== "";
+
+        if (hasConnectionId === hasCredentialId) {
+          throw new Error(
+            "Exactly one of connectionId or credentialId must be provided."
+          );
+        }
+
         if (config.serverType) {
           switch (config.serverType) {
             case "internal":

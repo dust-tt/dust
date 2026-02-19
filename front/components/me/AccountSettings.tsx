@@ -1,9 +1,19 @@
+import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
+import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { isSubmitMessageKey } from "@app/lib/keymaps";
+import { usePatchUser, useUser } from "@app/lib/swr/user";
+import type { WorkspaceType } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   Input,
@@ -20,16 +30,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
-
-import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
-import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
-import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { usePatchUser, useUser } from "@app/lib/swr/user";
-import type { WorkspaceType } from "@app/types";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
 
 interface AccountSettingsProps {
   owner: WorkspaceType;
@@ -294,23 +294,25 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   className="w-fit"
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  icon={SunIcon}
-                  onClick={() => themeField.onChange("light")}
-                  label="Light"
-                />
-                <DropdownMenuItem
-                  icon={MoonIcon}
-                  onClick={() => themeField.onChange("dark")}
-                  label="Dark"
-                />
-                <DropdownMenuItem
-                  icon={LightModeIcon}
-                  onClick={() => themeField.onChange("system")}
-                  label="System"
-                />
-              </DropdownMenuContent>
+              <DropdownMenuPortal>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    icon={SunIcon}
+                    onClick={() => themeField.onChange("light")}
+                    label="Light"
+                  />
+                  <DropdownMenuItem
+                    icon={MoonIcon}
+                    onClick={() => themeField.onChange("dark")}
+                    label="Dark"
+                  />
+                  <DropdownMenuItem
+                    icon={LightModeIcon}
+                    onClick={() => themeField.onChange("system")}
+                    label="System"
+                  />
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
             </DropdownMenu>
           </div>
           <div className="flex-1">
@@ -331,20 +333,22 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  onClick={() => submitKeyField.onChange("enter")}
-                >
-                  Enter
-                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => submitKeyField.onChange("cmd+enter")}
-                >
-                  Cmd + Enter
-                  <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+              <DropdownMenuPortal>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onClick={() => submitKeyField.onChange("enter")}
+                  >
+                    Enter
+                    <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => submitKeyField.onChange("cmd+enter")}
+                  >
+                    Cmd + Enter
+                    <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
             </DropdownMenu>
           </div>
         </div>
@@ -355,6 +359,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
             <NotificationPreferences
               ref={notificationPreferencesRef}
               onChanged={checkNotificationChanges}
+              owner={owner}
             />
           </div>
         )}

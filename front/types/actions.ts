@@ -1,9 +1,8 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export type AgentMCPActionType = {
   id: ModelId;
@@ -23,6 +22,10 @@ export type AgentMCPActionType = {
   status: ToolExecutionStatus;
   step: number;
   executionDurationMs: number | null;
+  displayLabels: {
+    running: string;
+    done: string;
+  } | null;
 };
 
 export type AgentMCPActionWithOutputType = AgentMCPActionType & {

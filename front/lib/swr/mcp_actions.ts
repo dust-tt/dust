@@ -1,9 +1,8 @@
-import { useCallback, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
+import type { Fetcher } from "swr";
 
 interface UseMCPActionsProps {
   owner: LightWorkspaceType;

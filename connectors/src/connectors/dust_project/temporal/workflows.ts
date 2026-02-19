@@ -1,12 +1,14 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@connectors/connectors/dust_project/temporal/activities";
 import type { ModelId } from "@connectors/types";
+import { proxyActivities } from "@temporalio/workflow";
 
-const { dustProjectFullSyncActivity, dustProjectIncrementalSyncActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "60 minutes",
-  });
+const {
+  dustProjectConversationsFullSyncActivity,
+  dustProjectConversationsIncrementalSyncActivity,
+  dustProjectSyncMetadataActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "60 minutes",
+});
 
 /**
  * Generate workflow IDs for dust_project workflows
@@ -30,7 +32,8 @@ export async function dustProjectFullSyncWorkflow({
 }: {
   connectorId: ModelId;
 }): Promise<void> {
-  await dustProjectFullSyncActivity({ connectorId });
+  await dustProjectConversationsFullSyncActivity({ connectorId });
+  await dustProjectSyncMetadataActivity({ connectorId });
 }
 
 /**
@@ -42,5 +45,6 @@ export async function dustProjectIncrementalSyncWorkflow({
 }: {
   connectorId: ModelId;
 }): Promise<void> {
-  await dustProjectIncrementalSyncActivity({ connectorId });
+  await dustProjectConversationsIncrementalSyncActivity({ connectorId });
+  await dustProjectSyncMetadataActivity({ connectorId });
 }

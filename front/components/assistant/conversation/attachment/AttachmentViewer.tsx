@@ -1,3 +1,22 @@
+import type {
+  FileAttachmentCitation,
+  MCPAttachmentCitation,
+} from "@app/components/assistant/conversation/attachment/types";
+import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import {
+  getInternalMCPServerIconByName,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getFileDownloadUrl,
+  getFileViewUrl,
+  useFileContent,
+  useFileProcessedContent,
+} from "@app/lib/swr/files";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   Dialog,
@@ -10,27 +29,8 @@ import {
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect, useMemo, useState } from "react";
-
-import type {
-  FileAttachmentCitation,
-  MCPAttachmentCitation,
-} from "@app/components/assistant/conversation/attachment/types";
-import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
-import { getIcon } from "@app/components/resources/resources_icons";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import {
-  INTERNAL_MCP_SERVERS,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  getFileDownloadUrl,
-  getFileViewUrl,
-  useFileContent,
-  useFileProcessedContent,
-} from "@app/lib/swr/files";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayToolName } from "@app/types";
 
 export const AttachmentViewer = ({
   viewerOpen,
@@ -42,7 +42,7 @@ export const AttachmentViewer = ({
   viewerOpen: boolean;
   setViewerOpen: (open: boolean) => void;
   attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
-  conversationId: string | null;
+  conversationId?: string | null;
   owner: LightWorkspaceType;
 }) => {
   const fileUploaderService = useFileUploaderService({
@@ -100,6 +100,7 @@ export const AttachmentViewer = ({
 
   const isLoading = isAudio ? isProcessedContentLoading : isFileContentLoading;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const processedContent = useMemo(
     () => {
       if (isProcessedContentLoading) {
@@ -161,6 +162,15 @@ export const AttachmentViewer = ({
     </>
   );
 
+  const markdownViewer = isMarkdown && text && (
+    <Markdown content={text} isStreaming={false} isLastMessage />
+  );
+
+  // this also display the transcript for audio
+  const textViewer = !isMarkdown && (
+    <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
+  );
+
   const canDownload = !!fileId;
   const onClickDownload = () => {
     const downloadUrl = canDownload
@@ -187,8 +197,7 @@ export const AttachmentViewer = ({
 
   const getSourceUrlButtonIcon = () => {
     if (provider && isInternalMCPServerName(provider)) {
-      const serverIcon = INTERNAL_MCP_SERVERS[provider].serverInfo.icon;
-      return getIcon(serverIcon);
+      return getIcon(getInternalMCPServerIconByName(provider));
     }
     return ExternalLinkIcon;
   };
@@ -211,12 +220,8 @@ export const AttachmentViewer = ({
             </div>
           )}
           {!isLoading && audioPlayer}
-          {!isLoading && isMarkdown && text && (
-            <Markdown content={text} isStreaming={false} isLastMessage />
-          )}
-          {!isLoading && !isMarkdown && !isAudio && (
-            <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
-          )}
+          {!isLoading && markdownViewer}
+          {!isLoading && textViewer}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

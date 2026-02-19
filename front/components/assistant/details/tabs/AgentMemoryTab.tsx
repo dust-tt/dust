@@ -1,4 +1,11 @@
 import {
+  useAgentMemoriesForUser,
+  useDeleteAgentMemory,
+} from "@app/lib/swr/agent_memories";
+import { timeAgoFrom } from "@app/lib/utils";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
   Card,
   CardActionButton,
   Dialog,
@@ -12,13 +19,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import {
-  useAgentMemoriesForUser,
-  useDeleteAgentMemory,
-} from "@app/lib/swr/agent_memories";
-import { timeAgoFrom } from "@app/lib/utils";
-import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
 
 type DeleteMemoryDialogProps = {
   owner: LightWorkspaceType;
@@ -137,7 +137,7 @@ export function AgentMemoryTab({
                     className="flex flex-col gap-2"
                     action={
                       <CardActionButton
-                        size="mini"
+                        size="icon"
                         icon={TrashIcon}
                         onClick={() => {
                           setMemoryToDelete(memory.sId);

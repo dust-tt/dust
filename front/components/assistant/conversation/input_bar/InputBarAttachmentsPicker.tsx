@@ -1,23 +1,3 @@
-import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
-import {
-  AttachmentIcon,
-  Button,
-  CloudArrowUpIcon,
-  DoubleIcon,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuFilters,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Icon,
-  Input,
-  MagnifyingGlassIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
-
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -41,17 +21,33 @@ import type {
 } from "@app/lib/search/tools/types";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type {
-  DataSourceType,
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
-  asDisplayToolName,
-  MIN_SEARCH_QUERY_SIZE,
-  removeNulls,
-} from "@app/types";
+  AttachmentIcon,
+  Button,
+  CloudArrowUpIcon,
+  DoubleIcon,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuFilters,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Icon,
+  Input,
+  MagnifyingGlassIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
   if (dataSource.connectorProvider === "webcrawler") {
@@ -72,7 +68,8 @@ interface InputBarAttachmentsPickerProps {
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
-  conversationId?: string | null;
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
 }
 
 const PAGE_SIZE = 25;
@@ -196,7 +193,8 @@ export const InputBarAttachmentsPicker = ({
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
-  conversationId,
+  conversation,
+  space,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -215,10 +213,21 @@ export const InputBarAttachmentsPicker = ({
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !isOpen,
   });
 
-  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
+  const spaceIds = useMemo(() => {
+    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
+    // This is a project v1 limitation.
+    if (space) {
+      return spaces
+        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .map((s) => s.sId);
+    } else {
+      return spaces.map((s) => s.sId);
+    }
+  }, [spaces, space]);
 
   const {
     knowledgeResults: searchResultNodes,
@@ -246,6 +255,7 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setSelectedDataSourcesAndTools({});
@@ -356,7 +366,7 @@ export const InputBarAttachmentsPicker = ({
   } = useToolFileUpload({
     owner,
     fileUploaderService,
-    conversationId: conversationId ?? undefined,
+    conversationId: conversation?.sId,
   });
 
   const showLoader =

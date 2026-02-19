@@ -1,5 +1,3 @@
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -13,11 +11,10 @@ import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spac
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
 import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  PatchDataSourceTableRequestBody,
-} from "@app/types";
+import type { PatchDataSourceTableRequestBody } from "@app/types/api/public/data_sources";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useDataSourceViewTable({
   dataSourceView,

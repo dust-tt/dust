@@ -1,11 +1,6 @@
+import type React from "react";
 import type { ReactNode } from "react";
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 interface PreviewPanelContextType {
   isPreviewPanelOpen: boolean;
@@ -54,6 +49,7 @@ export const PreviewPanelProvider = ({
     };
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value: PreviewPanelContextType = useMemo(
     () => ({
       isPreviewPanelOpen,

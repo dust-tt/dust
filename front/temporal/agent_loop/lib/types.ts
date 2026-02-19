@@ -1,25 +1,24 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
+import type { SystemPromptSections } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  ConversationWithoutContentType,
-  ModelConfigurationType,
-  ModelConversationTypeMultiActions,
-  Ok,
-  Result,
-  UserMessageType,
-} from "@app/types";
+import type { AgentMessageContentParser } from "@app/lib/llms/agent_message_content_parser";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentMessageType,
+  ConversationType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { Ok, Result } from "@app/types/shared/result";
 
 export type Output = {
   actions: Array<{
@@ -40,11 +39,11 @@ export type GetOutputRequestParams = {
     tokensUsed: number;
   }>;
   conversation: ConversationType;
+  hasConditionalJITTools: boolean;
   userMessage: UserMessageType;
   specifications: AgentActionSpecification[];
   flushParserTokens: () => Promise<void>;
   contentParser: AgentMessageContentParser;
-  agentMessageRow: AgentMessageModel;
   step: number;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
@@ -54,18 +53,18 @@ export type GetOutputRequestParams = {
     message: string;
     metadata: Record<string, string | number | boolean> | null;
   }) => Promise<void>;
-  prompt: string;
+  prompt: SystemPromptSections;
   updateResourceAndPublishEvent: (
     auth: Authenticator,
     {
       event,
-      agentMessageRow,
+      agentMessage,
       conversation,
       step,
       modelInteractionDurationMs,
     }: {
       event: AgentMessageEvents;
-      agentMessageRow: AgentMessageModel;
+      agentMessage: AgentMessageType;
       conversation: ConversationWithoutContentType;
       step: number;
       modelInteractionDurationMs?: number;

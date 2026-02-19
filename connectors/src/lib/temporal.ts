@@ -1,11 +1,17 @@
+import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
 import { Context } from "@temporalio/activity";
 import type { ConnectionOptions } from "@temporalio/client";
 import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
+import { defineSearchAttributeKey } from "@temporalio/common";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
-import logger from "@connectors/logger/logger";
-import type { ModelId } from "@connectors/types";
+// Define the connectorId search attribute key for typed access.
+export const connectorIdSearchAttribute = defineSearchAttributeKey<"INT">(
+  "connectorId",
+  "INT"
+);
 
 // Assuming one cached workflows takes 2MB on average,
 // we can cache 292 workflows in 4096MB, which is the max heap size
@@ -80,24 +86,37 @@ export async function getTemporalWorkerConnection(): Promise<{
 }
 
 export async function getConnectorId(
-  workflowRunId: string
+  workflowId: string
 ): Promise<ModelId | null> {
-  if (!CONNECTOR_ID_CACHE[workflowRunId]) {
+  if (!CONNECTOR_ID_CACHE[workflowId]) {
     const client = await getTemporalClient();
-    const workflowHandle = client.workflow.getHandle(workflowRunId);
+    const workflowHandle = client.workflow.getHandle(workflowId);
     const described = await workflowHandle.describe();
+
+    let connectorId: ModelId | null = null;
+
+    // Try to get connectorId from memo first.
     if (described.memo && described.memo.connectorId) {
-      if (typeof described.memo.connectorId === "number") {
-        CONNECTOR_ID_CACHE[workflowRunId] = described.memo.connectorId;
-      } else if (typeof described.memo.connectorId === "string") {
-        CONNECTOR_ID_CACHE[workflowRunId] = parseInt(
-          described.memo.connectorId,
-          10
-        );
+      const memoValue = described.memo.connectorId;
+      if (typeof memoValue === "number") {
+        connectorId = memoValue;
+      } else if (typeof memoValue === "string") {
+        connectorId = parseInt(memoValue, 10);
       }
     }
+
+    // Fallback to typedSearchAttributes if memo doesn't have connectorId.
+    if (connectorId === null) {
+      connectorId =
+        described.typedSearchAttributes?.get(connectorIdSearchAttribute) ??
+        null;
+    }
+
+    if (connectorId !== null) {
+      CONNECTOR_ID_CACHE[workflowId] = connectorId;
+    }
   }
-  return CONNECTOR_ID_CACHE[workflowRunId] || null;
+  return CONNECTOR_ID_CACHE[workflowId] || null;
 }
 
 export async function cancelWorkflow(workflowId: string) {
@@ -174,7 +193,7 @@ export async function terminateAllWorkflowsForConnectorId({
 export async function heartbeat() {
   try {
     Context.current();
-  } catch (error) {
+  } catch (_error) {
     // If we're not in a temporal context, Context.current() will throw
     // In this case, we just return without doing anything
     // This allows the function to be called safely outside of temporal activities

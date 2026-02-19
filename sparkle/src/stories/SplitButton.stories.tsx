@@ -21,7 +21,7 @@ export const FlexSplitButtonVariants: Story = {
         variant="highlight"
         icon={ArrowUpIcon}
         splitAction={
-          <Button size="mini" variant="highlight" icon={ChevronDownIcon} />
+          <Button size="icon" variant="highlight" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -29,7 +29,7 @@ export const FlexSplitButtonVariants: Story = {
         variant="primary"
         icon={ArrowUpIcon}
         splitAction={
-          <Button size="mini" variant="primary" icon={ChevronDownIcon} />
+          <Button size="icon" variant="primary" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -37,7 +37,7 @@ export const FlexSplitButtonVariants: Story = {
         variant="outline"
         icon={ArrowUpIcon}
         splitAction={
-          <Button size="mini" variant="outline" icon={ChevronDownIcon} />
+          <Button size="icon" variant="outline" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -46,7 +46,7 @@ export const FlexSplitButtonVariants: Story = {
         icon={ArrowUpIcon}
         splitAction={
           <Button
-            size="mini"
+            size="icon"
             variant="highlight-secondary"
             icon={ChevronDownIcon}
           />
@@ -57,7 +57,7 @@ export const FlexSplitButtonVariants: Story = {
         variant="warning"
         icon={ArrowUpIcon}
         splitAction={
-          <Button size="mini" variant="warning" icon={ChevronDownIcon} />
+          <Button size="icon" variant="warning" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -66,7 +66,7 @@ export const FlexSplitButtonVariants: Story = {
         icon={ArrowUpIcon}
         splitAction={
           <Button
-            size="mini"
+            size="icon"
             variant="warning-secondary"
             icon={ChevronDownIcon}
           />
@@ -77,7 +77,7 @@ export const FlexSplitButtonVariants: Story = {
         variant="ghost"
         icon={ArrowUpIcon}
         splitAction={
-          <Button size="mini" variant="ghost" icon={ChevronDownIcon} />
+          <Button size="icon" variant="ghost" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -86,7 +86,7 @@ export const FlexSplitButtonVariants: Story = {
         icon={ArrowUpIcon}
         splitAction={
           <Button
-            size="mini"
+            size="icon"
             variant="ghost-secondary"
             icon={ChevronDownIcon}
           />
@@ -105,7 +105,7 @@ export const FlexSplitButtonLoading: Story = {
         icon={ArrowUpIcon}
         isLoading
         splitAction={
-          <Button size="mini" variant="highlight" icon={ChevronDownIcon} />
+          <Button size="icon" variant="highlight" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -114,7 +114,7 @@ export const FlexSplitButtonLoading: Story = {
         icon={ArrowUpIcon}
         isLoading
         splitAction={
-          <Button size="mini" variant="primary" icon={ChevronDownIcon} />
+          <Button size="icon" variant="primary" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -123,7 +123,7 @@ export const FlexSplitButtonLoading: Story = {
         icon={ArrowUpIcon}
         isLoading
         splitAction={
-          <Button size="mini" variant="outline" icon={ChevronDownIcon} />
+          <Button size="icon" variant="outline" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -133,7 +133,7 @@ export const FlexSplitButtonLoading: Story = {
         isLoading
         splitAction={
           <Button
-            size="mini"
+            size="icon"
             variant="highlight-secondary"
             icon={ChevronDownIcon}
           />
@@ -145,7 +145,7 @@ export const FlexSplitButtonLoading: Story = {
         icon={ArrowUpIcon}
         isLoading
         splitAction={
-          <Button size="mini" variant="warning" icon={ChevronDownIcon} />
+          <Button size="icon" variant="warning" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -155,7 +155,7 @@ export const FlexSplitButtonLoading: Story = {
         isLoading
         splitAction={
           <Button
-            size="mini"
+            size="icon"
             variant="warning-secondary"
             icon={ChevronDownIcon}
           />
@@ -167,7 +167,7 @@ export const FlexSplitButtonLoading: Story = {
         icon={ArrowUpIcon}
         isLoading
         splitAction={
-          <Button size="mini" variant="ghost" icon={ChevronDownIcon} />
+          <Button size="icon" variant="ghost" icon={ChevronDownIcon} />
         }
       />
       <FlexSplitButton
@@ -177,7 +177,7 @@ export const FlexSplitButtonLoading: Story = {
         isLoading
         splitAction={
           <Button
-            size="mini"
+            size="icon"
             variant="ghost-secondary"
             icon={ChevronDownIcon}
           />

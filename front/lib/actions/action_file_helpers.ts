@@ -1,12 +1,12 @@
 import type { CSVRecord } from "@app/lib/api/csv";
 import { generateCSVSnippet, toCsv } from "@app/lib/api/csv";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIDataSourceDocumentSection } from "@app/types";
+import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 
 /**
  * Generate a plain text file.

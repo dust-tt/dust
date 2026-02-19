@@ -1,16 +1,10 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import type { MenuItem } from "@dust-tt/sparkle";
-import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
-import type { SortingState } from "@tanstack/table-core";
-import { useRouter } from "next/router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
 
-import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
+import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import {
   makeColumnsForSearchResults,
   SORTING_KEYS,
@@ -18,7 +12,6 @@ import {
 import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
-import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -38,22 +31,29 @@ import {
 } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
-  APIError,
-  ContentNodesViewType,
   DataSourceViewCategory,
+  LightContentNode,
+} from "@app/types/api/public/spaces";
+import { DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES } from "@app/types/api/public/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type {
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES,
-  MIN_SEARCH_QUERY_SIZE,
-} from "@app/types";
+} from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
+import type { MenuItem } from "@dust-tt/sparkle";
+import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
+import type { SortingState } from "@tanstack/table-core";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -109,9 +109,10 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   // Reset the search term when the URL changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     setTargetDataSourceViews(
       props.dataSourceView ? [props.dataSourceView] : []
@@ -264,6 +265,7 @@ function BackendSearch({
   } = useCursorPaginationForDataTable(PAGE_SIZE);
 
   // Reset pagination when debounced search changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     resetPagination();
     if (scrollableDataTableRef.current) {
@@ -273,6 +275,7 @@ function BackendSearch({
     }
   }, [debouncedSearch, resetPagination, sorting]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleSortingChange = useCallback(
     (sorting: SortingState) => {
       // Reset pagination early to avoid 2 queries being sent.
@@ -575,9 +578,10 @@ function SearchResultsTable({
   onClearSearch,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaces } = useSpaces({
+    kinds: ["global", "regular"],
     workspaceId: owner.sId,
   });
 

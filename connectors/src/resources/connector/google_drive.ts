@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import {
   GoogleDriveConfigModel,
   GoogleDriveFilesModel,
@@ -15,8 +13,11 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
-export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy<"google_drive"> {
+export class GoogleDriveConnectorStrategy
+  implements ConnectorProviderStrategy<"google_drive">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<GoogleDriveConfigModel>,

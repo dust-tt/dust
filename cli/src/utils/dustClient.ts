@@ -1,8 +1,10 @@
 import type { Result } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 
+// biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import AuthService from "./authService.js";
 import TokenStorage from "./tokenStorage.js";
+import { CLI_VERSION } from "./version.js";
 
 let dustApiInstance: DustAPI | null = null;
 
@@ -64,7 +66,7 @@ export const getDustClient = async (): Promise<
       },
       workspaceId: (await TokenStorage.getWorkspaceId()) ?? "me",
       extraHeaders: {
-        "X-Dust-CLI-Version": process.env.npm_package_version || "0.1.0",
+        "X-Dust-CLI-Version": CLI_VERSION,
         "User-Agent": "Dust CLI",
       },
     },

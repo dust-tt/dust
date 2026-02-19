@@ -1,16 +1,21 @@
-import { isLeft } from "fp-ts/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { DataSourceViewType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, PatchDataSourceViewSchema } from "@app/types";
+import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { ConnectorType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isLeft } from "fp-ts/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
@@ -18,6 +23,7 @@ export type PatchDataSourceViewResponseBody = {
 
 export type GetDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
+  connector: ConnectorType | null;
 };
 
 async function handler(
@@ -38,8 +44,26 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      let connector: ConnectorType | null = null;
+      const connectorId = dataSourceView.dataSource.connectorId;
+
+      if (connectorId) {
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
+        const connectorRes = await connectorsAPI.getConnector(connectorId);
+        if (connectorRes.isOk()) {
+          connector = {
+            ...connectorRes.value,
+            connectionId: null,
+          };
+        }
+      }
+
       return res.status(200).json({
         dataSourceView: dataSourceView.toJSON(),
+        connector,
       });
     }
 
@@ -97,12 +121,32 @@ async function handler(
               },
             });
           default:
-            assertNever(r.error.code);
+            return assertNever(r.error.code);
+        }
+      }
+
+      // Re-fetch connector data for the updated DSV
+      let connector: ConnectorType | null = null;
+      const updatedConnectorId = r.value.dataSource.connectorId;
+
+      if (updatedConnectorId) {
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
+        const connectorRes =
+          await connectorsAPI.getConnector(updatedConnectorId);
+        if (connectorRes.isOk()) {
+          connector = {
+            ...connectorRes.value,
+            connectionId: null,
+          };
         }
       }
 
       return res.status(200).json({
         dataSourceView: r.value.toJSON(),
+        connector,
       });
     }
 

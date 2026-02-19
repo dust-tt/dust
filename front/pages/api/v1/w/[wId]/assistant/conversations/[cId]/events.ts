@@ -1,15 +1,18 @@
-import type { ConversationEventType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+// This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events
+// via next.config.js. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ConversationEventType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger
@@ -58,7 +61,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 async function handler(
   req: NextApiRequest,
   // This endpoint only returns void as it is used only for streaming, so no need to use @dust-tt/client types.
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
@@ -113,17 +116,38 @@ async function handler(
         controller.abort();
       });
 
-      const eventStream: AsyncGenerator<ConversationEventType> =
-        getConversationEvents({
-          conversationId: conversation.sId,
-          lastEventId,
-          signal,
-        });
+      const eventStream = getConversationEvents({
+        conversationId: conversation.sId,
+        lastEventId,
+        signal,
+      });
 
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
-        const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
+        let publicEvent: ConversationEventType | undefined;
+
+        if (event.data.type === "agent_message_new") {
+          publicEvent = {
+            eventId: event.eventId,
+            data: {
+              ...event.data,
+              message: {
+                ...event.data.message,
+                ...addBackwardCompatibleAgentMessageFields(event.data.message),
+              },
+            },
+          };
+        } else {
+          publicEvent = {
+            eventId: event.eventId,
+            data: event.data,
+          };
+        }
+
+        const writeSuccessful = res.write(
+          `data: ${JSON.stringify(publicEvent)}\n\n`
+        );
         if (!writeSuccessful) {
           backpressureCount++;
           statsDClient.increment("streaming.backpressure.count", 1, [

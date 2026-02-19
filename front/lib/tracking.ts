@@ -33,6 +33,7 @@ export const TRACKING_AREAS = {
   SOLUTIONS: "solutions",
   INDUSTRY: "industry",
   CONTACT: "contact",
+  COMPETITIVE: "competitive",
 
   // Product
   ASSISTANT: "assistant",
@@ -42,6 +43,7 @@ export const TRACKING_AREAS = {
   SETTINGS: "settings",
 
   // Features
+  ACADEMY: "academy",
   BUILDER: "builder",
   SPACES: "spaces",
   LABS: "labs",
@@ -50,6 +52,7 @@ export const TRACKING_AREAS = {
   TRIGGERS: "triggers",
   DUST_WRAPPED: "dust_wrapped",
   MENTIONS: "mentions",
+  SKILLS: "skills",
 } as const;
 
 export type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];

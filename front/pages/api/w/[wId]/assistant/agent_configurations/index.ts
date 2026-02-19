@@ -1,15 +1,9 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import keyBy from "lodash/keyBy";
-import omit from "lodash/omit";
-import uniq from "lodash/uniq";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
@@ -24,7 +18,6 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -35,20 +28,25 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import {
+  GetAgentConfigurationsQuerySchema,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@app/types/api/internal/agent_configuration";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  Err,
-  GetAgentConfigurationsQuerySchema,
-  Ok,
-  PostOrPatchAgentConfigurationRequestBodySchema,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import keyBy from "lodash/keyBy";
+import omit from "lodash/omit";
+import uniq from "lodash/uniq";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -317,12 +315,7 @@ export async function createOrUpgradeAgentConfiguration({
   ).map((e) => e.toJSON());
 
   let skills: SkillResource[] = [];
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (
-    featureFlags.includes("skills") &&
-    assistant.skills &&
-    assistant.skills.length > 0
-  ) {
+  if (assistant.skills && assistant.skills.length > 0) {
     skills = await SkillResource.fetchByIds(
       auth,
       assistant.skills.map((s) => s.sId)
@@ -377,6 +370,7 @@ export async function createOrUpgradeAgentConfiguration({
     name: assistant.name,
     description: assistant.description,
     instructions: assistant.instructions ?? null,
+    instructionsHtml: assistant.instructionsHtml ?? null,
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,
     scope: assistant.scope,
@@ -402,8 +396,7 @@ export async function createOrUpgradeAgentConfiguration({
         name: action.name,
         description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
         mcpServerViewId: action.mcpServerViewId,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        dataSources: action.dataSources || null,
+        dataSources: action.dataSources ?? null,
         tables: action.tables,
         childAgentId: action.childAgentId,
         additionalConfiguration: action.additionalConfiguration,
@@ -411,6 +404,7 @@ export async function createOrUpgradeAgentConfiguration({
         secretName: action.secretName,
         timeFrame: action.timeFrame,
         jsonSchema: action.jsonSchema,
+        dustProject: action.dustProject,
       } as ServerSideMCPServerConfigurationType,
       agentConfigurationRes.value
     );
@@ -437,28 +431,26 @@ export async function createOrUpgradeAgentConfiguration({
       // the previous version back to `active` status so the agent remains
       // available.
       if (agentConfigurationId) {
-        try {
-          const restored = await restoreAgentConfiguration(
-            auth,
-            agentConfigurationRes.value.sId
-          );
-          if (!restored) {
-            logger.error(
-              {
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                agentConfigurationId: agentConfigurationRes.value.sId,
-              },
-              "Failed to restore previous agent version after action creation error"
-            );
-          }
-        } catch (e) {
+        const restoredResult = await restoreAgentConfiguration(
+          auth,
+          agentConfigurationRes.value.sId
+        );
+        if (restoredResult.isErr()) {
           logger.error(
             {
-              error: e,
+              error: restoredResult.error,
               workspaceId: auth.getNonNullableWorkspace().sId,
               agentConfigurationId: agentConfigurationRes.value.sId,
             },
             "Error while restoring previous agent version after rollback"
+          );
+        } else if (!restoredResult.value.restored) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agentConfigurationRes.value.sId,
+            },
+            "Failed to restore previous agent version after action creation error"
           );
         }
       }
@@ -495,6 +487,12 @@ export async function createOrUpgradeAgentConfiguration({
     ...agentConfigurationRes.value,
     actions: actionConfigs,
   };
+
+  // Prune outdated suggestions after saving an existing agent.
+  // This must happen after skills/tools are added to the new version.
+  if (agentConfigurationId) {
+    await pruneSuggestionsForAgent(auth, agentConfiguration);
+  }
 
   // We are not tracking draft agents
   if (agentConfigurationRes.value.status === "active") {

@@ -1,17 +1,20 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("UserResource", () => {
   let user: UserResource;
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
 
   beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
     user = await UserFactory.basic();
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
   describe("getMetadataAsArray", () => {
@@ -295,7 +298,7 @@ describe("UserResource", () => {
         await user.setMetadata("key2", "value2");
         await user.setMetadata("key3", "value3");
 
-        await user.deleteAllMetadata();
+        await user.deleteAllMetadata(auth);
 
         expect(await user.getMetadata("key1")).toBeNull();
         expect(await user.getMetadata("key2")).toBeNull();

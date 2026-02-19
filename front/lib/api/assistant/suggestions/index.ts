@@ -8,16 +8,13 @@ import type { Authenticator } from "@app/lib/auth";
 import type {
   BuilderSuggestionInputType,
   BuilderSuggestionType,
-  ModelConfigurationType,
-  Result,
-  WorkspaceType,
-} from "@app/types";
-import {
-  assertNever,
-  Err,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types";
+} from "@app/types/api/internal/assistant";
+import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 
 function getModelForSuggestionType(
   owner: WorkspaceType,
@@ -25,8 +22,6 @@ function getModelForSuggestionType(
 ): ModelConfigurationType | null {
   switch (type) {
     case "instructions":
-      return getLargeWhitelistedModel(owner);
-
     case "name":
     case "description":
     case "emoji":

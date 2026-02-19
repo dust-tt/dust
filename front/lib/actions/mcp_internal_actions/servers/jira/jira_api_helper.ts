@@ -1,8 +1,3 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { markdownToAdf } from "marklassian";
-import { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createJQLFromSearchFilters,
@@ -23,7 +18,7 @@ import type {
   SortDirection,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
-  ADFDocumentSchema,
+  isADFDocument,
   JiraAttachmentsResultSchema,
   JiraCommentSchema,
   JiraCommentsListSchema,
@@ -47,16 +42,18 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { markdownToAdf } from "marklassian";
+import { z } from "zod";
 
 import { sanitizeFilename } from "../../utils/file_utils";
 
-// Type guard to check if a value is an ADFDocument
-function isADFDocument(value: unknown): value is ADFDocument {
-  return ADFDocumentSchema.safeParse(value).success;
-}
+const DEFAULT_ISSUE_FIELDS = ["*navigable"];
 
 // Generic helper to handle errors consistently
 function handleResults<T>(
@@ -227,24 +224,10 @@ export async function getIssue({
   issueKey: string;
   fields?: string[];
 }): Promise<Result<z.infer<typeof JiraIssueSchema> | null, JiraErrorResult>> {
-  // Use a minimal default field set to reduce payload size while keeping key metadata
-  const defaultFields = [
-    "summary",
-    "issuetype",
-    "priority",
-    "assignee",
-    "reporter",
-    "labels",
-    "duedate",
-    "parent",
-    "project",
-    "status",
-  ];
-
   const params = new URLSearchParams();
-  const fieldList = (fields && fields.length > 0 ? fields : defaultFields).join(
-    ","
-  );
+  const fieldList = (
+    fields && fields.length > 0 ? fields : DEFAULT_ISSUE_FIELDS
+  ).join(",");
   params.set("fields", fieldList);
 
   const result = await jiraApiCall(
@@ -514,7 +497,7 @@ export async function searchIssues(
   const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
     jql,
     maxResults,
-    fields: ["summary"],
+    fields: DEFAULT_ISSUE_FIELDS,
   };
 
   if (nextPageToken) {
@@ -568,7 +551,7 @@ export async function searchJiraIssuesUsingJql(
   const {
     nextPageToken,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
-    fields = ["summary"],
+    fields = DEFAULT_ISSUE_FIELDS,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 

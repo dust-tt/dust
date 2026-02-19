@@ -1,9 +1,8 @@
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-
 import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 import { Icon } from "./Icon";
 
@@ -63,8 +62,7 @@ const Collapsible = React.forwardRef<
 Collapsible.displayName = "Collapsible";
 
 export interface CollapsibleTriggerProps
-  extends
-    React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
+  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
     Omit<VariantProps<typeof labelVariants>, "disabled"> {
   label?: string;
   hideChevron?: boolean;
@@ -91,7 +89,7 @@ const CollapsibleTrigger = React.forwardRef<
         ref={ref}
         disabled={disabled}
         className={cn(
-          "s-group/col s-flex s-w-full s-items-center s-gap-1 s-font-medium focus:s-outline-none focus:s-ring-0",
+          "s-group/col s-flex s-w-full s-items-center s-gap-1 s-font-semibold focus:s-outline-none focus:s-ring-0",
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className
         )}
@@ -137,8 +135,7 @@ const contentVariants = cva("s-overflow-hidden s-transition-all", {
 });
 
 export interface CollapsibleContentProps
-  extends
-    React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
+  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
     VariantProps<typeof contentVariants> {}
 
 const CollapsibleContent = React.forwardRef<

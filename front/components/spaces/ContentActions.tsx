@@ -1,3 +1,28 @@
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
+import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
+import { MultipleFilesUpload } from "@app/components/data_source/MultipleFilesUpload";
+import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
+import {
+  getDisplayNameForDataSource,
+  isFolder,
+  isManaged,
+  isWebsite,
+} from "@app/lib/data_sources";
+import type { AppRouter } from "@app/lib/platform";
+import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
+import type { FileUseCase } from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import {
+  DocumentDeletionKey,
+  DocumentViewRawContentKey,
+} from "@app/types/sheets";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   DocumentPileIcon,
@@ -7,31 +32,8 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
-import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import React, { useCallback, useImperativeHandle, useState } from "react";
-
-import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
-import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
-import { MultipleFilesUpload } from "@app/components/data_source/MultipleFilesUpload";
-import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
-import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import {
-  getDisplayNameForDataSource,
-  isFolder,
-  isManaged,
-  isWebsite,
-} from "@app/lib/data_sources";
-import { setQueryParam } from "@app/lib/utils/router";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  FileUseCase,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { DocumentDeletionKey, DocumentViewRawContentKey } from "@app/types";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -173,7 +175,7 @@ export const getMenuItems = (
     contentNode: DataSourceViewContentNode,
     spaceSId: string
   ) => void,
-  router: NextRouter,
+  router: AppRouter,
   onOpenDocument?: (node: DataSourceViewContentNode) => void,
   setEffectiveContentNode?: (node: DataSourceViewContentNode) => void
 ): MenuItem[] => {
@@ -318,7 +320,7 @@ const makeViewSourceUrlContentAction = (
 
 const makeViewRawContentAction = (
   contentNode: DataSourceViewContentNode,
-  router: NextRouter,
+  router: AppRouter,
   onOpenDocument?: (node: DataSourceViewContentNode) => void
 ): MenuItem => {
   return {

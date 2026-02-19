@@ -1,3 +1,4 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   Button,
   cn,
@@ -7,9 +8,8 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 interface MessageEmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
@@ -32,9 +32,9 @@ export function MessageEmojiPicker({
           key="emoji-picker-button"
           tooltip="Add reaction"
           variant="outline"
-          size="xs"
+          size="xmini"
           icon={EmotionLaughIcon}
-          isSelect={true}
+          isSelect
           className={cn("text-muted-foreground", className)}
         />
       </PopoverTrigger>

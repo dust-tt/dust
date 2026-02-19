@@ -1,6 +1,5 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@app/temporal/remote_tools/activities";
+import { proxyActivities } from "@temporalio/workflow";
 
 const BATCH_SIZE = 50;
 

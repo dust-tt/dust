@@ -1,21 +1,25 @@
-import { useCallback, useMemo, useReducer, useRef } from "react";
-
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isRunAgentChainOfThoughtProgressOutput,
+  isRunAgentGenerationTokensProgressOutput,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type {
-  LightAgentMessageType,
-  LightAgentMessageWithActionsType,
-  LightWorkspaceType,
-  ModelId,
-} from "@app/types";
-import { assertNever, isLightAgentMessageWithActionsType } from "@app/types";
 import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
+import type {
+  LightAgentMessageType,
+  LightAgentMessageWithActionsType,
+} from "@app/types/assistant/conversation";
+import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo, useReducer, useRef } from "react";
 
 type AgentStateClassification =
   | "placeholder"
@@ -47,7 +51,9 @@ type AgentMessageStateEvent = (AgentMessageEvents | ToolNotificationEvent) & {
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
-  { type: "tool_approve_execution" } | { type: "tool_personal_auth_required" }
+  | { type: "tool_approve_execution" }
+  | { type: "tool_personal_auth_required" }
+  | { type: "tool_file_auth_required" }
 >;
 
 function updateMessageWithAction(
@@ -68,16 +74,65 @@ function updateProgress(
   const actionId = event.action.id;
   const currentProgress = state.actionProgress.get(actionId);
 
+  const output = event.notification._meta?.data?.output;
+  const prevOutput = currentProgress?.progress?._meta?.data?.output;
+
+  // The server sends deltas (not full state) for run_agent CoT/content tokens.
+  // We accumulate by reading the previous value from the stored progress output.
+  //
+  // Note: progress only holds one output type at a time. When the output switches from CoT
+  // to content, the accumulated CoT is lost here. The component's React state retains it,
+  // which is good enough for live streaming. On replay (page reload), CoT may be lost if content
+  // tokens have already started. This also means interleaved CoT/content/CoT is not supported.
+  let notificationWithAccumulated = event.notification;
+
+  if (output) {
+    if (isRunAgentChainOfThoughtProgressOutput(output)) {
+      const prevCoT =
+        prevOutput && isRunAgentChainOfThoughtProgressOutput(prevOutput)
+          ? prevOutput.chainOfThought
+          : "";
+      notificationWithAccumulated = {
+        ...event.notification,
+        _meta: {
+          ...event.notification._meta,
+          data: {
+            ...event.notification._meta.data,
+            output: {
+              ...output,
+              chainOfThought: prevCoT + output.chainOfThought,
+            },
+          },
+        },
+      };
+    } else if (isRunAgentGenerationTokensProgressOutput(output)) {
+      const prevText =
+        prevOutput && isRunAgentGenerationTokensProgressOutput(prevOutput)
+          ? prevOutput.text
+          : "";
+      notificationWithAccumulated = {
+        ...event.notification,
+        _meta: {
+          ...event.notification._meta,
+          data: {
+            ...event.notification._meta.data,
+            output: { ...output, text: prevText + output.text },
+          },
+        },
+      };
+    }
+  }
+
   return {
     ...state,
     actionProgress: new Map(state.actionProgress).set(actionId, {
       action: event.action,
       progress: {
         ...currentProgress?.progress,
-        ...event.notification,
-        data: {
-          ...currentProgress?.progress?.data,
-          ...event.notification.data,
+        ...notificationWithAccumulated,
+        _meta: {
+          ...currentProgress?.progress?._meta,
+          ...notificationWithAccumulated._meta,
         },
       },
     }),
@@ -207,6 +262,15 @@ function messageReducer(
         agentState: "acting",
       };
 
+    case "agent_context_pruned":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          prunedContext: true,
+        },
+      };
+
     default:
       assertNever(event);
   }
@@ -327,7 +391,8 @@ export function useAgentMessageStreamLegacy({
 
       if (
         eventType === "tool_approve_execution" ||
-        eventType === "tool_personal_auth_required"
+        eventType === "tool_personal_auth_required" ||
+        eventType === "tool_file_auth_required"
       ) {
         if (customOnEventCallback) {
           customOnEventCallback(eventStr);

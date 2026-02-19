@@ -1,9 +1,8 @@
-import { cva } from "class-variance-authority";
-import React, { forwardRef } from "react";
-
 import { Icon } from "@sparkle/components/Icon";
 import { InformationCircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { forwardRef } from "react";
 
 import { Label } from "./Label";
 
@@ -11,15 +10,14 @@ const MESSAGE_STATUS = ["info", "default", "error"] as const;
 
 type MessageStatus = (typeof MESSAGE_STATUS)[number];
 
-export interface InputProps extends Omit<
-  React.InputHTMLAttributes<HTMLInputElement>,
-  "value"
-> {
+export interface InputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
   message?: string | null;
   messageStatus?: MessageStatus;
   value?: string | null;
   isError?: boolean;
   className?: string;
+  containerClassName?: string;
   label?: string;
 }
 
@@ -71,7 +69,7 @@ const inputStyleClasses = cva(
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-border focus-visible:s-ring",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground placeholder:s-italic dark:placeholder:s-text-muted-foreground-night"
+    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
   ),
   {
     variants: {
@@ -87,6 +85,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
       className,
+      containerClassName,
       message,
       messageStatus,
       value,
@@ -104,7 +103,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ? "disabled"
           : "default";
     return (
-      <div className="s-flex s-flex-col s-gap-1">
+      <div className={cn("s-flex s-flex-col s-gap-1", containerClassName)}>
         {label && (
           <Label htmlFor={props.name} className="s-mb-1">
             {label}

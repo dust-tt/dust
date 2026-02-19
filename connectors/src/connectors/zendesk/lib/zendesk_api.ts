@@ -1,6 +1,3 @@
-import _ from "lodash";
-import type { z } from "zod";
-
 import {
   isZendeskNotFoundError,
   ZendeskApiError,
@@ -33,6 +30,7 @@ import {
   ZendeskSectionsResponseSchema,
   ZendeskTicketCommentsResponseSchema,
   ZendeskTicketFieldResponseSchema,
+  ZendeskTicketFieldsResponseSchema,
   ZendeskTicketResponseSchema,
   ZendeskTicketsResponseSchema,
   ZendeskUserResponseSchema,
@@ -45,6 +43,9 @@ import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { z } from "zod";
 
 const RATE_LIMIT_MAX_RETRIES = 5;
 const RATE_LIMIT_TIMEOUT_SECONDS = 60;
@@ -158,7 +159,7 @@ export class ZendeskClient {
       let jsonResponse;
       try {
         jsonResponse = await rawResponse.json();
-      } catch (e) {
+      } catch (_e) {
         statsDClient.increment("zendesk_api.requests.error.count", 1, tags);
         throw new ZendeskApiError(
           "Error parsing Zendesk API response",
@@ -265,6 +266,22 @@ export class ZendeskClient {
       }
       throw e;
     }
+  }
+
+  async listAllTicketFields({
+    subdomain,
+    includeInactive = false,
+  }: {
+    subdomain: string;
+    includeInactive?: boolean;
+  }): Promise<ZendeskTicketField[]> {
+    const url = `https://${subdomain}.zendesk.com/api/v2/ticket_fields.json`;
+    const response = await this.fetchFromZendeskWithRetries(
+      url,
+      ZendeskTicketFieldsResponseSchema
+    );
+    const fields = response.ticket_fields;
+    return includeInactive ? fields : fields.filter((f) => f.active);
   }
 
   async getTicketCount({

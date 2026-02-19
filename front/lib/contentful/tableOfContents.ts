@@ -1,3 +1,4 @@
+import { slugify } from "@app/types/shared/utils/string_utils";
 import type {
   Block,
   Document,
@@ -6,12 +7,16 @@ import type {
 } from "@contentful/rich-text-types";
 import { BLOCKS } from "@contentful/rich-text-types";
 
-import { slugify } from "@app/types/shared/utils/string_utils";
-
 export interface TocItem {
   id: string;
   text: string;
   level: number;
+}
+
+export interface SearchableSection {
+  headingId: string | null;
+  headingText: string | null;
+  content: string;
 }
 
 export function isTextNode(node: Block | Inline | Text): node is Text {
@@ -38,21 +43,21 @@ function extractTextFromNode(node: Block | Inline): string {
   return text;
 }
 
+const HEADING_TYPES = [
+  BLOCKS.HEADING_1,
+  BLOCKS.HEADING_2,
+  BLOCKS.HEADING_3,
+  BLOCKS.HEADING_4,
+  BLOCKS.HEADING_5,
+  BLOCKS.HEADING_6,
+];
+
 export function extractTableOfContents(document: Document): TocItem[] {
   const toc: TocItem[] = [];
 
   if (!document.content) {
     return toc;
   }
-
-  const HEADING_TYPES = [
-    BLOCKS.HEADING_1,
-    BLOCKS.HEADING_2,
-    BLOCKS.HEADING_3,
-    BLOCKS.HEADING_4,
-    BLOCKS.HEADING_5,
-    BLOCKS.HEADING_6,
-  ];
 
   for (const node of document.content) {
     const level = HEADING_TYPES.indexOf(node.nodeType) + 1;
@@ -70,4 +75,47 @@ export function extractTableOfContents(document: Document): TocItem[] {
   }
 
   return toc;
+}
+
+export function extractSearchableSections(
+  document: Document | null
+): SearchableSection[] {
+  if (!document?.content) {
+    return [];
+  }
+
+  const sections: SearchableSection[] = [];
+  let currentSection: SearchableSection = {
+    headingId: null,
+    headingText: null,
+    content: "",
+  };
+
+  for (const node of document.content) {
+    const level = HEADING_TYPES.indexOf(node.nodeType) + 1;
+
+    if (level > 0) {
+      // Save previous section if it has content
+      if (currentSection.content.trim()) {
+        sections.push(currentSection);
+      }
+      // Start new section
+      const text = extractTextFromNode(node);
+      currentSection = {
+        headingId: slugify(text),
+        headingText: text,
+        content: "",
+      };
+    } else {
+      // Add content to current section
+      currentSection.content += extractTextFromNode(node) + " ";
+    }
+  }
+
+  // Don't forget the last section
+  if (currentSection.content.trim()) {
+    sections.push(currentSection);
+  }
+
+  return sections;
 }

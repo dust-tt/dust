@@ -1,20 +1,20 @@
-import * as React from "react";
 import { useNavigationWarning } from "@viz/app/components/NavigationWarningDialog";
+import * as React from "react";
 
 /**
  * NavigationProvider - Best Effort Security for External Link Navigation
- * 
+ *
  * This provider intercepts window.open calls to warn users before navigating to external links.
  * It's a best-effort approach to improve security by:
  * - Allowing trusted domains to navigate without confirmation
  * - Showing a warning dialog for external/untrusted domains
  * - Displaying URL details to help users make informed decisions
- * 
+ *
  * Note: This is not a complete security solution and can be bypassed by:
  * - Direct DOM manipulation
  * - Other navigation methods (location.href, etc.)
  * - Malicious code that overrides our window.open wrapper
- * 
+ *
  * This should be used as part of a broader security strategy.
  */
 
@@ -57,7 +57,7 @@ export function NavigationProvider({
         });
 
         return null;
-      } catch (err) {
+      } catch (_err) {
         // Invalid URL, let it fail naturally.
         return originalOpen.call(window, url, target, features);
       }

@@ -9,14 +9,14 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type {
   LightWorkspaceType,
-  MembershipRoleType,
-  Result,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/user";
 
 import { MembershipResource } from "../resources/membership_resource";
 import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";

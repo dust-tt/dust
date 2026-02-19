@@ -1,19 +1,19 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-
 import { DustProjectConfigurationModel } from "@connectors/lib/models/dust_project";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type { ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DustProjectConfigurationResource extends ReadonlyAttributesType<DustProjectConfigurationModel> {}
+export interface DustProjectConfigurationResource
+  extends ReadonlyAttributesType<DustProjectConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DustProjectConfigurationResource extends BaseResource<DustProjectConfigurationModel> {
   static model: ModelStatic<DustProjectConfigurationModel> =

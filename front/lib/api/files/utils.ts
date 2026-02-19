@@ -1,17 +1,16 @@
-import type { File } from "formidable";
-import { IncomingForm } from "formidable";
-import type { IncomingMessage } from "http";
-import type { Writable } from "stream";
-
-import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type {
   FileResource,
   FileVersion,
 } from "@app/lib/resources/file_resource";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { streamToBuffer } from "@app/lib/utils/streams";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { File } from "formidable";
+import { IncomingForm } from "formidable";
+import type { IncomingMessage } from "http";
+import type { Writable } from "stream";
 
 export const parseUploadRequest = async (
   file: FileResource,
@@ -40,8 +39,14 @@ export const parseUploadRequest = async (
       // Validate the file size.
       maxFileSize: file.fileSize,
 
-      // Ensure the file is of the correct type.
-      filter: (part) => part.mimetype === file.contentType,
+      // Ensure the file is of the correct type. The content type was already
+      // validated at file creation time. Accept when the browser sends
+      // "application/octet-stream" (its default for unrecognized extensions
+      // like) or no MIME type at all.
+      filter: (part) =>
+        !part.mimetype ||
+        part.mimetype === "application/octet-stream" ||
+        part.mimetype === file.contentType,
     });
 
     const [, files] = await form.parse(req);

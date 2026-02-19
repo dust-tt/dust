@@ -1,3 +1,4 @@
+import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { Document } from "@contentful/rich-text-types";
 import type { Asset, Entry, EntrySkeletonType } from "contentful";
 
@@ -16,6 +17,7 @@ export interface BlogPageFields {
   image?: Asset;
   publishedAt?: string;
   authors?: Entry<AuthorSkeleton>[];
+  isSeoArticle?: boolean;
 }
 
 export type BlogPageSkeleton = EntrySkeletonType<BlogPageFields, "blogPage">;
@@ -43,6 +45,7 @@ export interface BlogPost {
   authors: BlogAuthor[];
   createdAt: string;
   updatedAt: string;
+  isSeoArticle: boolean;
 }
 
 export interface BlogPostSummary {
@@ -53,6 +56,7 @@ export interface BlogPostSummary {
   tags: string[];
   image: BlogImage | null;
   createdAt: string;
+  isSeoArticle: boolean;
 }
 
 export interface BlogListingPageProps {
@@ -187,5 +191,226 @@ export interface CustomerStoryPageProps {
   story: CustomerStory;
   relatedStories: CustomerStorySummary[];
   gtmTrackingId: string | null;
+  preview?: boolean;
+}
+
+// Course types
+
+export interface CourseFields {
+  title: string;
+  dateOfAddition: string;
+  courseImage: Asset;
+  description: string;
+  courseId: string;
+  slug: string;
+  tableOfContents?: string;
+  estimatedDurationMinutes?: number;
+  preRequisites?: Document;
+  courseContent: Document;
+  previousCourse?: Entry<CourseSkeleton>;
+  nextCourse?: Entry<CourseSkeleton>;
+  author?: Entry<AuthorSkeleton>;
+  chapters?: Entry<ChapterSkeleton>[];
+}
+
+export type CourseSkeleton = EntrySkeletonType<CourseFields, "course">;
+
+export interface Course {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  courseId: string | null;
+  dateOfAddition: string | null;
+  estimatedDurationMinutes: number | null;
+  courseContent: Document;
+  preRequisites: Document | null;
+  tableOfContents: string | null;
+  image: BlogImage | null;
+  author: BlogAuthor | null;
+  previousCourse: CourseSummary | null;
+  nextCourse: CourseSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseSummary {
+  kind: "course";
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  courseId: string | null;
+  dateOfAddition: string | null;
+  estimatedDurationMinutes: number | null;
+  image: BlogImage | null;
+  createdAt: string;
+  chapterCount: number;
+  chapterSlugs: string[];
+  chapters: { slug: string; title: string }[];
+}
+
+export interface SearchableItem {
+  type: "course" | "lesson" | "chapter" | "section";
+  contentType: "course" | "lesson" | "chapter";
+  slug: string;
+  title: string;
+  image: BlogImage | null;
+  sectionId: string | null;
+  sectionTitle: string | null;
+  searchText: string;
+  courseSlug?: string | null;
+}
+
+export interface AcademyUser {
+  firstName: string;
+  sId: string;
+}
+
+export interface CourseListingPageProps {
+  courses: CourseSummary[];
+  searchableItems: SearchableItem[];
+  gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
+}
+
+export interface CoursePageProps {
+  course: Course;
+  courses: CourseSummary[];
+  chapters: ChapterSummary[];
+  searchableItems: SearchableItem[];
+  gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
+  fullWidth?: boolean;
+  preview?: boolean;
+}
+
+// Chapter types
+
+export interface ChapterFields {
+  title: string;
+  slug: string;
+  chapterContent: Document;
+  description?: string;
+  estimatedDurationMinutes?: number;
+}
+
+export type ChapterSkeleton = EntrySkeletonType<ChapterFields, "chapter">;
+
+export interface Chapter {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  estimatedDurationMinutes: number | null;
+  chapterContent: Document;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChapterSummary {
+  kind: "chapter";
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  estimatedDurationMinutes: number | null;
+  tocItems: TocItem[];
+  createdAt: string;
+}
+
+export function isChapterSummary(
+  content: ContentSummary
+): content is ChapterSummary {
+  return content.kind === "chapter";
+}
+
+export interface ChapterPageProps {
+  chapter: Chapter;
+  chapters: ChapterSummary[];
+  courseSlug: string;
+  courseTitle: string;
+  courseImage: BlogImage | null;
+  courseAuthor: BlogAuthor | null;
+  searchableItems: SearchableItem[];
+  gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
+  fullWidth?: boolean;
+  preview?: boolean;
+}
+
+// Lesson types
+
+export interface LessonFields {
+  title: string;
+  dateOfAddition: string;
+  description: string;
+  lessonObjectives?: string;
+  lessonId: string;
+  slug: string;
+  estimatedDurationMinutes?: number;
+  preRequisites?: Document;
+  lessonContent: Document;
+  previousContent?: Entry<CourseSkeleton | LessonSkeleton>;
+  nextContent?: Entry<CourseSkeleton | LessonSkeleton>;
+  Category?: string;
+  tools?: string[];
+  complexity?: string;
+  parentCourse?: Entry<CourseSkeleton>;
+}
+
+export type LessonSkeleton = EntrySkeletonType<LessonFields, "lesson">;
+
+export type ContentSummary = CourseSummary | LessonSummary | ChapterSummary;
+
+export interface Lesson {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  lessonId: string | null;
+  dateOfAddition: string | null;
+  estimatedDurationMinutes: number | null;
+  lessonObjectives: string | null;
+  lessonContent: Document;
+  preRequisites: Document | null;
+  previousContent: ContentSummary | null;
+  nextContent: ContentSummary | null;
+  category: string | null;
+  tools: string[];
+  complexity: string | null;
+  parentCourse: CourseSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LessonSummary {
+  kind: "lesson";
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  lessonId: string | null;
+  estimatedDurationMinutes: number | null;
+  createdAt: string;
+}
+
+export function isCourseSummary(
+  content: ContentSummary
+): content is CourseSummary {
+  return content.kind === "course";
+}
+
+export function isLessonSummary(
+  content: ContentSummary
+): content is LessonSummary {
+  return content.kind === "lesson";
+}
+
+export interface LessonPageProps {
+  lesson: Lesson;
+  searchableItems: SearchableItem[];
+  gtmTrackingId: string | null;
+  academyUser?: AcademyUser | null;
   preview?: boolean;
 }

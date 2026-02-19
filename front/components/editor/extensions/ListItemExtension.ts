@@ -1,47 +1,74 @@
-/**
- * Custom ListItem extension that respects parent OrderedList's start attribute.
- *
- * The default TipTap ListItem extension always uses `context.index + 1` for
- * numbered lists, which always starts from 1. This extension checks for
- * `orderedListStart` in context.meta (set by OrderedListExtension) and
- * calculates the correct number.
- *
- * Works in conjunction with OrderedListExtension to preserve numbering.
- */
-
 import type { JSONContent } from "@tiptap/core";
-import { renderNestedMarkdownContent } from "@tiptap/core";
 import { ListItem } from "@tiptap/extension-list-item";
 
+function isInlineNode(node: JSONContent): boolean {
+  return node.type === "text" || !node.type;
+}
+
+/**
+ * Wraps any inline (non-block) nodes in paragraphs so the result only contains
+ * block-level nodes, as required by the listItem schema ("paragraph block*").
+ */
+function ensureBlockContent(content: JSONContent[]): JSONContent[] {
+  const result: JSONContent[] = [];
+  let pendingInline: JSONContent[] = [];
+
+  const flushInline = () => {
+    if (pendingInline.length > 0) {
+      result.push({ type: "paragraph", content: pendingInline });
+      pendingInline = [];
+    }
+  };
+
+  for (const node of content) {
+    if (isInlineNode(node)) {
+      pendingInline.push(node);
+    } else {
+      flushInline();
+      result.push(node);
+    }
+  }
+  flushInline();
+
+  // Schema requires at least one leading paragraph.
+  if (result.length === 0 || result[0].type !== "paragraph") {
+    result.unshift({ type: "paragraph", content: [] });
+  }
+
+  return result;
+}
+
+// Capture the original parseMarkdown from the base ListItem extension.
+const originalParseMarkdown = ListItem.config.parseMarkdown;
+
+/**
+ * Extends the default ListItem to fix schema violations when parsing markdown
+ * with same-line nested list markers (e.g. "- - text" or "- 1. text").
+ *
+ * The marked tokenizer interprets these as nested lists, producing a listItem
+ * whose content starts with a bulletList/orderedList instead of a paragraph,
+ * or contains loose text nodes that aren't wrapped in paragraphs.
+ * This violates the listItem schema ("paragraph block*") and crashes
+ * ProseMirror with: "Invalid content for node listItem".
+ *
+ * Fix: delegate to the original parseMarkdown, then post-process the result
+ * to ensure content always starts with a paragraph and that all inline nodes
+ * are wrapped in paragraphs.
+ */
 export const ListItemExtension = ListItem.extend({
-  /**
-   * Override markdown rendering to use parent's start attribute.
-   *
-   * When rendering list items in an ordered list, check if the parent
-   * passed a custom start value via context.meta.orderedListStart.
-   * If so, add that to the index to get the correct number.
-   */
-  renderMarkdown: (node: JSONContent, helpers: any, context: any) => {
-    return renderNestedMarkdownContent(
-      node,
-      helpers,
-      (ctx: any) => {
-        if (ctx.parentType === "bulletList") {
-          return "- ";
-        }
-        if (ctx.parentType === "orderedList") {
-          // Check if parent OrderedList provided a start value
-          const orderedListStart = ctx.meta?.orderedListStart ?? 1;
+  parseMarkdown: (token, helpers) => {
+    if (!originalParseMarkdown) {
+      return [];
+    }
 
-          // Calculate the correct number: parent's start + our index
-          const itemNumber = orderedListStart + ctx.index;
+    const result = originalParseMarkdown(token, helpers);
 
-          return `${itemNumber}. `;
-        }
-        // Fallback for unknown parent types
-        return "- ";
-      },
-      context
-    );
+    // The original returns { type: "listItem", content: [...] } or [] for
+    // non-list_item tokens.
+    if (!Array.isArray(result) && "type" in result && result.content) {
+      result.content = ensureBlockContent(result.content);
+    }
+
+    return result;
   },
 });

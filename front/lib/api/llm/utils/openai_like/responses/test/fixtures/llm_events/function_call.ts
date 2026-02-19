@@ -2,6 +2,34 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 
 export const functionCallLLMEvents: LLMEvent[] = [
   {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
     type: "tool_call",
     content: {
       id: "call_TNG5uqSoWvdMD4MFV6wKCwZT",
@@ -9,7 +37,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
       arguments: { expression: "x^2 + 2x + 1 = 0" },
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -21,7 +49,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
       arguments: { query: "weather forecast Paris France tomorrow", page: 1 },
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -35,7 +63,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
       totalTokens: 1465,
     },
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },
@@ -50,7 +78,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
           arguments: { expression: "x^2 + 2x + 1 = 0" },
         },
         metadata: {
-          clientId: "openai_responses",
+          clientId: "openai",
           modelId: "gpt-5",
         },
       },
@@ -65,7 +93,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
           },
         },
         metadata: {
-          clientId: "openai_responses",
+          clientId: "openai",
           modelId: "gpt-5",
         },
       },
@@ -79,7 +107,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
           arguments: { expression: "x^2 + 2x + 1 = 0" },
         },
         metadata: {
-          clientId: "openai_responses",
+          clientId: "openai",
           modelId: "gpt-5",
         },
       },
@@ -94,13 +122,13 @@ export const functionCallLLMEvents: LLMEvent[] = [
           },
         },
         metadata: {
-          clientId: "openai_responses",
+          clientId: "openai",
           modelId: "gpt-5",
         },
       },
     ],
     metadata: {
-      clientId: "openai_responses",
+      clientId: "openai",
       modelId: "gpt-5",
     },
   },

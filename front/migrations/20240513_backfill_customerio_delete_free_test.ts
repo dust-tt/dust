@@ -3,14 +3,14 @@ import * as _ from "lodash";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allUserModels = await UserModel.findAll();
@@ -35,20 +35,14 @@ const backfillCustomerIo = async (execute: boolean) => {
       .map((m) => m.workspaceId);
     const workspaceById = _.keyBy(
       workspaceIds.length
-        ? await WorkspaceModel.findAll({
-            where: {
-              id: workspaceIds,
-            },
-          })
+        ? await WorkspaceResource.fetchByModelIds(workspaceIds)
         : [],
       (ws) => ws.id.toString()
     );
 
-    const subscriptionByWorkspaceSid =
-      await SubscriptionResource.fetchActiveByWorkspaces(
-        Object.values(workspaceById).map((w) =>
-          renderLightWorkspaceType({ workspace: w })
-        )
+    const subscriptionByWorkspaceModelId =
+      await SubscriptionResource.fetchActiveByWorkspacesModelId(
+        Object.values(workspaceById).map((w) => w.id)
       );
 
     const promises: Promise<unknown>[] = [];
@@ -58,7 +52,7 @@ const backfillCustomerIo = async (execute: boolean) => {
         memberships.map((m) => workspaceById[m.workspaceId.toString()]) ?? [];
       const subscriptions =
         removeNulls(
-          workspaces.map((ws) => subscriptionByWorkspaceSid[ws.sId])
+          workspaces.map((ws) => subscriptionByWorkspaceModelId[ws.id])
         ) ?? [];
 
       if (
@@ -92,7 +86,7 @@ const backfillCustomerIo = async (execute: boolean) => {
       }
 
       const workspacesWithoutRealSubscriptions = workspaces.filter((ws) => {
-        const subscription = subscriptionByWorkspaceSid[ws.sId];
+        const subscription = subscriptionByWorkspaceModelId[ws.id];
         return (
           !subscription || subscription.getPlan().code === FREE_TEST_PLAN_CODE
         );

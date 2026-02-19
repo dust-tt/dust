@@ -1,6 +1,6 @@
 import {
-  isMCPConfigurationForRunAgent,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
@@ -16,15 +16,14 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type {
-  AgentConfigurationType,
-  APIErrorWithStatusCode,
-  ContentFragmentInputWithFileIdType,
-  ConversationType,
-  Result,
-} from "@app/types";
-import { assertNever, Ok } from "@app/types";
+import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { makeTriggerScheduleId } from "../schedule/client";
 
@@ -54,7 +53,7 @@ async function shouldCreateIndividualConversations(
       }
       // Check the chain of agents
       if (
-        isMCPConfigurationForRunAgent(action) &&
+        isServerSideMCPServerConfigurationWithName(action, "run_agent") &&
         action.childAgentId &&
         // Avoid infinite loop
         !checkedAgentConfigurationIds.includes(action.childAgentId)
@@ -247,6 +246,7 @@ export async function runTriggeredAgentsActivity({
             ? recentActions[recentActions.length - 2].takenAt // -2 to get the last completed action, -1 is the current running action
             : null;
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         // We can ignore this error, schedule might not have run yet.
       }

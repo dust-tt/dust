@@ -1,0 +1,208 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  SEARCH_TOOL_METADATA_WITH_TAGS,
+  SEARCH_TOOL_NAME,
+  SEARCH_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/search/metadata";
+import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
+import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/tools/find_tags/metadata";
+import { getRefs } from "@app/lib/api/assistant/citations";
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
+import {
+  parseTimeFrame,
+  timeFrameFromNow,
+} from "@app/types/shared/utils/time_frame";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
+
+export async function searchFunction(
+  auth: Authenticator,
+  {
+    query,
+    relativeTimeFrame,
+    dataSources,
+    tagsIn,
+    tagsNot,
+    agentLoopContext,
+  }: {
+    query: string;
+    relativeTimeFrame: string;
+    dataSources: DataSourcesToolConfigurationType;
+    tagsIn?: string[];
+    tagsNot?: string[];
+    agentLoopContext?: AgentLoopContextType;
+  }
+): Promise<Result<CallToolResult["content"], MCPError>> {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const credentials = dustManagedCredentials();
+  const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+  if (!agentLoopContext?.runContext) {
+    throw new Error(
+      "agentLoopRunContext is required where the tool is called."
+    );
+  }
+
+  const { retrievalTopK, citationsOffset } =
+    agentLoopContext.runContext.stepContext;
+
+  // Get the core search args for each data source, fail if any of them are invalid.
+  const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
+
+  // If any of the data sources are invalid, return an error message.
+  if (coreSearchArgsResults.isErr()) {
+    return new Err(
+      new MCPError(
+        "Invalid data sources: " + coreSearchArgsResults.error.message,
+        { tracked: false }
+      )
+    );
+  }
+
+  const coreSearchArgs = coreSearchArgsResults.value;
+
+  if (coreSearchArgs.length === 0) {
+    return new Err(
+      new MCPError(
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  const conflictingTagsError = checkConflictingTags(
+    coreSearchArgs.map(({ filter }) => filter.tags),
+    { tagsIn, tagsNot }
+  );
+  if (conflictingTagsError) {
+    return new Err(new MCPError(conflictingTagsError, { tracked: false }));
+  }
+
+  // Now we can search each data source.
+  const searchResults = await coreAPI.bulkSearchDataSources(
+    query,
+    retrievalTopK,
+    credentials,
+    false,
+    coreSearchArgs.map((args) => {
+      // In addition to the tags provided by the user, we also add the tags that the model inferred
+      // from the conversation history.
+      const finalTagsIn = [...(args.filter.tags?.in ?? []), ...(tagsIn ?? [])];
+      const finalTagsNot = [
+        ...(args.filter.tags?.not ?? []),
+        ...(tagsNot ?? []),
+      ];
+
+      return {
+        projectId: args.projectId,
+        dataSourceId: args.dataSourceId,
+        filter: {
+          ...args.filter,
+          tags: {
+            in: finalTagsIn.length > 0 ? finalTagsIn : null,
+            not: finalTagsNot.length > 0 ? finalTagsNot : null,
+          },
+          timestamp: {
+            gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+            lt: null,
+          },
+        },
+        view_filter: args.view_filter,
+      };
+    })
+  );
+
+  if (searchResults.isErr()) {
+    return new Err(new MCPError(searchResults.error.message));
+  }
+
+  if (citationsOffset + retrievalTopK > getRefs().length) {
+    return new Err(
+      new MCPError(
+        "The search exhausted the total number of references available for citations"
+      )
+    );
+  }
+
+  const refs = getRefs().slice(
+    citationsOffset,
+    citationsOffset + retrievalTopK
+  );
+
+  const results: SearchResultResourceType[] = searchResults.value.documents.map(
+    (doc): SearchResultResourceType => {
+      const dataSourceView = coreSearchArgs.find(
+        (args) =>
+          args.dataSourceView.dataSource.dustAPIDataSourceId ===
+          doc.data_source_id
+      )?.dataSourceView;
+
+      assert(dataSourceView, "DataSource view not found");
+
+      return {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+        uri: doc.source_url ?? "",
+        text: getDisplayNameForDocument(doc),
+
+        id: doc.document_id,
+        source: {
+          provider: dataSourceView.dataSource.connectorProvider ?? undefined,
+          data_source_id: dataSourceView.dataSource.sId,
+          data_source_view_id: dataSourceView.sId,
+        },
+        tags: doc.tags,
+        ref: refs.shift() as string,
+        chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
+      };
+    }
+  );
+
+  return new Ok(
+    results.map((result) => ({
+      type: "resource" as const,
+      resource: result,
+    }))
+  );
+}
+
+const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
+  [SEARCH_TOOL_NAME]: (params, { auth, agentLoopContext }) =>
+    searchFunction(auth, {
+      ...params,
+      agentLoopContext,
+    }),
+};
+
+const handlersWithTags: ToolHandlers<typeof SEARCH_TOOL_METADATA_WITH_TAGS> = {
+  ...handlers,
+  [FIND_TAGS_TOOL_NAME]: async ({ query, dataSources }, { auth }) => {
+    return executeFindTags(auth, query, dataSources);
+  },
+};
+
+export const TOOLS_WITHOUT_TAGS = buildTools(SEARCH_TOOLS_METADATA, handlers);
+
+export const TOOLS_WITH_TAGS = buildTools(
+  SEARCH_TOOL_METADATA_WITH_TAGS,
+  handlersWithTags
+);

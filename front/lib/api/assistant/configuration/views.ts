@@ -1,5 +1,3 @@
-import { Op, Sequelize } from "sequelize";
-
 import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import type {
@@ -19,11 +17,12 @@ import type {
   AgentFetchVariant,
   AgentsGetViewType,
   LightAgentConfigurationType,
-  ModelId,
-  WorkspaceType,
-} from "@app/types";
-import { compareAgentsForSort } from "@app/types";
-import { assertNever } from "@app/types";
+} from "@app/types/assistant/agent";
+import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
+import { Op, Sequelize } from "sequelize";
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {
@@ -194,6 +193,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 
         return AgentConfigurationModel.findAll({
           where: {
+            workspaceId: owner.id,
             id: {
               [Op.in]: filteredIds,
             },
@@ -284,12 +284,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const user = auth.user();
 
   const agentIdsForGroups = user
-    ? await GroupResource.findAgentIdsForGroups(auth, [
-        ...auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id),
-      ])
+    ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
     : [];
 
   const agentIdsForUserAsEditor = agentIdsForGroups.map(

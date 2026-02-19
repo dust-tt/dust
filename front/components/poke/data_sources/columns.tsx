@@ -1,9 +1,8 @@
-import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
-
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import { LinkWrapper } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface DataSources {
   connectorProvider: string | null;
@@ -29,49 +28,33 @@ export function makeColumnsForDataSources(
           </LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>sId</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       accessorKey: "connectorProvider",
-      header: "Provider",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Provider" />
+      ),
     },
     {
       accessorKey: "editedBy",
-      header: "Last edited by",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last edited by" />
+      ),
     },
     {
       accessorKey: "editedAt",
-      header: "Last edited at",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Last edited at" />
+      ),
       cell: ({ row }) => {
         const editedAt: number | undefined = row.getValue("editedAt");
 

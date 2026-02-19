@@ -1,17 +1,43 @@
 import type { Authenticator } from "@app/lib/auth";
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   expireRateLimiterKey,
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
-import type { LightWorkspaceType, MaxMessagesTimeframeType } from "@app/types";
+import type { MaxMessagesTimeframeType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
+
+export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
+export const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 60;
+
+type MessageRateLimitActor =
+  | {
+      type: "api_key";
+      id: number;
+    }
+  | {
+      type: "user";
+      id: number;
+    };
 
 export const makeMessageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {
   return `postUserMessage:${owner.sId}`;
+};
+
+export const makeMessageRateLimitKeyForWorkspaceActor = (
+  owner: LightWorkspaceType,
+  actor: MessageRateLimitActor
+) => {
+  switch (actor.type) {
+    case "api_key":
+      return `workspace:${owner.sId}:api_key:${actor.id}:post_user_message`;
+    case "user":
+      return `workspace:${owner.sId}:user:${actor.id}:post_user_message`;
+  }
 };
 
 export const makeAgentMentionsRateLimitKeyForWorkspace = (
@@ -25,6 +51,10 @@ export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {
   return `workspace:${owner.id}:programmatic_usage_rate_limit`;
+};
+
+export const makeKeyCapRateLimitKey = (keyId: number) => {
+  return `api_key:${keyId}:cap_rate_limit`;
 };
 
 export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
@@ -56,11 +86,13 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
-  // For free phone plans, don't multiply by activeSeats to prevent increased limits with more users.
-  const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
-  const effectiveLimit = isFreeTrialPhonePlan(plan.code)
-    ? maxMessages
-    : maxMessages * activeSeats;
+  const activeSeats =
+    await MembershipResource.countActiveSeatsInWorkspaceCached(workspace.sId);
+  const effectiveLimit = computeEffectiveMessageLimit({
+    planCode: plan.code,
+    maxMessages,
+    activeSeats,
+  });
 
   const result = await getRateLimiterCount({
     key: makeAgentMentionsRateLimitKeyForWorkspace(
@@ -75,5 +107,9 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: effectiveLimit };
   }
 
-  return { count: result.value, limit: effectiveLimit };
+  // Cap count at limit to avoid displaying "120/100" if limit decreased.
+  return {
+    count: Math.min(result.value, effectiveLimit),
+    limit: effectiveLimit,
+  };
 }

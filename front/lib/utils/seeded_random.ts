@@ -15,7 +15,7 @@ function cyrb128(str: string) {
   h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
   h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
   // eslint-disable-next-line no-unused-expressions
-  ((h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1));
+  (h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1);
   return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
 }
 

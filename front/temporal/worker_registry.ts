@@ -10,6 +10,7 @@ import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worke
 import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
 import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
+import { runUserProjectDigestQueueWorker } from "@app/temporal/project_user_digest_queue/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
@@ -35,6 +36,7 @@ export type WorkerName =
   | "notifications_queue"
   | "poke"
   | "production_checks"
+  | "project_user_digest_queue"
   | "relocation"
   | "remote_tools_sync"
   | "scrub_workspace_queue"
@@ -57,6 +59,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   notifications_queue: runNotificationsQueueWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
+  project_user_digest_queue: runUserProjectDigestQueueWorker,
   relocation: runRelocationWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,

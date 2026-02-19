@@ -1,7 +1,15 @@
+import { removeDiacritics, subFilter } from "@app/lib/utils";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+  LightAgentMessageType,
+  UserMessageType,
+  UserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
 import moment from "moment";
 
-import { removeDiacritics, subFilter } from "@app/lib/utils";
-import type { ConversationWithoutContentType } from "@app/types";
+import type { VirtuosoMessage } from "./types";
 
 type GroupLabel =
   | "Today"
@@ -115,4 +123,43 @@ export function filterTriggeredConversations(
   return conversations.filter(
     (c) => c.triggerId === null || c.unread || c.actionRequired
   );
+}
+
+export function findFirstUnreadMessageIndex(
+  messages: VirtuosoMessage[],
+  lastReadMs: number
+): number {
+  return messages.findIndex((m) => {
+    if (m.created > lastReadMs) {
+      return true;
+    }
+    if (m.type === "agent_message" && (m.completedTs ?? 0) > lastReadMs) {
+      return true;
+    }
+    return false;
+  });
+}
+
+export function isMessageUnread(
+  message:
+    | UserMessageType
+    | AgentMessageType
+    | ContentFragmentType
+    | LightAgentMessageType
+    | UserMessageTypeWithContentFragments,
+  lastReadMs: number | null
+): boolean {
+  if (lastReadMs === null) {
+    return true;
+  }
+  if (message.created > lastReadMs) {
+    return true;
+  }
+  if (
+    message.type === "agent_message" &&
+    (message.completedTs ?? 0) > lastReadMs
+  ) {
+    return true;
+  }
+  return false;
 }

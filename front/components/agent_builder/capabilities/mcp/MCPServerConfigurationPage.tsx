@@ -1,18 +1,18 @@
-import { useMemo } from "react";
-import type { UseFormReturn } from "react-hook-form";
-
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
+import { ProjectSection } from "@app/components/agent_builder/capabilities/shared/ProjectSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { useMemo } from "react";
+import type { UseFormReturn } from "react-hook-form";
 
 export interface MCPServerConfigurationPageProps {
   form: UseFormReturn<MCPFormData>;
@@ -46,6 +46,7 @@ export function MCPServerConfigurationPage({
           <TimeFrameSection actionType="search" />
         )}
         {requirements.requiresDustAppConfiguration && <DustAppSection />}
+        {requirements.requiresDustProjectConfiguration && <ProjectSection />}
         {requirements.developerSecretSelection && (
           <SecretSection
             customDescription={

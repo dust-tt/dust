@@ -1,13 +1,11 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetSimilarSkillsResponseBody = {
   similar_skills: string[];
@@ -20,20 +18,9 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("skills")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Skills are not enabled for this workspace.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "POST": {
-      const { naturalDescription } = req.body;
+      const { naturalDescription, excludeSkillId } = req.body;
 
       if (!isString(naturalDescription)) {
         return apiError(req, res, {
@@ -45,7 +32,20 @@ async function handler(
         });
       }
 
-      const result = await getSimilarSkills(auth, { naturalDescription });
+      if (excludeSkillId !== undefined && !isString(excludeSkillId)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "excludeSkillId must be a string if provided.",
+          },
+        });
+      }
+
+      const result = await getSimilarSkills(auth, {
+        naturalDescription,
+        excludeSkillId: excludeSkillId ?? null,
+      });
 
       if (result.isErr()) {
         logger.error(

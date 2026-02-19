@@ -1,6 +1,4 @@
-import React, { PropsWithChildren } from "react";
-import { cn } from "@viz/lib/utils";
-
+import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -15,7 +13,8 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@viz/components/ui";
-import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
+import { cn } from "@viz/lib/utils";
+import React, { type PropsWithChildren } from "react";
 
 // Preview components.
 

@@ -12,7 +12,8 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allActiveSubscriptions = await SubscriptionModel.findAll({
@@ -34,11 +35,7 @@ const backfillCustomerIo = async (execute: boolean) => {
   const workpsaceIds = allActiveSubscriptions.map((s) => s.workspaceId);
   const workspaceById = _.keyBy(
     workpsaceIds.length
-      ? await WorkspaceModel.findAll({
-          where: {
-            id: workpsaceIds,
-          },
-        })
+      ? await WorkspaceResource.fetchByModelIds(workpsaceIds)
       : [],
     (ws) => ws.id.toString()
   );

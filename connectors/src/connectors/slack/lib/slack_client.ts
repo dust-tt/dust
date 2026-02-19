@@ -1,5 +1,3 @@
-import { WebClient } from "@slack/web-api";
-
 import {
   isSlackWebAPIPlatformError,
   isWebAPIHTTPError,
@@ -19,6 +17,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
+import { WebClient } from "@slack/web-api";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
@@ -140,7 +139,7 @@ export async function withSlackErrorHandling<T>(
         e.data.error
       )
     ) {
-      throw new ExternalOAuthTokenError();
+      throw new ExternalOAuthTokenError(e);
     }
 
     // Pass through everything else unchanged.
@@ -268,7 +267,13 @@ export async function getSlackConversationInfo(
     method: "conversations.info",
     channelId,
   });
-  return slackClient.conversations.info({ channel: channelId });
+  return throttleWithRedis(
+    RATE_LIMITS["conversations.info"],
+    `${connectorId}-conversations-info`,
+    { canBeIgnored: false },
+    () => slackClient.conversations.info({ channel: channelId }),
+    { source: "getSlackConversationInfo" }
+  );
 }
 
 export async function getSlackAccessToken(

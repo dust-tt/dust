@@ -1,18 +1,20 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { H4 } from "@app/components/home/ContentComponents";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { isEUCountry } from "@app/lib/geo/eu-detection";
+import { useGeolocation } from "@app/lib/swr/geo";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import { appendUTMParams } from "@app/lib/utils/utm";
 import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { H4 } from "@app/components/home/ContentComponents";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { isEUCountry } from "@app/lib/geo/eu-detection";
-import { useGeolocation } from "@app/lib/swr/geo";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
-
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
-  // assembled:
-  //   "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
+  assembled: "/customers/part-1-assembled-ai-operating-system",
+  backmarket:
+    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
   blueground: "/customers/customer-support-blueground",
   clay: "/customers/clay-scaling-gtme-team",
   doctolib:
@@ -41,7 +43,7 @@ const LOGO_SETS = {
     us: [
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
@@ -57,7 +59,7 @@ const LOGO_SETS = {
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
@@ -71,7 +73,7 @@ const LOGO_SETS = {
     us: [
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
@@ -87,7 +89,7 @@ const LOGO_SETS = {
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
@@ -104,7 +106,7 @@ const LOGO_SETS = {
         name: "contentsquare",
         src: "/static/landing/logos/gray/contentsquare.svg",
       },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
@@ -196,11 +198,13 @@ type SizeKey = "default" | "large";
 interface TrustedByProps {
   logoSet?: LogoSetKey;
   size?: SizeKey;
+  showTitle?: boolean;
 }
 
 export default function TrustedBy({
   logoSet = "default",
   size = "default",
+  showTitle = true,
 }: TrustedByProps) {
   const { geoData } = useGeolocation();
   const [mounted, setMounted] = useState(false);
@@ -231,9 +235,11 @@ export default function TrustedBy({
         "xl:col-span-10 xl:col-start-2"
       )}
     >
-      <H4 className="mb-6 w-full text-center text-foreground">
-        Trusted by <span className="text-blue-500">2,000+</span> organizations
-      </H4>
+      {showTitle && (
+        <H4 className="mb-6 w-full text-center text-foreground">
+          Trusted by <span className="text-blue-500">2,000+</span> organizations
+        </H4>
+      )}
 
       <div className="w-full">
         <div
@@ -305,7 +311,9 @@ export default function TrustedBy({
         label="Join them"
         className="mt-8"
         onClick={() => {
-          window.location.href = "/api/workos/login?screenHint=sign-up";
+          window.location.href = appendUTMParams(
+            "/api/workos/login?screenHint=sign-up"
+          );
         }}
       />
     </div>

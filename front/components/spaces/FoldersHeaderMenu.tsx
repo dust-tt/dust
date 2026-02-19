@@ -1,3 +1,9 @@
+import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
+import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CloudArrowUpIcon,
@@ -13,14 +19,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { RefObject } from "react";
 import { useState } from "react";
-
-import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
-import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
 
 interface FoldersHeaderMenuProps {
   canWriteInSpace: boolean;
@@ -48,7 +46,7 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `Only builders of the workspace can add data in the Company Data space.`
+              ? `Only builders of the workspace can add data in the ${GLOBAL_SPACE_NAME} space.`
               : `Only members of the space can add data.`
           }
           side="top"
@@ -71,7 +69,7 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `Only builders of the workspace can edit a folder in the Company Data space.`
+              ? `Only builders of the workspace can edit a folder in the ${GLOBAL_SPACE_NAME} space.`
               : `Only members of the space can edit a folder.`
           }
           side="top"

@@ -7,6 +7,10 @@ export type DustErrorCode =
   | "file_not_found"
   | "unauthorized"
   | "agent_loop_already_running"
+  | "data_source_not_found"
+  | "data_source_view_not_found"
+  | "space_not_found"
+  | "invalid_request_error"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"
@@ -39,10 +43,17 @@ export type DustErrorCode =
   | "mcp_server_view_not_found"
   | "action_not_found"
   | "action_not_blocked"
+  | "mcp_access_token_error"
   // Triggers errors
   | "webhook_source_not_found"
   // Space errors
-  | "space_already_exists";
+  | "space_already_exists"
+  // Conversation errors
+  | "conversation_not_found"
+  | "no_unread_messages_found"
+  | "no_whitelisted_model_found"
+  | "generation_failed"
+  | "invalid_conversation";
 
 export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(

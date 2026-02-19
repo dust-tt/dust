@@ -1,10 +1,10 @@
+import config from "@app/lib/api/config";
+import { classNames } from "@app/lib/utils";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { Button, DataTable, Label } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
-
-import { classNames } from "@app/lib/utils";
-import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
 interface PendingInvitationsTableRow extends PendingInvitationOption {
   isExpired: boolean;
@@ -36,7 +36,7 @@ export function PendingInvitationsTable({
             return;
           }
           window.location.assign(
-            `/api/login?inviteToken=${encodeURIComponent(invitation.token)}`
+            `${config.getApiBaseUrl()}/api/login?inviteToken=${encodeURIComponent(invitation.token)}`
           );
         },
       })),

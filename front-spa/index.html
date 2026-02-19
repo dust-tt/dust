@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Dust</title>
+    <link rel="preload" href="/static/fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/static/fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      // Shim for Node.js Buffer API used by some dependencies
+      globalThis.Buffer = globalThis.Buffer || {
+        isBuffer: function () {
+          return false;
+        },
+        from: function (x) {
+          return new Uint8Array(
+            typeof x === "string"
+              ? Array.from(x).map(function (c) {
+                  return c.charCodeAt(0);
+                })
+              : x
+          );
+        },
+        alloc: function (n) {
+          return new Uint8Array(n);
+        },
+      };
+    </script>
+    <!-- Datadog RUM (Real User Monitoring) -->
+    <script>
+      (function (h, o, u, n, d) {
+        h = h[d] = h[d] || {
+          q: [],
+          onReady: function (c) {
+            h.q.push(c);
+          },
+        };
+        d = o.createElement(u);
+        d.async = 1;
+        d.src = n;
+        n = o.getElementsByTagName(u)[0];
+        n.parentNode.insertBefore(d, n);
+      })(
+        window,
+        document,
+        "script",
+        "https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js",
+        "DD_RUM"
+      );
+    </script>
+  </head>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript>
+      <iframe
+        src="https://www.googletagmanager.com/ns.html?id=%VITE_GTM_TRACKING_ID%"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe>
+    </noscript>
+
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme") || "system";
+          var isDark =
+            theme === "dark" ||
+            (theme === "system" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (isDark) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <style>
+      #loading {
+        --loading-sidebar-width: 320px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+        display: flex;
+        opacity: 1;
+        pointer-events: none;
+      }
+      #loading.hidden {
+        display: none;
+      }
+      #loading-sidebar {
+        box-sizing: border-box;
+        width: var(--loading-sidebar-width);
+        background-color: rgb(247, 247, 247);
+        border-right: 1px solid transparent;
+        flex-shrink: 0;
+      }
+      #loading-main {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgb(255, 255, 255);
+      }
+      #loading-spinner path {
+        fill: #0F172A;
+        animation:
+          xs-svg-shape 2.24s ease-in-out infinite,
+          xs-svg-opacity 2.24s ease-in-out infinite,
+          xs-svg-bounce 2.24s ease-in-out infinite;
+      }
+      .dark #loading-spinner path {
+        fill: #FFFFFF;
+      }
+      @keyframes xs-svg-shape {
+        0%        { d: path("M 202 21 C 300.9 21 381 101.1 381 200 C 381 298.9 300.9 379 202 379 C 103.1 379 23 298.9 23 200 C 23 101.1 103.1 21 202 21 Z"); }
+        23%       { d: path("M 200 19.8 C 225.6 64.1 251.2 108.4 276.7 152.7 C 302.3 197 327.9 241.3 353.5 285.6 C 251.2 285.6 148.8 285.6 46.5 285.6 C 97.7 197 148.8 108.4 200 19.8 Z"); }
+        33%       { d: path("M 200 19.8 C 225.6 64.1 251.2 108.4 276.7 152.7 C 302.3 197 327.9 241.3 353.5 285.6 C 251.2 285.6 148.8 285.6 46.5 285.6 C 97.7 197 148.8 108.4 200 19.8 Z"); }
+        61%       { d: path("M 327 70 C 327 154 327 238 327 322 C 243 322 159 322 75 322 C 75 238 75 154 75 70 C 159 70 243 70 327 70 Z"); }
+        72%       { d: path("M 327 70 C 327 154 327 238 327 322 C 243 322 159 322 75 322 C 75 238 75 154 75 70 C 159 70 243 70 327 70 Z"); }
+        93%, 100% { d: path("M 202 21 C 300.9 21 381 101.1 381 200 C 381 298.9 300.9 379 202 379 C 103.1 379 23 298.9 23 200 C 23 101.1 103.1 21 202 21 Z"); }
+      }
+      @keyframes xs-svg-opacity {
+        0%        { opacity: 0.7; }
+        23%       { opacity: 1; }
+        33%       { opacity: 1; }
+        61%       { opacity: 0.8; }
+        72%       { opacity: 0.8; }
+        93%, 100% { opacity: 0.7; }
+      }
+      @keyframes xs-svg-bounce {
+        0%, 9%    { transform: translateY(0); }
+        23%, 41%  { transform: translateY(42px); }
+        52%, 100% { transform: translateY(0); }
+      }
+      .dark #loading-sidebar {
+        background-color: #1c222d;
+      }
+      .dark #loading-main {
+        background-color: #111418;
+      }
+      @media (max-width: 1024px) {
+        #loading-sidebar {
+          display: none;
+        }
+      }
+    </style>
+
+    <div id="root">
+    </div>
+    <div id="loading">
+      <div id="loading-sidebar"></div>
+      <div id="loading-main">
+        <svg id="loading-spinner" width="20" height="20" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 202 21 C 300.9 21 381 101.1 381 200 C 381 298.9 300.9 379 202 379 C 103.1 379 23 298.9 23 200 C 23 101.1 103.1 21 202 21 Z" />
+        </svg>
+      </div>
+    </div>
+    <script type="module" src="/src/app/main.tsx"></script>
+
+    <!-- Privacy mask initialization script -->
+    <script>
+      (function () {
+        // Initialize privacy mask state from localStorage on page load.
+        function initPrivacyMask() {
+          var stored = localStorage.getItem("privacy-mask");
+          var isEnabled = stored === "true";
+
+          if (isEnabled) {
+            document.body.classList.add("privacy-mask-enabled");
+          }
+        }
+
+        // Run on DOM ready.
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initPrivacyMask);
+        } else {
+          initPrivacyMask();
+        }
+      })();
+    </script>
+  </body>
+</html>

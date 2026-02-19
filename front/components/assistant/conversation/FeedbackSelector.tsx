@@ -1,3 +1,5 @@
+import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ButtonGroup,
@@ -15,9 +17,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import React from "react";
-
-import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
-import type { LightWorkspaceType } from "@app/types";
 
 export type ThumbReaction = "up" | "down";
 
@@ -125,38 +124,26 @@ export function FeedbackSelector({
 
   return (
     <div className="flex items-center">
-      <ButtonGroup
-        variant="outline"
-        items={[
-          {
-            type: "button",
-            props: {
-              tooltip: "I found this helpful",
-              variant: feedback?.thumb === "up" ? "primary" : "ghost-secondary",
-              size: "xs",
-              disabled: isSubmittingThumb,
-              onClick: () => handleThumbClick("up"),
-              icon: HandThumbUpIcon,
-              className:
-                feedback?.thumb === "up" ? "" : "text-muted-foreground",
-            },
-          },
-          {
-            type: "button",
-            props: {
-              tooltip: "Report an issue with this answer",
-              variant:
-                feedback?.thumb === "down" ? "primary" : "ghost-secondary",
-              size: "xs",
-              disabled: isSubmittingThumb,
-              onClick: () => handleThumbClick("down"),
-              icon: HandThumbDownIcon,
-              className:
-                feedback?.thumb === "down" ? "" : "text-muted-foreground",
-            },
-          },
-        ]}
-      />
+      <ButtonGroup>
+        <Button
+          tooltip="I found this helpful"
+          variant={feedback?.thumb === "up" ? "primary" : "outline"}
+          size="xs"
+          disabled={isSubmittingThumb}
+          onClick={() => handleThumbClick("up")}
+          icon={HandThumbUpIcon}
+          className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
+        />
+        <Button
+          tooltip="Report an issue with this answer"
+          variant={feedback?.thumb === "down" ? "primary" : "outline"}
+          size="xs"
+          disabled={isSubmittingThumb}
+          onClick={() => handleThumbClick("down")}
+          icon={HandThumbDownIcon}
+          className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
+        />
+      </ButtonGroup>
 
       <Dialog
         open={isDialogOpen}

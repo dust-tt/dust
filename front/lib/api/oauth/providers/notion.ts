@@ -1,17 +1,20 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
+import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { Err, OAuthAPI, Ok } from "@app/types";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
 
 // Type definition for Notion OAuth response - only the fields we actually use
 interface NotionOAuthResponse {
@@ -30,6 +33,8 @@ function hasNotionWorkspaceId(obj: unknown): obj is NotionOAuthResponse {
 }
 
 export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     useCase,
@@ -83,22 +88,15 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
       const { mcp_server_id, ...restConfig } = extraConfig;
 
       if (mcp_server_id) {
-        const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer(auth, {
-            mcpServerId: mcp_server_id,
-            connectionType: "workspace",
-          });
-
-        if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+        const oauthConnectionIdRes =
+          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
+        if (oauthConnectionIdRes.isErr()) {
+          throw new Error(oauthConnectionIdRes.error.message);
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: mcpServerConnectionRes.value.connectionId,
+          connectionId: oauthConnectionIdRes.value,
         });
         if (connectionRes.isErr()) {
           logger.error(
@@ -115,7 +113,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         // The workspace_id in metadata is the Dust workspace ID, not the Notion workspace ID.
         // We need to get the Notion workspace info from the raw OAuth response
         const oauthRes = await oauthApi.getAccessToken({
-          connectionId: mcpServerConnectionRes.value.connectionId,
+          connectionId: oauthConnectionIdRes.value,
         });
 
         if (oauthRes.isErr()) {
@@ -198,6 +196,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
             ").",
         });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         return new Err({
           message:

@@ -1,8 +1,3 @@
-import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
-import { Runtime } from "@temporalio/worker/lib/runtime";
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
 import logger from "@app/logger/logger";
 import type { WorkerName } from "@app/temporal/worker_registry";
 import {
@@ -11,6 +6,10 @@ import {
   workerFunctions,
 } from "@app/temporal/worker_registry";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
+import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
+import { Runtime } from "@temporalio/worker/lib/runtime";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 setupGlobalErrorHandler(logger);
 

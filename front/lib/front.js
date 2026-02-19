@@ -1,4 +1,4 @@
-import { useRouter } from "next/router";
+import { useAppRouter } from "@app/lib/platform";
 import { useEffect } from "react";
 import { useBeforeunload } from "react-beforeunload";
 
@@ -17,7 +17,8 @@ export function useRegisterUnloadHandlers(
   });
 
   // Add handler for next.js router events that don't load a new page in the browser.
-  const router = useRouter();
+  // TODO(front-spa) - check that it works with front-spa
+  const router = useAppRouter();
   useEffect(() => {
     const confirmBrowseAway = () => {
       if (!editorDirty) {

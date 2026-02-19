@@ -1,10 +1,9 @@
-import { Readable } from "stream";
-import { describe, expect, it, vi } from "vitest";
-
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { Readable } from "stream";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./files";
 
@@ -86,6 +85,7 @@ vi.mock(import("@app/lib/api/config"), (() => ({
       apiKey: "foo",
     }),
     getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:3000"),
+    getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
   },
 })) as any);
 

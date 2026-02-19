@@ -1,8 +1,3 @@
-import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-
 import type { SlackWebhookResBody } from "@connectors/api/webhooks/slack/utils";
 import {
   botReplaceMention,
@@ -14,6 +9,10 @@ import {
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
+import type { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 export const STATIC_AGENT_CONFIG = "static_agent_config";
 export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";

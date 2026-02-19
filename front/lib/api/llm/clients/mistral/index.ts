@@ -1,7 +1,5 @@
-import { Mistral } from "@mistralai/mistralai";
-import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
-
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
+import { MISTRAL_PROVIDER_ID } from "@app/lib/api/llm/clients/mistral/types";
 import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
 import {
   toMessage,
@@ -16,30 +14,21 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { Mistral } from "@mistralai/mistralai";
+import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 
 export class MistralLLM extends LLM {
   private client: Mistral;
 
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & { modelId: MistralWhitelistedModelId }
+    llmParameters: LLMParameters & { modelId: MistralWhitelistedModelId }
   ) {
-    super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-      clientId: "mistral",
-    });
+    super(auth, MISTRAL_PROVIDER_ID, llmParameters);
+
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
       throw new Error(
@@ -61,7 +50,7 @@ export class MistralLLM extends LLM {
       const messages = [
         {
           role: "system" as const,
-          content: prompt,
+          content: systemPromptToText(prompt),
         },
         ...conversation.messages.map(toMessage),
       ];

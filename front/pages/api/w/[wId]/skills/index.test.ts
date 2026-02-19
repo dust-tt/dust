@@ -1,6 +1,3 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import {
   SkillConfigurationModel,
@@ -10,17 +7,18 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { MembershipRoleType } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 
@@ -32,8 +30,6 @@ async function setupTest(
     method,
     role,
   });
-
-  await FeatureFlagFactory.basic("skills", mockRequest.workspace);
 
   return mockRequest;
 }
@@ -136,25 +132,6 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(skillNames).not.toContain("Archived Skill");
   });
 
-  it("should return 403 when skills feature flag is not enabled", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "builder",
-    });
-
-    req.query = { ...req.query, wId: workspace.sId };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toMatchObject({
-      error: {
-        type: "app_auth_error",
-        message: "Skills are not enabled for this workspace.",
-      },
-    });
-  });
-
   it("should work for builder and admin roles", async () => {
     for (const role of ["builder", "admin"] as const) {
       const { req, res, workspace, user } = await setupTest("GET", role);
@@ -191,14 +168,11 @@ describe("GET /api/w/[wId]/skills", () => {
     // Create a restricted space without adding user to it
     const restrictedSpace = await SpaceFactory.regular(workspace);
 
-    // Create a skill and manually set its requestedSpaceIds to the restricted space
-    const restrictedSkill = await SkillFactory.create(authenticator, {
+    // Create a skill with requestedSpaceIds set to the restricted space
+    await SkillFactory.create(authenticator, {
       name: "Restricted Skill",
+      requestedSpaceIds: [restrictedSpace.id],
     });
-    await SkillConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { id: restrictedSkill.id } }
-    );
 
     req.query = { ...req.query, wId: workspace.sId };
 
@@ -223,14 +197,11 @@ describe("GET /api/w/[wId]/skills", () => {
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
 
-    // Create a skill and set its requestedSpaceIds to the restricted space
-    const skill = await SkillFactory.create(authenticator, {
+    // Create a skill with requestedSpaceIds set to the restricted space
+    await SkillFactory.create(authenticator, {
       name: "Skill In Restricted Space",
+      requestedSpaceIds: [restrictedSpace.id],
     });
-    await SkillConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { id: skill.id } }
-    );
 
     req.query = { ...req.query, wId: workspace.sId };
 
@@ -666,6 +637,61 @@ describe("POST /api/w/[wId]/skills", () => {
     const createdSkill = await SkillResource.fetchById(authenticator, skillId);
     expect(createdSkill).not.toBeNull();
     expect(createdSkill!.dataSourceConfigurations).toHaveLength(2);
+  });
+
+  it("creates a skill with requestedSpaceIds derived from attached knowledge's space", async () => {
+    const { req, res, workspace, user } = await setupTest("POST", "admin");
+
+    // Create a regular space where the knowledge will be placed.
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    // Create a data source view in the regular space.
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      regularSpace,
+      user
+    );
+
+    const nodeId = "node1";
+    const title = "Document from restricted space";
+
+    req.body = {
+      name: "Skill With Knowledge From Restricted Space",
+      agentFacingDescription: "A skill with knowledge from a restricted space",
+      userFacingDescription: "User description",
+      instructions: `Read file: <knowledge id="${nodeId}" title="${title}" space="${regularSpace.sId}" dsv="${dataSourceView.sId}" hasChildren="false" />`,
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [
+        {
+          dataSourceViewId: dataSourceView.sId,
+          nodeId,
+          nodeType: "document",
+          spaceId: regularSpace.sId,
+          title,
+        },
+      ],
+      extendedSkillId: null,
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData.skill).toMatchObject({
+      name: "Skill With Knowledge From Restricted Space",
+      requestedSpaceIds: [regularSpace.sId],
+    });
+
+    // Verify in database.
+    const skillConfiguration = await SkillConfigurationModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        name: "Skill With Knowledge From Restricted Space",
+      },
+    });
+    expect(skillConfiguration).not.toBeNull();
+    expect(skillConfiguration!.requestedSpaceIds).toEqual([regularSpace.id]);
   });
 });
 

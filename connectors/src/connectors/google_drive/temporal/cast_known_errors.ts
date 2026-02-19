@@ -1,14 +1,13 @@
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
 import { GaxiosError } from "googleapis-common";
-
-import {
-  ExternalOAuthTokenError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
 
 const OAUTH_ERROR_REASONS = new Set(["insufficientPermissions"]);
 
@@ -61,7 +60,9 @@ function isGoogleDriveInsufficientPermissionsError(
   );
 }
 
-export class GoogleDriveCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+export class GoogleDriveCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

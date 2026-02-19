@@ -1,14 +1,13 @@
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
+import type { DataSourceViewContentNode } from "@app/lib/swr/search";
 import {
   AttachmentChip,
   DoubleIcon,
   ExclamationCircleIcon,
 } from "@dust-tt/sparkle";
-import React from "react";
-
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
-import type { DataSourceViewContentNode } from "@app/lib/swr/search";
+import type React from "react";
 
 type KnowledgeNode = Omit<
   DataSourceViewContentNode,

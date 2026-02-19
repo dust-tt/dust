@@ -1,12 +1,10 @@
-import type { IncludeOptions, WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import {
   renderDataSourceConfiguration,
+  renderProjectConfiguration,
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
@@ -16,14 +14,19 @@ import {
   AgentChildAgentConfigurationModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
-import type { AgentFetchVariant, ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { AgentFetchVariant } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { IncludeOptions, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -76,28 +79,44 @@ export async function fetchMCPServerActionConfigurations(
     },
   ];
 
-  const allDustApps = await AppResource.fetchByIds(
-    auth,
-    removeNulls(mcpServerConfigurations.map((r) => r.appId))
-  );
-
-  // Find the associated data sources configurations.
-  const allDataSourceConfigurations =
-    await AgentDataSourceConfigurationModel.findAll({
+  const [
+    allDustApps,
+    allDataSourceConfigurations,
+    allTablesConfigurations,
+    allChildAgentConfigurations,
+    allProjectConfigurations,
+  ] = await Promise.all([
+    AppResource.fetchByIds(
+      auth,
+      removeNulls(mcpServerConfigurations.map((r) => r.appId))
+    ),
+    // Find the associated data sources configurations.
+    AgentDataSourceConfigurationModel.findAll({
       where: whereClause,
       include: includeDataSourceViewClause,
-    });
-
-  // Find the associated tables configurations.
-  const allTablesConfigurations =
-    await AgentTablesQueryConfigurationTableModel.findAll({
+    }),
+    // Find the associated tables configurations.
+    AgentTablesQueryConfigurationTableModel.findAll({
       where: whereClause,
       include: includeDataSourceViewClause,
-    });
-
-  // Find the associated child agent configurations.
-  const allChildAgentConfigurations =
-    await AgentChildAgentConfigurationModel.findAll({ where: whereClause });
+    }),
+    // Find the associated child agent configurations.
+    AgentChildAgentConfigurationModel.findAll({ where: whereClause }),
+    // Find the associated project configurations.
+    AgentProjectConfigurationModel.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: WorkspaceModel,
+          as: "workspace",
+        },
+        {
+          model: SpaceModel,
+          as: "project",
+        },
+      ],
+    }),
+  ]);
 
   const actionsByConfigurationId = new Map<
     ModelId,
@@ -114,6 +133,9 @@ export async function fetchMCPServerActionConfigurations(
     );
     const childAgentConfigurations = allChildAgentConfigurations.filter(
       (ca) => ca.mcpServerConfigurationId === config.id
+    );
+    const projectConfigurations = allProjectConfigurations.filter(
+      (pc) => pc.mcpServerConfigurationId === config.id
     );
 
     const dustApp = allDustApps.filter((app) => app.sId === config.appId)[0];
@@ -160,7 +182,9 @@ export async function fetchMCPServerActionConfigurations(
         internalMCPServerId: config.internalMCPServerId,
         dataSources:
           dataSourceConfigurations.length > 0
-            ? dataSourceConfigurations.map(renderDataSourceConfiguration)
+            ? dataSourceConfigurations.map((ds) =>
+                renderDataSourceConfiguration(auth, ds)
+              )
             : null,
         tables:
           tablesConfigurations.length > 0
@@ -185,6 +209,10 @@ export async function fetchMCPServerActionConfigurations(
         timeFrame: config.timeFrame,
         jsonSchema: config.jsonSchema,
         secretName: config.secretName,
+        dustProject:
+          projectConfigurations.length > 0
+            ? renderProjectConfiguration(projectConfigurations[0])
+            : null,
       });
     }
   }

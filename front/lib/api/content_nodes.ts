@@ -1,16 +1,14 @@
 // Public Api types are okay to use here as it's about internal types between connector and front.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes_constants";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type {
-  ContentNodesViewType,
-  ContentNodeWithParent,
-  CoreAPIContentNode,
-  DataSourceViewType,
-} from "@app/types";
-import { assertNever } from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,

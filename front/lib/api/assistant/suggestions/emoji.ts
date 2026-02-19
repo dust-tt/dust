@@ -1,27 +1,21 @@
-import { isLeft } from "fp-ts/lib/Either";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  BuilderSuggestionInputType,
-  ModelConversationTypeMultiActions,
-  Result,
-} from "@app/types";
-import {
-  BuilderEmojiSuggestionsResponseBodySchema,
-  Err,
-  GPT_3_5_TURBO_MODEL_ID,
-  Ok,
-} from "@app/types";
+import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
+import { BuilderEmojiSuggestionsResponseBodySchema } from "@app/types/api/internal/assistant";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import { GPT_3_5_TURBO_MODEL_ID } from "@app/types/assistant/models/openai";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isLeft } from "fp-ts/lib/Either";
 
 const FUNCTION_NAME = "send_suggestions";
 
 const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
-    description: "Send suggestions of names for the assistants",
+    description: "Send suggestions of names for the agents",
     inputSchema: {
       type: "object",
       properties: {
@@ -56,7 +50,7 @@ const specifications: AgentActionSpecification[] = [
             required: ["emoji", "backgroundColor"],
             additionalProperties: false,
           },
-          description: "Suggest one to three emojis for the assistant",
+          description: "Suggest one to three emojis for the agent",
         },
       },
       required: ["suggestions"],
@@ -70,7 +64,7 @@ function getConversationContext(
   const instructions = "instructions" in inputs ? inputs.instructions : "";
 
   const instructionsText = instructions
-    ? "\nAssistant instructions\n======\n" + JSON.stringify(instructions)
+    ? "\nAgent instructions\n======\n" + JSON.stringify(instructions)
     : "";
 
   const initialPrompt =
@@ -104,7 +98,7 @@ export async function getBuilderEmojiSuggestions(
     {
       conversation: getConversationContext(inputs),
       prompt:
-        "Task Overview: Assist in the customization of a virtual assistant’s visual identity by selecting an emoji for its avatar. The assistant's design and purpose will be described in each message you receive.\n\nObjective: Your main responsibility is to choose an emoji that captures the essence of the assistant, reflecting its unique functions, personality, or the context in which it will be used.\n\nGuidelines:\n- Broaden Your Choices: Consider a wide range of emojis to find one that uniquely represents the assistant's qualities or use case. Avoid defaulting to common choices unless they are the best fit. Try to avoid the generic 🤖 that could work for all assistants, unless the topic is truly about robots.\n- Relevance is Key: Select emojis that directly relate to the assistant’s described characteristics or intended environment. For instance, a 🎨 might suit a creative design tool, while a 📚 could represent a learning aid.\n- Compatibility Consideration: Ensure that your choices adhere to the Unicode standard to guarantee that the emoji displays correctly across all platforms.",
+        "Task Overview: Assist in the customization of a virtual agent’s visual identity by selecting an emoji for its avatar. The agent's design and purpose will be described in each message you receive.\n\nObjective: Your main responsibility is to choose an emoji that captures the essence of the agent, reflecting its unique functions, personality, or the context in which it will be used.\n\nGuidelines:\n- Broaden Your Choices: Consider a wide range of emojis to find one that uniquely represents the agent's qualities or use case. Avoid defaulting to common choices unless they are the best fit. Try to avoid the generic 🤖 that could work for all agents, unless the topic is truly about robots.\n- Relevance is Key: Select emojis that directly relate to the agent’s described characteristics or intended environment. For instance, a 🎨 might suit a creative design tool, while a 📚 could represent a learning aid.\n- Compatibility Consideration: Ensure that your choices adhere to the Unicode standard to guarantee that the emoji displays correctly across all platforms.",
       specifications,
       forceToolCall: FUNCTION_NAME,
     },

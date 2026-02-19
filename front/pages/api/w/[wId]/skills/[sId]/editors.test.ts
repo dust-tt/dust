@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it } from "vitest";
 
 import handler from "./editors";
 
@@ -20,7 +19,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -54,7 +53,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -86,7 +85,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -117,7 +116,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -153,7 +152,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -182,7 +181,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",

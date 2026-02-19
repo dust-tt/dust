@@ -1,9 +1,40 @@
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import {
+  useConversationParticipants,
+  useConversationParticipationOptions,
+  useJoinConversation,
+} from "@app/hooks/conversations";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import config from "@app/lib/api/config";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  getConversationRoute,
+  getProjectRoute,
+  setQueryParam,
+} from "@app/lib/utils/router";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  ArrowRightIcon,
   Avatar,
+  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   LinkIcon,
   PencilSquareIcon,
@@ -11,25 +42,9 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
+import type React from "react";
 import type { ReactElement } from "react";
-import React from "react";
 import { useCallback, useEffect, useState } from "react";
-
-import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
-import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
-import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useURLSheet } from "@app/hooks/useURLSheet";
-import {
-  useConversationParticipants,
-  useConversationParticipationOptions,
-  useJoinConversation,
-} from "@app/lib/swr/conversations";
-import { useUser } from "@app/lib/swr/user";
-import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -110,7 +125,7 @@ export function ConversationMenu({
   triggerPosition,
 }: {
   activeConversationId: string | null;
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: WorkspaceType;
   trigger: ReactElement;
   isConversationDisplayed: boolean;
@@ -118,8 +133,12 @@ export function ConversationMenu({
   onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
 }) {
-  const { user } = useUser();
-  const router = useRouter();
+  const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
@@ -150,6 +169,14 @@ export function ConversationMenu({
       disabled: shouldWaitBeforeFetching,
     },
   });
+  const { spaces: projects } = useSpaces({
+    kinds: ["project"],
+    workspaceId: owner.sId,
+    disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
+  });
+
+  const moveConversationToProject = useMoveConversationToProject(owner);
+
   const joinConversation = useJoinConversation({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -158,25 +185,24 @@ export function ConversationMenu({
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  const shareLink =
-    baseUrl !== undefined
-      ? getConversationRoute(
-          owner.sId,
-          activeConversationId,
-          undefined,
-          baseUrl
-        )
-      : undefined;
+  const shareLink = getConversationRoute(
+    owner.sId,
+    activeConversationId,
+    undefined,
+    config.getApiBaseUrl()
+  );
 
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(
     async (forceDelete: boolean = false) => {
       const res = await doDelete(conversation, forceDelete);
-      // eslint-disable-next-line no-unused-expressions
-      isConversationDisplayed &&
-        res &&
-        void router.push(getConversationRoute(owner.sId));
+      if (isConversationDisplayed && res) {
+        const redirectRoute =
+          conversation && isProjectConversation(conversation)
+            ? getProjectRoute(owner.sId, conversation.spaceId)
+            : getConversationRoute(owner.sId);
+        void router.push(redirectRoute);
+      }
     },
     [conversation, doDelete, owner.sId, router, isConversationDisplayed]
   );
@@ -190,40 +216,9 @@ export function ConversationMenu({
     return null;
   }
 
-  const ConversationActionMenuItem = () => {
-    return conversationParticipationOptions.map(
-      (conversationParticipationOption) => {
-        switch (conversationParticipationOption) {
-          case "delete":
-            return (
-              <DropdownMenuItem
-                label="Delete"
-                onClick={() => setShowDeleteDialog(true)}
-                icon={TrashIcon}
-              />
-            );
-          case "leave":
-            return (
-              <DropdownMenuItem
-                label="Leave"
-                onClick={() => setShowLeaveDialog(true)}
-                icon={XMarkIcon}
-              />
-            );
-          case "join":
-            return (
-              <DropdownMenuItem
-                label="Join"
-                onClick={joinConversation}
-                icon={PlusCircleIcon}
-              />
-            );
-          default:
-            return null;
-        }
-      }
-    );
-  };
+  const canJoin = conversationParticipationOptions.includes("join");
+  const canLeave = conversationParticipationOptions.includes("leave");
+  const canDelete = conversationParticipationOptions.includes("delete");
 
   return (
     <div
@@ -277,72 +272,110 @@ export function ConversationMenu({
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent>
-          <DropdownMenuLabel>Conversation</DropdownMenuLabel>
           <DropdownMenuItem
             label="Rename"
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
-
-          {/* eslint-disable-next-line react-hooks/static-components */}
-          <ConversationActionMenuItem />
-
-          {shareLink && (
-            <>
-              <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
-              <DropdownMenuItem
-                label="Copy the link"
-                onClick={copyConversationLink}
-                icon={LinkIcon}
+          {hasFeature("projects") && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger
+                icon={ArrowRightIcon}
+                label="Move to project"
+                disabled={!projects.length}
               />
-            </>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {projects
+                    .filter((project) => project.sId !== conversation?.spaceId)
+                    .map((project) => (
+                      <DropdownMenuItem
+                        key={project.sId}
+                        icon={getSpaceIcon(project)}
+                        label={project.name}
+                        onClick={async () =>
+                          conversation
+                            ? moveConversationToProject(conversation, project)
+                            : Promise.resolve(false)
+                        }
+                      />
+                    ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
           )}
-
-          {conversationParticipants === undefined ? null : (
-            <>
-              {conversationParticipants.users.length > 0 && (
-                <>
-                  <DropdownMenuLabel>Participants</DropdownMenuLabel>
-                  {conversationParticipants.users.map((user) => (
-                    <DropdownMenuItem
-                      key={user.sId}
-                      label={user.fullName ?? user.username}
-                      onClick={() => handleSeeUserDetails(user.sId)}
-                      icon={
-                        <Avatar
-                          size="xs"
-                          visual={user.pictureUrl}
-                          name={user.fullName ?? user.username}
-                          isRounded
-                        />
-                      }
-                      className="!text-foreground dark:!text-foreground-night"
-                    />
-                  ))}
-                </>
-              )}
-              {conversationParticipants.agents.length > 0 && (
-                <>
-                  <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                  {conversationParticipants.agents.map((agent) => (
-                    <DropdownMenuItem
-                      key={agent.configurationId}
-                      label={agent.name}
-                      onClick={() =>
-                        handleSeeAgentDetails(agent.configurationId)
-                      }
-                      icon={
-                        <Avatar
-                          size="xs"
-                          visual={agent.pictureUrl}
-                          name={agent.name}
-                        />
-                      }
-                    />
-                  ))}
-                </>
-              )}
-            </>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              icon={ContactsUserIcon}
+              label="Participant list"
+              disabled={
+                !conversationParticipants?.users.length &&
+                !conversationParticipants?.agents.length
+              }
+            />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                {conversationParticipants?.agents.map((agent) => (
+                  <DropdownMenuItem
+                    key={agent.configurationId}
+                    label={agent.name}
+                    onClick={() => handleSeeAgentDetails(agent.configurationId)}
+                    icon={
+                      <Avatar
+                        size="xs"
+                        visual={agent.pictureUrl}
+                        name={agent.name}
+                      />
+                    }
+                  />
+                ))}
+                {conversationParticipants?.users.map((user) => (
+                  <DropdownMenuItem
+                    key={user.sId}
+                    label={user.fullName ?? user.username}
+                    onClick={() => handleSeeUserDetails(user.sId)}
+                    icon={
+                      <Avatar
+                        size="xs"
+                        visual={user.pictureUrl}
+                        name={user.fullName ?? user.username}
+                        isRounded
+                      />
+                    }
+                    className="!text-foreground dark:!text-foreground-night"
+                  />
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+          {shareLink && (
+            <DropdownMenuItem
+              label="Copy the link"
+              onClick={copyConversationLink}
+              icon={LinkIcon}
+            />
+          )}
+          {canJoin && (
+            <DropdownMenuItem
+              label="Join"
+              onClick={joinConversation}
+              icon={PlusCircleIcon}
+            />
+          )}
+          {canLeave && (
+            <DropdownMenuItem
+              label="Leave"
+              onClick={() => setShowLeaveDialog(true)}
+              icon={XMarkIcon}
+            />
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              label="Delete"
+              onClick={() => setShowDeleteDialog(true)}
+              icon={TrashIcon}
+              variant="warning"
+            />
           )}
         </DropdownMenuContent>
       </DropdownMenu>

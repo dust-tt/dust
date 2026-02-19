@@ -1,9 +1,12 @@
-import type { UserMessageOrigin } from "@app/types";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TOOL_CHART_MODES = ["version", "step"] as const;
 
 export type ToolChartModeType = (typeof TOOL_CHART_MODES)[number];
+
+const SKILL_CHART_MODES = ["version", "source"] as const;
+
+export type SkillChartModeType = (typeof SKILL_CHART_MODES)[number];
 
 export type ToolChartUsageDatum = {
   percent: number;
@@ -27,12 +30,42 @@ export type ToolChartUsagePayload = {
   payload?: ChartDatum;
 };
 
+export type ToolLatencyDatum = {
+  name: string;
+  label: string;
+  count: number;
+  avgLatencyMs: number;
+  p50LatencyMs: number;
+  p95LatencyMs: number;
+};
+
 export type SourceChartDatum = {
   origin: UserMessageOrigin;
   count: number;
   percent: number;
   label: string;
 };
+
+export type SkillSourceItem = {
+  skillName: string;
+  totalCount: number;
+  sources: Record<string, number>;
+};
+
+export function isSkillSourceItem(data: unknown): data is SkillSourceItem {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+  return (
+    "skillName" in data &&
+    typeof data.skillName === "string" &&
+    "totalCount" in data &&
+    typeof data.totalCount === "number" &&
+    "sources" in data &&
+    typeof data.sources === "object" &&
+    data.sources !== null
+  );
+}
 
 export function isChartDatum(data: unknown): data is ChartDatum {
   if (typeof data !== "object" || data === null) {

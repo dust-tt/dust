@@ -5,7 +5,8 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
-import { EnvironmentConfig } from "@app/types";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 makeScript({}, async ({ execute }, logger) => {
   const connectorDB = new Sequelize(
@@ -26,9 +27,7 @@ makeScript({}, async ({ execute }, logger) => {
         `Failed to fetch global group for workspace ${bot.workspaceid}`
       );
     }
-    const workspace = await WorkspaceModel.findOne({
-      where: { sId: bot.workspaceid },
-    });
+    const workspace = await WorkspaceResource.fetchById(bot.workspaceid);
     if (!workspace) {
       throw new Error(`Workspace not found for workspaceId ${bot.workspaceid}`);
     }

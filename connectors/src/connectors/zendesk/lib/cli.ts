@@ -1,5 +1,3 @@
-import type { Logger } from "pino";
-
 import {
   ZENDESK_CONFIG_KEYS,
   ZendeskConnectorManager,
@@ -42,6 +40,7 @@ import type {
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 import { removeNulls } from "@connectors/types/shared/utils/general";
+import type { Logger } from "pino";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
@@ -513,6 +512,18 @@ export const zendesk = async ({
       logger.info({ wasRemoved, tag, include, exclude }, message);
 
       return { success: true, message };
+    }
+    case "set-rate-limit": {
+      const rateLimitTps = args.rateLimitTps;
+      if (rateLimitTps === undefined) {
+        throw new Error("Missing --rateLimitTps argument");
+      }
+      const manager = new ZendeskConnectorManager(connectorId);
+      await manager.setConfigurationKey({
+        configKey: ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS,
+        configValue: rateLimitTps.toString(),
+      });
+      return { success: true };
     }
     default: {
       throw new Error(`Unknown command: ${command}`);

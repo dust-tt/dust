@@ -1,0 +1,87 @@
+[
+  {
+    "sId": "SeedConv01",
+    "title": "Haiku about coding",
+    "agentName": "HaikuPoet",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "SeedUMsg01",
+          "content": ":mention[Haiku Poet]{sId=__CUSTOM_AGENT_SID__} Write me a haiku about programming"
+        },
+        "agent": {
+          "sId": "SeedAMsg01",
+          "content": "Lines of code cascade\nBugs hide in the syntax deep\nDebug, compile, breathe\n\nThis haiku captures the meditative yet challenging nature of programming - the flow of writing code, the hunt for bugs, and the patience required."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "SeedConv02",
+    "title": "Haiku about nature",
+    "agentName": "HaikuPoet",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "SeedUMsg02",
+          "content": ":mention[Haiku Poet]{sId=__CUSTOM_AGENT_SID__} I love watching the sunset over the ocean"
+        },
+        "agent": {
+          "sId": "SeedAMsg02",
+          "content": "Gold melts into waves\nHorizon drinks the sun whole\nNight waits, patient, still\n\nYour love for ocean sunsets inspired this haiku - the way light transforms the water and the peaceful transition from day to night."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "SeedConv03",
+    "title": "Haiku about coffee",
+    "agentName": "HaikuPoet",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "SeedUMsg03",
+          "content": ":mention[Haiku Poet]{sId=__CUSTOM_AGENT_SID__} My morning coffee ritual is sacred"
+        },
+        "agent": {
+          "sId": "SeedAMsg03",
+          "content": "Steam curls like prayers\nBitter warmth, a daily grace\nFirst sip: world begins\n\nYour sacred morning ritual deserves this haiku honoring the quiet reverence of that first cup."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "SeedConv04",
+    "title": "Help with documentation",
+    "agentName": "Dust",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "SeedUMsg04",
+          "content": ":mention[Dust]{sId=dust} Can you help me understand how to use this tool?"
+        },
+        "agent": {
+          "sId": "SeedAMsg04",
+          "content": "Of course! I'd be happy to help you understand how to use this tool. Could you tell me which specific tool or feature you're trying to learn about? That way I can provide you with the most relevant guidance and documentation."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "SeedConv05",
+    "title": "General question",
+    "agentName": "Dust",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "SeedUMsg05",
+          "content": ":mention[Dust]{sId=dust} What can you help me with today?"
+        },
+        "agent": {
+          "sId": "SeedAMsg05",
+          "content": "I can help you with many things! Here are some examples:\n\n- Answer questions about your company's knowledge base\n- Help draft documents, emails, or messages\n- Explain complex concepts or processes\n- Search through your connected data sources\n- Assist with analysis and summarization\n\nWhat would you like to work on?"
+        }
+      }
+    ]
+  }
+]

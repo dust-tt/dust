@@ -1,16 +1,7 @@
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op, Sequelize } from "sequelize";
-
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import {
@@ -22,13 +13,23 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
-  LightWorkspaceType,
-  ModelId,
   ModelIdType,
   ModelProviderIdType,
-  Result,
-} from "@app/types";
-import { Err, normalizeError, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+} from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
@@ -284,9 +285,7 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   async recordTokenUsage(usage: TokenUsage, modelId: ModelIdType) {
-    const modelConfig = SUPPORTED_MODEL_CONFIGS.find(
-      (config) => config.modelId === modelId
-    );
+    const modelConfig = getModelConfigByModelId(modelId);
 
     if (!modelConfig) {
       logger.warn({ modelId }, "Unsupported model for usage recording");

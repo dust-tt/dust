@@ -1,6 +1,7 @@
 import { assertNever } from "@dust-tt/client";
 import { Box, Static, Text } from "ink";
 import Spinner from "ink-spinner";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import type { FC } from "react";
 import React, {
@@ -14,16 +15,19 @@ import React, {
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import { CLI_VERSION } from "../../utils/version.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
 import type { UploadedFile } from "./FileUpload.js";
+import type { InlineSelectorItem } from "./InlineSelector.js";
+import { InlineSelector } from "./InlineSelector.js";
 import { InputBox } from "./InputBox.js";
 
 export type ConversationItem = { key: string } & (
   | {
       type: "welcome_header";
       agentName: string;
-      agentId: string;
+      agentDescription: string;
     }
   | {
       type: "user_message";
@@ -62,6 +66,7 @@ export type ConversationItem = { key: string } & (
 interface ConversationProps {
   conversationItems: ConversationItem[];
   isProcessingQuestion: boolean;
+  actionStatus: string | null;
   userInput: string;
   cursorPosition: number;
   mentionPrefix: string;
@@ -73,11 +78,19 @@ interface ConversationProps {
   commandCursorPosition: number;
   commands?: Command[];
   autoAcceptEdits: boolean;
+  inlineSelector?: {
+    items: InlineSelectorItem[];
+    query: string;
+    selectedIndex: number;
+    prompt?: string;
+    header?: React.ReactNode;
+  } | null;
 }
 
 const _Conversation: FC<ConversationProps> = ({
   conversationItems,
   isProcessingQuestion,
+  actionStatus,
   userInput,
   cursorPosition,
   mentionPrefix,
@@ -89,6 +102,7 @@ const _Conversation: FC<ConversationProps> = ({
   commandCursorPosition,
   commands = [],
   autoAcceptEdits,
+  inlineSelector,
 }: ConversationProps) => {
   return (
     <Box flexDirection="column" height="100%">
@@ -106,9 +120,17 @@ const _Conversation: FC<ConversationProps> = ({
 
       {isProcessingQuestion && (
         <Box marginTop={1}>
-          <Text color="green">
-            Thinking <Spinner type="simpleDots" />
-          </Text>
+          {actionStatus ? (
+            <Text color="yellow">
+              {actionStatus}
+              <Spinner type="simpleDots" />
+            </Text>
+          ) : (
+            <Text color="green">
+              Thinking
+              <Spinner type="simpleDots" />
+            </Text>
+          )}
         </Box>
       )}
 
@@ -129,7 +151,16 @@ const _Conversation: FC<ConversationProps> = ({
           onSelect={() => {}}
         />
       )}
-      {!showCommandSelector && (
+      {!showCommandSelector && inlineSelector && (
+        <InlineSelector
+          items={inlineSelector.items}
+          query={inlineSelector.query}
+          selectedIndex={inlineSelector.selectedIndex}
+          prompt={inlineSelector.prompt}
+          header={inlineSelector.header}
+        />
+      )}
+      {!showCommandSelector && !inlineSelector && (
         <Box marginTop={0} paddingLeft={1}>
           <Text dimColor>
             ↵ to send · \↵ for new line · ESC to clear
@@ -154,32 +185,68 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
   const rightPadding = 4;
 
   switch (item.type) {
-    case "welcome_header":
+    case "welcome_header": {
+      const cwd = process.cwd();
+      const home = process.env.HOME || "";
+      const displayPath =
+        home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
+
       return (
-        <Box flexDirection="row" marginBottom={1}>
-          <Box borderStyle="round" borderColor="gray" paddingX={1} paddingY={1}>
-            <Box flexDirection="column">
-              <Box justifyContent="center">
-                <Text bold>Welcome to Dust CLI beta!</Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text>
-                  You&apos;re currently chatting with {item.agentName} (
-                  {item.agentId})
-                </Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text dimColor>
-                  Type your message below and press Enter to send
-                </Text>
-              </Box>
+        <Box marginTop={1} marginBottom={1}>
+          <Box flexDirection="column" marginRight={2}>
+            <Box>
+              <Text color="green" dimColor>
+                {"█"}
+              </Text>
+              <Text color="green">{"▀▄ "}</Text>
+              <Text color="red" dimColor>
+                {"█ █"}
+              </Text>
+            </Box>
+            <Box>
+              <Text color="green" dimColor>
+                {"█"}
+              </Text>
+              <Text color="green">{"▄▀ "}</Text>
+              <Text color="red">{"█▄█"}</Text>
+            </Box>
+            <Box>
+              <Text color="blue" dimColor>
+                {"█▀▀ "}
+              </Text>
+              <Text color="blue" dimColor>
+                {"▀█▀"}
+              </Text>
+            </Box>
+            <Box>
+              <Text color="blue">{"▄██ "}</Text>
+              <Text color="yellow" dimColor>
+                {" █ "}
+              </Text>
             </Box>
           </Box>
-          <Box></Box>
+          <Box flexDirection="column" justifyContent="center">
+            <Text dimColor>
+              Dust CLI v{CLI_VERSION} · {displayPath}
+            </Text>
+            <Text dimColor>
+              Chatting with{" "}
+              <Text bold dimColor>
+                @{item.agentName}
+              </Text>
+              {" · "}Use{" "}
+              <Text bold dimColor>
+                /switch
+              </Text>{" "}
+              to change agent.
+            </Text>
+            <Text dimColor>
+              Type your message below and press Enter to send.
+            </Text>
+          </Box>
         </Box>
       );
+    }
     case "user_message":
       return (
         <Box flexDirection="column" marginBottom={1}>

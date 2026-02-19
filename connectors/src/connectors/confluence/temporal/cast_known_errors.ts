@@ -1,3 +1,5 @@
+import { ProviderWorkflowError } from "@connectors/lib/error";
+import { ConfluenceClientError } from "@connectors/types";
 import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
@@ -5,10 +7,9 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-import { ProviderWorkflowError } from "@connectors/lib/error";
-import { ConfluenceClientError } from "@connectors/types";
-
-export class ConfluenceCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+export class ConfluenceCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

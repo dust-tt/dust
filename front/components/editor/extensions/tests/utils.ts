@@ -1,26 +1,25 @@
 import type { Extensions } from "@tiptap/core";
 import { Markdown } from "@tiptap/markdown";
 import { Editor } from "@tiptap/react";
+import type { StarterKitOptions } from "@tiptap/starter-kit";
 import { StarterKit } from "@tiptap/starter-kit";
 
-import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+interface EditorFactoryOptions {
+  starterKit?: Partial<StarterKitOptions>;
+}
 
-export const EditorFactory = (extensions: Extensions) => {
+export const EditorFactory = (
+  extensions: Extensions,
+  options?: EditorFactoryOptions
+) => {
   return new Editor({
     extensions: [
       StarterKit.configure({
         bold: false,
         italic: false,
-        paragraph: false,
         hardBreak: false,
-        orderedList: false, // Allow custom OrderedList extension
-        listItem: false, // Allow custom ListItem extension
+        ...options?.starterKit,
       }),
-      EmptyLineParagraphExtension,
-      ListItemExtension,
-      OrderedListExtension,
       Markdown,
       ...extensions,
     ],
