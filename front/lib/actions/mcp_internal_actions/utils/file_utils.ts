@@ -11,7 +11,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import { isInteractiveContentFileContentType } from "@app/types/files";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
@@ -68,10 +67,6 @@ export async function getFileFromConversationAttachment(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        if (isInteractiveContentFileContentType(f.contentType)) {
-          continue;
-        }
-
         if (f.fileId === fileId) {
           attachment = getAttachmentFromFile({
             fileId: f.fileId,

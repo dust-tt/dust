@@ -421,7 +421,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   it("should reject access when file is not a frame", async () => {
     // Frame from conversation.
     const frameFile = await FileFactory.create(workspace, null, {
-      contentType: frameContentType,
+      contentType: "image/png",
       fileName: "frame.html",
       fileSize: 1000,
       status: "ready",

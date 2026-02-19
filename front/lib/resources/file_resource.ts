@@ -419,10 +419,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   get isInteractiveContent(): boolean {
-    return (
-      this.useCase === "conversation" &&
-      isInteractiveContentFileContentType(this.contentType)
-    );
+    return isInteractiveContentFileContentType(this.contentType);
   }
 
   // Cloud storage logic.
