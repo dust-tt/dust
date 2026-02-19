@@ -56,6 +56,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { TemplateInfo } from "@app/types/assistant/templates";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -540,8 +541,13 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
-            templateCopilotInstructions={
-              assistantTemplate?.copilotInstructions ?? null
+            templateInfo={
+              assistantTemplate
+                ? {
+                    templateId: assistantTemplate.sId,
+                    copilotInstructions: assistantTemplate.copilotInstructions,
+                  }
+                : undefined
             }
             conversationId={conversationId}
           />
@@ -574,7 +580,7 @@ interface AgentBuilderContentProps {
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
-  templateCopilotInstructions: string | null;
+  templateInfo?: TemplateInfo;
   conversationId?: string;
 }
 
@@ -591,7 +597,7 @@ function AgentBuilderContent({
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
   isNewAgent,
-  templateCopilotInstructions,
+  templateInfo,
   conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
@@ -690,7 +696,7 @@ function AgentBuilderContent({
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
             isNewAgent={isNewAgent}
-            templateCopilotInstructions={templateCopilotInstructions}
+            templateInfo={templateInfo}
             conversationId={conversationId}
           >
             <ConversationSidePanelProvider>

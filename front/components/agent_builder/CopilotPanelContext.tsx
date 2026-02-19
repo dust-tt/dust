@@ -5,6 +5,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import type { TemplateInfo } from "@app/types/assistant/templates";
 import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
@@ -46,7 +47,7 @@ interface CopilotPanelProviderProps {
   targetAgentConfigurationVersion: number;
   clientSideMCPServerIds: string[];
   isNewAgent: boolean;
-  templateCopilotInstructions: string | null;
+  templateInfo?: TemplateInfo;
   conversationId?: string;
 }
 
@@ -56,7 +57,7 @@ export const CopilotPanelProvider = ({
   targetAgentConfigurationVersion,
   clientSideMCPServerIds,
   isNewAgent,
-  templateCopilotInstructions,
+  templateInfo,
   conversationId,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
@@ -73,7 +74,7 @@ export const CopilotPanelProvider = ({
   const { getFirstMessage } = useCopilotFirstMessage({
     owner,
     isNewAgent,
-    templateCopilotInstructions,
+    templateInfo,
     conversationId,
   });
 
@@ -137,7 +138,6 @@ export const CopilotPanelProvider = ({
     setIsCreatingConversation(false);
   }, [
     clientSideMCPServerIds,
-    conversationId,
     createConversationWithMessage,
     getFirstMessage,
     isNewAgent,

@@ -38,6 +38,11 @@ export type TemplateTagsType = Record<
   }
 >;
 
+export type TemplateInfo = {
+  templateId: string;
+  copilotInstructions: string | null;
+};
+
 export const TEMPLATES_TAGS_CONFIG: TemplateTagsType = {
   CONTENT: {
     label: "Content",

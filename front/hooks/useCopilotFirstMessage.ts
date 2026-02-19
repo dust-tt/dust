@@ -1,39 +1,41 @@
 import { clientFetch } from "@app/lib/egress/client";
+import type { TemplateInfo } from "@app/types/assistant/templates";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 
 function getEndpoint({
   workspaceSId,
   isNewAgent,
-  templateCopilotInstructions: _,
+  templateInfo,
   conversationId,
 }: {
   workspaceSId: string;
   isNewAgent: boolean;
-  templateCopilotInstructions: string | null;
+  templateInfo?: TemplateInfo;
   conversationId?: string;
 }): string {
-  if (!isNewAgent) {
-    // TODO: fill with actual agent id
-    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing?agentId=${""}`;
+  if (templateInfo && templateInfo.copilotInstructions) {
+    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/template?templateId=${templateInfo.templateId}`;
   }
-
+  if (!isNewAgent) {
+    // TODO(copilot): send actual agent id
+    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing`;
+  }
   if (conversationId) {
     return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/shrink-wrap?conversationId=${conversationId}`;
   }
-
   return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/new`;
 }
 
 export function useCopilotFirstMessage({
   owner,
   isNewAgent,
-  templateCopilotInstructions,
+  templateInfo,
   conversationId,
 }: {
   owner: WorkspaceType;
   isNewAgent: boolean;
-  templateCopilotInstructions: string | null;
+  templateInfo?: TemplateInfo;
   conversationId?: string;
 }) {
   const endpoint = useMemo(
@@ -41,10 +43,10 @@ export function useCopilotFirstMessage({
       getEndpoint({
         workspaceSId: owner.sId,
         isNewAgent,
-        templateCopilotInstructions,
+        templateInfo,
         conversationId,
       }),
-    [owner.sId, isNewAgent, templateCopilotInstructions, conversationId]
+    [owner.sId, isNewAgent, templateInfo, conversationId]
   );
 
   const getFirstMessage = useCallback(async (): Promise<string> => {
