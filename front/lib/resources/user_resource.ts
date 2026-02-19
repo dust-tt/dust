@@ -215,7 +215,7 @@ export class UserResource extends BaseResource<UserModel> {
   private static fetchByWorkOSUserIdCached = cacheWithRedis(
     UserResource._fetchByWorkOSUserIdUncached,
     UserResource.userByWorkOSIdCacheKeyResolver,
-    { ttlMs: USER_CACHE_TTL_MS }
+    { ttlMs: USER_CACHE_TTL_MS, cacheNullValues: false }
   );
 
   private static invalidateUserByWorkOSIdCache = invalidateCacheWithRedis(

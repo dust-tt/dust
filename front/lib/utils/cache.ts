@@ -53,6 +53,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     redisUri?: string;
     useDistributedLock?: boolean;
     skipIfLocked?: false;
+    cacheNullValues?: boolean;
   }
 ): (...args: Args) => Promise<JsonSerializable<T>>;
 
@@ -65,6 +66,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     useDistributedLock: true;
     // When true and the distributed lock is taken, return null immediately.
     skipIfLocked: true;
+    cacheNullValues?: boolean;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null>;
 
@@ -77,12 +79,16 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     redisUri: _redisUri,
     useDistributedLock = false,
     skipIfLocked = false,
+    cacheNullValues = true,
   }: {
     ttlMs: number;
     // Kept for backwards compatibility, no longer used.
     redisUri?: string;
     useDistributedLock?: boolean;
     skipIfLocked?: boolean;
+    // When false, null/undefined results are not cached. This prevents stale
+    // null entries from masking records that exist in the database.
+    cacheNullValues?: boolean;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
@@ -133,9 +139,11 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
 
       const result = await fn(...args);
-      await redisCli.set(key, JSON.stringify(result), {
-        PX: ttlMs,
-      });
+      if (cacheNullValues || result != null) {
+        await redisCli.set(key, JSON.stringify(result), {
+          PX: ttlMs,
+        });
+      }
       return result;
     } finally {
       if (useDistributedLock) {
