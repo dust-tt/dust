@@ -3,7 +3,7 @@
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthenticationForConversation } from "@app/lib/api/auth_wrappers";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -201,6 +201,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
+export default withPublicAPIAuthenticationForConversation(handler, {
   isStreaming: true,
 });

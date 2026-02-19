@@ -2,7 +2,7 @@ import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthenticationForConversation } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import {
@@ -203,4 +203,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthenticationForConversation(handler);

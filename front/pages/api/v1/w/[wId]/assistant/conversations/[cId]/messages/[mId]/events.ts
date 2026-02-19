@@ -4,7 +4,7 @@
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthenticationForConversation } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -245,6 +245,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
+export default withPublicAPIAuthenticationForConversation(handler, {
   isStreaming: true,
 });

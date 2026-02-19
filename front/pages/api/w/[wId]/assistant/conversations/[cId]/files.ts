@@ -2,7 +2,7 @@ import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listGeneratedFiles } from "@app/lib/api/assistant/conversation/files";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -53,4 +53,4 @@ async function handler(
   });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAndConversation(handler);
