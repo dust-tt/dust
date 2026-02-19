@@ -41,6 +41,7 @@ const config = {
   // creates standalone folder that copies only the necessary files for a production deployment
   // including select files in node_modules.
   output: "standalone",
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
