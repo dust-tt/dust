@@ -39,7 +39,7 @@ import {
   type WhereOptions,
 } from "sequelize";
 
-/** 
+/**
  * Update in database as well as in-memory agent message.
  * Note that we are mutating the agentMessage object in memory and not returning a new object.
  * This is because we want to make sure that all functions using this object have the latest state.
