@@ -7,11 +7,11 @@ import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
 
-import { FrontPlatformProvider } from "@app/platforms/front/context/FrontPlatformProvider";
-import { FrontContextProvider } from "@app/platforms/front/context/FrontProvider";
-import { AuthProvider } from "@app/ui/components/auth/AuthProvider";
-import { routes } from "@app/ui/pages/routes";
 import { Notification } from "@dust-tt/sparkle";
+import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
+import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
+import { AuthProvider } from "@extension/ui/components/auth/AuthProvider";
+import { routes } from "@extension/ui/pages/routes";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";

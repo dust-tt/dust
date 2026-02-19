@@ -1,8 +1,3 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
-import { AgentPicker } from "@app/ui/components/agents/AgentPicker";
-import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
-import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -16,6 +11,11 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { GLOBAL_AGENTS_SID } from "@extension/shared/lib/global_agents";
+import { AgentPicker } from "@extension/ui/components/agents/AgentPicker";
+import { usePublicAgentConfigurations } from "@extension/ui/components/agents/usePublicAgentConfigurations";
+import { useSubmitFunction } from "@extension/ui/components/utils/useSubmitFunction";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 interface AgentSuggestionProps {

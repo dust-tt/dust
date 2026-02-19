@@ -1,9 +1,9 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
-import type { ToolSearchResult } from "@app/ui/hooks/useUnifiedSearch";
 import type { SupportedFileContentType } from "@dust-tt/client";
 // biome-ignore lint/plugin/noDirectSparkleNotification: existing usage
 import { useSendNotification } from "@dust-tt/sparkle";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import type { FileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
+import type { ToolSearchResult } from "@extension/ui/hooks/useUnifiedSearch";
 import { useCallback, useState } from "react";
 
 export function useToolFileUpload({

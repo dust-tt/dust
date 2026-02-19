@@ -1,8 +1,11 @@
-import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
+import type {
+  NodeCandidate,
+  UrlCandidate,
+} from "@extension/shared/lib/connectors";
 import {
   isUrlCandidate,
   nodeCandidateFromUrl,
-} from "@app/shared/lib/connectors";
+} from "@extension/shared/lib/connectors";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 

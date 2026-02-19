@@ -1,20 +1,3 @@
-import { getConnectorProviderLogoWithFallback } from "@app/shared/lib/connector_providers";
-import {
-  getDisplayNameForDataSource,
-  getLocationForDataSourceViewContentNode,
-  getVisualForContentNodeType,
-  getVisualForDataSourceViewContentNode,
-} from "@app/shared/lib/content_nodes";
-import { getIcon } from "@app/shared/lib/resources_icons";
-import { useDebounce } from "@app/ui/hooks/useDebounce";
-import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
-import { useSpaces } from "@app/ui/hooks/useSpaces";
-import { useToolFileUpload } from "@app/ui/hooks/useToolFileUpload";
-import type {
-  DataSourceViewContentNode,
-  ToolSearchResult,
-} from "@app/ui/hooks/useUnifiedSearch";
-import { useUnifiedSearch } from "@app/ui/hooks/useUnifiedSearch";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/client";
 import { isFolder, isWebsite } from "@dust-tt/client";
 import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
@@ -36,6 +19,23 @@ import {
   ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
+import { getConnectorProviderLogoWithFallback } from "@extension/shared/lib/connector_providers";
+import {
+  getDisplayNameForDataSource,
+  getLocationForDataSourceViewContentNode,
+  getVisualForContentNodeType,
+  getVisualForDataSourceViewContentNode,
+} from "@extension/shared/lib/content_nodes";
+import { getIcon } from "@extension/shared/lib/resources_icons";
+import { useDebounce } from "@extension/ui/hooks/useDebounce";
+import type { FileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
+import { useSpaces } from "@extension/ui/hooks/useSpaces";
+import { useToolFileUpload } from "@extension/ui/hooks/useToolFileUpload";
+import type {
+  DataSourceViewContentNode,
+  ToolSearchResult,
+} from "@extension/ui/hooks/useUnifiedSearch";
+import { useUnifiedSearch } from "@extension/ui/hooks/useUnifiedSearch";
 import { useEffect, useMemo, useRef, useState } from "react";
 export const MIN_SEARCH_QUERY_SIZE = 2;
 const PAGE_SIZE = 25;

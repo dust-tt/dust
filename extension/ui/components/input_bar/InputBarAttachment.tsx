@@ -1,21 +1,21 @@
-import { getConnectorProviderLogoWithFallback } from "@app/shared/lib/connector_providers";
+import type { DataSourceViewContentNodeType } from "@dust-tt/client";
+import { isFolder, isWebsite } from "@dust-tt/client";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { getConnectorProviderLogoWithFallback } from "@extension/shared/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
-} from "@app/shared/lib/content_nodes";
+} from "@extension/shared/lib/content_nodes";
 import type {
   Attachment,
   FileAttachment,
   NodeAttachment,
-} from "@app/ui/components/conversation/AttachmentCitation";
+} from "@extension/ui/components/conversation/AttachmentCitation";
 import {
   AttachmentCitation,
   attachmentToAttachmentCitation,
-} from "@app/ui/components/conversation/AttachmentCitation";
-import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
-import type { DataSourceViewContentNodeType } from "@dust-tt/client";
-import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+} from "@extension/ui/components/conversation/AttachmentCitation";
+import type { FileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import { useMemo } from "react";
 
 interface FileAttachmentsProps {

@@ -1,39 +1,3 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
-import { retryMessage } from "@app/shared/lib/conversation";
-import { formatTimestring } from "@app/shared/lib/utils";
-import type { StoredUser } from "@app/shared/services/auth";
-import type {
-  AgentMessageStateEvent,
-  MessageTemporaryState,
-} from "@app/ui/components/agents/state/messageReducer";
-import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
-import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
-import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
-import type { FeedbackSelectorBaseProps } from "@app/ui/components/conversation/FeedbackSelector";
-import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
-import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
-import { MCPServerAuthRequired } from "@app/ui/components/conversation/MCPServerAuthRequired";
-import {
-  AgentMentionBlock,
-  agentMentionDirective,
-} from "@app/ui/components/markdown/AgentMentionBlock";
-import {
-  CitationsContext,
-  CiteBlock,
-  getCiteDirective,
-} from "@app/ui/components/markdown/CiteBlock";
-import {
-  getImgPlugin,
-  imgDirective,
-} from "@app/ui/components/markdown/ImageBlock";
-import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
-import {
-  getUserMentionPlugin,
-  userMentionDirective,
-} from "@app/ui/components/markdown/UserMentionBlock";
-import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
-import { useEventSource } from "@app/ui/hooks/useEventSource";
 import type {
   AgentMessagePublicType,
   LightAgentConfigurationType,
@@ -72,6 +36,42 @@ import {
   useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { assertNeverAndIgnore } from "@extension/shared/lib/assertNeverAndIgnore";
+import { retryMessage } from "@extension/shared/lib/conversation";
+import { formatTimestring } from "@extension/shared/lib/utils";
+import type { StoredUser } from "@extension/shared/services/auth";
+import type {
+  AgentMessageStateEvent,
+  MessageTemporaryState,
+} from "@extension/ui/components/agents/state/messageReducer";
+import { messageReducer } from "@extension/ui/components/agents/state/messageReducer";
+import { ActionValidationContext } from "@extension/ui/components/conversation/ActionValidationProvider";
+import { AgentMessageActions } from "@extension/ui/components/conversation/AgentMessageActions";
+import type { FeedbackSelectorBaseProps } from "@extension/ui/components/conversation/FeedbackSelector";
+import { FeedbackSelector } from "@extension/ui/components/conversation/FeedbackSelector";
+import { GenerationContext } from "@extension/ui/components/conversation/GenerationContextProvider";
+import { MCPServerAuthRequired } from "@extension/ui/components/conversation/MCPServerAuthRequired";
+import {
+  AgentMentionBlock,
+  agentMentionDirective,
+} from "@extension/ui/components/markdown/AgentMentionBlock";
+import {
+  CitationsContext,
+  CiteBlock,
+  getCiteDirective,
+} from "@extension/ui/components/markdown/CiteBlock";
+import {
+  getImgPlugin,
+  imgDirective,
+} from "@extension/ui/components/markdown/ImageBlock";
+import type { MarkdownCitation } from "@extension/ui/components/markdown/MarkdownCitation";
+import {
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@extension/ui/components/markdown/UserMentionBlock";
+import { useSubmitFunction } from "@extension/ui/components/utils/useSubmitFunction";
+import { useEventSource } from "@extension/ui/hooks/useEventSource";
 import { marked } from "marked";
 import {
   useCallback,

@@ -1,5 +1,5 @@
-import type { PlatformType } from "@app/shared/services/platform";
-import { isValidPlatform } from "@app/shared/services/platform";
+import type { PlatformType } from "@extension/shared/services/platform";
+import { isValidPlatform } from "@extension/shared/services/platform";
 import webpack from "webpack";
 import WebpackDevServer from "webpack-dev-server";
 

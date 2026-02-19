@@ -1,5 +1,3 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { asDisplayName } from "@app/shared/lib/utils";
 import type {
   BlockedActionExecutionType,
   MCPToolStakeLevelPublicType,
@@ -18,6 +16,8 @@ import {
   MultiPageDialog,
   MultiPageDialogContent,
 } from "@dust-tt/sparkle";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { asDisplayName } from "@extension/shared/lib/utils";
 import { createContext, useCallback, useMemo, useState } from "react";
 
 type ActionValidationContextType = {

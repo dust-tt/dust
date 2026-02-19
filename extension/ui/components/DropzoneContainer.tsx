@@ -1,4 +1,3 @@
-import { useFileDrop } from "@app/ui/components/conversation/FileUploaderContext";
 import {
   isSupportedFileContentType,
   isSupportedImageContentType,
@@ -7,6 +6,7 @@ import {
   supportedOtherFileFormats,
 } from "@dust-tt/client";
 import { DropzoneOverlay, useSendNotification } from "@dust-tt/sparkle";
+import { useFileDrop } from "@extension/ui/components/conversation/FileUploaderContext";
 import { useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 

@@ -1,16 +1,16 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/shared/lib/resources_icons";
-import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
-import { useSpaces } from "@app/ui/hooks/useSpaces";
 import type {
   ContentNodesViewType,
   ContentNodeType,
   DataSourceContentNodeType,
   DataSourceViewContentNodeType,
 } from "@dust-tt/client";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@extension/shared/lib/resources_icons";
+import { getSpaceAccessPriority } from "@extension/shared/lib/spaces";
+import { useSpaces } from "@extension/ui/hooks/useSpaces";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface ToolSearchResult {

@@ -1,7 +1,7 @@
-import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/ui/components/actions/mcp/details/MCPActionDetails";
 import { isThinkingOutput } from "@dust-tt/client";
 import { TableIcon } from "@dust-tt/sparkle";
+import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
+import type { MCPActionDetailsProps } from "@extension/ui/components/actions/mcp/details/MCPActionDetails";
 
 export function MCPTablesQueryActionDetails({
   action,

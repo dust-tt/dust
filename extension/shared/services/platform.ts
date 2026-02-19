@@ -1,14 +1,14 @@
-import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
-import type { AuthService, StoredUser } from "@app/shared/services/auth";
-import type { CaptureService } from "@app/shared/services/capture";
-import { createMockCaptureService } from "@app/shared/services/capture";
-import type { McpService } from "@app/shared/services/mcp";
-import type { StorageService } from "@app/shared/services/storage";
-import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type {
   ContentFragmentType,
   ExtensionWorkspaceType,
 } from "@dust-tt/client";
+import type { UploadedContentFragmentTypeWithKind } from "@extension/shared/lib/types";
+import type { AuthService, StoredUser } from "@extension/shared/services/auth";
+import type { CaptureService } from "@extension/shared/services/capture";
+import { createMockCaptureService } from "@extension/shared/services/capture";
+import type { McpService } from "@extension/shared/services/mcp";
+import type { StorageService } from "@extension/shared/services/storage";
+import type { FileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import type { ComponentType } from "react";
 
 const PLATFORM_TYPES = ["chrome", "front"] as const;

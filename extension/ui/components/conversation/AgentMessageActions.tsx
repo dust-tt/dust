@@ -1,6 +1,3 @@
-import { MCPActionDetails } from "@app/ui/components/actions/mcp/details/MCPActionDetails";
-import type { ActionProgressState } from "@app/ui/components/agents/state/messageReducer";
-import type { AgentStateClassification } from "@app/ui/components/conversation/AgentMessage";
 import type {
   AgentMessagePublicType,
   LightWorkspaceType,
@@ -13,6 +10,9 @@ import {
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
+import { MCPActionDetails } from "@extension/ui/components/actions/mcp/details/MCPActionDetails";
+import type { ActionProgressState } from "@extension/ui/components/agents/state/messageReducer";
+import type { AgentStateClassification } from "@extension/ui/components/conversation/AgentMessage";
 
 interface AgentMessageActionsProps {
   agentMessage: AgentMessagePublicType;

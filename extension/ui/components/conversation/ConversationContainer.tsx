@@ -1,29 +1,29 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { useMcpServer } from "@app/shared/hooks/useMcpServer";
-import {
-  createPlaceholderUserMessage,
-  postConversation,
-  postMessage,
-  updateConversationWithOptimisticData,
-} from "@app/shared/lib/conversation";
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { getRandomGreetingForName } from "@app/shared/lib/greetings";
-import type { ContentFragmentsType } from "@app/shared/lib/types";
-import type { StoredUser } from "@app/shared/services/auth";
-import { AgentFavorites } from "@app/ui/components/agents/AgentFavorites";
-import { ConversationViewer } from "@app/ui/components/conversation/ConversationViewer";
-import { GenerationContextProvider } from "@app/ui/components/conversation/GenerationContextProvider";
-import { ReachedLimitPopup } from "@app/ui/components/conversation/ReachedLimitPopup";
-import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
-import { AssistantInputBar } from "@app/ui/components/input_bar/InputBar";
-import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
-import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import type {
   AgentMentionType,
   ContentFragmentType,
   ExtensionWorkspaceType,
 } from "@dust-tt/client";
 import { cn, Page, useSendNotification } from "@dust-tt/sparkle";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
+import {
+  createPlaceholderUserMessage,
+  postConversation,
+  postMessage,
+  updateConversationWithOptimisticData,
+} from "@extension/shared/lib/conversation";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { getRandomGreetingForName } from "@extension/shared/lib/greetings";
+import type { ContentFragmentsType } from "@extension/shared/lib/types";
+import type { StoredUser } from "@extension/shared/services/auth";
+import { AgentFavorites } from "@extension/ui/components/agents/AgentFavorites";
+import { ConversationViewer } from "@extension/ui/components/conversation/ConversationViewer";
+import { GenerationContextProvider } from "@extension/ui/components/conversation/GenerationContextProvider";
+import { ReachedLimitPopup } from "@extension/ui/components/conversation/ReachedLimitPopup";
+import { usePublicConversation } from "@extension/ui/components/conversation/usePublicConversation";
+import { AssistantInputBar } from "@extension/ui/components/input_bar/InputBar";
+import { InputBarContext } from "@extension/ui/components/input_bar/InputBarContext";
+import { useSubmitFunction } from "@extension/ui/components/utils/useSubmitFunction";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 

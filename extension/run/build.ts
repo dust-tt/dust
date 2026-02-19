@@ -1,5 +1,5 @@
-import type { PlatformType } from "@app/shared/services/platform";
-import { isValidPlatform } from "@app/shared/services/platform";
+import type { PlatformType } from "@extension/shared/services/platform";
+import { isValidPlatform } from "@extension/shared/services/platform";
 import webpack from "webpack";
 
 import { getConfig as getChromeConfig } from "../platforms/chrome/webpack.config";

@@ -1,8 +1,8 @@
-import { ChromeAuthService } from "@app/platforms/chrome/services/auth";
-import { ChromeBrowserMessagingService } from "@app/platforms/chrome/services/browser_messaging";
-import { ChromeCaptureService } from "@app/platforms/chrome/services/capture";
-import { ChromeStorageService } from "@app/platforms/chrome/services/storage";
-import { CorePlatformService } from "@app/shared/services/platform";
+import { ChromeAuthService } from "@extension/platforms/chrome/services/auth";
+import { ChromeBrowserMessagingService } from "@extension/platforms/chrome/services/browser_messaging";
+import { ChromeCaptureService } from "@extension/platforms/chrome/services/capture";
+import { ChromeStorageService } from "@extension/platforms/chrome/services/storage";
+import { CorePlatformService } from "@extension/shared/services/platform";
 
 export interface PendingUpdate {
   detectedAt: number;

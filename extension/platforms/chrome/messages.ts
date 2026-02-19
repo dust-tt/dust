@@ -1,8 +1,8 @@
 import type {
   AuthService,
   OAuthAuthorizeResponse,
-} from "@app/shared/services/auth";
-import type { CaptureOptions } from "@app/shared/services/capture";
+} from "@extension/shared/services/auth";
+import type { CaptureOptions } from "@extension/shared/services/capture";
 
 export type AuthBackgroundResponseError = {
   success: false;

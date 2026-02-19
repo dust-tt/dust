@@ -1,12 +1,12 @@
-import { sendGetActiveTabMessage } from "@app/platforms/chrome/messages";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { sendGetActiveTabMessage } from "@extension/platforms/chrome/messages";
 import type {
   CaptureOperationId,
   CaptureOptions,
   CaptureService,
   TabContent,
-} from "@app/shared/services/capture";
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+} from "@extension/shared/services/capture";
 
 const getIncludeCurrentTab = async (params: CaptureOptions) => {
   const backgroundRes = await sendGetActiveTabMessage(params);

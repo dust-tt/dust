@@ -1,9 +1,3 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { UploadedFileKind } from "@app/shared/lib/types";
-import type {
-  CaptureOptions,
-  CaptureService,
-} from "@app/shared/services/capture";
 import type {
   ConversationPublicType,
   Result,
@@ -17,6 +11,12 @@ import {
 } from "@dust-tt/client";
 // biome-ignore lint/plugin/noDirectSparkleNotification: existing usage
 import { useSendNotification } from "@dust-tt/sparkle";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import type { UploadedFileKind } from "@extension/shared/lib/types";
+import type {
+  CaptureOptions,
+  CaptureService,
+} from "@extension/shared/services/capture";
 import { useState } from "react";
 
 interface FileBlob {

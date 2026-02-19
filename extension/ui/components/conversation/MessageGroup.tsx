@@ -1,13 +1,13 @@
-import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversation";
-import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
-import type { StoredUser } from "@app/shared/services/auth";
-import MessageItem from "@app/ui/components/conversation/MessageItem";
 import type {
   AgentMessagePublicType,
   ConversationMessageReactionsType,
   LightWorkspaceType,
   UserMessageType,
 } from "@dust-tt/client";
+import type { MessageWithContentFragmentsType } from "@extension/shared/lib/conversation";
+import type { AgentMessageFeedbackType } from "@extension/shared/lib/feedbacks";
+import type { StoredUser } from "@extension/shared/services/auth";
+import MessageItem from "@extension/ui/components/conversation/MessageItem";
 import { useEffect, useRef } from "react";
 
 interface MessageGroupProps {

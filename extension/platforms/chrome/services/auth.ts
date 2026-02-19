@@ -1,19 +1,19 @@
+import { datadogLogs } from "@datadog/browser-logs";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
-} from "@app/platforms/chrome/messages";
-import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
+} from "@extension/platforms/chrome/messages";
+import type { StoredTokens, StoredUser } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
   getConnectionDetails,
   getDustDomain,
-} from "@app/shared/services/auth";
-import type { StorageService } from "@app/shared/services/storage";
-import { datadogLogs } from "@datadog/browser-logs";
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+} from "@extension/shared/services/auth";
+import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;

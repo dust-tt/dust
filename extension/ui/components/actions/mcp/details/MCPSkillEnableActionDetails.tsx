@@ -1,7 +1,7 @@
-import { isSkillEnableInputType } from "@app/shared/lib/tool_inputs";
-import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/ui/components/actions/mcp/details/MCPActionDetails";
 import { PuzzleIcon } from "@dust-tt/sparkle";
+import { isSkillEnableInputType } from "@extension/shared/lib/tool_inputs";
+import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
+import type { MCPActionDetailsProps } from "@extension/ui/components/actions/mcp/details/MCPActionDetails";
 
 export function MCPSkillEnableActionDetails({
   action: { params },
