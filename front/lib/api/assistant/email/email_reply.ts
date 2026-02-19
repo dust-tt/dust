@@ -31,6 +31,11 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
     subject: context.subject,
     text: context.originalText,
     auth: { SPF: "", dkim: "" },
+    threadingHeaders: {
+      messageId: context.threadingMessageId,
+      inReplyTo: context.threadingInReplyTo,
+      references: context.threadingReferences,
+    },
     envelope: {
       to: [],
       cc: [],
