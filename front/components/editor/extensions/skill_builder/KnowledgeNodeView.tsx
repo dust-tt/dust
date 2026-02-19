@@ -16,6 +16,8 @@ import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   cn,
   DoubleIcon,
@@ -172,6 +174,17 @@ export function KnowledgeDisplayComponent({
   );
 }
 
+// Mime types for tables that are NOT remote databases (Snowflake/BigQuery).
+// These are filtered out from the "all" view in the knowledge search so that
+// users can still select Snowflake/BigQuery tables but not spreadsheet-like tables.
+const NON_REMOTE_DATABASE_TABLE_MIME_TYPES: readonly string[] = [
+  INTERNAL_MIME_TYPES.NOTION.DATABASE,
+  INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+  INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
+  INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET,
+  INTERNAL_MIME_TYPES.GENERIC.TABLE,
+];
+
 interface KnowledgeSearchProps {
   onSelect: (item: KnowledgeItem) => void;
   onCancel: () => void;
@@ -209,8 +222,9 @@ function KnowledgeSearchComponent({
       query: searchQuery,
       pageSize: 10,
       spaceIds,
-      // Tables can't be attached to a skill.
-      viewType: "document",
+      // Use "all" to include remote database tables (Snowflake/BigQuery).
+      // Non-remote-database tables are filtered out client-side below.
+      viewType: "all",
       includeDataSources: false,
       searchSourceUrls: true,
       includeTools: false,
@@ -242,22 +256,28 @@ function KnowledgeSearchComponent({
     updateTriggerPosition();
   }, [updateTriggerPosition]);
 
-  // Convert API results to properly formatted nodes.
+  // Convert API results to properly formatted nodes, filtering out
+  // non-remote-database tables (e.g. Notion databases, Google/Microsoft sheets).
   const dataSourceNodes = useMemo(
     () =>
       removeNulls(
-        searchResults.map((node) => {
-          const { dataSourceViews, ...rest } = node;
-          const dataSourceView = dataSourceViews.find(
-            (view) => spacesMap[view.spaceId]
-          );
+        searchResults
+          .filter(
+            (node) =>
+              !NON_REMOTE_DATABASE_TABLE_MIME_TYPES.includes(node.mimeType)
+          )
+          .map((node) => {
+            const { dataSourceViews, ...rest } = node;
+            const dataSourceView = dataSourceViews.find(
+              (view) => spacesMap[view.spaceId]
+            );
 
-          if (!dataSourceView) {
-            return null;
-          }
+            if (!dataSourceView) {
+              return null;
+            }
 
-          return { ...rest, dataSourceView };
-        })
+            return { ...rest, dataSourceView };
+          })
       ),
     [searchResults, spacesMap]
   );
