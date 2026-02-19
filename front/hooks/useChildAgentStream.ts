@@ -104,7 +104,7 @@ export function useChildAgentStream({
         return null;
       }
       const { conversationId, agentMessageId } = childStreamIds;
-      const baseUrl = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events`;
+      const baseUrl = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: { eventId: string } = JSON.parse(lastEvent);

@@ -357,7 +357,7 @@ export function useAgentMessageStreamLegacy({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
