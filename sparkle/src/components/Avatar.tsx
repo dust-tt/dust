@@ -157,7 +157,7 @@ const getTextVariant = (name: string) => {
   return txtColors[Math.abs(hash) % txtColors.length];
 };
 
-interface AvatarProps {
+export interface AvatarProps {
   size?: AvatarSizeType;
   name?: string;
   emoji?: string;
@@ -259,7 +259,7 @@ export function Avatar({
 const AVATAR_STACK_SIZES = ["xs", "sm", "md"] as const;
 type AvatarStackSizeType = (typeof AVATAR_STACK_SIZES)[number];
 
-interface AvatarStackProps {
+export interface AvatarStackProps {
   avatars: AvatarProps[];
   nbVisibleItems?: number;
   size?: AvatarStackSizeType;

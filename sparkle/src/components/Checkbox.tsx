@@ -96,6 +96,7 @@ function CheckboxWithText({
   size,
   ...props
 }: CheckboxWithTextProps) {
+  // Unique id per instance so checkbox and label stay associated (htmlFor/id); required for a11y and click-label-to-toggle.
   const generatedId = React.useId();
   const id = idProp ?? generatedId;
 
@@ -129,6 +130,7 @@ function CheckBoxWithTextAndDescription({
   size,
   ...props
 }: CheckboxWithTextAndDescriptionProps) {
+  // Unique id per instance so checkbox and label stay associated (htmlFor/id); required for a11y and click-label-to-toggle.
   const generatedId = React.useId();
   const id = idProp ?? generatedId;
 

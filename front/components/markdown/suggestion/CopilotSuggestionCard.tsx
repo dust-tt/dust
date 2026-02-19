@@ -36,7 +36,6 @@ import {
   ExclamationCircleIcon,
   EyeIcon,
   FolderIcon,
-  Icon,
   LoadingBlock,
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
@@ -395,7 +394,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   return (
     <ActionCardBlock
       {...labels}
-      visual={<Icon visual={getSkillAvatarIcon(skill.icon)} />}
+      visual={<Avatar icon={getSkillAvatarIcon(skill.icon)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
       rejectedTitle={`${skill.name} skill suggestion rejected`}

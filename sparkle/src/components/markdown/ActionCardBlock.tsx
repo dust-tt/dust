@@ -1,3 +1,4 @@
+import type { AvatarProps, AvatarStackProps } from "@sparkle/components/Avatar";
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
 import { Button } from "@sparkle/components/Button";
 // biome-ignore lint/suspicious/noImportCycles: I'm too lazy to refactor this right now
@@ -67,8 +68,9 @@ type ActionButtonPosition = "header" | "footer";
 export interface ActionCardBlockProps {
   // Visual
   title: string;
-  /** An `<Avatar>` or `<Avatar.Stack>`. Size is forced internally (sm for default, xs for compact). */
-  visual?: React.ReactElement;
+  visual?:
+    | React.ReactElement<AvatarProps>
+    | React.ReactElement<AvatarStackProps>;
 
   // Content
   description?: React.ReactNode;
@@ -111,10 +113,9 @@ export function ActionCardBlock({
   acceptedTitle,
   rejectedTitle,
   cardVariant,
-  size: sizeProp,
+  size = "default",
 }: ActionCardBlockProps) {
   const [isChecked, setIsChecked] = useState(false);
-  const size = sizeProp ?? "default";
   const isCompact = size === "compact";
 
   const applyVariant = cardVariant === "warning" ? "warning" : "highlight";
