@@ -6,6 +6,7 @@ import {
   getInternalMCPServerToolDisplayLabels,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
@@ -16,6 +17,7 @@ import type { StepContext } from "@app/lib/actions/types";
 import { isFileAuthorizationInfo } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
+import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
@@ -65,6 +67,14 @@ import { Op } from "sequelize";
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
+
+function getDefaultRemoteDisplayLabels(
+  mcpServerName: string,
+  toolName: string
+): ToolDisplayLabels | null {
+  const server = getDefaultRemoteMCPServerByName(mcpServerName);
+  return server?.toolDisplayLabels?.[toolName] ?? null;
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -744,7 +754,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
           toolName
         ] ?? null)
-      : null;
+      : getDefaultRemoteDisplayLabels(
+          this.toolConfiguration.mcpServerName,
+          toolName
+        );
 
     return {
       id: this.id,

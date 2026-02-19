@@ -1,4 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
+import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 
 export type DefaultRemoteMCPServerConfig = {
@@ -13,6 +14,7 @@ export type DefaultRemoteMCPServerConfig = {
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
+  toolDisplayLabels?: Record<string, ToolDisplayLabels>;
 };
 
 export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
@@ -52,6 +54,100 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       create_coupon: "high",
       update_dispute: "high",
     },
+    toolDisplayLabels: {
+      search_documentation: {
+        running: "Checking Stripe docs",
+        done: "Checked Stripe docs",
+      },
+      list_customers: {
+        running: "Loading customers from Stripe",
+        done: "Loaded customers from Stripe",
+      },
+      list_products: {
+        running: "Loading products from Stripe",
+        done: "Loaded products from Stripe",
+      },
+      list_prices: {
+        running: "Loading prices from Stripe",
+        done: "Loaded prices from Stripe",
+      },
+      list_invoices: {
+        running: "Loading invoices from Stripe",
+        done: "Loaded invoices from Stripe",
+      },
+      list_payment_intents: {
+        running: "Loading payments from Stripe",
+        done: "Loaded payments from Stripe",
+      },
+      list_subscriptions: {
+        running: "Loading subscriptions from Stripe",
+        done: "Loaded subscriptions from Stripe",
+      },
+      list_coupons: {
+        running: "Loading coupons from Stripe",
+        done: "Loaded coupons from Stripe",
+      },
+      list_disputes: {
+        running: "Loading disputes from Stripe",
+        done: "Loaded disputes from Stripe",
+      },
+      get_stripe_account_info: {
+        running: "Checking account info on Stripe",
+        done: "Checked account info on Stripe",
+      },
+      create_customer: {
+        running: "Creating customer on Stripe",
+        done: "Created customer on Stripe",
+      },
+      create_product: {
+        running: "Creating product on Stripe",
+        done: "Created product on Stripe",
+      },
+      create_price: {
+        running: "Creating price on Stripe",
+        done: "Created price on Stripe",
+      },
+      create_payment_link: {
+        running: "Creating payment link on Stripe",
+        done: "Created payment link on Stripe",
+      },
+      create_invoice: {
+        running: "Creating invoice on Stripe",
+        done: "Created invoice on Stripe",
+      },
+      create_invoice_item: {
+        running: "Creating invoice item on Stripe",
+        done: "Created invoice item on Stripe",
+      },
+      finalize_invoice: {
+        running: "Finalizing invoice on Stripe",
+        done: "Finalized invoice on Stripe",
+      },
+      retrieve_balance: {
+        running: "Checking balance on Stripe",
+        done: "Checked balance on Stripe",
+      },
+      create_refund: {
+        running: "Creating refund on Stripe",
+        done: "Created refund on Stripe",
+      },
+      cancel_subscription: {
+        running: "Canceling subscription on Stripe",
+        done: "Canceled subscription on Stripe",
+      },
+      update_subscription: {
+        running: "Updating subscription on Stripe",
+        done: "Updated subscription on Stripe",
+      },
+      create_coupon: {
+        running: "Creating coupon on Stripe",
+        done: "Created coupon on Stripe",
+      },
+      update_dispute: {
+        running: "Updating dispute on Stripe",
+        done: "Updated dispute on Stripe",
+      },
+    },
   },
   {
     id: 10001,
@@ -84,6 +180,92 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       update_issue: "high",
       create_project: "high",
       update_project: "high",
+    },
+    toolDisplayLabels: {
+      search_documentation: {
+        running: "Searching docs on Linear",
+        done: "Search docs on Linear",
+      },
+      list_comments: {
+        running: "Listing comments on Linear",
+        done: "List comments on Linear",
+      },
+      get_issue: {
+        running: "Retrieving issue on Linear",
+        done: "Retrieve issue on Linear",
+      },
+      get_issue_git_branch_name: {
+        running: "Retrieving branch name on Linear",
+        done: "Retrieve branch name on Linear",
+      },
+      list_issues: {
+        running: "Listing issues on Linear",
+        done: "List issues on Linear",
+      },
+      list_issue_statuses: {
+        running: "Listing statuses on Linear",
+        done: "List statuses on Linear",
+      },
+      get_issue_status: {
+        running: "Retrieving issue status on Linear",
+        done: "Retrieve issue status on Linear",
+      },
+      list_my_issues: {
+        running: "Listing my issues on Linear",
+        done: "List my issues on Linear",
+      },
+      list_issue_labels: {
+        running: "Listing labels on Linear",
+        done: "List labels on Linear",
+      },
+      list_projects: {
+        running: "Listing projects on Linear",
+        done: "List projects on Linear",
+      },
+      get_project: {
+        running: "Retrieving project on Linear",
+        done: "Retrieve project on Linear",
+      },
+      get_team: {
+        running: "Retrieving team on Linear",
+        done: "Retrieve team on Linear",
+      },
+      list_users: {
+        running: "Listing users on Linear",
+        done: "List users on Linear",
+      },
+      get_user: {
+        running: "Retrieving user on Linear",
+        done: "Retrieve user on Linear",
+      },
+      create_comment: {
+        running: "Commenting on Linear",
+        done: "Comment on Linear",
+      },
+      get_document: {
+        running: "Retrieving document on Linear",
+        done: "Retrieve document on Linear",
+      },
+      list_documents: {
+        running: "Listing documents on Linear",
+        done: "List documents on Linear",
+      },
+      create_issue: {
+        running: "Creating issue on Linear",
+        done: "Create issue on Linear",
+      },
+      update_issue: {
+        running: "Updating issue on Linear",
+        done: "Update issue on Linear",
+      },
+      create_project: {
+        running: "Creating project on Linear",
+        done: "Create project on Linear",
+      },
+      update_project: {
+        running: "Updating project on Linear",
+        done: "Update project on Linear",
+      },
     },
   },
   {
@@ -139,6 +321,176 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       asana_get_workspace_users: "never_ask",
       asana_list_workspaces: "never_ask",
     },
+    toolDisplayLabels: {
+      asana_search_tasks: {
+        running: "Searching tasks on Asana",
+        done: "Search tasks on Asana",
+      },
+      asana_get_task: {
+        running: "Retrieving task on Asana",
+        done: "Retrieve task on Asana",
+      },
+      asana_create_task: {
+        running: "Creating task on Asana",
+        done: "Create task on Asana",
+      },
+      asana_update_task: {
+        running: "Updating task on Asana",
+        done: "Update task on Asana",
+      },
+      asana_delete_task: {
+        running: "Deleting task on Asana",
+        done: "Delete task on Asana",
+      },
+      asana_get_project: {
+        running: "Retrieving project on Asana",
+        done: "Retrieve project on Asana",
+      },
+      asana_get_projects: {
+        running: "Listing projects on Asana",
+        done: "List projects on Asana",
+      },
+      asana_create_project: {
+        running: "Creating project on Asana",
+        done: "Create project on Asana",
+      },
+      asana_get_goals: {
+        running: "Listing goals on Asana",
+        done: "List goals on Asana",
+      },
+      asana_get_goal: {
+        running: "Retrieving goal on Asana",
+        done: "Retrieve goal on Asana",
+      },
+      asana_create_goal: {
+        running: "Creating goal on Asana",
+        done: "Create goal on Asana",
+      },
+      asana_update_goal: {
+        running: "Updating goal on Asana",
+        done: "Update goal on Asana",
+      },
+      asana_get_stories_for_task: {
+        running: "Retrieving task stories on Asana",
+        done: "Retrieve task stories on Asana",
+      },
+      asana_create_task_story: {
+        running: "Creating task story on Asana",
+        done: "Create task story on Asana",
+      },
+      asana_get_attachment: {
+        running: "Retrieving attachment on Asana",
+        done: "Retrieve attachment on Asana",
+      },
+      asana_get_attachments_for_object: {
+        running: "Retrieving attachments on Asana",
+        done: "Retrieve attachments on Asana",
+      },
+      asana_get_parent_goals_for_goal: {
+        running: "Retrieving parent goals on Asana",
+        done: "Retrieve parent goals on Asana",
+      },
+      asana_get_portfolio: {
+        running: "Retrieving portfolio on Asana",
+        done: "Retrieve portfolio on Asana",
+      },
+      asana_get_portfolios: {
+        running: "Listing portfolios on Asana",
+        done: "List portfolios on Asana",
+      },
+      asana_get_items_for_portfolio: {
+        running: "Retrieving portfolio items on Asana",
+        done: "Retrieve portfolio items on Asana",
+      },
+      asana_get_project_sections: {
+        running: "Retrieving project sections on Asana",
+        done: "Retrieve project sections on Asana",
+      },
+      asana_get_project_status: {
+        running: "Retrieving project status on Asana",
+        done: "Retrieve project status on Asana",
+      },
+      asana_get_project_statuses: {
+        running: "Listing project statuses on Asana",
+        done: "List project statuses on Asana",
+      },
+      asana_create_project_status: {
+        running: "Creating project status on Asana",
+        done: "Create project status on Asana",
+      },
+      asana_get_project_task_counts: {
+        running: "Retrieving task counts on Asana",
+        done: "Retrieve task counts on Asana",
+      },
+      asana_get_projects_for_team: {
+        running: "Listing team projects on Asana",
+        done: "List team projects on Asana",
+      },
+      asana_get_projects_for_workspace: {
+        running: "Listing workspace projects on Asana",
+        done: "List workspace projects on Asana",
+      },
+      asana_set_task_dependencies: {
+        running: "Setting task dependencies on Asana",
+        done: "Set task dependencies on Asana",
+      },
+      asana_set_task_dependents: {
+        running: "Setting task dependents on Asana",
+        done: "Set task dependents on Asana",
+      },
+      asana_set_parent_for_task: {
+        running: "Setting task parent on Asana",
+        done: "Set task parent on Asana",
+      },
+      asana_get_tasks: {
+        running: "Listing tasks on Asana",
+        done: "List tasks on Asana",
+      },
+      asana_add_task_followers: {
+        running: "Adding task followers on Asana",
+        done: "Add task followers on Asana",
+      },
+      asana_remove_task_followers: {
+        running: "Removing task followers on Asana",
+        done: "Remove task followers on Asana",
+      },
+      asana_get_teams_for_workspace: {
+        running: "Listing workspace teams on Asana",
+        done: "List workspace teams on Asana",
+      },
+      asana_get_teams_for_user: {
+        running: "Listing user teams on Asana",
+        done: "List user teams on Asana",
+      },
+      asana_get_time_period: {
+        running: "Retrieving time period on Asana",
+        done: "Retrieve time period on Asana",
+      },
+      asana_get_time_periods: {
+        running: "Listing time periods on Asana",
+        done: "List time periods on Asana",
+      },
+      asana_typeahead_search: {
+        running: "Searching on Asana (typeahead)",
+        done: "Search on Asana (typeahead)",
+      },
+      asana_get_user: {
+        running: "Retrieving user on Asana",
+        done: "Retrieve user on Asana",
+      },
+      asana_get_team_users: {
+        running: "Listing team users on Asana",
+        done: "List team users on Asana",
+      },
+      asana_get_workspace_users: {
+        running: "Listing workspace users on Asana",
+        done: "List workspace users on Asana",
+      },
+      asana_list_workspaces: {
+        running: "Listing workspaces on Asana",
+        done: "List workspaces on Asana",
+      },
+    },
   },
   {
     id: 10007,
@@ -168,6 +520,32 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       guru_list_knowledge_agents: "never_ask",
       guru_get_card_by_id: "never_ask",
     },
+    toolDisplayLabels: {
+      guru_answer_generation: {
+        running: "Generating answer on Guru",
+        done: "Generate answer on Guru",
+      },
+      guru_create_draft: {
+        running: "Creating draft on Guru",
+        done: "Create draft on Guru",
+      },
+      guru_search_documents: {
+        running: "Searching documents on Guru",
+        done: "Search documents on Guru",
+      },
+      guru_update_card: {
+        running: "Updating card on Guru",
+        done: "Update card on Guru",
+      },
+      guru_list_knowledge_agents: {
+        running: "Listing knowledge agents on Guru",
+        done: "List knowledge agents on Guru",
+      },
+      guru_get_card_by_id: {
+        running: "Retrieving card on Guru",
+        done: "Retrieve card on Guru",
+      },
+    },
   },
   {
     id: 10009,
@@ -181,6 +559,24 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       list_meetings: "never_ask",
       get_meetings: "never_ask",
       get_meeting_transcript: "never_ask",
+    },
+    toolDisplayLabels: {
+      query_granola_meetings: {
+        running: "Querying meetings on Granola",
+        done: "Query meetings on Granola",
+      },
+      list_meetings: {
+        running: "Listing meetings on Granola",
+        done: "List meetings on Granola",
+      },
+      get_meetings: {
+        running: "Retrieving meetings on Granola",
+        done: "Retrieve meetings on Granola",
+      },
+      get_meeting_transcript: {
+        running: "Retrieving transcript on Granola",
+        done: "Retrieve transcript on Granola",
+      },
     },
   },
   {
@@ -201,6 +597,32 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_conversation: "never_ask",
       search_contacts: "never_ask",
       get_contact: "never_ask",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Intercom",
+        done: "Search on Intercom",
+      },
+      fetch: {
+        running: "Fetching data on Intercom",
+        done: "Fetch data on Intercom",
+      },
+      search_conversations: {
+        running: "Searching conversations on Intercom",
+        done: "Search conversations on Intercom",
+      },
+      get_conversation: {
+        running: "Retrieving conversation on Intercom",
+        done: "Retrieve conversation on Intercom",
+      },
+      search_contacts: {
+        running: "Searching contacts on Intercom",
+        done: "Search contacts on Intercom",
+      },
+      get_contact: {
+        running: "Retrieving contact on Intercom",
+        done: "Retrieve contact on Intercom",
+      },
     },
   },
   //Removed temporaly gitlab server
@@ -323,6 +745,76 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
 
       generate_design: "low",
       create_design_from_candidate: "low",
+    },
+    toolDisplayLabels: {
+      search_designs: {
+        running: "Searching designs on Canva",
+        done: "Search designs on Canva",
+      },
+      get_design: {
+        running: "Retrieving design on Canva",
+        done: "Retrieve design on Canva",
+      },
+      get_design_pages: {
+        running: "Retrieving design pages on Canva",
+        done: "Retrieve design pages on Canva",
+      },
+      get_design_content: {
+        running: "Retrieving design content on Canva",
+        done: "Retrieve design content on Canva",
+      },
+      get_export_formats: {
+        running: "Retrieving export formats on Canva",
+        done: "Retrieve export formats on Canva",
+      },
+      list_folder_items: {
+        running: "Listing folder items on Canva",
+        done: "List folder items on Canva",
+      },
+      list_comments: {
+        running: "Listing comments on Canva",
+        done: "List comments on Canva",
+      },
+      list_replies: {
+        running: "Listing replies on Canva",
+        done: "List replies on Canva",
+      },
+      import_design_from_url: {
+        running: "Importing design on Canva",
+        done: "Import design on Canva",
+      },
+      export_design: {
+        running: "Exporting design on Canva",
+        done: "Export design on Canva",
+      },
+      comment_on_design: {
+        running: "Commenting on Canva",
+        done: "Comment on Canva",
+      },
+      reply_to_comment: {
+        running: "Replying to comment on Canva",
+        done: "Reply to comment on Canva",
+      },
+      create_folder: {
+        running: "Creating folder on Canva",
+        done: "Create folder on Canva",
+      },
+      move_item_to_folder: {
+        running: "Moving item to folder on Canva",
+        done: "Move item to folder on Canva",
+      },
+      upload_asset_from_url: {
+        running: "Uploading asset on Canva",
+        done: "Upload asset on Canva",
+      },
+      generate_design: {
+        running: "Generating design on Canva",
+        done: "Generate design on Canva",
+      },
+      create_design_from_candidate: {
+        running: "Creating design on Canva",
+        done: "Create design on Canva",
+      },
     },
   },
 ];
