@@ -239,7 +239,7 @@ jobs:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const component = process.env.COMPONENT;
-            const isFront = component === 'front' || component === 'front-edge';
+            const isFront = component === 'front';
             const deploySpaApp = process.env.DEPLOY_SPA_APP === 'true';
             const deploySpaAppPoke = process.env.DEPLOY_SPA_POKE === 'true';
 
