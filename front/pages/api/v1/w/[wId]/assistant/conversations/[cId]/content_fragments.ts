@@ -10,6 +10,7 @@ import {
   isContentFragmentInputWithInlinedContent,
 } from "@app/types/api/internal/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isInteractiveContentFileContentType } from "@app/types/files";
 import type { PostContentFragmentResponseType } from "@dust-tt/client";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -168,7 +169,28 @@ async function handler(
         });
       }
 
-      res.status(200).json({ contentFragment: contentFragmentRes.value });
+      const publicContentFragment =
+        !contentFragmentRes.value ||
+        isInteractiveContentFileContentType(
+          contentFragmentRes.value.contentType
+        )
+          ? undefined
+          : {
+              ...contentFragmentRes.value,
+              contentType: contentFragmentRes.value.contentType,
+            };
+
+      if (!publicContentFragment) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Content fragment is not supported.",
+          },
+        });
+      }
+
+      res.status(200).json({ contentFragment: publicContentFragment });
       return;
     default:
       return apiError(req, res, {

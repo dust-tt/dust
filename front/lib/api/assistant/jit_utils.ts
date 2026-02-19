@@ -11,10 +11,6 @@ import {
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import {
-  isInteractiveContentFileContentType,
-  isLLMVisionSupportedImageContentType,
-} from "@app/types/files";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
@@ -25,11 +21,6 @@ export function listAttachments(
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
     if (isContentFragmentType(m)) {
-      // Skip images handled by vision APIs; SVG is text-based so we list it.
-      if (isLLMVisionSupportedImageContentType(m.contentType)) {
-        continue;
-      }
-
       // Only list the latest version of a content fragment.
       if (m.contentFragmentVersion !== "latest") {
         continue;
@@ -43,11 +34,6 @@ export function listAttachments(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        // Interactive Content files should not be shown in the JIT.
-        if (isInteractiveContentFileContentType(f.contentType)) {
-          continue;
-        }
-
         attachments.push(
           getAttachmentFromFile({
             fileId: f.fileId,
