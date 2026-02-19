@@ -16,10 +16,12 @@ import {
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
+import { isInteractiveContentFileContentType } from "@app/types/files";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentMessagePublicType,
+  ContentFragmentType as ContentFragmentPublicType,
   ConversationPublicType,
   ConversationWithoutContentPublicType,
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
@@ -82,6 +84,18 @@ export function addBackwardCompatibleConversationWithoutContentFields(
   };
 }
 
+export function filterOutInteractiveContentFileContentTypes(
+  c: ContentFragmentType[]
+): ContentFragmentPublicType[] {
+  const result: ContentFragmentPublicType[] = [];
+  for (const m of c) {
+    if (isInteractiveContentFileContentType(m.contentType)) {
+      continue;
+    }
+  }
+  return result;
+}
+
 export function addBackwardCompatibleConversationFields(
   conversation: ConversationType
 ): ConversationPublicType {
@@ -102,7 +116,7 @@ export function addBackwardCompatibleConversationFields(
       } else if (
         isArrayOf<MessageType, ContentFragmentType>(c, isContentFragmentType)
       ) {
-        return c.map((m) => m);
+        return filterOutInteractiveContentFileContentTypes(c);
       }
       assertNever(c[0]);
     }),

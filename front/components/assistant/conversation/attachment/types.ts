@@ -1,7 +1,7 @@
 import type { SupportedContentFragmentType } from "@app/types/content_fragment";
 import type {
+  AllSupportedFileContentType,
   AllSupportedWithDustSpecificFileContentType,
-  SupportedFileContentType,
 } from "@app/types/files";
 import type React from "react";
 
@@ -12,7 +12,7 @@ export type FileAttachment = {
   // key like "tool-{serverViewId}-{externalId}".
   id: string;
   title: string;
-  contentType: SupportedFileContentType;
+  contentType: AllSupportedFileContentType;
   isUploading: boolean;
   onRemove?: () => void;
   description?: string;

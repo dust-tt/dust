@@ -11,7 +11,7 @@ import type {
 } from "./assistant/conversation";
 import type { ContentNodeType } from "./core/content_node";
 import type { DataSourceViewContentNode } from "./data_source_view";
-import type { SupportedFileContentType } from "./files";
+import type { AllSupportedFileContentType } from "./files";
 import type { ModelId } from "./shared/model_id";
 
 export type ContentFragmentExpiredReason = "data_source_deleted";
@@ -26,7 +26,7 @@ export type ContentFragmentContextType = {
 export type ContentFragmentVersion = "superseded" | "latest";
 
 export type SupportedContentFragmentType =
-  | SupportedFileContentType
+  | AllSupportedFileContentType
   | DustMimeType
   | "dust-application/slack"; // Legacy
 
