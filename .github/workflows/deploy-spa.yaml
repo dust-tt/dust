@@ -26,6 +26,11 @@ on:
           - us
         default: "us"
         required: true
+      promote:
+        description: "Promote SPA deploy to production (if false, deploy as preview only)"
+        type: boolean
+        default: true
+        required: false
   workflow_call:
     inputs:
       app:
@@ -58,7 +63,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prevent edge deploys from main
+        if: ${{ github.ref == 'refs/heads/main' && inputs.env == 'edge' }}
+        run: |
+          echo "Error: Cannot deploy with env 'edge' from the main branch"
+          exit 1
+      - name: Prevent promote from non-main branches
+        if: ${{ github.ref != 'refs/heads/main' && inputs.promote == true }}
+        run: |
+          echo "Error: Promote can only be used from the main branch"
+          exit 1
+
   prepare:
+    needs: [check-branch]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
