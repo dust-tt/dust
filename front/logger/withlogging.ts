@@ -1,5 +1,5 @@
-import { getSession } from "@app/lib/auth";
 import { shouldForceClientReload } from "@app/lib/api/force_client_reload";
+import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
   CustomGetServerSideProps,
