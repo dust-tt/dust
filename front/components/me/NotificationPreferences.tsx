@@ -449,20 +449,17 @@ export const NotificationPreferences = forwardRef<
     preference: Preference,
     displaySlackOption: boolean
   ) => {
-    if (notifyCondition === "never") {
-      return "-";
-    }
     const displayedChannels: string[] = [];
     if (preference.channels.in_app) {
-      displayedChannels.push("In-app popup");
+      displayedChannels.push("in-app popup");
     }
     if (preference.channels.chat && displaySlackOption) {
       displayedChannels.push("Slack");
     }
     if (preference.channels.email) {
-      displayedChannels.push("Email");
+      displayedChannels.push("email");
     }
-    return displayedChannels.length > 0 ? displayedChannels.join(", ") : "None";
+    return displayedChannels.length > 0 ? displayedChannels.join(", ") : "none";
   };
 
   if (isLoadingPreferences || isSlackSetupLoading) {
@@ -533,7 +530,10 @@ export const NotificationPreferences = forwardRef<
             <Tooltip
               label="You'll still be notified if you're the only participant in a conversation."
               trigger={
-                <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+                <InformationCircleIcon
+                  onClick={(e) => e.preventDefault()}
+                  className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night"
+                />
               }
             />
           )}
@@ -560,7 +560,7 @@ export const NotificationPreferences = forwardRef<
             <DropdownMenuContent>
               {conversationPreferences.channels.in_app !== undefined && (
                 <DropdownMenuCheckboxItem
-                  label="In-app popup"
+                  label="in-app popup"
                   checked={isConversationInAppEnabled}
                   onCheckedChange={(checked) =>
                     updateConversationChannelPreference("in_app", checked)
@@ -581,7 +581,7 @@ export const NotificationPreferences = forwardRef<
                 )}
               {conversationPreferences.channels.email !== undefined && (
                 <DropdownMenuCheckboxItem
-                  label="Email"
+                  label="email"
                   checked={isConversationEmailEnabled}
                   onCheckedChange={(checked) =>
                     updateConversationChannelPreference("email", checked)
@@ -656,7 +656,7 @@ export const NotificationPreferences = forwardRef<
                 {projectNewConversationPreferences.channels.in_app !==
                   undefined && (
                   <DropdownMenuCheckboxItem
-                    label="In-app popup"
+                    label="in-app popup"
                     checked={isProjectNewConversationInAppEnabled}
                     onCheckedChange={(checked) =>
                       updateProjectNewConversationChannelPreference(
@@ -683,7 +683,7 @@ export const NotificationPreferences = forwardRef<
                 {projectNewConversationPreferences.channels.email !==
                   undefined && (
                   <DropdownMenuCheckboxItem
-                    label="Email"
+                    label="email"
                     checked={isProjectNewConversationEmailEnabled}
                     onCheckedChange={(checked) =>
                       updateProjectNewConversationChannelPreference(
