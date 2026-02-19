@@ -409,7 +409,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           },
         },
       },
-      { includeMetadata}
+      { includeMetadata }
     );
 
     return views ?? [];
