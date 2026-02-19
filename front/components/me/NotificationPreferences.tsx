@@ -449,9 +449,6 @@ export const NotificationPreferences = forwardRef<
     preference: Preference,
     displaySlackOption: boolean
   ) => {
-    if (notifyCondition === "never") {
-      return "-";
-    }
     const displayedChannels: string[] = [];
     if (preference.channels.in_app) {
       displayedChannels.push("In-app popup");
