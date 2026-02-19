@@ -58,16 +58,6 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Only builders can access agent observability.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const q = QuerySchema.safeParse(req.query);
