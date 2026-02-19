@@ -6,7 +6,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const DEFAULT_SCENARIO: CopilotScenario = "from-scratch";
 const COPILOT_SCENARIOS = [
   "shrink-wrap",
   "template",
@@ -25,12 +24,19 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<string>>,
   auth: Authenticator
 ): Promise<void> {
-  const { scenario: scenarioQuery } = req.query;
+  const { scenario } = req.query;
 
-  const scenario =
-    isString(scenarioQuery) && isCopilotScenario(scenarioQuery)
-      ? scenarioQuery
-      : DEFAULT_SCENARIO;
+  if (!isString(scenario) || !isCopilotScenario(scenario)) {
+    return apiError(req, res, {
+      status_code: 422,
+      api_error: {
+        type: "unprocessable_entity",
+        message: `The scenario query parameter is invalid or missing. Expected one of: ${COPILOT_SCENARIOS.join(
+          ", "
+        )}.`,
+      },
+    });
+  }
 
   switch (req.method) {
     case "GET":
