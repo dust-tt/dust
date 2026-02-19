@@ -68,6 +68,7 @@ async function createRedisClient({
     socket: options?.socket,
     isolationPoolOptions:
       options?.isolationPoolOptions ?? DEFAULT_ISOLATION_POOL_OPTIONS,
+    disableClientInfo: true,
   });
   newClient.on("error", (err) => logger.info({ err }, "Redis Client Error"));
   newClient.on("ready", () => logger.info({}, "Redis Client Ready"));
