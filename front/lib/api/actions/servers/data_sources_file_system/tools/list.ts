@@ -150,8 +150,8 @@ export async function list(
     if (searchResult.error.code === "cursor_sort_mismatch") {
       return new Err(
         new MCPError(
-          "The nextPageCursor was generated with a different sortBy value. " +
-            "When paginating, you must pass the same sortBy on every page request.",
+          "The nextPageCursor passed was generated with a different sortBy value. You " +
+            "may reuse the same nextPageCursor with the same sortBy that was used to generate it.",
           { tracked: false }
         )
       );
