@@ -12,7 +12,9 @@ function buildFirstMessage(shrinkWrappedConversation: string): string {
   return `<dust_system>
 Build an agent that replicates the workflow shown in the conversation below.
 
+<conversation>
 ${shrinkWrappedConversation}
+</conversation>
 
 Analyze this conversation to identify the replicatable workflow. Before suggesting agent instructions, confirm with me (unless all are obvious from the conversation):
 
