@@ -9,7 +9,9 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SearchConversationsResponseBody = {
-  conversations: Array<ConversationWithoutContentType>;
+  conversations: Array<
+    ConversationWithoutContentType & { spaceName: string | null }
+  >;
   hasMore: boolean;
   lastValue: string | null;
 };
@@ -48,12 +50,12 @@ async function handler(
   }
 
   const { query } = req.query;
-  if (!isString(query) || query.length < 3) {
+  if (!isString(query) || query.length === 0) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Query parameter must be at least 3 characters",
+        message: "Query parameter is required",
       },
     });
   }
@@ -69,7 +71,10 @@ async function handler(
     },
   });
 
-  const conversations = result.conversations.map((c) => c.toJSON());
+  const conversations = result.conversations.map((c) => ({
+    ...c.toJSON(),
+    spaceName: null,
+  }));
 
   return res.status(200).json({
     conversations,

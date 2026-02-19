@@ -40,9 +40,6 @@ export const MessageBaseSchema = t.type({
 
 export const InternalPostMessagesRequestBodySchema = t.intersection([
   MessageBaseSchema,
-  t.type({
-    clientVersion: t.string,
-  }),
   t.partial({
     skipToolsValidation: t.boolean,
   }),
