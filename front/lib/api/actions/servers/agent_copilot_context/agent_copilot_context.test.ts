@@ -1955,6 +1955,7 @@ describe("agent_copilot_context tools", () => {
 
       // Create a template without copilotInstructions.
       const template = await TemplateFactory.published();
+      await template.updateAttributes({ copilotInstructions: null });
 
       const tool = getToolByName("get_agent_template");
       const result = await tool.handler(
