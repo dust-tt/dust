@@ -24,6 +24,7 @@ import type {
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import { TokenExpiredError } from "jsonwebtoken";
@@ -86,7 +87,7 @@ function getAssistantConversationIdFromRequest(
     return null;
   }
 
-  return typeof req.query.cId === "string" ? req.query.cId : null;
+  return isString(req.query.cId) ? req.query.cId : null;
 }
 
 function getConversationKillSwitchErrorForRequest(
