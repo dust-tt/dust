@@ -83,9 +83,6 @@ const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
 function getAssistantConversationIdFromRequest(
   req: NextApiRequest
 ): string | null {
-  if (!req.url?.includes(ASSISTANT_CONVERSATION_ROUTE_FRAGMENT)) {
-    return null;
-  }
 
   return isString(req.query.cId) ? req.query.cId : null;
 }
