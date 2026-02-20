@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { Fetcher } from "swr";
 
@@ -7,6 +7,7 @@ export function useLandingAuthContext({
 }: {
   hasSessionCookie: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const authContextFetcher: Fetcher<GetNoWorkspaceAuthContextResponseType> =
     fetcher;
 

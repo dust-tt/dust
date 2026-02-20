@@ -1,6 +1,6 @@
 import {
   emptyArray,
-  fetcher,
+  useFetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
@@ -26,6 +26,7 @@ export function useConversations({
   workspaceId: string;
   limit?: number;
 }) {
+  const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
 
   const { data, error, mutate, size, setSize, isValidating } =

@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetWebhookSourceDetails } from "@app/pages/api/poke/workspaces/[wId]/webhook_sources/[wsId]/details";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -14,6 +14,7 @@ export function usePokeWebhookSourceDetails({
   owner,
   webhookSourceId,
 }: UsePokeWebhookSourceDetailsProps) {
+  const { fetcher } = useFetcher();
   const detailsFetcher: Fetcher<PokeGetWebhookSourceDetails> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/webhook_sources/${webhookSourceId}/details`,

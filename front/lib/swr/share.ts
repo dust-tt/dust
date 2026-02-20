@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetShareFrameMetadataResponseBody } from "@app/pages/api/share/frame/[token]";
 import type { Fetcher } from "swr";
 
@@ -7,6 +7,7 @@ export function useShareFrameMetadata({
 }: {
   shareToken: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const shareMetadataFetcher: Fetcher<GetShareFrameMetadataResponseBody> =
     fetcher;
 

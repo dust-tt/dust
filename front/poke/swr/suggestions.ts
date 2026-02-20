@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListSuggestions } from "@app/pages/api/poke/workspaces/[wId]/assistants/[aId]/suggestions";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
@@ -12,6 +12,7 @@ export function usePokeSuggestions({
   owner,
   agentId,
 }: PokeSuggestionsFetchProps) {
+  const { fetcher } = useFetcher();
   const suggestionsFetcher: Fetcher<PokeListSuggestions> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(

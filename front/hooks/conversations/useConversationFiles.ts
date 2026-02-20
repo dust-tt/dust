@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
@@ -13,6 +13,7 @@ export function useConversationFiles({
   options?: { disabled?: boolean };
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const conversationFilesFetcher: Fetcher<GetConversationFilesResponseBody> =
     fetcher;
 

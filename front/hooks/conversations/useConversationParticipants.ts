@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
@@ -16,6 +16,7 @@ export function useConversationParticipants({
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
+  const { fetcher } = useFetcher();
   const conversationParticipantsFetcher: Fetcher<FetchConversationParticipantsResponse> =
     fetcher;
 

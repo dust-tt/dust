@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListConversations } from "@app/pages/api/poke/workspaces/[wId]/conversations";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
@@ -14,6 +14,7 @@ export function usePokeConversations({
   agentId,
   triggerId,
 }: PokeConversationsFetchProps) {
+  const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<PokeListConversations> = fetcher;
 
   let url: string | null = null;

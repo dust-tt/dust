@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets/[name]";
 import type { AppType } from "@app/types/app";
@@ -14,6 +14,7 @@ export function useDatasets({
   app: AppType | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const isDisabled = disabled || !app;
@@ -41,6 +42,7 @@ export function useDataset(
   dataset: string | undefined,
   showData = false
 ) {
+  const { fetcher } = useFetcher();
   const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
   const disabled = !dataset || !app;
   const { data, error, mutate } = useSWRWithDefaults(

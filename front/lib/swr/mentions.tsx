@@ -1,8 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
@@ -39,6 +39,7 @@ export function useMentionSuggestions({
   disabled?: boolean;
   includeCurrentUser?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);

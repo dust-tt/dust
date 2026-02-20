@@ -4,8 +4,7 @@ import type {
 } from "@app/lib/api/pagination";
 import {
   emptyArray,
-  fetcher,
-  fetcherWithBody,
+  useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -37,6 +36,7 @@ export function useDataSourceViews(
   owner: LightWorkspaceType,
   options = { disabled: false }
 ) {
+  const { fetcher } = useFetcher();
   const { disabled } = options;
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewsResponseBody> =
     fetcher;
@@ -75,6 +75,7 @@ export function useMultipleDataSourceViewsContentNodes({
   // We need to return an invalidation function to avoid stale data.
   invalidate: () => void;
 } {
+  const { fetcherWithBody } = useFetcher();
   const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] = useState<
     DataSourceViewsAndNodes[]
   >(emptyArray());
@@ -245,6 +246,7 @@ export function useDataSourceViewContentNodes({
   totalNodesCountIsAccurate: boolean;
   nextPageCursor: string | null;
 } {
+  const { fetcherWithBody } = useFetcher();
   const params = new URLSearchParams();
   if (pagination?.cursor) {
     params.append("cursor", pagination.cursor);
@@ -310,6 +312,7 @@ export function useInfiniteDataSourceViewContentNodes({
   sorting,
   swrOptions,
 }: FetchDataSourceViewContentNodesOptions) {
+  const { fetcherWithBody } = useFetcher();
   const { data, error, isLoading, size, setSize, mutate, isValidating } =
     useSWRInfiniteWithDefaults<
       [string, GetContentNodesOrChildrenRequestBodyType] | null,
@@ -384,6 +387,7 @@ export function useDataSourceViewConnectorConfiguration({
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceConfigurationResponseBody> =
     fetcher;
   const disabled = !dataSourceView;
@@ -414,6 +418,7 @@ export function useDataSourceViewSearchTags({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { fetcherWithBody } = useFetcher();
   const url =
     query.length >= MIN_SEARCH_QUERY_SIZE
       ? `/api/w/${owner.sId}/data_source_views/tags/search`

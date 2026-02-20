@@ -1,6 +1,6 @@
 import {
   emptyArray,
-  fetcher,
+  useFetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
 import type { SearchProjectsResponseBody } from "@app/pages/api/w/[wId]/spaces/search_projects";
@@ -22,6 +22,7 @@ export function useSearchProjects({
   query = "",
   limit = 20,
 }: UseSearchProjectsParams) {
+  const { fetcher } = useFetcher();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   useEffect(() => {

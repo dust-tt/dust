@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import type { GetProductionChecksResponseBody } from "@app/pages/api/poke/production-checks";
 import type { GetCheckHistoryResponseBody } from "@app/pages/api/poke/production-checks/[checkName]/history";
 import { useState } from "react";
@@ -11,6 +11,7 @@ const REFRESH_INTERVAL_MS = 30000;
 const REFETCH_DELAY_MS = 2000;
 
 export function usePokeProductionChecks() {
+  const { fetcher } = useFetcher();
   const productionChecksFetcher: Fetcher<GetProductionChecksResponseBody> =
     fetcher;
 
@@ -29,6 +30,7 @@ export function usePokeProductionChecks() {
 }
 
 export function usePokeCheckHistory(checkName: string, enabled: boolean) {
+  const { fetcher } = useFetcher();
   const checkHistoryFetcher: Fetcher<GetCheckHistoryResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWR(

@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListMCPServerViews } from "@app/pages/api/poke/workspaces/[wId]/mcp/views";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
@@ -15,6 +15,7 @@ export function usePokeMCPServerViews({
   owner,
   globalSpaceOnly,
 }: UsePokeMCPServerViewsProps) {
+  const { fetcher } = useFetcher();
   const mcpServerViewsFetcher: Fetcher<PokeListMCPServerViews> = fetcher;
 
   const params = new URLSearchParams();

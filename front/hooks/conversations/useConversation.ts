@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type {
   ConversationError,
@@ -22,6 +22,7 @@ export function useConversation({
     typeof useSWRWithDefaults<string, GetConversationResponseBody>
   >["mutate"];
 } {
+  const { fetcher } = useFetcher();
   const conversationFetcher: Fetcher<GetConversationResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(

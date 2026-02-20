@@ -1,7 +1,7 @@
 import type { RegionType } from "@app/lib/api/regions/config";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
 import type {
   GetPokeWorkspacesResponseBody,
@@ -18,6 +18,7 @@ export function usePokeSearch({
   disabled?: boolean;
   search?: string;
 } = {}) {
+  const { fetcher } = useFetcher();
   const workspacesFetcher: Fetcher<GetPokeSearchItemsResponseBody> = fetcher;
 
   const queryParams = new URLSearchParams({

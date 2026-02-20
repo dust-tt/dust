@@ -18,7 +18,7 @@ import type {
   MCPServerConnectionType,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,
@@ -105,6 +105,7 @@ export function useMCPServer({
   owner: LightWorkspaceType;
   serverId: string;
 }) {
+  const { fetcher } = useFetcher();
   const serverFetcher: Fetcher<GetMCPServerResponseBody> = fetcher;
 
   const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
@@ -141,6 +142,7 @@ export function useAvailableMCPServers({
   space?: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = space
@@ -176,6 +178,7 @@ export function useMCPServers({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/mcp`;
@@ -620,6 +623,7 @@ export function useMCPServerConnections({
   connectionType: MCPServerConnectionConnectionType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const connectionsFetcher: Fetcher<GetConnectionsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -950,6 +954,7 @@ export function useMCPServerViews({
   availability?: MCPServerAvailability | "all";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsResponseBody> = fetcher;
   const url = getMCPServerViewsKey(owner, space, availability);
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
@@ -1043,6 +1048,7 @@ export function useMCPServersUsage({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersUsageResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/mcp/usage`,
@@ -1068,6 +1074,7 @@ export function useMCPServerViewsNotActivated({
   space: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsNotActivatedResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
@@ -1213,6 +1220,7 @@ function useMCPServerViewsFromSpacesBase(
   availabilities: MCPServerAvailability[],
   swrOptions?: SWRConfiguration
 ) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
 
   const spaceIds = spaces.map((s) => s.sId).join(",");

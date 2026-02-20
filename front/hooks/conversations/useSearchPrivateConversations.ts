@@ -1,6 +1,6 @@
 import {
   emptyArray,
-  fetcher,
+  useFetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
 import type { SearchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/search";
@@ -24,6 +24,7 @@ export function useSearchPrivateConversations({
   query = "",
   limit = 20,
 }: UseSearchPrivateConversationsParams) {
+  const { fetcher } = useFetcher();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   useEffect(() => {

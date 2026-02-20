@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { CourseProgressData } from "@app/pages/api/academy/progress/courses";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
@@ -66,7 +66,10 @@ interface PostProgressResponse {
   isNewCompletion: boolean;
 }
 
-function makeBrowserIdFetcher<T>(browserId: string | null): Fetcher<T, string> {
+function makeBrowserIdFetcher<T>(
+  browserId: string | null,
+  fetcher: Fetcher<T, string>
+): Fetcher<T, string> {
   if (!browserId) {
     return fetcher;
   }
@@ -93,8 +96,9 @@ export function useAcademyContentProgress({
   disabled?: boolean;
   browserId?: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const progressFetcher: Fetcher<GetProgressResponse, string> =
-    makeBrowserIdFetcher(browserId ?? null);
+    makeBrowserIdFetcher(browserId ?? null, fetcher);
 
   // `_bid` is a cache-busting parameter so SWR refetches when the browserId
   // becomes available (it starts as null during SSR). The server ignores it;
@@ -122,8 +126,9 @@ export function useAcademyCourseProgress({
   disabled?: boolean;
   browserId?: string | null;
 } = {}) {
+  const { fetcher } = useFetcher();
   const courseProgressFetcher: Fetcher<GetCourseProgressResponse, string> =
-    makeBrowserIdFetcher(browserId ?? null);
+    makeBrowserIdFetcher(browserId ?? null, fetcher);
 
   // `_bid` is a cache-busting parameter so SWR refetches when the browserId
   // becomes available (it starts as null during SSR). The server ignores it;

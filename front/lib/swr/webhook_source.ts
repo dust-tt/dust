@@ -2,8 +2,8 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
@@ -34,6 +34,7 @@ export function useWebhookSourceViews({
   space?: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookSourceViewsResponseBody> = fetcher;
   const url =
     space !== undefined
@@ -64,6 +65,7 @@ export function useWebhookSourceViewsFromSpaces(
   spaces: SpaceType[],
   disabled?: boolean
 ) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookSourceViewsListResponseBody> = fetcher;
 
   const spaceIds = spaces.map((s) => s.sId).join(",");
@@ -89,6 +91,7 @@ export function useWebhookSourcesWithViews({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookSourcesResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/webhook_sources`;
@@ -291,6 +294,7 @@ export function useWebhookSourceViewsByWebhookSource({
   webhookSourceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetSpecificWebhookSourceViewsResponseBody> =
     fetcher;
   const url = `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}/views`;
@@ -457,6 +461,7 @@ export function useWebhookRequestTriggersForTrigger({
   triggerId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookRequestsResponseBody> = fetcher;
 
   const url =

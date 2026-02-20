@@ -4,8 +4,8 @@ import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -144,6 +144,7 @@ export function useFileMetadata({
   owner: LightWorkspaceType;
   cacheKey?: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const fileMetadataFetcher: Fetcher<FileTypeWithMetadata> = fetcher;
 
   // Include cacheKey in the SWR key if provided to force cache invalidation.
@@ -212,6 +213,7 @@ export function useFileSignedUrl({
   owner: LightWorkspaceType;
   config?: SWRConfiguration & { disabled?: boolean };
 }) {
+  const { fetcher } = useFetcher();
   const signedUrlFetcher: Fetcher<{ signedUrl: string }> = fetcher;
   const isDisabled = config?.disabled ?? !fileId;
 
@@ -236,6 +238,7 @@ export function useShareInteractiveContentFile({
   fileId: string;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
 
   const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;

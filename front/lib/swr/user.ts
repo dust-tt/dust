@@ -2,8 +2,8 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
@@ -23,6 +23,7 @@ export function useUser(
     disabled?: boolean;
   }
 ) {
+  const { fetcher } = useFetcher();
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher, {
     revalidateOnFocus: false,
@@ -46,6 +47,7 @@ export function useUserMetadata(
     workspaceId?: string;
   }
 ) {
+  const { fetcher } = useFetcher();
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
   let url = `/api/user/metadata/${encodeURIComponent(key)}`;
@@ -69,6 +71,7 @@ export function useUserMetadata(
 }
 
 export function useUserApprovals(owner: LightWorkspaceType) {
+  const { fetcher } = useFetcher();
   const userApprovalsFetcher: Fetcher<GetUserApprovalsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -179,6 +182,7 @@ export function usePendingInvitations({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsResponseBody> =
     fetcher;
 
@@ -202,6 +206,7 @@ export function useSlackNotifications(
     disabled?: boolean;
   }
 ) {
+  const { fetcher } = useFetcher();
   const slackNotificationsFetcher: Fetcher<GetSlackNotificationResponseBody> =
     fetcher;
 

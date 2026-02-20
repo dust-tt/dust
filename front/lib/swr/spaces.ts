@@ -9,9 +9,8 @@ import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
 import {
   emptyArray,
-  fetcher,
-  fetcherWithBody,
   getErrorFromResponse,
+  useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -61,6 +60,7 @@ export function useSpaces({
   kinds: SpaceKind[] | "all";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -96,6 +96,7 @@ export function useSpaceProjectsLookup({
   spaceIds: string[];
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesLookupFetcher: Fetcher<SpacesLookupResponseBody> = fetcher;
 
   const query =
@@ -135,6 +136,7 @@ export function useSpacesAsAdmin({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -162,6 +164,7 @@ export function useSpaceInfo({
   disabled?: boolean;
   includeAllMembers?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const spacesCategoriesFetcher: Fetcher<GetSpaceResponseBody> = fetcher;
 
   const queryParams = includeAllMembers ? "?includeAllMembers=true" : "";
@@ -196,6 +199,7 @@ export function useSpaceDataSourceView({
   owner: LightWorkspaceType;
   spaceId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewResponseBody> =
     fetcher;
 
@@ -227,6 +231,7 @@ export function useSpaceDataSourceViews({
   spaceId: string;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const spacesDataSourceViewsFetcher: Fetcher<
     GetSpaceDataSourceViewsResponseBody<false>
   > = fetcher;
@@ -263,6 +268,7 @@ export function useSpaceDataSourceViewsWithDetails({
   spaceId: string;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const spacesDataSourceViewsFetcher: Fetcher<
     GetSpaceDataSourceViewsResponseBody<true>
   > = fetcher;
@@ -721,6 +727,7 @@ export function useSystemSpace({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const systemSpaceFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -794,6 +801,7 @@ export function useSpacesSearch({
   nextPageCursor: string | null;
   resultsCount: number | null;
 } {
+  const { fetcherWithBody } = useFetcher();
   const params = new URLSearchParams();
   if (pagination?.cursor) {
     params.append("cursor", pagination.cursor);
@@ -874,6 +882,7 @@ export function useSpacesSearchWithInfiniteScroll({
   nextPage: () => Promise<void>;
   hasMore: boolean;
 } {
+  const { fetcherWithBody } = useFetcher();
   const body = {
     query: search,
     viewType,
@@ -947,6 +956,7 @@ export function useProjectMetadata({
   spaceId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const projectMetadataFetcher: Fetcher<GetProjectMetadataResponseBody> =
     fetcher;
 
@@ -1022,6 +1032,7 @@ export function useUserProjectDigests({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const digestsFetcher: Fetcher<GetUserProjectDigestsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -1048,6 +1059,7 @@ export function useDigestGenerationStatus({
   workspaceId: string;
   spaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const statusFetcher: Fetcher<GetDigestGenerationStatusResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(

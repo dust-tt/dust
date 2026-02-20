@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillEditorsResponseBody,
   PatchSkillEditorsRequestBody,
@@ -19,6 +19,7 @@ export function useSkillEditors({
   skillId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const editorsFetcher: Fetcher<GetSkillEditorsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(

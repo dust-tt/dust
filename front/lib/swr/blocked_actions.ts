@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetBlockedActionsResponseType } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/actions/blocked";
 import type { Fetcher } from "swr";
 
@@ -9,6 +9,7 @@ export function useBlockedActions({
   conversationId: string | null;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const blockedActionsFetcher: Fetcher<GetBlockedActionsResponseType> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(

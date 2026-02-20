@@ -1,5 +1,5 @@
 import {
-  fetcher,
+  useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -18,6 +18,7 @@ export function useConversationMessages({
   limit: number;
   startAtRank?: number;
 }) {
+  const { fetcher } = useFetcher();
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
@@ -74,6 +75,7 @@ export function useConversationMessage({
     disabled: boolean;
   };
 }) {
+  const { fetcher } = useFetcher();
   const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
 
   const { data, error, mutate, isLoading, isValidating } = useSWRWithDefaults(

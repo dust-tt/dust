@@ -1,4 +1,4 @@
-import { fetcherWithBody } from "@app/lib/swr/swr";
+import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -55,7 +55,8 @@ export function getTableIdForContentNode(
 async function expandFolderToTables(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
-  folderNode: LightContentNode
+  folderNode: LightContentNode,
+  fetcherWithBody: FetcherWithBodyFn
 ): Promise<LightContentNode[]> {
   try {
     const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
@@ -92,11 +93,13 @@ async function expandFolderToTables(
 export async function expandFoldersToTables(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
-  folderNodes: LightContentNode[]
+  folderNodes: LightContentNode[],
+  fetcherWithBody: FetcherWithBodyFn
 ): Promise<LightContentNode[]> {
   const tablesArrays = await concurrentExecutor(
     folderNodes,
-    (folderNode) => expandFolderToTables(owner, dataSourceView, folderNode),
+    (folderNode) =>
+      expandFolderToTables(owner, dataSourceView, folderNode, fetcherWithBody),
     { concurrency: 5 }
   );
 

@@ -2,7 +2,7 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
@@ -13,6 +13,7 @@ export type PokeCreditsData = {
 };
 
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
   const creditsFetcher: Fetcher<PokeListCreditsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -49,6 +50,7 @@ export function usePokeProgrammaticCost({
   billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
 
   const queryParams = new URLSearchParams();

@@ -1,6 +1,8 @@
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
+import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import Custom404 from "@dust-tt/front/pages/404";
 import { Spinner, safeLazy } from "@dust-tt/sparkle";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
@@ -531,13 +533,15 @@ const router = createBrowserRouter(
 export default function App() {
   return (
     <AppReadyProvider>
-      <RegionProvider>
-        <RootLayout>
-          <ErrorBoundary fallback={<GlobalErrorFallback />}>
-            <RouterProvider router={router} />
-          </ErrorBoundary>
-        </RootLayout>
-      </RegionProvider>
+      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+        <RegionProvider>
+          <RootLayout>
+            <ErrorBoundary fallback={<GlobalErrorFallback />}>
+              <RouterProvider router={router} />
+            </ErrorBoundary>
+          </RootLayout>
+        </RegionProvider>
+      </FetcherProvider>
     </AppReadyProvider>
   );
 }

@@ -22,6 +22,8 @@ const CONSOLE_MESSAGE_SHOWN_KEY = "dust_console_message_shown";
 
 import { PostHogTracker } from "@app/components/app/PostHogTracker";
 import RootLayout from "@app/components/app/RootLayout";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
+import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
 
 if (DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
@@ -127,9 +129,11 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
   return (
     <PostHogTracker>
-      <RootLayout>
-        {getLayout(<Component {...pageProps} />, pageProps)}
-      </RootLayout>
+      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+        <RootLayout>
+          {getLayout(<Component {...pageProps} />, pageProps)}
+        </RootLayout>
+      </FetcherProvider>
     </PostHogTracker>
   );
 }

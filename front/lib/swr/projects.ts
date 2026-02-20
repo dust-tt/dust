@@ -2,8 +2,8 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -29,6 +29,7 @@ export function useProjectFiles({
   projectId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const projectFilesFetcher: Fetcher<GetProjectFilesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -135,6 +136,7 @@ export function useCheckProjectName({
   owner: LightWorkspaceType;
   initialName?: string;
 }) {
+  const { fetcher } = useFetcher();
   const {
     debouncedValue: debouncedName,
     isDebouncing,
