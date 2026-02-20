@@ -1,6 +1,8 @@
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
+import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { SWRConfig } from "swr";
 
@@ -24,10 +26,12 @@ const router = createBrowserRouter(
 
 export default function ShareApp() {
   return (
-    <RegionProvider>
-      <SWRConfig>
-        <RouterProvider router={router} />
-      </SWRConfig>
-    </RegionProvider>
+    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+      <RegionProvider>
+        <SWRConfig>
+          <RouterProvider router={router} />
+        </SWRConfig>
+      </RegionProvider>
+    </FetcherProvider>
   );
 }
