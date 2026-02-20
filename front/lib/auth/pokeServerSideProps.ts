@@ -1,3 +1,4 @@
+import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AuthContextNoWorkspaceValue,
   AuthContextValue,
@@ -27,6 +28,7 @@ export const pokeGetServerSideProps =
     }
 
     const subscription = auth.getNonNullableSubscription();
+    const featureFlags = await getFeatureFlags(workspace);
 
     return {
       props: {
@@ -35,6 +37,7 @@ export const pokeGetServerSideProps =
         user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
+        featureFlags,
       },
     };
   });

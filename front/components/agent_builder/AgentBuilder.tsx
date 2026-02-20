@@ -43,6 +43,7 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAppRouter } from "@app/lib/platform";
@@ -52,7 +53,6 @@ import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -115,7 +115,7 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
   const { fetcherWithBody } = useFetcher();
 
   const router = useAppRouter();

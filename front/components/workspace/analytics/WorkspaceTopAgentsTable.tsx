@@ -1,10 +1,8 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { LinkWrapper } from "@app/lib/platform";
-import {
-  useFeatureFlags,
-  useWorkspaceTopAgents,
-} from "@app/lib/swr/workspaces";
+import { useWorkspaceTopAgents } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import {
@@ -105,7 +103,7 @@ export function WorkspaceTopAgentsTable({
       disabled: !workspaceId,
     });
 
-  const { hasFeature } = useFeatureFlags({ workspaceId });
+  const { hasFeature } = useFeatureFlags();
   const showExport = hasFeature("analytics_csv_export");
 
   const [isDownloading, setIsDownloading] = useState(false);

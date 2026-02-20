@@ -11,7 +11,7 @@ import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionM
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   CONNECTOR_UI_CONFIGURATIONS,
@@ -30,10 +30,7 @@ import {
 } from "@app/lib/swr/connectors";
 import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
-import {
-  useFeatureFlags,
-  useWorkspaceActiveSubscription,
-} from "@app/lib/swr/workspaces";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   ConnectorPermission,
@@ -262,7 +259,7 @@ function UpdateConnectionOAuthModal({
   const { isDark } = useTheme();
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
 
   const { user } = useAuth();
 
@@ -743,7 +740,7 @@ export function ConnectorPermissionsModal({
       disabled: !canUpdatePermissions,
     });
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags();
   const advancedNotionManagement =
     dataSource.connectorProvider === "notion" &&
     featureFlags.includes("advanced_notion_management");

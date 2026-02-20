@@ -3,6 +3,7 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectionIdRequiredForProvider,
@@ -15,7 +16,6 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useSystemSpace } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
@@ -128,7 +128,7 @@ export const AddConnectionMenu = ({
 
   const router = useAppRouter();
   const { isDark } = useTheme();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
 
   const handleOnClose = useCallback(

@@ -1,5 +1,5 @@
 import { getIcon } from "@app/components/resources/resources_icons";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -26,9 +26,7 @@ export const AddTriggerMenu = ({
   owner,
   createWebhook,
 }: AddTriggerMenuProps) => {
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import type {
   NotificationCondition,
@@ -85,7 +85,7 @@ export const NotificationPreferences = forwardRef<
   NotificationPreferencesProps
 >(({ onChanged, owner }, ref) => {
   const sendNotification = useSendNotification();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
 
   const hasSlackNotificationsFeature = hasFeature(
     "conversations_slack_notifications"

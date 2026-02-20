@@ -31,12 +31,12 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
@@ -338,9 +338,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
   const activeSpaceId = useActiveSpaceId();
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);

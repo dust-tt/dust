@@ -1,10 +1,9 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -46,9 +45,7 @@ export function AgentDetailsButtonBar({
 }: AgentDetailsButtonBarProps) {
   const { user } = useAuth();
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&

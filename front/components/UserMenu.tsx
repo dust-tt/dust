@@ -3,13 +3,13 @@ import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
 import config from "@app/lib/api/config";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   forceUserRole,
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
 import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
@@ -50,9 +50,7 @@ interface UserMenuProps {
 
 export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   const router = useAppRouter();
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const sendNotification = useSendNotification();
   const privacyMask = usePrivacyMask();

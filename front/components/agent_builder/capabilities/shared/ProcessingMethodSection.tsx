@@ -1,4 +1,3 @@
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
@@ -18,8 +17,8 @@ import {
   SEARCH_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   Button,
   ContentMessage,
@@ -70,9 +69,8 @@ export function ProcessingMethodSection() {
   } = useController<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-  const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<CapabilityFormData>();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
 
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 

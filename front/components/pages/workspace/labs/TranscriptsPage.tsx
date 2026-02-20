@@ -9,14 +9,13 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -25,9 +24,7 @@ export function TranscriptsPage() {
   const owner = useWorkspace();
   const router = useAppRouter();
 
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
   const { dataSourceViews } = useDataSourceViews(owner);
 
   const {
@@ -52,10 +49,10 @@ export function TranscriptsPage() {
 
   // Redirect if feature flag is not enabled.
   useEffect(() => {
-    if (!isFeatureFlagsLoading && !featureFlags.includes("labs_transcripts")) {
+    if (!featureFlags.includes("labs_transcripts")) {
       void router.replace(`/w/${owner.sId}/labs`);
     }
-  }, [featureFlags, isFeatureFlagsLoading, owner.sId, router]);
+  }, [featureFlags, owner.sId, router]);
 
   const handleDisconnectProvider = async (
     transcriptConfigurationId: string | null
@@ -106,7 +103,6 @@ export function TranscriptsPage() {
 
   const isLoading =
     isTranscriptsConfigurationLoading ||
-    isFeatureFlagsLoading ||
     !featureFlags.includes("labs_transcripts");
 
   const navChildren = useMemo(
