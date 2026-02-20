@@ -1,5 +1,5 @@
-import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
+import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { resHandler } from "@extension/shared/lib/swr";
 import { useAuth } from "@extension/ui/components/auth/AuthProvider";
 import type { ReactNode } from "react";
