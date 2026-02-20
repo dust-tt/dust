@@ -42,8 +42,10 @@ export function getRetrievalTopK({
     );
   }
 
-  const searchActions = stepActions.filter((tool) =>
-    isServerSideMCPToolConfigurationWithName(tool, "search")
+  const searchActions = stepActions.filter(
+    (tool) =>
+      isServerSideMCPToolConfigurationWithName(tool, "search") ||
+      isServerSideMCPToolConfigurationWithName(tool, "conversation_files")
   );
   const includeActions = stepActions.filter((tool) =>
     isServerSideMCPToolConfigurationWithName(tool, "include_data")

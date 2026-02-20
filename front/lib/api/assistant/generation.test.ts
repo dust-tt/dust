@@ -1,4 +1,4 @@
-import { DEFAULT_PROJECT_SEARCH_ACTION_NAME } from "@app/lib/actions/constants";
+import { DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/constants";
 import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import {
   constructProjectContextSection,
@@ -87,7 +87,7 @@ This conversation is associated with a project. The project provides:
 ## Using Project Tools
 
 **${PROJECT_MANAGER_SERVER_NAME}**: Use these tools to manage persistent project files, metadata, and conversations
-**${DEFAULT_PROJECT_SEARCH_ACTION_NAME}**: Use this tool to semantically search across all project files when you need to:
+**${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}**: Use this tool to semantically search across all project files when you need to:
 - Find relevant information within the project
 - Locate specific content across multiple files
 - Answer questions based on project knowledge
@@ -95,7 +95,7 @@ This conversation is associated with a project. The project provides:
 ## Tool Usage Priority
 
 When answering questions that require searching for information, follow this priority order:
-1. **First**, use \`${DEFAULT_PROJECT_SEARCH_ACTION_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
+1. **First**, use \`${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
 2. **Second**, use \`${PROJECT_MANAGER_SERVER_NAME}\` to gather more context on the project.
 2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`search\` to search across the broader company data sources.
 

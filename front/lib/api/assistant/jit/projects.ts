@@ -1,4 +1,4 @@
-import { DEFAULT_PROJECT_SEARCH_ACTION_NAME } from "@app/lib/actions/constants";
+import { DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getProjectContextDataSourceView } from "@app/lib/api/assistant/jit/utils";
@@ -66,7 +66,7 @@ export async function getProjectSearchServer(
     id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
-    name: DEFAULT_PROJECT_SEARCH_ACTION_NAME,
+    name: DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME,
     description: `Semantic search over the project context and conversations.`,
     dataSources,
     tables: null,

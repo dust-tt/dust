@@ -52,6 +52,7 @@ import {
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
   AgentLoopRunContextType,
@@ -122,8 +123,6 @@ function isEmptyInputSchema(schema: JSONSchema): boolean {
 
   return isContentConsideredEmpty;
 }
-
-const MAX_TOOL_NAME_LENGTH = 64;
 
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {
@@ -655,49 +654,6 @@ function makeClientSideMCPConnectionParams(
   };
 }
 
-export function getPrefixedToolName(
-  config: MCPServerConfigurationType,
-  originalName: string
-): Result<string, Error> {
-  // Slugify each part separately to preserve separators (used for space disambiguation notably).
-  const slugifiedConfigName = config.name
-    .split(TOOL_NAME_SEPARATOR)
-    .map(slugify)
-    .join(TOOL_NAME_SEPARATOR);
-  const slugifiedOriginalName = slugify(originalName).replaceAll(
-    // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
-    /[^a-zA-Z0-9_.-]/g,
-    ""
-  );
-
-  const separator = TOOL_NAME_SEPARATOR;
-
-  // If the original name is already too long, we can't use it.
-  if (slugifiedOriginalName.length > MAX_TOOL_NAME_LENGTH) {
-    return new Err(
-      new Error(
-        `Tool name "${originalName}" is too long. Maximum length is ${MAX_TOOL_NAME_LENGTH} characters.`
-      )
-    );
-  }
-
-  // Calculate if we have enough room for a meaningful prefix (3 chars) plus separator
-  const minPrefixLength = 3 + separator.length;
-  const availableSpace = MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length;
-
-  // If we don't have enough room for a meaningful prefix, just return the original name
-  if (availableSpace < minPrefixLength) {
-    return new Ok(slugifiedOriginalName);
-  }
-
-  // Calculate the maximum allowed length for the config name portion
-  const maxConfigNameLength = availableSpace - separator.length;
-  const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
-  const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
-
-  return new Ok(prefixedName);
-}
-
 type AgentLoopListToolsContextWithoutConfigurationType = Omit<
   AgentLoopListToolsContextType,
   "agentActionConfiguration"
@@ -904,9 +860,11 @@ export async function tryListMCPTools(
       const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
+        let toolName: string;
         // Fix the tool name to be valid for the model.
-        const toolName = getPrefixedToolName(action, toolConfig.name);
-        if (toolName.isErr()) {
+        try {
+          toolName = getPrefixedToolName(action.name, toolConfig.name);
+        } catch (error) {
           logger.warn(
             {
               workspaceId: owner.sId,
@@ -915,7 +873,7 @@ export async function tryListMCPTools(
               actionId: action.sId,
               mcpServerName: action.name,
               toolName: toolConfig.name,
-              error: toolName.error,
+              error: error,
             },
             `Invalid tool name, skipping the tool.`
           );
@@ -984,7 +942,7 @@ export async function tryListMCPTools(
           ...toolConfig,
           originalName: toolConfig.name,
           mcpServerName: action.name,
-          name: toolName.value,
+          name: toolName,
           description: (toolConfig.description ?? "") + extraDescription,
         });
       }

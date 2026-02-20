@@ -9,13 +9,12 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the processing module.
-vi.mock("@app/lib/api/files/processing", () => ({
-  processAndStoreFile: vi.fn(),
+// Mock copyContent from utils/files.ts
+vi.mock("@app/lib/utils/files", () => ({
+  copyContent: vi.fn(),
 }));
 
 describe("FileResource", () => {
@@ -199,28 +198,6 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: "original-conv-id" },
       });
 
-      // Mock processAndStoreFile to return success.
-      const { processAndStoreFile } = await import(
-        "@app/lib/api/files/processing"
-      );
-      const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
-      mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
-        await file.markAsReady();
-        return new Ok(file);
-      });
-
-      // Mock getReadStream on the FileResource prototype.
-      const getReadStreamSpy = vi
-        .spyOn(FileResource.prototype, "getReadStream")
-        .mockReturnValue(
-          new Readable({
-            read() {
-              this.push(testFileContent);
-              this.push(null); // End the stream.
-            },
-          })
-        );
-
       // Copy the file.
       const result = await FileResource.copy(auth, {
         sourceId: sourceFile.sId,
@@ -239,10 +216,6 @@ describe("FileResource", () => {
       expect(copiedFile.useCase).toBe("project_context");
       expect(copiedFile.useCaseMetadata?.conversationId).toBe("new-conv-id");
       expect(copiedFile.isReady).toBe(true);
-
-      // Verify processAndStoreFile was called.
-      expect(mockProcessAndStoreFile).toHaveBeenCalledOnce();
-      expect(getReadStreamSpy).toHaveBeenCalledOnce();
     });
 
     it("should return error when source file not found", async () => {
@@ -312,58 +285,6 @@ describe("FileResource", () => {
       }
     });
 
-    it("should handle processAndStoreFile errors", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
-        role: "admin",
-      });
-
-      const sourceFile = await FileFactory.create(workspace, null, {
-        contentType: "text/plain",
-        fileName: "source.txt",
-        fileSize: 100,
-        status: "ready",
-        useCase: "conversation",
-      });
-
-      // Mock processAndStoreFile to return an error.
-      const { processAndStoreFile } = await import(
-        "@app/lib/api/files/processing"
-      );
-      const { Err } = await import("@app/types/shared/result");
-      const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
-      mockProcessAndStoreFile.mockResolvedValue(
-        new Err({
-          name: "dust_error",
-          code: "internal_server_error",
-          message: "Processing failed",
-        })
-      );
-
-      // Mock getReadStream.
-      vi.spyOn(FileResource.prototype, "getReadStream").mockReturnValue(
-        new Readable({
-          read() {
-            this.push("content");
-            this.push(null);
-          },
-        })
-      );
-
-      const result = await FileResource.copy(auth, {
-        sourceId: sourceFile.sId,
-        useCase: "project_context",
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error).toMatchObject({
-          name: "dust_error",
-          code: "internal_server_error",
-          message: "Processing failed",
-        });
-      }
-    });
-
     it("should copy file with different use case but same content type", async () => {
       const { authenticator: auth, workspace } = await createResourceTest({
         role: "admin",
@@ -377,24 +298,6 @@ describe("FileResource", () => {
         useCase: "conversation",
         useCaseMetadata: { conversationId: "conv-1" },
       });
-
-      const { processAndStoreFile } = await import(
-        "@app/lib/api/files/processing"
-      );
-      const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
-      mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
-        await file.markAsReady();
-        return new Ok(file);
-      });
-
-      vi.spyOn(FileResource.prototype, "getReadStream").mockReturnValue(
-        new Readable({
-          read() {
-            this.push("PDF content");
-            this.push(null);
-          },
-        })
-      );
 
       const result = await FileResource.copy(auth, {
         sourceId: sourceFile.sId,

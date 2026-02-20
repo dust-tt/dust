@@ -1,7 +1,6 @@
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-  DEFAULT_PROJECT_SEARCH_ACTION_NAME,
+  DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME,
   ENABLE_SKILL_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
@@ -11,11 +10,16 @@ import {
   SEARCH_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   areDataSourcesConfigured,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
-import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  CONVERSATION_CAT_FILE_ACTION_NAME,
+  CONVERSATION_FILES_SERVER_NAME,
+  CONVERSATION_SEARCH_FILES_ACTION_NAME,
+} from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -97,7 +101,7 @@ This conversation is associated with a project. The project provides:
 ## Using Project Tools
 
 **project_manager**: Use these tools to manage persistent project files, metadata, and conversations
-**${DEFAULT_PROJECT_SEARCH_ACTION_NAME}**: Use this tool to semantically search across all project files when you need to:
+**${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}**: Use this tool to semantically search across all project files when you need to:
 - Find relevant information within the project
 - Locate specific content across multiple files
 - Answer questions based on project knowledge
@@ -105,7 +109,7 @@ This conversation is associated with a project. The project provides:
 ## Tool Usage Priority
 
 When answering questions that require searching for information, follow this priority order:
-1. **First**, use \`${DEFAULT_PROJECT_SEARCH_ACTION_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
+1. **First**, use \`${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
 2. **Second**, use \`${PROJECT_MANAGER_SERVER_NAME}\` to gather more context on the project.
 2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` to search across the broader company data sources.
 
@@ -279,9 +283,9 @@ function constructAttachmentsSection(): string {
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
     "Three flags indicate how an attachment can be used:\n\n" +
-    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
+    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_CAT_FILE_ACTION_NAME)}\`;\n` +
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
-    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
+    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\`,` +
     " contents of this attachment will be considered in the search.\n" +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );

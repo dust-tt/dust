@@ -22,9 +22,7 @@ export const PROCESS_ACTION_TOP_K = 768;
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";
 
-export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME = "conversation_files";
-
-export const DEFAULT_PROJECT_SEARCH_ACTION_NAME =
+export const DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME =
   "project_context_and_conversations";
 
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =

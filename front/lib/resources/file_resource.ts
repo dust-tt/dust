@@ -17,6 +17,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { copyContent } from "@app/lib/utils/files";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -49,7 +50,6 @@ import type {
 import { Op } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
-
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
@@ -966,29 +966,12 @@ export class FileResource extends BaseResource<FileModel> {
         useCaseMetadata,
       });
 
-      // Get a read stream from the source file's original version.
-      const readStream = sourceFile.getReadStream({
-        auth,
-        version: "original",
-      });
+      await copyContent(auth, sourceFile, newFile);
 
-      // Use processAndStoreFile to handle the content processing and storage.
-      const { processAndStoreFile } = await import(
-        "@app/lib/api/files/processing"
-      );
-      const result = await processAndStoreFile(auth, {
-        file: newFile,
-        content: {
-          type: "readable",
-          value: readStream,
-        },
-      });
+      // Mark the new file as ready.
+      await newFile.markAsReady();
 
-      if (result.isErr()) {
-        return new Err(result.error);
-      }
-
-      return new Ok(result.value);
+      return new Ok(newFile);
     } catch (error) {
       return new Err(normalizeError(error));
     }

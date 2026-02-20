@@ -148,7 +148,7 @@ export function createProjectManagerTools(
         const upsertRes = await upsertProjectContextFile(auth, file);
 
         if (upsertRes.isErr()) {
-          logger.error(
+          logger.warn(
             {
               error: upsertRes.error,
               fileId: file.sId,
