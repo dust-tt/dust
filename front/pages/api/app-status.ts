@@ -1,26 +1,22 @@
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { AppStatus } from "@app/lib/api/status";
 import {
   getDustStatusMemoized,
   getProviderStatusMemoized,
 } from "@app/lib/api/status";
-import type { SessionWithUser } from "@app/lib/iam/provider";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<AppStatus>>,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- session is passed by the auth wrapper
-  session: SessionWithUser
+  res: NextApiResponse<WithAPIErrorResponse<AppStatus>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
       status_code: 405,
       api_error: {
         type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
+        message: "The method passed is not supported, GET is expected.",
       },
     });
   }
@@ -30,7 +26,11 @@ async function handler(
     getDustStatusMemoized(),
   ]);
 
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=120, stale-while-revalidate=300"
+  );
   res.status(200).json({ providersStatus, dustStatus });
 }
 
-export default withSessionAuthentication(handler);
+export default withLogging(handler);

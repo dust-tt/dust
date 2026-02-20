@@ -9,7 +9,10 @@ export function useAppStatus() {
     "/api/app-status",
     appStatusFetcher,
     {
-      focusThrottleInterval: 10 * 60 * 1000, // 10 minutes
+      refreshInterval: 5 * 60 * 1000, // Poll every 5 minutes.
+      focusThrottleInterval: 30 * 60 * 1000, // Throttle focus revalidation to 30 minutes.
+      revalidateOnReconnect: false,
+      dedupingInterval: 5 * 60 * 1000, // Dedupe identical requests within 5 minutes.
     }
   );
 
