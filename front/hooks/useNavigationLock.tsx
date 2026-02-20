@@ -1,4 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import {
+  decrementNavigationLock,
+  incrementNavigationLock,
+} from "@app/lib/navigation-lock";
 import { useAppRouter, useNavigationBlocker } from "@app/lib/platform";
 import React, { useCallback, useContext, useEffect } from "react";
 
@@ -23,6 +27,14 @@ export function useNavigationLock(
   );
 
   useNavigationBlocker(isEnabled, onBlock);
+
+  // Prevent programmatic reloads (e.g. from SWR resHandler) while the lock is active.
+  useEffect(() => {
+    if (isEnabled) {
+      incrementNavigationLock();
+      return () => decrementNavigationLock();
+    }
+  }, [isEnabled]);
 
   // Next.js: use routeChangeStart events to intercept navigation.
   // This is a noop in the SPA since routeChangeStart is not emitted
