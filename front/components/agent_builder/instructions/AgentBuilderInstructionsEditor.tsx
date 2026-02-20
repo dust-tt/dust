@@ -17,6 +17,7 @@ import {
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
@@ -81,15 +82,16 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
       undoRedo: {
         depth: 100,
       },
-      code: {
-        HTMLAttributes: {
-          class: markdownStyles.codeBlock(),
-        },
-      },
+      code: false, // Disabled, we use custom CodeExtension to handle escaped backticks.
       codeBlock: {
         HTMLAttributes: {
           class: markdownStyles.codeBlock(),
         },
+      },
+    }),
+    CodeExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.codeInline(),
       },
     }),
     ListItemExtension.configure({

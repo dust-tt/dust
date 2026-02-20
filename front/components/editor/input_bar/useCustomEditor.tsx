@@ -1,5 +1,5 @@
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { CodeExtension } from "@app/components/editor/extensions/input_bar/CodeExtension";
+import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
