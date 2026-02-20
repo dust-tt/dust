@@ -588,7 +588,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     icon: "IntercomLogo",
     documentationUrl: "https://developers.intercom.com/docs/guides/mcp",
     connectionInstructions:
-      "Intercom uses OAuth authentication with dynamic client registration. Search conversations and contacts, and get detailed information about customer interactions.",
+      "Only available for US-hosted Intercom workspaces. Intercom uses OAuth authentication with dynamic client registration. Search conversations and contacts, and get detailed information about customer interactions.",
     authMethod: "oauth-dynamic",
     toolStakes: {
       search: "never_ask",
