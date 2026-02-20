@@ -29,7 +29,6 @@ export function useAppRouter(): AppRouter {
       query: router.query as Record<string, string | string[] | undefined>,
       isReady: router.isReady,
       events: router.events,
-      beforePopState: router.beforePopState,
     }),
     [router]
   );
