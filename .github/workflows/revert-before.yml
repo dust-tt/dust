@@ -1,0 +1,255 @@
+name: Revert Before Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "Region to rollback"
+        required: true
+        default: "us-central1"
+        type: choice
+        options:
+          - "us-central1"
+          - "europe-west1"
+      commit_sha:
+        description: "Commit SHA to rollback before (short or long)"
+        type: string
+        required: true
+      component:
+        description: "Component to rollback"
+        type: choice
+        options:
+          - connectors
+          - core
+          - front
+          - front-edge
+          - metabase
+          - oauth
+          - prodbox
+          - viz
+        required: true
+    secrets:
+      SLACK_CHANNEL_ID:
+        required: true
+      SLACK_BOT_TOKEN:
+        required: true
+      INFRA_DISPATCH_APP_ID:
+        required: true
+      INFRA_DISPATCH_APP_PRIVATE_KEY:
+        required: true
+      GCLOUD_US_PROJECT_ID:
+        required: true
+      GCLOUD_EU_PROJECT_ID:
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  find-image:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.find_image.outputs.image_tag }}
+      target_commit: ${{ steps.find_image.outputs.target_commit }}
+      thread_ts: ${{ steps.notify_start.outputs.thread_ts }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch full history to find commits
+
+      - name: Set project ID
+        id: project
+        run: |
+          if [ "${{ inputs.region }}" = "us-central1" ]; then
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        with:
+          create_credentials_file: true
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          service_account: "github-build-invoker@${{ steps.project.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+
+      - name: Find latest image before commit
+        id: find_image
+        run: |
+          INPUT_SHA="${{ inputs.commit_sha }}"
+          COMPONENT="${{ inputs.component }}"
+          REGION="${{ inputs.region }}"
+          PROJECT_ID="${{ steps.project.outputs.PROJECT_ID }}"
+          IMAGE_REPO="${REGION}-docker.pkg.dev/${PROJECT_ID}/dust-images/${COMPONENT}"
+
+          echo "🔍 Finding latest image before commit: ${INPUT_SHA}"
+
+          # Resolve input SHA to full SHA (handles both short and long SHAs)
+          FULL_SHA=$(git rev-parse ${INPUT_SHA} 2>/dev/null || echo "")
+          if [ -z "$FULL_SHA" ]; then
+            echo "❌ Error: Commit ${INPUT_SHA} not found in git history"
+            exit 1
+          fi
+
+          echo "✅ Resolved to full SHA: ${FULL_SHA}"
+
+          # Get all available tags from registry (limit to recent 100)
+          echo "📦 Fetching available tags from registry..."
+          AVAILABLE_TAGS=$(gcloud container images list-tags "${IMAGE_REPO}" \
+            --limit=100 \
+            --format="value(tags[0])" 2>/dev/null || true)
+
+          if [ -z "$AVAILABLE_TAGS" ]; then
+            echo "❌ Error: No images found in registry"
+            exit 1
+          fi
+
+          TAG_COUNT=$(echo "$AVAILABLE_TAGS" | wc -l | tr -d ' ')
+          echo "Found ${TAG_COUNT} available images in registry"
+
+          # Get list of commits before the target commit (up to 100 commits back)
+          echo "📜 Getting commits before ${FULL_SHA}..."
+          COMMITS=$(git log --pretty=format:"%H" -100 ${FULL_SHA}^ 2>/dev/null || true)
+
+          if [ -z "$COMMITS" ]; then
+            echo "❌ Error: No commits found before ${INPUT_SHA}"
+            exit 1
+          fi
+
+          COMMIT_COUNT=$(echo "$COMMITS" | wc -l | tr -d ' ')
+          echo "Found ${COMMIT_COUNT} commits to check"
+
+          # Find first commit that has a matching image tag
+          FOUND_IMAGE=""
+          FOUND_COMMIT=""
+
+          echo "🔎 Matching commits to available images..."
+          while IFS= read -r commit; do
+            SHORT_SHA=$(git rev-parse --short $commit)
+
+            # Check if this short SHA is in the available tags
+            if echo "$AVAILABLE_TAGS" | grep -q "^${SHORT_SHA}$"; then
+              FOUND_IMAGE="${SHORT_SHA}"
+              FOUND_COMMIT="${commit}"
+              echo "✅ Found image: ${SHORT_SHA} (commit: ${commit:0:12})"
+              break
+            fi
+          done <<< "$COMMITS"
+
+          if [ -z "$FOUND_IMAGE" ]; then
+            echo "❌ Error: No images found for any commits before ${INPUT_SHA}"
+            echo ""
+            exit 1
+          fi
+
+          # Get commit info for summary
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" ${FOUND_COMMIT})
+          COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an" ${FOUND_COMMIT})
+          COMMIT_DATE=$(git log -1 --pretty=format:"%ci" ${FOUND_COMMIT})
+
+          echo "image_tag=${FOUND_IMAGE}" >> $GITHUB_OUTPUT
+          echo "target_commit=${FOUND_COMMIT}" >> $GITHUB_OUTPUT
+
+          # Create summary
+          echo "## 🎯 Rollback Target Found" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Component:** ${COMPONENT}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${REGION}" >> $GITHUB_STEP_SUMMARY
+          echo "**Rollback before:** \`${INPUT_SHA}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target image:** \`${FOUND_IMAGE}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Target commit:** \`${FOUND_COMMIT:0:12}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit message:** ${COMMIT_MSG}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${COMMIT_AUTHOR}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** ${COMMIT_DATE}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for migrations in reverted range
+        id: check_migrations
+        run: |
+          COMPONENT="${{ inputs.component }}"
+          TARGET_COMMIT="${{ steps.find_image.outputs.target_commit }}"
+
+          # Determine migration paths based on component.
+          MIGRATION_PATHS=""
+          case "${COMPONENT}" in
+            front|front-edge)
+              MIGRATION_PATHS="front/migrations/db/"
+              ;;
+            connectors)
+              MIGRATION_PATHS="connectors/migrations/db/"
+              ;;
+            core)
+              MIGRATION_PATHS="core/src/stores/migrations/ core/src/search_stores/migrations/ core/src/oauth/migrations/"
+              ;;
+            oauth)
+              MIGRATION_PATHS="core/src/oauth/migrations/"
+              ;;
+            *)
+              echo "ℹ️ No migration paths to check for component: ${COMPONENT}"
+              exit 0
+              ;;
+          esac
+
+          echo "🔍 Checking for migrations between rollback target and HEAD..."
+          echo "   Range: ${TARGET_COMMIT:0:12}..HEAD"
+          echo "   Paths: ${MIGRATION_PATHS}"
+
+          # Find migration files added in the reverted commit range.
+          MIGRATION_FILES=$(git diff --name-only --diff-filter=A "${TARGET_COMMIT}..HEAD" -- ${MIGRATION_PATHS} || true)
+
+          if [ -n "$MIGRATION_FILES" ]; then
+            FILE_COUNT=$(echo "$MIGRATION_FILES" | wc -l | tr -d ' ')
+            echo ""
+            echo "❌ ROLLBACK BLOCKED: Found ${FILE_COUNT} migration(s) in the reverted range."
+            echo "Rolling back would run code that does not know about these migrations:"
+            echo ""
+            echo "$MIGRATION_FILES" | while IFS= read -r f; do
+              echo "  - $f"
+            done
+
+            echo ""
+            echo "## ❌ Rollback Blocked: Migrations Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Rolling back **${COMPONENT}** to \`${TARGET_COMMIT:0:12}\` would skip the following migrations:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$MIGRATION_FILES" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Reverting past database migrations can cause data loss or application errors." >> $GITHUB_STEP_SUMMARY
+            echo "Please handle the rollback manually with the migrations in mind." >> $GITHUB_STEP_SUMMARY
+
+            exit 1
+          fi
+
+          echo "✅ No migrations found in reverted range. Safe to proceed."
+
+      - name: Notify Start
+        id: notify_start
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "start"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ steps.find_image.outputs.image_tag }}
+          region: ${{ inputs.region }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          is_revert: true
+
+  revert:
+    needs: [ find-image ]
+    uses: ./.github/workflows/revert.yml
+    with:
+      region: ${{ inputs.region }}
+      component: ${{ inputs.component }}
+      image_tag: ${{ needs.find-image.outputs.image_tag }}
+      slack_thread_ts: ${{ needs.find-image.outputs.thread_ts }}
+    secrets: inherit
