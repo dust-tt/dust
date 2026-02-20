@@ -51,6 +51,7 @@ export default function SqAgentLandingPage() {
           imagePosition={section.imagePosition}
           backgroundColor={section.backgroundColor}
           colorIndex={index}
+          visualComponent={section.visualComponent}
         />
       ))}
 

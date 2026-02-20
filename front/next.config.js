@@ -343,6 +343,11 @@ const config = {
         destination: "/home/security",
         permanent: true,
       },
+      {
+        source: "/enterprise",
+        destination: "/home/enterprise",
+        permanent: true,
+      },
       // Redirect all solutions pages from /solutions/* to /home/solutions/*
       {
         source: "/solutions/customer-support",
