@@ -16,7 +16,6 @@ import {
   isTextContent,
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -45,7 +44,6 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction = "inject-placeholder",
     agentConfiguration,
-    featureFlags,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -57,7 +55,6 @@ export async function renderConversationForModel(
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
-    featureFlags?: WhitelistableFeature[];
   }
 ): Promise<
   Result<
@@ -78,7 +75,6 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction,
     agentConfiguration,
-    featureFlags,
   });
 
   // Tokenize messages and prompt/tools in parallel to reduce latency

@@ -28,7 +28,6 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
@@ -128,9 +127,8 @@ export function renderAgentSteps(
 /**
  * Renders all conversation messages into model messages
  *
- * When `agentConfiguration` is provided and the `agent_bound_loop_rendering` feature flag
- * is enabled, agent messages from other agents are rendered as user messages with system tags,
- * showing only the final output (not the full agentic loop).
+ * When `agentConfiguration` is provided, agent messages from other agents are rendered as user
+ * messages with system tags, showing only the final output (not the full agentic loop).
  */
 export async function renderAllMessages(
   auth: Authenticator,
@@ -141,7 +139,6 @@ export async function renderAllMessages(
     excludeImages,
     onMissingAction,
     agentConfiguration,
-    featureFlags,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -149,13 +146,9 @@ export async function renderAllMessages(
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
-    featureFlags?: WhitelistableFeature[];
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
-
-  const agentBoundLoopRendering =
-    featureFlags?.includes("agent_bound_loop_rendering") ?? false;
 
   // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
@@ -163,9 +156,8 @@ export async function renderAllMessages(
 
     if (isAgentMessageType(m)) {
       if (m.visibility === "visible") {
-        // When agent_bound_loop_rendering is enabled, check if this is the current agent's message.
+        // Check if this is the current agent's message.
         const isCurrentAgentMessage =
-          !agentBoundLoopRendering ||
           !agentConfiguration ||
           m.configuration.sId === agentConfiguration.sId;
 

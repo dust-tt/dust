@@ -353,7 +353,6 @@ export function renderUserMessage(
 
 /**
  * Renders an agent message from a different agent as a user message with system tags.
- * This is used when the `agent_bound_loop_rendering` feature flag is enabled.
  * Only the final text output is rendered, not the full agentic loop (actions/tool calls).
  */
 export function renderOtherAgentMessageAsUserMessage(

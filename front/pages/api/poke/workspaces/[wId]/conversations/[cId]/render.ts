@@ -11,7 +11,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -103,15 +103,13 @@ async function handler(
         });
       }
 
-      const [conversationRes, agentConfiguration, featureFlags] =
-        await Promise.all([
-          getConversation(auth, cId, true),
-          getAgentConfiguration(auth, {
-            agentId,
-            variant: "full",
-          }),
-          getFeatureFlags(auth.getNonNullableWorkspace()),
-        ]);
+      const [conversationRes, agentConfiguration] = await Promise.all([
+        getConversation(auth, cId, true),
+        getAgentConfiguration(auth, {
+          agentId,
+          variant: "full",
+        }),
+      ]);
 
       if (conversationRes.isErr()) {
         return apiError(req, res, {
@@ -298,7 +296,6 @@ async function handler(
         excludeImages,
         onMissingAction,
         agentConfiguration,
-        featureFlags,
       });
 
       if (convoRes.isErr()) {
