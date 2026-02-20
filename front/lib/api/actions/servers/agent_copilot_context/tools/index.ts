@@ -744,10 +744,11 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
 
-    // Fetch the latest version of the agent configuration.
+    // Fetch the latest version of the agent configuration (full variant needed
+    // for instructionsHtml used in conflict pruning).
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
-      variant: "light",
+      variant: "full",
     });
 
     if (!agentConfiguration) {

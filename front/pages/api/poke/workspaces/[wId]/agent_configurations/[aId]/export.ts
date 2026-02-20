@@ -4,14 +4,14 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type ExportAgentConfigurationResponseBody = {
   assistant: Omit<
-    LightAgentConfigurationType,
+    AgentConfigurationType,
     | "id"
     | "versionCreatedAt"
     | "sId"
@@ -23,6 +23,8 @@ export type ExportAgentConfigurationResponseBody = {
     | "userFavorite"
     | "requestedGroupIds"
     | "requestedSpaceIds"
+    | "actions"
+    | "skills"
   > & {
     // If empty, no actions are performed, otherwise the actions are performed.
     actions: Omit<MCPServerConfigurationType, "id" | "sId">[];

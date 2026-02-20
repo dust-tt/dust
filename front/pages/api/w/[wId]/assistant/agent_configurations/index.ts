@@ -485,6 +485,7 @@ export async function createOrUpgradeAgentConfiguration({
 
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,
+    instructionsHtml: assistant.instructionsHtml ?? null,
     actions: actionConfigs,
   };
 

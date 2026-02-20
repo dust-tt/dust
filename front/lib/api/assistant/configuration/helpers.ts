@@ -158,7 +158,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       pictureUrl: agent.pictureUrl,
       description: agent.description,
       instructions: agent.instructions,
-      instructionsHtml: agent.instructionsHtml,
+      instructionsHtml: variant === "full" ? agent.instructionsHtml : null,
       model,
       status: agent.status,
       actions,
