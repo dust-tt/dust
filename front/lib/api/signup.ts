@@ -1,3 +1,7 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -48,6 +52,25 @@ export async function createAndLogMembership({
     workspace: w,
     role: m.role,
     startAt: m.startAt,
+  });
+
+  void emitAuditLogEvent({
+    workspace: w,
+    action: "membership.created",
+    actor: {
+      type: "user",
+      id: user.sId,
+      name: user.fullName(),
+    },
+    targets: [
+      buildWorkspaceTarget(w),
+      { type: "user", id: user.sId, name: user.fullName() },
+    ],
+    context: { location: "internal" },
+    metadata: {
+      role,
+      origin,
+    },
   });
 
   // Update workspace subscription usage when a new user joins.

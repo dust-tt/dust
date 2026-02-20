@@ -4,6 +4,12 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   generateWorkOSAdminPortalUrl,
@@ -116,6 +122,20 @@ async function handler(
           },
         });
       }
+
+      const workspace = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        workspace,
+        action: "domain.removed",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(workspace),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          domain: body.domain,
+        },
+      });
 
       res.status(204).end();
       break;

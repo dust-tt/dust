@@ -1,5 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   deleteWorkOSOrganizationSSOConnection,
@@ -105,17 +111,32 @@ async function handler(
       return;
 
     case "DELETE":
-      const r = await deleteWorkOSOrganizationSSOConnection(activeConnection);
+      const deleteResult = await deleteWorkOSOrganizationSSOConnection(
+        activeConnection
+      );
 
-      if (r.isErr()) {
+      if (deleteResult.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "workos_server_error",
-            message: `Failed to delete SSO connection: ${normalizeError(r.error).message}`,
+            message: `Failed to delete SSO connection: ${normalizeError(deleteResult.error).message}`,
           },
         });
       }
+
+      void emitAuditLogEvent({
+        workspace,
+        action: "sso.connection_deleted",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(workspace),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          connectionType: activeConnection.type,
+        },
+      });
 
       res.status(204).end();
       return;

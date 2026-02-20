@@ -4,6 +4,11 @@ import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import {
   getMembers,
@@ -374,7 +379,29 @@ export async function handleMembershipInvitations(
         })
       );
 
-      return new Ok([...invitationResults, ...unrevokedResults]);
+      const allResults = [...invitationResults, ...unrevokedResults];
+
+      const successfulInvites = allResults.filter((r) => r.success);
+      if (successfulInvites.length > 0) {
+        const workspace = auth.getNonNullableWorkspace();
+        void emitAuditLogEvent({
+          workspace,
+          action: "member.invited",
+          actor: buildAuditActor(auth),
+          targets: successfulInvites.map((r) => ({
+            type: "user" as const,
+            id: r.email,
+            name: r.email,
+          })),
+          context: getAuditLogContext(auth),
+          metadata: {
+            invitedCount: String(successfulInvites.length),
+            emails: successfulInvites.map((r) => r.email).join(","),
+          },
+        });
+      }
+
+      return new Ok(allResults);
     }
   );
 

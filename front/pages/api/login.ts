@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import {
@@ -7,6 +8,7 @@ import {
   handleMembershipInvite,
   handleRegularSignupFlow,
 } from "@app/lib/api/signup";
+import { getClientIpFromHeaders } from "@app/lib/api/workos/webhook_helpers";
 import { getApiBaseUrl } from "@app/lib/egress/client";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -208,6 +210,26 @@ async function handler(
   };
 
   await user.recordLoginActivity();
+
+  if (targetWorkspace) {
+    const ip =
+      getClientIpFromHeaders(req.headers) ?? req.socket?.remoteAddress;
+    void emitAuditLogEvent({
+      workspace: targetWorkspace,
+      action: "user.login",
+      actor: {
+        type: "user",
+        id: user.sId,
+        name: user.name,
+      },
+      targets: [{ type: "user", id: user.sId, name: user.name }],
+      context: { location: ip ?? "internal" },
+      metadata: {
+        isSSO: String(session.isSSO),
+        authenticationMethod: session.authenticationMethod ?? "unknown",
+      },
+    });
+  }
 
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this
