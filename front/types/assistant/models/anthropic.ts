@@ -118,30 +118,6 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsPromptCaching: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
-export const CLAUDE_4_6_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "anthropic",
-  modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-  displayName: "Claude 4.6 Sonnet",
-  contextSize: 200_000,
-  recommendedTopK: 16,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description:
-    "Anthropic's Claude 4.6 Sonnet model with enhanced reasoning and tool use (200k context).",
-  shortDescription: "Anthropic's latest model.",
-  isLegacy: false,
-  isLatest: true,
-  generationTokensCount: 64_000,
-  supportsVision: true,
-  supportsResponseFormat: true,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "high",
-  defaultReasoningEffort: "light",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
-  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-  supportsPromptCaching: true,
-  tokenizer: { type: "tiktoken", base: "anthropic_base" },
-};
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
