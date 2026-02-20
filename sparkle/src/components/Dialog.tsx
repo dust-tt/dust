@@ -46,7 +46,7 @@ const sizeClasses: Record<DialogSizeType, string> = {
   xl: "sm:s-max-w-3xl",
   "2xl": "sm:s-max-w-5xl",
   full: "sm:s-max-w-full sm:s-h-full",
-  fit: "sm:s-max-w-[90vw] !s-w-fit",
+  fit: "sm:s-max-w-[90vw] s-w-fit",
 };
 
 const heightClasses: Record<DialogHeightType, string> = {
