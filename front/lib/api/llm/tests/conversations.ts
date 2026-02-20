@@ -244,7 +244,7 @@ export const TEST_VISION_CONVERSATIONS = [
     conversationActions: [
       userMessageWithImage(
         "Describe this image.",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/481px-Cat03.jpg"
+        "https://cdn2.thecatapi.com/images/0XYvRd7oD.jpg"
       ),
     ],
     expectedInResponses: [containsTextChecker(["cat"])],

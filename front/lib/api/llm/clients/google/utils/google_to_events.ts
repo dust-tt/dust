@@ -112,7 +112,7 @@ export async function* streamLLMEvents({
           if (textContentParts) {
             returnedEvents.push({
               type: "text_generated" as const,
-              content: { text: textContentParts },
+              content: { text: textContentParts.trim() },
               metadata,
             });
 
@@ -180,7 +180,7 @@ export async function* streamLLMEvents({
           yield* yieldEvents([
             {
               type: "text_generated" as const,
-              content: { text: textContentParts },
+              content: { text: textContentParts.trim() },
               metadata,
             },
           ]);
@@ -275,7 +275,7 @@ export async function* streamLLMEvents({
           yield* yieldEvents([
             {
               type: "text_generated" as const,
-              content: { text: textContentParts },
+              content: { text: textContentParts.trim() },
               metadata,
             },
           ]);

@@ -203,6 +203,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 4,
     output: 18,
   },
+  // Gemini 3.1 Pro: same pricing structure as 3 Pro (2/12 for <=200k, 4/18 for >200k)
+  // Using conservative pricing for the higher tier
+  "gemini-3.1-pro-preview": {
+    input: 4,
+    output: 18,
+  },
   "gemini-3-flash-preview": {
     input: 0.5,
     output: 3.0,
