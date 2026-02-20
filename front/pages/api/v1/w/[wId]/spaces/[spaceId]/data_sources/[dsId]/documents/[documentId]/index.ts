@@ -476,7 +476,7 @@ async function handler(
       // Enforce plan limits: Datasource quota
       try {
         const [activeSeats, quotaUsed] = await Promise.all([
-          MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId),
+          MembershipResource.countActiveSeatsInWorkspace(owner.sId),
           computeWorkspaceOverallSizeCached(auth),
         ]);
 

@@ -1,7 +1,8 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
+const deletedKeys = vi.hoisted(() => [] as string[]);
 
 vi.mock("@app/lib/utils/cache", () => ({
   cacheWithRedis: vi
@@ -33,6 +34,7 @@ vi.mock("@app/lib/utils/cache", () => ({
         return async (...args: Args): Promise<void> => {
           const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
           inMemoryCache.delete(key);
+          deletedKeys.push(key);
         };
       }
     ),
@@ -47,13 +49,14 @@ vi.mock("@app/lib/utils/cache", () => ({
           for (const args of argsList) {
             const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
             inMemoryCache.delete(key);
+            deletedKeys.push(key);
           }
         };
       }
     ),
 }));
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -63,7 +66,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceSid: string): string {
-  return `cacheWithRedis-countActiveSeatsInWorkspace-count-active-seats-in-workspace:${workspaceSid}`;
+  return `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspaceSid}`;
 }
 
 describe("MembershipResource", () => {
@@ -83,23 +86,17 @@ describe("MembershipResource", () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(inMemoryCache.has(cacheKey)).toBe(false);
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
       });
 
       it("serves from cache on second call", async () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
 
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
       });
     });
@@ -113,9 +110,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await membership.markFirstUse();
@@ -132,9 +127,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await membership.delete(authenticator, {});
@@ -146,9 +139,7 @@ describe("MembershipResource", () => {
     describe("deleteAllForWorkspace()", () => {
       it("invalidates cache for the workspace", async () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await MembershipResource.deleteAllForWorkspace(authenticator);
@@ -160,9 +151,7 @@ describe("MembershipResource", () => {
     describe("createMembership()", () => {
       it("invalidates cache when new membership created", async () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         const newUser = await UserFactory.basic();
@@ -184,9 +173,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await MembershipResource.revokeMembership({
@@ -206,9 +193,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspaceCached(
-          workspace.sId
-        );
+        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await MembershipResource.updateMembershipRole({
@@ -465,6 +450,188 @@ describe("MembershipResource", () => {
         });
 
         expect(count).toBe(0);
+      });
+    });
+  });
+
+  describe("caching behavior", () => {
+    let workspace: WorkspaceType;
+    let lightWorkspace: LightWorkspaceType;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      lightWorkspace = renderLightWorkspaceType({ workspace });
+    });
+
+    describe("getActiveRoleForUserInWorkspace", () => {
+      it("should call cached function for role lookup", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        await MembershipResource.createMembership({
+          user,
+          workspace: lightWorkspace,
+          role: "user",
+        });
+
+        const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+
+        expect(role).toBe("user");
+      });
+
+      it("should return correct role when membership role is updated", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        await MembershipResource.createMembership({
+          user,
+          workspace: lightWorkspace,
+          role: "builder",
+        });
+
+        const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+
+        expect(role).toBe("builder");
+      });
+
+      it("should return 'none' when no membership exists", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+        expect(role).toBe("none");
+      });
+    });
+
+    describe("countActiveSeatsInWorkspace", () => {
+      it("should return correct count via cached function", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        await MembershipResource.createMembership({
+          user,
+          workspace: lightWorkspace,
+          role: "user",
+          origin: "invited",
+        });
+
+        const count = await MembershipResource.countActiveSeatsInWorkspace(
+          workspace.sId
+        );
+
+        expect(count).toBe(1);
+      });
+
+      it("should return 0 for empty workspace", async () => {
+        const count = await MembershipResource.countActiveSeatsInWorkspace(
+          workspace.sId
+        );
+        expect(count).toBe(0);
+      });
+    });
+
+    describe("cache invalidation", () => {
+      beforeEach(() => {
+        deletedKeys.length = 0;
+      });
+
+      it("should invalidate caches when creating membership", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        await MembershipResource.createMembership({
+          user,
+          workspace: lightWorkspace,
+          role: "user",
+        });
+
+        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+
+        expect(deletedKeys).toContain(roleCacheKey);
+        expect(deletedKeys).toContain(seatsCacheKey);
+      });
+
+      it("should invalidate caches when revoking membership", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        await MembershipResource.createMembership({
+          user,
+          workspace: lightWorkspace,
+          role: "user",
+        });
+
+        deletedKeys.length = 0;
+
+        await MembershipResource.revokeMembership({
+          user,
+          workspace: lightWorkspace,
+        });
+
+        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+
+        expect(deletedKeys).toContain(roleCacheKey);
+        expect(deletedKeys).toContain(seatsCacheKey);
+      });
+
+      it("should invalidate seats cache when marking first use", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        await MembershipResource.createMembership({
+          user,
+          workspace: lightWorkspace,
+          role: "user",
+          origin: "provisioned",
+        });
+
+        deletedKeys.length = 0;
+
+        const membership =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: lightWorkspace,
+          });
+        await membership?.markFirstUse();
+
+        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+
+        expect(deletedKeys).toContain(seatsCacheKey);
+      });
+
+      it("should invalidate seats cache when deleting all memberships for workspace", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        await MembershipFactory.associate(workspace, user, { role: "admin" });
+
+        const auth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+
+        deletedKeys.length = 0;
+
+        await MembershipResource.deleteAllForWorkspace(auth);
+
+        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+
+        expect(deletedKeys).toContain(seatsCacheKey);
+      });
+
+      it("should invalidate both caches when deleting a single membership", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        const membership = await MembershipFactory.associate(workspace, user, {
+          role: "user",
+        });
+
+        const auth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+
+        deletedKeys.length = 0;
+
+        await membership.delete(auth, {});
+
+        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+
+        expect(deletedKeys).toContain(roleCacheKey);
+        expect(deletedKeys).toContain(seatsCacheKey);
       });
     });
   });
