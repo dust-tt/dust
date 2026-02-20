@@ -1219,19 +1219,7 @@ export async function archiveAgentConfiguration(
       agentConfig
     );
     if (editorGroupRes.isOk()) {
-      const editorGroup = editorGroupRes.value;
-      await GroupMembershipModel.update(
-        { status: "suspended" },
-        {
-          where: {
-            groupId: editorGroup.id,
-            workspaceId: owner.id,
-            status: "active",
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-        }
-      );
+      await editorGroupRes.value.suspendMembers();
     }
   }
 
@@ -1277,19 +1265,7 @@ export async function restoreAgentConfiguration(
       id: latestConfig.id,
     } as LightAgentConfigurationType);
     if (editorGroupRes.isOk()) {
-      const editorGroup = editorGroupRes.value;
-      await GroupMembershipModel.update(
-        { status: "active" },
-        {
-          where: {
-            groupId: editorGroup.id,
-            workspaceId: owner.id,
-            status: "suspended",
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-        }
-      );
+      await editorGroupRes.value.restoreMembers();
     }
 
     const triggers = await TriggerResource.listByAgentConfigurationId(

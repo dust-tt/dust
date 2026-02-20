@@ -29,7 +29,6 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/regi
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -1484,7 +1483,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    return withTransaction(async (transaction) => {
+    const affectedCount = await withTransaction(async (transaction) => {
       // Rename any existing archived skill with the same name to avoid unique constraint violation.
       const existingArchivedSkill = await this.model.findOne({
         where: {
@@ -1508,30 +1507,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       // We preserve AgentSkillModel and ConversationSkillModel relationships
       // so they can be restored when the skill is unarchived.
-      const [affectedCount] = await this.update(
-        { status: "archived" },
-        transaction
-      );
+      const [count] = await this.update({ status: "archived" }, transaction);
 
       // Suspend all editor group memberships for this skill.
-      if (affectedCount > 0 && this.editorGroup) {
-        await GroupMembershipModel.update(
-          { status: "suspended" },
-          {
-            where: {
-              groupId: this.editorGroup.id,
-              workspaceId: this.workspaceId,
-              status: "active",
-              startAt: { [Op.lte]: new Date() },
-              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-            },
-            transaction,
-          }
-        );
+      if (count > 0 && this.editorGroup) {
+        await this.editorGroup.suspendMembers({ transaction });
       }
 
-      return { affectedCount };
+      return count;
     });
+
+    return { affectedCount };
   }
 
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
@@ -1541,18 +1527,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Restore all editor group memberships (set suspended → active).
     if (affectedCount > 0 && this.editorGroup) {
-      await GroupMembershipModel.update(
-        { status: "active" },
-        {
-          where: {
-            groupId: this.editorGroup.id,
-            workspaceId: this.workspaceId,
-            status: "suspended",
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-        }
-      );
+      await this.editorGroup.restoreMembers();
     }
 
     return { affectedCount };

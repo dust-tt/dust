@@ -759,6 +759,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     // Invalidate the active seats cache for this workspace.
     await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
 
+    // We do not invalidate GroupMembership here
+    // because WorkspaceMembership is tested before GroupMembership
+    // in  lib/auth
+
     return new Ok({
       role: membership.role,
       startAt: membership.startAt,
