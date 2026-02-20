@@ -41,7 +41,11 @@ import {
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
+import {
+  isString,
+  isStringArray,
+  removeNulls,
+} from "@app/types/shared/utils/general";
 import { isRoleType } from "@app/types/user";
 import fs from "fs/promises";
 import parseArgs from "minimist";
@@ -58,12 +62,7 @@ function isConversationKillSwitchValue(
     return false;
   }
 
-  return (
-    Array.isArray(killSwitched.conversationIds) &&
-    killSwitched.conversationIds.every(
-      (conversationId) => typeof conversationId === "string"
-    )
-  );
+  return isStringArray(killSwitched.conversationIds);
 }
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
@@ -428,7 +427,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-      const conversationId = args.cId as string;
+      const conversationId = args.cId;
+      if (!isString(conversationId)) {
+        throw new Error("Invalid --cId argument: must be a string");
+      }
       const conversation = await ConversationResource.fetchById(
         auth,
         conversationId
@@ -496,7 +498,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      const conversationId = args.cId as string;
+      const conversationId = args.cId;
+      if (!isString(conversationId)) {
+        throw new Error("Invalid --cId argument: must be a string");
+      }
       const conversationIds = currentKillSwitch?.conversationIds ?? [];
       const updatedConversationIds = conversationIds.filter(
         (cId) => cId !== conversationId
@@ -614,8 +619,8 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     default:
-      console.log(`Unknown conversation command: ${command}`);
-      console.log("Possible values: `block`, `unblock`, `render-for-model`");
+      logger.error(`Unknown conversation command: ${command}`);
+      logger.error("Possible values: `block`, `unblock`, `render-for-model`");
   }
 };
 
