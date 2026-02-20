@@ -1,5 +1,5 @@
 import type { DustAPI, Result } from "@dust-tt/client";
-import { DustMcpServerTransport, Err, Ok } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { CLI_VERSION } from "../../utils/version.js";
@@ -8,6 +8,7 @@ import { ReadFileTool } from "../tools/readFile.js";
 import { RunCommandTool } from "../tools/runCommand.js";
 import { SearchContentTool } from "../tools/searchContent.js";
 import { SearchFilesTool } from "../tools/searchFiles.js";
+import { CLIMcpTransport } from "./cliTransport.js";
 
 // Add local development tools to the MCP server
 export const useFileSystemServer = async (
@@ -63,21 +64,7 @@ export const useFileSystemServer = async (
     );
   }
 
-  // Connect to Dust with enhanced error handling
-  const transport = new DustMcpServerTransport(
-    dustAPI,
-    (serverId) => {
-      onServerIdReceived(serverId);
-    },
-    "fs-cli",
-    false,
-    365 * 24 * 60 * 60 * 1000
-    // TODO: This is kind of a hack that is ok for now,
-    // the reason we need this is because we have yaffle's event source polyfill,
-    // which doesnt allow us to turn off timeouts, so we would need to continuously
-    // send keep alive messages from server, but there is currently an
-    // optimization to stop those messages from sever when mcp tools are not being used.
-  );
+  const transport = new CLIMcpTransport(dustAPI, onServerIdReceived, "fs-cli");
 
   try {
     await server.connect(transport);
