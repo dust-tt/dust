@@ -170,6 +170,11 @@
  *         description: Unauthorized
  */
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
@@ -468,6 +473,15 @@ async function handler(
           },
         });
       }
+
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "space.deleted",
+        actor: buildAuditActor(auth),
+        targets: [{ type: "space", id: space.sId, name: space.name }],
+        context: getAuditLogContext(auth, req),
+      });
 
       return res.status(200).json({ space: space.toJSON() });
     }

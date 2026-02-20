@@ -119,6 +119,11 @@
  *       404:
  *         description: File not found
  */
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
@@ -321,6 +326,19 @@ async function handler(
       }
 
       // Redirect to a signed URL.
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "file.downloaded",
+        actor: buildAuditActor(auth),
+        targets: [
+          { type: "file", id: file.sId, name: file.fileName },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          contentType: file.contentType,
+        },
+      });
       const url = await file.getSignedUrlForDownload(auth, "original");
       res.redirect(url);
       return;
