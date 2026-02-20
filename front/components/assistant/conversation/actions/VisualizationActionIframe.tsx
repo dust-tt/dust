@@ -1,5 +1,6 @@
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -346,7 +347,7 @@ export const VisualizationActionIframe = forwardRef<
       params.set("fullHeight", "true");
     }
 
-    return `${process.env.NEXT_PUBLIC_VIZ_URL}/content?${params.toString()}`;
+    return `${config.getClientFacingVizUrl()}/content?${params.toString()}`;
   }, [visualization, isInDrawer]);
 
   return (
