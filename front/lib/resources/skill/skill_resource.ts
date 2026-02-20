@@ -1227,24 +1227,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup.canWrite(auth);
   }
 
-  private async listOtherAgentSkills(
-    auth: Authenticator,
-    agent: AgentConfigurationModel
-  ): Promise<SkillResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
-    const agentSkills = await AgentSkillModel.findAll({
-      where: { agentConfigurationId: agent.id, workspaceId: workspace.id },
-    });
-    const skills = await SkillResource.fetchBySkillReferences(
-      auth,
-      agentSkills.map((s) => ({
-        customSkillId: s.customSkillId,
-        globalSkillId: s.globalSkillId,
-      }))
-    );
-    return skills.filter((skill) => skill.sId !== this.sId);
-  }
-
   private async listActiveAgents(
     auth: Authenticator
   ): Promise<AgentConfigurationModel[]> {
@@ -1309,6 +1291,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (spaceId) => !this.requestedSpaceIds.includes(spaceId)
     );
 
+    const workspace = auth.getNonNullableWorkspace();
+
     await concurrentExecutor(
       agents,
       async (agent) => {
@@ -1324,7 +1308,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           });
           const actions = actionsMap.get(agent.id) ?? [];
 
-          const otherAgentSkills = await this.listOtherAgentSkills(auth, agent);
+          const agentSkillModels = await AgentSkillModel.findAll({
+            where: {
+              agentConfigurationId: agent.id,
+              workspaceId: workspace.id,
+            },
+          });
+          const agentSkills = await SkillResource.fetchBySkillReferences(
+            auth,
+            agentSkillModels.map((s) => ({
+              customSkillId: s.customSkillId,
+              globalSkillId: s.globalSkillId,
+            }))
+          );
+          const otherAgentSkills = agentSkills.filter(
+            (skill) => skill.sId !== this.sId
+          );
 
           const agentOtherCapabilitiesRequirements =
             await getAgentConfigurationRequirementsFromCapabilities(auth, {
