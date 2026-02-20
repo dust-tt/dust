@@ -1,0 +1,35 @@
+front/pages/api/w/[wId]/sso.ts
+  fa2921d7d7801773 4-5,131,133
+front/lib/api/membership.ts
+  fa2921d7d7801773 4-5,58,60
+front/pages/api/w/[wId]/dsync.ts
+  fa2921d7d7801773 4-5,131,133
+front/lib/api/invitation.ts
+  fa2921d7d7801773 8,390
+front/lib/api/signup.ts
+  fa2921d7d7801773 2-3,66
+front/lib/api/poke/plugins/workspaces/delete_workspace.ts
+  fa2921d7d7801773 2-3,88-89,92
+front/pages/api/w/[wId]/domains.ts
+  fa2921d7d7801773 8-9,130,132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "462cca06f1efd2a7341eefa1ae69f3ca64d6bc6e",
+  "prompts": {
+    "fa2921d7d7801773": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7d8f99f-a2e0-4795-887c-77f6ebafb87d",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 148,
+      "overriden_lines": 0
+    }
+  }
+}
