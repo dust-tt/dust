@@ -1,4 +1,16 @@
 /** @ignoreswagger */
+import { isLeft } from "fp-ts/lib/Either";
+import { escape } from "html-escaper";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -129,6 +141,7 @@ async function handler(
       }
 
       if ("name" in body) {
+        const previousName = owner.name;
         await workspace.updateWorkspaceSettings({
           name: escape(body.name),
         });
@@ -144,28 +157,71 @@ async function handler(
             },
           });
         }
+
+        void emitAuditLogEvent({
+          workspace: owner,
+          action: "workspace.renamed",
+          actor: buildAuditActor(auth),
+          targets: [buildWorkspaceTarget(owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            previousName,
+            newName: body.name,
+          },
+        });
       } else if ("ssoEnforced" in body) {
+        const previousValue = owner.ssoEnforced;
         await workspace.updateWorkspaceSettings({
           ssoEnforced: body.ssoEnforced,
         });
 
         owner.ssoEnforced = body.ssoEnforced;
+
+        void emitAuditLogEvent({
+          workspace: owner,
+          action: "workspace.sso_enforcement_changed",
+          actor: buildAuditActor(auth),
+          targets: [buildWorkspaceTarget(owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            previousValue: previousValue,
+            newValue: body.ssoEnforced,
+          },
+        });
       } else if (
         "whiteListedProviders" in body &&
         "defaultEmbeddingProvider" in body
       ) {
+        const previousProviders = owner.whiteListedProviders;
+        const previousEmbeddingProvider = owner.defaultEmbeddingProvider;
         await workspace.updateWorkspaceSettings({
           whiteListedProviders: body.whiteListedProviders,
           defaultEmbeddingProvider: body.defaultEmbeddingProvider,
         });
         owner.whiteListedProviders = body.whiteListedProviders;
         owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
+
+        void emitAuditLogEvent({
+          workspace: owner,
+          action: "workspace.providers_changed",
+          actor: buildAuditActor(auth),
+          targets: [buildWorkspaceTarget(owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            previousProviders: JSON.stringify(previousProviders),
+            newProviders: JSON.stringify(body.whiteListedProviders),
+            previousEmbeddingProvider: String(previousEmbeddingProvider),
+            newEmbeddingProvider: String(body.defaultEmbeddingProvider),
+          },
+        });
       } else if ("workOSOrganizationId" in body) {
         await workspace.updateWorkspaceSettings({
           workOSOrganizationId: body.workOSOrganizationId,
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
       } else if ("allowContentCreationFileSharing" in body) {
+        const previousValue =
+          owner.metadata?.allowContentCreationFileSharing ?? false;
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
@@ -178,7 +234,21 @@ async function handler(
         if (!body.allowContentCreationFileSharing) {
           await FileResource.revokePublicSharingInWorkspace(auth);
         }
+
+        void emitAuditLogEvent({
+          workspace: owner,
+          action: "workspace.file_sharing_changed",
+          actor: buildAuditActor(auth),
+          targets: [buildWorkspaceTarget(owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            previousValue: previousValue,
+            newValue: body.allowContentCreationFileSharing,
+          },
+        });
       } else if ("allowVoiceTranscription" in body) {
+        const previousValue =
+          owner.metadata?.allowVoiceTranscription ?? false;
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
@@ -194,6 +264,18 @@ async function handler(
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
+
+        void emitAuditLogEvent({
+          workspace: owner,
+          action: "workspace.voice_transcription_changed",
+          actor: buildAuditActor(auth),
+          targets: [buildWorkspaceTarget(owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            previousValue: previousValue,
+            newValue: body.allowVoiceTranscription,
+          },
+        });
       } else if ("domainUpdates" in body) {
         for (const update of body.domainUpdates) {
           const updateResult = await workspace.updateDomainAutoJoinEnabled({
@@ -210,6 +292,17 @@ async function handler(
             });
           }
         }
+
+        void emitAuditLogEvent({
+          workspace: owner,
+          action: "workspace.domains_batch_updated",
+          actor: buildAuditActor(auth),
+          targets: [buildWorkspaceTarget(owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            updates: JSON.stringify(body.domainUpdates),
+          },
+        });
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const updateResult = await workspace.updateDomainAutoJoinEnabled({
@@ -225,6 +318,18 @@ async function handler(
             },
           });
         }
+
+        void emitAuditLogEvent({
+          workspace: owner,
+          action: "workspace.auto_join_changed",
+          actor: buildAuditActor(auth),
+          targets: [buildWorkspaceTarget(owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            domain: domain ?? "all",
+            enabled: domainAutoJoinEnabled,
+          },
+        });
       }
 
       res.status(200).json({ workspace: owner });
