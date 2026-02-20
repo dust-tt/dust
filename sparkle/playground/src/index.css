@@ -41,3 +41,13 @@
 .tippy-box[data-theme~="sparkle"] > .tippy-arrow {
   display: none;
 }
+
+/* Recharts: force chart SVG to use full container width (removes right padding) */
+.recharts-responsive-container {
+  width: 100% !important;
+}
+.recharts-responsive-container .recharts-wrapper,
+.recharts-responsive-container .recharts-surface {
+  width: 100% !important;
+  overflow: visible;
+}

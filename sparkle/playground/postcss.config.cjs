@@ -1,4 +1,10 @@
 const path = require("path");
 
-// Reference Sparkle's postcss config from parent directory (no duplication)
-module.exports = require(path.resolve(__dirname, "../postcss.config.js"));
+// Use playground's Tailwind config so content includes ./src (Analytics, etc.)
+// Otherwise Tailwind only scans Sparkle's src and playground classes are missing
+module.exports = {
+  plugins: {
+    tailwindcss: { config: path.resolve(__dirname, "tailwind.config.cjs") },
+    autoprefixer: {},
+  },
+};
