@@ -23,7 +23,7 @@ jobs:
           build-sdks: "true"
           build-sparkle: "true"
       - working-directory: extension
-        run: npm install && npm run lint && npm run package:chrome:production
+        run: npm run lint && npm run package:chrome:production
         env:
           DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
   tsgo:

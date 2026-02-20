@@ -177,7 +177,7 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
       );
       return new Ok(response.similar_skills);
     },
-    [owner.sId]
+    [owner.sId, fetcher]
   );
 
   return { getSimilarSkills };

@@ -184,7 +184,7 @@ export function useMultipleDataSourceViewsContentNodes({
     if (dataSourceViewsAndInternalIds.length > 0) {
       void fetchData();
     }
-  }, [dataSourceViewsAndInternalIds, owner.sId, viewType]);
+  }, [dataSourceViewsAndInternalIds, owner.sId, viewType, fetcherWithBody]);
 
   return useMemo(
     () => ({
