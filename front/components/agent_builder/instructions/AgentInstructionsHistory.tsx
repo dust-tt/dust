@@ -1,5 +1,5 @@
 import { useMembersLookup } from "@app/lib/swr/memberships";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -19,9 +19,9 @@ import { format } from "date-fns/format";
 import React, { useCallback, useMemo } from "react";
 
 interface AgentInstructionsHistoryProps {
-  history: LightAgentConfigurationType[];
-  selectedConfig: LightAgentConfigurationType | null;
-  onSelect: (config: LightAgentConfigurationType) => void;
+  history: AgentConfigurationType[];
+  selectedConfig: AgentConfigurationType | null;
+  onSelect: (config: AgentConfigurationType) => void;
   owner: LightWorkspaceType;
 }
 
@@ -58,7 +58,7 @@ export function AgentInstructionsHistory({
   }, [authorLookupMembers]);
 
   const formatVersionLabel = useCallback(
-    (config: LightAgentConfigurationType) => {
+    (config: AgentConfigurationType) => {
       return config.versionCreatedAt
         ? format(config.versionCreatedAt, "Pp")
         : `v${config.version}`;
@@ -67,7 +67,7 @@ export function AgentInstructionsHistory({
   );
 
   const getAuthorName = useCallback(
-    (config: LightAgentConfigurationType) => {
+    (config: AgentConfigurationType) => {
       if (!config.versionAuthorId) {
         return "System";
       }
@@ -88,7 +88,7 @@ export function AgentInstructionsHistory({
         )
       );
 
-    const result: LightAgentConfigurationType[] = [];
+    const result: AgentConfigurationType[] = [];
 
     let lastRawInstructions: string | null = null;
 

@@ -346,7 +346,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     agentConfigurationIds.length > 0
       ? getAgentConfigurations(auth, {
           agentIds: [...agentConfigurationIds],
-          variant: "extra_light",
+          variant: "extra_light_with_instructions",
         })
       : [],
   ]);

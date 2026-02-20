@@ -69,7 +69,9 @@ const SUGGEST_AGENTS_FUNCTION_SPECIFICATIONS: AgentActionSpecification[] = [
   },
 ];
 
-export async function getSuggestedAgentsForContent(
+export async function getSuggestedAgentsForContent<
+  T extends LightAgentConfigurationType,
+>(
   auth: Authenticator,
   {
     content,
@@ -77,10 +79,10 @@ export async function getSuggestedAgentsForContent(
     conversationId,
   }: {
     content: string;
-    agents: LightAgentConfigurationType[];
+    agents: T[];
     conversationId?: string;
   }
-): Promise<Result<LightAgentConfigurationType[], Error>> {
+): Promise<Result<T[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   let model = getSmallWhitelistedModel(owner);

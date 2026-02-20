@@ -13,10 +13,10 @@ import {
 } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
+  AgentConfigurationsByVariant,
   AgentConfigurationType,
   AgentFetchVariant,
   AgentsGetViewType,
-  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -331,9 +331,7 @@ export async function getAgentConfigurationsForView<
   limit?: number;
   sort?: SortStrategyType;
   dangerouslySkipPermissionFiltering?: boolean;
-}): Promise<
-  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
-> {
+}): Promise<AgentConfigurationsByVariant<V>> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -373,7 +371,10 @@ export async function getAgentConfigurationsForView<
       variant,
     });
 
-    return applySortAndLimit(allGlobalAgents);
+    // Safe cast: AgentConfigurationType extends all variant return types.
+    return applySortAndLimit(
+      allGlobalAgents
+    ) as AgentConfigurationsByVariant<V>;
   }
 
   // Only workspace agents are filtered by requested spaces (unless dangerouslySkipPermissionFiltering is true)
@@ -394,5 +395,8 @@ export async function getAgentConfigurationsForView<
     }),
   ]);
 
-  return applySortAndLimit(allAgentConfigurations.flat());
+  // Safe cast: AgentConfigurationType extends all variant return types.
+  return applySortAndLimit(
+    allAgentConfigurations.flat()
+  ) as AgentConfigurationsByVariant<V>;
 }

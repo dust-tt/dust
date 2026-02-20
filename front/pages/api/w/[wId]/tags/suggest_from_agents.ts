@@ -72,7 +72,7 @@ async function handler(
       const agents = await getAgentConfigurationsForView({
         auth,
         agentsGetView: "list",
-        variant: "extra_light",
+        variant: "extra_light_with_instructions",
       });
 
       const formattedAgents = agents

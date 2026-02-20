@@ -103,7 +103,20 @@ export type AgentModelConfigurationType = {
   responseFormat?: string;
 };
 
-export type AgentFetchVariant = "light" | "full" | "extra_light";
+/**
+ * Variants control which fields are included when fetching agent configurations:
+ * - "light": No instructions, includes favorites and tags. Used for list/manage views.
+ * - "light_with_instructions": Includes instructions, favorites and tags.
+ * - "extra_light": No instructions, skips favorites and tags. Used for mentions rendering in user messages.
+ * - "extra_light_with_instructions": Includes instructions, skips favorites and tags. Used for agent message rendering.
+ * - "full": Everything including actions and skills. Used for agent builder/editing.
+ */
+export type AgentFetchVariant =
+  | "extra_light"
+  | "extra_light_with_instructions"
+  | "light"
+  | "light_with_instructions"
+  | "full";
 
 export type LightAgentConfigurationType = {
   id: ModelId;
@@ -114,9 +127,6 @@ export type LightAgentConfigurationType = {
   version: number;
   // Global agents have a null authorId, others have a non-null authorId
   versionAuthorId: ModelId | null;
-
-  instructions: string | null;
-  instructionsHtml: string | null;
 
   model: AgentModelConfigurationType;
 
@@ -159,11 +169,25 @@ export type LightAgentConfigurationType = {
   canEdit: boolean;
 };
 
-export type AgentConfigurationType = LightAgentConfigurationType & {
-  // If empty, no actions are performed, otherwise the actions are performed.
-  actions: MCPServerConfigurationType[];
-  skills?: GlobalSkillId[];
-};
+export type LightAgentConfigurationWithInstructionsType =
+  LightAgentConfigurationType & {
+    instructions: string | null;
+    instructionsHtml: string | null;
+  };
+
+export type AgentConfigurationsByVariant<V extends AgentFetchVariant> =
+  V extends "full"
+    ? AgentConfigurationType[]
+    : V extends "light_with_instructions" | "extra_light_with_instructions"
+      ? LightAgentConfigurationWithInstructionsType[]
+      : LightAgentConfigurationType[];
+
+export type AgentConfigurationType =
+  LightAgentConfigurationWithInstructionsType & {
+    // If empty, no actions are performed, otherwise the actions are performed.
+    actions: MCPServerConfigurationType[];
+    skills?: GlobalSkillId[];
+  };
 
 export interface TemplateAgentConfigurationType {
   name: string;

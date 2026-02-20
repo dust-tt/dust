@@ -5,7 +5,7 @@ import { AdvancedSettings } from "@app/components/agent_builder/instructions/Adv
 import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   ArrowPathIcon,
   Button,
@@ -28,7 +28,7 @@ export function AgentBuilderInstructionsBlock({
   const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<AgentBuilderFormData>();
   const [compareVersion, setCompareVersion] =
-    useState<LightAgentConfigurationType | null>(null);
+    useState<AgentConfigurationType | null>(null);
   const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
 
   const { agentConfigurationHistory } = useAgentConfigurationHistory({

@@ -7,7 +7,7 @@ import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightAgentConfigurationWithInstructionsType } from "@app/types/assistant/agent";
 import { getHeaderFromGroupIds } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
@@ -87,7 +87,8 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     if (getAgentsRes.isErr()) {
       return new Err(new MCPError("Error fetching agent configurations"));
     }
-    const agents = getAgentsRes.value as LightAgentConfigurationType[];
+    const agents =
+      getAgentsRes.value as LightAgentConfigurationWithInstructionsType[];
 
     const suggestedAgentsRes = await getSuggestedAgentsForContent(auth, {
       agents,
