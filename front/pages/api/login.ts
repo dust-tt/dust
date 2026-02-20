@@ -51,6 +51,7 @@ async function handler(
 
   let targetWorkspace: LightWorkspaceType | null = null;
   let targetFlow: "joined" | null = null;
+  let activeMemberships: MembershipResource[] = [];
 
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
   // meaning the user is going through the invite by email flow.
@@ -116,15 +117,22 @@ async function handler(
 
     targetWorkspace = workspace;
     targetFlow = flow;
+
+    // Fetch memberships for first use marking.
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
+    activeMemberships = memberships;
   } else {
     const { memberships } = await MembershipResource.getActiveMemberships({
       users: [user],
     });
+    activeMemberships = memberships;
 
     // When user has no memberships, and no invitation is already provided, check if there is a
     // pending invitation.
     const pendingInvitations =
-      memberships.length === 0 && !membershipInvite
+      activeMemberships.length === 0 && !membershipInvite
         ? await MembershipInvitationResource.listPendingForEmail({
             email: user.email,
           })
@@ -147,7 +155,7 @@ async function handler(
           handleRegularSignupFlow(
             session,
             user,
-            memberships,
+            activeMemberships,
             targetWorkspaceId,
             utmParams
           );
@@ -206,6 +214,16 @@ async function handler(
   };
 
   await user.recordLoginActivity();
+
+  // Mark first use for provisioned membership when user accesses a workspace.
+  if (targetWorkspace) {
+    const targetMembership = activeMemberships.find(
+      (m) => m.workspaceId === targetWorkspace.id
+    );
+    if (targetMembership) {
+      await targetMembership.markFirstUse();
+    }
+  }
 
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this

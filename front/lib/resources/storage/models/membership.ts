@@ -6,7 +6,7 @@ import type {
   MembershipRoleType,
 } from "@app/types/memberships";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare createdAt: CreationOptional<Date>;
@@ -16,6 +16,7 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare origin: MembershipOriginType;
   declare startAt: Date;
   declare endAt: Date | null;
+  declare firstUsedAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare user: NonAttribute<UserModel>;
@@ -49,6 +50,10 @@ MembershipModel.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    firstUsedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     modelName: "membership",
@@ -63,6 +68,12 @@ MembershipModel.init(
         fields: ["userId", "workspaceId"],
         unique: true,
         where: { endAt: null },
+      },
+      // Index for counting first-used seats (seat billing)
+      {
+        fields: ["workspaceId", "firstUsedAt"],
+        where: { firstUsedAt: { [Op.ne]: null } },
+        concurrently: true,
       },
     ],
   }
