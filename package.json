@@ -23,10 +23,12 @@
     "lint:fix": "biome lint --fix .",
     "lint:lefthook": "biome lint",
     "biome": "biome check .",
-    "biome:lefthook": "biome check --write"
+    "biome:lefthook": "biome check --write",
+    "test:grit": "grit patterns test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",
+    "@getgrit/cli": "^0.1.0-alpha.1743007075",
     "knip": "^5.80.0",
     "lefthook": "^2.1.0"
   },

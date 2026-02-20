@@ -15,6 +15,8 @@ on:
       - "**/*.yaml"
       - biome.json
       - "**/biome.json"
+      - "biome-plugins/**"
+      - ".grit/**"
       - package.json
       - package-lock.json
       - .github/workflows/format-check.yml
@@ -36,3 +38,5 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Format Check
         run: npm run biome
+      - name: GritQL Plugin Tests
+        run: npm run test:grit
