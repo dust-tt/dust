@@ -185,6 +185,14 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
 }
 
+const AGENT_IDS_RESTRICTED_TO_BUILDER = new Set<string>([
+  GLOBAL_AGENTS_SID.COPILOT,
+]);
+
+export function canShowAgentConversationActions(agentId: string): boolean {
+  return !AGENT_IDS_RESTRICTED_TO_BUILDER.has(agentId);
+}
+
 export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
     case GLOBAL_AGENTS_SID.GPT5:

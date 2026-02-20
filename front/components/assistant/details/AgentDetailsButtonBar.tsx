@@ -11,6 +11,7 @@ import {
 } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { canShowAgentConversationActions } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
@@ -108,17 +109,19 @@ export function AgentDetailsButtonBar({
         />
       </div>
 
-      <Button
-        icon={ChatBubbleBottomCenterTextIcon}
-        size="sm"
-        variant="outline"
-        tooltip="New conversation"
-        href={getConversationRoute(
-          owner.sId,
-          "new",
-          `agent=${agentConfiguration.sId}`
-        )}
-      />
+      {canShowAgentConversationActions(agentConfiguration.sId) && (
+        <Button
+          icon={ChatBubbleBottomCenterTextIcon}
+          size="sm"
+          variant="outline"
+          tooltip="New conversation"
+          href={getConversationRoute(
+            owner.sId,
+            "new",
+            `agent=${agentConfiguration.sId}`
+          )}
+        />
+      )}
 
       {agentConfiguration.scope !== "global" &&
         !isRestrictedFromAgentCreation && (
