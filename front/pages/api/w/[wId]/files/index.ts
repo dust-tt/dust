@@ -3,6 +3,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isUploadSupported } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
@@ -152,6 +157,19 @@ async function handler(
         workspaceId: owner.id,
         useCase,
         useCaseMetadata: useCaseMetadata,
+      });
+
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "file.uploaded",
+        actor: buildAuditActor(auth),
+        targets: [{ type: "file", id: file.sId, name: fileName }],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          contentType,
+          fileSize: String(fileSize),
+          useCase,
+        },
       });
 
       res.status(200).json({ file: file.toJSONWithUploadUrl(auth) });

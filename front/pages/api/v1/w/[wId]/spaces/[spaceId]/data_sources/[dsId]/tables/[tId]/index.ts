@@ -1,6 +1,12 @@
 import type { GetTableResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { deleteTable } from "@app/lib/api/tables";
@@ -268,6 +274,20 @@ async function handler(
             assertNever(delRes.error);
         }
       }
+
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "table.deleted",
+        actor: auth.isSystemKey()
+          ? { type: "api_key", id: "system" }
+          : buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "data_source", id: dataSource.sId, name: dataSource.name },
+          { type: "table", id: tId },
+        ],
+        context: getAuditLogContext(auth, req),
+      });
 
       res.status(200).end();
       return;

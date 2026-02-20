@@ -3,6 +3,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
@@ -162,7 +167,23 @@ async function handler(
         }
       }
 
-      return res.status(201).json({ space: spaceRes.value.toJSON() });
+      const newSpace = spaceRes.value;
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "space.created",
+        actor: buildAuditActor(auth),
+        targets: [
+          { type: "space", id: newSpace.sId, name: newSpace.name },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          kind: requestBody.spaceKind,
+          isRestricted: requestBody.isRestricted,
+        },
+      });
+
+      return res.status(201).json({ space: newSpace.toJSON() });
 
     default:
       return apiError(req, res, {

@@ -2,6 +2,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -154,6 +160,19 @@ async function handler(
             assertNever(delRes.error);
         }
       }
+
+      const workspace = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        workspace,
+        action: "table.deleted",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(workspace),
+          { type: "data_source", id: dataSource.sId, name: dataSource.name },
+          { type: "table", id: tableId },
+        ],
+        context: getAuditLogContext(auth, req),
+      });
 
       res.status(200).end();
       break;

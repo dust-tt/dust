@@ -15,6 +15,11 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -1083,13 +1088,14 @@ export async function validateUserMention(
       },
     });
   }
+  const actingUser = auth.getNonNullableUser();
   if (isApproval) {
     const auditMessage = conversation.spaceId
       ? "User approved a mention and added user to project"
       : "User approved a mention";
     auditLog(
       {
-        author: auth.getNonNullableUser().toJSON(),
+        author: actingUser.toJSON(),
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
         messageId: message.sId,
@@ -1098,6 +1104,40 @@ export async function validateUserMention(
       },
       auditMessage
     );
+    void emitAuditLogEvent({
+      workspace: conversation.owner,
+      action: "conversation.mention_approved",
+      actor: buildAuditActor(auth),
+      targets: [
+        { type: "conversation", id: conversation.sId },
+        { type: "message", id: message.sId },
+      ],
+      context: getAuditLogContext(auth),
+      metadata: { mentionedUserId: userId },
+    });
+  } else {
+    auditLog(
+      {
+        author: actingUser.toJSON(),
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        messageId: message.sId,
+        userId,
+        approvalState,
+      },
+      "User rejected a mention"
+    );
+    void emitAuditLogEvent({
+      workspace: conversation.owner,
+      action: "conversation.mention_rejected",
+      actor: buildAuditActor(auth),
+      targets: [
+        { type: "conversation", id: conversation.sId },
+        { type: "message", id: message.sId },
+      ],
+      context: getAuditLogContext(auth),
+      metadata: { mentionedUserId: userId },
+    });
   }
 
   if (isUserMessageType(message)) {

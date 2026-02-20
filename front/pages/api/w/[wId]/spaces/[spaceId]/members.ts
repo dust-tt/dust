@@ -3,6 +3,12 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -177,13 +183,15 @@ export async function handler(
         }
       }
 
+      const user = auth.user();
+      const workspace = auth.getNonNullableWorkspace();
+
       // Audit log when an admin who is not a member of the space updates its permissions.
       if (!space.canRead(auth)) {
-        const user = auth.user();
         auditLog(
           {
             author: user ? user.toJSON() : "no-author",
-            workspaceId: auth.getNonNullableWorkspace().sId,
+            workspaceId: workspace.sId,
             spaceId: space.sId,
             spaceName: space.name,
             action: "space_permissions_updated_by_non_member",
@@ -191,6 +199,23 @@ export async function handler(
           "[Security] Admin updated space permissions without being a member"
         );
       }
+
+      // Always emit audit log for space permission changes.
+      void emitAuditLogEvent({
+        workspace,
+        action: "space.permissions_updated",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(workspace),
+          { type: "space", id: space.sId, name: space.name },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          isAdminNonMember: !space.canRead(auth),
+          managementMode: body.managementMode,
+          isRestricted: body.isRestricted,
+        },
+      });
 
       // Trigger notifications for newly added members (projects only).
       if (
