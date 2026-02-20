@@ -158,8 +158,7 @@ export async function renderAllMessages(
       if (m.visibility === "visible") {
         // Check if this is the current agent's message.
         const isCurrentAgentMessage =
-          !agentConfiguration ||
-          m.configuration.sId === agentConfiguration.sId;
+          !agentConfiguration || m.configuration.sId === agentConfiguration.sId;
 
         if (isCurrentAgentMessage) {
           // Render the current agent's messages normally with full agentic loop.
