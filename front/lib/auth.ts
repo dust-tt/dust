@@ -92,6 +92,7 @@ export class Authenticator {
   _groupModelIds: ModelId[];
   _workspace: WorkspaceResource | null;
   _authMethod: AuthMethodType;
+  _clientIp?: string;
 
   // Should only be called from the static methods below.
   constructor({
@@ -102,6 +103,7 @@ export class Authenticator {
     authMethod,
     subscription,
     key,
+    clientIp,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -110,6 +112,7 @@ export class Authenticator {
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
+    clientIp?: string;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -121,6 +124,7 @@ export class Authenticator {
     this._subscription = subscription || null;
     this._authMethod = authMethod;
     this._key = key;
+    this._clientIp = clientIp;
     if (user) {
       tracer.setUser({
         id: user?.sId,
@@ -671,6 +675,7 @@ export class Authenticator {
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
+      clientIp: auth._clientIp,
     });
   }
 
@@ -683,6 +688,7 @@ export class Authenticator {
       user: this._user,
       subscription: this._subscription,
       workspace: this._workspace,
+      clientIp: this._clientIp,
     });
   }
 
@@ -712,6 +718,14 @@ export class Authenticator {
 
   authMethod(): AuthMethodType {
     return this._authMethod;
+  }
+
+  clientIp(): string | undefined {
+    return this._clientIp;
+  }
+
+  setClientIp(ip: string) {
+    this._clientIp = ip;
   }
 
   workspace(): WorkspaceType | null {

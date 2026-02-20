@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
+import { getClientIpFromHeaders } from "@app/lib/api/workos/webhook_helpers";
 import {
   Authenticator,
   getAPIKey,
@@ -23,6 +24,17 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { getUserEmailFromHeaders } from "@app/types/user";
+
+function setClientIpOnAuth(
+  auth: Authenticator,
+  req: NextApiRequest
+): void {
+  const ip =
+    getClientIpFromHeaders(req.headers) ?? req.socket?.remoteAddress;
+  if (ip) {
+    auth.setClientIp(ip);
+  }
+}
 
 function getMaintenanceError(
   maintenance: string | number | true | object
@@ -213,6 +225,8 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
+      setClientIpOnAuth(auth, req);
+
       return handler(req, res, auth, session);
     },
     opts
@@ -340,6 +354,8 @@ export function withPublicAPIAuthentication<T>(
             return apiError(req, res, getMaintenanceError(maintenance));
           }
 
+          setClientIpOnAuth(auth, req);
+
           return await handler(req, res, auth, null);
         } catch (error) {
           logger.error({ error }, "Failed to verify token");
@@ -442,6 +458,9 @@ export function withPublicAPIAuthentication<T>(
           monthlyCapMicroUsd: key.monthlyCapMicroUsd,
         });
       }
+
+      setClientIpOnAuth(workspaceAuth, req);
+
       return handler(req, res, workspaceAuth, null);
     },
     isStreaming
@@ -645,6 +664,8 @@ export async function getAuthForSharedEndpointWorkspaceMembersOnly(
   if (!auth.isUser()) {
     return null;
   }
+
+  setClientIpOnAuth(auth, req);
 
   return auth;
 }

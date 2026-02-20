@@ -8,6 +8,7 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
+import { getClientIpFromHeaders } from "@app/lib/api/workos/webhook_helpers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
@@ -94,6 +95,12 @@ async function handler(
       // If the run targets a specific workspace, use a workspace-scoped authenticator.
       if (workspaceId) {
         auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+      }
+
+      const ip =
+        getClientIpFromHeaders(req.headers) ?? req.socket?.remoteAddress;
+      if (ip) {
+        auth.setClientIp(ip);
       }
 
       const plugin = pluginManager.getPluginById(pluginId);

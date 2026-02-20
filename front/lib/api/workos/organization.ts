@@ -372,6 +372,82 @@ export async function disableWorkOSSSOAndSCIM(
   }
 }
 
+/**
+ * Audit Logs.
+ */
+
+export type AuditLogActor = {
+  type: string;
+  id: string;
+  name?: string;
+  metadata?: Record<string, string | number | boolean>;
+};
+
+export type AuditLogTarget = {
+  type: string;
+  id: string;
+  name?: string;
+  metadata?: Record<string, string | number | boolean>;
+};
+
+export type AuditLogContext = {
+  location: string;
+  userAgent?: string;
+};
+
+export type CreateAuditLogEventParams = {
+  action: string;
+  occurredAt?: Date;
+  actor: AuditLogActor;
+  targets: AuditLogTarget[];
+  context: AuditLogContext;
+  metadata?: Record<string, string | number | boolean>;
+};
+
+export async function createAuditLogEvent({
+  workspace,
+  event,
+}: {
+  workspace: LightWorkspaceType;
+  event: CreateAuditLogEventParams;
+}): Promise<Result<void, Error>> {
+  if (!workspace.workOSOrganizationId) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  try {
+    await getWorkOS().auditLogs.createEvent(workspace.workOSOrganizationId, {
+      action: event.action,
+      occurredAt: event.occurredAt ?? new Date(),
+      actor: {
+        type: event.actor.type,
+        id: event.actor.id,
+        name: event.actor.name,
+        metadata: event.actor.metadata ?? {},
+      },
+      targets: event.targets.map((target) => ({
+        type: target.type,
+        id: target.id,
+        name: target.name,
+        metadata: target.metadata,
+      })),
+      context: {
+        location: event.context.location,
+        userAgent: event.context.userAgent,
+      },
+      metadata: event.metadata,
+    });
+
+    return new Ok(undefined);
+  } catch (error) {
+    const e = normalizeError(error);
+    logger.error(e, "Failed to create audit log event");
+    return new Err(new Error(`Failed to create audit log event: ${e.message}`));
+  }
+}
+
 export async function deleteWorksOSOrganizationWithWorkspace(
   workspaceId: string
 ): Promise<Result<undefined, Error>> {

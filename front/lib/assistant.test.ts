@@ -66,6 +66,7 @@ function createMockPlan(code: string): PlanType {
         maxUsers: 10,
         isSSOAllowed: false,
         isSCIMAllowed: false,
+        isAuditLogsAllowed: false,
       },
       vaults: {
         maxVaults: 10,
