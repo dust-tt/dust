@@ -133,6 +133,7 @@ export const getConfig = async ({
             loader: "ts-loader",
             options: {
               configFile: resolvePath("../../tsconfig.json"),
+              transpileOnly: true,
             },
           },
           exclude: /node_modules/,

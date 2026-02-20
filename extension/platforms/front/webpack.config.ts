@@ -24,6 +24,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
             loader: "ts-loader",
             options: {
               configFile: path.resolve(__dirname, "../../tsconfig.json"),
+              transpileOnly: true,
             },
           },
           exclude: /node_modules/,
