@@ -3,13 +3,16 @@ import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilder
 import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { useSearchParam } from "@app/lib/platform";
 import {
   useAgentConfiguration,
   useAssistantTemplate,
 } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import Custom404 from "@app/pages/404";
 import type {
   AgentConfigurationScope,
@@ -24,9 +27,7 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 export function NewAgentPage() {
   const owner = useWorkspace();
   const { user, isAdmin, isBuilder } = useAuth();
-  const { featureFlags, isFeatureFlagsLoading, hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags, hasFeature } = useFeatureFlags();
 
   const flowParam = useSearchParam("flow");
   const flow: BuilderFlow =
@@ -71,14 +72,6 @@ export function NewAgentPage() {
   }
 
   const isDuplicateLoading = !!duplicateAgentId && isAgentConfigurationLoading;
-
-  if (isFeatureFlagsLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   if (isRestrictedFromAgentCreation) {
     return <Custom404 />;

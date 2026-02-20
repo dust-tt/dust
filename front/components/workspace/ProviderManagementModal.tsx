@@ -6,8 +6,9 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isModelAvailable } from "@app/lib/assistant";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
+import { useWorkspace } from "@app/lib/swr/workspaces";
 import { EMBEDDING_PROVIDER_IDS } from "@app/types/assistant/models/embedding";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -73,10 +74,7 @@ export function ProviderManagementModal({
     disabled: !open,
   });
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-    disabled: !open,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   // Filter models based on feature flags and build modelProviders dynamically
   const filteredModels = uniqBy(

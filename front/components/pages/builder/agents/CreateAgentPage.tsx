@@ -9,10 +9,13 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
@@ -49,7 +52,7 @@ export function CreateAgentPage() {
     owner,
   });
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasCopilot = hasFeature("agent_builder_copilot") && isAdmin;
   const { assistantTemplates } = useAssistantTemplates();

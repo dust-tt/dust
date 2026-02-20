@@ -1,6 +1,6 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
@@ -159,9 +159,7 @@ export function WelcomeTourGuide({
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&

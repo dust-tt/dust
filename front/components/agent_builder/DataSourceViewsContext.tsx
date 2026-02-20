@@ -1,10 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
@@ -41,9 +41,7 @@ export const DataSourceViewsProvider = ({
   children,
 }: DataSourceViewsProviderProps) => {
   const sendNotification = useSendNotification();
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
   const { dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError } =
     useDataSourceViews(owner);
 

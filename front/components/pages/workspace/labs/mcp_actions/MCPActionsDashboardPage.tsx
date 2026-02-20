@@ -4,10 +4,9 @@ import {
   useSetNavChildren,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   ActionCodeBoxIcon,
   Avatar,
@@ -27,9 +26,7 @@ export function MCPActionsDashboardPage() {
   const owner = useWorkspace();
   const router = useAppRouter();
 
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
@@ -40,13 +37,10 @@ export function MCPActionsDashboardPage() {
 
   // Redirect if feature flag is not enabled.
   useEffect(() => {
-    if (
-      !isFeatureFlagsLoading &&
-      !featureFlags.includes("labs_mcp_actions_dashboard")
-    ) {
+    if (!featureFlags.includes("labs_mcp_actions_dashboard")) {
       void router.replace(`/w/${owner.sId}/labs`);
     }
-  }, [featureFlags, isFeatureFlagsLoading, owner.sId, router]);
+  }, [featureFlags, owner.sId, router]);
 
   const items = [
     {
@@ -66,9 +60,7 @@ export function MCPActionsDashboardPage() {
   const activeAgents =
     agentConfigurations?.filter((agent) => agent.status === "active") || [];
 
-  const isLoading =
-    isFeatureFlagsLoading ||
-    !featureFlags.includes("labs_mcp_actions_dashboard");
+  const isLoading = !featureFlags.includes("labs_mcp_actions_dashboard");
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,

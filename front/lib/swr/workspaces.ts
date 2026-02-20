@@ -17,7 +17,6 @@ import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analy
 import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
-import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
@@ -31,9 +30,8 @@ import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 // Type guard to check if response is a region redirect
@@ -372,44 +370,6 @@ export function useWorkspaceActiveSubscription({
     activeSubscription,
     isActiveSubscriptionLoading: !error && !data,
     isActiveSubscriptionError: error,
-  };
-}
-
-export function useFeatureFlags({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const featureFlagsFetcher: Fetcher<GetWorkspaceFeatureFlagsResponseType> =
-    fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/feature-flags`,
-    featureFlagsFetcher,
-    {
-      disabled,
-      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
-    }
-  );
-
-  const hasFeature = useCallback(
-    (flag: WhitelistableFeature | null | undefined) => {
-      if (!flag) {
-        return true;
-      }
-      return !!data?.feature_flags.includes(flag);
-    },
-    [data]
-  );
-
-  return {
-    featureFlags: data?.feature_flags ?? emptyArray(),
-    isFeatureFlagsLoading: !error && !data,
-    isFeatureFlagsError: error,
-    hasFeature,
   };
 }
 

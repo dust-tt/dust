@@ -27,6 +27,7 @@ import {
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -35,7 +36,6 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -57,7 +57,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export function MCPRunAgentActionDetails(props: ToolExecutionDetailsProps) {
-  const { hasFeature } = useFeatureFlags({ workspaceId: props.owner.sId });
+  const { hasFeature } = useFeatureFlags();
 
   if (hasFeature("run_agent_child_stream")) {
     return <MCPRunAgentActionDetailsWithChildStream {...props} />;

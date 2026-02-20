@@ -11,11 +11,10 @@ import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToPr
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   getConversationRoute,
   getProjectRoute,
@@ -134,9 +133,7 @@ export function ConversationMenu({
   triggerPosition?: { x: number; y: number };
 }) {
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   const router = useAppRouter();
   const sendNotification = useSendNotification();

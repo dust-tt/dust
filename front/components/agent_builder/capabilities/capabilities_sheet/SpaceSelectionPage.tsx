@@ -1,7 +1,7 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { ProjectType, SpaceType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import { Checkbox, cn, DataTable, Tooltip } from "@dust-tt/sparkle";
@@ -45,9 +45,7 @@ export function SpaceSelectionPageContent({
     return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   const isProjectsEnabled = hasFeature("projects");
 
