@@ -6,6 +6,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
@@ -32,18 +33,26 @@ vi.mock("@app/lib/plans/usage/seats", () => ({
 
 describe("/api/v1/viz/files/[fileId] security tests", () => {
   let workspace: LightWorkspaceType;
+  let auth: Authenticator;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const { workspace: w } = await createResourceTest({
+    const setup = await createResourceTest({
       role: "user",
     });
 
-    workspace = w;
+    workspace = setup.workspace;
+    auth = setup.authenticator;
   });
 
   it("should only allow access to files from the same conversation as the frame (usecase: 'conversation')", async () => {
+    // Create a real conversation
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
     // Create frame file with conversation context.
     const frameFile = await FileFactory.create(workspace, null, {
       contentType: frameContentType,
@@ -51,7 +60,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 1000,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversation.sId },
     });
 
     const frameShareInfo = await frameFile.getShareInfo();
@@ -63,7 +72,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 500,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversation.sId },
     });
 
     const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
@@ -106,6 +115,12 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should only allow access to files from the same conversation as the frame (usecase: 'tool_output')", async () => {
+    // Create a real conversation
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
     // Create frame file with conversation context.
     const frameFile = await FileFactory.create(workspace, null, {
       contentType: frameContentType,
@@ -113,7 +128,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 1000,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversation.sId },
     });
 
     const frameShareInfo = await frameFile.getShareInfo();
@@ -125,7 +140,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 500,
       status: "ready",
       useCase: "tool_output",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversation.sId },
     });
 
     const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
@@ -168,6 +183,12 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject access to files if sharedScope has changed", async () => {
+    // Create a real conversation
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
     // Create frame file with conversation context.
     const frameFile = await FileFactory.create(workspace, null, {
       contentType: frameContentType,
@@ -175,7 +196,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 1000,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversation.sId },
     });
 
     const frameShareInfo = await frameFile.getShareInfo();
@@ -187,7 +208,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 500,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversation.sId },
     });
 
     const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
@@ -232,6 +253,17 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject access to files from different conversations", async () => {
+    // Create two different conversations
+    const conversationA = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const conversationB = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
     // Frame from conversation A.
     const frameFile = await FileFactory.create(workspace, null, {
       contentType: frameContentType,
@@ -239,7 +271,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 1000,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversationA.sId },
     });
 
     const frameShareInfo = await frameFile.getShareInfo();
@@ -256,7 +288,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 500,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-B" }, // Different conversation!
+      useCaseMetadata: { conversationId: conversationB.sId }, // Different conversation!
     });
 
     // Generate JWT access token for frame from conversation A
@@ -295,6 +327,12 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   });
 
   it("should reject access to non-conversation files", async () => {
+    // Create a real conversation
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
     // Frame from conversation.
     const frameFile = await FileFactory.create(workspace, null, {
       contentType: frameContentType,
@@ -302,7 +340,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       fileSize: 1000,
       status: "ready",
       useCase: "conversation",
-      useCaseMetadata: { conversationId: "conversation-A" },
+      useCaseMetadata: { conversationId: conversation.sId },
     });
 
     const frameShareInfo = await frameFile.getShareInfo();
