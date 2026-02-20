@@ -406,13 +406,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Conversation not found: cId='${conversationId}'`);
       }
 
-      const updateResult = await WorkspaceResource.updateConversationKillSwitch(
-        w,
-        {
-          conversationId,
-          operation: "block",
-        }
-      );
+      const updateResult = await w.updateConversationKillSwitch({
+        conversationId,
+        operation: "block",
+      });
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
       }
@@ -455,13 +452,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!isString(conversationId)) {
         throw new Error("Invalid --cId argument: must be a string");
       }
-      const updateResult = await WorkspaceResource.updateConversationKillSwitch(
-        w,
-        {
-          conversationId,
-          operation: "unblock",
-        }
-      );
+      const updateResult = await w.updateConversationKillSwitch({
+        conversationId,
+        operation: "unblock",
+      });
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
       }

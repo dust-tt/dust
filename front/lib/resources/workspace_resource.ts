@@ -557,18 +557,15 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
   }
 
-  static async updateConversationKillSwitch(
-    workspace: Pick<WorkspaceResource, "id" | "metadata">,
-    {
-      conversationId,
-      operation,
-    }: {
-      conversationId: string;
-      operation: WorkspaceConversationKillSwitchOperation;
-    }
-  ): Promise<Result<UpdateWorkspaceConversationKillSwitchResult, Error>> {
+  async updateConversationKillSwitch({
+    conversationId,
+    operation,
+  }: {
+    conversationId: string;
+    operation: WorkspaceConversationKillSwitchOperation;
+  }): Promise<Result<UpdateWorkspaceConversationKillSwitchResult, Error>> {
     const currentKillSwitch =
-      workspace.metadata?.[WORKSPACE_KILL_SWITCH_METADATA_KEY];
+      this.metadata?.[WORKSPACE_KILL_SWITCH_METADATA_KEY];
     if (isWorkspaceKillSwitchedForAllAPIs(currentKillSwitch)) {
       return new Err(new Error(WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE));
     }
@@ -598,7 +595,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         }
 
         metadata = {
-          ...(workspace.metadata ?? {}),
+          ...(this.metadata ?? {}),
           [WORKSPACE_KILL_SWITCH_METADATA_KEY]: {
             conversationIds: [...conversationIds, conversationId],
           },
@@ -617,7 +614,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         const updatedConversationIds = conversationIds.filter(
           (cId) => cId !== conversationId
         );
-        metadata = { ...(workspace.metadata ?? {}) };
+        metadata = { ...(this.metadata ?? {}) };
         if (updatedConversationIds.length === 0) {
           delete metadata[WORKSPACE_KILL_SWITCH_METADATA_KEY];
         } else {
@@ -629,7 +626,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       }
     }
 
-    const updateResult = await this.updateMetadata(workspace.id, metadata);
+    const updateResult = await WorkspaceResource.updateMetadata(
+      this.id,
+      metadata
+    );
     if (updateResult.isErr()) {
       return new Err(updateResult.error);
     }
