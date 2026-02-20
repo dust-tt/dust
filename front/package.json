@@ -60,7 +60,6 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@mistralai/mistralai": "^1.10.0",
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@northflank/js-client": "^0.8.10",
     "@notionhq/client": "^2.3.0",
     "@novu/api": "^3.13.0",
     "@novu/framework": "^2.9.0",

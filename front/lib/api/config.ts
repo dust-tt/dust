@@ -429,13 +429,6 @@ const config = {
   getServiceName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DD_SERVICE");
   },
-  // Northflank sandbox.
-  getNorthflankApiToken: () => {
-    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_API_TOKEN");
-  },
-  getNorthflankProjectId: () => {
-    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
-  },
   // Email.
   getEmailWebhookSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
