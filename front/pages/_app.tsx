@@ -128,12 +128,12 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
-    <PostHogTracker>
-      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+      <PostHogTracker>
         <RootLayout>
           {getLayout(<Component {...pageProps} />, pageProps)}
         </RootLayout>
-      </FetcherProvider>
-    </PostHogTracker>
+      </PostHogTracker>
+    </FetcherProvider>
   );
 }
