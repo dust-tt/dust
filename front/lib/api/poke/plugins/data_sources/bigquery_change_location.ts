@@ -1,3 +1,8 @@
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
@@ -200,6 +205,14 @@ export const bigqueryChangeLocationPlugin = createPlugin({
       },
       "BigQuery connector location updated"
     );
+    void emitAuditLogEvent({
+      workspace,
+      action: "connector.location_changed",
+      actor: buildAuditActor(auth),
+      targets: [{ type: "connector", id: dataSource.connectorId ?? "unknown" }],
+      context: getAuditLogContext(auth),
+      metadata: { previousLocation: content.location, newLocation: selected },
+    });
 
     return new Ok({
       display: "text",
