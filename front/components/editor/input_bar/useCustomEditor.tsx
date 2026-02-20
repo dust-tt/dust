@@ -1,4 +1,5 @@
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { CodeExtension } from "@app/components/editor/extensions/input_bar/CodeExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
@@ -224,12 +225,9 @@ export const buildEditorExtensions = ({
           class: markdownStyles.list(),
         },
       },
-      // Markdown styles configuration.
-      code: {
-        HTMLAttributes: {
-          class: markdownStyles.codeInline(),
-        },
-      },
+      // Disable built-in code extension; we use CodeExtension which handles
+      // backslash-escaped backticks (e.g. `\`identifier\``).
+      code: false,
       codeBlock: {
         HTMLAttributes: {
           class: markdownStyles.codeBlock(),
@@ -239,6 +237,11 @@ export const buildEditorExtensions = ({
         HTMLAttributes: {
           class: markdownStyles.unorderedList(),
         },
+      },
+    }),
+    CodeExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.codeInline(),
       },
     }),
     BlockquoteExtension.configure({

@@ -101,6 +101,38 @@ describe("buildEditorExtensions", () => {
     expect(result).toBe("hello\n\n---\n\nworld");
   });
 
+  it("should not create inline code from backslash-escaped backticks", () => {
+    const sql = "FROM \\`env_dmo_a\\`.\\`dwh_repository\\`.\\`company\\`;";
+    editor.commands.setContent(sql, { contentType: "markdown" });
+
+    const json = editor.getJSON();
+    // All text should be plain text nodes — no code marks.
+    const hasCodeMark = JSON.stringify(json).includes('"type":"code"');
+    expect(hasCodeMark).toBe(false);
+  });
+
+  it("should treat escaped backticks as content inside a code span", () => {
+    // Wrapping SQL with escaped backticks in a code span:
+    // `FROM \`env_dmo_a\`.\`company\`;`
+    const input = "`FROM \\`env_dmo_a\\`.\\`dwh_repository\\`.\\`company\\`;`";
+    editor.commands.setContent(input, { contentType: "markdown" });
+
+    const json = editor.getJSON();
+    // The entire content should be a single code mark.
+    const hasCodeMark = JSON.stringify(json).includes('"type":"code"');
+    expect(hasCodeMark).toBe(true);
+  });
+
+  it("should still create inline code from normal backticks", () => {
+    editor.commands.setContent("hello `world` end", {
+      contentType: "markdown",
+    });
+
+    const json = editor.getJSON();
+    const hasCodeMark = JSON.stringify(json).includes('"type":"code"');
+    expect(hasCodeMark).toBe(true);
+  });
+
   it("should handle bullet list with `*`", () => {
     editor.commands.setContent("* hello\n* world", {
       contentType: "markdown",
