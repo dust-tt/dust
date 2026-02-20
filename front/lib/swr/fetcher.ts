@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientFetch } from "@app/lib/egress/client";
+import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
@@ -20,7 +21,8 @@ const resHandler = async (res: Response) => {
     const nowMs = Date.now();
     const lastMs = lastReloadMs !== null ? Number(lastReloadMs) : Number.NaN;
     const shouldReload =
-      !Number.isFinite(lastMs) || nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS;
+      (!Number.isFinite(lastMs) || nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS) &&
+      !isNavigationLocked();
     if (shouldReload) {
       sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
       window.location.reload();
