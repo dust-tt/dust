@@ -281,10 +281,9 @@ export async function connectToMCPServer(
                       mcpServerId: params.mcpServerId,
                       connectionType: "workspace",
                     });
-                  // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
                   if (
                     adminConnectionRes.isErr() &&
-                    adminConnectionRes.error.message === "connection_not_found"
+                    adminConnectionRes.error.code === "connection_not_found"
                   ) {
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(
@@ -302,7 +301,7 @@ export async function connectToMCPServer(
                     )
                   );
                 } else if (params.oAuthUseCase === "platform_actions") {
-                  // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                  // Workspace connection required — admin must set up or reconnect.
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
@@ -376,10 +375,9 @@ export async function connectToMCPServer(
                     mcpServerId: params.mcpServerId,
                     connectionType: "workspace",
                   });
-                // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
                 if (
                   adminConnectionRes.isErr() &&
-                  adminConnectionRes.error.message === "connection_not_found"
+                  adminConnectionRes.error.code === "connection_not_found"
                 ) {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
@@ -397,7 +395,7 @@ export async function connectToMCPServer(
                   )
                 );
               } else if (connectionType === "workspace") {
-                // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                // Workspace connection required — admin must set up or reconnect.
                 return new Err(
                   new MCPServerRequiresAdminAuthenticationError(
                     params.mcpServerId,
