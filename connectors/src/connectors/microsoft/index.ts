@@ -237,7 +237,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           }
 
           // If there are any changes, trigger setPermissions to handle the sync
-          console.log("Permissions to update:", permissions);
           if (Object.keys(permissions).length > 0) {
             const setPermissionsRes = await this.setPermissions({
               permissions,
