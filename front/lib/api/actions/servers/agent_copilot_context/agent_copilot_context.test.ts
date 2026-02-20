@@ -922,7 +922,7 @@ describe("agent_copilot_context tools", () => {
       if (result.isErr()) {
         expect(result.error.message).toContain("non-existent-tool-id");
         expect(result.error.message).toContain("invalid or not accessible");
-        expect(result.error.message).toContain("get_available_tools");
+        expect(result.error.message).toContain("<workspace_context>");
       }
     });
 
@@ -1263,7 +1263,7 @@ describe("agent_copilot_context tools", () => {
       if (result.isErr()) {
         expect(result.error.message).toContain("non-existent-skill-id");
         expect(result.error.message).toContain("invalid or not accessible");
-        expect(result.error.message).toContain("get_available_skills");
+        expect(result.error.message).toContain("<workspace_context>");
       }
     });
 
@@ -1490,7 +1490,7 @@ describe("agent_copilot_context tools", () => {
       if (result.isErr()) {
         expect(result.error.message).toContain("Invalid model ID");
         expect(result.error.message).toContain("gpt-4o-mini");
-        expect(result.error.message).toContain("get_available_models");
+        expect(result.error.message).toContain("<workspace_context>");
       }
     });
 

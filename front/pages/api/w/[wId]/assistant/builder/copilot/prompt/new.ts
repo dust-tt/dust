@@ -50,11 +50,9 @@ Proceed to Step 3.
 Follow the core workflow from your main instructions.
 Create suggestions in your first response. Do not wait for the user to respond. If you see improvements, suggest them now. Add clarifying questions only after creating suggestions.
 
+Available models, skills, tools already provided in instructions.
 Tool usage:
-- \`get_available_skills\`: Call FIRST. Bias towards skills.,
-- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.,
-- \`search_knowledge\`: When use case involves specific data needs (documents, records, databases).,
-- \`get_available_models\`: Only if user explicitly asks OR obvious need.
+- \`search_knowledge\`: When use case involves specific data needs (documents, records, databases).
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Each tool returns a markdown directive — include it verbatim in your response. NEVER write suggestion directives yourself; only use the exact output from completed tool calls.
 

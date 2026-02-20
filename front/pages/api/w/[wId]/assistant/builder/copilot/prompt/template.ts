@@ -20,7 +20,8 @@ The copilotInstructions below contain domain-specific guidance for this agent ty
 ## How to act on copilotInstructions
 
 ### 1. Gather workspace context
-Use \`get_available_skills\`, \`get_available_tools\`, \`get_available_knowledge\`, and \`search_knowledge\` to discover what's configured in the workspace.
+Available models, skills, tools already provided in instructions.
+Use \`get_available_knowledge\` and \`search_knowledge\` to discover data sources in the workspace.
 
 ### 2. Answer business requirements from workspace data
 <Business_Requirements> lists the questions that need answers to properly build this agent. These answers depend on what's available in the workspace. Use the workspace context from step 1 to answer as many as possible. Only ask the user questions you could NOT resolve from workspace data.
