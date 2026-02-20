@@ -15,7 +15,6 @@ oauth-api-keys.json
 !**/.claude/skills/
 **/.claude/skills/*
 !**/.claude/skills/dust-*/
-**/.claude/skills/dust-hive/
 **/.codex
 **/.yalc
 yalc.lock
