@@ -11,23 +11,13 @@
  *   npx ts-node scripts/encode_internal_id.ts file /drives/b!abc123/items/014EON
  */
 
-const MICROSOFT_NODE_TYPES = [
-  "sites-root",
-  "site",
-  "drive",
-  "folder",
-  "file",
-  "page",
-  "message",
-  "worksheet",
-] as const;
+import {
+  isValidNodeType,
+  MICROSOFT_NODE_TYPES,
+} from "@connectors/connectors/microsoft/lib/types";
 
 function encode(nodeType: string, itemAPIPath: string) {
-  if (
-    !MICROSOFT_NODE_TYPES.includes(
-      nodeType as (typeof MICROSOFT_NODE_TYPES)[number]
-    )
-  ) {
+  if (!isValidNodeType(nodeType)) {
     throw new Error(
       `Invalid nodeType: ${nodeType}. Valid types: ${MICROSOFT_NODE_TYPES.join(", ")}`
     );
