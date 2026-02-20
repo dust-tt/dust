@@ -13,7 +13,7 @@ import { logger } from "./logger";
 
 // User config directories to copy from main repo to worktree
 // These are personal/local files that aren't tracked in git
-const USER_CONFIG_DIRS: string[] = [];
+const USER_CONFIG_DIRS = [".claude"];
 
 // @dust-tt packages mapping: npm scope name -> workspace directory relative to repo root
 // These are workspace packages that need to be overridden to point to the worktree
