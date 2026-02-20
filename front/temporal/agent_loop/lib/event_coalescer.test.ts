@@ -182,6 +182,73 @@ describe("EventCoalescer", () => {
         step: 0,
       });
     });
+
+    it("respects custom flushIntervalMs (longer interval)", async () => {
+      const key = "conv123-msg123-0";
+      const conversationId = "conv123";
+      const step = 0;
+
+      await globalCoalescer.handleEvent({
+        key,
+        conversationId,
+        step,
+        event: createTokenEvent("a"),
+        flushIntervalMs: 200,
+      });
+      await globalCoalescer.handleEvent({
+        key,
+        conversationId,
+        step,
+        event: createTokenEvent("b"),
+        flushIntervalMs: 200,
+      });
+
+      await vi.advanceTimersByTimeAsync(100);
+      expect(publishMock).toHaveBeenCalledTimes(0);
+
+      await vi.advanceTimersByTimeAsync(100);
+      expect(publishMock).toHaveBeenCalledTimes(1);
+      expect(publishMock).toHaveBeenCalledWith({
+        conversationId: "conv123",
+        event: expect.objectContaining({
+          type: "generation_tokens",
+          text: "ab",
+        }),
+        step: 0,
+      });
+    });
+
+    it("respects custom flushIntervalMs (shorter interval)", async () => {
+      const key = "conv123-msg123-0";
+      const conversationId = "conv123";
+      const step = 0;
+
+      await globalCoalescer.handleEvent({
+        key,
+        conversationId,
+        step,
+        event: createTokenEvent("x"),
+        flushIntervalMs: 50,
+      });
+      await globalCoalescer.handleEvent({
+        key,
+        conversationId,
+        step,
+        event: createTokenEvent("y"),
+        flushIntervalMs: 50,
+      });
+
+      await vi.advanceTimersByTimeAsync(50);
+      expect(publishMock).toHaveBeenCalledTimes(1);
+      expect(publishMock).toHaveBeenCalledWith({
+        conversationId: "conv123",
+        event: expect.objectContaining({
+          type: "generation_tokens",
+          text: "xy",
+        }),
+        step: 0,
+      });
+    });
   });
 
   describe("Event Ordering", () => {
