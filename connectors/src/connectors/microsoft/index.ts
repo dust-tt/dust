@@ -193,33 +193,46 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           });
 
           const newSelectedSites = mapResolvedSitesToMetadata(resolvedSites);
-
-          // Update the configuration with the new selected sites
-          await config.update({ selectedSites: newSelectedSites });
-
-          // Calculate which sites were added or removed
-          const currentRoots =
-            await MicrosoftRootResource.listRootsByConnectorId(connector.id);
-          const currentInternalIds = new Set(
-            currentRoots.map((r) => r.internalId)
-          );
           const newInternalIds = new Set(
             resolvedSites.map((s) => s.internalId)
           );
 
+          // Update the configuration with the new selected sites
+          await config.update({ selectedSites: newSelectedSites });
+
+          const currentRoots =
+            await MicrosoftRootResource.listRootsByConnectorId(connector.id);
+          const currentSiteRoots = currentRoots.filter(
+            (r) => r.nodeType === "site"
+          );
+          const currentSiteInternalIds = new Set(
+            currentSiteRoots.map((r) => r.internalId)
+          );
+
+          const removedSiteIds = [...currentSiteInternalIds].filter(
+            (id) => !newInternalIds.has(id)
+          );
+          const addedSiteIds = [...newInternalIds].filter(
+            (id) => !currentSiteInternalIds.has(id)
+          );
+
           const permissions: Record<string, ConnectorPermission> = {};
 
-          // Mark removed sites as "none"
-          for (const currentId of currentInternalIds) {
-            if (!newInternalIds.has(currentId)) {
-              permissions[currentId] = "none";
-            }
+          // Mark added sites as "read"
+          for (const id of addedSiteIds) {
+            permissions[id] = "read";
           }
 
-          // Mark added sites as "read"
-          for (const newId of newInternalIds) {
-            if (!currentInternalIds.has(newId)) {
-              permissions[newId] = "read";
+          // If any site was removed, also clear all non-site roots (drives/folders)
+          // since we cannot easily determine which site they belong to.
+          if (removedSiteIds.length > 0) {
+            for (const id of removedSiteIds) {
+              permissions[id] = "none";
+            }
+            for (const root of currentRoots.filter(
+              (r) => r.nodeType !== "site"
+            )) {
+              permissions[root.internalId] = "none";
             }
           }
 
