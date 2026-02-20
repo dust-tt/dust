@@ -1,5 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -55,6 +61,17 @@ async function handler(
   switch (req.method) {
     case "POST":
       await key.setIsDisabled();
+
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "api_key.revoked",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "api_key", id: String(key.id), name: key.name },
+        ],
+        context: getAuditLogContext(auth, req),
+      });
 
       res.status(200).json({
         key: {

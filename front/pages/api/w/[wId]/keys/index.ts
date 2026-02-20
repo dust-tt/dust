@@ -2,6 +2,12 @@ import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -159,6 +165,20 @@ async function handler(
         },
         group.value
       );
+
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "api_key.created",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(owner),
+          { type: "api_key", id: String(key.id), name: name },
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          groupId: group.value.sId,
+        },
+      });
 
       res.status(201).json({
         key: key.toJSON(),

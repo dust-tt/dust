@@ -5,6 +5,12 @@ import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -111,6 +117,18 @@ async function handler(
         workspace: owner,
         includeInactive,
       });
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "export.created",
+        actor: buildAuditActor(auth),
+        targets: [buildWorkspaceTarget(owner)],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          table: query.table,
+          mode: query.mode,
+        },
+      });
+
       if (query.table === "all") {
         const zip = new JSZip();
         const csvSuffix = startDate

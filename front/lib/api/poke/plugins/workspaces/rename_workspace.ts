@@ -1,3 +1,9 @@
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -26,15 +32,24 @@ export const renameWorkspace = createPlugin({
       );
     }
 
-    const res = await WorkspaceResource.updateName(
-      auth.getNonNullableWorkspace().id,
-      newName
-    );
+    const workspace = auth.getNonNullableWorkspace();
+    const previousName = workspace.name;
+
+    const res = await WorkspaceResource.updateName(workspace.id, newName);
     if (res.isErr()) {
       return res;
     }
 
-    const organization_id = auth.getNonNullableWorkspace().workOSOrganizationId;
+    void emitAuditLogEvent({
+      workspace,
+      action: "workspace.renamed",
+      actor: buildAuditActor(auth),
+      targets: [{ type: "workspace", id: workspace.sId, name: newName }],
+      context: getAuditLogContext(auth),
+      metadata: { previousName, newName },
+    });
+
+    const organization_id = workspace.workOSOrganizationId;
     if (!organization_id) {
       return new Ok({
         display: "text",

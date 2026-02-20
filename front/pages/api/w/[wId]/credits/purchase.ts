@@ -4,6 +4,12 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -252,6 +258,22 @@ async function handler(
           });
         }
 
+        void emitAuditLogEvent({
+          workspace,
+          action: "credits.purchased",
+          actor: buildAuditActor(auth),
+          targets: [
+            buildWorkspaceTarget(workspace),
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            amountDollars,
+            amountMicroUsd,
+            isEnterprise: true,
+            discountPercent: discountPercent ?? 0,
+          },
+        });
+
         return res.status(200).json({
           success: true,
           creditsAddedMicroUsd: amountMicroUsd,
@@ -276,6 +298,22 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        workspace,
+        action: "credits.purchased",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(workspace),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          amountDollars,
+          amountMicroUsd,
+          isEnterprise: false,
+          discountPercent: discountPercent ?? 0,
+        },
+      });
 
       return res.status(200).json({
         success: true,

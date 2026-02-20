@@ -3,6 +3,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { toCsv } from "@app/lib/api/csv";
 import {
   bucketsToArray,
@@ -237,6 +243,21 @@ export async function handleProgrammaticCostExportRequest(
 
       const csv = await toCsv(rows);
       const filename = `programmatic-cost-${selectedPeriod ?? formatUTCDateFromMillis(Date.now()).slice(0, 7)}.csv`;
+
+      const owner = auth.getNonNullableWorkspace();
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "analytics.programmatic_cost_exported",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(owner),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          period: selectedPeriod ?? "current",
+          rowCount: String(rows.length),
+        },
+      });
 
       res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
