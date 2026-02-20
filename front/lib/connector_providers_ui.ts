@@ -422,7 +422,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
       unselected: "none",
     },
     limitations:
-      "Dust will index the content accessible to the authorized account only. All transcripts will be synchronized with Dust.",
+      "OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, except those marked as private in Gong.",
     mismatchError: `You cannot change the Gong account. Please add a new Gong connection instead.`,
   },
   dust_project: {
