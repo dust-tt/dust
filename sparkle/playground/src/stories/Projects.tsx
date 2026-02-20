@@ -7,8 +7,11 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   CheckDoubleIcon,
+  CodeSlashIcon,
   Cog6ToothIcon,
   ContactsUserIcon,
+  Dialog,
+  DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,6 +37,7 @@ import {
   NavigationListItemAction,
   PencilSquareIcon,
   PlusIcon,
+  PuzzleIcon,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -53,12 +57,14 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { AgentBuilderView } from "../components/AgentBuilderView";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import { ProfilePanel } from "../components/Profile";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   type Agent,
   type Conversation,
@@ -130,6 +136,9 @@ function DustMain() {
   >("new-conversation");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<"templates" | null>(null);
+  const [selectedTemplateForBuilder, setSelectedTemplateForBuilder] =
+    useState<Template | null>(null);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -152,6 +161,7 @@ function DustMain() {
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showProfileView, setShowProfileView] = useState(false);
+  const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
 
   // Initialize space members with generated members when a space is first selected
@@ -204,6 +214,7 @@ function DustMain() {
   // Auto-select newly created space when it's added to the spaces array
   useEffect(() => {
     if (lastCreatedSpaceId && spaces.find((s) => s.id === lastCreatedSpaceId)) {
+      setSelectedView(null);
       setSelectedSpaceId(lastCreatedSpaceId);
       setSelectedConversationId(null);
       setLastCreatedSpaceId(null);
@@ -528,6 +539,116 @@ function DustMain() {
                 icon={ChatBubbleBottomCenterTextIcon}
                 label="New"
               />
+              <DropdownMenu
+                open={isAgentsDropdownOpen}
+                onOpenChange={setIsAgentsDropdownOpen}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={MoreIcon}
+                    aria-label="More options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel label="Agents" />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger
+                      icon={PlusIcon}
+                      label="Build an agent"
+                    />
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        icon={PencilSquareIcon}
+                        label="From scratch"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                      <DropdownMenuItem
+                        icon={LightbulbIcon}
+                        label="Browse templates"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsAgentsDropdownOpen(false);
+                          setShowProfileView(false);
+                          setSelectedView("templates");
+                          setSelectedConversationId(null);
+                          setSelectedSpaceId(null);
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Open YAML"
+                        icon={CodeSlashIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuItem
+                    label="Edit agent"
+                    icon={PencilSquareIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage agents"
+                    icon={ContactsUserIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Skills" />
+                  <DropdownMenuItem
+                    label="New skill"
+                    icon={PlusIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage skills"
+                    icon={PuzzleIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuItem
+                    label="Edit conversations"
+                    icon={ListSelectIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Clear conversation history"
+                    icon={TrashIcon}
+                    variant="warning"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
@@ -559,6 +680,7 @@ function DustMain() {
                     onClick={() => {
                       setShowProfileView(false);
                       setPreviousSpaceId(null);
+                      setSelectedView(null);
                       setSelectedConversationId(conversation.id);
                       setSelectedSpaceId(null);
                     }}
@@ -663,6 +785,7 @@ function DustMain() {
                         }
                         onClick={() => {
                           setShowProfileView(false);
+                          setSelectedView(null);
                           setSelectedSpaceId(space.id);
                           setSelectedConversationId(null);
                         }}
@@ -1060,7 +1183,14 @@ function DustMain() {
     // Priority 0: Show profile when opened from user menu
     showProfileView && user ? (
       <ProfilePanel user={user} />
-    ) : // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
+    ) : // Priority 1: Show template selection when Browse templates is clicked
+    selectedView === "templates" ? (
+      <div className="s-h-full s-overflow-auto">
+        <TemplateSelection
+          onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
+        />
+      </div>
+    ) : // Priority 2: Show conversation view if a conversation is selected (not "new-conversation")
     selectedConversationId &&
       selectedConversationId !== "new-conversation" &&
       selectedConversation &&
@@ -1075,7 +1205,7 @@ function DustMain() {
         onBack={handleConversationBack}
         projectTitle={selectedSpace?.name}
       />
-    ) : // Priority 2: Show space view if a space is selected
+    ) : // Priority 3: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
       <GroupConversationView
         space={selectedSpace}
@@ -1094,6 +1224,7 @@ function DustMain() {
         }
         onConversationClick={(conversation) => {
           setShowProfileView(false);
+          setSelectedView(null);
           setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
         }}
@@ -1103,7 +1234,7 @@ function DustMain() {
         spacePublicSettings={spacePublicSettings}
       />
     ) : (
-      // Priority 3: Show welcome/new conversation view
+      // Priority 4: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
@@ -1146,6 +1277,28 @@ function DustMain() {
         }}
         onNext={handleRoomNameNext}
       />
+      <Dialog
+        open={selectedTemplateForBuilder !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTemplateForBuilder(null);
+        }}
+      >
+        <DialogContent
+          size="full"
+          className="s-flex s-h-full s-max-h-full s-rounded-none s-p-0 s-overflow-hidden"
+        >
+          {selectedTemplateForBuilder && (
+            <AgentBuilderView
+              template={{
+                handle: selectedTemplateForBuilder.handle,
+                emoji: selectedTemplateForBuilder.emoji,
+                backgroundColor: selectedTemplateForBuilder.backgroundColor,
+              }}
+              onClose={() => setSelectedTemplateForBuilder(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <InviteUsersScreen
         isOpen={isInviteUsersScreenOpen}
         spaceId={inviteSpaceId}

@@ -222,7 +222,7 @@ export const mockCopilotConversationItems: CopilotConversationItem[] = [
   {
     id: "intro-agent",
     type: "agent",
-    name: "Copilot",
+    name: "Sidekick",
     timestamp: "Just now",
     content:
       "I can help you shape this agent. Share the role, audience, and any tools it should use.",
@@ -238,9 +238,9 @@ export const mockCopilotConversationItems: CopilotConversationItem[] = [
   {
     id: "agent-clarify",
     type: "agent",
-    name: "Copilot",
+    name: "Sidekick",
     timestamp: "Just now",
     content:
-      'Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?\n\n[[diff]]\n- Keep responses short and formal.\n+ Keep responses friendly and concise.\n+ Add a short welcome line for new hires.\n[[/diff]]\n\n:::action_card{title="Update agent name and avatar" acceptedTitle="Agent name and avatar updated" rejectedTitle="Agent name and avatar update rejected" avatarEmoji="👋" avatarBackgroundColor="s-bg-blue-100" applyLabel="Update" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="highlight"}\nSet the agent name to "Concise Researcher" and update the avatar to a clean, blue icon for better clarity in the workspace.\n:::\n\n:::action_card{title="Add Gmail tool" acceptedTitle="Gmail tool added" rejectedTitle="Gmail tool addition rejected" avatarIcon="GmailLogo" avatarBackgroundColor="s-bg-white" applyLabel="Add" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="highlight" state="disabled"}\nEnable the Gmail tool so the agent can read and send emails when users ask to draft replies.\n:::\n\n:::action_card{title="Remove Slack tool" acceptedTitle="Slack tool removed" rejectedTitle="Slack tool removal rejected" avatarIcon="SlackLogo" avatarBackgroundColor="s-bg-white" applyLabel="Remove" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="warning"}\nDisable the Slack tool to prevent the agent from posting or reading channel messages by default.\n:::',
+      'Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?\n\n[[diff]]\n- Keep responses short and formal.\n+ Keep responses friendly and concise.\n+ Add a short welcome line for new hires.\n[[/diff]]\n\n:::action_card{title="Update agent name and avatar" acceptedTitle="Agent name and avatar updated" rejectedTitle="Agent name and avatar update rejected" avatarEmoji="👋" avatarBackgroundColor="s-bg-blue-100" applyLabel="Update" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="highlight" actionsPosition="header" size="compact"}\nSet the agent name to "Concise Researcher" and update the avatar to a clean, blue icon for better clarity in the workspace.\n:::',
   },
 ];

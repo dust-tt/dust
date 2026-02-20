@@ -1043,11 +1043,11 @@ export function GroupConversationView({
                         {[
                           {
                             id: "kickoff",
-                            label: "Kick-off your project",
+                            label: "Get your project running",
                             icon: MagicIcon,
                             variant: "highlight" as const,
                             description:
-                              "Let us help you get started with your project.",
+                              "Answer a few questions and an agent will fill in your project details.",
                             onClick: () => {},
                             isPulsing: true,
                           },
@@ -1057,7 +1057,7 @@ export function GroupConversationView({
                             variant: "primary" as const,
                             icon: BookOpenIcon,
                             description:
-                              "Centralize the information used in this project for Agents and Participants.",
+                              "Add files, links, or data sources relevant to this project.",
                             onClick: () => setActiveTab("knowledge"),
                             isPulsing: false,
                           },
@@ -1067,7 +1067,7 @@ export function GroupConversationView({
                             variant: "primary" as const,
                             icon: UserGroupIcon,
                             description:
-                              "Invite team members to collaborate and participate in this room.",
+                              "Invite people to this project as members or editors.",
                             onClick: () => onInviteMembers?.(),
                             isPulsing: false,
                           },
