@@ -499,6 +499,62 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  /**
+   * Computes the number of active members at each given timestamp (end of day).
+   * Fetches all memberships overlapping the date range in a single query,
+   * then counts distinct users in-memory for each day.
+   */
+  static async countActiveMembersPerDay({
+    workspace,
+    timestampsMs,
+  }: {
+    workspace: LightWorkspaceType;
+    timestampsMs: readonly number[];
+  }): Promise<Map<number, number>> {
+    const result = new Map<number, number>();
+    if (timestampsMs.length === 0) {
+      return result;
+    }
+
+    const sorted = [...timestampsMs].sort((a, b) => a - b);
+    const rangeStartDate = new Date(sorted[0]);
+    // Use end of day for the last timestamp to capture the full day.
+    const rangeEndDate = new Date(sorted[sorted.length - 1]);
+    rangeEndDate.setUTCHours(23, 59, 59, 999);
+
+    // Fetch all memberships that overlap with [rangeStart, rangeEnd]:
+    // startAt <= rangeEnd AND (endAt IS NULL OR endAt >= rangeStart).
+    // Include userId to deduplicate users with multiple membership records.
+    const memberships = await MembershipModel.findAll({
+      attributes: ["userId", "startAt", "endAt"],
+      where: {
+        workspaceId: workspace.id,
+        startAt: { [Op.lte]: rangeEndDate },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: rangeStartDate }],
+        },
+      },
+    });
+
+    // O(timestamps x memberships) -- acceptable: timestamps is bounded by the
+    // analytics period (typically <= 90 days) and memberships by workspace size
+    // (typically < 5000). Use a Set to count distinct users per day.
+    for (const ts of timestampsMs) {
+      const dayEnd = new Date(ts);
+      dayEnd.setUTCHours(23, 59, 59, 999);
+      const dayStart = new Date(ts);
+      const activeUserIds = new Set<number>();
+      for (const m of memberships) {
+        if (m.startAt <= dayEnd && (!m.endAt || m.endAt >= dayStart)) {
+          activeUserIds.add(m.userId);
+        }
+      }
+      result.set(ts, activeUserIds.size);
+    }
+
+    return result;
+  }
+
   // Seat counting with caching - used to track active seats in a workspace
   private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
     `count-active-seats-in-workspace:${workspaceId}`;
