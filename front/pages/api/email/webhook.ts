@@ -30,6 +30,41 @@ export const config = {
   },
 };
 
+function parseHeaderValue(
+  rawHeaders: string,
+  headerName: string
+): string | null {
+  const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headerPattern = new RegExp(
+    `^${escapedHeaderName}:\\s*([\\s\\S]*?)(?=\\r?\\n[^\\s][^\\r\\n]*:|$)`,
+    "im"
+  );
+  const match = rawHeaders.match(headerPattern);
+  if (!match) {
+    return null;
+  }
+
+  const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
+
+  return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
+}
+
+function parseThreadingHeaders(rawHeaders: string | null) {
+  if (!rawHeaders) {
+    return {
+      messageId: null,
+      inReplyTo: null,
+      references: null,
+    };
+  }
+
+  return {
+    messageId: parseHeaderValue(rawHeaders, "Message-ID"),
+    inReplyTo: parseHeaderValue(rawHeaders, "In-Reply-To"),
+    references: parseHeaderValue(rawHeaders, "References"),
+  };
+}
+
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
   req: NextApiRequest
@@ -43,6 +78,7 @@ const parseSendgridWebhookContent = async (
     const full = fields["from"] ? fields["from"][0] : null;
     const SPF = fields["SPF"] ? fields["SPF"][0] : null;
     const dkim = fields["dkim"] ? fields["dkim"][0] : null;
+    const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
     const envelope = fields["envelope"]
       ? JSON.parse(fields["envelope"][0])
       : null;
@@ -85,6 +121,9 @@ const parseSendgridWebhookContent = async (
       text: text || "",
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: { SPF: SPF || "", dkim: dkim || "" },
+      threadingHeaders: parseThreadingHeaders(
+        typeof rawHeaders === "string" ? rawHeaders : null
+      ),
       envelope: {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         to: envelope.to || [],
