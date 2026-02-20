@@ -285,7 +285,6 @@ function AgentActionsPanelContent({
                       ? agentMessageToRender.status
                       : "succeeded"
                   }
-                  showSeparator={step !== "1"}
                 />
               );
             })}
@@ -320,7 +319,6 @@ function AgentActionsPanelContent({
                 streamActionProgress={streamActionProgress}
                 owner={owner}
                 messageStatus="created"
-                showSeparator={currentStreamingStep > 1}
               />
             )}
           {!shouldStream && (
