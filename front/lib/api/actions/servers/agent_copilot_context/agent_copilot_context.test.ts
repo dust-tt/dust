@@ -42,9 +42,9 @@ vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
 }));
 
-// Reset mocks between tests to prevent interference.
+// Clear mock call history between tests to prevent interference.
 beforeEach(() => {
-  vi.resetAllMocks();
+  vi.clearAllMocks();
 });
 
 function getToolByName(name: string) {
