@@ -26,7 +26,7 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isStringArray, removeNulls } from "@app/types/shared/utils/general";
 import { md5 } from "@app/types/shared/utils/hashing";
 import type {
   LightWorkspaceType,
@@ -410,6 +410,7 @@ export const FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
 export type WorkspaceConversationKillSwitchValue = {
   conversationIds: string[];
 };
+export type WorkspaceConversationKillSwitchOperation = "block" | "unblock";
 export type WorkspaceKillSwitchValue =
   | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
@@ -423,7 +424,7 @@ export interface WorkspaceMetadata {
   disableManualInvitations?: boolean;
 }
 
-function isWorkspaceConversationKillSwitchValue(
+export function isWorkspaceConversationKillSwitchValue(
   killSwitched: unknown
 ): killSwitched is WorkspaceConversationKillSwitchValue {
   if (typeof killSwitched !== "object" || killSwitched === null) {
@@ -434,12 +435,7 @@ function isWorkspaceConversationKillSwitchValue(
     return false;
   }
 
-  return (
-    Array.isArray(killSwitched.conversationIds) &&
-    killSwitched.conversationIds.every(
-      (conversationId) => typeof conversationId === "string"
-    )
-  );
+  return isStringArray(killSwitched.conversationIds);
 }
 
 export function isWorkspaceKillSwitchedForAllAPIs(
@@ -457,6 +453,105 @@ export function isWorkspaceConversationKillSwitched(
   }
 
   return killSwitched.conversationIds.includes(conversationId);
+}
+
+export type UpdateWorkspaceConversationKillSwitchResult = {
+  wasBlockedBefore: boolean;
+  wasUpdated: boolean;
+};
+
+const WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE =
+  "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks.";
+
+const INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX =
+  "Invalid workspace kill switch metadata:";
+
+export async function updateWorkspaceConversationKillSwitch(
+  workspace: Pick<WorkspaceResource, "id" | "metadata">,
+  {
+    conversationId,
+    operation,
+  }: {
+    conversationId: string;
+    operation: WorkspaceConversationKillSwitchOperation;
+  }
+): Promise<Result<UpdateWorkspaceConversationKillSwitchResult, Error>> {
+  const currentKillSwitch = workspace.metadata?.[KILL_SWITCH_METADATA_KEY];
+  if (isWorkspaceKillSwitchedForAllAPIs(currentKillSwitch)) {
+    return new Err(new Error(WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE));
+  }
+  if (
+    currentKillSwitch !== undefined &&
+    !isWorkspaceConversationKillSwitchValue(currentKillSwitch)
+  ) {
+    return new Err(
+      new Error(
+        `${INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX} ${JSON.stringify(currentKillSwitch)}`
+      )
+    );
+  }
+
+  const conversationIds = currentKillSwitch?.conversationIds ?? [];
+  const wasBlockedBefore = conversationIds.includes(conversationId);
+
+  let metadata: Record<string, string | number | boolean | object>;
+
+  switch (operation) {
+    case "block": {
+      if (wasBlockedBefore) {
+        return new Ok({
+          wasBlockedBefore,
+          wasUpdated: false,
+        });
+      }
+
+      metadata = {
+        ...(workspace.metadata ?? {}),
+        [KILL_SWITCH_METADATA_KEY]: {
+          conversationIds: [...conversationIds, conversationId],
+        },
+      };
+      break;
+    }
+
+    case "unblock": {
+      if (!wasBlockedBefore) {
+        return new Ok({
+          wasBlockedBefore,
+          wasUpdated: false,
+        });
+      }
+
+      const updatedConversationIds = conversationIds.filter(
+        (cId) => cId !== conversationId
+      );
+      metadata = { ...(workspace.metadata ?? {}) };
+      if (updatedConversationIds.length === 0) {
+        delete metadata[KILL_SWITCH_METADATA_KEY];
+      } else {
+        metadata[KILL_SWITCH_METADATA_KEY] = {
+          conversationIds: updatedConversationIds,
+        };
+      }
+      break;
+    }
+
+    default:
+      return assertNever(operation);
+  }
+
+  const updateResult = await WorkspaceResource.updateMetadata(
+    workspace.id,
+    metadata
+  );
+  if (updateResult.isErr()) {
+    return new Err(updateResult.error);
+  }
+
+  return new Ok({
+    wasBlockedBefore,
+    wasUpdated: true,
+  });
 }
 
 export async function updateWorkspaceMetadata(
