@@ -544,11 +544,6 @@ module.exports = {
           "0%": { transform: "translate3d(0, 0, 0)" },
           "100%": { transform: "translate3d(-50%, 0, 0)" },
         },
-        "navigation-fade-in": {
-          to: {
-            opacity: "1",
-          },
-        },
         "fade-in-up": {
           from: {
             opacity: "0",
@@ -569,8 +564,6 @@ module.exports = {
         reload: "reload 1000ms ease-out",
         fadeout: "fadeout 500ms ease-out",
         marquee: "marquee 25s linear infinite",
-        "navigation-loader":
-          "navigation-fade-in 0.2s ease-in-out 0.5s forwards",
         "fade-in-up": "fade-in-up 0.5s ease-in-out",
       },
       colors: {
