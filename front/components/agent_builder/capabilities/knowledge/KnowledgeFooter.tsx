@@ -116,7 +116,7 @@ export function KnowledgeFooter() {
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="rounded-xl bg-muted dark:bg-muted-night">
+        <div className="rounded-xl bg-muted dark:bg-muted-night mt-2">
           <ContextItem.List className="max-h-40 overflow-y-auto">
             {field.value.in.length > 0 ? (
               field.value.in.map((item) => (
