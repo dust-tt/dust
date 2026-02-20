@@ -104,7 +104,7 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
       temperature: 1,
     },
     thinkingConfig: {
-         ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
+      ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
       none: {
         includeThoughts: false,
         thinkingBudget: 128,
