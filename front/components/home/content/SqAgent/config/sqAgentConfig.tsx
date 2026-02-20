@@ -123,7 +123,7 @@ export const sqAgentConfig: SqAgentConfig = {
         "Complete audit trail and analytics dashboard",
       ],
       image: {
-        src: "/static/landing/sqagent/feature-1.png",
+        src: "/static/landing/enterprise/section2/plays_nicely.png",
         alt: "AI agents working across multiple tools",
       },
       imagePosition: "right",
@@ -140,7 +140,7 @@ export const sqAgentConfig: SqAgentConfig = {
         "Track performance and iterate quickly",
       ],
       image: {
-        src: "/static/landing/sqagent/feature-2.png",
+        src: "/static/landing/enterprise/section2/customize.png",
         alt: "No-code agent builder interface",
       },
       imagePosition: "left",
@@ -158,7 +158,7 @@ export const sqAgentConfig: SqAgentConfig = {
         "SOC 2 Type II certified",
       ],
       image: {
-        src: "/static/landing/sqagent/feature-3.png",
+        src: "/static/landing/enterprise/section2/security_permissions.png",
         alt: "Secure data connections",
       },
       imagePosition: "right",
@@ -175,7 +175,7 @@ export const sqAgentConfig: SqAgentConfig = {
         "Automated workflows and actions",
       ],
       image: {
-        src: "/static/landing/sqagent/feature-4.png",
+        src: "/static/landing/enterprise/section4/data_analyst.png",
         alt: "AI agents producing deliverables",
       },
       imagePosition: "left",

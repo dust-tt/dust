@@ -1,5 +1,4 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import { TestimonialSection } from "@app/components/home/content/Product/TestimonialSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -994,6 +993,272 @@ function EnterpriseGradeSection() {
 }
 
 // ---------------------------------------------------------------------------
+// "Don't take our word for it" — Mosaic
+// ---------------------------------------------------------------------------
+
+interface MosaicMetricCardProps {
+  value: string;
+  description: string;
+  logo: string;
+  logoAlt: string;
+  bgColor: string;
+  textColor: string;
+  quote?: string;
+  divider?: boolean;
+  className?: string;
+}
+
+function MosaicMetricCard({
+  value,
+  description,
+  logo,
+  logoAlt,
+  bgColor,
+  textColor,
+  quote,
+  divider,
+  className = "",
+}: MosaicMetricCardProps) {
+  return (
+    <div
+      className={classNames(
+        "flex flex-col justify-between rounded-2xl p-6",
+        bgColor,
+        className
+      )}
+    >
+      <div>
+        <p className={classNames("text-4xl font-medium", textColor)}>{value}</p>
+        {divider && <div className="mt-3 border-t border-current opacity-20" />}
+        <p
+          className={classNames(
+            "mt-2 font-mono text-sm font-medium",
+            textColor
+          )}
+        >
+          {description}
+        </p>
+        {quote && (
+          <P size="xs" className="mt-3 text-muted-foreground">
+            "{quote}"
+          </P>
+        )}
+      </div>
+      {logo && (
+        <img src={logo} alt={logoAlt} className="mt-4 h-20 w-auto self-start" />
+      )}
+    </div>
+  );
+}
+
+interface MosaicQuoteCardProps {
+  quote: string;
+  logo: string;
+  logoAlt: string;
+  image?: string;
+  imageAlt?: string;
+  bgColor: string;
+  className?: string;
+}
+
+function MosaicQuoteCard({
+  quote,
+  logo,
+  logoAlt,
+  image,
+  imageAlt,
+  bgColor,
+  className = "",
+}: MosaicQuoteCardProps) {
+  return (
+    <div
+      className={classNames(
+        "flex flex-col overflow-hidden rounded-2xl",
+        bgColor,
+        className
+      )}
+    >
+      {image && (
+        <div className="aspect-[4/3] w-full overflow-hidden">
+          <img
+            src={image}
+            alt={imageAlt ?? ""}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
+      <div className="flex flex-1 flex-col justify-between p-6">
+        <P size="sm" className="text-foreground">
+          "{quote}"
+        </P>
+        <img src={logo} alt={logoAlt} className="mt-4 h-20 w-auto self-start" />
+      </div>
+    </div>
+  );
+}
+
+function SocialProofMosaicSection() {
+  return (
+    <section className="w-full">
+      <H1 mono className="mb-12 text-left text-3xl md:text-4xl lg:text-5xl">
+        Don't take our word for it
+      </H1>
+      <div className="grid auto-rows-auto grid-cols-1 gap-4 md:grid-cols-3">
+        {/* Column 1 */}
+        <div className="flex flex-col gap-4">
+          <MosaicMetricCard
+            value="100%"
+            description="of customer experience team uses Dust daily"
+            logo="/static/landing/logos/color/malt.png"
+            logoAlt="Malt"
+            bgColor="bg-amber-50"
+            textColor="text-amber-800"
+          />
+          <div className="flex items-center gap-3 rounded-2xl bg-golden-50 px-6 py-4">
+            <span className="text-3xl font-medium text-golden-600">95%</span>
+            <div className="h-8 w-px bg-golden-300" />
+            <span className="font-mono text-sm font-medium text-golden-600">
+              Adoption
+            </span>
+          </div>
+          <MosaicQuoteCard
+            quote="Dust has made it possible empowering our employees to work smarter"
+            logo="/static/landing/logos/color/doctolib.png"
+            logoAlt="Doctolib"
+            image="/static/landing/enterprise/section6/doctolib.jpg"
+            bgColor="bg-white"
+          />
+        </div>
+
+        {/* Column 2 */}
+        <div className="flex flex-col gap-4">
+          <MosaicMetricCard
+            value="x4"
+            description="Support tickets cut"
+            logo=""
+            logoAlt=""
+            bgColor="bg-blue-50"
+            textColor="text-blue-800"
+            divider
+          />
+          <MosaicMetricCard
+            value="+50k"
+            description="Hours saved annually"
+            quote="Dust AI assistants can remove tens of thousands of hours of work each year"
+            logo="/static/landing/logos/color/qonto.png"
+            logoAlt="Qonto"
+            bgColor="bg-white"
+            textColor="text-foreground"
+            className="border border-gray-100"
+          />
+          <MosaicMetricCard
+            value="70%"
+            description="reduction in translation bottleneck"
+            logo="/static/landing/logos/color/fleet.png"
+            logoAlt="Fleet"
+            bgColor="bg-lime-50"
+            textColor="text-green-700"
+          />
+        </div>
+
+        {/* Column 3 */}
+        <div className="flex flex-col gap-4">
+          <MosaicQuoteCard
+            quote="Dust is the most impactful software we've adopted since building Clay"
+            logo="/static/landing/logos/color/clay.png"
+            logoAlt="Clay"
+            image="/static/landing/enterprise/section6/clay.webp"
+            bgColor="bg-white"
+          />
+          <MosaicMetricCard
+            value="50%"
+            description="faster legal task completion"
+            logo="/static/landing/logos/color/payfit.png"
+            logoAlt="PayFit"
+            bgColor="bg-golden-50"
+            textColor="text-golden-600"
+          />
+          <MosaicMetricCard
+            value="84%"
+            description="Weekly Active Users"
+            logo="/static/landing/logos/color/alan.png"
+            logoAlt="Alan"
+            bgColor="bg-blue-100"
+            textColor="text-blue-800"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// "Ready to move faster?" — Bottom CTA
+// ---------------------------------------------------------------------------
+
+function ReadyToMoveSection() {
+  return (
+    <div
+      className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen py-16 md:py-24"
+      style={{
+        background:
+          "linear-gradient(180deg, #E9F7FF 0%, #E9F7FF 80%, #FFF 100%)",
+      }}
+    >
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        <H1 mono className="mb-12 text-center text-3xl md:text-4xl lg:text-5xl">
+          Ready to move faster?
+        </H1>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="flex flex-col justify-between rounded-2xl bg-white p-8 shadow-sm">
+            <div>
+              <H3 className="mb-4 text-foreground" mono>
+                For Technical Buyers
+              </H3>
+              <P size="md" className="text-muted-foreground">
+                45-minute session with our Solutions Engineering team. We'll
+                review your stack, map integration requirements, and design your
+                deployment architecture.
+              </P>
+            </div>
+            <div className="mt-8">
+              <UTMButton
+                variant="highlight"
+                size="md"
+                label="Contact us"
+                href="/home/contact"
+                className="w-full"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col justify-between rounded-2xl bg-white p-8 shadow-sm">
+            <div>
+              <H3 className="mb-4 text-foreground" mono>
+                For Business Buyers
+              </H3>
+              <P size="md" className="text-muted-foreground">
+                Model your cost savings from stack consolidation + productivity
+                gains. Compare against ChatGPT Enterprise, Copilot, and
+                build-it-yourself scenarios
+              </P>
+            </div>
+            <div className="mt-8">
+              <UTMButton
+                variant="outline"
+                size="md"
+                label="Contact us"
+                href="/home/contact"
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -1031,14 +1296,10 @@ export default function Enterprise() {
         <HumansTalkingSection />
         <HowTeamsUseSection />
         <EnterpriseGradeSection />
-        <QuoteSection
-          quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
-          name="Everett Berry"
-          title="Head of GTM Engineering at Clay"
-          logo="/static/landing/logos/color/clay.png"
-        />
+        <SocialProofMosaicSection />
         <TrustedBy logoSet="landing" />
       </div>
+      <ReadyToMoveSection />
     </>
   );
 }
