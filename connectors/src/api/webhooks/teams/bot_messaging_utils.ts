@@ -158,7 +158,9 @@ export async function updateActivity(
 /**
  * Helper function to send a text message
  */
-export async function sendTextMessage(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function sendTextMessage(
   context: TurnContext,
   text: string
 ): Promise<Result<string, Error>> {

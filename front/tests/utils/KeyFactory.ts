@@ -5,10 +5,12 @@ import { faker } from "@faker-js/faker";
 import type { InferCreationAttributes } from "sequelize";
 
 export class KeyFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async make(params: InferCreationAttributes<KeyModel>) {
     return KeyModel.create(params);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async regular(group: GroupResource) {
     return KeyResource.makeNew(
       {
@@ -22,6 +24,7 @@ export class KeyFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async disabled(group: GroupResource) {
     return KeyResource.makeNew(
       {
@@ -35,6 +38,7 @@ export class KeyFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async system(group: GroupResource) {
     return KeyResource.makeNew(
       {

@@ -286,6 +286,7 @@ export function DataSourceSearchResults({
 
             return isSearchRowSelected(node);
           }}
+          // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
           onSelectionChange={async (item, selectionState, state) => {
             const node = itemNodeMap.get(item.id);
             if (!node) {

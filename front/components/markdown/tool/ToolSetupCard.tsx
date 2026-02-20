@@ -144,6 +144,7 @@ export function ToolSetupCard({
     onSetupComplete?.(toolId);
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleActivateClick = async () => {
     trackEvent({
       area: TRACKING_AREAS.CONVERSATION,

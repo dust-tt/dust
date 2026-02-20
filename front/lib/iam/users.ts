@@ -80,6 +80,7 @@ function softHtmlEscape(str: string): string {
   return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function fetchUserFromSession(session: SessionWithUser) {
   const { workOSUserId } = session.user;
 
@@ -90,6 +91,7 @@ export async function fetchUserFromSession(session: SessionWithUser) {
   return null;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function maybeUpdateFromExternalUser(
   user: UserResource,
   externalUser: ExternalUser

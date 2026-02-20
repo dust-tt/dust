@@ -9,10 +9,12 @@ const { runAllChecksActivity, runSingleCheckActivity } = proxyActivities<
   heartbeatTimeout: "10 minutes",
 });
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function runAllChecksWorkflow(): Promise<CheckActivityResult[]> {
   return runAllChecksActivity();
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function runSingleCheckWorkflow(
   checkName: string
 ): Promise<CheckActivityResult> {

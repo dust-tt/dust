@@ -425,6 +425,7 @@ const _webhookDiscordAppHandler = async (
   });
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function parseExpressRequestRawBody(req: Request): Promise<string> {
   if ("rawBody" in req && req.rawBody) {
     return req.rawBody.toString();

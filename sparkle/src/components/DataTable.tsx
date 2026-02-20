@@ -1153,6 +1153,7 @@ DataTable.BasicCellContent = function BasicCellContent({
 }: BasicCellContentProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleCopy = async () => {
     const textToUse = textToCopy ?? String(label);
     void copyToClipboard(
@@ -1242,6 +1243,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
 }: CellContentWithCopyProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleCopy = async () => {
     void copyToClipboard(
       new ClipboardItem({

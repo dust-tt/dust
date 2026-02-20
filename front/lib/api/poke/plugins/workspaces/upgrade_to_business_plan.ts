@@ -19,6 +19,7 @@ export const toggleBusinessPlanWhitelist = createPlugin({
       },
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
     const isCurrentlyWhitelisted = workspace.metadata?.isBusiness === true;

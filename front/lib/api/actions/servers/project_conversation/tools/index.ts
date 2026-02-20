@@ -27,6 +27,7 @@ export function createProjectConversationTools(
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof PROJECT_CONVERSATION_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     create_conversation: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {

@@ -258,6 +258,7 @@ const InputBarContainer = ({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (fileId: string, textContent: string) => {
       const editorInstance = editorRef.current;
       if (!editorInstance) {

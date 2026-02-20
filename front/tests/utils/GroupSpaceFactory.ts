@@ -3,6 +3,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 
 export class GroupSpaceFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async associate(
     space: SpaceResource,
     group: GroupResource,

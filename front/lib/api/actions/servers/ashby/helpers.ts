@@ -103,6 +103,7 @@ export async function findUniqueCandidate(
   return new Ok(candidates[0]);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function withAuth<T>(
   { authInfo }: ToolHandlerExtra,
   action: (token: string) => Promise<Result<T, MCPError>>

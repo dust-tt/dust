@@ -3,6 +3,7 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { faker } from "@faker-js/faker";
 
 export class WorkspaceVerificationAttemptFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async create(
     auth: Authenticator,
     {

@@ -10,6 +10,7 @@ makeScript(
       required: true,
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async ({ sId }, _logger) => {
     const result = getIdsFromSId(sId);
 

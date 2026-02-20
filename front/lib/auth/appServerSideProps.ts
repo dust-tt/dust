@@ -160,12 +160,14 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
 // For authenticated pages outside workspace context (e.g. /invite-choose, /no-workspace).
 // Checks session only — redirects to login if unauthenticated, no workspace required.
 export const appGetServerSidePropsForUserNoWorkspace =
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   withDefaultUserAuthPaywallWhitelisted<object>(async () => {
     return { props: {} };
   });
 
 // For public pages that don't require authentication
 export const appGetServerSidePropsPublic = withPublicAuthRequirements<object>(
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async () => {
     return {
       props: {},

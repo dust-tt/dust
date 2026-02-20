@@ -11,7 +11,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
  * TODO(EXT): Document this endpoint.
  */
 
-async function handler(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<MeResponseType>>,
   user: UserTypeWithWorkspaces

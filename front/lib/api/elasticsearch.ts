@@ -113,6 +113,7 @@ export async function getClient(): Promise<Client> {
   return esClient;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function esSearch<
   TDocument extends ElasticsearchBaseDocument,
   TAggregations = unknown,
@@ -212,7 +213,9 @@ export function ensureAtMostNGroups<
  * This interface enforces proper usage and makes it harder to accidentally
  * query other Elasticsearch indexes from the front service.
  */
-export async function searchAnalytics<
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function searchAnalytics<
   TDocument extends ElasticsearchBaseDocument | never,
   TAggregations = unknown,
 >(

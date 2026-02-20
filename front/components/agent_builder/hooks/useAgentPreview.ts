@@ -77,6 +77,7 @@ export function useDraftAgent() {
     }, [owner, user, sendNotification, getValues]);
 
   const getDraftAgent =
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
       const formData = getValues();
 

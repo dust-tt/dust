@@ -207,6 +207,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync({
     fromTs,
   }: {
@@ -264,6 +265,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -273,22 +275,27 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     return new Ok([internalId]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setPermissions(): Promise<Result<void, Error>> {
     return new Err(new Error("Synced Queries are managed by Dust"));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setConfigurationKey(): Promise<Result<void, Error>> {
     throw new Error("Method setConfigurationKey not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getConfigurationKey(): Promise<Result<string | null, Error>> {
     throw new Error("Method getConfigurationKey not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method garbageCollect not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method configure not implemented.");
   }

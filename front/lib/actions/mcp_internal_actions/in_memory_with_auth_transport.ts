@@ -45,6 +45,7 @@ export class InMemoryWithAuthTransport implements Transport {
     this._authInfo = authInfo;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async start(): Promise<void> {
     // Process any messages that were queued before start was called
     while (this._messageQueue.length > 0) {
@@ -64,7 +65,9 @@ export class InMemoryWithAuthTransport implements Transport {
    * Sends a message with optional auth info.
    * This is useful for testing authentication scenarios.
    */
-  async send(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  send(
     message: JSONRPCMessage,
     options?: { relatedRequestId?: RequestId; authInfo?: AuthInfo }
   ): Promise<void> {

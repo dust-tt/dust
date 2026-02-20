@@ -99,6 +99,7 @@ export async function getCoreDataSourceSearchCriterias(
   return new Ok(coreDataSourceSearchCriterias);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getPromptForProcessDustApp({
   auth,
   agentConfiguration,

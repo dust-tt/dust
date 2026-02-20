@@ -24,6 +24,7 @@ export function useBigQueryLocations({
     PostCheckBigQueryLocationsResponseBody
   >(
     fetchKey,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async () => {
       if (!url) {
         return undefined;

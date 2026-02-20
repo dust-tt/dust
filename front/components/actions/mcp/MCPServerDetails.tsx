@@ -287,6 +287,7 @@ export function MCPServerDetails({
           success = false;
         }
       },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (errors) => {
         // Bubble up validation errors with clear context and focus.
         const keys = Object.keys(errors);

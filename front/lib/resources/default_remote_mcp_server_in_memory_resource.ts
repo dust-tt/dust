@@ -17,6 +17,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
     this.config = config;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private static async init(
     auth: Authenticator,
     configId: number

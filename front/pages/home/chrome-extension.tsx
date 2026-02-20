@@ -77,6 +77,7 @@ const DEMO_VIDEO = {
 const CHROME_EXTENSION_URL =
   "https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

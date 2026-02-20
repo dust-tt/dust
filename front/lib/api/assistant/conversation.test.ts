@@ -1874,10 +1874,12 @@ describe("postNewContentFragment", () => {
   });
 
   describe("space restrictions for content fragments with content nodes", () => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     beforeEach(async () => {
       // Mock getContentFragmentBlob to return a successful result for content nodes
       // The title will be taken from the content fragment input
-      vi.mocked(getContentFragmentBlob).mockImplementation(async (auth, cf) => {
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+                  vi.mocked(getContentFragmentBlob).mockImplementation(async (auth, cf) => {
         const nodeDataSourceViewId = isContentFragmentInputWithContentNode(cf)
           ? (dsViewInProjectSpace?.id ?? 1)
           : 1;

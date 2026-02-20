@@ -154,6 +154,7 @@ export function AppViewPage() {
     run?.created &&
     Date.now() - run.created > 60 * 60 * 1000; // 1 hour in milliseconds
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const saveState = async (spec: SpecificationType, config: BlockRunConfig) => {
     if (!app) {
       return;
@@ -253,7 +254,8 @@ export function AppViewPage() {
     // We disable runRequested after 1s, time to disable the Run button while the network
     // catches-up on the run status. This may lead to flickering if the network is not great, but
     // haven't found a better solution yet.
-    setTimeout(async () => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+                setTimeout(async () => {
       setRunRequested(false);
     }, 1000);
 
@@ -289,6 +291,7 @@ export function AppViewPage() {
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
         await Promise.all(
+          // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
           spec.map(async (block) => {
             return mutate(
               `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
@@ -327,6 +330,7 @@ export function AppViewPage() {
         // Mutate all blocks to trigger a refresh
         if (run?.run_id) {
           await Promise.all(
+            // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
             spec.map(async (block) => {
               return mutate(
                 `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}/blocks/${block.type}/${block.name}`

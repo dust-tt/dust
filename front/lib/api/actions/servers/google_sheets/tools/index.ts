@@ -10,6 +10,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   list_spreadsheets: async ({ nameFilter, pageToken, pageSize }, extra) => {
     return withDriveAuth(extra, async (drive) => {
       try {
@@ -41,6 +42,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_spreadsheet: async ({ spreadsheetId }, extra) => {
     return withSheetsAuth(extra, async (sheets) => {
       try {
@@ -61,6 +63,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_worksheet: async (
     { spreadsheetId, range, majorDimension, valueRenderOption },
     extra
@@ -87,6 +90,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   update_cells: async (
     { spreadsheetId, range, values, majorDimension, valueInputOption },
     extra
@@ -114,6 +118,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   append_data: async (
     {
       spreadsheetId,
@@ -149,6 +154,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   clear_range: async ({ spreadsheetId, range }, extra) => {
     return withSheetsAuth(extra, async (sheets) => {
       try {
@@ -168,6 +174,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   create_spreadsheet: async ({ title, sheetTitles }, extra) => {
     return withSheetsAuth(extra, async (sheets) => {
       try {
@@ -196,6 +203,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   add_worksheet: async (
     { spreadsheetId, title, rowCount, columnCount },
     extra
@@ -232,6 +240,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   delete_worksheet: async ({ spreadsheetId, sheetId }, extra) => {
     return withSheetsAuth(extra, async (sheets) => {
       try {
@@ -261,6 +270,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   format_cells: async (
     {
       spreadsheetId,
@@ -309,6 +319,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   copy_sheet: async (
     { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
     extra
@@ -334,6 +345,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   rename_worksheet: async ({ spreadsheetId, sheetId, newTitle }, extra) => {
     return withSheetsAuth(extra, async (sheets) => {
       try {
@@ -367,6 +379,7 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
     });
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   move_worksheet: async ({ spreadsheetId, sheetId, newIndex }, extra) => {
     return withSheetsAuth(extra, async (sheets) => {
       try {

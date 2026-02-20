@@ -32,14 +32,18 @@ export const TokenStorage = {
   /**
    * Retrieves the access token from secure storage
    */
-  async getAccessToken(): Promise<string | null> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getAccessToken(): Promise<string | null> {
     return keytar.getPassword(SERVICE_NAME, ACCESS_TOKEN_KEY);
   },
 
   /**
    * Retrieves the refresh token from secure storage
    */
-  async getRefreshToken(): Promise<string | null> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getRefreshToken(): Promise<string | null> {
     return keytar.getPassword(SERVICE_NAME, REFRESH_TOKEN_KEY);
   },
 
@@ -78,7 +82,9 @@ export const TokenStorage = {
   /**
    * Retrieves the selected workspace ID
    */
-  async getWorkspaceId(): Promise<string | null> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getWorkspaceId(): Promise<string | null> {
     return keytar.getPassword(SERVICE_NAME, WORKSPACE_KEY);
   },
 
@@ -92,7 +98,9 @@ export const TokenStorage = {
   /**
    * Retrieves the user's region
    */
-  async getRegion(): Promise<string | null> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getRegion(): Promise<string | null> {
     return keytar.getPassword(SERVICE_NAME, REGION_KEY);
   },
 

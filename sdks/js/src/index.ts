@@ -293,6 +293,7 @@ export class DustAPI {
     return this._urlOverride ? this._urlOverride : this._url;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getApiKey(): Promise<string | null> {
     if (typeof this._credentials.apiKey === "function") {
       return this._credentials.apiKey();
@@ -965,6 +966,7 @@ export class DustAPI {
     return new Ok(r.value);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async streamAgentAnswerEvents({
     conversation,
     userMessageId,
@@ -1020,6 +1022,7 @@ export class DustAPI {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async streamAgentMessageEvents({
     conversation,
     agentMessage,
@@ -1053,6 +1056,7 @@ export class DustAPI {
       "user_message_error",
     ];
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const createRequest = async (lastId?: string | null) => {
       let path = `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`;
       if (lastId) {

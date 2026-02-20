@@ -118,6 +118,7 @@ export function AssistantInputBar({
     void sendInputBarStatus(true);
 
     const cleanup = platform.messaging?.addMessageListener(
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (message: AttachSelectionMessage) => {
         const { type } = message;
         if (type === "EXT_ATTACH_TAB") {

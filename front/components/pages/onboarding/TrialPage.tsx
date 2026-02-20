@@ -15,10 +15,12 @@ export function TrialPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const skip = async () => {
     void router.push(`/w/${workspace.sId}/subscribe`);
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const startTrial = async () => {
     void router.push(`/w/${workspace.sId}/verify`);
   };

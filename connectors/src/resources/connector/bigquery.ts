@@ -65,6 +65,7 @@ export class BigQueryConnectorStrategy
     ]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(): Promise<
     Record<ModelId, ConnectorProviderModelResourceMapping["bigquery"]>
   > {

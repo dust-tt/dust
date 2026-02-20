@@ -634,6 +634,7 @@ export const conversationUnreadWorkflow = workflow(
 
     await step.inApp(
       "send-in-app",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const d = details!;
@@ -673,6 +674,7 @@ export const conversationUnreadWorkflow = workflow(
 
     await step.chat(
       "slack-notification",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const d = details!;
@@ -742,6 +744,7 @@ export const conversationUnreadWorkflow = workflow(
 
     const { events } = await step.digest(
       "digest",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         const digestKey = `workspace-${payload.workspaceId}-unread-conversations`;
         const userPreferences = userNotificationDelayStep.delay;

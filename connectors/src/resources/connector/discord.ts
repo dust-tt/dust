@@ -13,6 +13,7 @@ import type { Transaction } from "sequelize";
 export class DiscordConnectorStrategy
   implements ConnectorProviderStrategy<"discord_bot">
 {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<DiscordConfigurationModel>,
@@ -42,6 +43,7 @@ export class DiscordConnectorStrategy
     return;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(
     connectorIds: ModelId[]
   ): Promise<

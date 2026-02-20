@@ -9,10 +9,12 @@ describe("throttle", () => {
     const removedTimestamps: number[] = [];
 
     const getTimestamps = vi.fn(async () => [...timestamps]);
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const addTimestamp = vi.fn(async (timestamp: number) => {
       timestamps.push(timestamp);
     });
     const removeTimestampsBatch = vi.fn(
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (timestampsToRemove: number[]) => {
         for (const timestamp of timestampsToRemove) {
           const index = timestamps.indexOf(timestamp);
@@ -776,9 +778,11 @@ describe("throttle", () => {
 
       const mocks = {
         getTimestamps: vi.fn(async () => [...timestamps]),
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         addTimestamp: vi.fn(async (timestamp: number) => {
           timestamps.push(timestamp);
         }),
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         removeTimestampsBatch: vi.fn(async (timestamps: number[]) => {
           for (const timestamp of timestamps) {
             const index = timestamps.indexOf(timestamp);

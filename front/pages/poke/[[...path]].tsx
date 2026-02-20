@@ -3,6 +3,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 // biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = withSuperUserAuthRequirements(
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async (context) => {
     const { path } = context.params ?? {};
     const pathSegments = Array.isArray(path) ? path : path ? [path] : [];

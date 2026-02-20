@@ -119,6 +119,7 @@ export async function setUserAlwaysApprovedTool(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function hasUserAlwaysApprovedTool(
   auth: Authenticator,
   {

@@ -33,6 +33,7 @@ function getModelForSuggestionType(
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getBuilderSuggestions(
   auth: Authenticator,
   type: BuilderSuggestionType,

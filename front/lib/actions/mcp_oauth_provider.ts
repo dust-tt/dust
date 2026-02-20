@@ -39,6 +39,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     return undefined;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async tokens(): Promise<OAuthTokens | undefined> {
     return this.token;
   }

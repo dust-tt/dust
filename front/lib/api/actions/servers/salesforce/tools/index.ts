@@ -37,6 +37,7 @@ interface DescribeFieldResult {
 
 export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SALESFORCE_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     execute_read_query: async ({ query }, extra) => {
       return withAuth(extra, async (conn) => {
         try {
@@ -70,6 +71,7 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_objects: async ({ filter }, extra) => {
       return withAuth(extra, async (conn) => {
         try {
@@ -99,6 +101,7 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     describe_object: async ({ objectName }, extra) => {
       return withAuth(extra, async (conn) => {
         try {
@@ -240,6 +243,7 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_attachments: async ({ recordId }, extra) => {
       return withAuth(extra, async (conn) => {
         const attachmentsResult = await getAllSalesforceAttachments(
@@ -280,6 +284,7 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     read_attachment: async ({ recordId, attachmentId }, extra) => {
       return withAuth(extra, async (conn) => {
         const attachmentsResult = await getAllSalesforceAttachments(

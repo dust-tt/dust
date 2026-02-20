@@ -26,6 +26,7 @@ export class DustProjectConfigurationResource extends BaseResource<DustProjectCo
     super(DustProjectConfigurationModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }

@@ -347,6 +347,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return new Ok(deletedCount);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async deleteByAgentMessageIds(
     auth: Authenticator,
     { agentMessageIds }: { agentMessageIds: ModelId[] }
@@ -387,6 +388,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createNewVersion({
     agentMessageId,
     workspaceId,

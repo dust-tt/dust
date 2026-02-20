@@ -6,6 +6,7 @@ import handler from "./index";
 
 const TEST_CHECKOUT_URL = "https://checkout.stripe.com/test-session";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 vi.mock("@app/lib/plans/stripe", async () => {
   return {
     createProPlanCheckoutSession: vi

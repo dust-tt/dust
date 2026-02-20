@@ -234,7 +234,9 @@ export class DustMcpServerTransport implements Transport {
    * Close the transport and disconnect from the SSE endpoint
    * This method is required by the Transport interface
    */
-  async close(): Promise<void> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  close(): Promise<void> {
     // Clear heartbeat timer.
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);

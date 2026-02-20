@@ -216,7 +216,9 @@ export class SnowflakeClient {
   /**
    * Run a SQL statement on a connection (no result returned).
    */
-  private async runSql(connection: Connection, sql: string): Promise<void> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+private  async runSql(connection: Connection, sql: string): Promise<void> {
     return new Promise((resolve, reject) => {
       connection.execute({
         sqlText: sql,
@@ -234,7 +236,9 @@ export class SnowflakeClient {
   /**
    * Close a Snowflake connection.
    */
-  private async closeConnection(conn: Connection): Promise<void> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+private  async closeConnection(conn: Connection): Promise<void> {
     return new Promise((resolve) => {
       conn.destroy((err: SnowflakeError | undefined) => {
         if (err) {

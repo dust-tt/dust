@@ -108,6 +108,7 @@ export class FileResource extends BaseResource<FileModel> {
     return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static override async fetchByModelId(
     _id: ModelId,
 
@@ -378,7 +379,8 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Status logic.
 
-  async markAsFailed() {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    async markAsFailed() {
     return this.update({ status: "failed" });
   }
 
@@ -473,6 +475,7 @@ export class FileResource extends BaseResource<FileModel> {
       .publicUrl();
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private async getSignedUrl(
     auth: Authenticator,
     version: FileVersion,
@@ -488,6 +491,7 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getSignedUrlForDownload(
     auth: Authenticator,
     version: FileVersion
@@ -503,7 +507,9 @@ export class FileResource extends BaseResource<FileModel> {
    * Unlike getSignedUrlForDownload, this doesn't set Content-Disposition header,
    * allowing for instance file viewers to render the file inline
    */
-  async getSignedUrlForInlineView(auth: Authenticator): Promise<string> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  getSignedUrlForInlineView(auth: Authenticator): Promise<string> {
     const version = "original";
     const expirationDelayMs = 5 * 60 * 1000;
     return this.getSignedUrl(auth, version, expirationDelayMs);
@@ -554,7 +560,9 @@ export class FileResource extends BaseResource<FileModel> {
    * Used for reverting Interactive Content files to previous versions.
    * Returns an empty array if versions cannot be retrieved.
    */
-  private async getSortedFileVersions(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+private  async getSortedFileVersions(
     auth: Authenticator,
     maxResults?: number
   ): Promise<File[]> {
@@ -815,6 +823,7 @@ export class FileResource extends BaseResource<FileModel> {
     return null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async revokePublicSharingInWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
     return FileResource.shareableFileModel.update(

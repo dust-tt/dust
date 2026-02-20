@@ -63,6 +63,7 @@ const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   [GET_MENTION_MARKDOWN_TOOL_NAME]: async ({ mention }, _extra) => {
     return new Ok([
       {

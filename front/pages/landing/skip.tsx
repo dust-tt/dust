@@ -12,6 +12,7 @@ import type { ReactElement } from "react";
 
 const SECTION_VISUALS = [<CareerAdvantageVisual />, <AgentBuilderVisual />];
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

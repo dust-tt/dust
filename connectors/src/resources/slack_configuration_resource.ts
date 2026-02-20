@@ -37,6 +37,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     super(SlackConfigurationModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -123,6 +124,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async findChannelWithAutoRespond(
     connectorId: ModelId,
     slackChannelId: string

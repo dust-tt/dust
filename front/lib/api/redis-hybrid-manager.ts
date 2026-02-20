@@ -262,7 +262,9 @@ class RedisHybridManager {
    * Subscribe to a channel for real-time updates
    * and fetch history from the corresponding stream
    */
-  public async subscribe(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+public  async subscribe(
     channelName: string,
     callback: EventCallback,
     lastEventId: string | null = null,
@@ -449,6 +451,7 @@ class RedisHybridManager {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private async getHistory(
     streamClient: RedisClientType,
     streamName: string,
@@ -470,6 +473,7 @@ class RedisHybridManager {
         try {
           const xReadStartMs = Date.now();
           const result = await tracer
+            // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
             .trace("redis.xread.command", async () => {
               return streamClient.xRead(
                 commandOptions({ isolated: true }),

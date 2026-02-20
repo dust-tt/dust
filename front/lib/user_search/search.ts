@@ -15,7 +15,9 @@ export interface SearchUsersResult {
  * - full_name: Uses prefix matching on any word (edge n-grams)
  * - email: Uses token matching (uax_url_email tokenizer)
  */
-export async function searchUsers({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function searchUsers({
   owner,
   searchTerm,
   offset,

@@ -134,6 +134,7 @@ export class OpenAIUsageClient {
     return new Ok(await response.json());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getCompletionsUsage(params: {
     start_time: number;
     end_time?: number;
@@ -150,6 +151,7 @@ export class OpenAIUsageClient {
     return this.request("organization/usage/completions", params);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getOrganizationCosts(params: {
     start_time: number;
     end_time?: number;

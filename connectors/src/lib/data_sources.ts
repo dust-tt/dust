@@ -91,6 +91,7 @@ export const upsertDataSourceDocument = withRetries(
   }
 );
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function _upsertDataSourceDocument({
   dataSourceConfig,
   documentId,
@@ -362,6 +363,7 @@ export const updateDataSourceDocumentParents = withRetries(
   { retries: 3 }
 );
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function _updateDataSourceDocumentParents({
   documentId,
   ...params
@@ -385,6 +387,7 @@ export const updateDataSourceTableParents = withRetries(
   { retries: 3 }
 );
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function _updateDataSourceTableParents({
   tableId,
   ...params
@@ -1116,6 +1119,7 @@ export async function upsertDataSourceTableFromCsv({
   try {
     dustRequestResult = await withRetries(
       localLogger,
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         currentTimeoutMs += 30000;
         return axiosWithTimeout.post(endpoint, dustRequestPayload, {

@@ -36,6 +36,7 @@ interface UkgReadyAuthContext {
 }
 
 // withAuth pattern - extracts token and provides consistent error handling
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function withAuth(
   { authInfo }: ToolHandlerExtra,
   action: (ctx: UkgReadyAuthContext) => Promise<ToolHandlerResult>

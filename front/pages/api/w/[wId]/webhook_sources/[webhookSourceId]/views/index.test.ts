@@ -144,6 +144,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     // Mock the listByWebhookSource method to simulate failure
     const listSpy = vi
       .spyOn(WebhookSourcesViewResource, "listByWebhookSource")
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       .mockImplementation(async () => {
         throw new Error("Database error");
       });

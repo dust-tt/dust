@@ -26,6 +26,7 @@ export function setupGracefulShutdown() {
     return;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const gracefulShutdown: NodeJS.SignalsListener = async (signal) => {
     if (isShuttingDown) {
       return;

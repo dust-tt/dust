@@ -16,6 +16,7 @@ import { useFieldArray, useFormContext } from "react-hook-form";
 
 const MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS = 20;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getTagsSuggestions({
   owner,
   instructions,

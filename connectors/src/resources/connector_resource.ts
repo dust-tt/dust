@@ -208,6 +208,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async delete(): Promise<Result<undefined, Error>> {
     return withTransaction(async (transaction) => {
       try {
@@ -231,18 +232,21 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return !!this.pausedAt;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async markAsPaused() {
     return this.update({ pausedAt: new Date() });
   }
 
   // Unpausing a connector necessarily means clearing the connector errorType.
-  async markAsUnpaused() {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    async markAsUnpaused() {
     return this.update({
       errorType: null,
       pausedAt: null,
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async markAsError(errorType: ConnectorErrorType) {
     return this.update({
       errorType,
@@ -251,7 +255,8 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
   // Metadata.
 
-  async markAsRateLimited() {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    async markAsRateLimited() {
     return this.update({
       metadata: {
         ...this.metadata,
@@ -260,6 +265,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async markAsNotRateLimited() {
     return this.update({
       metadata: {

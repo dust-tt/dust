@@ -131,6 +131,7 @@ function isMessageEventParams(
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function publishConversationRelatedEvent(
   a: ConversationRelatedEventParams
 ) {
@@ -145,6 +146,7 @@ export async function publishConversationRelatedEvent(
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function publishMessageEventsOnMessagePostOrEdit(
   conversation: ConversationWithoutContentType,
   userMessage: UserMessageTypeWithContentFragments,
@@ -166,6 +168,7 @@ export async function publishMessageEventsOnMessagePostOrEdit(
   ]);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function publishAgentMessagesEvents(
   conversation: ConversationWithoutContentType,
   agentMessages: AgentMessageType[]

@@ -54,6 +54,7 @@ export const isValidWorkspaceRetentionDays = (
   );
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const getWorkspaceDataRetention = async (
   auth: Authenticator
 ): Promise<number> => {
@@ -66,6 +67,7 @@ export const getWorkspaceDataRetention = async (
   return WORKSPACE_DEFAULT_RETENTION_DAYS;
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const saveWorkspaceRetentionDaysMetadata = async (
   workspace: WorkspaceType,
   retentionDays: number
@@ -77,6 +79,7 @@ export const saveWorkspaceRetentionDaysMetadata = async (
   });
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const deleteWorkspaceRetentionDaysMetadata = async (
   workspace: WorkspaceType
 ): Promise<Result<void, Error>> => {

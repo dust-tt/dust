@@ -27,7 +27,9 @@ export type WorkOSJwtPayload = t.TypeOf<typeof WorkOSJwtPayloadSchema> &
  * Get the public key to verify a WorkOS token.
  * key id (kid) is used to find the right key in the JWKS.
  */
-async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function getSigningKey(jwksUri: string, kid: string): Promise<string> {
   const client = jwksClient({
     jwksUri,
     cache: true,
@@ -52,7 +54,9 @@ async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
 /**
  * Verify a WorkOS token.
  */
-export async function verifyWorkOSToken(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function verifyWorkOSToken(
   accessToken: string
 ): Promise<Result<WorkOSJwtPayload, Error>> {
   const verify = `https://api.workos.com/sso/jwks/${config.getWorkOSClientId()}`;
@@ -100,7 +104,9 @@ export async function verifyWorkOSToken(
  * Get a user resource from a WorkOS token.
  * We return the user from the accessToken sub.
  */
-export async function getUserFromWorkOSToken(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getUserFromWorkOSToken(
   accessToken: WorkOSJwtPayload
 ): Promise<UserResource | null> {
   return UserResource.fetchByWorkOSUserId(accessToken.sub);

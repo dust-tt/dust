@@ -123,6 +123,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function listUsersPage(
   baseUrl: string,
   accessToken: string,
@@ -643,6 +644,7 @@ export async function getIssueFields(
   return handleResults(result, null);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getUserInfo(
   baseUrl: string,
   accessToken: string

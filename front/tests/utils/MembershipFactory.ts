@@ -8,6 +8,7 @@ import type { WorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
 
 export class MembershipFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async associate(
     workspace: WorkspaceType,
     user: UserResource,

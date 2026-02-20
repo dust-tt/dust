@@ -66,6 +66,7 @@ export class ActivityInboundLogInterceptor
           resource: this.context.info.activityType,
           type: "temporal-activity",
         },
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         async (span) => {
           span?.setTag("attempt", this.context.info.attempt);
           span?.setTag(

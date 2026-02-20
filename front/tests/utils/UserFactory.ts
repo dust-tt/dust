@@ -3,14 +3,17 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { faker } from "@faker-js/faker";
 
 export class UserFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async basic() {
     return UserResource.makeNew(this.defaultParams(false));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async superUser() {
     return UserResource.makeNew(this.defaultParams(true));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async withCreatedAt(createdAt: Date) {
     return UserResource.makeNew(this.defaultParams(false, createdAt));
   }

@@ -32,6 +32,7 @@ export class SpaceFactory {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async global(workspace: WorkspaceType, globalGroup?: GroupResource) {
     return SpaceResource.makeNew(
       {
@@ -43,6 +44,7 @@ export class SpaceFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async system(workspace: WorkspaceType, systemGroup?: GroupResource) {
     return SpaceResource.makeNew(
       {
@@ -72,6 +74,7 @@ export class SpaceFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async conversations(workspace: WorkspaceType) {
     return SpaceResource.makeNew(
       {

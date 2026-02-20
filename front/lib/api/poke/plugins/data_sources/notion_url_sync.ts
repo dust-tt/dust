@@ -121,6 +121,7 @@ type URLOperationResult = {
   error?: Error;
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function syncNotionUrls({
   urlsArray,
   dataSourceId,
@@ -245,6 +246,7 @@ export async function syncNotionUrls({
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function deleteUrls({
   urlsArray,
   dataSourceId,

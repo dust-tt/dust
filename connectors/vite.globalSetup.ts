@@ -1,3 +1,4 @@
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export default async function setup() {
   // Naive system to make sure we are running on a test db
   if (

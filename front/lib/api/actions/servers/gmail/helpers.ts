@@ -250,7 +250,9 @@ export function createThreadingHeaders(
 /**
  * Wrapper for fetch to Gmail API with Bearer token auth
  */
-export async function fetchFromGmail(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function fetchFromGmail(
   endpoint: string,
   accessToken: string,
   options?: RequestInit

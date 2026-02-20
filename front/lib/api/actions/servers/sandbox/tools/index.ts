@@ -14,24 +14,28 @@ export function createSandboxTools(
   _agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     execute: async (_args) => {
       return new Err(
         new MCPError("Sandbox execute tool is not implemented yet.")
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     write_file: async (_args) => {
       return new Err(
         new MCPError("Sandbox write_file tool is not implemented yet.")
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     read_file: async (_args) => {
       return new Err(
         new MCPError("Sandbox read_file tool is not implemented yet.")
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_files: async (_args) => {
       return new Err(
         new MCPError("Sandbox list_files tool is not implemented yet.")

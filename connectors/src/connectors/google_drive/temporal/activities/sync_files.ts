@@ -137,6 +137,7 @@ export async function syncFiles(
   const filesToSync = await Promise.all(
     res.data.files
       .filter((file) => file.id && file.createdTime)
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       .map(async (file) => {
         if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
           throw new Error("Invalid file. File is: " + JSON.stringify(file));

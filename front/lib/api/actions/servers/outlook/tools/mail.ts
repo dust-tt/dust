@@ -6,6 +6,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import sanitizeHtml from "sanitize-html";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 const fetchFromOutlook = async (
   endpoint: string,
   accessToken: string,

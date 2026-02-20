@@ -79,6 +79,7 @@ export const webhookRouter = onRequest(
     minInstances: 1,
     serviceAccount,
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async (req, res) => {
     // Firebase automatically provides req.rawBody for signature verification.
     app(req, res);

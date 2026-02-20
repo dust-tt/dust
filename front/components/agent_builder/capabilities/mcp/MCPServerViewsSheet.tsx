@@ -542,6 +542,7 @@ export function MCPServerViewsSheet({
     }
   };
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleConfigurationSave = async (formData: MCPFormData) => {
     if (!configurationTool || !form || !mcpServerView) {
       return;

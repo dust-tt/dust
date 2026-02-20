@@ -25,6 +25,7 @@ interface PopupResult<T = void> {
   error?: Error;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 const openAndWaitForPopup = async <T>(
   url: string,
   title: string,

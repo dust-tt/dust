@@ -346,6 +346,7 @@ const buildAudioFile = (chunks: Blob[], mimeType: string) => {
   return new File([blob], filename, { type: mimeType });
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 const requestMicrophone = async (): Promise<MediaStream> => {
   return navigator.mediaDevices.getUserMedia({ audio: true });
 };

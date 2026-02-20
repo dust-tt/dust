@@ -77,6 +77,7 @@ function isYearlySubscription(
   return firstItem?.price?.recurring?.interval === "year";
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function grantFreeCreditsForSubscription({
   auth,
   stripeSubscription,

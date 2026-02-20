@@ -113,6 +113,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return resource;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   public static async create(
     auth: Authenticator,
     {
@@ -227,6 +228,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return views ?? [];
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWorkspace(
     auth: Authenticator,
     options?: ResourceFindOptions<WebhookSourcesViewModel>
@@ -234,6 +236,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return this.baseFetch(auth, options);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpaces(
     auth: Authenticator,
     spaces: SpaceResource[],
@@ -255,6 +258,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource,
@@ -266,6 +270,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return this.listBySpaces(auth, [space], options);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWebhookSource(
     auth: Authenticator,
     webhookSourceId: ModelId
@@ -285,7 +290,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
    * SECURITY: Only use this for internal webhook processing. The webhook secret
    * in the URL serves as the authorization mechanism for these requests.
    */
-  static async listByWebhookSourceForInternalProcessing(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+static  async listByWebhookSourceForInternalProcessing(
     auth: Authenticator,
     webhookSourceModelId: ModelId
   ): Promise<WebhookSourcesViewResource[]> {

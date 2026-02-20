@@ -57,6 +57,7 @@ export class SalesforceConnectorStrategy
     return;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(
     connectorIds: ModelId[]
   ): Promise<

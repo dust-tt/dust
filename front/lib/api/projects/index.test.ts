@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock distributed lock to avoid Redis dependency
 vi.mock("@app/lib/lock", () => ({
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   executeWithLock: vi.fn(async (_lockName, fn) => {
     // Simply execute the function without locking in tests
     return fn();

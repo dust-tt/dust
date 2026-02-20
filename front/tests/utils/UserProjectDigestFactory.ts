@@ -38,6 +38,7 @@ export class UserProjectDigestFactory {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createWithoutConversation({
     auth,
     space,

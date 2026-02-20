@@ -827,6 +827,7 @@ export function useSpacesSearch({
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     fetchKey,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async () => {
       if (!url) {
         return null;
@@ -908,6 +909,7 @@ export function useSpacesSearchWithInfiniteScroll({
 
         return JSON.stringify([url + "?" + params.toString(), body]);
       },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (fetchKey: string) => {
         if (!fetchKey) {
           return null;

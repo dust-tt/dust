@@ -110,6 +110,7 @@ export async function listWarehouses(
   return new Ok(result.value.warehouses);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function withAuth({
   authInfo,
   action,

@@ -18,6 +18,7 @@ import type { ReactElement } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

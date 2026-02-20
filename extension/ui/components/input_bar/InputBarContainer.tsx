@@ -223,6 +223,7 @@ export const InputBarContainer = ({
     "whitespace-pre-wrap font-normal"
   );
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const onClick = async () => {
     onEnterKeyDown(
       editorService.isEmpty(),

@@ -107,16 +107,19 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync(): Promise<Result<string, Error>> {
     return new Ok("microsoft-bot-no-sync");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrievePermissions(): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
     return new Ok([]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -125,6 +128,7 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
     return new Ok([internalId]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setPermissions(): Promise<Result<void, Error>> {
     return new Ok(undefined);
   }
@@ -182,18 +186,22 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async stop(): Promise<Result<undefined, Error>> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async resume(): Promise<Result<undefined, Error>> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }

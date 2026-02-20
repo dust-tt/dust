@@ -97,6 +97,7 @@ function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getInternalMCPServer(
   auth: Authenticator,
   {

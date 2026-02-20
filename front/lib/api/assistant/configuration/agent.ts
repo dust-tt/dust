@@ -237,7 +237,9 @@ export async function listsAgentConfigurationVersions<
 /**
  * Get the latest versions of multiple agents.
  */
-export async function getAgentConfigurations<V extends AgentFetchVariant>(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
     agentIds,
@@ -319,7 +321,9 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 /**
  * Retrieves one specific version of an agent (can be the latest one).
  */
-export async function getAgentConfiguration<V extends AgentFetchVariant>(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getAgentConfiguration<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
     agentId,

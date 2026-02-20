@@ -102,6 +102,7 @@ async function getRedisClientByUri({
   return newClient;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function createRedisStreamClient({
   origin,
   options,
@@ -113,6 +114,7 @@ export async function createRedisStreamClient({
   return createRedisClient({ origin, redisUri, options });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getRedisStreamClient({
   origin,
 }: {
@@ -122,6 +124,7 @@ export async function getRedisStreamClient({
   return getRedisClientByUri({ origin, redisUri });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getRedisCacheClient({
   origin,
 }: {

@@ -107,6 +107,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private static async createGongSchedule(
     connector: ConnectorResource
   ): Promise<Result<string, Error>> {
@@ -289,12 +290,14 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrievePermissions(): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
     return new Ok([]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -304,14 +307,17 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok([internalId]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setPermissions(): Promise<Result<void, Error>> {
     throw new Error("Method not supported.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method not supported.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not supported.");
   }

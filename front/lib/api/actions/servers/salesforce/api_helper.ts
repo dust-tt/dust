@@ -206,6 +206,7 @@ export async function getAllSalesforceAttachments(
   return new Ok([...attachmentsResult.value, ...filesResult.value]);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function downloadSalesforceContent(
   conn: Connection,
   attachmentId: string

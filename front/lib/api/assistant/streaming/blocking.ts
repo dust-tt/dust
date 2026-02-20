@@ -36,7 +36,9 @@ const WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS = 60000 * 3; // 3 minutes.
  * - Times out after `WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS` milliseconds to prevent hanging
  * - Cleans up all subscriptions when done to avoid memory leaks
  */
-async function waitForAgentCompletion(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function waitForAgentCompletion(
   agentMessages: AgentMessageType[]
 ): Promise<AgentMessageType[]> {
   if (agentMessages.length === 0) {
@@ -144,6 +146,7 @@ async function waitForAgentCompletion(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function postUserMessageAndWaitForCompletion(
   auth: Authenticator,
   {

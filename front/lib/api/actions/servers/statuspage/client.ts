@@ -127,10 +127,12 @@ export class StatuspageClient {
     return new Ok(parseResult.data);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async listPages(): Promise<Result<ListPagesResponse, Error>> {
     return this.request("GET", "pages", ListPagesResponseSchema);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async listComponents(
     pageId: string
   ): Promise<Result<ListComponentsResponse, Error>> {
@@ -173,6 +175,7 @@ export class StatuspageClient {
     return result;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getIncident(
     pageId: string,
     incidentId: string
@@ -184,6 +187,7 @@ export class StatuspageClient {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async createIncident(
     pageId: string,
     request: CreateIncidentRequest
@@ -205,6 +209,7 @@ export class StatuspageClient {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateIncident(
     pageId: string,
     incidentId: string,

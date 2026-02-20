@@ -170,7 +170,9 @@ export class BrowserMCPTransport implements Transport {
   /**
    * Connect to the SSE stream for the workspace.
    */
-  private async connectToRequestsStream(): Promise<void> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+private  async connectToRequestsStream(): Promise<void> {
     if (!this.serverId) {
       console.error("[BrowserMCPTransport] Server ID is not set");
       return;
@@ -337,7 +339,9 @@ export class BrowserMCPTransport implements Transport {
    * Close the transport and disconnect from the SSE endpoint.
    * This method is required by the Transport interface.
    */
-  async close(): Promise<void> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  close(): Promise<void> {
     this.isClosing = true;
 
     window.removeEventListener("beforeunload", this.handleBeforeUnload);

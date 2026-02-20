@@ -104,16 +104,19 @@ export async function getTemporalWorkerConnection(): Promise<{
   return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getTemporalClientForAgentNamespace() {
   return getTemporalClientForNamespace("agent", [
     new OpenTelemetryWorkflowClientInterceptor(),
   ]);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getTemporalClientForFrontNamespace() {
   return getTemporalClientForNamespace("front");
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getTemporalClientForConnectorsNamespace() {
   return getTemporalClientForNamespace("connectors");
 }

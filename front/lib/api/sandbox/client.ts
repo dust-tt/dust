@@ -140,6 +140,7 @@ export class Sandbox {
     return { baseUrl, token };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   private async tryExec(
     command: string[],
     timeoutMs: number

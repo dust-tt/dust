@@ -5,6 +5,7 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import Image from "next/legacy/image";
 import type { ReactElement } from "react";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

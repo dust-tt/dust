@@ -20,7 +20,9 @@ function makeUserDocumentId({
  * Store or update a user document in Elasticsearch.
  * Uses upsert semantics - creates if doesn't exist, updates if it does.
  */
-export async function indexUserDocument(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function indexUserDocument(
   document: UserSearchDocument
 ): Promise<Result<void, ElasticsearchError>> {
   const documentId = makeUserDocumentId({
@@ -40,7 +42,9 @@ export async function indexUserDocument(
 /**
  * Delete a user document from Elasticsearch.
  */
-export async function deleteUserDocument({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function deleteUserDocument({
   workspaceId,
   userId,
 }: {

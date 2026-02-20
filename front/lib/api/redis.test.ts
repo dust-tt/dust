@@ -24,6 +24,7 @@ vi.mock("@app/logger/statsDClient", () => ({
 }));
 
 describe("getRedisStreamClient", () => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   beforeEach(async () => {
     vi.resetModules();
     process.env.REDIS_URI = "redis://localhost:6379";
@@ -53,6 +54,7 @@ describe("getRedisStreamClient", () => {
 });
 
 describe("getRedisCacheClient", () => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   beforeEach(async () => {
     vi.resetModules();
     process.env.REDIS_URI = "redis://localhost:6379";
@@ -93,6 +95,7 @@ describe("getRedisCacheClient", () => {
 });
 
 describe("closeRedisClients", () => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   beforeEach(async () => {
     vi.resetModules();
     process.env.REDIS_URI = "redis://localhost:6379";
@@ -127,6 +130,7 @@ describe("closeRedisClients", () => {
 });
 
 describe("runOnRedis", () => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   beforeEach(async () => {
     vi.resetModules();
     process.env.REDIS_URI = "redis://localhost:6379";
@@ -141,6 +145,7 @@ describe("runOnRedis", () => {
   it("uses stream client", async () => {
     const { getRedisStreamClient, runOnRedis } = await import("./redis");
     const streamClient = await getRedisStreamClient({ origin: "lock" });
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const result = await runOnRedis({ origin: "lock" }, async (client) => {
       expect(client).toBe(streamClient);
       return "result";
@@ -150,6 +155,7 @@ describe("runOnRedis", () => {
 });
 
 describe("runOnRedisCache", () => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   beforeEach(async () => {
     vi.resetModules();
     process.env.REDIS_CACHE_URI = "redis://localhost:6380";
@@ -168,6 +174,7 @@ describe("runOnRedisCache", () => {
     });
     const result = await runOnRedisCache(
       { origin: "cache_with_redis" },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (client) => {
         expect(client).toBe(cacheClient);
         return "result";

@@ -13,6 +13,7 @@ import { Button } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

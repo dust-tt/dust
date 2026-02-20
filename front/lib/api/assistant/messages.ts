@@ -626,6 +626,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function batchRenderContentFragment(
   auth: Authenticator,
   conversationId: string,
@@ -787,6 +788,7 @@ export async function fetchConversationMessages<V extends MessageVariant>(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function fetchMessageInConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,

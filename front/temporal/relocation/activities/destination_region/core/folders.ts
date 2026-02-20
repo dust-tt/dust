@@ -45,6 +45,7 @@ export async function processDataSourceFolders({
 
   const res = await concurrentExecutor(
     data.blobs.folders,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (d) => {
       // If the source URL starts with the source region Dust URL, replace it with the destination region Dust URL.
       const sourceUrl =

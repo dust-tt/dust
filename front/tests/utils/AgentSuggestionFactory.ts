@@ -12,6 +12,7 @@ import type {
 } from "@app/types/suggestions/agent_suggestion";
 
 export class AgentSuggestionFactory {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createInstructions(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,
@@ -40,6 +41,7 @@ export class AgentSuggestionFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createTools(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,
@@ -66,6 +68,7 @@ export class AgentSuggestionFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createSubAgent(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,
@@ -93,6 +96,7 @@ export class AgentSuggestionFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createSkills(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,
@@ -119,6 +123,7 @@ export class AgentSuggestionFactory {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async createModel(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,

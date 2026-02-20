@@ -35,6 +35,7 @@ export function createOpenAIUsageTools(
   agentLoopContext?: AgentLoopContextType
 ) {
   const handlers: ToolHandlers<typeof OPENAI_USAGE_TOOLS_METADATA> = {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     get_completions_usage: async (params, _extra: ToolHandlerExtra) => {
       return withClient(auth, agentLoopContext, async (client) => {
         const rule = LIMIT_RULES[params.bucket_width];
@@ -85,6 +86,7 @@ export function createOpenAIUsageTools(
       });
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     get_organization_costs: async (params, _extra: ToolHandlerExtra) => {
       return withClient(auth, agentLoopContext, async (client) => {
         const startTimeSeconds = Math.floor(

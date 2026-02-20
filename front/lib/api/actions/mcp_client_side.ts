@@ -278,7 +278,9 @@ export class ClientSideRedisMCPTransport implements Transport {
    * Close the transport and clean up resources.
    * This method is required by the Transport interface.
    */
-  async close(): Promise<void> {
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  close(): Promise<void> {
     // Clean up subscription.
     if (this.unsubscribe) {
       this.unsubscribe();

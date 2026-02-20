@@ -89,6 +89,7 @@ export function DeleteStaticDataSourceDialog({
               rightButtonProps={{
                 label: "Delete",
                 variant: "warning",
+                // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                 onClick: async () => {
                   void onDelete();
                 },

@@ -211,6 +211,7 @@ export function createNotionTools(
       }
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     retrieve_page: async ({ pageId }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.pages.retrieve({ page_id: pageId }),
@@ -218,6 +219,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     retrieve_database_schema: async ({ databaseId }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.databases.retrieve({ database_id: databaseId }),
@@ -225,6 +227,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     retrieve_database_content: async (
       { databaseId, filter, sorts, start_cursor, page_size },
       { authInfo }
@@ -242,6 +245,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     query_database: async (
       { databaseId, filter, sorts, start_cursor, page_size },
       { authInfo }
@@ -259,6 +263,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     create_page: async ({ parent, properties, icon, cover }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.pages.create({ parent, properties, icon, cover }),
@@ -266,6 +271,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     insert_row_into_database: async (
       { databaseId, properties, icon, cover },
       { authInfo }
@@ -282,6 +288,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     create_database: async (
       { parent, title, properties, icon, cover },
       { authInfo }
@@ -293,6 +300,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     update_page: async ({ pageId, properties }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.pages.update({ page_id: pageId, properties }),
@@ -300,6 +308,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     retrieve_block: async ({ blockId }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.blocks.retrieve({ block_id: blockId }),
@@ -307,6 +316,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     retrieve_block_children: async (
       { blockId, start_cursor, page_size },
       { authInfo }
@@ -322,6 +332,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     add_page_content: async ({ after, blockId, children }, { authInfo }) => {
       return withNotionClient(
         (notion) =>
@@ -334,6 +345,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     create_comment: async (
       { parent_page_id, discussion_id, comment },
       { authInfo }
@@ -360,6 +372,7 @@ export function createNotionTools(
       }, authInfo);
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     delete_block: async ({ blockId }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.blocks.update({ block_id: blockId, archived: true }),
@@ -367,6 +380,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     delete_page: async ({ pageId }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.pages.update({ page_id: pageId, in_trash: true }),
@@ -374,6 +388,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     fetch_comments: async ({ blockId }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.comments.list({ block_id: blockId }),
@@ -381,6 +396,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     update_row_database: async ({ pageId, properties }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.pages.update({ page_id: pageId, properties }),
@@ -388,6 +404,7 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     update_schema_database: async (
       { databaseId, properties },
       { authInfo }
@@ -399,10 +416,12 @@ export function createNotionTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     list_users: async (_params, { authInfo }) => {
       return withNotionClient((notion) => notion.users.list({}), authInfo);
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     get_about_user: async ({ userId }, { authInfo }) => {
       return withNotionClient(
         (notion) => notion.users.retrieve({ user_id: userId }),

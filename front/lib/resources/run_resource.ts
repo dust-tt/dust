@@ -119,6 +119,7 @@ export class RunResource extends BaseResource<RunModel> {
     ) as T extends true ? RunResourceWithApp[] : RunResource[];
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async countByWorkspace(
     workspace: LightWorkspaceType,
     options?: Pick<FetchRunOptions<boolean>, "since">
@@ -168,6 +169,7 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async countByAppAndRunType(
     workspace: LightWorkspaceType,
     { appId, runType }: { appId: ModelId; runType: string | string[] }
@@ -284,6 +286,7 @@ export class RunResource extends BaseResource<RunModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async recordTokenUsage(usage: TokenUsage, modelId: ModelIdType) {
     const modelConfig = getModelConfigByModelId(modelId);
 

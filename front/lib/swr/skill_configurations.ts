@@ -336,6 +336,7 @@ export function useSkillWithRelations(
 ) {
   const { trigger, isMutating } = useSWRMutation(
     `/api/w/${owner.sId}/skills`,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (url: string, { arg }: { arg: string }) => {
       return fetcher(`${url}/${arg}?withRelations=true`);
     },

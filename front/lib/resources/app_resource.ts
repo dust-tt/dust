@@ -66,6 +66,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     return apps.filter((app) => auth.isAdmin() || app.canRead(auth));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
@@ -86,6 +87,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     return app ?? null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listByWorkspace(
     auth: Authenticator,
     options?: { includeDeleted: boolean }
@@ -95,6 +97,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource,

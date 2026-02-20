@@ -445,6 +445,7 @@ describe("globalAgentInjectsMemory", () => {
 });
 
 describe("buildMemoriesContext", () => {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   it("should output 'No existing memories' for an empty array", async () => {
     const result = buildMemoriesContext([]);
 

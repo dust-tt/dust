@@ -321,6 +321,7 @@ const SystemSpaceItem = ({
   return (
     <NavigationListItem
       label={label}
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       onClick={async () => {
         void setNavigationSelection({
           lastSpaceId: space.sId,

@@ -50,6 +50,7 @@ type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
 
 type EnqueueUpsertTableType = t.TypeOf<typeof EnqueueUpsertTable>;
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function enqueueUpsertDocument({
   upsertDocument,
 }: {
@@ -84,6 +85,7 @@ export async function enqueueUpsertDocument({
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function enqueueUpsertTable({
   upsertTable,
 }: {

@@ -94,6 +94,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async stop({
     reason,
   }: {
@@ -149,6 +150,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync({
     fromTs,
   }: {
@@ -162,6 +164,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrievePermissions({
     parentInternalId: _parentInternalId,
     filterPermission: _filterPermission,
@@ -177,6 +180,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     return new Ok([]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -187,6 +191,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     return new Ok([internalId]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setPermissions({
     permissions: _permissions,
   }: {
@@ -196,6 +201,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setConfigurationKey({
     configKey: _configKey,
     configValue: _configValue,
@@ -207,6 +213,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getConfigurationKey({
     configKey: _configKey,
   }: {
@@ -216,10 +223,12 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     return new Ok(null);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     return new Err(new Error("Not implemented for this connector type"));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     // Garbage collection is now handled automatically during sync
     // Deleted conversations are detected and removed during full and incremental syncs

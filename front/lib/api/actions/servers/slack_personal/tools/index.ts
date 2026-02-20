@@ -109,6 +109,7 @@ export async function getSlackAIEnablementStatus({
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getSlackConnectionForMCPServer(
   auth: Authenticator,
   mcpServerId: string
@@ -391,6 +392,7 @@ export function createSlackPersonalTools(
         // Then we will aggregate the results.
         const results: SlackSearchMatch[][] = await concurrentExecutor(
           keywords,
+          // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
           async (keyword) => {
             const query = buildSlackSearchQuery(keyword, {
               timeFrame,
@@ -807,6 +809,7 @@ export function createSlackPersonalTools(
       );
     },
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     read_thread_messages: async (
       { channel, threadTs, limit, cursor, oldest, latest },
       { authInfo }

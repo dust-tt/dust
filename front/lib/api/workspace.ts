@@ -284,6 +284,7 @@ export async function searchMembers(
   };
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getMembersCount(
   auth: Authenticator,
   { activeOnly = false }: { activeOnly?: boolean } = {}
@@ -299,6 +300,7 @@ export async function getMembersCount(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function checkWorkspaceSeatAvailabilityUsingAuth(
   auth: Authenticator
 ): Promise<boolean> {
@@ -459,6 +461,7 @@ export function isWorkspaceConversationKillSwitched(
   return killSwitched.conversationIds.includes(conversationId);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function updateWorkspaceMetadata(
   owner: LightWorkspaceType,
   metadata: WorkspaceMetadata
@@ -469,12 +472,14 @@ export async function updateWorkspaceMetadata(
   return WorkspaceResource.updateMetadata(owner.id, newMetadata);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function setWorkspaceRelocating(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
   return updateWorkspaceMetadata(owner, { maintenance: "relocation" });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function setWorkspaceRelocated(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
@@ -509,6 +514,7 @@ export async function updateExtensionConfiguration(
   return new Ok(undefined);
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function setWorkspaceBusinessPlanWhitelist(
   auth: Authenticator,
   workspace: LightWorkspaceType,

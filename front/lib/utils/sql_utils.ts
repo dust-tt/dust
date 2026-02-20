@@ -44,6 +44,7 @@ function getCurrentTransaction(): Transaction | null {
   return (Sequelize as any)._cls?.get("transaction") || null;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function withTransaction<T>(
   fn: (transaction: Transaction) => Promise<T>,
   transaction?: Transaction

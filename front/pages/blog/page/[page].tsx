@@ -29,6 +29,7 @@ interface BlogPageProps {
   gtmTrackingId: string | null;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const getStaticPaths: GetStaticPaths = async () => {
   // Don't pre-generate any paths at build time to minimize Contentful API calls.
   // Pages are generated on-demand via fallback: "blocking" and cached with ISR.

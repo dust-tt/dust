@@ -9,6 +9,7 @@ import { compile } from "mathjs";
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 
 const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   generate_random_number: async ({ max }, _extra) => {
     const upperBound = max ?? RANDOM_INTEGER_DEFAULT_MAX;
     const value = Math.floor(Math.random() * upperBound) + 1;
@@ -21,6 +22,7 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   generate_random_float: async (_params, _extra) => {
     const value = Math.random();
 
@@ -43,6 +45,7 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   get_current_time: async ({ include_formats }, _extra) => {
     const now = new Date();
     const formats = new Set(
@@ -74,6 +77,7 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
     ]);
   },
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   math_operation: async ({ expression }, _extra) => {
     const evalFunction = compile(expression);
     try {

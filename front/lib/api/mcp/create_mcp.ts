@@ -14,7 +14,9 @@ import omit from "lodash/omit";
 /**
  * Creates an MCP action in the database and returns both the DB record and the type object.
  */
-export async function createMCPAction(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function createMCPAction(
   auth: Authenticator,
   {
     actionConfiguration,

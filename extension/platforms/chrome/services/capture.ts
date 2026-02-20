@@ -24,6 +24,7 @@ export class ChromeCaptureService implements CaptureService {
     return ["capture-page-content"].includes(id);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async handleOperation(
     id: CaptureOperationId,
     options: CaptureOptions

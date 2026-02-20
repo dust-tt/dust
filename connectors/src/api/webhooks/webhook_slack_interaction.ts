@@ -308,6 +308,7 @@ const _webhookSlackInteractionsAPIHandler = async (
   }
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function handleViewSubmission(
   payload: t.TypeOf<typeof ViewSubmissionPayloadSchema>
 ) {

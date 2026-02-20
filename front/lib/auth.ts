@@ -164,6 +164,7 @@ export class Authenticator {
     }));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async userFromSession(
     session: SessionWithUser | null
   ): Promise<UserResource | null> {
@@ -221,7 +222,9 @@ export class Authenticator {
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
    */
-  static async fromSession(
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+static  async fromSession(
     session: SessionWithUser | null,
     wId: string
   ): Promise<Authenticator> {
@@ -1056,7 +1059,9 @@ export async function getSession(
  * @param req
  * @returns
  */
-export async function getBearerToken(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getBearerToken(
   req: NextApiRequest
 ): Promise<Result<string, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {

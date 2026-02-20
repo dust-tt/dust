@@ -13,6 +13,7 @@ import type { Transaction } from "sequelize";
 export class SlackConnectorStrategy
   implements ConnectorProviderStrategy<"slack">
 {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<SlackConfigurationModel>,
@@ -49,6 +50,7 @@ export class SlackConnectorStrategy
     return;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, ConnectorProviderModelResourceMapping["slack"]>> {

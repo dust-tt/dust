@@ -4800,7 +4800,9 @@ describe("ConversationResource cleanup on delete", () => {
      * 2. Add proper cleanup logic in `destroyConversation`
      */
 
-    it("should detect any new models with conversation relationships", async () => {
+    
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+it("should detect any new models with conversation relationships", async () => {
       loadAllModels();
       const models = frontSequelize.models;
       const modelsWithConversationFK: string[] = [];

@@ -353,6 +353,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
 
   await concurrentExecutor(
     ticketsToSync,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (ticket) => {
       const comments = commentsPerTicket[ticket.id];
       if (!comments) {

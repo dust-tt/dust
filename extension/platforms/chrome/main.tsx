@@ -92,6 +92,7 @@ const ChromeExtensionWrapper = () => {
             </Page.P>
             <Button
               label="Update now"
+              // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
               onClick={async () => {
                 chrome.runtime.reload();
               }}

@@ -113,7 +113,9 @@ export async function getCreditPurchaseLimits(
  * Gets the total amount of committed credits already purchased in the current
  * billing cycle.
  */
-async function getAlreadyPurchasedInCycle(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function getAlreadyPurchasedInCycle(
   auth: Authenticator,
   stripeSubscription: Stripe.Subscription
 ): Promise<number> {

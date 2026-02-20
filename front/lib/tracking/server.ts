@@ -131,6 +131,7 @@ export class ServerSideTracking {
     // Do nothing for now
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async trackSubscriptionCreated({
     workspace,
     planCode,
@@ -155,6 +156,7 @@ export class ServerSideTracking {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async trackSubscriptionRequestCancel({
     workspace,
     requestCancelAt,
@@ -172,6 +174,7 @@ export class ServerSideTracking {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async trackSubscriptionReactivated({
     workspace,
   }: {

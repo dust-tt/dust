@@ -102,6 +102,7 @@ export async function registerMCPServer(
   while (!serverIdFound && attempts < MAX_SERVER_INSTANCES) {
     const exists = await runOnRedis(
       { origin: "mcp_client_side_request" },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (redis) => {
         return redis.exists(key);
       }
@@ -155,7 +156,9 @@ export async function registerMCPServer(
 /**
  * Get server metadata for a given list of server IDs.
  */
-export async function getMCPServersMetadata(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getMCPServersMetadata(
   auth: Authenticator,
   {
     serverIds,
@@ -250,7 +253,9 @@ export async function updateMCPServerHeartbeat(
 /**
  * Validate that a server ID belongs to the current user in the given workspace.
  */
-export async function validateMCPServerAccess(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function validateMCPServerAccess(
   auth: Authenticator,
   {
     serverId,

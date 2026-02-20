@@ -142,6 +142,7 @@ export interface CheckAvailabilityParams {
   userTimezone?: string;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 const fetchFromOutlook = async (
   endpoint: string,
   accessToken: string,

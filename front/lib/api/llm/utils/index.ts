@@ -7,6 +7,7 @@ import { ResponseFormatSchema } from "@app/types/assistant/models/types";
 import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
   for (const item of items) {
     yield item;

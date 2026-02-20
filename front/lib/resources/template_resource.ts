@@ -72,6 +72,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return new this(TemplateModel, template.get());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByExternalId(
     sId: string
   ): Promise<TemplateResource | null> {
@@ -152,6 +153,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateAttributes(
     blob: Partial<Omit<Attributes<TemplateModel>, "id">>,
     transaction?: Transaction

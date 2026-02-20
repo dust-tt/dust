@@ -316,6 +316,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async markAsConsumed(user: UserResource) {
     return this.update({
       status: "consumed",
@@ -323,6 +324,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async revoke(transaction?: Transaction) {
     return this.update(
       {
@@ -332,6 +334,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateRole(role: ActiveRoleType, transaction?: Transaction) {
     return this.update(
       {
@@ -341,6 +344,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateStatus(
     status: "pending" | "consumed" | "revoked",
     transaction?: Transaction

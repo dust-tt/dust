@@ -156,7 +156,9 @@ function getAccessTokenExpirySeconds(accessToken: string): number | null {
  * immediately (no blocking). The refreshing request returns the new cookie
  * so the browser gets it via Set-Cookie.
  */
-async function maybeProactiveRefresh({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  function maybeProactiveRefresh({
   accessToken,
   workOSSessionCookie,
   session,

@@ -30,6 +30,7 @@ const createMockRedisClient = () => ({
   ping: vi.fn().mockResolvedValue("PONG"),
 });
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 const mockRunOnRedisImpl = async (
   opts: unknown,
   fn: (client: ReturnType<typeof createMockRedisClient>) => Promise<unknown>
@@ -120,6 +121,7 @@ beforeEach(async (c) => {
   c["transaction"] = transaction;
 });
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 afterEach(async (c2) => {
   if ("transaction" in c2) {
     // @ts-expect-error - storing context in the test context

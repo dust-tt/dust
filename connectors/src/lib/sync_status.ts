@@ -65,7 +65,9 @@ export async function reportInitialSyncProgress(
  * Signal that a sync has succeeded.
  * This function can be used by the sync worker itself or by the supervisor.
  */
-export async function syncSucceeded(connectorId: ModelId, at?: Date) {
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function syncSucceeded(connectorId: ModelId, at?: Date) {
   if (!at) {
     at = new Date();
   }
@@ -82,7 +84,9 @@ export async function syncSucceeded(connectorId: ModelId, at?: Date) {
  * Signal that a sync has failed.
  * This function can be used by the sync worker itself or by the supervisor.
  */
-export async function syncFailed(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function syncFailed(
   connectorId: ModelId,
   errorType: ConnectorErrorType,
   at?: Date

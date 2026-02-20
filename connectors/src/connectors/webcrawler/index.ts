@@ -313,6 +313,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -394,6 +395,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async update(): Promise<
     Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>
   > {
@@ -413,18 +415,22 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setPermissions(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setConfigurationKey(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getConfigurationKey(): Promise<Result<string | null, Error>> {
     throw new Error("Method not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method not implemented.");
   }

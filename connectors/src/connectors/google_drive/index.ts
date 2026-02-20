@@ -802,6 +802,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync({
     fromTs,
   }: {
@@ -810,11 +811,13 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function getFoldersAsContentNodes({
   authCredentials,
   folders,

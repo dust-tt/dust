@@ -283,6 +283,7 @@ async function createTableDataSourceConfiguration(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function createChildAgentConfiguration(
   auth: Authenticator,
   t: Transaction,

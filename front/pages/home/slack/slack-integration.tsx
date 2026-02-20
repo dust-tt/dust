@@ -113,6 +113,7 @@ const DEMO_VIDEO = {
   showCaptions: true,
 };
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getStaticProps() {
   return {
     props: {

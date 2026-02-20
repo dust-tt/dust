@@ -342,7 +342,9 @@ export async function connectToSnowflake(
 /**
  * Fetch the tables available in the Snowflake account.
  */
-export const fetchDatabases = async ({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  const fetchDatabases = async ({
   credentials,
   connection,
 }: {
@@ -362,7 +364,9 @@ export const fetchDatabases = async ({
  * Fetch the tables available in the Snowflake account. `fromDatabase` is required because there is
  * no guarantee to get all schemas otherwise.
  */
-export const fetchSchemas = async ({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  const fetchSchemas = async ({
   credentials,
   fromDatabase,
   connection,
@@ -383,7 +387,9 @@ export const fetchSchemas = async ({
 /**
  * Fetch the tables available in the Snowflake account.
  */
-export const fetchTables = async ({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  const fetchTables = async ({
   credentials,
   fromDatabase,
   fromSchema,
@@ -525,7 +531,9 @@ export const useWarehouse = async ({
  * including future grants, then check if the connection is read-only.
  */
 
-export async function isConnectionReadonly({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function isConnectionReadonly({
   credentials,
   connection,
 }: {

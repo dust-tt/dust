@@ -14,6 +14,7 @@ import type { Transaction } from "sequelize";
 export class WebCrawlerStrategy
   implements ConnectorProviderStrategy<"webcrawler">
 {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<WebCrawlerConfigurationModel> & {
@@ -45,6 +46,7 @@ export class WebCrawlerStrategy
     await resource.delete(transaction);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(
     connectorIds: ModelId[]
   ): Promise<

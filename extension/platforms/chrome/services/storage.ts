@@ -13,6 +13,7 @@ export class ChromeStorageService implements StorageService {
     await this.storage.set({ [key]: value });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async delete(key: string): Promise<void> {
     return new Promise((resolve, reject) => {
       this.storage.remove([key], () => {

@@ -238,6 +238,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     return keys.map((key) => new this(KeyResource.model, key.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async markAsUsed() {
     return this.model.update(
       { lastUsedAt: new Date() },
@@ -249,10 +250,12 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setIsDisabled() {
     return this.update({ status: "disabled" });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async rotateSecret(
     {
       dangerouslyRotateSecret,
@@ -269,6 +272,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     return this.update({ secret: newSecret }, transaction);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async countActiveForGroups(
     auth: Authenticator,
     groups: GroupResource[]

@@ -64,6 +64,7 @@ export class TagResource extends BaseResource<TagModel> {
     return tags.map((tag) => new this(TagModel, tag.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
@@ -111,6 +112,7 @@ export class TagResource extends BaseResource<TagModel> {
     return tags.length > 0 ? tags[0] : null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async findAll(auth: Authenticator, { kind }: { kind?: TagKind } = {}) {
     return this.baseFetch(auth, {
       where: {

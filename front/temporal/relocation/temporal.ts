@@ -16,6 +16,7 @@ export async function getTemporalRelocationWorkerConnection(): Promise<{
   return { connection, namespace: process.env.TEMPORAL_RELOCATION_NAMESPACE };
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getTemporalRelocationClient() {
   return getTemporalClientForNamespace("relocation");
 }

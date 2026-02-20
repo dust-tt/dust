@@ -119,6 +119,7 @@ export const useHashParam = (
   }, [defaultValue, innerValue, key, router.isReady]);
 
   const setValue = useCallback<Setter>(
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (
       newValue?: string | Updater,
       options: SetterOptions = DEFAULT_OPTIONS

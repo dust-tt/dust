@@ -249,6 +249,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return result?.workspace ?? null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByDomainWithInfo(domain: string): Promise<{
     workspace: WorkspaceResource;
     domainInfo: WorkspaceDomain;
@@ -297,10 +298,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspaces.map((w) => w.id);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {
     return this.update({ segmentation });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateWorkspaceSettings(
     updateableAttributes: Partial<
       Pick<
@@ -499,6 +502,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async updateName(
     id: ModelId,
     newName: string
@@ -506,6 +510,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return this.updateByModelIdAndCheckExistence(id, { name: newName });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async updateConversationsRetention(
     id: ModelId,
     nbDays: number
@@ -515,6 +520,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async updateMetadata(
     id: ModelId,
     metadata: Record<string, string | number | boolean | object> | null
@@ -522,6 +528,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async updateWorkOSOrganizationId(
     id: ModelId,
     workOSOrganizationId: string | null

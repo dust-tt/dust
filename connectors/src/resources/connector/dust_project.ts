@@ -14,6 +14,7 @@ import type { Transaction } from "sequelize";
 export class DustProjectConnectorStrategy
   implements ConnectorProviderStrategy<"dust_project">
 {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<DustProjectConfigurationModel>,
@@ -40,6 +41,7 @@ export class DustProjectConnectorStrategy
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(): Promise<
     Record<ModelId, ConnectorProviderModelResourceMapping["dust_project"]>
   > {

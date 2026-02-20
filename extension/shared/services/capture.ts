@@ -27,6 +27,7 @@ export interface CaptureService {
 // Mock capture service that provides no-op implementations when the real service is not available.
 export function createMockCaptureService(): CaptureService {
   return {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     handleOperation: async () => {
       return new Ok<TabContent>({
         title: "",

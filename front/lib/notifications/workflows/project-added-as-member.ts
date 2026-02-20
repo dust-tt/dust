@@ -104,6 +104,7 @@ export const projectAddedAsMemberWorkflow = workflow(
   async ({ step, payload, subscriber }) => {
     const details = await step.custom(
       "get-project-details",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         return getProjectDetails({
           subscriberId: subscriber.subscriberId,
@@ -117,6 +118,7 @@ export const projectAddedAsMemberWorkflow = workflow(
 
     await step.inApp(
       "send-in-app",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         return {
           subject: details.projectName,
@@ -140,6 +142,7 @@ export const projectAddedAsMemberWorkflow = workflow(
 
     await step.chat(
       "slack-notification",
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async () => {
         const projectUrl =
           config.getAppUrl() +
@@ -194,6 +197,7 @@ export const projectAddedAsMemberWorkflow = workflow(
         };
       },
       {
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         skip: async () => {
           return shouldSkipProject({ payload });
         },

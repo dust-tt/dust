@@ -7,6 +7,7 @@ import type {
 export class SalesforceCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

@@ -89,6 +89,7 @@ export function ConfirmDeleteSpaceDialog({
               rightButtonProps={{
                 label: "Delete",
                 variant: "warning",
+                // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
                 onClick: async () => {
                   void handleDelete();
                 },

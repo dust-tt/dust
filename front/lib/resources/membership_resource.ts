@@ -425,6 +425,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async getMembersCountForWorkspace({
     workspace,
     activeOnly,
@@ -478,6 +479,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async countActiveMembersForWorkspace({
     workspace,
   }: {

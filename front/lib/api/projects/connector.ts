@@ -35,7 +35,9 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
  * This function is idempotent - it will ensure all components exist, creating any that are missing.
  * This is called automatically when a project is created.
  */
-export async function createDataSourceAndConnectorForProject(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function createDataSourceAndConnectorForProject(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<Result<void, Error>> {

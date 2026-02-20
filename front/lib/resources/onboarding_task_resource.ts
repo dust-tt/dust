@@ -84,6 +84,7 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
     return tasks.map((t) => new this(OnboardingTaskModel, t.get()));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchAllForUserAndWorkspaceInAuth(
     auth: Authenticator
   ): Promise<OnboardingTaskResource[]> {
@@ -106,6 +107,7 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
     return tasks[0];
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     sIds: string[]

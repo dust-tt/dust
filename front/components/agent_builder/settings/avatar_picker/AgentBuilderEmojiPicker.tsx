@@ -61,6 +61,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
 
   useImperativeHandle(ref, () => {
     return {
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       getUrl: async () => {
         if (selectedEmoji) {
           return makeUrlForEmojiAndBackground(selectedEmoji, selectedBgColor);

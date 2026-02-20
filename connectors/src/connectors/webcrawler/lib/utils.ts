@@ -149,6 +149,7 @@ export function getDisplayNameForFolder(folder: WebCrawlerFolderModel): string {
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getIpAddressForUrl(url: string) {
   const host = new URL(url).hostname;
   return dns.promises.lookup(host);

@@ -769,6 +769,7 @@ export class ConfluenceClient {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getSpaceById(spaceId: string) {
     return this.request(
       `${this.restApiBaseUrl}/spaces/${spaceId}`,
@@ -805,6 +806,7 @@ export class ConfluenceClient {
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getPagesByIdsInSpace({
     spaceKey,
     pageIds,
@@ -898,6 +900,7 @@ export class ConfluenceClient {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getUserAccount() {
     return this.request("/me", ConfluenceUserProfileCodec);
   }

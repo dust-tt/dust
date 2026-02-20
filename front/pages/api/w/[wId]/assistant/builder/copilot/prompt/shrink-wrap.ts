@@ -5,6 +5,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<string>>,

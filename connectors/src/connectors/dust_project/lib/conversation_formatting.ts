@@ -9,7 +9,9 @@ import type { ConversationPublicType } from "@dust-tt/client";
  * Formats raw conversation content into a plain text document section for data source upsert.
  * This creates a simple text representation suitable for indexing.
  */
-export async function formatConversationForUpsert({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function formatConversationForUpsert({
   dataSourceConfig,
   conversation,
 }: {

@@ -10,6 +10,7 @@ type WebhookTarget = { region: Region; url: string; secret: string };
 export class WebhookForwarder {
   constructor(private secrets: Secrets) {}
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async forwardToRegions({
     body,
     endpoint,

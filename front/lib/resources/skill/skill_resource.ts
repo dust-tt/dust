@@ -315,6 +315,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.globalSId !== null && !this.isAutoEnabled;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
@@ -623,6 +624,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const globalSkills = removeNulls(
       await concurrentExecutor(
         globalSkillDefinitions,
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         async (def) => {
           if (
             context.agentLoopData &&
@@ -658,6 +660,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[]
@@ -681,6 +684,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return result.at(0) ?? null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   static async fetchByIds(
     auth: Authenticator,
     sIds: string[]
@@ -1425,6 +1429,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
@@ -1447,6 +1452,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return shouldReturnEditedByUser ? editedByUser : null;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async listInheritedDataSourceViews(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
@@ -1470,6 +1476,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(this.canWrite(auth), "User is not authorized to archive this skill");
 

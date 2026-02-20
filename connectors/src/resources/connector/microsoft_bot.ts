@@ -13,6 +13,7 @@ import type { Transaction } from "sequelize";
 export class MicrosoftBotConnectorStrategy
   implements ConnectorProviderStrategy<"microsoft_bot">
 {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<MicrosoftBotConfigurationModel>,
@@ -42,6 +43,7 @@ export class MicrosoftBotConnectorStrategy
     await resource.delete(transaction);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(
     connectorIds: ModelId[]
   ): Promise<

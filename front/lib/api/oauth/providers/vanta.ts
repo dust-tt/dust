@@ -36,6 +36,7 @@ export class VantaOAuthProvider implements BaseOAuthStrategyProvider {
     return Boolean(extraConfig.client_id && extraConfig.client_secret);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getRelatedCredential(
     _auth: unknown,
     {
@@ -58,6 +59,7 @@ export class VantaOAuthProvider implements BaseOAuthStrategyProvider {
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async getUpdatedExtraConfig(): Promise<ExtraConfigType> {
     // Remove sensitive data from config
     return {};

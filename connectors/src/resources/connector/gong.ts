@@ -51,6 +51,7 @@ export class GongConnectorStrategy
     });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async fetchConfigurationsbyConnectorIds(): Promise<
     Record<ModelId, ConnectorProviderModelResourceMapping["gong"]>
   > {

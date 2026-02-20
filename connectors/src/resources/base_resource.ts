@@ -55,6 +55,7 @@ export abstract class BaseResource<M extends Model> {
 
   abstract delete(transaction?: Transaction): Promise<Result<undefined, Error>>;
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async update(
     blob: Partial<Attributes<M>>
   ): Promise<[affectedCount: number, affectedRows: M[]]> {

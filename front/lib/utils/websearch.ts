@@ -223,7 +223,9 @@ const firecrawlSearch = async ({
  * Make a web search using SerpAPI, Serper or Firecrawl
  * @param {SearchParams} params
  */
-export const webSearch = async (
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  const webSearch = async (
   params: SearchParams
 ): Promise<Result<SearchResponse, Error>> => {
   const { provider } = params;

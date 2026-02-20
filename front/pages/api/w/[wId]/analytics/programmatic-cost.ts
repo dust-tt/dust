@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

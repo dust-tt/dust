@@ -13,6 +13,7 @@ import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function createWorkspace(
   session: SessionWithUser,
   utmParams?: UTMParams

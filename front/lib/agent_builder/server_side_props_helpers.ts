@@ -30,6 +30,7 @@ import assert from "assert";
 
 // We are moving resource fetch to the client side. Until we finish,
 // we will keep this duplicated version for fetching actions.
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export const getAccessibleSourcesAndAppsForActions = async (
   auth: Authenticator
 ) => {

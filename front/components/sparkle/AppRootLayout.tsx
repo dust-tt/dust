@@ -51,6 +51,7 @@ export default function AppRootLayout({
   const { allowBrowserNotification, notify } = useBrowserNotification();
 
   useEffect(() => {
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const setupNotifications = async (novuClient: Novu) => {
       const dustFacingUrl = config.getApiBaseUrl();
 

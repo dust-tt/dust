@@ -17,6 +17,7 @@ import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getLLM(
   auth: Authenticator,
   {

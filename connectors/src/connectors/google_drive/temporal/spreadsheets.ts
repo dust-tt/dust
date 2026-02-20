@@ -61,6 +61,7 @@ async function upsertSheetInDb(
   });
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function upsertGdriveTable(
   connector: ConnectorResource,
   sheet: Sheet,
@@ -389,6 +390,7 @@ async function getAllSheetsFromSpreadSheet(
   return sheets;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function syncSpreadSheet(
   oauth2client: OAuth2Client,
   connectorId: ModelId,

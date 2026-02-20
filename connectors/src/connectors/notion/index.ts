@@ -446,6 +446,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     ]);
 
     const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const getPageNode = async (page: NotionPageModel): Promise<ContentNode> => {
       const expandable = Boolean(hasChildrenByPageId[page.notionPageId]);
 
@@ -471,6 +472,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       pageNodes = pageNodes.filter((p) => p.expandable);
     }
 
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     const getDbNodes = async (
       db: NotionDatabaseModel
     ): Promise<ContentNode> => {
@@ -522,6 +524,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     return new Ok(nodes.concat(folderNodes));
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -531,6 +534,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     return new Ok([internalId]);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setPermissions(): Promise<Result<void, Error>> {
     return new Err(
       new Error(`Setting Notion connector permissions is not implemented yet.`)
@@ -601,10 +605,12 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     return new Ok(notionConnectorState.privateIntegrationCredentialId || null);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }

@@ -80,6 +80,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
 const locks: Record<string, (() => void)[]> = {};
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function lock(key: string) {
   return new Promise<void>((resolve) => {
     const existingLock = locks[key];

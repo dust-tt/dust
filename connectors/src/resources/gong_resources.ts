@@ -63,6 +63,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     return new this(this.model, configuration.get());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -250,6 +251,7 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -321,6 +323,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     return new this(this.model, configuration.get());
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }

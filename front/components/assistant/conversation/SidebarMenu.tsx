@@ -558,6 +558,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const { setAnimate } = useContext(InputBarContext);
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const handleNewClick = useCallback(async () => {
     setSidebarOpen(false);
     const { cId } = router.query;

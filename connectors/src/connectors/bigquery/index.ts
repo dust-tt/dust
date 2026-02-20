@@ -237,6 +237,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async sync({
     fromTs,
   }: {
@@ -365,7 +366,9 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
    * Retrieves the parent IDs of a content node in hierarchical order.
    * The first ID is the internal ID of the content node itself.
    */
-  async retrieveContentNodeParents({
+  
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+async  retrieveContentNodeParents({
     internalId,
   }: {
     internalId: string;
@@ -456,10 +459,12 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async garbageCollect(): Promise<Result<string, Error>> {
     throw new Error("Method garbageCollect not implemented.");
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method configure not implemented.");
   }

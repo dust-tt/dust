@@ -384,6 +384,7 @@ function WebhookSourceSheetContent({
           success = false;
         }
       },
+      // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
       async (errors) => {
         const errorEntries = Object.entries(errors);
         const errorDetails = errorEntries

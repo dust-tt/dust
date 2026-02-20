@@ -329,7 +329,9 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
 /**
  * Retrieves the IDs of every brand stored in db that has read permissions on their Tickets.
  */
-export async function getZendeskTicketsAllowedBrandIdsActivity(
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function getZendeskTicketsAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
   return ZendeskBrandResource.fetchTicketsAllowedBrandIds(connectorId);
@@ -396,6 +398,7 @@ export async function syncZendeskCategoryBatchActivity({
 
   await concurrentExecutor(
     categories,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (category) => {
       return syncCategory({
         connectorId,
@@ -771,6 +774,7 @@ export async function syncZendeskTicketBatchActivity({
 
   const res = await concurrentExecutor(
     _.zip(ticketsToSync, comments2d),
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async ([ticket, comments]) => {
       if (!ticket || !comments) {
         throw new Error(

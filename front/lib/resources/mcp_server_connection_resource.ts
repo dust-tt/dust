@@ -246,7 +246,8 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   // Deletion.
 
-  static async deleteAllForWorkspace(auth: Authenticator) {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+    static async deleteAllForWorkspace(auth: Authenticator) {
     return this.model.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,

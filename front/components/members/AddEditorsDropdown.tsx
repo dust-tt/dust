@@ -71,6 +71,7 @@ export function AddEditorDropdown({
               label={member.fullName}
               description={member.email}
               icon={() => <Avatar size="sm" visual={member.image} isRounded />}
+              // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
               onClick={async () => {
                 setSearchTerm("");
                 setIsEditorPickerOpen(false);

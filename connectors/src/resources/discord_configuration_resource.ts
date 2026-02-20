@@ -23,6 +23,7 @@ export class DiscordConfigurationResource extends BaseResource<DiscordConfigurat
     super(DiscordConfigurationModel, blob);
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async postFetchHook(): Promise<void> {
     return;
   }

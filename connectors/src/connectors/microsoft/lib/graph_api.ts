@@ -372,6 +372,7 @@ export async function getAllPaginatedEntities<T extends Entity>(
   return allItems;
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export async function getItem<T extends Entity>(
   logger: LoggerInterface,
   client: Client,

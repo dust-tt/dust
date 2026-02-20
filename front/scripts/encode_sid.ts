@@ -45,6 +45,7 @@ makeScript(
       required: true,
     },
   },
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async ({ resourceType, workspaceId, resourceId }, _logger) => {
     if (!RESOURCE_TYPES.includes(resourceType as any)) {
       const availableTypes = RESOURCE_TYPES.map(

@@ -26,6 +26,7 @@ const workosConfig = {
  * @ignoreswagger
  */
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -134,6 +135,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
   const params = new URLSearchParams({
@@ -147,6 +149,8 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
 /**
  * OAuth callback proxy for apps with dynamic redirect URIs.
  */
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   const { code, state, error, error_description } = req.query;
 

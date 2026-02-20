@@ -32,6 +32,7 @@ vi.mock("@app/lib/utils/cache", () => ({
         fn: CacheableFunction<JsonSerializable<T>, Args>,
         resolver: (...args: Args) => string
       ) => {
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         return async (...args: Args): Promise<void> => {
           const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
           inMemoryCache.delete(key);
@@ -45,6 +46,7 @@ vi.mock("@app/lib/utils/cache", () => ({
         fn: CacheableFunction<JsonSerializable<T>, Args>,
         resolver: (...args: Args) => string
       ) => {
+        // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
         return async (argsList: Args[]): Promise<void> => {
           for (const args of argsList) {
             const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;

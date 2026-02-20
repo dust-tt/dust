@@ -47,7 +47,9 @@ const AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE =
  * 2. If they exist, returns them without running expensive operations
  * 3. If they don't exist, runs both runModel and createToolActionsActivity
  */
-export async function runModelAndCreateActionsActivity({
+
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
+export  async function runModelAndCreateActionsActivity({
   authType,
   checkForResume = true,
   runAgentArgs,

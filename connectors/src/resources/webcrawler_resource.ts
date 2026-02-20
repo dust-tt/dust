@@ -264,18 +264,22 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return this.maxPageToCrawl ?? WEBCRAWLER_MAX_PAGES;
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateCrawlFrequency(crawlFrequency: CrawlingFrequency) {
     return this.update({ crawlFrequency });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateCrawlId(crawlId: string | null) {
     return this.update({ crawlId });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async updateActions(actions: Action[] | null) {
     return this.update({ actions });
   }
 
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   async setSitemap(sitemapOnly: boolean) {
     return this.update({ sitemapOnly });
   }

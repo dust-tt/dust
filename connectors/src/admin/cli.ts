@@ -5,6 +5,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import parseArgs from "minimist";
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 const main = async () => {
   // set env var INTERACTIVE=1 to enable interactive mode
   process.env.INTERACTIVE_CLI = process.env.INTERACTIVE_CLI || "1";

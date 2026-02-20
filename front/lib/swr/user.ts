@@ -85,6 +85,7 @@ export function useUserApprovals(owner: LightWorkspaceType) {
 }
 
 export function useDeleteMetadata() {
+  // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
   const deleteMetadata = async (prefix: string) => {
     return clientFetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
       method: "DELETE",

@@ -288,6 +288,7 @@ export async function trackProgrammaticCost(
   // Compute the token usage for each run.
   const runUsages = await concurrentExecutor(
     runs,
+    // biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
     async (run) => {
       return run.listRunUsages(auth);
     },

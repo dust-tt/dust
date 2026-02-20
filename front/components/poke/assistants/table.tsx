@@ -34,6 +34,7 @@ function prepareAgentConfigurationForDisplay(
   );
 }
 
+// biome-ignore lint/suspicious/useAwait: ignored using `--suppress`
 const importAssistant = async (
   owner: LightWorkspaceType,
   router: AppRouter,
