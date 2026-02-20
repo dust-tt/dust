@@ -656,15 +656,24 @@ export function useCreateMCPServerConnection({
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
+    credentialId,
     mcpServerId,
     mcpServerDisplayName,
     provider,
   }: {
-    connectionId: string;
+    connectionId?: string;
+    credentialId?: string;
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
   }): Promise<PostConnectionResponseBody | null> => {
+    if (!connectionId && !credentialId) {
+      throw new Error("Missing connectionId or credentialId.");
+    }
+    if (connectionId && credentialId) {
+      throw new Error("Only one of connectionId or credentialId must be set.");
+    }
+
     const response = await clientFetch(
       `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
       {
@@ -674,6 +683,7 @@ export function useCreateMCPServerConnection({
         },
         body: JSON.stringify({
           connectionId,
+          credentialId,
           mcpServerId,
           provider,
         }),

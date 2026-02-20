@@ -1,3 +1,6 @@
+import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
+
 import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
 import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
@@ -10,8 +13,6 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
 
 interface MCPServerSettingsProps {
   mcpServerView: MCPServerViewType;
@@ -44,8 +45,8 @@ export function MCPServerSettings({
     owner,
   });
 
-  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUseCase, setSelectedUseCase] =
     useState<MCPOAuthUseCase | null>(null);
 
@@ -65,13 +66,6 @@ export function MCPServerSettings({
 
   return (
     <>
-      <ConnectMCPServerDialog
-        owner={owner}
-        mcpServerView={mcpServerView}
-        setIsLoading={setIsLoading}
-        isOpen={isConnectDialogOpen}
-        setIsOpen={setIsConnectDialogOpen}
-      />
       <div className="space-y-2">
         <div className="heading-base">Authentication</div>
         <div className="flex space-x-2">
@@ -96,14 +90,23 @@ export function MCPServerSettings({
               onClick={handleDeleteConnection}
             />
           ) : (
-            <Button
-              label="Activate"
-              icon={LoginIcon}
-              variant="primary"
-              onClick={() => setIsConnectDialogOpen(true)}
-              disabled={isLoading}
-              isLoading={isLoading}
-            />
+            <>
+              <ConnectMCPServerDialog
+                owner={owner}
+                mcpServerView={mcpServerView}
+                setIsLoading={setIsLoading}
+                isOpen={isDialogOpen}
+                setIsOpen={setIsDialogOpen}
+              />
+              <Button
+                label="Activate"
+                icon={LoginIcon}
+                variant="primary"
+                onClick={() => setIsDialogOpen(true)}
+                disabled={isLoading}
+                isLoading={isLoading}
+              />
+            </>
           )}
         </div>
       </div>
@@ -111,6 +114,12 @@ export function MCPServerSettings({
       {connection && (
         <div className="space-y-2">
           <div className="heading-base">Credentials</div>
+          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+            <span className="font-semibold">Auth type</span>:{" "}
+            {connection.authType === "keypair"
+              ? "Static credentials"
+              : "OAuth"}
+          </div>
           <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
             {useCase === "platform_actions" && (
               <>
