@@ -7,6 +7,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { GongTranscriptModel } from "@connectors/lib/models/gong";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 import type { Logger } from "pino";
@@ -133,8 +134,22 @@ async function deletePrivateTranscripts(
 }
 
 makeScript(
-  { connectorId: { type: "number", required: true } },
+  { connectorId: { type: "number", required: false } },
   async ({ connectorId, execute }, logger) => {
-    await deletePrivateTranscripts(connectorId, { execute, logger });
+    let connectorIds: number[];
+    if (connectorId) {
+      connectorIds = [connectorId];
+    } else {
+      const connectors = await ConnectorResource.listByType("gong", {});
+      connectorIds = connectors.map((c) => c.id);
+      logger.info(
+        { count: connectorIds.length },
+        "No connectorId provided, running on all gong connectors."
+      );
+    }
+
+    for (const connectorId of connectorIds) {
+      await deletePrivateTranscripts(connectorId, { execute, logger });
+    }
   }
 );
