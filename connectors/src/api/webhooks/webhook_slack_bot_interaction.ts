@@ -4,6 +4,7 @@ import {
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/bot";
 import {
+  getAuthResponseUrlRedisKey,
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
@@ -16,6 +17,7 @@ import {
 } from "@connectors/connectors/slack/feedback_modal";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
+import { redisClient } from "@connectors/types/shared/redis_client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -24,6 +26,7 @@ import * as reporter from "io-ts-reporters";
 export const STATIC_AGENT_CONFIG = "static_agent_config";
 export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";
 export const REJECT_TOOL_EXECUTION = "reject_tool_execution";
+export const AUTHENTICATE_TOOL = "authenticate_tool";
 export const LEAVE_FEEDBACK_UP = "leave_feedback_up";
 export const LEAVE_FEEDBACK_DOWN = "leave_feedback_down";
 
@@ -70,6 +73,14 @@ const ToolValidationActionsSchema = t.type({
   value: t.string,
 });
 
+const AuthenticateToolActionSchema = t.type({
+  type: t.literal("button"),
+  action_id: t.literal(AUTHENTICATE_TOOL),
+  block_id: t.string,
+  action_ts: t.string,
+  value: t.string,
+});
+
 export type RequestToolPermissionActionValueParsed = {
   status: "approved" | "rejected";
   agentName: string;
@@ -99,6 +110,7 @@ const BlockActionsPayloadSchema = t.type({
       StaticAgentConfigSchema,
       ToolValidationActionsSchema,
       FeedbackActionSchema,
+      AuthenticateToolActionSchema,
     ])
   ),
   trigger_id: t.union([t.string, t.undefined]),
@@ -386,6 +398,11 @@ const _webhookSlackBotInteractionsAPIHandler = async (
         } else {
           logger.warn("No trigger_id available for feedback modal");
         }
+      } else if (action.action_id === AUTHENTICATE_TOOL) {
+        const { workspaceId, messageId } = JSON.parse(action.value);
+        const redisKey = getAuthResponseUrlRedisKey(workspaceId, messageId);
+        const redis = await redisClient({ origin: "slack_auth" });
+        await redis.set(redisKey, responseUrl, { EX: 1800 });
       }
     }
   }

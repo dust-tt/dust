@@ -13,7 +13,8 @@ type RedisUsageTagsType =
   | "google_drive_incremental_sync"
   | "throttle"
   | "lock"
-  | "rate_limiter";
+  | "rate_limiter"
+  | "slack_auth";
 
 const REDIS_CACHE_USAGE_TAG = "cache_with_redis";
 
