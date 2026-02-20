@@ -2,7 +2,7 @@ import {
   areCredentialOverridesValid,
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
-import { getIcon } from "@app/components/resources/resources_icons";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -14,12 +14,7 @@ import {
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  ContentMessage,
-  InformationCircleIcon,
-} from "@dust-tt/sparkle";
+import { ActionCardBlock, Button } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
@@ -58,34 +53,19 @@ export function MCPServerPersonalAuthenticationRequired({
 
   const overridableInputs = getOverridablePersonalAuthInputs({ provider });
 
-  const icon = mcpServer?.icon
-    ? getIcon(mcpServer.icon)
-    : InformationCircleIcon;
+  const visual = mcpServer?.icon
+    ? getAvatarFromIcon(mcpServer.icon, "sm")
+    : undefined;
 
   const serverDisplayName =
     mcpServer && mcpServer.name
       ? getMcpServerDisplayName(mcpServer)
       : undefined;
 
-  function getContentMessageTitle(): string {
-    if (isConnected) {
-      return "Connected successfully";
-    }
-    if (connectionError) {
-      return "Connection failed";
-    }
-    return serverDisplayName ?? "Personal authentication required";
-  }
-
-  function getContentMessageVariant(): "success" | "warning" | "primary" {
-    if (isConnected) {
-      return "success";
-    }
-    if (connectionError) {
-      return "warning";
-    }
-    return "primary";
-  }
+  const isTriggeredByCurrentUser = useMemo(
+    () => triggeringUser?.sId === user?.sId,
+    [triggeringUser, user?.sId]
+  );
 
   const onConnectClick = async (mcpServer: MCPServerType) => {
     setIsConnecting(true);
@@ -119,78 +99,92 @@ export function MCPServerPersonalAuthenticationRequired({
     }
   };
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => triggeringUser?.sId === user?.sId,
-    [triggeringUser, user?.sId]
-  );
+  // Determine the ActionCardBlock state.
+  let cardState: "active" | "disabled" | "accepted";
+  if (!isTriggeredByCurrentUser) {
+    cardState = "disabled";
+  } else if (isConnected) {
+    cardState = "accepted";
+  } else if (isConnecting) {
+    cardState = "disabled";
+  } else {
+    cardState = "active";
+  }
+
+  const title = serverDisplayName ?? "Personal authentication required";
+
+  // Build description based on current state.
+  let description: React.ReactNode;
+  if (!isTriggeredByCurrentUser) {
+    description = (
+      <>
+        {`${triggeringUser?.fullName} is trying to use ${serverDisplayName ?? "a tool"}.`}
+        <br />
+        <span className="font-semibold">
+          Waiting on them to connect their account to continue...
+        </span>
+      </>
+    );
+  } else if (connectionError) {
+    description = connectionError;
+  } else if (!isConnected) {
+    description = (
+      <>
+        {`Your agent is trying to use ${serverDisplayName ?? "a tool"}.`}
+        <br />
+        <span className="font-semibold">Connect your account to continue.</span>
+        {overridableInputs && mcpServer && (
+          <div className="mt-2">
+            <PersonalAuthCredentialOverrides
+              inputs={overridableInputs}
+              values={overriddenCredentials}
+              idPrefix={mcpServerId}
+              onChange={(key, value) =>
+                setCredentialOverrides((prev) => ({
+                  ...prev,
+                  [key]: value,
+                }))
+              }
+            />
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Build actions — only show Connect/Retry button for current user when not yet connected.
+  const actions =
+    isTriggeredByCurrentUser && !isConnected && mcpServer ? (
+      <div className="flex justify-end">
+        <Button
+          variant="highlight"
+          size="sm"
+          label={connectionError ? "Retry" : "Connect"}
+          disabled={
+            isConnecting ||
+            !areCredentialOverridesValid(
+              overridableInputs,
+              overriddenCredentials
+            )
+          }
+          isLoading={isConnecting}
+          onClick={() => void onConnectClick(mcpServer)}
+        />
+      </div>
+    ) : (
+      <></>
+    );
 
   return (
-    <ContentMessage
-      title={getContentMessageTitle()}
-      variant={getContentMessageVariant()}
-      className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
-      icon={icon}
-    >
-      {isTriggeredByCurrentUser ? (
-        <>
-          <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
-            {isConnected && "You are now connected. Automatically retrying..."}
-            {!isConnected && connectionError && <>{connectionError}</>}
-            {!isConnected && !connectionError && (
-              <>
-                {`Your agent is trying to use ${serverDisplayName ?? "a tool"}.`}
-                <br />
-                <span className="font-semibold">
-                  Connect your account to continue.
-                </span>
-              </>
-            )}
-          </div>
-          {!isConnected && mcpServer && (
-            <>
-              {overridableInputs && (
-                <div className="mt-2">
-                  <PersonalAuthCredentialOverrides
-                    inputs={overridableInputs}
-                    values={overriddenCredentials}
-                    idPrefix={mcpServerId}
-                    onChange={(key, value) =>
-                      setCredentialOverrides((prev) => ({
-                        ...prev,
-                        [key]: value,
-                      }))
-                    }
-                  />
-                </div>
-              )}
-              <div className="mt-3 flex flex-col justify-end sm:flex-row">
-                <Button
-                  label="Connect"
-                  variant="highlight"
-                  size="xs"
-                  icon={CloudArrowLeftRightIcon}
-                  disabled={
-                    isConnecting ||
-                    !areCredentialOverridesValid(
-                      overridableInputs,
-                      overriddenCredentials
-                    )
-                  }
-                  onClick={() => void onConnectClick(mcpServer)}
-                />
-              </div>
-            </>
-          )}
-        </>
-      ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
-          {`${triggeringUser?.fullName} is trying to use ${serverDisplayName ?? "a tool"}.`}
-          <br />
-          <span className="font-semibold">
-            Waiting on them to connect their account to continue...
-          </span>
-        </div>
-      )}
-    </ContentMessage>
+    <div className="my-3">
+      <ActionCardBlock
+        title={title}
+        visual={visual}
+        state={cardState}
+        acceptedTitle="Connected successfully"
+        description={description}
+        actions={actions}
+      />
+    </div>
   );
 }

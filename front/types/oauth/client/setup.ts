@@ -89,7 +89,19 @@ export async function setupOAuthConnection({
       // BroadcastChannel not supported
     }
 
+    // Poll for popup closure — if the user closes the popup without completing
+    // OAuth, the promise would otherwise hang forever.
+    const popupPollIntervalMs = 500;
+    const popupPollInterval = setInterval(() => {
+      if (oauthPopup?.closed && !authComplete) {
+        authComplete = true;
+        cleanup();
+        resolve(new Err(new Error("Authentication window was closed.")));
+      }
+    }, popupPollIntervalMs);
+
     const cleanup = () => {
+      clearInterval(popupPollInterval);
       window.removeEventListener("message", handleWindowMessage);
       if (channel) {
         channel.close();
