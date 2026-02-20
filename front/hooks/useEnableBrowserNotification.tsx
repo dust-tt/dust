@@ -1,6 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useUser } from "@app/lib/swr/user";
-import { useCallback, useContext, useMemo, useRef } from "react";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
 const LOCAL_STORAGE_KEY = "browser-notification-last-asked-for";
 const DELAY_BEFORE_ASKING_AGAIN = 1000 * 60 * 60 * 24 * 7; // One week
@@ -36,6 +36,9 @@ export const useEnableBrowserNotification = () => {
   const notificationsEnabled = useMemo(() => !!user?.subscriberHash, [user]);
   const shownRef = useRef<boolean>(false);
   const confirm = useContext(ConfirmContext);
+  const [lastAskedMs, setLastAskedMs] = useState<number | null>(
+    getLastAskedTimestamp
+  );
 
   const canAsk = useMemo(() => {
     if (
@@ -46,13 +49,12 @@ export const useEnableBrowserNotification = () => {
       return false;
     }
 
-    const lastAsked = getLastAskedTimestamp();
-    if (lastAsked === null) {
+    if (lastAskedMs === null) {
       return true;
     }
 
-    return Date.now() - lastAsked > DELAY_BEFORE_ASKING_AGAIN;
-  }, [notificationsEnabled]);
+    return Date.now() - lastAskedMs > DELAY_BEFORE_ASKING_AGAIN;
+  }, [notificationsEnabled, lastAskedMs]);
 
   const askForPermission = useCallback(async () => {
     if (!canAsk || shownRef.current) {
@@ -63,7 +65,9 @@ export const useEnableBrowserNotification = () => {
     // Couldn't make it work with a simple useState().
     shownRef.current = true;
 
-    setLastAskedTimestamp(Date.now());
+    const now = Date.now();
+    setLastAskedTimestamp(now);
+    setLastAskedMs(now);
 
     const confirmed = await confirm({
       title: (
