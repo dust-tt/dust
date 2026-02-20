@@ -408,7 +408,8 @@ export class Authenticator {
     key: KeyResource,
     wId: string,
     requestedGroupIds?: string[],
-    requestedRole?: RoleType
+    requestedRole?: RoleType,
+    userId?: string
   ): Promise<{
     workspaceAuth: Authenticator;
     keyAuth: Authenticator;
@@ -436,6 +437,7 @@ export class Authenticator {
 
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
+    let userGroupModelIds: ModelId[] | null = null;
     let workspaceSubscription: SubscriptionResource | null = null;
     let keySubscription: SubscriptionResource | null = null;
 
@@ -444,7 +446,25 @@ export class Authenticator {
       const lightKeyWorkspace = renderLightWorkspaceType({
         workspace: keyWorkspace,
       });
-      if (requestedGroupIds && key.isSystem) {
+
+      // If a userId is provided with a system key, resolve the user's groups
+      // from the database instead of relying on the (potentially large)
+      // groupIds list.
+      const user =
+        userId && key.isSystem ? await UserResource.fetchById(userId) : null;
+      if (user) {
+        const result = await Authenticator.fetchRoleGroupsAndSubscription({
+          user,
+          workspace,
+        });
+        userGroupModelIds = result.role === "none" ? [] : result.groupModelIds;
+        keySubscription = result.subscription;
+        workspaceSubscription = isKeyWorkspace
+          ? keySubscription
+          : await SubscriptionResource.fetchActiveByWorkspaceModelId(
+              lightWorkspace.id
+            );
+      } else if (requestedGroupIds && key.isSystem) {
         [requestedGroups, keySubscription, workspaceSubscription] =
           await Promise.all([
             GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
@@ -482,13 +502,15 @@ export class Authenticator {
         workspaceSubscription = keySubscription;
       }
     }
-    const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
+    const allGroupModelIds =
+      userGroupModelIds ??
+      (requestedGroupIds ? requestedGroups : keyGroups).map((g) => g.id);
 
     return {
       workspaceAuth: new Authenticator({
         authMethod: key.isSystem ? "system_api_key" : "api_key",
         // If the key is associated with the workspace, we associate the groups.
-        groupModelIds: isKeyWorkspace ? allGroups.map((g) => g.id) : [],
+        groupModelIds: isKeyWorkspace ? allGroupModelIds : [],
         key: key.toAuthJSON(),
         role,
         subscription: workspaceSubscription,
@@ -496,7 +518,7 @@ export class Authenticator {
       }),
       keyAuth: new Authenticator({
         authMethod: key.isSystem ? "system_api_key" : "api_key",
-        groupModelIds: allGroups.map((g) => g.id),
+        groupModelIds: allGroupModelIds,
         key: key.toAuthJSON(),
         role: "builder",
         subscription: keySubscription,
@@ -513,10 +535,12 @@ export class Authenticator {
   // sensitive operations related to secret validation and workspace access.
   static async fromRegistrySecret({
     groupIds,
+    userId,
     secret,
     workspaceId,
   }: {
     groupIds: string[];
+    userId?: string;
     secret: string;
     workspaceId: string;
   }) {
@@ -529,22 +553,37 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
-    // We use the system key for the workspace to fetch the groups.
-    const systemKeyForWorkspaceRes = await getOrCreateSystemApiKey(
-      renderLightWorkspaceType({ workspace })
-    );
-    if (systemKeyForWorkspaceRes.isErr()) {
-      throw new Error(`Could not get system key for workspace ${workspaceId}`);
-    }
+    let groupModelIds: ModelId[];
 
-    const groups = await GroupResource.listGroupsWithSystemKey(
-      systemKeyForWorkspaceRes.value,
-      groupIds
-    );
+    // If a userId is provided, resolve the user's groups from the database
+    // instead of relying on the (potentially large) groupIds list.
+    const user = userId ? await UserResource.fetchById(userId) : null;
+    if (user) {
+      const result = await Authenticator.fetchRoleGroupsAndSubscription({
+        user,
+        workspace,
+      });
+      groupModelIds = result.role === "none" ? [] : result.groupModelIds;
+    } else {
+      const systemKeyForWorkspaceRes = await getOrCreateSystemApiKey(
+        renderLightWorkspaceType({ workspace })
+      );
+      if (systemKeyForWorkspaceRes.isErr()) {
+        throw new Error(
+          `Could not get system key for workspace ${workspaceId}`
+        );
+      }
+
+      const groups = await GroupResource.listGroupsWithSystemKey(
+        systemKeyForWorkspaceRes.value,
+        groupIds
+      );
+      groupModelIds = groups.map((g) => g.id);
+    }
 
     return new Authenticator({
       authMethod: "internal",
-      groupModelIds: groups.map((g) => g.id),
+      groupModelIds,
       role: "builder",
       subscription: null,
       workspace,

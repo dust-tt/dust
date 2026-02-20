@@ -8,7 +8,7 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { getHeaderFromGroupIds } from "@app/types/groups";
+import { getHeaderFromGroupIds, getHeaderFromUserId } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DustAPI } from "@dust-tt/client";
@@ -18,6 +18,7 @@ const MAX_INSTRUCTIONS_LENGTH = 1000;
 const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
   list_all_published_agents: async (_, { auth }) => {
     const owner = auth.getNonNullableWorkspace();
+    const user = auth.user();
     const requestedGroupIds = auth.groupIds();
 
     const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -26,7 +27,9 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...(user
+            ? getHeaderFromUserId(user.sId)
+            : getHeaderFromGroupIds(requestedGroupIds)),
         },
       },
       logger
@@ -63,6 +66,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
 
   suggest_agents_for_content: async ({ userMessage }, { auth }) => {
     const owner = auth.getNonNullableWorkspace();
+    const user = auth.user();
     const requestedGroupIds = auth.groupIds();
 
     const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -71,7 +75,9 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...(user
+            ? getHeaderFromUserId(user.sId)
+            : getHeaderFromGroupIds(requestedGroupIds)),
         },
       },
       logger

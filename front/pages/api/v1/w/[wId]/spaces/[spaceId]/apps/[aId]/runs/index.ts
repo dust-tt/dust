@@ -339,7 +339,8 @@ async function handler(
           secrets,
           isSystemKey: auth.isSystemKey(),
           storeBlocksResults,
-        }
+        },
+        auth.user()?.sId
       );
 
       if (runRes.isErr()) {

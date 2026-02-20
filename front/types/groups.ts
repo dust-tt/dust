@@ -73,6 +73,24 @@ export const GroupKindCodec = t.keyof({
   provisioned: null,
 });
 
+/**
+ * X-Dust-User-Id / X-Dust-Group-Ids headers — authentication with system keys.
+ *
+ * These headers are used when authenticating requests with a system API key to
+ * specify which user/groups the request should be scoped to.
+ *
+ * - X-Dust-User-Id: pass the user's sId to resolve all of the user's groups
+ *   from the database. This is the preferred approach when passing ALL groups
+ *   of a user (avoids header size limits with many groups).
+ *
+ * - X-Dust-Group-Ids: pass a comma-separated list of group sIds to scope the
+ *   request to a specific subset of the user's groups. Use this when the
+ *   caller needs to restrict access to fewer groups than the user has (e.g.,
+ *   the Slack bot passing only its bot-specific groups).
+ *
+ * When reading: prefer X-Dust-User-Id if present (recompute all groups from
+ * the user), otherwise fall back to X-Dust-Group-Ids.
+ */
 const DustGroupIdsHeader = "X-Dust-Group-Ids";
 
 export function getGroupIdsFromHeaders(
@@ -120,6 +138,27 @@ export function getHeaderFromRole(role: RoleType | undefined) {
   }
   return {
     [DustRoleHeader]: role,
+  };
+}
+
+const DustUserIdHeader = "X-Dust-User-Id";
+
+export function getUserIdFromHeaders(
+  headers: Record<string, string | string[] | undefined>
+): string | undefined {
+  const userId = headers[DustUserIdHeader.toLowerCase()];
+  if (typeof userId === "string" && userId.trim().length > 0) {
+    return userId.trim();
+  }
+  return undefined;
+}
+
+export function getHeaderFromUserId(userId: string | undefined) {
+  if (!userId) {
+    return undefined;
+  }
+  return {
+    [DustUserIdHeader]: userId,
   };
 }
 
