@@ -503,7 +503,7 @@ function formatAvailableModels(models: ModelConfigurationType[]): string {
       const modelLines = models
         .map(
           (m) =>
-            `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : ""}`
+            `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}`
         )
         .join("\n");
       return `### ${provider}\n${modelLines}`;
