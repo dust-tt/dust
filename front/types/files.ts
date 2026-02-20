@@ -594,6 +594,10 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
   ".tsv": "text/tsv",
 };
 
+export function stripMimeParameters(contentType: string): string {
+  return contentType.split(";")[0];
+}
+
 // This function overrides the browser-reported content type with a more accurate one based on the file extension, if applicable.
 export function resolveFileContentType(
   browserContentType: string,
@@ -608,13 +612,7 @@ export function resolveFileContentType(
     }
   }
 
-  // Strip MIME parameters (e.g. "audio/webm;codecs=opus" -> "audio/webm").
-  const semicolonIndex = browserContentType.indexOf(";");
-  if (semicolonIndex !== -1) {
-    return browserContentType.slice(0, semicolonIndex).trim();
-  }
-
-  return browserContentType;
+  return stripMimeParameters(browserContentType);
 }
 
 export function isPdfContentType(contentType: string): boolean {
