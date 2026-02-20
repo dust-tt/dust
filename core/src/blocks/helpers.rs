@@ -37,6 +37,7 @@ pub async fn get_data_source_project_and_view_filter(
         // group in front registry.
         None => "".to_string(),
     };
+    let dust_user_id = env.credentials.get("DUST_USER_ID").cloned();
 
     let registry_secret = match std::env::var("DUST_REGISTRY_SECRET") {
         Ok(key) => key,
@@ -59,16 +60,21 @@ pub async fn get_data_source_project_and_view_filter(
 
     let parsed_url = Url::parse(url.as_str())?;
 
-    let res = reqwest::Client::new()
+    let mut request = reqwest::Client::new()
         .get(parsed_url.as_str())
         .header(
             "Authorization",
             format!("Bearer {}", registry_secret.as_str()),
         )
         .header("X-Dust-Workspace-Id", dust_workspace_id)
-        .header("X-Dust-Group-Ids", dust_group_ids)
-        .send()
-        .await?;
+        // TODO(x-dust-group-ids): remove once registry uses X-Dust-User-Id.
+        .header("X-Dust-Group-Ids", dust_group_ids);
+
+    if let Some(user_id) = dust_user_id {
+        request = request.header("X-Dust-User-Id", user_id);
+    }
+
+    let res = request.send().await?;
 
     let status = res.status();
     if status != StatusCode::OK {

@@ -8,6 +8,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { CoreAPISearchFilter } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { getUserIdFromHeaders } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -75,6 +76,7 @@ async function handler(
   }
 
   const dustGroupIds = rawDustGroupIds.split(",");
+  const dustUserId = getUserIdFromHeaders(req.headers);
 
   // by default, data sources from the "conversations" space are not allowed
   // except for our packaged dust-apps called internally, see
@@ -106,6 +108,7 @@ async function handler(
 
           const auth = await Authenticator.fromRegistrySecret({
             groupIds: dustGroupIds,
+            userId: dustUserId,
             secret,
             workspaceId: userWorkspaceId,
           });
