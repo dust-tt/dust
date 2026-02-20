@@ -1679,31 +1679,7 @@ export async function updateAgentConfigurationScope(
   return new Ok(undefined);
 }
 
-export async function updateAgentRequirements(
-  auth: Authenticator,
-  {
-    agentModelId,
-    newSpaceIds,
-  }: { agentModelId: ModelId; newSpaceIds: ModelId[] },
-  { transaction }: { transaction?: Transaction }
-): Promise<Result<boolean, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const updated = await AgentConfigurationModel.update(
-    {
-      requestedSpaceIds: newSpaceIds,
-    },
-    {
-      where: {
-        workspaceId: owner.id,
-        id: agentModelId,
-      },
-      transaction,
-    }
-  );
-
-  return new Ok(updated[0] > 0);
-}
+export { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 
 export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,
