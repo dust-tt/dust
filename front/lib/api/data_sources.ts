@@ -8,6 +8,12 @@ import type {
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
@@ -215,6 +221,20 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
 
   // The scrubbing workflow will delete associated resources and hard delete the data source.
   await launchScrubDataSourceWorkflow(owner, dataSource);
+
+  void emitAuditLogEvent({
+    workspace: owner,
+    action: "datasource.deleted",
+    actor: buildAuditActor(auth),
+    targets: [
+      buildWorkspaceTarget(owner),
+      { type: "data_source", id: dataSource.sId, name: dataSource.name },
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      connectorProvider: dataSource.connectorProvider ?? "none",
+    },
+  });
 
   return new Ok(dataSource.toJSON());
 }
@@ -1134,6 +1154,24 @@ export async function createDataSourceWithoutProvider(
           "Failed to track data source creation"
         );
       }
+
+      void emitAuditLogEvent({
+        workspace: owner,
+        action: "datasource.created",
+        actor: buildAuditActor(auth),
+        targets: [
+          buildWorkspaceTarget(owner),
+          {
+            type: "data_source",
+            id: dataSourceView.dataSource.sId,
+            name: dataSourceView.dataSource.name,
+          },
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          spaceId: space.sId,
+        },
+      });
 
       return new Ok(dataSourceView);
     }

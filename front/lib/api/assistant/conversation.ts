@@ -63,6 +63,11 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
@@ -266,6 +271,7 @@ export async function deleteOrLeaveConversation(
     (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) ||
     (forceDelete && isConversationCreator)
   ) {
+    const workspace = auth.getNonNullableWorkspace();
     auditLog(
       {
         author: user.toJSON(),
@@ -276,6 +282,17 @@ export async function deleteOrLeaveConversation(
       },
       "Conversation soft-deleted"
     );
+    void emitAuditLogEvent({
+      workspace,
+      action: "conversation.deleted",
+      actor: buildAuditActor(auth),
+      targets: [{ type: "conversation", id: conversationId }],
+      context: getAuditLogContext(auth),
+      metadata: {
+        wasLastMember: leaveRes.value.wasLastMember,
+        isConversationCreator,
+      },
+    });
     await conversation.updateVisibilityToDeleted();
   }
 
@@ -1607,6 +1624,17 @@ export async function softDeleteUserMessage(
       ? "Admin deleted a user message"
       : "User deleted their message"
   );
+  void emitAuditLogEvent({
+    workspace: owner,
+    action: "message.deleted",
+    actor: buildAuditActor(auth),
+    targets: [
+      { type: "conversation", id: conversation.sId },
+      { type: "message", id: message.sId },
+    ],
+    context: getAuditLogContext(auth),
+    metadata: { deletedBy: auth.isAdmin() ? "admin" : "user", messageType: "user" },
+  });
 
   return new Ok({ success: true });
 }
@@ -1676,6 +1704,17 @@ export async function softDeleteAgentMessage(
     },
     "User deleted an agent message"
   );
+  void emitAuditLogEvent({
+    workspace: owner,
+    action: "message.deleted",
+    actor: buildAuditActor(auth),
+    targets: [
+      { type: "conversation", id: conversation.sId },
+      { type: "message", id: message.sId },
+    ],
+    context: getAuditLogContext(auth),
+    metadata: { deletedBy: "user", messageType: "agent" },
+  });
 
   return new Ok({ success: true });
 }

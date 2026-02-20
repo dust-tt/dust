@@ -1,3 +1,8 @@
+import {
+  buildAuditActor,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
@@ -63,14 +68,24 @@ export const connectorOperationsPlugin = createPlugin({
 
     const { op } = args;
 
+    const user = auth.user();
+    const workspace = auth.getNonNullableWorkspace();
     auditLog(
       {
-        author: auth.user()?.toJSON() ?? "no-author",
+        author: user?.toJSON() ?? "no-author",
         connectorId,
         op,
       },
       "Executing operation on connector"
     );
+    void emitAuditLogEvent({
+      workspace,
+      action: "connector.operation_executed",
+      actor: buildAuditActor(auth),
+      targets: [{ type: "connector", id: connectorId.toString() }],
+      context: getAuditLogContext(auth),
+      metadata: { operation: op[0] },
+    });
     const res = await doOperation(
       op[0] as OperationType,
       connectorId.toString()
