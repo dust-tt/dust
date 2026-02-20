@@ -1,18 +1,25 @@
 import react from "@vitejs/plugin-react";
 import path from "path";
-import type { Plugin } from "vite";
+import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
 
 const apps = {
   app: {
-    assets: [["share.html", "_share/index.html"]], // underscore prefix avoids Pretty URLs conflict
+    assets: [
+      ["share.html", "_share/index.html"],
+      ["oauth.html", "_oauth/index.html"],
+    ], // underscore prefix avoids Pretty URLs conflict
     inputs: {
       main: path.resolve(__dirname, "index.html"),
       share: path.resolve(__dirname, "share.html"),
+      oauth: path.resolve(__dirname, "oauth.html"),
     },
     serveMapping: (url: string | undefined) => {
       if (url?.startsWith("/share")) {
         return "/share.html";
+      }
+      if (url?.startsWith("/oauth/") || url?.match(/^\/w\/[^/]+\/oauth\//)) {
+        return "/oauth.html";
       }
       return "/index.html";
     },
@@ -166,6 +173,10 @@ export default defineConfig(({ mode }) => {
 
   // Determine which app to build: "poke" or "app" (default: "app")
   const appName = env.VITE_APP_NAME ?? "app";
+  if (appName !== "poke" && appName !== "app") {
+    throw new Error(`Invalid app name: ${appName}`);
+  }
+
   const appDefinition = apps[appName];
 
   // Map NEXT_PUBLIC_* env vars to process.env.NEXT_PUBLIC_* for compatibility
@@ -197,7 +208,7 @@ export default defineConfig(({ mode }) => {
       organizeMultiEntryOutputPlugin(appDefinition),
       reactScanPlugin(enableReactScan),
       react(),
-    ],
+    ].flat() as PluginOption[],
     define: {
       ...envVarDefines,
       // Fallback for any remaining process.env access
