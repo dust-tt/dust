@@ -133,7 +133,7 @@
     "csv-stringify": "^6.4.5",
     "date-fns": "^3.6.0",
     "dayjs": "^1.11.13",
-    "dd-trace": "^5.52.0",
+    "dd-trace": "^5.87.0",
     "diff": "^7.0.0",
     "dompurify": "^3.2.7",
     "embla-carousel-react": "^8.0.1",
