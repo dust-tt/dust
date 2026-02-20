@@ -11,10 +11,10 @@ import {
   FULL_WORKSPACE_KILL_SWITCH_VALUE,
   KILL_SWITCH_METADATA_KEY,
 } from "@app/lib/api/workspace";
+import { updateWorkspaceConversationKillSwitch } from "@app/lib/api/workspace_kill_switch";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -41,29 +41,11 @@ import {
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import {
-  isString,
-  isStringArray,
-  removeNulls,
-} from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { isRoleType } from "@app/types/user";
 import fs from "fs/promises";
 import parseArgs from "minimist";
 import path from "path";
-
-function isConversationKillSwitchValue(
-  killSwitched: unknown
-): killSwitched is { conversationIds: string[] } {
-  if (typeof killSwitched !== "object" || killSwitched === null) {
-    return false;
-  }
-
-  if (!("conversationIds" in killSwitched)) {
-    return false;
-  }
-
-  return isStringArray(killSwitched.conversationIds);
-}
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -411,49 +393,18 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      const currentKillSwitch = w.metadata?.[KILL_SWITCH_METADATA_KEY];
-      if (currentKillSwitch === FULL_WORKSPACE_KILL_SWITCH_VALUE) {
-        throw new Error(
-          "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks."
-        );
-      }
-      if (
-        currentKillSwitch !== undefined &&
-        !isConversationKillSwitchValue(currentKillSwitch)
-      ) {
-        throw new Error(
-          `Invalid workspace kill switch metadata: ${JSON.stringify(currentKillSwitch)}`
-        );
-      }
-
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
       const conversationId = args.cId;
       if (!isString(conversationId)) {
         throw new Error("Invalid --cId argument: must be a string");
       }
-      const conversation = await ConversationResource.fetchById(
+      const updateResult = await updateWorkspaceConversationKillSwitch(
         auth,
-        conversationId
-      );
-      if (!conversation) {
-        throw new Error(`Conversation not found: cId='${conversationId}'`);
-      }
-
-      const conversationIds = currentKillSwitch?.conversationIds ?? [];
-      const wasAlreadyBlocked = conversationIds.includes(conversationId);
-      const updatedConversationIds = wasAlreadyBlocked
-        ? conversationIds
-        : [...conversationIds, conversationId];
-      const metadata = {
-        ...(w.metadata ?? {}),
-        [KILL_SWITCH_METADATA_KEY]: {
-          conversationIds: updatedConversationIds,
-        },
-      };
-
-      const updateResult = await WorkspaceResource.updateMetadata(
-        w.id,
-        metadata
+        w,
+        {
+          conversationId,
+          operation: "block",
+        }
       );
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
@@ -463,7 +414,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         {
           wId: w.sId,
           cId: conversationId,
-          wasAlreadyBlocked,
+          wasAlreadyBlocked: updateResult.value.wasBlockedBefore,
         },
         "Conversation blocked"
       );
@@ -483,48 +434,29 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      const currentKillSwitch = w.metadata?.[KILL_SWITCH_METADATA_KEY];
-      if (currentKillSwitch === FULL_WORKSPACE_KILL_SWITCH_VALUE) {
-        throw new Error(
-          "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks."
-        );
-      }
-      if (
-        currentKillSwitch !== undefined &&
-        !isConversationKillSwitchValue(currentKillSwitch)
-      ) {
-        throw new Error(
-          `Invalid workspace kill switch metadata: ${JSON.stringify(currentKillSwitch)}`
-        );
-      }
-
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
       const conversationId = args.cId;
       if (!isString(conversationId)) {
         throw new Error("Invalid --cId argument: must be a string");
       }
-      const conversationIds = currentKillSwitch?.conversationIds ?? [];
-      const updatedConversationIds = conversationIds.filter(
-        (cId) => cId !== conversationId
-      );
-      const metadata = { ...(w.metadata ?? {}) };
-      if (updatedConversationIds.length === 0) {
-        delete metadata[KILL_SWITCH_METADATA_KEY];
-      } else {
-        metadata[KILL_SWITCH_METADATA_KEY] = {
-          conversationIds: updatedConversationIds,
-        };
-      }
-
-      const updateResult = await WorkspaceResource.updateMetadata(
-        w.id,
-        metadata
+      const updateResult = await updateWorkspaceConversationKillSwitch(
+        auth,
+        w,
+        {
+          conversationId,
+          operation: "unblock",
+        }
       );
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
       }
 
       logger.info(
-        { wId: w.sId, cId: conversationId },
+        {
+          wId: w.sId,
+          cId: conversationId,
+          wasBlockedBefore: updateResult.value.wasBlockedBefore,
+        },
         "Conversation unblocked"
       );
       return;
