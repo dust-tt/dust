@@ -20,6 +20,7 @@ export class TemplateFactory {
       presetInstructions: null,
       helpInstructions: null,
       helpActions: null,
+      copilotInstructions: faker.lorem.sentence(),
     };
   };
 
