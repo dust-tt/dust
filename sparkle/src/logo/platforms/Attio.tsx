@@ -1,7 +1,9 @@
 import type { SVGProps } from "react";
 import * as React from "react";
 
-const SvgAttio = (props: SVGProps<SVGSVGElement>) => (
+interface SvgAttioProps extends SVGProps<SVGSVGElement> {}
+
+const SvgAttio = (props: SvgAttioProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 60.9 50"
