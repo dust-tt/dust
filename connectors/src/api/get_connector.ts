@@ -2,7 +2,6 @@ import {
   GithubDiscussionModel,
   GithubIssueModel,
 } from "@connectors/lib/models/github";
-import { NotionPageModel } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -39,7 +38,7 @@ const _getConnector = async (
     });
   }
 
-  let firstSyncProgress = connector.firstSyncProgress;
+  let { firstSyncProgress } = connector;
 
   if (!firstSyncProgress) {
     switch (connector.type) {
@@ -57,15 +56,6 @@ const _getConnector = async (
           }),
         ]);
         firstSyncProgress = `${issues} issues, ${discussions} discussions`;
-        break;
-      }
-      case "notion": {
-        const c = await NotionPageModel.count({
-          where: {
-            connectorId: connector.id,
-          },
-        });
-        firstSyncProgress = `${c} pages`;
         break;
       }
     }
