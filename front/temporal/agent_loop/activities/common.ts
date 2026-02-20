@@ -39,6 +39,8 @@ import {
   type WhereOptions,
 } from "sequelize";
 
+const DEEP_CONVERSATION_FLUSH_INTERVAL_MS = 1000;
+
 /**
  * Update in database as well as in-memory agent message.
  * Note that we are mutating the agentMessage object in memory and not returning a new object.
@@ -367,11 +369,15 @@ export async function updateResourceAndPublishEvent(
 
   // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
+  // Flush every DEEP_CONVERSATION_FLUSH_INTERVAL_MS for deep conversations to avoid flooding the Redis stream with events, use the default flush interval for main conversations.
+  const flushIntervalMs =
+    conversation.depth > 0 ? DEEP_CONVERSATION_FLUSH_INTERVAL_MS : undefined;
   await globalCoalescer.handleEvent({
     conversationId: conversation.sId,
     event,
     key,
     step,
+    flushIntervalMs,
   });
 }
 
