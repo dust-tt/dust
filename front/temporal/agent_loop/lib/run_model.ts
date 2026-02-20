@@ -63,7 +63,6 @@ import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -80,13 +79,11 @@ export async function runModel(
     runIds,
     step,
     functionCallStepContentIds,
-    featureFlags,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
-    featureFlags: WhitelistableFeature[];
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -381,7 +378,6 @@ export async function runModel(
           tools,
           allowedTokenCount: model.contextSize - model.generationTokensCount,
           agentConfiguration,
-          featureFlags,
         })
       )
   );
