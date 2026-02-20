@@ -25,18 +25,9 @@ export function PanelAgentStep({
   streamActionProgress,
   owner,
   messageStatus,
-  showSeparator = false,
 }: AgentStepProps) {
   return (
     <div className="flex flex-col gap-4 duration-500 animate-in fade-in slide-in-from-left-2">
-      {showSeparator && <Separator className="my-4" />}
-
-      <div className="flex items-center gap-2">
-        <span className="text-size w-fit self-start text-lg font-semibold">
-          Step {stepNumber}
-        </span>
-      </div>
-
       {reasoningContent !== undefined && (
         <div className="transition-all duration-300 animate-in fade-in slide-in-from-bottom-1">
           <ContentMessage variant="primary" size="lg">
@@ -74,7 +65,7 @@ export function PanelAgentStep({
         }
 
         const streamProgress = streamActionProgress.get(
-          entry.action.id
+          entry.action.id,
         )?.progress;
 
         return (
@@ -95,7 +86,7 @@ export function PanelAgentStep({
         <div className="mt-4">
           {streamingActions.map((action) => {
             const streamProgress = streamActionProgress.get(
-              action.id
+              action.id,
             )?.progress;
             const lastNotification = streamProgress ?? null;
 
