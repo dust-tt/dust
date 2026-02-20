@@ -2,6 +2,7 @@
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
+  AUTHENTICATE_TOOL,
   LEAVE_FEEDBACK_DOWN,
   LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
@@ -392,19 +393,21 @@ export function makeToolValidationBlock({
 
 export function makeToolAuthenticationBlock({
   agentName,
-  toolName,
+  serverName,
   conversationUrl,
+  value,
 }: {
   agentName: string;
-  toolName: string;
+  serverName: string;
   conversationUrl: string;
+  value: string;
 }) {
   return [
     {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent \`${agentName}\` requires personal authentication to use tool \`${toolName}\``,
+        text: `Agent \`@${agentName}\` requires personal authentication for \`${serverName}\``,
       },
     },
     {
@@ -418,6 +421,8 @@ export function makeToolAuthenticationBlock({
             emoji: true,
           },
           url: conversationUrl,
+          action_id: AUTHENTICATE_TOOL,
+          value,
           style: "primary",
         },
       ],
