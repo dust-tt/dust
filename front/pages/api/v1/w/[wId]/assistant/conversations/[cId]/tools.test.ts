@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -38,6 +39,7 @@ async function setupTest(method: RequestMethod = "POST", systemKey = true) {
 
   req.query.wId = workspace.sId;
   req.query.cId = conversation.sId;
+  req.url = `/api/v1/w/${workspace.sId}/assistant/conversations/${conversation.sId}/tools`;
 
   // Simulate tool server impersonation: set user header for auth exchange
   req.headers["x-api-user-email"] = user.email!;
@@ -59,6 +61,32 @@ async function setupTest(method: RequestMethod = "POST", systemKey = true) {
 }
 
 describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/tools", () => {
+  it("should return 503 when the conversation is kill-switched", async () => {
+    const { req, res, workspace, conversation } = await setupTest("POST");
+
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      killSwitched: {
+        conversationIds: [conversation.sId],
+      },
+    });
+    if (updateResult.isErr()) {
+      throw updateResult.error;
+    }
+
+    req.body = {
+      action: "add",
+      mcp_server_view_id: "non-existent-view",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(503);
+    expect(res._getJSONData().error.type).toBe("service_unavailable");
+    expect(res._getJSONData().error.message).toBe(
+      "Access to this conversation has been disabled for emergency maintenance."
+    );
+  });
+
   it("should add a new tool to conversation with system key", async () => {
     const { req, res, workspace, auth, adminAuth, conversation, globalSpace } =
       await setupTest("POST");
