@@ -1,6 +1,9 @@
+import { useCopilotHighlight } from "@app/components/agent_builder/copilot/CopilotHighlightContext";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { getSuggestionEndPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { Button, CheckIcon, HoveringBar, XMarkIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
+import type { RefObject } from "react";
 import {
   useCallback,
   useEffect,
@@ -9,59 +12,146 @@ import {
   useState,
 } from "react";
 
-// Grace period before clearing hover state when moving from suggestion to menu
-const UNHOVER_GRACE_PERIOD_MS = 150;
-// Vertical spacing between suggestion and menu
 const MENU_SPACING_PX = 10;
 
 interface SuggestionBubbleMenuProps {
   editor: Editor;
+  // Used so that menu stays in context with the form
+  containerRef: RefObject<HTMLElement | null>;
 }
 
 /**
  * Floating action menu for inline suggestions.
- *
- * Behavior:
- * - Hover: Menu appears at cursor location, disappears after brief delay when leaving
- * - Click: Pins menu to stay visible until clicking elsewhere
- * - Positioning: Automatically positions above or below to avoid viewport edges and save bar
+ * Shows at cursor when hovering a suggestion. Clears only when leaving the
+ * editor area or clicking outside.
  */
-export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
+export function SuggestionBubbleMenu({
+  editor,
+  containerRef,
+}: SuggestionBubbleMenuProps) {
+  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const {
-    acceptSuggestion,
     highlightSuggestion,
     highlightedSuggestionId,
     isHighlightedSuggestionPinned,
-    rejectSuggestion,
-  } = useCopilotSuggestions();
+  } = useCopilotHighlight();
 
-  const [menuPosition, setMenuPosition] = useState<{
+  const [activeMenu, setActiveMenu] = useState<{
+    sId: string;
     top: number;
     left: number;
-    visible: boolean;
+    measured: boolean;
   } | null>(null);
-  const [measuredMenuHeight, setMeasuredMenuHeight] = useState<number | null>(
-    null
-  );
 
   const menuRef = useRef<HTMLDivElement>(null);
-  const isMenuHoveredRef = useRef(false);
-  const clearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hoveredElementRef = useRef<HTMLElement | null>(null);
+  const activeBlockRef = useRef<HTMLElement | null>(null);
+
+  const setPositionAtMouse = useCallback(
+    (sId: string, clientX: number, clientY: number) => {
+      const viewportTop = clientY + MENU_SPACING_PX;
+      const viewportLeft = clientX + MENU_SPACING_PX;
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      setActiveMenu({
+        sId,
+        top: viewportTop - containerRect.top,
+        left: viewportLeft - containerRect.left,
+        measured: false,
+      });
+    },
+    [containerRef]
+  );
+
+  const setPositionAtSuggestion = useCallback(
+    (sId: string) => {
+      const endPos = getSuggestionEndPosition(editor, sId);
+      const container = containerRef.current;
+      if (endPos === null || !container) {
+        return;
+      }
+      const coordsPos = endPos > 0 ? endPos - 1 : endPos;
+      const coords = editor.view.coordsAtPos(coordsPos);
+      const viewportTop = coords.bottom + MENU_SPACING_PX;
+      const viewportLeft = coords.right + MENU_SPACING_PX;
+
+      const containerRect = container.getBoundingClientRect();
+      setActiveMenu({
+        sId,
+        top: viewportTop - containerRect.top,
+        left: viewportLeft - containerRect.left,
+        measured: false,
+      });
+    },
+    [editor, containerRef]
+  );
 
   useEffect(() => {
     if (!highlightedSuggestionId) {
-      hoveredElementRef.current = null;
+      activeBlockRef.current = null;
+      setActiveMenu(null);
+    }
+  }, [highlightedSuggestionId]);
+
+  useLayoutEffect(() => {
+    if (!highlightedSuggestionId || !isHighlightedSuggestionPinned) {
       return;
     }
 
-    if (isHighlightedSuggestionPinned && !hoveredElementRef.current) {
-      hoveredElementRef.current =
-        editor.view.dom.querySelector<HTMLElement>(
-          `[data-suggestion-id="${highlightedSuggestionId}"]`
-        ) ?? null;
+    const suggestionEl = editor.view.dom.querySelector<HTMLElement>(
+      `[data-suggestion-id="${highlightedSuggestionId}"]`
+    );
+    const blockEl = suggestionEl?.closest<HTMLElement>("[data-block-id]");
+    if (blockEl) {
+      activeBlockRef.current = blockEl;
+      blockEl.scrollIntoView({ behavior: "auto", block: "center" });
     }
-  }, [highlightedSuggestionId, isHighlightedSuggestionPinned, editor]);
+    setPositionAtSuggestion(highlightedSuggestionId);
+  }, [
+    highlightedSuggestionId,
+    isHighlightedSuggestionPinned,
+    editor,
+    setPositionAtSuggestion,
+  ]);
+
+  // After menu is in DOM, clamp with real dimensions so it stays inside the form.
+  useLayoutEffect(() => {
+    const menu =
+      activeMenu?.sId === highlightedSuggestionId ? activeMenu : null;
+    if (!menu || menu.measured || !menuRef.current || !containerRef.current) {
+      return;
+    }
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const menuRect = menuRef.current.getBoundingClientRect();
+    const viewportTop = containerRect.top + menu.top;
+    const viewportLeft = containerRect.left + menu.left;
+    const top = Math.max(
+      containerRect.top,
+      Math.min(viewportTop, containerRect.bottom - menuRect.height)
+    );
+    const left = Math.max(
+      containerRect.left,
+      Math.min(viewportLeft, containerRect.right - menuRect.width)
+    );
+    setActiveMenu((prev) =>
+      prev && !prev.measured
+        ? {
+            ...prev,
+            top: top - containerRect.top,
+            left: left - containerRect.left,
+            measured: true,
+          }
+        : prev
+    );
+  }, [activeMenu, highlightedSuggestionId, containerRef]);
+
+  const clearSelection = useCallback(() => {
+    if (!isHighlightedSuggestionPinned) {
+      highlightSuggestion(null);
+    }
+  }, [isHighlightedSuggestionPinned, highlightSuggestion]);
 
   const getSuggestionId = useCallback(
     (target: EventTarget | null): string | null => {
@@ -76,162 +166,80 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     []
   );
 
-  const updateMenuPosition = useCallback(() => {
-    const hoveredElement = hoveredElementRef.current;
-
-    if (!highlightedSuggestionId || !hoveredElement) {
-      setMenuPosition(null);
-      return;
-    }
-
-    const wrapper = editor.view.dom.parentElement;
-    if (!wrapper) {
-      setMenuPosition(null);
-      return;
-    }
-
-    const wrapperRect = wrapper.getBoundingClientRect();
-    const hoveredRect = hoveredElement.getBoundingClientRect();
-
-    // Don't show menu until we've measured it
-    if (!measuredMenuHeight) {
-      return;
-    }
-
-    // If menu would overflow the bottom of the editor's visible area, show above
-    const isNearBottom =
-      hoveredRect.bottom + measuredMenuHeight + MENU_SPACING_PX >
-      wrapperRect.bottom;
-
-    const menuTop = isNearBottom
-      ? hoveredRect.top - wrapperRect.top - measuredMenuHeight - MENU_SPACING_PX
-      : hoveredRect.bottom - wrapperRect.top + MENU_SPACING_PX;
-
-    setMenuPosition({
-      top: menuTop,
-      left: hoveredRect.left - wrapperRect.left,
-      visible: true,
-    });
-  }, [editor, highlightedSuggestionId, measuredMenuHeight]);
-
-  // Measure menu height after it renders and recalculate position if needed
-  useLayoutEffect(() => {
-    if (menuRef.current && highlightedSuggestionId) {
-      const height = menuRef.current.offsetHeight;
-      if (height !== measuredMenuHeight) {
-        setMeasuredMenuHeight(height);
-      }
-    }
-  }, [highlightedSuggestionId, measuredMenuHeight]);
-
-  useEffect(() => {
-    if (highlightedSuggestionId) {
-      updateMenuPosition();
-    }
-  }, [highlightedSuggestionId, updateMenuPosition]);
-
-  const cancelClear = useCallback(() => {
-    if (clearTimeoutRef.current) {
-      clearTimeout(clearTimeoutRef.current);
-      clearTimeoutRef.current = null;
-    }
-  }, []);
-
-  const clearSelection = useCallback(() => {
-    if (!isHighlightedSuggestionPinned) {
-      clearTimeoutRef.current ??= setTimeout(() => {
-        highlightSuggestion(null);
-        clearTimeoutRef.current = null;
-      }, UNHOVER_GRACE_PERIOD_MS);
-    }
-  }, [isHighlightedSuggestionPinned, highlightSuggestion]);
-
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
       if (isHighlightedSuggestionPinned) {
         return;
       }
 
-      const target = event.target;
-      const id = getSuggestionId(target);
+      const id = getSuggestionId(event.target);
+      if (!id) {
+        return;
+      }
 
-      if (id && target instanceof HTMLElement) {
-        hoveredElementRef.current =
-          target.closest<HTMLElement>("[data-suggestion-id]") ?? null;
-        cancelClear();
-        highlightSuggestion(id);
-        updateMenuPosition();
-      } else if (!isMenuHoveredRef.current) {
-        hoveredElementRef.current = null;
-        clearSelection();
+      const isNewSuggestion = id !== highlightedSuggestionId;
+      highlightSuggestion(id);
+      const blockEl =
+        event.target instanceof HTMLElement
+          ? event.target.closest<HTMLElement>("[data-block-id]")
+          : null;
+      if (blockEl) {
+        activeBlockRef.current = blockEl;
+      }
+      if (isNewSuggestion) {
+        setPositionAtMouse(id, event.clientX, event.clientY);
       }
     },
     [
       getSuggestionId,
+      highlightedSuggestionId,
       isHighlightedSuggestionPinned,
-      cancelClear,
-      clearSelection,
       highlightSuggestion,
-      updateMenuPosition,
+      setPositionAtMouse,
     ]
   );
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
-      const target = event.target;
-      const id = getSuggestionId(target);
-
-      if (id && target instanceof HTMLElement) {
-        hoveredElementRef.current =
-          target.closest<HTMLElement>("[data-suggestion-id]") ?? null;
-        cancelClear();
+      const id = getSuggestionId(event.target);
+      if (id) {
         highlightSuggestion(id, true);
-        updateMenuPosition();
+        const blockEl =
+          event.target instanceof HTMLElement
+            ? event.target.closest<HTMLElement>("[data-block-id]")
+            : null;
+        if (blockEl) {
+          activeBlockRef.current = blockEl;
+        }
+        setPositionAtMouse(id, event.clientX, event.clientY);
       } else {
-        hoveredElementRef.current = null;
-        highlightSuggestion(null);
+        clearSelection();
       }
     },
-    [getSuggestionId, cancelClear, highlightSuggestion, updateMenuPosition]
+    [getSuggestionId, highlightSuggestion, setPositionAtMouse, clearSelection]
   );
 
   useEffect(() => {
     const editorDom = editor.view.dom;
+    const container = containerRef.current;
+
     editorDom.addEventListener("mousemove", handleMouseMove);
     editorDom.addEventListener("click", handleClick);
+    container?.addEventListener("mouseleave", clearSelection);
 
     return () => {
       editorDom.removeEventListener("mousemove", handleMouseMove);
       editorDom.removeEventListener("click", handleClick);
-      if (clearTimeoutRef.current) {
-        clearTimeout(clearTimeoutRef.current);
-      }
+      container?.removeEventListener("mouseleave", clearSelection);
     };
-  }, [editor, handleMouseMove, handleClick]);
-
-  useEffect(() => {
-    if (!highlightedSuggestionId) {
-      return;
-    }
-
-    const editorDom = editor.view.dom;
-    const handlePositionChange = () => updateMenuPosition();
-
-    editorDom.addEventListener("scroll", handlePositionChange);
-    window.addEventListener("resize", handlePositionChange);
-
-    return () => {
-      editorDom.removeEventListener("scroll", handlePositionChange);
-      window.removeEventListener("resize", handlePositionChange);
-    };
-  }, [highlightedSuggestionId, editor, updateMenuPosition]);
+  }, [editor, containerRef, handleMouseMove, handleClick, clearSelection]);
 
   const handleAccept = useCallback(() => {
     if (!highlightedSuggestionId) {
       return;
     }
-    void acceptSuggestion(highlightedSuggestionId);
     highlightSuggestion(null);
+    void acceptSuggestion(highlightedSuggestionId);
   }, [highlightedSuggestionId, acceptSuggestion, highlightSuggestion]);
 
   const handleReject = useCallback(() => {
@@ -242,17 +250,10 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     highlightSuggestion(null);
   }, [highlightedSuggestionId, rejectSuggestion, highlightSuggestion]);
 
-  const handleMenuMouseEnter = useCallback(() => {
-    isMenuHoveredRef.current = true;
-    cancelClear();
-  }, [cancelClear]);
+  const show = !!activeMenu && activeMenu.sId === highlightedSuggestionId;
+  const ready = show && activeMenu.measured;
 
-  const handleMenuMouseLeave = useCallback(() => {
-    isMenuHoveredRef.current = false;
-    clearSelection();
-  }, [clearSelection]);
-
-  if (!highlightedSuggestionId) {
+  if (!show) {
     return null;
   }
 
@@ -261,13 +262,11 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       ref={menuRef}
       style={{
         position: "absolute",
-        top: menuPosition?.top ?? 0,
-        left: menuPosition?.left ?? 0,
         zIndex: 50,
-        visibility: menuPosition?.visible ? "visible" : "hidden",
+        top: activeMenu.top,
+        left: activeMenu.left,
+        visibility: ready ? "visible" : "hidden",
       }}
-      onMouseEnter={handleMenuMouseEnter}
-      onMouseLeave={handleMenuMouseLeave}
     >
       <HoveringBar size="xs">
         <Button

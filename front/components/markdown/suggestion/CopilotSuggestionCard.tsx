@@ -32,13 +32,13 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
+  DiffBlock,
   EyeIcon,
   FolderIcon,
   LoadingBlock,
-  PencilSquareIcon,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 function mapSuggestionStateToCardState(
@@ -60,86 +60,82 @@ function mapSuggestionStateToCardState(
 
 interface InstructionsSuggestionCardProps {
   agentSuggestion: AgentInstructionsSuggestionType;
+  focusOnSuggestion: (id: string) => void;
+  getCommittedInstructionsHtml: () => string;
 }
 
-function InstructionsSuggestionCard({
-  agentSuggestion,
-}: InstructionsSuggestionCardProps) {
-  const { content, targetBlockId } = agentSuggestion.suggestion;
-  const { analysis, state, sId } = agentSuggestion;
-  const { focusOnSuggestion, getCommittedInstructionsHtml } =
-    useCopilotSuggestions();
+// Re-render only when suggestion identity/state or callbacks change.
+// Comparing callbacks too avoids stale closures if upstream stops memoizing them.
+const InstructionsSuggestionCard = memo(
+  function InstructionsSuggestionCard({
+    agentSuggestion,
+    focusOnSuggestion,
+    getCommittedInstructionsHtml,
+  }: InstructionsSuggestionCardProps) {
+    const { content, targetBlockId } = agentSuggestion.suggestion;
+    const { state, sId } = agentSuggestion;
 
-  const cardState = mapSuggestionStateToCardState(state);
+    const blockHtml = useMemo(() => {
+      const instructionsHtml = getCommittedInstructionsHtml();
+      if (!instructionsHtml) {
+        return "";
+      }
 
-  const blockHtml = useMemo(() => {
-    const instructionsHtml = getCommittedInstructionsHtml();
-    if (!instructionsHtml) {
-      return "";
-    }
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(instructionsHtml, "text/html");
+      const targetElement = doc.querySelector(
+        `[data-block-id="${targetBlockId}"]`
+      );
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(instructionsHtml, "text/html");
-    const targetElement = doc.querySelector(
-      `[data-block-id="${targetBlockId}"]`
+      return targetElement ? targetElement.outerHTML : "";
+    }, [targetBlockId, getCommittedInstructionsHtml]);
+
+    const editor = useEditor(
+      {
+        extensions: [
+          ...buildAgentInstructionsReadOnlyExtensions(),
+          InstructionSuggestionExtension,
+        ],
+        editable: false,
+        content: blockHtml,
+        immediatelyRender: false,
+        onCreate: ({ editor: e }) => {
+          if (!content) {
+            return;
+          }
+          e.commands.applySuggestion({ id: sId, targetBlockId, content });
+          e.commands.setHighlightedSuggestion(sId);
+        },
+      },
+      [blockHtml]
     );
 
-    return targetElement ? targetElement.outerHTML : "";
-  }, [targetBlockId, getCommittedInstructionsHtml]);
+    const isPending = state === "pending";
 
-  const editor = useEditor(
-    {
-      extensions: [
-        ...buildAgentInstructionsReadOnlyExtensions(),
-        InstructionSuggestionExtension,
-      ],
-      editable: false,
-      content: blockHtml,
-      immediatelyRender: false,
-    },
-    [blockHtml]
-  );
-
-  useEffect(() => {
-    if (!editor || editor.isDestroyed || !content) {
-      return;
-    }
-
-    editor.commands.applySuggestion({
-      id: sId,
-      targetBlockId,
-      content,
-    });
-    editor.commands.setHighlightedSuggestion(sId);
-  }, [editor, sId, targetBlockId, content]);
-
-  return (
-    <ActionCardBlock
-      title="Instructions suggestion"
-      visual={<Avatar icon={PencilSquareIcon} size="sm" />}
-      description={
-        <>
-          {analysis && <div className="mb-2">{analysis}</div>}
-          <div className="rounded-lg border border-border bg-muted-background px-3 py-2 dark:border-border-night dark:bg-muted-background-night">
-            {editor && <EditorContent editor={editor} />}
-          </div>
-        </>
-      }
-      state={cardState}
-      actionsPosition="header"
-      actions={
-        <Button
-          variant="outline"
-          size="xs"
-          icon={EyeIcon}
-          tooltip="Review"
-          onClick={() => focusOnSuggestion(sId)}
-          disabled={cardState !== "active"}
-        />
-      }
-    />
-  );
-}
+    return (
+      <div className="mb-2">
+        <DiffBlock
+          actions={
+            isPending ? (
+              <Button
+                variant="outline"
+                size="xs"
+                icon={EyeIcon}
+                tooltip="Review in instructions"
+                onClick={() => focusOnSuggestion(sId)}
+              />
+            ) : undefined
+          }
+        >
+          {editor && <EditorContent editor={editor} />}
+        </DiffBlock>
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.agentSuggestion.sId === next.agentSuggestion.sId &&
+    prev.agentSuggestion.state === next.agentSuggestion.state
+);
 
 function isToolAlreadyAdded(
   currentActions: AgentBuilderFormData["actions"],
@@ -569,9 +565,18 @@ interface SuggestionCardProps {
 export function CopilotSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
+  const { focusOnSuggestion, getCommittedInstructionsHtml } =
+    useCopilotSuggestions();
+
   switch (agentSuggestion.kind) {
     case "instructions":
-      return <InstructionsSuggestionCard agentSuggestion={agentSuggestion} />;
+      return (
+        <InstructionsSuggestionCard
+          agentSuggestion={agentSuggestion}
+          focusOnSuggestion={focusOnSuggestion}
+          getCommittedInstructionsHtml={getCommittedInstructionsHtml}
+        />
+      );
     case "tools":
       return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
     case "sub_agent":

@@ -1,5 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useCopilotHighlight } from "@app/components/agent_builder/copilot/CopilotHighlightContext";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
 import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
@@ -13,6 +14,7 @@ import { BlockInsertExtension } from "@app/components/editor/extensions/agent_bu
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import {
   getActiveSuggestions,
+  getSuggestionBlockRect,
   InstructionSuggestionExtension,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
@@ -41,7 +43,14 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useController } from "react-hook-form";
 import { BLUR_EVENT_NAME, INSTRUCTIONS_DEBOUNCE_MS } from "./constants";
 
@@ -192,6 +201,13 @@ export function AgentBuilderInstructionsEditor({
   const initialContentSetRef = useRef(false);
 
   const suggestionsContext = useCopilotSuggestions();
+  const { highlightedSuggestionId } = useCopilotHighlight();
+
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
+  const [lineStyle, setLineStyle] = useState<{
+    top: number;
+    height: number;
+  } | null>(null);
 
   const extensions = useMemo(() => {
     const extensions: Extensions = [
@@ -467,6 +483,50 @@ export function AgentBuilderInstructionsEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstructionDiffMode, compareVersion, editor]);
 
+  const updateLineStyle = useCallback(() => {
+    if (!highlightedSuggestionId || !editorWrapperRef.current || !editor) {
+      setLineStyle(null);
+      return;
+    }
+
+    const blockRect = getSuggestionBlockRect(editor, highlightedSuggestionId);
+    if (!blockRect) {
+      setLineStyle(null);
+      return;
+    }
+
+    const formRect = editorWrapperRef.current.getBoundingClientRect();
+    const clampedTop = Math.max(blockRect.top, formRect.top);
+    const clampedBottom = Math.min(blockRect.bottom, formRect.bottom);
+
+    if (clampedTop >= clampedBottom) {
+      setLineStyle(null);
+      return;
+    }
+
+    setLineStyle({
+      top: clampedTop - formRect.top,
+      height: clampedBottom - clampedTop,
+    });
+  }, [highlightedSuggestionId, editor]);
+
+  useLayoutEffect(() => {
+    updateLineStyle();
+  }, [updateLineStyle]);
+
+  useEffect(() => {
+    if (!highlightedSuggestionId || !editor) {
+      return;
+    }
+    const scrollContainer = editor.view.dom.parentElement;
+    scrollContainer?.addEventListener("scroll", updateLineStyle);
+    window.addEventListener("resize", updateLineStyle);
+    return () => {
+      scrollContainer?.removeEventListener("scroll", updateLineStyle);
+      window.removeEventListener("resize", updateLineStyle);
+    };
+  }, [highlightedSuggestionId, editor, updateLineStyle]);
+
   const toolbarExtra =
     React.Children.toArray(children).find(
       (child): child is React.ReactElement<{ children: ReactNode }> =>
@@ -489,9 +549,25 @@ export function AgentBuilderInstructionsEditor({
   };
 
   const editorContent = (
-    <div className="relative p-px">
+    <div
+      ref={editorWrapperRef}
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px"
+    >
+      {hasCopilot && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1 w-0.5 rounded-full bg-highlight-300 transition-all duration-150 dark:bg-highlight-300-night"
+          style={
+            lineStyle
+              ? { top: lineStyle.top, height: lineStyle.height, opacity: 1 }
+              : { top: 0, height: 0, opacity: 0 }
+          }
+        />
+      )}
       <EditorContent editor={editor} />
-      {editor && <SuggestionBubbleMenu editor={editor} />}
+      {editor && hasCopilot && (
+        <SuggestionBubbleMenu editor={editor} containerRef={editorWrapperRef} />
+      )}
       {!hasCopilot && (
         // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
         <div className="absolute bottom-2 right-2">

@@ -23,25 +23,38 @@ export type DiffChange = {
   new?: string;
 };
 
-type DiffBlockProps = {
-  changes: DiffChange[];
+export type DiffBlockProps = {
   actions?: ReactElement;
   className?: string;
   collapsedLines?: number;
+  changes?: DiffChange[];
+  children?: React.ReactNode;
 };
 
 const DEFAULT_COLLAPSED_LINES = 6;
 
+/** Rough CSS estimate to prevent flash before measurement */
+function getEstimatedCollapsedHeight(collapsedLines: number) {
+  return `calc(${collapsedLines} * 1.5em + 1rem)`;
+}
+
 export function DiffBlock({
   changes,
+  children,
   actions,
   className,
   collapsedLines = DEFAULT_COLLAPSED_LINES,
 }: DiffBlockProps) {
+  const hasContent = changes !== undefined || children !== undefined;
+  if (!hasContent) {
+    return null;
+  }
+
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCollapsible, setIsCollapsible] = useState(false);
+  const [isMeasured, setIsMeasured] = useState(false);
   const [collapsedHeight, setCollapsedHeight] = useState<number>();
   const [expandedHeight, setExpandedHeight] = useState<number>();
 
@@ -76,6 +89,7 @@ export function DiffBlock({
       if (!isOverflowing) {
         setIsExpanded(false);
       }
+      setIsMeasured(true);
     };
 
     measureHeights();
@@ -88,7 +102,7 @@ export function DiffBlock({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [changes, collapsedLines]);
+  }, [changes, children, collapsedLines]);
 
   const shouldClamp = isCollapsible && !isExpanded;
 
@@ -106,36 +120,49 @@ export function DiffBlock({
             "s-bg-muted-background s-p-2 dark:s-bg-muted-background-night"
           )}
           style={
-            isCollapsible && collapsedHeight !== undefined
+            !isMeasured
               ? {
-                  maxHeight: shouldClamp
-                    ? collapsedHeight
-                    : (expandedHeight ?? collapsedHeight),
                   overflow: "hidden",
-                  transition: "max-height 200ms ease",
+                  maxHeight: getEstimatedCollapsedHeight(collapsedLines),
                 }
-              : undefined
+              : isCollapsible && collapsedHeight !== undefined
+                ? {
+                    maxHeight: shouldClamp
+                      ? collapsedHeight
+                      : (expandedHeight ?? collapsedHeight),
+                    overflow: "hidden",
+                    transition: "max-height 200ms ease",
+                  }
+                : undefined
           }
         >
-          <div ref={contentRef} className="s-space-y-4 s-font-mono s-text-sm">
-            {changes.map((change, index) => (
-              <div key={index} className="s-space-y-0.5">
-                {change.old && (
-                  <div className="s-whitespace-pre-wrap">
-                    <span className={diffLineVariants({ type: "remove" })}>
-                      {change.old}
-                    </span>
-                  </div>
-                )}
-                {change.new && (
-                  <div className="s-whitespace-pre-wrap">
-                    <span className={diffLineVariants({ type: "add" })}>
-                      {change.new}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div
+            ref={contentRef}
+            className={
+              children
+                ? "s-space-y-4 s-font-mono s-text-sm [&_.ProseMirror]:s-min-h-0 [&_.ProseMirror]:s-p-0"
+                : "s-space-y-4 s-font-mono s-text-sm"
+            }
+          >
+            {children ??
+              changes?.map((change, index) => (
+                <div key={index} className="s-space-y-0.5">
+                  {change.old && (
+                    <div className="s-whitespace-pre-wrap">
+                      <span className={diffLineVariants({ type: "remove" })}>
+                        {change.old}
+                      </span>
+                    </div>
+                  )}
+                  {change.new && (
+                    <div className="s-whitespace-pre-wrap">
+                      <span className={diffLineVariants({ type: "add" })}>
+                        {change.new}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
           </div>
         </div>
         {isCollapsible && (

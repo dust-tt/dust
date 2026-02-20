@@ -293,6 +293,7 @@ function buildRootDecorations({
             div.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
             div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
             div.contentEditable = "false";
+            div.style.width = "fit-content";
 
             const serializer = DOMSerializer.fromSchema(schema);
             serializer.serializeFragment(Fragment.from(newChild), {}, div);
@@ -483,6 +484,61 @@ export function getSuggestionPosition(
     suggestion.operations[0].targetBlockId
   );
   return found ? found.pos + 1 : null;
+}
+
+export function getSuggestionEndPosition(
+  editor: { state: EditorState },
+  suggestionId: string
+): number | null {
+  const state = pluginKey.getState(editor.state);
+  if (!state) {
+    return null;
+  }
+
+  const suggestion = state.suggestions.get(suggestionId);
+  if (!suggestion || suggestion.operations.length === 0) {
+    return null;
+  }
+
+  const [op] = suggestion.operations;
+  const found = findBlockByBlockId(editor.state.doc, op.targetBlockId);
+  if (!found) {
+    return null;
+  }
+
+  return found.pos + found.node.nodeSize - 1;
+}
+
+export function getSuggestionBlockRect(
+  editor: { view: { dom: HTMLElement } } & { state: EditorState },
+  suggestionId: string
+): { top: number; bottom: number } | null {
+  const state = pluginKey.getState(editor.state);
+  if (!state) {
+    return null;
+  }
+
+  const suggestion = state.suggestions.get(suggestionId);
+  if (!suggestion || suggestion.operations.length === 0) {
+    return null;
+  }
+
+  let top = Infinity;
+  let bottom = -Infinity;
+
+  for (const op of suggestion.operations) {
+    const el = editor.view.dom.querySelector<HTMLElement>(
+      `[data-block-id="${op.targetBlockId}"]`
+    );
+    if (!el) {
+      continue;
+    }
+    const rect = el.getBoundingClientRect();
+    top = Math.min(top, rect.top);
+    bottom = Math.max(bottom, rect.bottom);
+  }
+
+  return top <= bottom ? { top, bottom } : null;
 }
 
 export const InstructionSuggestionExtension = Extension.create({

@@ -671,6 +671,7 @@ function AgentBuilderContent({
         />
       )}
       <AgentBuilderLayout
+        copilotEnabled={isCopilotEnabled}
         leftPanel={
           <AgentBuilderLeftPanel
             title={title}

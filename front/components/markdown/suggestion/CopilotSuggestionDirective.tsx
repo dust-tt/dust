@@ -94,7 +94,11 @@ export function getCopilotSuggestionPlugin() {
       return null;
     }
 
-    return <CopilotSuggestionCard agentSuggestion={suggestion} />;
+    return (
+      <div data-suggestion-s-id={sId}>
+        <CopilotSuggestionCard agentSuggestion={suggestion} />
+      </div>
+    );
   };
 
   return CopilotSuggestionPlugin;
