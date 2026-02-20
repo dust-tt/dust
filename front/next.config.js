@@ -65,11 +65,14 @@ const config = {
     ...(!isDev && { esmExternals: false }),
     instrumentationHook: !isDev,
     // Ensure dd-trace and other dependencies are included in standalone build.
-    // Paths are relative to front/ directory. With npm workspaces, deps are hoisted to root node_modules.
+    // Paths are relative to front/ directory. With npm workspaces, deps may be hoisted to root
+    // node_modules or kept in front/node_modules depending on version conflicts.
     outputFileTracingIncludes: {
       "/**": [
         "../node_modules/dd-trace/**/*",
         "../node_modules/@datadog/**/*",
+        "./node_modules/dd-trace/**/*",
+        "./node_modules/@datadog/**/*",
         // Include entire Redux ecosystem to avoid issues with partial inclusion.
         "../node_modules/redux/**/*",
         "../node_modules/@reduxjs/**/*",
