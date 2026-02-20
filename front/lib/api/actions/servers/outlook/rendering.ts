@@ -149,10 +149,10 @@ export function renderOutlookEvent(
   if (enrichedEvent.attendees && enrichedEvent.attendees.length > 0) {
     const attendeeList = enrichedEvent.attendees
       .map((a) => {
-        const name = a.emailAddress.name ?? a.emailAddress.address ?? "Unknown";
-        const status = a.status.response
-          ? ` (response: ${a.status.response})`
-          : "";
+        const name = a.emailAddress.name
+          ? `${a.emailAddress.name} (${a.emailAddress.address})`
+          : (a.emailAddress.address ?? "Unknown");
+        const status = a.status.response ? ` - ${a.status.response}` : "";
         return `${name}${status}`;
       })
       .join(", ");
