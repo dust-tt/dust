@@ -1,4 +1,4 @@
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
@@ -12,6 +12,13 @@ export function isModelAvailable(
   plan: PlanType | null
 ) {
   if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
+    return false;
+  }
+
+  if (
+    m.enterpriseOnly === true &&
+    (plan === null || !isEntreprisePlanPrefix(plan.code))
+  ) {
     return false;
   }
 
