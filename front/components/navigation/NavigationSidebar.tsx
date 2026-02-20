@@ -6,10 +6,10 @@ import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -61,9 +61,7 @@ export const NavigationSidebar = React.forwardRef<
     return "";
   }, [router.isReady, router.pathname]);
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
 

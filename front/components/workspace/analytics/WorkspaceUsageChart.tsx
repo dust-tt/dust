@@ -8,9 +8,9 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  useFeatureFlags,
   useWorkspaceActiveUsersMetrics,
   useWorkspaceAnalyticsOverview,
   useWorkspaceUsageMetrics,
@@ -229,7 +229,7 @@ export function WorkspaceUsageChart({
   period,
 }: WorkspaceUsageChartProps) {
   const [displayMode, setDisplayMode] = useState<UsageDisplayMode>("activity");
-  const { hasFeature } = useFeatureFlags({ workspaceId });
+  const { hasFeature } = useFeatureFlags();
   const showExport = hasFeature("analytics_csv_export");
   const [isDownloading, setIsDownloading] = useState(false);
 

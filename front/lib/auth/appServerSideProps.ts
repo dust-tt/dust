@@ -9,6 +9,7 @@ import {
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
 import { isDevelopment } from "@app/types/shared/env";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { GetServerSidePropsContext } from "next";
 import type { ReactElement } from "react";
 
@@ -21,10 +22,15 @@ const DEFAULT_APP_URL = isDevelopment()
   ? "http://localhost:3011"
   : "https://app.dust.tt";
 
-const redirectToDustSpa = async (
+// Returns a redirect if the workspace should use the SPA, or the feature flags
+// for inclusion in the SSR props.
+const checkSpaRedirectAndGetFeatureFlags = async (
   context: GetServerSidePropsContext,
   auth: Authenticator
-) => {
+): Promise<
+  | { type: "redirect"; redirect: { destination: string; permanent: false } }
+  | { type: "flags"; featureFlags: WhitelistableFeature[] }
+> => {
   const isEdge = process.env.NEXT_PUBLIC_DATADOG_SERVICE === "front-edge";
 
   const workspace = auth.getNonNullableWorkspace();
@@ -35,6 +41,7 @@ const redirectToDustSpa = async (
 
     const destination = context.resolvedUrl;
     return {
+      type: "redirect",
       redirect: {
         destination: `${appUrl}${destination}`,
         permanent: false,
@@ -42,23 +49,32 @@ const redirectToDustSpa = async (
     };
   }
 
-  return null;
+  return { type: "flags", featureFlags };
 };
+
+function makeAuthProps(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[]
+): { props: AuthContextValue } {
+  return {
+    props: {
+      workspace: auth.getNonNullableWorkspace(),
+      subscription: auth.getNonNullableSubscription(),
+      user: auth.getNonNullableUser().toJSON(),
+      isAdmin: auth.isAdmin(),
+      isBuilder: auth.isBuilder(),
+      featureFlags,
+    },
+  };
+}
 
 export const appGetServerSideProps =
   withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
-    const redirect = await redirectToDustSpa(context, auth);
-    return (
-      redirect ?? {
-        props: {
-          workspace: auth.getNonNullableWorkspace(),
-          subscription: auth.getNonNullableSubscription(),
-          user: auth.getNonNullableUser().toJSON(),
-          isAdmin: auth.isAdmin(),
-          isBuilder: auth.isBuilder(),
-        },
-      }
-    );
+    const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
+    if (result.type === "redirect") {
+      return { redirect: result.redirect };
+    }
+    return makeAuthProps(auth, result.featureFlags);
   });
 
 export const appGetServerSidePropsForBuilders =
@@ -69,19 +85,11 @@ export const appGetServerSidePropsForBuilders =
       };
     }
 
-    const redirect = await redirectToDustSpa(context, auth);
-
-    return (
-      redirect ?? {
-        props: {
-          workspace: auth.getNonNullableWorkspace(),
-          subscription: auth.getNonNullableSubscription(),
-          user: auth.getNonNullableUser().toJSON(),
-          isAdmin: auth.isAdmin(),
-          isBuilder: auth.isBuilder(),
-        },
-      }
-    );
+    const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
+    if (result.type === "redirect") {
+      return { redirect: result.redirect };
+    }
+    return makeAuthProps(auth, result.featureFlags);
   });
 
 export const appGetServerSidePropsForAdmin =
@@ -92,19 +100,11 @@ export const appGetServerSidePropsForAdmin =
       };
     }
 
-    const redirect = await redirectToDustSpa(context, auth);
-
-    return (
-      redirect ?? {
-        props: {
-          workspace: auth.getNonNullableWorkspace(),
-          subscription: auth.getNonNullableSubscription(),
-          user: auth.getNonNullableUser().toJSON(),
-          isAdmin: auth.isAdmin(),
-          isBuilder: auth.isBuilder(),
-        },
-      }
-    );
+    const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
+    if (result.type === "redirect") {
+      return { redirect: result.redirect };
+    }
+    return makeAuthProps(auth, result.featureFlags);
   });
 
 export const appGetServerSidePropsPaywallWhitelisted =
@@ -116,19 +116,11 @@ export const appGetServerSidePropsPaywallWhitelisted =
         };
       }
 
-      const redirect = await redirectToDustSpa(context, auth);
-
-      return (
-        redirect ?? {
-          props: {
-            workspace: auth.getNonNullableWorkspace(),
-            subscription: auth.getNonNullableSubscription(),
-            user: auth.getNonNullableUser().toJSON(),
-            isAdmin: auth.isAdmin(),
-            isBuilder: auth.isBuilder(),
-          },
-        }
-      );
+      const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
+      if (result.type === "redirect") {
+        return { redirect: result.redirect };
+      }
+      return makeAuthProps(auth, result.featureFlags);
     }
   );
 
@@ -141,19 +133,11 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
         };
       }
 
-      const redirect = await redirectToDustSpa(context, auth);
-
-      return (
-        redirect ?? {
-          props: {
-            workspace: auth.getNonNullableWorkspace(),
-            subscription: auth.getNonNullableSubscription(),
-            user: auth.getNonNullableUser().toJSON(),
-            isAdmin: auth.isAdmin(),
-            isBuilder: auth.isBuilder(),
-          },
-        }
-      );
+      const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
+      if (result.type === "redirect") {
+        return { redirect: result.redirect };
+      }
+      return makeAuthProps(auth, result.featureFlags);
     }
   );
 

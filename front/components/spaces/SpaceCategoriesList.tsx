@@ -3,9 +3,9 @@ import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchCon
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -98,9 +98,7 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo

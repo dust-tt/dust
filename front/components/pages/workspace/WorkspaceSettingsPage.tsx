@@ -2,18 +2,19 @@ import { CapabilitiesSection } from "@app/components/workspace/settings/Capabili
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
 import { ModelSelectionSection } from "@app/components/workspace/settings/ModelSelectionSection";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { useBotDataSources } from "@app/lib/swr/data_sources";
 import { useSystemSpace } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { GlobeAltIcon, Page, Spinner } from "@dust-tt/sparkle";
 
 export function WorkspaceSettingsPage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
     workspaceId: owner.sId,
   });
@@ -26,8 +27,7 @@ export function WorkspaceSettingsPage() {
 
   const isDiscordBotAvailable = featureFlags.includes("discord_bot");
 
-  const isLoading =
-    isFeatureFlagsLoading || isSystemSpaceLoading || isBotDataSourcesLoading;
+  const isLoading = isSystemSpaceLoading || isBotDataSourcesLoading;
 
   if (isLoading || !systemSpace) {
     return (

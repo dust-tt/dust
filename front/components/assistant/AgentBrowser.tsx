@@ -6,8 +6,8 @@ import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   compareForFuzzySort,
@@ -218,9 +218,7 @@ export function AgentBrowser({
     "popularity" | "alphabetical" | "updated"
   >("popularity");
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const { selectedTagId: persistedSelectedTagId, setSelectedTagId } =
     usePersistedAgentBrowserSelection(owner.sId);

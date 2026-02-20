@@ -6,9 +6,9 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
@@ -152,9 +152,7 @@ export function ProjectsList({
   summary,
   titleFilter,
 }: ProjectsListProps) {
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   const moveConversationToProject = useMoveConversationToProject(owner);
 

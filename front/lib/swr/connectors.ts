@@ -1,11 +1,11 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type {
@@ -44,9 +44,7 @@ export function useConnectorPermissions<T extends ConnectorPermission | null>({
   viewType?: ContentNodesViewType;
 }): UseConnectorPermissionsReturn<T> {
   const { fetcher } = useFetcher();
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
   const permissionsFetcher: Fetcher<
     T extends ConnectorPermission
       ? GetDataSourcePermissionsResponseBody<T>

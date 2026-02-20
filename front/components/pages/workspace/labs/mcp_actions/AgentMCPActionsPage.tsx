@@ -5,11 +5,10 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, usePathParams } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { isString } from "@app/types/shared/utils/general";
 import {
@@ -32,9 +31,7 @@ export function AgentMCPActionsPage() {
   const router = useAppRouter();
   const { agentId } = usePathParams();
 
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const { agentConfiguration: agent, isAgentConfigurationLoading } =
     useAgentConfiguration({
@@ -58,13 +55,10 @@ export function AgentMCPActionsPage() {
 
   // Redirect if feature flag is not enabled.
   useEffect(() => {
-    if (
-      !isFeatureFlagsLoading &&
-      !featureFlags.includes("labs_mcp_actions_dashboard")
-    ) {
+    if (!featureFlags.includes("labs_mcp_actions_dashboard")) {
       void router.replace(`/w/${owner.sId}/labs`);
     }
-  }, [featureFlags, isFeatureFlagsLoading, owner.sId, router]);
+  }, [featureFlags, owner.sId, router]);
 
   // Redirect if agent not found.
   useEffect(() => {
@@ -111,7 +105,6 @@ export function AgentMCPActionsPage() {
   };
 
   const isPageLoading =
-    isFeatureFlagsLoading ||
     !featureFlags.includes("labs_mcp_actions_dashboard") ||
     isAgentConfigurationLoading ||
     !agent;
