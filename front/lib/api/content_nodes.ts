@@ -37,6 +37,15 @@ export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
   INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
 ] as readonly string[];
 
+// Table-like mime types that are NOT remote databases (Snowflake/BigQuery).
+export const NON_REMOTE_DATABASE_TABLE_MIME_TYPES = [
+  INTERNAL_MIME_TYPES.NOTION.DATABASE,
+  INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+  INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
+  INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET,
+  INTERNAL_MIME_TYPES.GENERIC.TABLE,
+] as readonly string[];
+
 export const UNTITLED_TITLE = "Untitled Document";
 
 export function getContentNodeInternalIdFromTableId(
