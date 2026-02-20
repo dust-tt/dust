@@ -8,7 +8,6 @@
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import {
   CopilotSuggestionCard,
-  SuggestionCardNotFound,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/CopilotSuggestionCard";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
@@ -91,7 +90,8 @@ export function getCopilotSuggestionPlugin() {
       if (isSuggestionsValidating || !hasAttemptedRefetch(sId)) {
         return <SuggestionCardSkeleton kind={kind} />;
       }
-      return <SuggestionCardNotFound />;
+      // Don't show anything for suggestions that no longer exist (outdated/deleted)
+      return null;
     }
 
     return <CopilotSuggestionCard agentSuggestion={suggestion} />;

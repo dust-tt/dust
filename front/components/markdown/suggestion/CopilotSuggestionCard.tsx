@@ -32,8 +32,6 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
-  ContentMessage,
-  ExclamationCircleIcon,
   EyeIcon,
   FolderIcon,
   LoadingBlock,
@@ -604,22 +602,5 @@ export function SuggestionCardSkeleton({ kind }: SuggestionCardSkeletonProps) {
       state="accepted"
       description={<LoadingBlock className="h-14 w-full" />}
     />
-  );
-}
-
-export function SuggestionCardNotFound() {
-  return (
-    <div className="mb-2 inline-block w-full max-w-md align-top">
-      <ContentMessage
-        title="Suggestion not found"
-        icon={ExclamationCircleIcon}
-        variant="warning"
-        size="sm"
-      >
-        <span className="text-sm">
-          This suggestion is outdated or has been deleted.
-        </span>
-      </ContentMessage>
-    </div>
   );
 }
