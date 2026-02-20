@@ -377,54 +377,41 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     conversation: ConversationWithoutContentType
   ) {
     const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
 
-    const feedbackForMessages = await MessageModel.findAll({
+    const feedbacks = await AgentMessageFeedbackModel.findAll({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    if (feedbacks.length === 0) {
+      return [];
+    }
+
+    const agentMessageIds = feedbacks.map((f) => f.agentMessageId);
+    const messages = await MessageModel.findAll({
+      where: {
         conversationId: conversation.id,
-        agentMessageId: {
-          [Op.ne]: null,
-        },
+        workspaceId: workspace.id,
+        agentMessageId: { [Op.in]: agentMessageIds },
       },
       attributes: ["id", "sId", "agentMessageId"],
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          attributes: ["id"],
-          include: [
-            {
-              model: AgentMessageFeedbackResource.model,
-              as: "feedbacks",
-              where: {
-                userId: user.id,
-              },
-            },
-          ],
-        },
-      ],
     });
-    const feedbacks = feedbackForMessages
-      .filter(
-        (
-          message
-        ): message is MessageModel & {
-          agentMessage: { feedbacks: AgentMessageFeedbackModel[] };
-        } =>
-          !!message.agentMessage?.feedbacks &&
-          message.agentMessage.feedbacks.length > 0
-      )
-      .map((message) => {
-        const feedback = message.agentMessage?.feedbacks?.[0];
-        return new AgentMessageFeedbackResource(
-          AgentMessageFeedbackModel,
-          feedback.get(),
-          {
-            message,
-          }
-        );
-      });
-    return feedbacks;
+
+    const messageByAgentMessageId = new Map(
+      messages.map((m) => [m.agentMessageId, m])
+    );
+
+    return feedbacks
+      .filter((f) => messageByAgentMessageId.has(f.agentMessageId))
+      .map(
+        (f) =>
+          new this(this.model, f.get(), {
+            message: messageByAgentMessageId.get(f.agentMessageId),
+          })
+      );
   }
 
   static async getFeedbackWithConversationContext({
