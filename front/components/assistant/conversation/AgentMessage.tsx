@@ -51,7 +51,10 @@ import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import {
+  canShowAgentConversationActions,
+  isGlobalAgentId,
+} from "@app/types/assistant/assistant";
 import type {
   RichAgentMention,
   RichMention,
@@ -714,7 +717,9 @@ export function AgentMessage({
     [agentMessage.configuration, handleSubmit, sendNotification]
   );
 
-  const canMention = agentConfiguration.canRead;
+  const canMention =
+    agentConfiguration.canRead &&
+    canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
 
   const renderName = useCallback(
