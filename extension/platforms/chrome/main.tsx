@@ -21,6 +21,7 @@ import {
   PlatformProvider,
   usePlatform,
 } from "@extension/shared/context/PlatformContext";
+import { ExtensionFetcherProvider } from "@extension/shared/lib/FetcherProvider";
 import { AuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
 import { compare } from "compare-versions";
@@ -112,9 +113,11 @@ const App = () => {
     <PlatformProvider platformService={platformService}>
       <PortProvider>
         <AuthProvider>
-          <Notification.Area>
-            <ChromeExtensionWrapper />
-          </Notification.Area>
+          <ExtensionFetcherProvider>
+            <Notification.Area>
+              <ChromeExtensionWrapper />
+            </Notification.Area>
+          </ExtensionFetcherProvider>
         </AuthProvider>
       </PortProvider>
     </PlatformProvider>
