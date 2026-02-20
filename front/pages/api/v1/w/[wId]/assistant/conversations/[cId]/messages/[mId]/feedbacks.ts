@@ -3,7 +3,7 @@ import {
   deleteMessageFeedback,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
-import { withPublicAPIAuthenticationForConversation } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -306,4 +306,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthenticationForConversation(handler);
+export default withPublicAPIAuthentication(handler);

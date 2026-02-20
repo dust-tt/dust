@@ -1,7 +1,7 @@
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessage } from "@app/lib/api/assistant/conversation";
-import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -101,4 +101,4 @@ async function handler(
   });
 }
 
-export default withSessionAuthenticationForWorkspaceAndConversation(handler);
+export default withSessionAuthenticationForWorkspace(handler);

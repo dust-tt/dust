@@ -24,7 +24,6 @@ import type {
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isString } from "@app/types/shared/utils/general";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import { TokenExpiredError } from "jsonwebtoken";
@@ -78,15 +77,23 @@ function getConversationKillSwitchError(): APIErrorWithStatusCode {
   };
 }
 
-function getConversationIdFromRequest(req: NextApiRequest): string | null {
-  return isString(req.query.cId) ? req.query.cId : null;
+const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
+
+function getAssistantConversationIdFromRequest(
+  req: NextApiRequest
+): string | null {
+  if (!req.url?.includes(ASSISTANT_CONVERSATION_ROUTE_FRAGMENT)) {
+    return null;
+  }
+
+  return typeof req.query.cId === "string" ? req.query.cId : null;
 }
 
 function getConversationKillSwitchErrorForRequest(
   req: NextApiRequest,
   killSwitched: unknown
 ): APIErrorWithStatusCode | null {
-  const conversationId = getConversationIdFromRequest(req);
+  const conversationId = getAssistantConversationIdFromRequest(req);
   if (!conversationId) {
     return null;
   }
@@ -292,6 +299,14 @@ export function withSessionAuthenticationForWorkspace<T>(
       if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
         return apiError(req, res, getWorkspaceKillSwitchError());
       }
+      const conversationKillSwitchError =
+        getConversationKillSwitchErrorForRequest(
+          req,
+          owner.metadata?.killSwitched
+        );
+      if (conversationKillSwitchError) {
+        return apiError(req, res, conversationKillSwitchError);
+      }
 
       const user = auth.user();
       if (!user) {
@@ -448,6 +463,14 @@ export function withPublicAPIAuthentication<T>(
           ) {
             return apiError(req, res, getWorkspaceKillSwitchError());
           }
+          const conversationKillSwitchError =
+            getConversationKillSwitchErrorForRequest(
+              req,
+              auth.workspace()?.metadata?.killSwitched
+            );
+          if (conversationKillSwitchError) {
+            return apiError(req, res, conversationKillSwitchError);
+          }
 
           return await handler(req, res, auth, null);
         } catch (error) {
@@ -507,6 +530,14 @@ export function withPublicAPIAuthentication<T>(
       if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
         return apiError(req, res, getWorkspaceKillSwitchError());
       }
+      const conversationKillSwitchError =
+        getConversationKillSwitchErrorForRequest(
+          req,
+          owner.metadata?.killSwitched
+        );
+      if (conversationKillSwitchError) {
+        return apiError(req, res, conversationKillSwitchError);
+      }
 
       // Authenticator created from a key has the builder role if the key is associated with
       // the workspace. System keys can bypass this when allowSystemKeyBypassBuilderCheck is set.
@@ -557,67 +588,6 @@ export function withPublicAPIAuthentication<T>(
       return handler(req, res, workspaceAuth, null);
     },
     isStreaming
-  );
-}
-
-export function withSessionAuthenticationForWorkspaceAndConversation<T>(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    auth: Authenticator,
-    session: SessionWithUser | null
-  ) => Promise<void> | void,
-  opts: {
-    isStreaming?: boolean;
-    doesNotRequireCanUseProduct?: boolean;
-    allowMissingWorkspace?: boolean;
-  } = {}
-) {
-  return withSessionAuthenticationForWorkspace(
-    async (req, res, auth, session) => {
-      const conversationKillSwitchError =
-        getConversationKillSwitchErrorForRequest(
-          req,
-          auth.workspace()?.metadata?.killSwitched
-        );
-      if (conversationKillSwitchError) {
-        return apiError(req, res, conversationKillSwitchError);
-      }
-
-      return handler(req, res, auth, session);
-    },
-    opts
-  );
-}
-
-export function withPublicAPIAuthenticationForConversation<T>(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    auth: Authenticator,
-    // Null is passed for compatibility with withResourceFetchingFromRoute which uses
-    // the 4th parameter to determine legacy endpoint support (null = API route).
-    _sessionOrKeyAuth: null
-  ) => Promise<void> | void,
-  opts: {
-    isStreaming?: boolean;
-    allowSystemKeyBypassBuilderCheck?: boolean;
-  } = {}
-) {
-  return withPublicAPIAuthentication(
-    async (req, res, auth, sessionOrKeyAuth) => {
-      const conversationKillSwitchError =
-        getConversationKillSwitchErrorForRequest(
-          req,
-          auth.workspace()?.metadata?.killSwitched
-        );
-      if (conversationKillSwitchError) {
-        return apiError(req, res, conversationKillSwitchError);
-      }
-
-      return handler(req, res, auth, sessionOrKeyAuth);
-    },
-    opts
   );
 }
 

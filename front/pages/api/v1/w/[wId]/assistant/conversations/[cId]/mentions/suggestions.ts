@@ -1,5 +1,5 @@
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
-import { withPublicAPIAuthenticationForConversation } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -151,4 +151,4 @@ async function handler(
   return res.status(200).json({ suggestions });
 }
 
-export default withPublicAPIAuthenticationForConversation(handler);
+export default withPublicAPIAuthentication(handler);

@@ -10,7 +10,7 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
-import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -232,4 +232,4 @@ const publishMessageUpdate = async (
   });
 };
 
-export default withSessionAuthenticationForWorkspaceAndConversation(handler);
+export default withSessionAuthenticationForWorkspace(handler);

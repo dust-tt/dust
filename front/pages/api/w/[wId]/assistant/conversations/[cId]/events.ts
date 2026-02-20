@@ -3,7 +3,7 @@
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
-import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -130,6 +130,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspaceAndConversation(handler, {
+export default withSessionAuthenticationForWorkspace(handler, {
   isStreaming: true,
 });

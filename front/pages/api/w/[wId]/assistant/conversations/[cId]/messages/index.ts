@@ -4,7 +4,7 @@ import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
-import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -239,4 +239,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspaceAndConversation(handler);
+export default withSessionAuthenticationForWorkspace(handler);

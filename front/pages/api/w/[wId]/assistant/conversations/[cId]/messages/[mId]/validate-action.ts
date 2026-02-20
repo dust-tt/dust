@@ -1,5 +1,5 @@
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
-import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -114,4 +114,4 @@ async function handler(
   res.status(200).json({ success: true });
 }
 
-export default withSessionAuthenticationForWorkspaceAndConversation(handler);
+export default withSessionAuthenticationForWorkspace(handler);

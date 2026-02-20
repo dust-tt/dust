@@ -9,7 +9,7 @@ import {
   isUserMessageContextOverflowing,
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
-import { withPublicAPIAuthenticationForConversation } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
@@ -274,4 +274,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthenticationForConversation(handler);
+export default withPublicAPIAuthentication(handler);

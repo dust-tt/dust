@@ -1,5 +1,5 @@
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -59,4 +59,4 @@ async function handler(
   res.status(200).json({ blockedActions });
 }
 
-export default withSessionAuthenticationForWorkspaceAndConversation(handler);
+export default withSessionAuthenticationForWorkspace(handler);

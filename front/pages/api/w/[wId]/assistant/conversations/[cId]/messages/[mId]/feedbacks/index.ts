@@ -4,7 +4,7 @@ import {
   deleteMessageFeedback,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
-import { withSessionAuthenticationForWorkspaceAndConversation } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -153,4 +153,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspaceAndConversation(handler);
+export default withSessionAuthenticationForWorkspace(handler);
