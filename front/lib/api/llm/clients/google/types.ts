@@ -50,7 +50,7 @@ const PRE_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
   },
 };
 const POST_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
-  ReasoningEffort,
+  Exclude<ReasoningEffort, "medium">,
   ThinkingConfig
 > = {
   // None thinking level not supported by Gemini 3 models
@@ -60,10 +60,6 @@ const POST_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
   },
   light: {
     thinkingLevel: ThinkingLevel.LOW,
-    includeThoughts: true,
-  },
-  medium: {
-    thinkingLevel: ThinkingLevel.MEDIUM,
     includeThoughts: true,
   },
   high: {
@@ -129,7 +125,14 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
       // Not required but strongly recommended by Google for Gemini 3
       temperature: 1,
     },
-    thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
+    thinkingConfig: {
+      ...POST_GEMINI_3_THINKING_CONFIG_MAPPING,
+      // ThinkingLevel.MEDIUM doesn't exist, fall back to LOW
+      medium: {
+        thinkingLevel: ThinkingLevel.LOW,
+        includeThoughts: true,
+      },
+    },
   },
 };
 
