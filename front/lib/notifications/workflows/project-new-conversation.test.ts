@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import type { ProjectNewConversationPayloadType } from "@app/lib/notifications/triggers/project-new-conversation";
+import { filterMembersByNotifyCondition } from "@app/lib/notifications/triggers/project-new-conversation";
 import {
   getMessagePreviewForSlack,
   getMessagePreviewText,
@@ -16,8 +17,111 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import {
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION,
+} from "@app/types/notification_preferences";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, test } from "vitest";
+
+describe("filterMembersByNotifyCondition", () => {
+  let workspace: WorkspaceType;
+  let user1: UserResource;
+  let user2: UserResource;
+  let user3: UserResource;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    user1 = await UserFactory.basic();
+    user2 = await UserFactory.basic();
+    user3 = await UserFactory.basic();
+
+    await MembershipFactory.associate(workspace, user1, { role: "user" });
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    await MembershipFactory.associate(workspace, user3, { role: "user" });
+  });
+
+  test("should include user with 'all_projects' preference", async () => {
+    await user1.setMetadata(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition,
+      "all_projects"
+    );
+
+    const members = [user1];
+    const result = await filterMembersByNotifyCondition(members);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].sId).toBe(user1.sId);
+  });
+
+  test("should exclude user with 'never' preference", async () => {
+    await user1.setMetadata(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition,
+      "never"
+    );
+
+    const members = [user1];
+    const result = await filterMembersByNotifyCondition(members);
+
+    expect(result).toHaveLength(0);
+  });
+
+  test("should default to 'all_projects' when no preference stored", async () => {
+    // No preference set for user1
+    const members = [user1];
+    const result = await filterMembersByNotifyCondition(members);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].sId).toBe(user1.sId);
+  });
+
+  test("should handle mixed preferences across multiple users", async () => {
+    // Set different preferences
+    await user1.setMetadata(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition,
+      "all_projects"
+    );
+    await user2.setMetadata(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition,
+      "never"
+    );
+    // user3 has no preference (should default to "all_projects")
+
+    const members = [user1, user2, user3];
+    const result = await filterMembersByNotifyCondition(members);
+
+    expect(result).toHaveLength(2);
+    expect(result.map((p) => p.sId).sort()).toEqual(
+      [user1.sId, user3.sId].sort()
+    );
+  });
+
+  test("should handle invalid preference values by defaulting to 'all_projects'", async () => {
+    await user1.setMetadata(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition,
+      "invalid_preference" // Invalid value
+    );
+
+    const members = [user1];
+    const result = await filterMembersByNotifyCondition(members);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].sId).toBe(user1.sId);
+  });
+
+  test("should handle empty members array", async () => {
+    const members: UserResource[] = [];
+    const result = await filterMembersByNotifyCondition(members);
+
+    expect(result).toHaveLength(0);
+  });
+
+  test("should verify default condition is 'all_projects'", () => {
+    expect(DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION).toBe(
+      "all_projects"
+    );
+  });
+});
 
 describe("project-new-conversation workflow functions", () => {
   const mockConversationDetails: ProjectDetailsType = {
