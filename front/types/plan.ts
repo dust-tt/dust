@@ -44,6 +44,7 @@ export type LimitsType = {
     maxUsers: number;
     isSSOAllowed: boolean;
     isSCIMAllowed: boolean;
+    isAuditLogsAllowed: boolean;
   };
   vaults: {
     maxVaults: number;

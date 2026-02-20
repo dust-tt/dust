@@ -37,6 +37,7 @@ export type EditingPlanType = {
   isWebCrawlerAllowed: boolean;
   isSSOAllowed: boolean;
   isSCIMAllowed: boolean;
+  isAuditLogsAllowed: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -62,6 +63,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
     isSSOAllowed: plan.limits.users.isSSOAllowed,
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
+    isAuditLogsAllowed: plan.limits.users.isAuditLogsAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     isDeepDiveAllowed: plan.limits.assistant.isDeepDiveAllowed,
@@ -122,6 +124,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
         isSSOAllowed: editingPlan.isSSOAllowed,
         isSCIMAllowed: editingPlan.isSCIMAllowed,
+        isAuditLogsAllowed: editingPlan.isAuditLogsAllowed,
       },
       vaults: {
         maxVaults: parseMaybeNumber(editingPlan.maxVaults),
@@ -149,6 +152,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isWebCrawlerAllowed: false,
   isSSOAllowed: false,
   isSCIMAllowed: false,
+  isAuditLogsAllowed: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -302,6 +306,11 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "SCIM",
+  },
+  isAuditLogsAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Audit",
   },
   maxVaults: {
     type: "number",
