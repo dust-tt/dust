@@ -78,6 +78,15 @@ import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
   getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
+import type {
+  AvailableSkill,
+  AvailableTool,
+} from "@app/lib/api/assistant/workspace_capabilities";
+import {
+  getAvailableModelsForWorkspace,
+  listAvailableSkills,
+  listAvailableTools,
+} from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -93,6 +102,7 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -306,6 +316,18 @@ export interface CopilotUserMetadata {
   favoritePlatforms: FavoritePlatform[];
 }
 
+export interface CopilotContext {
+  mcpServerViews: {
+    context: MCPServerViewResource;
+  } | null;
+  userMetadata: CopilotUserMetadata | null;
+  workspaceCapabilities: {
+    models: ModelConfigurationType[];
+    skills: AvailableSkill[];
+    tools: AvailableTool[];
+  } | null;
+}
+
 async function fetchCopilotUserMetadata(
   auth: Authenticator
 ): Promise<CopilotUserMetadata | null> {
@@ -345,8 +367,7 @@ function getGlobalAgent({
   preFetchedDataSources,
   globalAgentSettings,
   mcpServerViews,
-  copilotMCPServerViews,
-  copilotUserMetadata,
+  copilotContext,
   hasDeepDive,
 }: {
   auth: Authenticator;
@@ -354,10 +375,7 @@ function getGlobalAgent({
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   globalAgentSettings: GlobalAgentSettingsModel[];
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-  copilotMCPServerViews: {
-    context: MCPServerViewResource;
-  } | null;
-  copilotUserMetadata: CopilotUserMetadata | null;
+  copilotContext: CopilotContext | null;
   hasDeepDive: boolean;
 }): AgentConfigurationType | null {
   const settings =
@@ -755,10 +773,7 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(auth, {
-        copilotMCPServerViews,
-        copilotUserMetadata,
-      });
+      agentConfiguration = _getCopilotGlobalAgent(auth, copilotContext);
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
@@ -910,25 +925,26 @@ export async function getGlobalAgents(
     );
   }
 
-  let copilotMCPServerViews: {
-    context: MCPServerViewResource;
-  } | null = null;
-  let copilotUserMetadata: CopilotUserMetadata | null = null;
+  let copilotContext: CopilotContext | null = null;
   if (
     variant === "full" &&
     agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT)
   ) {
-    const [context, userMetadata] = await Promise.all([
+    const [context, userMetadata, models, skills, tools] = await Promise.all([
       MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
         AGENT_COPILOT_CONTEXT_TOOL_NAME
       ),
       fetchCopilotUserMetadata(auth),
+      getAvailableModelsForWorkspace(auth),
+      listAvailableSkills(auth),
+      listAvailableTools(auth),
     ]);
-    if (context) {
-      copilotMCPServerViews = { context };
-    }
-    copilotUserMetadata = userMetadata;
+    copilotContext = {
+      mcpServerViews: context ? { context } : null,
+      userMetadata,
+      workspaceCapabilities: { models, skills, tools },
+    };
   }
 
   // For now we retrieve them all
@@ -940,8 +956,7 @@ export async function getGlobalAgents(
       preFetchedDataSources,
       globalAgentSettings,
       mcpServerViews,
-      copilotMCPServerViews,
-      copilotUserMetadata,
+      copilotContext,
       hasDeepDive: !isDeepDiveDisabled,
     })
   );

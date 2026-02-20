@@ -1,10 +1,5 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
@@ -20,10 +15,7 @@ import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overvie
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import config from "@app/lib/api/config";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -44,9 +36,7 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isAgentMention } from "@app/types/assistant/mentions";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
@@ -144,24 +134,6 @@ function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
   }
 }
 
-/**
- * Get the list of available models for the workspace.
- * This filters USED_MODEL_CONFIGS and CUSTOM_MODEL_CONFIGS based on feature flags,
- * plan, and workspace provider whitelisting.
- */
-async function getAvailableModelsForWorkspace(
-  auth: Authenticator
-): Promise<ModelConfigurationType[]> {
-  const owner = auth.getNonNullableWorkspace();
-  const plan = auth.plan();
-  const featureFlags = await getFeatureFlags(owner);
-
-  const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  return allUsedModels.filter((m) =>
-    isModelAvailableAndWhitelisted(m, featureFlags, plan, owner)
-  );
-}
-
 function canAddPendingSuggestions({
   kind,
   newPendingCount,
@@ -218,76 +190,11 @@ async function markDuplicateSuggestionsAsOutdated(
   return remaining;
 }
 
-interface AvailableTool {
-  sId: string;
-  name: string;
-  description: string;
-  serverType: MCPServerViewType["serverType"];
-  availability: MCPServerViewType["server"]["availability"];
-}
-
-/**
- * Lists available tools (MCP server views) that can be added to agents.
- * Returns tools from all spaces the user is a member of, filtered to only
- * include tools with "manual" or "auto" availability.
- */
-async function listAvailableTools(
-  auth: Authenticator
-): Promise<AvailableTool[]> {
-  // Get all spaces the user is member of.
-  const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-
-  // Fetch all MCP server views from those spaces.
-  const mcpServerViews = await MCPServerViewResource.listBySpaces(
-    auth,
-    userSpaces
-  );
-
-  return mcpServerViews
-    .map((v) => v.toJSON())
-    .filter((v): v is MCPServerViewType => v !== null)
-    .filter(
-      (v) =>
-        v.server.availability === "manual" || v.server.availability === "auto"
-    )
-    .map((mcpServerView) => ({
-      sId: mcpServerView.sId,
-      name: getMcpServerViewDisplayName(mcpServerView),
-      description: getMcpServerViewDescription(mcpServerView),
-      serverType: mcpServerView.serverType,
-      availability: mcpServerView.server.availability,
-    }));
-}
-
-interface AvailableSkill {
-  sId: string;
-  name: string;
-  userFacingDescription: string | null;
-  agentFacingDescription: string | null;
-  icon: string | null;
-  toolSIds: string[];
-}
-
-/**
- * Lists available skills that can be added to agents.
- * Returns active skills from the workspace that the user has access to.
- */
-async function listAvailableSkills(
-  auth: Authenticator
-): Promise<AvailableSkill[]> {
-  const skills = await SkillResource.listByWorkspace(auth, {
-    status: "active",
-  });
-
-  return skills.map((skill) => ({
-    sId: skill.sId,
-    name: skill.name,
-    userFacingDescription: skill.userFacingDescription,
-    agentFacingDescription: skill.agentFacingDescription,
-    icon: skill.icon,
-    toolSIds: skill.mcpServerViews.map((v) => v.sId),
-  }));
-}
+import {
+  getAvailableModelsForWorkspace,
+  listAvailableSkills,
+  listAvailableTools,
+} from "@app/lib/api/assistant/workspace_capabilities";
 
 /**
  * Lists all knowledge data source views across all spaces the user has access to.
@@ -844,7 +751,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
-            `Use get_available_tools to see the list of available tools.`,
+            `Check <workspace_context> for valid tool IDs.`,
           { tracked: false }
         )
       );
@@ -1087,7 +994,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
-            `Use get_available_skills to see the list of available skills.`,
+            `Check <workspace_context> for valid skill IDs.`,
           { tracked: false }
         )
       );
@@ -1179,7 +1086,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     if (!availableModelIds.includes(modelId)) {
       return new Err(
         new MCPError(
-          `Invalid model ID: ${modelId}. Use get_available_models to see the list of available models.`,
+          `Invalid model ID: ${modelId}. Check <workspace_context> for valid model IDs.`,
           { tracked: false }
         )
       );

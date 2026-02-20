@@ -1,21 +1,21 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import type { CopilotUserMetadata } from "@app/lib/api/assistant/global_agents/global_agents";
+import type { CopilotContext } from "@app/lib/api/assistant/global_agents/global_agents";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import type {
+  AvailableSkill,
+  AvailableTool,
+} from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
   GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
 } from "@app/types/assistant/assistant";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
-
-interface CopilotMCPServerViews {
-  context: MCPServerViewResource;
-}
 
 const COPILOT_INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
@@ -353,21 +353,20 @@ Use tools strategically to construct high-quality suggestions. Here is when each
 </read_state_tools>
 
 <discovery_tools>
-Call these before creating your first suggestions in a session. ALWAYS call these tools in parallel:
-- \`get_available_skills\`: Bias towards utilizing skills where possible. Returns skills accessible to the user.
-- \`get_available_tools\`: Returns available MCP servers/tools. If not obviously required, use the "Discover Tools" skill.
+Call these when needed:
 - \`get_available_knowledge\`: Lists knowledge sources organized by spaces, with connected data sources, folders, and websites.
-- \`get_available_models\`: Model suggestions should be conservative - only suggest deviations from default when obvious.
 - \`search_agent_templates\`: Search published templates by job type or free-text query. Returns full details including copilotInstructions.
 - \`search_knowledge\`: When the agent's use case mentions specific data needs (e.g., "closed opportunities", "customer tickets", "product documentation"). It performs semantic search across all workspace data sources and returns matching sources with hit counts.
 </discovery_tools>
 
 <suggestion_tools>
-These are the tools for Step 3 of the workflow. Each improvement you identified should become a suggestion card.
+These are the tools for Step 4 of your core workflow. Each improvement you identified should become a suggestion card.
+
+Available workspace capabilities (models, skills, tools) are provided in <workspace_context>.
 
 - \`suggest_prompt_edits\`: Use for any instruction/prompt changes. Prioritize small batches of multiple edits in one call, instead of a big individual edit.
-- \`suggest_tools\`: Use when adding or removing tools from the agent configuration. ALWAYS verify tools exist via \`get_available_tools\` before suggesting.
-- \`suggest_skills\`: Use when adding or removing skills. ALWAYS verify the skill exists via \`get_available_skills\` before suggesting.
+- \`suggest_tools\`: Use when adding or removing tools. Verify IDs against <workspace_context>.
+- \`suggest_skills\`: Use when adding or removing skills. Verify IDs against <workspace_context>.
 - \`suggest_knowledge\`: Use to suggest adding or removing knowledge sources. Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
 - \`suggest_model\`: Use sparingly. Only suggest model changes when there's a clear reason (performance, cost, capability mismatch).
 - \`update_suggestions_state\`: Use to mark suggestions as "rejected" or "outdated" when they become invalid or superseded.
@@ -378,6 +377,7 @@ Do NOT propose changes to the name or description fields of the agent, as they a
 <required>
 - ALWAYS call the \`get_agent_config\` tool for EVERY agent message.
 </required>
+
 </tool_usage_guidelines>`,
 
   suggestionCreation: `<suggestion_creation_guidelines>
@@ -391,7 +391,7 @@ When creating suggestions:
    - Only valid, resolvable suggestions appear as cards. Outputting suggestion directives you did not receive from a \`suggest_*\` tool call wastes your response with empty directives that add no value.
 
 2. The custom markdown component will:
-   - Render the suggestion chip in the conversation viewer
+   - Render the suggestion card in the conversation viewer
    - For instruction suggestions, render an inline diff
    - Expose a call to action to apply the suggestion directly from the conversation
    - Outdated suggestions are shown grayed out with a clock icon
@@ -401,6 +401,7 @@ When creating suggestions:
 4. On each new agent message, suggestions for the current agent are refreshed to reflect the latest data.
 
 5. NEVER output the \`:agent_suggestion[]{sId=... kind=...}\` directive for suggestions that are approved or rejected.
+
 6. NEVER fabricate suggestion directives yourself. Only include directives returned verbatim from completed \`suggest_*\` tool calls. Do NOT create placeholder or temporary directives with made-up sIds.
 
 </suggestion_creation_guidelines>`,
@@ -457,6 +458,29 @@ You CANNOT configure triggers or schedules for the agent. When users ask about s
 Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
 </triggers_and_schedules>`,
 
+  workspaceContext: ({
+    models,
+    skills,
+    tools,
+  }: {
+    models: string;
+    skills: string;
+    tools: string;
+  }) => `<workspace_context>
+The following capabilities are available in this workspace and can be suggested when building agents:
+
+${models}
+
+${skills}
+
+${tools}
+
+When suggesting capabilities:
+- ALWAYS verify tool/skill IDs exist in the lists above before suggesting
+- Model suggestions should be conservative - only suggest when there's clear need
+- These are workspace resources you suggest adding to the agent being built
+</workspace_context>`,
+
   userContext: (jobTypeLabel: string, platforms: string) => `<user_context>
 The user building this agent has the following profile:
 - Job function: ${jobTypeLabel}
@@ -466,8 +490,48 @@ Consider their role and platform preferences when suggesting tools and improveme
 </user_context>`,
 };
 
+function formatAvailableModels(models: ModelConfigurationType[]): string {
+  const byProvider = new Map<string, ModelConfigurationType[]>();
+  for (const m of models) {
+    const list = byProvider.get(m.providerId) ?? [];
+    list.push(m);
+    byProvider.set(m.providerId, list);
+  }
+
+  const sections = Array.from(byProvider.entries()).map(
+    ([provider, models]) => {
+      const modelLines = models
+        .map(
+          (m) =>
+            `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : ""}`
+        )
+        .join("\n");
+      return `### ${provider}\n${modelLines}`;
+    }
+  );
+
+  return `## AVAILABLE MODELS\n${models.length} models available.\n\n${sections.join("\n\n")}`;
+}
+
+function formatAvailableSkills(skills: AvailableSkill[]): string {
+  const skillLines = skills
+    .map(
+      (s) =>
+        `- **${s.name}** (ID: ${s.sId}): ${s.agentFacingDescription ?? "No description"}`
+    )
+    .join("\n");
+  return `## AVAILABLE SKILLS\n${skills.length} skills available.\n\n${skillLines}`;
+}
+
+function formatAvailableTools(tools: AvailableTool[]): string {
+  const toolLines = tools
+    .map((t) => `- **${t.name}** (ID: ${t.sId}): ${t.description}`)
+    .join("\n");
+  return `## AVAILABLE TOOLS\n${tools.length} tools available.\n\n${toolLines}`;
+}
+
 function buildCopilotInstructions(
-  userMetadata: CopilotUserMetadata | null
+  copilotContext: CopilotContext | null
 ): string {
   const parts: string[] = [
     COPILOT_INSTRUCTION_SECTIONS.primary,
@@ -483,7 +547,12 @@ function buildCopilotInstructions(
     COPILOT_INSTRUCTION_SECTIONS.dustConcepts,
   ];
 
-  // Add user context if available
+  if (!copilotContext) {
+    return parts.join("\n\n");
+  }
+
+  const { userMetadata, workspaceCapabilities } = copilotContext;
+
   if (
     userMetadata &&
     (userMetadata.jobType || userMetadata.favoritePlatforms.length > 0)
@@ -499,25 +568,30 @@ function buildCopilotInstructions(
     );
   }
 
+  if (workspaceCapabilities) {
+    const { models, skills, tools } = workspaceCapabilities;
+    parts.push(
+      COPILOT_INSTRUCTION_SECTIONS.workspaceContext({
+        models: formatAvailableModels(models),
+        skills: formatAvailableSkills(skills),
+        tools: formatAvailableTools(tools),
+      })
+    );
+  }
+
   return parts.join("\n\n");
 }
 
 export function _getCopilotGlobalAgent(
   auth: Authenticator,
-  {
-    copilotMCPServerViews,
-    copilotUserMetadata,
-  }: {
-    copilotMCPServerViews: CopilotMCPServerViews | null;
-    copilotUserMetadata: CopilotUserMetadata | null;
-  }
+  copilotContext: CopilotContext | null
 ): AgentConfigurationType {
   const owner = auth.getNonNullableWorkspace();
 
-  const actions = copilotMCPServerViews
+  const actions = copilotContext?.mcpServerViews?.context
     ? [
         buildServerSideMCPServerConfiguration({
-          mcpServerView: copilotMCPServerViews.context,
+          mcpServerView: copilotContext.mcpServerViews.context,
         }),
       ]
     : [];
@@ -533,7 +607,8 @@ export function _getCopilotGlobalAgent(
     : dummyModelConfiguration;
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
-  const instructions = buildCopilotInstructions(copilotUserMetadata);
+
+  const instructions = buildCopilotInstructions(copilotContext);
 
   return {
     id: -1,
