@@ -10,7 +10,6 @@ import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/dat
 import {
   FULL_WORKSPACE_KILL_SWITCH_VALUE,
   KILL_SWITCH_METADATA_KEY,
-  updateWorkspaceConversationKillSwitch,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -407,10 +406,13 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Conversation not found: cId='${conversationId}'`);
       }
 
-      const updateResult = await updateWorkspaceConversationKillSwitch(w, {
-        conversationId,
-        operation: "block",
-      });
+      const updateResult = await WorkspaceResource.updateConversationKillSwitch(
+        w,
+        {
+          conversationId,
+          operation: "block",
+        }
+      );
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
       }
@@ -453,10 +455,13 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!isString(conversationId)) {
         throw new Error("Invalid --cId argument: must be a string");
       }
-      const updateResult = await updateWorkspaceConversationKillSwitch(w, {
-        conversationId,
-        operation: "unblock",
-      });
+      const updateResult = await WorkspaceResource.updateConversationKillSwitch(
+        w,
+        {
+          conversationId,
+          operation: "unblock",
+        }
+      );
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
       }
