@@ -1247,66 +1247,73 @@ export function GroupConversationView({
                         );
                       })}
                     </div>
-                    <CardGrid>
-                      {[
-                        {
-                          id: "kickoff",
-                          label: "Get your project running",
-                          icon: MagicIcon,
-                          variant: "highlight" as const,
-                          description:
-                            "Answer a few questions and an agent will fill in your project details.",
-                          onClick: () => {},
-                          isPulsing: true,
-                        },
-                        {
-                          id: "add-knowledge",
-                          label: "Add knowledge",
-                          variant: "primary" as const,
-                          icon: BookOpenIcon,
-                          description:
-                            "Add files, links, or data sources relevant to this project.",
-                          onClick: () => setActiveTab("knowledge"),
-                          isPulsing: false,
-                        },
-                        {
-                          id: "invite-members",
-                          label: "Manage members",
-                          variant: "primary" as const,
-                          icon: UserGroupIcon,
-                          description:
-                            "Invite people to this project as members or editors.",
-                          onClick: () => onInviteMembers?.(),
-                          isPulsing: false,
-                        },
-                      ].map((suggestion) => (
-                        <Card
-                          key={suggestion.id}
-                          variant={suggestion.variant}
-                          size="lg"
-                          onClick={suggestion.onClick}
-                          className="s-cursor-pointer"
-                        >
-                          <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
-                            <div
-                              className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
-                                suggestion.variant === "highlight"
-                                  ? "s-text-highlight-600 dark:s-text-highlight-400"
-                                  : "s-text-foreground dark:s-text-foreground-night"
-                              }`}
-                            >
-                              <Icon visual={suggestion.icon} size="sm" />
-                              <div className="s-w-full">{suggestion.label}</div>
-                            </div>
-                            {suggestion.description && (
-                              <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                {suggestion.description}
+                    <div className="s-flex s-flex-col s-gap-3 s-py-8">
+                      <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                        Do more with your project!
+                      </h3>
+                      <CardGrid>
+                        {[
+                          {
+                            id: "kickoff",
+                            label: "Get your project running",
+                            icon: MagicIcon,
+                            variant: "highlight" as const,
+                            description:
+                              "Answer a few questions and an agent will fill in your project details.",
+                            onClick: () => {},
+                            isPulsing: true,
+                          },
+                          {
+                            id: "add-knowledge",
+                            label: "Add knowledge",
+                            variant: "primary" as const,
+                            icon: BookOpenIcon,
+                            description:
+                              "Add files, links, or data sources relevant to this project.",
+                            onClick: () => setActiveTab("knowledge"),
+                            isPulsing: false,
+                          },
+                          {
+                            id: "invite-members",
+                            label: "Manage members",
+                            variant: "primary" as const,
+                            icon: UserGroupIcon,
+                            description:
+                              "Invite people to this project as members or editors.",
+                            onClick: () => onInviteMembers?.(),
+                            isPulsing: false,
+                          },
+                        ].map((suggestion) => (
+                          <Card
+                            key={suggestion.id}
+                            variant={suggestion.variant}
+                            size="lg"
+                            onClick={suggestion.onClick}
+                            className="s-cursor-pointer"
+                          >
+                            <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
+                              <div
+                                className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
+                                  suggestion.variant === "highlight"
+                                    ? "s-text-highlight-600 dark:s-text-highlight-400"
+                                    : "s-text-foreground dark:s-text-foreground-night"
+                                }`}
+                              >
+                                <Icon visual={suggestion.icon} size="sm" />
+                                <div className="s-w-full">
+                                  {suggestion.label}
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
-                    </CardGrid>
+                              {suggestion.description && (
+                                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                  {suggestion.description}
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                      </CardGrid>
+                    </div>
                   </>
                 )}
               </div>
