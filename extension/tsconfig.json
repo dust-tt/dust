@@ -25,6 +25,6 @@
       "@app/*": ["../front/*"]
     }
   },
-  "include": ["./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
+  "include": ["./global.d.ts", "./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
   "exclude": ["node_modules", "build"]
 }
