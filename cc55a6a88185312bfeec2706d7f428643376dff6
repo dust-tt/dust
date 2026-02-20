@@ -1,0 +1,25 @@
+front/lib/api/audit/workos_audit.ts
+  fa2921d7d7801773 7,9,11-12,37,43-47,51-53,59-65,67-81,83-89,94-95,101-109
+front/lib/resources/membership_resource.ts
+  fa2921d7d7801773 12-13,858,963
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "cc55a6a88185312bfeec2706d7f428643376dff6",
+  "prompts": {
+    "fa2921d7d7801773": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7d8f99f-a2e0-4795-887c-77f6ebafb87d",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 205,
+      "overriden_lines": 0
+    }
+  }
+}
