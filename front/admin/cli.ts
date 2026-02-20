@@ -46,6 +46,25 @@ import fs from "fs/promises";
 import parseArgs from "minimist";
 import path from "path";
 
+function isConversationKillSwitchValue(
+  killSwitched: unknown
+): killSwitched is { conversationIds: string[] } {
+  if (typeof killSwitched !== "object" || killSwitched === null) {
+    return false;
+  }
+
+  if (!("conversationIds" in killSwitched)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(killSwitched.conversationIds) &&
+    killSwitched.conversationIds.every(
+      (conversationId) => typeof conversationId === "string"
+    )
+  );
+}
+
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
@@ -379,6 +398,129 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
+    case "block": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const conversationRes = await getConversation(auth, args.cId as string);
+      if (conversationRes.isErr()) {
+        throw new Error(conversationRes.error.message);
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const currentKillSwitch = w.metadata?.[KILL_SWITCH_METADATA_KEY];
+      if (currentKillSwitch === FULL_WORKSPACE_KILL_SWITCH_VALUE) {
+        throw new Error(
+          "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks."
+        );
+      }
+      if (
+        currentKillSwitch !== undefined &&
+        !isConversationKillSwitchValue(currentKillSwitch)
+      ) {
+        throw new Error(
+          `Invalid workspace kill switch metadata: ${JSON.stringify(currentKillSwitch)}`
+        );
+      }
+
+      const conversationIds = currentKillSwitch?.conversationIds ?? [];
+      const conversationId = args.cId as string;
+      const wasAlreadyBlocked = conversationIds.includes(conversationId);
+      const updatedConversationIds = wasAlreadyBlocked
+        ? conversationIds
+        : [...conversationIds, conversationId];
+      const metadata = {
+        ...(w.metadata ?? {}),
+        [KILL_SWITCH_METADATA_KEY]: {
+          conversationIds: updatedConversationIds,
+        },
+      };
+
+      const updateResult = await WorkspaceResource.updateMetadata(
+        w.id,
+        metadata
+      );
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+
+      logger.info(
+        {
+          wId: w.sId,
+          cId: conversationId,
+          wasAlreadyBlocked,
+        },
+        "Conversation blocked"
+      );
+      return;
+    }
+
+    case "unblock": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const currentKillSwitch = w.metadata?.[KILL_SWITCH_METADATA_KEY];
+      if (currentKillSwitch === FULL_WORKSPACE_KILL_SWITCH_VALUE) {
+        throw new Error(
+          "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks."
+        );
+      }
+      if (
+        currentKillSwitch !== undefined &&
+        !isConversationKillSwitchValue(currentKillSwitch)
+      ) {
+        throw new Error(
+          `Invalid workspace kill switch metadata: ${JSON.stringify(currentKillSwitch)}`
+        );
+      }
+
+      const conversationId = args.cId as string;
+      const conversationIds = currentKillSwitch?.conversationIds ?? [];
+      const updatedConversationIds = conversationIds.filter(
+        (cId) => cId !== conversationId
+      );
+      const metadata = { ...(w.metadata ?? {}) };
+      if (updatedConversationIds.length === 0) {
+        delete metadata[KILL_SWITCH_METADATA_KEY];
+      } else {
+        metadata[KILL_SWITCH_METADATA_KEY] = {
+          conversationIds: updatedConversationIds,
+        };
+      }
+
+      const updateResult = await WorkspaceResource.updateMetadata(
+        w.id,
+        metadata
+      );
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+
+      logger.info(
+        { wId: w.sId, cId: conversationId },
+        "Conversation unblocked"
+      );
+      return;
+    }
+
     case "render-for-model": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -466,6 +608,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
 
       return;
     }
+
+    default:
+      console.log(`Unknown conversation command: ${command}`);
+      console.log("Possible values: `block`, `unblock`, `render-for-model`");
   }
 };
 
