@@ -34,7 +34,7 @@ const PRE_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
   // so we default to the minimum supported by all models.
   none: {
     thinkingBudget: 512,
-    includeThoughts: true,
+    includeThoughts: false,
   },
   light: {
     thinkingBudget: 1024,
@@ -56,7 +56,7 @@ const POST_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
   // None thinking level not supported by Gemini 3 models
   none: {
     thinkingBudget: 128,
-    includeThoughts: true,
+    includeThoughts: false,
   },
   light: {
     thinkingLevel: ThinkingLevel.LOW,
@@ -97,29 +97,34 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
       none: { thinkingBudget: 128, includeThoughts: true },
     },
   },
+  // Keeping previous config for gemmini 3 to stay consistent with existing
+  [GEMINI_3_FLASH_MODEL_ID]: {
+    overwrites: {
+      // Not required but strongly recommended by Google for Gemini 3
+      temperature: 1,
+    },
+    thinkingConfig: {
+         ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
+      none: {
+        includeThoughts: false,
+        thinkingBudget: 128,
+      },
+    },
+  },
   [GEMINI_3_PRO_MODEL_ID]: {
     overwrites: {
       // Not required but strongly recommended by Google for Gemini 3
       temperature: 1,
     },
     thinkingConfig: {
-      ...POST_GEMINI_3_THINKING_CONFIG_MAPPING,
-      // Gemini 3 does not support medium. This requires a bigger refactor
-      // to remove medium level in the agent builder.
-      medium: {
-        includeThoughts: true,
-        thinkingBudget: 2048,
+      ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
+      none: {
+        includeThoughts: false,
+        thinkingBudget: 128,
       },
     },
   },
   [GEMINI_3_1_PRO_MODEL_ID]: {
-    overwrites: {
-      // Not required but strongly recommended by Google for Gemini 3
-      temperature: 1,
-    },
-    thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
-  },
-  [GEMINI_3_FLASH_MODEL_ID]: {
     overwrites: {
       // Not required but strongly recommended by Google for Gemini 3
       temperature: 1,
