@@ -84,16 +84,10 @@ export const CopilotPanelProvider = ({
   });
 
   const startConversation = useCallback(async () => {
-    if (hasStartedRef.current) {
+    if (hasStartedRef.current || !targetAgentConfigurationId) {
       return;
     }
 
-    // For existing agents (not new), require a target agent configuration ID.
-    // For new agents in shrink-wrap flow (with conversationId), allow null targetAgentConfigurationId
-    // since the agent is being created and doesn't exist yet.
-    if (!isNewAgent && !targetAgentConfigurationId) {
-      return;
-    }
     // Wait for the client-side MCP server to be registered before starting
     // the conversation. Without this, the copilot won't have access to
     // agent_builder_copilot_client tools like get_agent_config.
@@ -140,7 +134,6 @@ export const CopilotPanelProvider = ({
     clientSideMCPServerIds,
     createConversationWithMessage,
     getFirstMessage,
-    isNewAgent,
     sendNotification,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
