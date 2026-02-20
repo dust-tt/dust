@@ -471,7 +471,6 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       );
       return;
     }
-
     case "render-for-model": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
