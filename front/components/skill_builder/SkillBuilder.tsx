@@ -15,11 +15,11 @@ import {
 } from "@app/components/skill_builder/skillFormData";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
@@ -131,8 +131,12 @@ export default function SkillBuilder({
     setIsSaving(false);
   };
 
-  const handleCancel = async () => {
-    await appLayoutBack(owner, router);
+  const handleCancel = () => {
+    if (window.history.state?.idx > 0) {
+      router.back();
+    } else {
+      void router.replace(getConversationRoute(owner.sId));
+    }
   };
 
   const handleSave = () => {

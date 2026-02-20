@@ -1,7 +1,6 @@
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import {
   useSetContentWidth,
   useSetHideSidebar,
@@ -13,7 +12,10 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import {
@@ -111,12 +113,16 @@ export function CreateAgentPage() {
     () => (
       <AppLayoutSimpleCloseTitle
         title="Create an Agent"
-        onClose={async () => {
-          await appLayoutBack(owner, router);
+        onClose={() => {
+          if (window.history.state?.idx > 0) {
+            router.back();
+          } else {
+            void router.replace(getConversationRoute(owner.sId));
+          }
         }}
       />
     ),
-    [owner, router]
+    [router]
   );
 
   useSetContentWidth("centered");

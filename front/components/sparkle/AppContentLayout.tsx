@@ -5,45 +5,10 @@ import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import type { AppRouter } from "@app/lib/platform";
 import { Head } from "@app/lib/platform";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import React from "react";
-
-// This function is used to navigate back to the previous page (eg modal like page close) and
-// fallback to the landing if we linked directly to that modal.
-export const appLayoutBack = async (
-  owner: WorkspaceType,
-  router: AppRouter
-) => {
-  // TODO(2024-02-08 flav) Remove once internal router is in better shape. Opening a new tab/window
-  // counts the default page as an entry in the history stack, leading to a history length of 2.
-  // Directly opening a link without the "new tab" page results in a history length of 1.
-  if (window.history.length < 3) {
-    await router.push(getConversationRoute(owner.sId));
-  } else {
-    // Set up beforePopState to intercept the back navigation and clean query params.
-    router.beforePopState(({ as }) => {
-      // Parse the destination URL that router.back() would navigate to.
-      const urlObj = new URL(as, window.location.origin);
-      // Remove agentDetails query parameter from the destination URL.
-      urlObj.searchParams.delete("agentDetails");
-
-      // Reconstruct the cleaned URL.
-      const cleanedUrl = urlObj.pathname + urlObj.search;
-
-      // Navigate to the cleaned URL instead of the original back destination.
-      void router.push(cleanedUrl);
-      return false; // Prevent the default back navigation to allow our custom navigation.
-    });
-
-    // Trigger the back navigation, which will be intercepted by beforePopState.
-    router.back();
-  }
-};
 
 interface AppContentLayoutProps {
   children: React.ReactNode;
