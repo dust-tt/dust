@@ -17,7 +17,6 @@ const config: KnipConfig = {
         "**/vite.config.js",
         "**/esbuild.worker.ts",
         "components/home/content/Product/BlogSection.tsx", // Temporarily disabled due to broken blog.dust.tt images
-        "lib/api/sandbox/client.ts", // Sandbox client not wired up yet
       ],
       project: ["**/*.{js,jsx,ts,tsx}"],
       ignoreDependencies: [
@@ -28,7 +27,6 @@ const config: KnipConfig = {
         "posthog-node",
         "@dust-tt/client",
         "lefthook", // used as pre-commit hook
-        "@northflank/js-client", // sandbox client not wired up yet
       ],
       ignoreBinaries: ["sleep"],
       paths: {
