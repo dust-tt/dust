@@ -168,6 +168,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Front MCP tool for managing support conversations, messages, and customer interactions.",
     stage: "rolling_out",
   },
+  gemini_3_1_pro_feature: {
+    description: "Access to Gemini 3.1 Pro model in the agent builder",
+    stage: "on_demand",
+  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",

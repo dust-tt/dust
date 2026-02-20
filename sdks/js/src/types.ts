@@ -64,6 +64,7 @@ type KnownModelLLMId =
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
   | "gemini-3-pro-preview"
+  | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
@@ -689,6 +690,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "front_tool"
+  | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
