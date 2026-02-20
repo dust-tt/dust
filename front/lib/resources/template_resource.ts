@@ -172,6 +172,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       sId: this.sId,
       tags: this.tags,
       visibility: this.visibility,
+      copilotInstructions: this.copilotInstructions,
     };
   }
 

@@ -55,8 +55,10 @@ export function CreateAgentPage() {
   const { assistantTemplates } = useAssistantTemplates();
 
   const { filteredTemplates, availableTags } = useMemo(() => {
-    const validTemplates = assistantTemplates.filter((template) =>
-      isTemplateTagCodeArray(template.tags)
+    const validTemplates = assistantTemplates.filter(
+      (template) =>
+        isTemplateTagCodeArray(template.tags) &&
+        (!hasCopilot || template.copilotInstructions !== null)
     );
 
     const filtered = validTemplates.filter((template) => {
@@ -81,7 +83,7 @@ export function CreateAgentPage() {
     const tags = getUniqueTemplateTags(validTemplates);
 
     return { filteredTemplates: filtered, availableTags: tags };
-  }, [assistantTemplates, selectedTags, searchTerm]);
+  }, [assistantTemplates, selectedTags, searchTerm, hasCopilot]);
 
   const openTemplateModal = async (templateId: string) => {
     setSelectedTemplateId(templateId);

@@ -1892,9 +1892,11 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   search_agent_templates: async ({ jobType, query }, { auth }) => {
-    const allTemplates = await TemplateResource.listAll({
-      visibility: "published",
-    });
+    const allTemplates = (
+      await TemplateResource.listAll({
+        visibility: "published",
+      })
+    ).filter((t) => t.copilotInstructions !== null);
 
     const matchingTags =
       jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];

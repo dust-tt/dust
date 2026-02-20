@@ -80,7 +80,7 @@ function PanelHeader({
                   icon={BarChartIcon}
                   onClick={() => onTabChange("insights")}
                 />
-                {hasTemplate && (
+                {hasTemplate && !hasCopilot && (
                   <TabsTrigger
                     value="template"
                     label="Template"
@@ -143,7 +143,7 @@ function CollapsedTabs({
         tooltip="Insights"
         onClick={() => onTabSelect("insights")}
       />
-      {hasTemplate && (
+      {hasTemplate && !hasCopilot && (
         <Button
           icon={MagicIcon}
           variant="ghost"
