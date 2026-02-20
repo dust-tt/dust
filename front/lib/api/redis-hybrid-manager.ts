@@ -14,6 +14,8 @@ type EventCallback = (event: EventPayload | "close") => void;
 // Clients automatically paginate if more history is needed.
 const HISTORY_FETCH_COUNT = 50;
 
+const MAX_PUBLISH_ATTEMPTS = 5;
+
 export type EventPayload = {
   id: string;
   message: {
@@ -188,12 +190,15 @@ class RedisHybridManager {
     const streamName = this.getStreamName(channelName);
     const pubSubChannelName = this.getPubSubChannelName(channelName);
 
-    const startTime = Date.now();
+    let lastError: unknown | undefined = undefined;
 
-    try {
+    // Try to publish the event up to MAX_PUBLISH_ATTEMPTS times to avoid losing events in case of a temporary Redis error.
+    for (let i = 0; i < MAX_PUBLISH_ATTEMPTS; ++i) {
       // Generate a unique event ID in redis expected format with a padding static counter to avoid collisions
       // Redis expected format is: <timestamp>-<number> and eventId should be unique AND incrementing.
       // The padding counter is used to ensure that the eventId is unique and incrementing when the timestamp is the same.
+      // We recompute the eventId for each attempt to avoid race conditions with other clients publishing events.
+      const startTime = Date.now();
       const eventId = `${startTime}-${RedisHybridManager.paddingCounter}`;
 
       // Increment the padding counter and wrap around to avoid overflow
@@ -205,33 +210,48 @@ class RedisHybridManager {
         message: { payload: data },
       };
 
-      // Publish to stream for history, set expiration on stream and publish to pub/sub in a single pipeline to avoid 3 round trips to Redis (3 => 1).
-      // Using Promise.all is the idiomatic way to do this in node-redis https://redis.io/docs/latest/develop/clients/nodejs/transpipe/#execute-a-pipeline
-      await Promise.all([
-        streamAndPublishClient.xAdd(streamName, eventId, {
-          payload: data,
-        }),
-        streamAndPublishClient.expire(streamName, ttl),
-        streamAndPublishClient.publish(
-          pubSubChannelName,
-          // Mimick the format of the event from the stream so that the subscriber can use the same logic
-          JSON.stringify(eventPayload)
-        ),
-      ]);
+      try {
+        // Publish to stream for history, set expiration on stream and publish to pub/sub in a single pipeline to avoid 3 round trips to Redis (3 => 1).
+        // Using Promise.all is the idiomatic way to do this in node-redis https://redis.io/docs/latest/develop/clients/nodejs/transpipe/#execute-a-pipeline
+        await Promise.all([
+          streamAndPublishClient.xAdd(streamName, eventId, {
+            payload: data,
+          }),
+          streamAndPublishClient.expire(streamName, ttl),
+          streamAndPublishClient.publish(
+            pubSubChannelName,
+            // Mimick the format of the event from the stream so that the subscriber can use the same logic
+            JSON.stringify(eventPayload)
+          ),
+        ]);
 
-      return eventId;
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          pubSubChannelName,
-          streamName,
-          origin,
-        },
-        "Error publishing to Redis"
-      );
-      throw error;
+        return eventId;
+      } catch (error) {
+        lastError = error;
+        logger.warn(
+          {
+            error,
+            pubSubChannelName,
+            streamName,
+            origin,
+            attempt: i + 1,
+            maxAttempts: MAX_PUBLISH_ATTEMPTS,
+          },
+          "Error publishing to Redis, retrying..."
+        );
+      }
     }
+
+    logger.error(
+      {
+        error: lastError,
+        pubSubChannelName,
+        streamName,
+        origin,
+      },
+      "Error publishing to Redis, giving up after all attempts."
+    );
+    throw lastError;
   }
 
   /**
