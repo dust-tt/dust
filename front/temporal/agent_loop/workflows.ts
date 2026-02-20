@@ -244,11 +244,13 @@ export async function agentLoopWorkflow({
       if (cancelRequested) {
         return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
       }
-      await finalizeErroredAgentLoopActivity(
-        authType,
-        agentLoopArgs,
-        workflowError
-      );
+      // Error objects don't survive JSON serialization across the workflow→activity
+      // boundary (Error.message is not enumerable), so we extract the relevant
+      // fields into a plain object before passing to the activity.
+      await finalizeErroredAgentLoopActivity(authType, agentLoopArgs, {
+        message: workflowError.message,
+        name: workflowError.name,
+      });
       throw err;
     });
   }
