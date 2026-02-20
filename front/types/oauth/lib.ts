@@ -502,7 +502,7 @@ export function isValidUrl(s: unknown): s is string {
 export function isValidTokenEndpointAuthMethod(s: unknown): s is string {
   return (
     typeof s === "string" &&
-    (s === "client_secret_post" || s === "client_secret_basic")
+    (s === "client_secret_post" || s === "client_secret_basic" || s === "none")
   );
 }
 

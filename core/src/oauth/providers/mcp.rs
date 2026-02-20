@@ -113,6 +113,11 @@ impl Provider for MCPConnectionProvider {
             Some("client_secret_basic")
         ) && client_secret.is_some();
 
+        let use_none_auth = matches!(
+            metadata.token_endpoint_auth_method.as_deref(),
+            Some("none")
+        );
+
         let mut form_data = vec![
             ("grant_type", grant_type),
             ("code", code),
@@ -123,9 +128,11 @@ impl Provider for MCPConnectionProvider {
         if !use_basic_auth {
             form_data.push(("client_id", &client_id));
 
-            // Only include client_secret if it's provided
-            if let Some(ref secret) = client_secret {
-                form_data.push(("client_secret", secret));
+            // Never send client_secret when auth method is "none" (PKCE public clients).
+            if !use_none_auth {
+                if let Some(ref secret) = client_secret {
+                    form_data.push(("client_secret", secret));
+                }
             }
         }
 
@@ -213,6 +220,11 @@ impl Provider for MCPConnectionProvider {
             Some("client_secret_basic")
         ) && client_secret.is_some();
 
+        let use_none_auth = matches!(
+            metadata.token_endpoint_auth_method.as_deref(),
+            Some("none")
+        );
+
         let mut form_data = vec![
             ("grant_type", grant_type),
             ("refresh_token", &refresh_token),
@@ -221,9 +233,11 @@ impl Provider for MCPConnectionProvider {
         if !use_basic_auth {
             form_data.push(("client_id", &client_id));
 
-            // Only include client_secret if it's provided
-            if let Some(ref secret) = client_secret {
-                form_data.push(("client_secret", secret));
+            // Never send client_secret when auth method is "none" (PKCE public clients).
+            if !use_none_auth {
+                if let Some(ref secret) = client_secret {
+                    form_data.push(("client_secret", secret));
+                }
             }
         }
 

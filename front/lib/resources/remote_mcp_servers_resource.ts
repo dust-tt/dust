@@ -457,7 +457,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         ? "client_secret_post"
         : supportedTokenAuthMethods?.includes("client_secret_basic")
           ? "client_secret_basic"
-          : undefined;
+          : supportedTokenAuthMethods?.includes("none")
+            ? "none"
+            : undefined;
 
       const connectionMetadata: MCPOAuthConnectionMetadataType = {
         authorization_endpoint: metadata.authorization_endpoint,

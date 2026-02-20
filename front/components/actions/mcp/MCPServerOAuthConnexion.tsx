@@ -55,6 +55,10 @@ const TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS = [
     value: "client_secret_basic",
     label: "Basic auth header",
   },
+  {
+    value: "none",
+    label: "None (PKCE only)",
+  },
 ] as const;
 
 // Error key used for credential validation errors.
