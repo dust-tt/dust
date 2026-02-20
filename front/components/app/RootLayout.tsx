@@ -1,5 +1,4 @@
 import { ConfirmPopupArea } from "@app/components/Confirm";
-import { NavigationLoadingProvider } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
 import { LinkWrapper } from "@app/lib/platform";
@@ -18,11 +17,9 @@ export default function RootLayout({
   return (
     <SparkleContext.Provider value={{ components: { link: LinkWrapper } }}>
       <SidebarProvider>
-        <NavigationLoadingProvider>
-          <ConfirmPopupArea>
-            <Notification.Area>{children}</Notification.Area>
-          </ConfirmPopupArea>
-        </NavigationLoadingProvider>
+        <ConfirmPopupArea>
+          <Notification.Area>{children}</Notification.Area>
+        </ConfirmPopupArea>
       </SidebarProvider>
     </SparkleContext.Provider>
   );

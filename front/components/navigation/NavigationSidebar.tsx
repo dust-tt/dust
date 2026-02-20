@@ -1,12 +1,8 @@
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import type {
-  SidebarNavigation,
-  TabAppLayoutNavigation,
-} from "@app/components/navigation/config";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
-import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
@@ -70,19 +66,6 @@ export const NavigationSidebar = React.forwardRef<
   });
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
-  const { showNavigationLoader } = useNavigationLoading();
-
-  const handleTabClick = (tab: TabAppLayoutNavigation) => {
-    if (tab.href && !tab.isCurrent(activePath)) {
-      showNavigationLoader();
-    }
-  };
-
-  const handleMenuClick = (href?: string) => {
-    if (href && href !== router.asPath) {
-      showNavigationLoader();
-    }
-  };
 
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
   const navs = useMemo(
@@ -127,7 +110,6 @@ export const NavigationSidebar = React.forwardRef<
                       tooltip={tab.hideLabel ? tab.label : undefined}
                       icon={tab.icon}
                       href={tab.href}
-                      onClick={() => handleTabClick(tab)}
                     />
                   </div>
                 ))}
@@ -169,7 +151,6 @@ export const NavigationSidebar = React.forwardRef<
                                 icon={menu.icon}
                                 href={menu.href}
                                 target={menu.target}
-                                onClick={() => handleMenuClick(menu.href)}
                               />
                             </React.Fragment>
                           ))}

@@ -3,7 +3,6 @@ import { Navigation } from "@app/components/navigation/Navigation";
 import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
 import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoadingOverlay";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { AppRouter } from "@app/lib/platform";
@@ -105,7 +104,6 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           owner={owner}
           subscription={subscription}
         />
-        <NavigationLoadingOverlay />
         {/* Temporary measure to preserve title existence on smaller screens.
          * Page has no title, prepend empty AppLayoutTitle. */}
         {loaded && !hasTitleBar && (
