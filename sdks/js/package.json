@@ -16,7 +16,10 @@
   "types": "dist/index.d.ts",
   "module": "dist/client.esm.js",
   "typings": "dist/index.d.ts",
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "npm run build:types && npm run build:bundle",
     "build:types": "tsc",
@@ -28,13 +31,10 @@
     "watch": "npm-watch",
     "tsc": "tsc"
   },
-  "engines": {
-    "node": "20.19.2"
-  },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
     "@types/event-source-polyfill": "^1.0.5",
-    "@types/node": "^20.19.2",
+    "@types/node": "22.19.11",
     "@types/uuid": "^9.0.7",
     "esbuild": "^0.24.2",
     "npm-watch": "^0.11.0",
@@ -56,7 +56,9 @@
   },
   "watch": {
     "build": {
-      "patterns": ["src"],
+      "patterns": [
+        "src"
+      ],
       "extensions": "ts",
       "ignore": ""
     }
