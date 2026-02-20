@@ -145,7 +145,8 @@ async function handler(
           credentials: credentialsFromProviders(providers),
           secrets,
           storeBlocksResults,
-        }
+        },
+        auth.user()?.sId
       );
 
       if (dustRun.isErr()) {

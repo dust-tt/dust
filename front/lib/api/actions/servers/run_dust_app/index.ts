@@ -23,7 +23,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
+import {
+  getHeaderFromGroupIds,
+  getHeaderFromRole,
+  getHeaderFromUserId,
+} from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -138,6 +142,7 @@ export default async function createServer(
           auth
         );
 
+        const user = auth.user();
         const requestedGroupIds = auth.groupIds();
 
         const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -147,7 +152,9 @@ export default async function createServer(
           {
             ...prodCredentials,
             extraHeaders: {
-              ...getHeaderFromGroupIds(requestedGroupIds),
+              ...(user
+                ? getHeaderFromUserId(user.sId)
+                : getHeaderFromGroupIds(requestedGroupIds)),
               ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
             },
           },

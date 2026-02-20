@@ -12,7 +12,11 @@ import type {
   APIErrorWithStatusCode,
   WithAPIErrorResponse,
 } from "@app/types/error";
-import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
+import {
+  getGroupIdsFromHeaders,
+  getRoleFromHeaders,
+  getUserIdFromHeaders,
+} from "@app/types/groups";
 import { isString } from "@app/types/shared/utils/general";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -414,7 +418,8 @@ export function withPublicAPIAuthentication<T>(
         keyRes.value,
         wId,
         getGroupIdsFromHeaders(req.headers),
-        getRoleFromHeaders(req.headers)
+        getRoleFromHeaders(req.headers),
+        getUserIdFromHeaders(req.headers)
       );
       let { workspaceAuth } = keyAndWorkspaceAuth;
 

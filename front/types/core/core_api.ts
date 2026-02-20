@@ -516,7 +516,8 @@ export class CoreAPI {
       secrets,
       isSystemKey,
       storeBlocksResults = true,
-    }: CoreAPICreateRunParams
+    }: CoreAPICreateRunParams,
+    userId?: string
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}/runs`,
@@ -525,9 +526,11 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
+          // TODO(x-dust-group-ids): remove once all receivers use X-Dust-User-Id.
           "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
+          ...(userId ? { "X-Dust-User-Id": userId } : {}),
         },
         body: JSON.stringify({
           run_type: runType,
@@ -562,7 +565,8 @@ export class CoreAPI {
       secrets,
       isSystemKey,
       storeBlocksResults = true,
-    }: CoreAPICreateRunParams
+    }: CoreAPICreateRunParams,
+    userId?: string
   ): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
@@ -576,9 +580,11 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
+          // TODO(x-dust-group-ids): remove once all receivers use X-Dust-User-Id.
           "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
+          ...(userId ? { "X-Dust-User-Id": userId } : {}),
         },
         body: JSON.stringify({
           run_type: runType,

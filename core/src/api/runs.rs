@@ -279,6 +279,16 @@ pub async fn runs_create(
         None => (),
     };
 
+    match headers.get("X-Dust-User-Id") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_USER_ID".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     // If the run is made by a system key, it's a system run
     match headers.get("X-Dust-IsSystemRun") {
         Some(v) => match v.to_str() {
@@ -356,6 +366,16 @@ pub async fn runs_create_stream(
         Some(v) => match v.to_str() {
             Ok(v) => {
                 credentials.insert("DUST_GROUP_IDS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
+    match headers.get("X-Dust-User-Id") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_USER_ID".to_string(), v.to_string());
             }
             _ => (),
         },
