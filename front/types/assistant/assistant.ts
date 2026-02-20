@@ -1,7 +1,7 @@
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -85,7 +85,7 @@ export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
   }
   return getLargeNonAnthropicWhitelistedModel(owner);
 }
