@@ -77,7 +77,7 @@ export function useDraftAgent() {
       setDraftAgent(newDraft);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, user, sendNotification, getValues]);
+    }, [owner, user, sendNotification, getValues, fetcherWithBody]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
