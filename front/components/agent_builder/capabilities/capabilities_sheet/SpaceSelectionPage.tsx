@@ -203,21 +203,13 @@ export function SpaceSelectionPageContent({
           <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
             Spaces
           </div>
-          <DataTable
-            data={spacesTableData}
-            columns={columns}
-            className="[&_thead]:hidden [&_td]:pl-0"
-          />
+          <DataTable data={spacesTableData} columns={columns} />
           {isProjectsEnabled && (
             <>
               <div className="heading-sm bg-muted-background p-2 dark:bg-muted-background-night/50 text-foreground dark:text-foreground-night">
                 Projects
               </div>
-              <DataTable
-                data={projectsTableData}
-                columns={columns}
-                className="[&_thead]:hidden [&_td]:pl-0"
-              />
+              <DataTable data={projectsTableData} columns={columns} />
             </>
           )}
         </div>
