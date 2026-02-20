@@ -49,7 +49,7 @@ export async function finalizeCancelledAgentLoopActivity(
 export async function finalizeErroredAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  error: Error
+  error: { message: string; name: string }
 ): Promise<void> {
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
