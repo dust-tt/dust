@@ -1,3 +1,7 @@
+import {
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
@@ -1030,6 +1034,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       "Membership role updated"
     );
+    if (author !== "no-author") {
+      void emitAuditLogEvent({
+        workspace,
+        action: "membership.role_updated",
+        actor: { type: "user", id: author.sId, name: author.fullName ?? undefined },
+        targets: [
+          buildWorkspaceTarget(workspace),
+          { type: "user", id: user.sId },
+        ],
+        context: { location: "internal" },
+        metadata: { previousRole, newRole },
+      });
+    }
 
     // Update user search index across all workspaces
     const workflowResult = await launchIndexUserSearchWorkflow({
@@ -1122,6 +1139,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       "Membership origin updated"
     );
+    if (author !== "no-author") {
+      void emitAuditLogEvent({
+        workspace,
+        action: "membership.origin_updated",
+        actor: { type: "user", id: author.sId, name: author.fullName ?? undefined },
+        targets: [
+          buildWorkspaceTarget(workspace),
+          { type: "user", id: user.sId },
+        ],
+        context: { location: "internal" },
+        metadata: { previousOrigin, newOrigin },
+      });
+    }
 
     return { previousOrigin, newOrigin };
   }

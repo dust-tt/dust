@@ -1,4 +1,5 @@
 import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import { getClientIpFromHeaders } from "@app/lib/api/workos/webhook_helpers";
 import {
   Authenticator,
   getAPIKey,
@@ -20,6 +21,17 @@ import { Err } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+function setClientIpOnAuth(
+  auth: Authenticator,
+  req: NextApiRequest
+): void {
+  const ip =
+    getClientIpFromHeaders(req.headers) ?? req.socket?.remoteAddress;
+  if (ip) {
+    auth.setClientIp(ip);
+  }
+}
 
 function getMaintenanceError(
   maintenance: string | number | true | object
@@ -306,6 +318,8 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
+      setClientIpOnAuth(auth, req);
+
       return handler(req, res, auth, session);
     },
     opts.isStreaming
@@ -417,6 +431,8 @@ export function withPublicAPIAuthentication<T>(
 
         req.addResourceToLog?.(auth.getNonNullableUser());
 
+        setClientIpOnAuth(auth, req);
+
         return await handler(req, res, auth, null);
       }
 
@@ -487,6 +503,9 @@ export function withPublicAPIAuthentication<T>(
           monthlyCapMicroUsd: key.monthlyCapMicroUsd,
         });
       }
+
+      setClientIpOnAuth(workspaceAuth, req);
+
       return handler(req, res, workspaceAuth, null);
     },
     isStreaming
@@ -576,6 +595,8 @@ export async function getAuthForSharedEndpointWorkspaceMembersOnly(
   if (!auth.isUser()) {
     return null;
   }
+
+  setClientIpOnAuth(auth, req);
 
   return auth;
 }
