@@ -389,7 +389,7 @@ export function createProjectManagerTools(
       }, "Failed to get project information");
     },
 
-    search_unread: async (params) => {
+    list_unread: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,

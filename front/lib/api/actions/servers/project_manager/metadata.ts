@@ -109,9 +109,9 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
-  search_unread: {
+  list_unread: {
     description:
-      "Search for unread conversations in the project. Returns conversations that have been updated since the user last read them, " +
+      "List unread conversations in the project. Returns conversations that have been updated since the user last read them, " +
       "within an optional time window (defaults to 30 days).",
     schema: {
       daysBack: z

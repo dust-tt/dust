@@ -205,7 +205,7 @@ describe("getJITServers", () => {
       // The project search server should be present with proper configuration.
       expect(projectSearchServer).toBeDefined();
       expect(projectSearchServer?.description).toBe(
-        "Semantic search over the project context"
+        "Semantic search over the project context and conversations."
       );
       expect(projectSearchServer?.dataSources).toBeDefined();
       // The datasource configuration should include the project context datasource.
@@ -425,7 +425,7 @@ describe("getJITServers", () => {
 
       expect(searchServer).toBeDefined();
       expect(searchServer?.description).toBe(
-        "Semantic search over all files from the conversation"
+        "Access and include files from the conversation"
       );
       expect(searchServer?.dataSources).toBeDefined();
       // Note: datasources array may be empty if conversation datasource view is not set up,
@@ -475,7 +475,7 @@ describe("getJITServers", () => {
       expect(queryTablesServer).toBeUndefined();
     });
 
-    it("should not include search server when no searchable attachments", async () => {
+    it("should include conversation_files server when attachments exist but are not searchable", async () => {
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(workspace, user, {
         useCase: "conversation",
@@ -506,10 +506,61 @@ describe("getJITServers", () => {
         attachments,
       });
 
-      const searchServer = jitServers.find(
+      const conversationFilesServer = jitServers.find(
         (server) => server.name === DEFAULT_CONVERSATION_SEARCH_ACTION_NAME
       );
 
+      // conversation_files server is included whenever there are attachments.
+      expect(conversationFilesServer).toBeDefined();
+      expect(conversationFilesServer?.description).toBe(
+        "Access and include files from the conversation"
+      );
+    });
+
+    it("should not include search server when attachments are not searchable (search server is distinct from conversation_files)", async () => {
+      const user = auth.getNonNullableUser();
+      const file = await FileFactory.csv(workspace, user, {
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: conversation.sId,
+        },
+        status: "ready",
+      });
+
+      const attachments: ConversationAttachmentType[] = [
+        {
+          fileId: file.sId,
+          title: "test.csv",
+          contentType: "text/csv",
+          contentFragmentVersion: "latest",
+          snippet: "test snippet",
+          generatedTables: [file.sId],
+          isIncludable: true,
+          isSearchable: false,
+          isQueryable: true,
+          isInProjectContext: false,
+        },
+      ];
+
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments,
+      });
+
+      // Files server (list/include): present whenever there are attachments.
+      const filesServer = jitServers.find(
+        (server) =>
+          server.name === DEFAULT_CONVERSATION_SEARCH_ACTION_NAME &&
+          server.description ===
+            "Access and include files from the conversation"
+      );
+      expect(filesServer).toBeDefined();
+
+      // Search server (semantic search over conversation files): only when searchable attachments exist.
+      const searchServer = jitServers.find((server) =>
+        server.description?.startsWith("Semantic search over all files")
+      );
       expect(searchServer).toBeUndefined();
     });
   });

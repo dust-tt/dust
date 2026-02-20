@@ -76,7 +76,7 @@ export async function listAttachments(
             fileId: f.sId,
             contentType: f.contentType,
             title: f.fileName,
-            snippet: null,
+            snippet: f.snippet,
             isInProjectContext: true,
           })
         );

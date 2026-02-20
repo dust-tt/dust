@@ -6,12 +6,20 @@ import type {
   ConversationAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { getConversationDataSourceViews } from "@app/lib/api/assistant/jit/utils";
+import {
+  getConversationDataSourceViews,
+  getProjectContextDataSourceView,
+} from "@app/lib/api/assistant/jit/utils";
+import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import logger from "@app/logger/logger";
+import {
+  type ConversationWithoutContentType,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
 import assert from "assert";
 
 /**
@@ -175,12 +183,41 @@ export async function getConversationSearchServer(
     });
   }
 
+  const isPartOfProject = isProjectConversation(conversation);
+
+  if (isPartOfProject) {
+    const projectDatasourceView = await getProjectContextDataSourceView(
+      auth,
+      conversation
+    );
+
+    if (!projectDatasourceView) {
+      logger.warn(
+        { conversationId: conversation.sId },
+        "Project context datasource view not found for conversation."
+      );
+    } else {
+      dataSources.push({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dataSourceViewId: projectDatasourceView.sId,
+        filter: {
+          // Intentionaly only search the project context folder, not the entire project.
+          // The conversations from the project can be searched using the project search action.
+          parents: { in: [PROJECT_CONTEXT_FOLDER_ID], not: [] },
+          tags: null,
+        },
+      });
+    }
+  }
+
   return {
     id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
     name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-    description: "Semantic search over all files from the conversation",
+    description: isPartOfProject
+      ? `Semantic search over all files attached to the conversation and project context`
+      : "Semantic search over all files attached to the conversation",
     dataSources,
     tables: null,
     childAgentId: null,

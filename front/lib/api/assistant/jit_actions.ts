@@ -107,7 +107,6 @@ async function getConditionalJITServers(
 
   const conversationFilesServer = await getConversationFilesServer(
     auth,
-
     attachments
   );
   servers.push(conversationFilesServer);
