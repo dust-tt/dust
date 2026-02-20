@@ -14,6 +14,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -406,12 +407,6 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --cId argument");
       }
 
-      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-      const conversationRes = await getConversation(auth, args.cId as string);
-      if (conversationRes.isErr()) {
-        throw new Error(conversationRes.error.message);
-      }
-
       const w = await WorkspaceResource.fetchById(args.wId);
       if (!w) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
@@ -432,8 +427,17 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      const conversationIds = currentKillSwitch?.conversationIds ?? [];
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
       const conversationId = args.cId as string;
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversation) {
+        throw new Error(`Conversation not found: cId='${conversationId}'`);
+      }
+
+      const conversationIds = currentKillSwitch?.conversationIds ?? [];
       const wasAlreadyBlocked = conversationIds.includes(conversationId);
       const updatedConversationIds = wasAlreadyBlocked
         ? conversationIds
