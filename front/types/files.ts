@@ -608,6 +608,12 @@ export function resolveFileContentType(
     }
   }
 
+  // Strip MIME parameters (e.g. "audio/webm;codecs=opus" -> "audio/webm").
+  const semicolonIndex = browserContentType.indexOf(";");
+  if (semicolonIndex !== -1) {
+    return browserContentType.slice(0, semicolonIndex).trim();
+  }
+
   return browserContentType;
 }
 
