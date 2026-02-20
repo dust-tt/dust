@@ -410,12 +410,6 @@ export const FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
 export type WorkspaceConversationKillSwitchValue = {
   conversationIds: string[];
 };
-export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
-  "block",
-  "unblock",
-] as const;
-export type WorkspaceConversationKillSwitchOperation =
-  (typeof WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS)[number];
 export type WorkspaceKillSwitchValue =
   | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
