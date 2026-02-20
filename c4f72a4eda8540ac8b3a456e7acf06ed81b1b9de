@@ -1,0 +1,33 @@
+front/pages/api/w/[wId]/assistant/conversations/index.ts
+  fa2921d7d7801773 12,149
+front/lib/api/data_sources.ts
+  fa2921d7d7801773 12-13,228,230,1161,1163
+front/lib/api/poke/plugins/data_sources/bigquery_change_location.ts
+  fa2921d7d7801773 5,212
+front/lib/api/assistant/conversation.ts
+  fa2921d7d7801773 67,288,1630,1710
+front/lib/api/assistant/configuration/agent.ts
+  fa2921d7d7801773 17-18,1210,1212,1300,1302,1402,1404,1530,1532,1600
+front/lib/api/poke/plugins/data_sources/operations.ts
+  fa2921d7d7801773 2,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "c4f72a4eda8540ac8b3a456e7acf06ed81b1b9de",
+  "prompts": {
+    "fa2921d7d7801773": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7d8f99f-a2e0-4795-887c-77f6ebafb87d",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 122,
+      "overriden_lines": 0
+    }
+  }
+}
