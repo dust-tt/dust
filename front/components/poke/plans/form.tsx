@@ -37,6 +37,7 @@ export type EditingPlanType = {
   isSSOAllowed: boolean;
   isSCIMAllowed: boolean;
   isByok: boolean;
+  isAuditLogsAllowed: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -63,6 +64,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSSOAllowed: plan.limits.users.isSSOAllowed,
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     isByok: plan.isByok,
+    isAuditLogsAllowed: plan.limits.users.isAuditLogsAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     isDeepDiveAllowed: plan.limits.assistant.isDeepDiveAllowed,
@@ -123,6 +125,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
         isSSOAllowed: editingPlan.isSSOAllowed,
         isSCIMAllowed: editingPlan.isSCIMAllowed,
+        isAuditLogsAllowed: editingPlan.isAuditLogsAllowed,
       },
       vaults: {
         maxVaults: parseMaybeNumber(editingPlan.maxVaults),
@@ -152,6 +155,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSSOAllowed: false,
   isSCIMAllowed: false,
   isByok: false,
+  isAuditLogsAllowed: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -310,6 +314,12 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "BYOK",
+  },
+  isAuditLogsAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Audit",
+  },
   },
   maxVaults: {
     type: "number",
