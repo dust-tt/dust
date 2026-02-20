@@ -27,7 +27,7 @@ const config = {
     const baseUrl = getBaseUrlFromResolver();
     if (baseUrl) {
       // Derive viz URL from the resolver's base URL (e.g. https://eu.dust.tt -> https://eu.viz.dust.tt).
-      return baseUrl.replace("://", "://viz.");
+      return baseUrl.replace("dust.tt", "viz.dust.tt");
     }
 
     return process.env.NEXT_PUBLIC_VIZ_URL;
