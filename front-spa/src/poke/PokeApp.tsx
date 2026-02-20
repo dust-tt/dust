@@ -31,6 +31,8 @@ import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/Trigger
 import { WebhookSourceDetailsPage } from "@dust-tt/front/components/poke/pages/WebhookSourceDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
+import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import Custom404 from "@dust-tt/front/pages/404";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { PokePage } from "@spa/poke/layouts/PokePage";
@@ -130,11 +132,13 @@ const router = createBrowserRouter(
 export default function PokeApp() {
   return (
     <AppReadyProvider>
-      <RegionProvider>
-        <RootLayout>
-          <RouterProvider router={router} />
-        </RootLayout>
-      </RegionProvider>
+      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+        <RegionProvider>
+          <RootLayout>
+            <RouterProvider router={router} />
+          </RootLayout>
+        </RegionProvider>
+      </FetcherProvider>
     </AppReadyProvider>
   );
 }

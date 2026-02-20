@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentMessageSkillsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/skills";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -17,6 +17,7 @@ export function useAgentMessageSkills({
     disabled: boolean;
   };
 }) {
+  const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetAgentMessageSkillsResponseBody> = fetcher;
 
   const { data, error, mutate, isLoading } = useSWRWithDefaults(

@@ -1,4 +1,4 @@
-import { fetcherWithBody, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PostCheckBigQueryLocationsResponseBody } from "@app/pages/api/w/[wId]/credentials/check_bigquery_locations";
 import type { CheckBigQueryCredentials } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -11,6 +11,7 @@ export function useBigQueryLocations({
   owner: LightWorkspaceType;
   credentials?: CheckBigQueryCredentials | null;
 }) {
+  const { fetcherWithBody } = useFetcher();
   const url = `/api/w/${owner.sId}/credentials/check_bigquery_locations`;
   const fetchKey = useMemo(() => {
     return JSON.stringify({

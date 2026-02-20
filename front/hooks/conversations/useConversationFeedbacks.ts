@@ -1,5 +1,5 @@
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { Fetcher } from "swr";
 
 export function useConversationFeedbacks({
@@ -11,6 +11,7 @@ export function useConversationFeedbacks({
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
+  const { fetcher } = useFetcher();
   const conversationFeedbacksFetcher: Fetcher<{
     feedbacks: AgentMessageFeedbackType[];
   }> = fetcher;

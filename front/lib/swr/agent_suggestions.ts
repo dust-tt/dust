@@ -2,8 +2,8 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -30,6 +30,7 @@ export function useAgentSuggestions({
   limit?: number;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const suggestionsFetcher: Fetcher<GetSuggestionsResponseBody> = fetcher;
 
   const urlParams = new URLSearchParams();

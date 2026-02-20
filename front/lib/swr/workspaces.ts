@@ -4,7 +4,7 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
@@ -54,6 +54,7 @@ export function useWorkspace({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const workspaceFetcher: Fetcher<GetWorkspaceResponseBody> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
@@ -76,6 +77,7 @@ export function useWorkspaceSubscriptions({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
@@ -98,6 +100,7 @@ export function useWorkspaceAnalytics({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -127,6 +130,7 @@ export function useWorkspaceUsageMetrics({
   interval?: "day" | "week";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}`;
 
@@ -152,6 +156,7 @@ export function useWorkspaceActiveUsersMetrics({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}`;
 
@@ -177,6 +182,7 @@ export function useWorkspaceContextOrigin({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceContextOriginResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/source?days=${days}`;
 
@@ -202,6 +208,7 @@ export function useWorkspaceTools({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceToolsResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/tools?days=${days}`;
 
@@ -229,6 +236,7 @@ export function useWorkspaceToolUsage({
   serverName?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceToolUsageResponse> = fetcher;
   const params = new URLSearchParams({ days: String(days) });
   if (serverName) {
@@ -260,6 +268,7 @@ export function useWorkspaceTopUsers({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceTopUsersResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/top-users?days=${days}&limit=${limit}`;
 
@@ -287,6 +296,7 @@ export function useWorkspaceTopAgents({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceTopAgentsResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/top-agents?days=${days}&limit=${limit}`;
 
@@ -312,6 +322,7 @@ export function useWorkspaceAnalyticsOverview({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceAnalyticsOverviewResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/overview?days=${days}`;
 
@@ -335,6 +346,7 @@ export function useWorkspaceActiveSubscription({
   owner: LightWorkspaceType | undefined;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
@@ -370,6 +382,7 @@ export function useFeatureFlags({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const featureFlagsFetcher: Fetcher<GetWorkspaceFeatureFlagsResponseType> =
     fetcher;
 
@@ -417,6 +430,7 @@ export function useWorkspaceProgrammaticCost({
   filter?: Partial<Record<GroupByType, string[]>>;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
 
   const queryParams = new URLSearchParams();
@@ -456,6 +470,7 @@ export function useWorkspaceSeatAvailability({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const seatAvailabilityFetcher: Fetcher<GetSeatAvailabilityResponseBody> =
     fetcher;
 
@@ -480,6 +495,7 @@ export function usePerSeatPricing({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const pricingFetcher: Fetcher<GetSubscriptionPricingResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -502,6 +518,7 @@ export function useWorkspaceVerifiedDomains({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const verifiedDomainsFetcher: Fetcher<GetWorkspaceVerifiedDomainsResponseBody> =
     fetcher;
 
@@ -526,6 +543,7 @@ export function useSubscriptionTrialInfo({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const trialInfoFetcher: Fetcher<GetSubscriptionTrialInfoResponseBody> =
     fetcher;
 
@@ -549,6 +567,7 @@ export function useWorkspaceSeatsCount({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const seatsCountFetcher: Fetcher<GetWorkspaceSeatsCountResponseBody> =
     fetcher;
 
@@ -591,6 +610,7 @@ export function useAuthContext(
   options: { workspaceId?: string; disabled?: boolean } = {}
 ) {
   const { workspaceId, disabled } = options;
+  const { fetcher } = useFetcher();
   const regionContext = useRegionContextSafe();
 
   const url = workspaceId
@@ -637,6 +657,7 @@ export function useSubscriptionStatus({
 }: {
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const statusFetcher: Fetcher<GetSubscriptionStatusResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -653,6 +674,7 @@ export function useSubscriptionStatus({
 }
 
 export function useWelcomeData({ workspaceId }: { workspaceId: string }) {
+  const { fetcher } = useFetcher();
   const welcomeFetcher: Fetcher<GetWelcomeResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -670,6 +692,7 @@ export function useWelcomeData({ workspaceId }: { workspaceId: string }) {
 }
 
 export function useVerifyData({ workspaceId }: { workspaceId: string }) {
+  const { fetcher } = useFetcher();
   const verifyFetcher: Fetcher<GetVerifyResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -695,6 +718,7 @@ export function useJoinData({
   token: string | null;
   conversationId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const regionContext = useRegionContextSafe();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
@@ -734,6 +758,7 @@ export function useJoinData({
 }
 
 export function usePendingInvitations() {
+  const { fetcher } = useFetcher();
   const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsLookupResponseBody> =
     fetcher;
 
@@ -749,6 +774,7 @@ export function usePendingInvitations() {
 }
 
 export function useWorkspaceLookup({ flow }: { flow: string | null }) {
+  const { fetcher } = useFetcher();
   const workspaceLookupFetcher: Fetcher<GetWorkspaceLookupResponseBody> =
     fetcher;
 

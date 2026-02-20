@@ -8,7 +8,7 @@ import type { AdditionalConfigurationInBuilderType } from "@app/components/share
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
-import { fetcherWithBody } from "@app/lib/swr/swr";
+import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
@@ -65,7 +65,8 @@ function processDataSourceConfigurations(
 
 async function processTableSelection(
   tablesConfigurations: DataSourceViewSelectionConfigurations | null,
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  fetcherWithBody: FetcherWithBodyFn
 ): Promise<TableDataSourceConfiguration[] | null> {
   if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {
     return null;
@@ -139,7 +140,8 @@ async function processTableSelection(
         const expandedTables = await expandFoldersToTables(
           owner,
           dataSourceView,
-          folderResources
+          folderResources,
+          fetcherWithBody
         );
         for (const tableNode of expandedTables) {
           allTables.push({
@@ -383,6 +385,7 @@ export async function submitAgentBuilderForm({
   agentConfigurationId = null,
   isDraft = false,
   areSlackChannelsChanged,
+  fetcherWithBody,
 }: {
   user: UserType;
   formData: AgentBuilderFormData;
@@ -390,6 +393,7 @@ export async function submitAgentBuilderForm({
   agentConfigurationId?: string | null;
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
+  fetcherWithBody: FetcherWithBodyFn;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -427,7 +431,8 @@ export async function submitAgentBuilderForm({
             action.configuration.tablesConfigurations !== null
               ? await processTableSelection(
                   action.configuration.tablesConfigurations,
-                  owner
+                  owner,
+                  fetcherWithBody
                 )
               : null,
           childAgentId: action.configuration.childAgentId,

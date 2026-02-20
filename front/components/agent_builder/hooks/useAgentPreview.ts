@@ -5,6 +5,7 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -17,6 +18,7 @@ import { useFormContext } from "react-hook-form";
 
 export function useDraftAgent() {
   const { owner, user } = useAgentBuilderContext();
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
@@ -56,6 +58,7 @@ export function useDraftAgent() {
         owner,
         agentConfigurationId: null,
         isDraft: true,
+        fetcherWithBody,
       });
 
       if (!aRes.isOk()) {

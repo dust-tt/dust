@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListTriggers } from "@app/pages/api/poke/workspaces/[wId]/triggers";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/triggers/[tId]/webhook_requests";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
@@ -10,6 +10,7 @@ export function usePokeTriggers({
   disabled,
   owner,
 }: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
   const triggersFetcher: Fetcher<PokeListTriggers> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/triggers`,
@@ -38,6 +39,7 @@ export function usePokeWebhookRequests({
   status?: WebhookRequestTriggerStatus;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const requestsFetcher: Fetcher<PokeGetWebhookRequestsResponseBody> = fetcher;
   const params = new URLSearchParams();
   if (limit !== undefined) {

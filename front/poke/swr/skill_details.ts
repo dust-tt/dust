@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetSkillDetails } from "@app/pages/api/poke/workspaces/[wId]/skills/[sId]/details";
 import type { PokeGetSkillVersions } from "@app/pages/api/poke/workspaces/[wId]/skills/[sId]/versions";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -15,6 +15,7 @@ export function usePokeSkillDetails({
   owner,
   skillId,
 }: UsePokeSkillDetailsProps) {
+  const { fetcher } = useFetcher();
   const skillDetailsFetcher: Fetcher<PokeGetSkillDetails> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/skills/${skillId}/details`,
@@ -41,6 +42,7 @@ export function usePokeSkillVersions({
   owner,
   skillId,
 }: UsePokeSkillVersionsProps) {
+  const { fetcher } = useFetcher();
   const skillVersionsFetcher: Fetcher<PokeGetSkillVersions> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/skills/${skillId}/versions`,

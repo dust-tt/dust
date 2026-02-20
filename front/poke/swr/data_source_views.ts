@@ -1,10 +1,5 @@
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
-import {
-  emptyArray,
-  fetcher,
-  fetcherWithBody,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   DataSourceViewWithUsage,
   PokeListDataSourceViews,
@@ -21,6 +16,7 @@ export function usePokeDataSourceViews({
   disabled,
   owner,
 }: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
   const dataSourceViewsFetcher: Fetcher<PokeListDataSourceViews> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/data_source_views`,
@@ -65,6 +61,7 @@ export function usePokeDataSourceViewContentNodes({
   totalNodesCountIsAccurate: boolean;
   nextPageCursor: string | null;
 } {
+  const { fetcherWithBody } = useFetcher();
   const params = new URLSearchParams();
   if (pagination && pagination.cursor) {
     params.set("cursor", pagination.cursor.toString());

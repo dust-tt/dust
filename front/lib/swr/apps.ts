@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
@@ -26,6 +26,7 @@ export function useApps({
   owner: LightWorkspaceType;
   space: SpaceType;
 }) {
+  const { fetcher } = useFetcher();
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -55,6 +56,7 @@ export function useApp({
   appId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const appFetcher: Fetcher<GetOrPostAppResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -78,6 +80,7 @@ export function useSavedRunStatus(
   app: AppType | null,
   refresh: (data: GetRunStatusResponseBody | undefined) => number
 ) {
+  const { fetcher } = useFetcher();
   const runStatusFetcher: Fetcher<GetRunStatusResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     app
@@ -104,6 +107,7 @@ export function useRunBlock(
   name: string,
   refresh: (data: GetRunBlockResponseBody | undefined) => number
 ) {
+  const { fetcher } = useFetcher();
   const runBlockFetcher: Fetcher<GetRunBlockResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
@@ -121,6 +125,7 @@ export function useRunBlock(
 }
 
 export function useDustAppSecrets(owner: LightWorkspaceType | null) {
+  const { fetcher } = useFetcher();
   const keysFetcher: Fetcher<GetDustAppSecretsResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     owner ? `/api/w/${owner.sId}/dust_app_secrets` : null,
@@ -142,6 +147,7 @@ export function useRuns(
   runType: RunRunType,
   wIdTarget: string | null
 ) {
+  const { fetcher } = useFetcher();
   const runsFetcher: Fetcher<GetRunsResponseBody> = fetcher;
   const disabled = !app;
   let url: string | null = null;
@@ -168,6 +174,7 @@ export function useProviders({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const providersFetcher: Fetcher<GetProvidersResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
@@ -186,6 +193,7 @@ export function useProviders({
 }
 
 export function useKeys(owner: LightWorkspaceType) {
+  const { fetcher } = useFetcher();
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(
     `/api/w/${owner.sId}/keys`,
@@ -255,6 +263,7 @@ export function useRunWithSpec({
   runId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const runFetcher: Fetcher<GetRunResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(

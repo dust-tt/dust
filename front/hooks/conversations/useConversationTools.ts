@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type {
   ConversationToolActionRequest,
@@ -17,6 +17,7 @@ export function useConversationTools({
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
+  const { fetcher } = useFetcher();
   const conversationToolsFetcher: Fetcher<FetchConversationToolsResponse> =
     fetcher;
 

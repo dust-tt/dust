@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
 import type {
   GetCreditsResponseBody,
@@ -56,6 +56,7 @@ export function useCredits({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const creditsFetcher: Fetcher<GetCreditsResponseBody> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
@@ -167,6 +168,7 @@ export function useCreditPurchaseInfo({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const creditPurchaseInfoFetcher: Fetcher<GetCreditPurchaseInfoResponseBody> =
     fetcher;
 

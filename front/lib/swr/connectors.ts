@@ -1,8 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -43,6 +43,7 @@ export function useConnectorPermissions<T extends ConnectorPermission | null>({
   disabled?: boolean;
   viewType?: ContentNodesViewType;
 }): UseConnectorPermissionsReturn<T> {
+  const { fetcher } = useFetcher();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -93,6 +94,7 @@ export function useConnectorConfig({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetOrPostManagedDataSourceConfigResponseBody> =
     fetcher;
 
@@ -120,6 +122,7 @@ export function useOAuthMetadata({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const metadataFetcher: Fetcher<{ metadata: Record<string, unknown> }> =
     fetcher;
 

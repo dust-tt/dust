@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
@@ -30,6 +30,7 @@ export function useMCPActions({
   agentId,
   pageSize = 25,
 }: UseMCPActionsProps): UseMCPActionsReturn {
+  const { fetcher } = useFetcher();
   const [currentPage, setCurrentPage] = useState(0);
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
 

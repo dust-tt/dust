@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetDocument } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/document";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -16,6 +16,7 @@ export function usePokeDocument({
   dsId,
   documentId,
 }: UsePokeDocumentProps) {
+  const { fetcher } = useFetcher();
   const documentFetcher: Fetcher<PokeGetDocument> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     documentId

@@ -1,9 +1,10 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListSpaces } from "@app/pages/api/poke/workspaces/[wId]/spaces";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
 
 export function usePokeSpaces({ disabled, owner }: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<PokeListSpaces> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/spaces`,

@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetMCPServerViewDetails } from "@app/pages/api/poke/workspaces/[wId]/mcp_server_views/[svId]/details";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -14,6 +14,7 @@ export function usePokeMCPServerViewDetails({
   owner,
   mcpServerViewId,
 }: UsePokeMCPServerViewDetailsProps) {
+  const { fetcher } = useFetcher();
   const detailsFetcher: Fetcher<PokeGetMCPServerViewDetails> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/mcp_server_views/${mcpServerViewId}/details`,

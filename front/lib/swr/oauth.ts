@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
 import type { GetOAuthSetupResponseBody } from "@app/pages/api/w/[wId]/oauth/[provider]/setup";
 import type { APIError, WithAPIErrorResponse } from "@app/types/error";
@@ -61,6 +61,7 @@ export function useSlackIsLegacy({
   credentialId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const slackIsLegacyFetcher: Fetcher<GetSlackClientIdResponseBody> = fetcher;
 
   const url = `/api/w/${workspaceId}/credentials/slack_is_legacy${
@@ -98,6 +99,7 @@ export function useOAuthSetup({
   openerOrigin?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const oauthSetupFetcher: Fetcher<GetOAuthSetupResponseBody> = fetcher;
 
   let url = `/api/w/${workspaceId}/oauth/${provider}/setup?useCase=${useCase}`;

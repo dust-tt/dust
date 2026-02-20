@@ -1,5 +1,5 @@
 import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
@@ -16,6 +16,7 @@ import { useEffect } from "react";
 import type { Fetcher } from "swr";
 
 export function usePokeRegion() {
+  const { fetcher } = useFetcher();
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
 
   const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
@@ -40,6 +41,7 @@ export function usePokeConnectorPermissions({
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
@@ -73,6 +75,7 @@ export function usePokeWorkspaces({
   disabled?: boolean;
   limit?: number;
 } = {}) {
+  const { fetcher } = useFetcher();
   const workspacesFetcher: Fetcher<GetPokeWorkspacesResponseBody> = fetcher;
 
   const queryParams = [
@@ -102,6 +105,7 @@ export function usePokeWorkspaces({
 }
 
 export function usePokePlans() {
+  const { fetcher } = useFetcher();
   const plansFetcher: Fetcher<GetPokePlansResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults("/api/poke/plans", plansFetcher);
@@ -120,6 +124,7 @@ export function usePokeFeatureFlags({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const featureFlagsFetcher: Fetcher<GetPokeFeaturesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -143,6 +148,7 @@ export function usePokeWorkOSDSyncStatus({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/dsync`,
     fetcher,
@@ -178,6 +184,7 @@ export function usePokeAuthContext(options: {
 export function usePokeAuthContext(
   options: { workspaceId?: string; disabled?: boolean } = {}
 ) {
+  const { fetcher } = useFetcher();
   const { workspaceId, disabled } = options;
   const regionContext = useRegionContextSafe();
 

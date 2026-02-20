@@ -1,11 +1,12 @@
 // This hook uses a public API endpoint, so it's fine to use the client types.
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { Fetcher } from "swr";
 
 export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
+  const { fetcher } = useFetcher();
   const frameMetadataFetcher: Fetcher<PublicFrameResponseBodyType> = fetcher;
 
   const swrKey = shareToken ? `/api/v1/public/frames/${shareToken}` : null;

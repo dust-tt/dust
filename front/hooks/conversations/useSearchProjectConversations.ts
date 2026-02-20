@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { SemanticSearchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/semantic_search";
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,6 +18,7 @@ export function useSearchProjectConversations({
   query = "",
   limit = 50,
 }: UseSearchProjectConversationsParams) {
+  const { fetcher } = useFetcher();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   useEffect(() => {

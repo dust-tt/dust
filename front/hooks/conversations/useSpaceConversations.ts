@@ -1,6 +1,6 @@
 import {
   emptyArray,
-  fetcher,
+  useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -18,6 +18,7 @@ export function useSpaceConversationsSummary({
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
+  const { fetcher } = useFetcher();
   const summaryFetcher: Fetcher<GetBySpacesSummaryResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -45,6 +46,7 @@ export function useSpaceConversations({
   spaceId: string | null;
   limit?: number;
 }) {
+  const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<GetSpaceConversationsResponseBody> =
     fetcher;
 
@@ -111,6 +113,7 @@ export function useSpaceUnreadConversationIds({
   spaceId: string | null;
   options?: { disabled: boolean };
 }) {
+  const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<GetSpaceUnreadConversationsResponseBody> =
     fetcher;
 

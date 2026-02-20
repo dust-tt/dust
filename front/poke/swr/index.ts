@@ -1,6 +1,6 @@
 import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
@@ -49,6 +49,7 @@ export function usePokePullTemplates() {
 }
 
 export function usePokeAssistantTemplates() {
+  const { fetcher } = useFetcher();
   const assistantTemplatesFetcher: Fetcher<PokeAssistantTemplatesResponse> =
     fetcher;
 
@@ -72,6 +73,7 @@ export function usePokeAssistantTemplate({
 }: {
   templateId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const assistantTemplateFetcher: Fetcher<PokeFetchAssistantTemplateResponse> =
     fetcher;
 
@@ -96,6 +98,7 @@ export function usePokeConversation({
   workspaceId: string;
   conversationId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
 
@@ -123,6 +126,7 @@ export function usePokeLLMTrace({
   runId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const llmTraceFetcher: Fetcher<{ trace: LLMTrace | null }> = fetcher;
 
   const { data, error, mutate } = useSWR(
@@ -146,6 +150,7 @@ export function usePokeDocuments(
   limit: number,
   offset: number
 ) {
+  const { fetcher } = useFetcher();
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
   const { data, error, mutate } = useSWR(
     `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/documents?limit=${limit}&offset=${offset}`,
@@ -167,6 +172,7 @@ export function usePokeTables(
   limit: number,
   offset: number
 ) {
+  const { fetcher } = useFetcher();
   const tablesFetcher: Fetcher<GetTablesResponseBody> = fetcher;
   const { data, error, mutate } = useSWR(
     `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/tables?limit=${limit}&offset=${offset}`,

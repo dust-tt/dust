@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeCacheResponseBody } from "@app/pages/api/poke/cache";
 import type { Fetcher } from "swr";
 
@@ -11,6 +11,7 @@ export function usePokeCacheLookup({
   rawKey,
   disabled,
 }: UsePokeCacheLookupParams) {
+  const { fetcher } = useFetcher();
   const cacheFetcher: Fetcher<GetPokeCacheResponseBody> = fetcher;
 
   const queryParams = new URLSearchParams();

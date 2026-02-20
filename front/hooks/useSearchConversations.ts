@@ -1,5 +1,5 @@
 import { useDebounce } from "@app/hooks/useDebounce";
-import { emptyArray, fetcher } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import type { SearchConversationsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search_conversations";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { useMemo } from "react";
@@ -21,6 +21,7 @@ export function useSearchConversations({
   enabled = true,
   initialSearchText = "",
 }: UseSearchConversationsParams) {
+  const { fetcher } = useFetcher();
   const {
     debouncedValue: debouncedQuery,
     isDebouncing,

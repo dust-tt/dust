@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetTriggerExecutionStats } from "@app/pages/api/poke/workspaces/[wId]/triggers/[tId]/execution_stats";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -14,6 +14,7 @@ export function usePokeTriggerExecutionStats({
   owner,
   triggerId,
 }: UsePokeTriggerStatsProps) {
+  const { fetcher } = useFetcher();
   const statsFetcher: Fetcher<PokeGetTriggerExecutionStats> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/triggers/${triggerId}/execution_stats`,

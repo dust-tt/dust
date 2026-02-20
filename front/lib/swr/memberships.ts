@@ -1,4 +1,4 @@
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
@@ -39,6 +39,7 @@ export function useMembers({
   pagination?: PaginationParams;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const defaultUrl = useMemo(() => {
     const params = new URLSearchParams();
     appendPaginationParams(params, pagination);
@@ -73,6 +74,7 @@ export function useWorkspaceInvitations(
   owner: LightWorkspaceType,
   { includeExpired = false }: { includeExpired?: boolean } = {}
 ) {
+  const { fetcher } = useFetcher();
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
@@ -105,6 +107,7 @@ export function useSearchMembers({
   buildersOnly?: boolean;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
@@ -161,6 +164,7 @@ export function useMembersLookup({
   memberIds: number[];
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const membersLookupFetcher: Fetcher<MembersLookupResponseBody> = fetcher;
 
   const query =

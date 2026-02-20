@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
   ConversationSkillActionRequest,
@@ -19,6 +19,7 @@ export function useConversationSkills({
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
+  const { fetcher } = useFetcher();
   const conversationSkillsFetcher: Fetcher<FetchConversationSkillsResponse> =
     fetcher;
 

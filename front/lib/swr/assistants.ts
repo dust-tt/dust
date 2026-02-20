@@ -11,8 +11,8 @@ import type {
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -58,6 +58,7 @@ export function useAgentMcpConfigurations({
   agentConfigurationId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const mcpConfigurationsFetcher: Fetcher<GetAgentMcpConfigurationsResponseBody> =
     fetcher;
 
@@ -78,6 +79,7 @@ export function useAgentMcpConfigurations({
 }
 
 export function useAssistantTemplates() {
+  const { fetcher } = useFetcher();
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
     fetcher;
 
@@ -99,6 +101,7 @@ export function useAssistantTemplate({
 }: {
   templateId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const assistantTemplateFetcher: Fetcher<FetchAgentTemplateResponse> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -135,6 +138,7 @@ export function useAgentConfigurations({
   disabled?: boolean;
   revalidate?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
 
@@ -204,6 +208,7 @@ export function useSuggestedAgentConfigurations({
   messageId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
 
@@ -273,6 +278,7 @@ export function useAgentConfiguration({
   agentConfigurationId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const agentConfigurationFetcher: Fetcher<{
     agentConfiguration: AgentConfigurationType;
   }> = fetcher;
@@ -311,6 +317,7 @@ export function useAgentConfigurationFeedbacksByDescVersion({
   version,
   days,
 }: AgentConfigurationFeedbacksByDescVersionProps) {
+  const { fetcher } = useFetcher();
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
       | AgentMessageFeedbackType
@@ -393,6 +400,7 @@ export function useAgentConfigurationHistory({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const agentConfigurationHistoryFetcher: Fetcher<{
     history: AgentConfigurationType[];
   }> = fetcher;
@@ -421,6 +429,7 @@ export function useAgentConfigurationLastAuthor({
   workspaceId: string;
   agentConfigurationId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const userFetcher: Fetcher<{
     user: UserType;
   }> = fetcher;
@@ -446,6 +455,7 @@ export function useAgentUsage({
   agentConfigurationId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const agentUsageFetcher: Fetcher<GetAgentUsageResponseBody> = fetcher;
   const fetchUrl = agentConfigurationId
     ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/usage`
@@ -477,6 +487,7 @@ export function useAgentAnalytics({
   version?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const agentAnalyticsFetcher: Fetcher<GetAgentOverviewResponseBody> = fetcher;
   const fetchUrl = agentConfigurationId
     ? (() => {
@@ -510,6 +521,7 @@ export function useAgentObservabilitySummary({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const summaryFetcher: Fetcher<GetAgentSummaryResponseBody> = fetcher;
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/summary?days=${days}`;
 
@@ -534,6 +546,7 @@ export function useSlackChannelsLinkedWithAgent({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
     fetcher;
 
@@ -877,6 +890,7 @@ export function useAgentUsageMetrics({
   interval?: "day" | "week";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetUsageMetricsResponse> = fetcher;
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/usage-metrics?days=${days}&interval=${interval}`;
 
@@ -907,6 +921,7 @@ export function useAgentContextOrigin(params: {
     version,
     disabled,
   } = params;
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetContextOriginResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/source?days=${days}${versionParam}`;
@@ -937,6 +952,7 @@ export function useAgentLatency({
   version?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetLatencyResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}${versionParam}`;
@@ -967,6 +983,7 @@ export function useAgentErrorRate({
   version?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetErrorRateResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}${versionParam}`;
@@ -995,6 +1012,7 @@ export function useAgentFeedbackDistribution({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetFeedbackDistributionResponse> = fetcher;
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/feedback-distribution?days=${days}`;
 
@@ -1022,6 +1040,7 @@ export function useAgentVersionMarkers({
   days?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetVersionMarkersResponse> = fetcher;
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/version-markers?days=${days}`;
 
@@ -1051,6 +1070,7 @@ export function useAgentToolExecution({
   version?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}${versionParam}`;
@@ -1081,6 +1101,7 @@ export function useAgentSkillExecution({
   version?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetSkillExecutionResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/skill-execution?days=${days}${versionParam}`;
@@ -1123,6 +1144,7 @@ export function useAgentToolLatency({
   serverName?: string;
   disabled?: boolean;
 }): AgentToolLatencyResult {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetToolLatencyResponse> = fetcher;
   const params = new URLSearchParams({ days: days.toString(), view });
   if (version) {
@@ -1159,6 +1181,7 @@ export function useAgentToolStepIndex({
   version?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
   const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}${versionParam}`;
@@ -1189,6 +1212,7 @@ export function useAgentDatasourceRetrieval({
   version?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetDatasourceRetrievalResponse> = fetcher;
   const params = new URLSearchParams({ days: days.toString() });
   if (version) {
@@ -1232,6 +1256,7 @@ export function useAgentDatasourceRetrievalDocuments({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
   const hasConfigIds = mcpServerConfigIds && mcpServerConfigIds.length > 0;
   // Allow query if we have either config IDs or server name.
@@ -1280,6 +1305,7 @@ export function useMemberDetails({
   workspaceId: string;
   userId: string | null;
 }) {
+  const { fetcher } = useFetcher();
   const userConfigurationFetcher: Fetcher<GetMemberResponseBody> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
