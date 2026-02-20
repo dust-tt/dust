@@ -1,3 +1,9 @@
+import {
+  buildAuditActor,
+  buildWorkspaceTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   deleteWorkspace,
@@ -75,6 +81,17 @@ export const deleteWorkspacePlugin = createPlugin({
 
       await deleteWorkspace(workspace);
     }
+
+    void emitAuditLogEvent({
+      workspace,
+      action: "workspace.deleted",
+      actor: buildAuditActor(auth),
+      targets: [buildWorkspaceTarget(workspace)],
+      context: getAuditLogContext(auth),
+      metadata: {
+        relocated: workspaceHasBeenRelocated ?? false,
+      },
+    });
 
     return new Ok({
       display: "text",
