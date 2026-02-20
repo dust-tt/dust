@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -99,7 +100,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     posthog.init(POSTHOG_KEY, {
-      api_host: "/subtle1",
+      api_host: `${config.getApiBaseUrl()}/subtle1`,
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       opt_out_capturing_by_default: !shouldTrack,
