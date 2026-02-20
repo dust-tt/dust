@@ -8,13 +8,16 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { clientFetch } from "@app/lib/egress/client";
 import {
+  useFeatureFlags,
   useWorkspaceActiveUsersMetrics,
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { Button, ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import { DownloadIcon } from "lucide-react";
+import { useCallback, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -218,6 +221,35 @@ export function WorkspaceUsageChart({
   period,
 }: WorkspaceUsageChartProps) {
   const [displayMode, setDisplayMode] = useState<UsageDisplayMode>("activity");
+  const { hasFeature } = useFeatureFlags({ workspaceId });
+  const showExport = hasFeature("analytics_csv_export");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    setIsDownloading(true);
+    try {
+      const endpoint =
+        displayMode === "activity"
+          ? `/api/w/${workspaceId}/analytics/usage-metrics-export?days=${period}`
+          : `/api/w/${workspaceId}/analytics/active-users-export?days=${period}`;
+      const response = await clientFetch(endpoint);
+      if (!response.ok) {
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        displayMode === "activity"
+          ? `dust_activity_last_${period}_days.csv`
+          : `dust_active_users_last_${period}_days.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [workspaceId, period, displayMode]);
 
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useWorkspaceUsageMetrics({
@@ -263,19 +295,34 @@ export function WorkspaceUsageChart({
 
   const description = getDescriptionForMode(displayMode, period);
 
-  const modeSelector = (
-    <ButtonsSwitchList defaultValue={displayMode} size="xs">
-      <ButtonsSwitch
-        value="activity"
-        label="Activity"
-        onClick={() => setDisplayMode("activity")}
-      />
-      <ButtonsSwitch
-        value="users"
-        label="Users"
-        onClick={() => setDisplayMode("users")}
-      />
-    </ButtonsSwitchList>
+  const canDownload = !isLoading && !isError && data.length > 0;
+
+  const controls = (
+    <div className="flex items-center gap-2">
+      <ButtonsSwitchList defaultValue={displayMode} size="xs">
+        <ButtonsSwitch
+          value="activity"
+          label="Activity"
+          onClick={() => setDisplayMode("activity")}
+        />
+        <ButtonsSwitch
+          value="users"
+          label="Users"
+          onClick={() => setDisplayMode("users")}
+        />
+      </ButtonsSwitchList>
+      {showExport && (
+        <Button
+          icon={DownloadIcon}
+          variant="outline"
+          size="xs"
+          tooltip="Download CSV"
+          onClick={handleDownload}
+          disabled={!canDownload || isDownloading}
+          isLoading={isDownloading}
+        />
+      )}
+    </div>
   );
 
   return (
@@ -289,7 +336,7 @@ export function WorkspaceUsageChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
-      additionalControls={modeSelector}
+      additionalControls={controls}
     >
       <LineChart
         data={data}
