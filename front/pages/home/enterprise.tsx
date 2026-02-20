@@ -8,7 +8,12 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
-import { ChevronDownIcon, ChevronUpIcon, RocketIcon } from "@dust-tt/sparkle";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  DustLogo,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";
@@ -463,13 +468,10 @@ function FullyConnectedSection() {
         <br />
         and always compounding
       </H1>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2">
         {FEATURE_CARDS.map((card, index) => (
-          <div
-            key={index}
-            className="flex flex-col gap-2 overflow-hidden rounded-2xl bg-muted-background"
-          >
-            <div className="flex aspect-video w-full items-center justify-center bg-white p-4">
+          <div key={index} className="flex flex-col">
+            <div className="flex aspect-video w-full items-center justify-center rounded-2xl bg-blue-50 p-4">
               <video
                 autoPlay
                 loop
@@ -480,7 +482,7 @@ function FullyConnectedSection() {
                 <source src={card.video} type="video/mp4" />
               </video>
             </div>
-            <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
+            <div className="flex flex-col gap-2 pt-6">
               <H3 className="text-foreground" mono>
                 {card.title}
               </H3>
@@ -490,6 +492,502 @@ function FullyConnectedSection() {
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// "Your best people want to do their best work"
+// ---------------------------------------------------------------------------
+
+function BestPeopleSection() {
+  return (
+    <section className="rounded-2xl border border-gray-200 p-8 md:p-12">
+      <H1 mono className="mb-12 text-center text-3xl md:text-4xl lg:text-5xl">
+        Your best people want
+        <br />
+        to do their best work
+      </H1>
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        <div className="flex flex-col">
+          <div className="overflow-hidden rounded-2xl">
+            <Image
+              src="/static/landing/enterprise/section4/data_analyst.png"
+              alt="Data Analyst"
+              width={600}
+              height={400}
+              className="h-auto w-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col gap-3 py-6">
+            <H3 className="text-foreground" mono>
+              For Data Analyst
+            </H3>
+            <P size="md" className="text-muted-foreground">
+              There's a version of your data analyst's job where she spends her
+              day finding patterns that change how you make decisions. Instead,
+              she's writing SQL and formatting spreadsheets.
+            </P>
+          </div>
+        </div>
+        <div className="flex flex-col">
+          <div className="overflow-hidden rounded-2xl">
+            <Image
+              src="/static/landing/enterprise/section4/ops_lead.png"
+              alt="Ops Lead"
+              width={600}
+              height={400}
+              className="h-auto w-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col gap-3 py-6">
+            <H3 className="text-foreground" mono>
+              For Ops Lead
+            </H3>
+            <P size="md" className="text-muted-foreground">
+              There's a version of your ops lead's job where he's designing
+              systems that make everyone faster. Instead, he's copying data from
+              one tool to another.
+            </P>
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-4 rounded-xl border border-blue-200 bg-blue-50 px-6 py-4">
+        <Image
+          src="/static/landing/enterprise/section1/accuracy.png"
+          alt="Dust"
+          width={48}
+          height={48}
+          className="h-12 w-12 flex-shrink-0"
+        />
+        <P size="md" className="font-medium text-foreground">
+          Dust takes the busywork. The tedious, repetitive, soul-numbing parts,
+          so your team can do the work they thrive on.
+        </P>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// "It's not just humans talking to humans anymore"
+// ---------------------------------------------------------------------------
+
+function HumansTalkingSection() {
+  return (
+    <section className="w-full">
+      <H1 mono className="mb-12 text-center text-3xl md:text-4xl lg:text-5xl">
+        It's not just humans
+        <br />
+        talking to humans anymore
+      </H1>
+      <div className="mx-auto max-w-2xl">
+        <Image
+          src="/static/landing/enterprise/section3/coordinate.png"
+          alt="Delegate, Coordinate, Chain & automate, Surface Insight"
+          width={800}
+          height={600}
+          className="h-auto w-full"
+        />
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// "How every team uses Dust" — Tabbed Section
+// ---------------------------------------------------------------------------
+
+interface TeamTab {
+  label: string;
+  title: string;
+  image: string;
+  features: {
+    title: string;
+    description: string;
+    dotColor: string;
+    shape: "circle" | "square" | "triangle" | "hexagon" | "rectangle";
+  }[];
+}
+
+const TEAM_TABS: TeamTab[] = [
+  {
+    label: "Engineering",
+    title: "Engineering Operations",
+    image: "/static/landing/enterprise/section5/Engineering.png",
+    features: [
+      {
+        title: "AI-Powered Code Debugging",
+        description:
+          "Surface relevant context, docs, and historical issues inside your IDE",
+        dotColor: "text-pink-300",
+        shape: "circle",
+      },
+      {
+        title: "Automated Code Reviews",
+        description: "Maintain standards and compliance at scale",
+        dotColor: "text-brand-red-rose",
+        shape: "rectangle",
+      },
+      {
+        title: "Incident Response",
+        description:
+          "Execute automated runbooks, integrate communications, and enable rapid root cause analysis",
+        dotColor: "text-brand-orange-golden",
+        shape: "triangle",
+      },
+      {
+        title: "Continuous Doc Generation",
+        description:
+          "Keep user and API docs up-to-date from code changes automatically",
+        dotColor: "text-brand-hunter-green",
+        shape: "hexagon",
+      },
+    ],
+  },
+  {
+    label: "Customer Support",
+    title: "Customer Support Operations",
+    image: "/static/landing/enterprise/section5/Engineering.png",
+    features: [
+      {
+        title: "Instant Ticket Resolution",
+        description:
+          "Connect agents to knowledge base for accurate, instant responses",
+        dotColor: "text-pink-300",
+        shape: "circle",
+      },
+      {
+        title: "Ticket Classification",
+        description:
+          "Auto-route tickets based on queries, urgency, and expertise",
+        dotColor: "text-brand-red-rose",
+        shape: "rectangle",
+      },
+      {
+        title: "Pattern Detection",
+        description: "Identify product improvements from ticket patterns",
+        dotColor: "text-brand-orange-golden",
+        shape: "triangle",
+      },
+      {
+        title: "FAQ Generation",
+        description: "Auto-create and update FAQs from resolved tickets",
+        dotColor: "text-brand-hunter-green",
+        shape: "hexagon",
+      },
+    ],
+  },
+  {
+    label: "Sales",
+    title: "Sales Operations",
+    image: "/static/landing/enterprise/section5/Engineering.png",
+    features: [
+      {
+        title: "Account Snapshots",
+        description:
+          "Create account snapshots from past interactions and CRM data",
+        dotColor: "text-pink-300",
+        shape: "circle",
+      },
+      {
+        title: "Targeted Outreach",
+        description:
+          "Generate targeted outreach using call transcripts and insights",
+        dotColor: "text-brand-red-rose",
+        shape: "rectangle",
+      },
+      {
+        title: "RFP & Prospect Questions",
+        description:
+          "Answer prospect questions and RFPs with product and competitor insights",
+        dotColor: "text-brand-orange-golden",
+        shape: "triangle",
+      },
+      {
+        title: "Call Analysis",
+        description:
+          "Analyze calls to improve pitch delivery and objection handling",
+        dotColor: "text-brand-hunter-green",
+        shape: "hexagon",
+      },
+    ],
+  },
+  {
+    label: "Marketing & Content",
+    title: "Marketing Operations",
+    image: "/static/landing/enterprise/section5/Engineering.png",
+    features: [
+      {
+        title: "On-Brand Content",
+        description: "Write on-brand content in minutes",
+        dotColor: "text-pink-300",
+        shape: "circle",
+      },
+      {
+        title: "Launch Messaging",
+        description: "Create consistent launch messaging across channels",
+        dotColor: "text-brand-red-rose",
+        shape: "rectangle",
+      },
+      {
+        title: "Translation",
+        description: "Translate while maintaining brand voice",
+        dotColor: "text-brand-orange-golden",
+        shape: "triangle",
+      },
+      {
+        title: "Feedback Insights",
+        description: "Extract actionable insights from customer feedback",
+        dotColor: "text-brand-hunter-green",
+        shape: "hexagon",
+      },
+    ],
+  },
+  {
+    label: "Data & analytics",
+    title: "Data & Analytics Operations",
+    image: "/static/landing/enterprise/section5/Engineering.png",
+    features: [
+      {
+        title: "Natural Language Queries",
+        description: "Enable non-technical teams to query company data",
+        dotColor: "text-pink-300",
+        shape: "circle",
+      },
+      {
+        title: "Automated Reporting",
+        description: "Automate reporting from all data types",
+        dotColor: "text-brand-red-rose",
+        shape: "rectangle",
+      },
+      {
+        title: "Visual Storytelling",
+        description: "Transform insights into visual stories",
+        dotColor: "text-brand-orange-golden",
+        shape: "triangle",
+      },
+      {
+        title: "Unified Analysis",
+        description: "Connect multiple data sources for unified analysis",
+        dotColor: "text-brand-hunter-green",
+        shape: "hexagon",
+      },
+    ],
+  },
+];
+
+function HowTeamsUseSection() {
+  const [activeTab, setActiveTab] = useState(0);
+  const tab = TEAM_TABS[activeTab];
+
+  return (
+    <section className="w-full">
+      <div className="mb-8 flex flex-col items-center gap-2">
+        <H1 mono className="text-center text-3xl md:text-4xl lg:text-5xl">
+          How every team uses
+        </H1>
+        <DustLogo className="h-8 w-32" />
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-8 border-b border-gray-200">
+        <div className="flex gap-8 overflow-x-auto">
+          {TEAM_TABS.map((t, index) => (
+            <button
+              key={index}
+              onClick={() => setActiveTab(index)}
+              className={classNames(
+                "whitespace-nowrap border-b-2 pb-3 text-sm font-medium transition-colors",
+                activeTab === index
+                  ? "border-blue-500 text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
+        <div className="flex-1">
+          <div className="overflow-hidden rounded-2xl bg-gray-100">
+            <Image
+              src={tab.image}
+              alt={tab.title}
+              width={600}
+              height={500}
+              className="h-auto w-full"
+            />
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col justify-center">
+          <H2 className="mb-8">{tab.title}</H2>
+          <div className="flex flex-col gap-6">
+            {tab.features.map((feature, index) => (
+              <div key={index}>
+                <P
+                  size="md"
+                  dotCSS={feature.dotColor}
+                  shape={feature.shape}
+                  className="text-foreground"
+                >
+                  <strong className="font-semibold">{feature.title}</strong>
+                  <br />
+                  <span className="text-muted-foreground">
+                    {feature.description}
+                  </span>
+                </P>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// "Enterprise-grade, no asterisks*"
+// ---------------------------------------------------------------------------
+
+function EnterpriseGradeSection() {
+  return (
+    <section className="w-full">
+      <H1 mono className="mb-4 text-center text-3xl md:text-4xl lg:text-5xl">
+        Enterprise-grade, no asterisks*
+      </H1>
+      <P size="md" className="mb-12 text-center text-muted-foreground">
+        When AI has access to your company's knowledge,
+        <br />
+        "mostly secure" doesn't cut it. At least not for us.
+      </P>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* Security & compliance */}
+        <div className="rounded-2xl bg-gray-50 p-8">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center">
+            <img
+              src="/static/landing/industry/d-blue.svg"
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <H3 className="mb-6">Security & compliance</H3>
+          <div className="mb-6 flex gap-4">
+            <img
+              src="/static/landing/security/soc2.svg"
+              className="h-12"
+              alt="SOC 2 Type II"
+            />
+            <img
+              src="/static/landing/security/gdpr.svg"
+              className="h-12"
+              alt="GDPR"
+            />
+            <img
+              src="/static/landing/security/hipaa.svg"
+              className="h-12"
+              alt="HIPAA"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <P size="sm" className="text-muted-foreground">
+              SSO (SAML, OIDC) · Audit logs (365-day retention)
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Role-based access control (RBAC)
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Data encryption at rest (AES-256) + in transit (TLS 1.3)
+            </P>
+          </div>
+        </div>
+
+        {/* Performance & scale */}
+        <div className="rounded-2xl bg-pink-50 p-8">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center">
+            <img
+              src="/static/landing/industry/d-red.svg"
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <H3 className="mb-6">Performance & scale</H3>
+          <div className="flex flex-col gap-2">
+            <P size="sm" className="text-muted-foreground">
+              99.9% uptime SLA
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Supports 10,000+ users per workspace
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Concurrent agent execution (no queuing)
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              CDN-backed global deployment
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Rate limiting per workspace tier
+            </P>
+          </div>
+        </div>
+
+        {/* White-glove support */}
+        <div className="rounded-2xl bg-gray-50 p-8">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center">
+            <img
+              src="/static/landing/industry/d-red.svg"
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <H3 className="mb-6">White-glove support</H3>
+          <div className="flex flex-col gap-2">
+            <P size="sm" className="text-muted-foreground">
+              We build AGI at work with you: Share what you love, what you
+              build, and push Dust to become a better and more valuable product
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Hand-glove support to accelerate your AI transformation
+            </P>
+          </div>
+        </div>
+
+        {/* Integration architecture */}
+        <div className="rounded-2xl bg-green-50 p-8">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center">
+            <img
+              src="/static/landing/industry/d-green.svg"
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <H3 className="mb-6">Integration architecture</H3>
+          <div className="flex flex-col gap-2">
+            <P size="sm" className="text-muted-foreground">
+              RESTful API for custom integrations
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Webhook support for event-driven workflows
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              MCP (Model Context Protocol) for proprietary systems
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              OAuth2 for third-party app permissions
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Bi-directional sync (read + write actions)
+            </P>
+            <P size="sm" className="text-muted-foreground">
+              Incremental data refresh (not full re-index)
+            </P>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -529,6 +1027,10 @@ export default function Enterprise() {
           textColor="text-foreground"
         />
         <FullyConnectedSection />
+        <BestPeopleSection />
+        <HumansTalkingSection />
+        <HowTeamsUseSection />
+        <EnterpriseGradeSection />
         <QuoteSection
           quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
           name="Everett Berry"
