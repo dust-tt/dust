@@ -65,7 +65,7 @@ export function PanelAgentStep({
         }
 
         const streamProgress = streamActionProgress.get(
-          entry.action.id,
+          entry.action.id
         )?.progress;
 
         return (
@@ -86,7 +86,7 @@ export function PanelAgentStep({
         <div className="mt-4">
           {streamingActions.map((action) => {
             const streamProgress = streamActionProgress.get(
-              action.id,
+              action.id
             )?.progress;
             const lastNotification = streamProgress ?? null;
 
