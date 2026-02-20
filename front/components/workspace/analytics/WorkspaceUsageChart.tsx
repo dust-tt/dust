@@ -12,7 +12,6 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   useFeatureFlags,
   useWorkspaceActiveUsersMetrics,
-  useWorkspaceAnalyticsOverview,
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
@@ -120,6 +119,7 @@ interface ActiveUsersMetricsDatum {
   dau: number;
   wau: number;
   mau: number;
+  memberCount: number;
   date?: string;
 }
 
@@ -139,7 +139,8 @@ function isActiveUsersMetricsDatum(
     "timestamp" in data &&
     "dau" in data &&
     "wau" in data &&
-    "mau" in data
+    "mau" in data &&
+    "memberCount" in data
   );
 }
 
@@ -149,6 +150,7 @@ function activeUsersZeroFactory(timestamp: number): ActiveUsersMetricsDatum {
     dau: 0,
     wau: 0,
     mau: 0,
+    memberCount: 0,
   };
 }
 
@@ -277,12 +279,6 @@ export function WorkspaceUsageChart({
     disabled: !workspaceId || displayMode !== "users",
   });
 
-  const { overview } = useWorkspaceAnalyticsOverview({
-    workspaceId,
-    days: period,
-    disabled: !workspaceId || displayMode !== "users",
-  });
-
   const legendItems = getLegendItemsForMode(displayMode);
 
   const usageData = padSeriesToTimeRange<WorkspaceUsageMetricsDatum>(
@@ -292,8 +288,6 @@ export function WorkspaceUsageChart({
     zeroFactory
   );
 
-  const totalMembers = overview?.totalMembers ?? 0;
-
   const activeUsersData = padSeriesToTimeRange<ActiveUsersMetricsDatum>(
     activeUsersMetrics,
     "timeRange",
@@ -301,9 +295,9 @@ export function WorkspaceUsageChart({
     activeUsersZeroFactory
   ).map((point) => ({
     ...point,
-    dau: toPercentage(point.dau, totalMembers),
-    wau: toPercentage(point.wau, totalMembers),
-    mau: toPercentage(point.mau, totalMembers),
+    dau: toPercentage(point.dau, point.memberCount),
+    wau: toPercentage(point.wau, point.memberCount),
+    mau: toPercentage(point.mau, point.memberCount),
   }));
 
   const data = displayMode === "users" ? activeUsersData : usageData;
