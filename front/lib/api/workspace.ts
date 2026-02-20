@@ -26,7 +26,7 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isStringArray, removeNulls } from "@app/types/shared/utils/general";
 import { md5 } from "@app/types/shared/utils/hashing";
 import type {
   LightWorkspaceType,
@@ -423,7 +423,7 @@ export interface WorkspaceMetadata {
   disableManualInvitations?: boolean;
 }
 
-function isWorkspaceConversationKillSwitchValue(
+export function isWorkspaceConversationKillSwitchValue(
   killSwitched: unknown
 ): killSwitched is WorkspaceConversationKillSwitchValue {
   if (typeof killSwitched !== "object" || killSwitched === null) {
@@ -434,12 +434,7 @@ function isWorkspaceConversationKillSwitchValue(
     return false;
   }
 
-  return (
-    Array.isArray(killSwitched.conversationIds) &&
-    killSwitched.conversationIds.every(
-      (conversationId) => typeof conversationId === "string"
-    )
-  );
+  return isStringArray(killSwitched.conversationIds);
 }
 
 export function isWorkspaceKillSwitchedForAllAPIs(

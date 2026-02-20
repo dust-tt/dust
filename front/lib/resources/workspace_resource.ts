@@ -19,6 +19,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isStringArray } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
@@ -30,6 +31,34 @@ import type {
 import { Op } from "sequelize";
 
 const WORKSPACE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const WORKSPACE_KILL_SWITCH_METADATA_KEY = "killSwitched";
+const WORKSPACE_FULL_KILL_SWITCH_VALUE = "full";
+const WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE =
+  "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks.";
+const INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX =
+  "Invalid workspace kill switch metadata:";
+
+type WorkspaceConversationKillSwitchValue = {
+  conversationIds: string[];
+};
+
+function isWorkspaceConversationKillSwitchValue(
+  killSwitched: unknown
+): killSwitched is WorkspaceConversationKillSwitchValue {
+  if (typeof killSwitched !== "object" || killSwitched === null) {
+    return false;
+  }
+
+  if (!("conversationIds" in killSwitched)) {
+    return false;
+  }
+
+  return isStringArray(killSwitched.conversationIds);
+}
+
+function isWorkspaceKillSwitchedForAllAPIs(killSwitched: unknown): boolean {
+  return killSwitched === WORKSPACE_FULL_KILL_SWITCH_VALUE;
+}
 
 // We use this to avoid accidentaly inflating the cache footprint
 // Add new attributes with caution
@@ -54,6 +83,12 @@ type CachedWorkspaceData = {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceResource
   extends ReadonlyAttributesType<WorkspaceModel> {}
+
+export type WorkspaceConversationKillSwitchOperation = "block" | "unblock";
+export type UpdateWorkspaceConversationKillSwitchResult = {
+  wasBlockedBefore: boolean;
+  wasUpdated: boolean;
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
@@ -520,6 +555,89 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
+  }
+
+  async updateConversationKillSwitch({
+    conversationId,
+    operation,
+  }: {
+    conversationId: string;
+    operation: WorkspaceConversationKillSwitchOperation;
+  }): Promise<Result<UpdateWorkspaceConversationKillSwitchResult, Error>> {
+    const currentKillSwitch =
+      this.metadata?.[WORKSPACE_KILL_SWITCH_METADATA_KEY];
+    if (isWorkspaceKillSwitchedForAllAPIs(currentKillSwitch)) {
+      return new Err(new Error(WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE));
+    }
+    if (
+      currentKillSwitch !== undefined &&
+      !isWorkspaceConversationKillSwitchValue(currentKillSwitch)
+    ) {
+      return new Err(
+        new Error(
+          `${INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX} ${JSON.stringify(currentKillSwitch)}`
+        )
+      );
+    }
+
+    const conversationIds = currentKillSwitch?.conversationIds ?? [];
+    const wasBlockedBefore = conversationIds.includes(conversationId);
+
+    let metadata: Record<string, string | number | boolean | object>;
+
+    switch (operation) {
+      case "block": {
+        if (wasBlockedBefore) {
+          return new Ok({
+            wasBlockedBefore,
+            wasUpdated: false,
+          });
+        }
+
+        metadata = {
+          ...(this.metadata ?? {}),
+          [WORKSPACE_KILL_SWITCH_METADATA_KEY]: {
+            conversationIds: [...conversationIds, conversationId],
+          },
+        };
+        break;
+      }
+
+      case "unblock": {
+        if (!wasBlockedBefore) {
+          return new Ok({
+            wasBlockedBefore,
+            wasUpdated: false,
+          });
+        }
+
+        const updatedConversationIds = conversationIds.filter(
+          (cId) => cId !== conversationId
+        );
+        metadata = { ...(this.metadata ?? {}) };
+        if (updatedConversationIds.length === 0) {
+          delete metadata[WORKSPACE_KILL_SWITCH_METADATA_KEY];
+        } else {
+          metadata[WORKSPACE_KILL_SWITCH_METADATA_KEY] = {
+            conversationIds: updatedConversationIds,
+          };
+        }
+        break;
+      }
+    }
+
+    const updateResult = await WorkspaceResource.updateMetadata(
+      this.id,
+      metadata
+    );
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
+
+    return new Ok({
+      wasBlockedBefore,
+      wasUpdated: true,
+    });
   }
 
   static async updateWorkOSOrganizationId(
