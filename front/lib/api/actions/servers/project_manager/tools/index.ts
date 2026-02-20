@@ -14,10 +14,6 @@ import {
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
-import {
-  getAttachmentFromFile,
-  renderAttachmentXml,
-} from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { upsertProjectContextFile } from "@app/lib/api/projects";
@@ -28,7 +24,6 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { SupportedFileContentType } from "@app/types/files";
 import {
   isAllSupportedFileContentType,
   isSupportedFileContentType,
@@ -58,63 +53,6 @@ export function createProjectManagerTools(
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof PROJECT_MANAGER_TOOLS_METADATA> = {
-    list_files: async ({ dustProject }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-
-        const files = await FileResource.listByProject(auth, {
-          projectId: space.sId,
-        });
-
-        // Filter files to only those with supported content types.
-        // TypeScript doesn't narrow the type through filter, so we assert it.
-        const supportedFiles = files.filter((file) =>
-          isSupportedFileContentType(file.contentType)
-        ) as Array<FileResource & { contentType: SupportedFileContentType }>;
-
-        if (files.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: "No files are currently in the project context.",
-            },
-          ]);
-        }
-
-        const attachments = supportedFiles.map((file) =>
-          getAttachmentFromFile({
-            fileId: file.sId,
-            contentType: file.contentType,
-            title: file.fileName,
-            snippet: null,
-          })
-        );
-
-        let content = `The following files are currently in the project context:\n`;
-        for (const [i, attachment] of attachments.entries()) {
-          if (i > 0) {
-            content += "\n";
-          }
-          content += renderAttachmentXml({ attachment });
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: content,
-          },
-        ]);
-      }, "Failed to list project files");
-    },
-
     add_file: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {

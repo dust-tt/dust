@@ -86,6 +86,7 @@ export type FileContentFragmentType = BaseContentFragmentType & {
         textBytes: number | null;
         sourceProvider: string | null;
         sourceIcon: string | null;
+        isInProjectContext: boolean;
       }
     | {
         expiredReason: ContentFragmentExpiredReason;
@@ -96,6 +97,7 @@ export type FileContentFragmentType = BaseContentFragmentType & {
         textBytes: null;
         sourceProvider: null;
         sourceIcon: null;
+        isInProjectContext: null;
       }
   );
 

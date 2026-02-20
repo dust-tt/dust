@@ -35,6 +35,7 @@ export type BaseConversationAttachmentType = {
   isIncludable: boolean;
   isSearchable: boolean;
   isQueryable: boolean;
+  isInProjectContext: boolean;
 };
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
@@ -135,6 +136,7 @@ export function getAttachmentFromContentNodeContentFragment(
     isIncludable,
     isQueryable,
     isSearchable,
+    isInProjectContext: false, // For now, content nodes can only be from the conversation, not the project. To be revisited if/when we allow connected data in the projects.
   };
 
   return {
@@ -185,6 +187,7 @@ export function getAttachmentFromFileContentFragment(
     isIncludable,
     isQueryable,
     isSearchable,
+    isInProjectContext: cf.isInProjectContext,
   };
 
   return {
@@ -198,11 +201,13 @@ export function getAttachmentFromFile({
   contentType,
   title,
   snippet,
+  isInProjectContext,
 }: {
   fileId: string;
   contentType: AllSupportedFileContentType;
   title: string;
   snippet: string | null;
+  isInProjectContext: boolean;
 }): FileAttachmentType {
   const canDoJIT = snippet !== null;
   const isIncludable = isConversationIncludableFileContentType(contentType);
@@ -220,6 +225,7 @@ export function getAttachmentFromFile({
     isIncludable,
     isQueryable,
     isSearchable,
+    isInProjectContext,
   };
 }
 
@@ -245,6 +251,7 @@ export function renderAttachmentXml({
     `type="${attachment.contentType}"`,
     `title="${attachment.title}"`,
     `version="${attachment.contentFragmentVersion}"`,
+    `isInProjectContext="${attachment.isInProjectContext}"`,
     `isIncludable="${attachment.isIncludable}"`,
     `isQueryable="${attachment.isQueryable}"`,
     `isSearchable="${attachment.isSearchable}"`,

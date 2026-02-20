@@ -10,21 +10,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const PROJECT_MANAGER_SERVER_NAME = "project_manager" as const;
 
 export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
-  list_files: {
-    description:
-      "List all files in the project context. Returns file metadata including names, IDs, and content types.",
-    schema: {
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing project files",
-      done: "List project files",
-    },
-  },
   add_file: {
     description:
       "Add a new file to the project context. The file will be available to all conversations in this project. " +

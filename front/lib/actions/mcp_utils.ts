@@ -98,6 +98,7 @@ export function rewriteContentForModel(
       contentType: content.resource.contentType,
       title: content.resource.title,
       snippet: content.resource.snippet,
+      isInProjectContext: content.resource.isInProjectContext ?? false,
     });
     const xml = renderAttachmentXml({ attachment });
     let text = content.resource.text;

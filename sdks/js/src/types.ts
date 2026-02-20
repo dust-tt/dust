@@ -788,6 +788,7 @@ const ActionGeneratedFileSchema = z.object({
   contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
+  isInProjectContext: z.boolean().optional(),
 });
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
