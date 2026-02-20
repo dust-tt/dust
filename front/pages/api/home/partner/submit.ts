@@ -1,5 +1,5 @@
-import { submitToHubSpotPartnerForm } from "@app/lib/api/hubspot";
 import { TrackingParamsSchema } from "@app/lib/api/hubspot/contactFormSchema";
+import { submitToHubSpotPartnerForm } from "@app/lib/api/hubspot/hubspot";
 import type {
   PartnerFormData,
   PartnerSubmitResponse,

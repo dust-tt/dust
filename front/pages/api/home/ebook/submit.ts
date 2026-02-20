@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import { submitToHubSpotEbookForm } from "@app/lib/api/hubspot";
 import type {
   EbookFormData,
   EbookSubmitResponse,
@@ -8,6 +7,7 @@ import {
   EbookFormSchema,
   TrackingParamsSchema,
 } from "@app/lib/api/hubspot/ebookFormSchema";
+import { submitToHubSpotEbookForm } from "@app/lib/api/hubspot/hubspot";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
