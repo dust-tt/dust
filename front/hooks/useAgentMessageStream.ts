@@ -257,6 +257,7 @@ export function useAgentMessageStream({
                   ...updateMessageWithAction(m, action),
                   streaming: {
                     ...m.streaming,
+                    agentState: "thinking",
                     // Clean up progress for this specific action.
                     actionProgress: new Map(
                       Array.from(m.streaming.actionProgress.entries()).filter(
