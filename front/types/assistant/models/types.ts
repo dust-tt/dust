@@ -76,6 +76,7 @@ export type ModelConfigurationType = Omit<
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
   tokenizer: TokenizerConfig;
+  enterpriseOnly?: boolean;
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
