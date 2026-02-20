@@ -625,6 +625,128 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10011,
+    name: "Attio",
+    description:
+      "Attio CRM tools for managing contacts, companies, deals, notes, and tasks.",
+    url: "https://mcp.attio.com/mcp",
+    icon: "AttioLogo",
+    documentationUrl: "https://docs.attio.com/mcp/overview",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Read operations - auto-approved for smooth UX
+      "search-records": "never_ask",
+      "get-records-by-ids": "never_ask",
+      "list-attribute-definitions": "never_ask",
+      "search-notes-by-metadata": "never_ask",
+      "semantic-search-notes": "never_ask",
+      "get-note-body": "never_ask",
+      "search-meetings": "never_ask",
+      "search-call-recordings-by-metadata": "never_ask",
+      "semantic-search-call-recordings": "never_ask",
+      "get-call-recording": "never_ask",
+      "search-emails-by-metadata": "never_ask",
+      "semantic-search-emails": "never_ask",
+      "get-email-content": "never_ask",
+      "list-workspace-members": "never_ask",
+      "list-workspace-teams": "never_ask",
+      whoami: "never_ask",
+
+      // Write operations - require user confirmation
+      "create-record": "high",
+      "upsert-record": "high",
+      "create-note": "low",
+      "create-task": "low",
+      "update-task": "low",
+    },
+    toolDisplayLabels: {
+      "search-records": {
+        running: "Searching records on Attio",
+        done: "Search records on Attio",
+      },
+      "get-records-by-ids": {
+        running: "Retrieving records on Attio",
+        done: "Retrieve records on Attio",
+      },
+      "list-attribute-definitions": {
+        running: "Listing attributes on Attio",
+        done: "List attributes on Attio",
+      },
+      "search-notes-by-metadata": {
+        running: "Searching notes on Attio",
+        done: "Search notes on Attio",
+      },
+      "semantic-search-notes": {
+        running: "Searching notes (semantic) on Attio",
+        done: "Search notes (semantic) on Attio",
+      },
+      "get-note-body": {
+        running: "Retrieving note on Attio",
+        done: "Retrieve note on Attio",
+      },
+      "search-meetings": {
+        running: "Searching meetings on Attio",
+        done: "Search meetings on Attio",
+      },
+      "search-call-recordings-by-metadata": {
+        running: "Searching call recordings on Attio",
+        done: "Search call recordings on Attio",
+      },
+      "semantic-search-call-recordings": {
+        running: "Searching call recordings (semantic) on Attio",
+        done: "Search call recordings (semantic) on Attio",
+      },
+      "get-call-recording": {
+        running: "Retrieving call recording on Attio",
+        done: "Retrieve call recording on Attio",
+      },
+      "search-emails-by-metadata": {
+        running: "Searching emails on Attio",
+        done: "Search emails on Attio",
+      },
+      "semantic-search-emails": {
+        running: "Searching emails (semantic) on Attio",
+        done: "Search emails (semantic) on Attio",
+      },
+      "get-email-content": {
+        running: "Retrieving email on Attio",
+        done: "Retrieve email on Attio",
+      },
+      "list-workspace-members": {
+        running: "Listing workspace members on Attio",
+        done: "List workspace members on Attio",
+      },
+      "list-workspace-teams": {
+        running: "Listing workspace teams on Attio",
+        done: "List workspace teams on Attio",
+      },
+      whoami: {
+        running: "Checking user info on Attio",
+        done: "Check user info on Attio",
+      },
+      "create-record": {
+        running: "Creating record on Attio",
+        done: "Create record on Attio",
+      },
+      "upsert-record": {
+        running: "Upserting record on Attio",
+        done: "Upsert record on Attio",
+      },
+      "create-note": {
+        running: "Creating note on Attio",
+        done: "Create note on Attio",
+      },
+      "create-task": {
+        running: "Creating task on Attio",
+        done: "Create task on Attio",
+      },
+      "update-task": {
+        running: "Updating task on Attio",
+        done: "Update task on Attio",
+      },
+    },
+  },
   //Removed temporaly gitlab server
   /*
   {
