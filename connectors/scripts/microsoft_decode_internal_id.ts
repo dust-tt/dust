@@ -8,16 +8,7 @@
  *   npx ts-node scripts/decode_internal_id.ts microsoft-Zm9sZGVyLy9kcml2ZXMvYiFTblg3...
  */
 
-const MICROSOFT_NODE_TYPES = [
-  "sites-root",
-  "site",
-  "drive",
-  "folder",
-  "file",
-  "page",
-  "message",
-  "worksheet",
-] as const;
+import { isValidNodeType } from "@connectors/connectors/microsoft/lib/types";
 
 function decode(internalId: string) {
   if (!internalId.startsWith("microsoft-")) {
@@ -34,12 +25,7 @@ function decode(internalId: string) {
   }
 
   const [nodeType, ...rest] = decodedId.split("/");
-  if (
-    !nodeType ||
-    !MICROSOFT_NODE_TYPES.includes(
-      nodeType as (typeof MICROSOFT_NODE_TYPES)[number]
-    )
-  ) {
+  if (!nodeType || !isValidNodeType(nodeType)) {
     throw new Error(`Invalid nodeType: ${nodeType} (decoded: ${decodedId})`);
   }
 
