@@ -10,15 +10,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SchemaUnion, ThinkingConfig, ToolConfig } from "@google/genai";
 import { FunctionCallingConfigMode } from "@google/genai";
 
-const THINKING_BUDGET_CONFIG_MAPPING: Record<ReasoningEffort, number> = {
-  // Budget of 0 would throw for some thinking models,
-  // so we default to the minimum supported by all models.
-  none: 512,
-  light: 1024,
-  medium: 2048,
-  high: 4096,
-};
-
 export function toThinkingConfig({
   modelId,
   reasoningEffort,
@@ -28,16 +19,10 @@ export function toThinkingConfig({
   reasoningEffort: ReasoningEffort | null;
   useNativeLightReasoning?: boolean;
 }): ThinkingConfig | undefined {
-  const thinkingBudgetConfigMapping = {
-    ...THINKING_BUDGET_CONFIG_MAPPING,
-    ...GOOGLE_AI_STUDIO_MODEL_CONFIGS[modelId].thinkingBudgetConfigMapping,
-  };
+  const thinkingConfig = GOOGLE_AI_STUDIO_MODEL_CONFIGS[modelId].thinkingConfig;
 
   if (reasoningEffort === "light" && !useNativeLightReasoning) {
-    return {
-      thinkingBudget: thinkingBudgetConfigMapping.none,
-      includeThoughts: true,
-    };
+    return thinkingConfig.none;
   }
 
   switch (reasoningEffort) {
@@ -47,10 +32,7 @@ export function toThinkingConfig({
     case "light":
     case "medium":
     case "high":
-      return {
-        thinkingBudget: thinkingBudgetConfigMapping[reasoningEffort],
-        includeThoughts: true,
-      };
+      return thinkingConfig[reasoningEffort];
     default:
       assertNever(reasoningEffort);
   }

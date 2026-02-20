@@ -10,6 +10,7 @@ import type {
   ModelIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import { type ThinkingConfig, ThinkingLevel } from "@google/genai";
 
 export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
 
@@ -23,31 +24,99 @@ export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
 export type GoogleAIStudioWhitelistedModelId =
   (typeof GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS)[number];
 
+const PRE_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
+  ReasoningEffort,
+  ThinkingConfig
+> = {
+  // Budget of 0 would throw for some thinking models,
+  // so we default to the minimum supported by all models.
+  none: {
+    thinkingBudget: 512,
+    includeThoughts: true,
+  },
+  light: {
+    thinkingBudget: 1024,
+    includeThoughts: true,
+  },
+  medium: {
+    thinkingBudget: 2048,
+    includeThoughts: true,
+  },
+  high: {
+    thinkingBudget: 4096,
+    includeThoughts: true,
+  },
+};
+const POST_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
+  ReasoningEffort,
+  ThinkingConfig
+> = {
+  // None thinking level not supported by Gemini 3 models
+  none: {
+    thinkingBudget: 128,
+    includeThoughts: true,
+  },
+  light: {
+    thinkingLevel: ThinkingLevel.LOW,
+    includeThoughts: true,
+  },
+  medium: {
+    thinkingLevel: ThinkingLevel.MEDIUM,
+    includeThoughts: true,
+  },
+  high: {
+    thinkingLevel: ThinkingLevel.HIGH,
+    includeThoughts: true,
+  },
+};
+
 export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
   GoogleAIStudioWhitelistedModelId,
   {
     overwrites?: Omit<LLMParameters, "modelId">;
-    thinkingBudgetConfigMapping?: Partial<Record<ReasoningEffort, number>>;
+    thinkingConfig: Record<ReasoningEffort, ThinkingConfig>;
   }
 > = {
-  [GEMINI_2_5_FLASH_MODEL_ID]: { thinkingBudgetConfigMapping: { none: 0 } },
-  [GEMINI_2_5_FLASH_LITE_MODEL_ID]: {
-    thinkingBudgetConfigMapping: { none: 0 },
+  [GEMINI_2_5_FLASH_MODEL_ID]: {
+    thinkingConfig: {
+      ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
+      none: { thinkingBudget: 0, includeThoughts: true },
+    },
   },
-  [GEMINI_2_5_PRO_MODEL_ID]: { thinkingBudgetConfigMapping: { none: 128 } },
+  [GEMINI_2_5_FLASH_LITE_MODEL_ID]: {
+    thinkingConfig: {
+      ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
+      none: { thinkingBudget: 0, includeThoughts: true },
+    },
+  },
+  [GEMINI_2_5_PRO_MODEL_ID]: {
+    thinkingConfig: {
+      ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
+      none: { thinkingBudget: 128, includeThoughts: true },
+    },
+  },
   [GEMINI_3_PRO_MODEL_ID]: {
     overwrites: {
       // Not required but strongly recommended by Google for Gemini 3
       temperature: 1,
     },
-    thinkingBudgetConfigMapping: { none: 128 },
+    thinkingConfig: {
+      ...POST_GEMINI_3_THINKING_CONFIG_MAPPING,
+      // Gemini 3 does not support medium. This requires a bigger refactor
+      // to remove medium level in the agent builder.
+      medium: {
+        includeThoughts: true,
+        thinkingBudget: 2048,
+      },
+    },
+  },
   },
   [GEMINI_3_FLASH_MODEL_ID]: {
     overwrites: {
       // Not required but strongly recommended by Google for Gemini 3
       temperature: 1,
     },
-    thinkingBudgetConfigMapping: { none: 128 },
+    thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
   },
 };
 
