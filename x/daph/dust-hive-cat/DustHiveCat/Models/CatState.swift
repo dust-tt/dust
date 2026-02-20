@@ -26,6 +26,8 @@ enum AnimationType: String, CaseIterable {
     case walk = "walk"
     case notification = "notification"
     case sleep = "sleep"
+    case walkToSleep = "walk_to_sleep"
+    case sleepToWalk = "sleep_to_walk"
 }
 
 enum NotificationMovement {
