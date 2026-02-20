@@ -39,6 +39,7 @@
     "eslint-plugin-react-hooks": {
       "zod-validation-error": "^4.0.0"
     },
-    "@types/react": "^18.3.18"
+    "@types/react": "^18.3.18",
+    "dd-trace": "^5.87.0"
   }
 }
