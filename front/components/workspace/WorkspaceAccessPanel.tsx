@@ -3,6 +3,7 @@ import {
   Button,
   Chip,
   DataTable,
+  DocumentTextIcon,
   EmptyCTA,
   IconButton,
   LoadingBlock,
@@ -20,6 +21,7 @@ import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import {
+  useAuditLogsStatus,
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
 } from "@app/lib/swr/workos";
@@ -65,7 +67,64 @@ export default function WorkspaceAccessPanel({
       {plan.limits.users.isSCIMAllowed && (
         <UserProvisioning owner={owner} plan={plan} />
       )}
+      {plan.limits.users.isAuditLogsAllowed && <Separator />}
+      {plan.limits.users.isAuditLogsAllowed && (
+        <AuditLogsSection owner={owner} />
+      )}
     </div>
+  );
+}
+
+interface AuditLogsSectionProps {
+  owner: LightWorkspaceType;
+}
+
+function AuditLogsSection({ owner }: AuditLogsSectionProps) {
+  const { viewLogsLink, configureExportLink, isLoading } = useAuditLogsStatus({
+    owner,
+  });
+
+  return (
+    <WorkspaceSection title="Audit Logs" icon={DocumentTextIcon}>
+      <div className="flex w-full flex-row items-center gap-2">
+        <div className="flex-1">
+          <Page.P variant="secondary">
+            View workspace activity logs or configure export to your security
+            information and event management (SIEM) system.
+          </Page.P>
+        </div>
+        <div className="flex justify-end gap-2">
+          {isLoading ? (
+            <LoadingBlock className="h-8 w-32 rounded-xl" />
+          ) : (
+            <>
+              <Button
+                label="View Logs"
+                size="sm"
+                variant="outline"
+                disabled={!viewLogsLink}
+                onClick={() => {
+                  if (viewLogsLink) {
+                    window.open(viewLogsLink, "_blank");
+                  }
+                }}
+              />
+              <Button
+                label="Configure Export"
+                size="sm"
+                variant="outline"
+                disabled={!configureExportLink}
+                onClick={() => {
+                  if (configureExportLink) {
+                    window.open(configureExportLink, "_blank");
+                  }
+                }}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    </WorkspaceSection>
   );
 }
 

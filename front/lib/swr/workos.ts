@@ -10,6 +10,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
+import type { AuditLogsSetupResponse } from "@app/pages/api/w/[wId]/audit-logs";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -246,5 +247,29 @@ export function useProvisioningStatus({
     roleProvisioningStatus,
     isProvisioningStatusLoading: !error && !data && !disabled,
     isProvisioningStatusError: error,
+  };
+}
+
+/**
+ * Audit Logs
+ */
+
+export function useAuditLogsStatus({
+  disabled,
+  owner,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
+  const { data, error, isLoading } = useSWRWithDefaults<
+    string,
+    AuditLogsSetupResponse
+  >(`/api/w/${owner.sId}/audit-logs`, fetcher, { disabled });
+
+  return {
+    viewLogsLink: data?.viewLogsLink,
+    configureExportLink: data?.configureExportLink,
+    isLoading,
+    error,
   };
 }
