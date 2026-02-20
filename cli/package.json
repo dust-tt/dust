@@ -1,13 +1,15 @@
 {
   "name": "@dust-tt/dust-cli",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "A command-line interface for interacting with Dust.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "dust": "dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build:prod": "NODE_ENV=production tsup",
     "build:dev": "NODE_ENV=development tsup",
@@ -18,7 +20,12 @@
     "format:check": "biome format .",
     "start": "node dist/index.js"
   },
-  "keywords": ["dust", "cli", "terminal", "command-line"],
+  "keywords": [
+    "dust",
+    "cli",
+    "terminal",
+    "command-line"
+  ],
   "author": "Dust",
   "license": "MIT",
   "repository": {
