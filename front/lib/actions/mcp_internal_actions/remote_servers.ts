@@ -560,20 +560,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_meetings: "never_ask",
       get_meeting_transcript: "never_ask",
     },
-  },
-  {
-    id: 10009,
-    name: "Granola",
-    description: "Granola tools for meeting notes and transcripts.",
-    url: "https://mcp.granola.ai/mcp",
-    icon: "GranolaLogo",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      query_granola_meetings: "never_ask",
-      list_meetings: "never_ask",
-      get_meetings: "never_ask",
-      get_meeting_transcript: "never_ask",
-    },
     toolDisplayLabels: {
       query_granola_meetings: {
         running: "Querying meetings on Granola",
@@ -639,7 +625,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
-    {
+  {
     id: 10011,
     name: "Attio",
     description:
@@ -673,6 +659,92 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "create-note": "low",
       "create-task": "low",
       "update-task": "low",
+    },
+    toolDisplayLabels: {
+      "search-records": {
+        running: "Searching records on Attio",
+        done: "Search records on Attio",
+      },
+      "get-records-by-ids": {
+        running: "Retrieving records on Attio",
+        done: "Retrieve records on Attio",
+      },
+      "list-attribute-definitions": {
+        running: "Listing attributes on Attio",
+        done: "List attributes on Attio",
+      },
+      "search-notes-by-metadata": {
+        running: "Searching notes on Attio",
+        done: "Search notes on Attio",
+      },
+      "semantic-search-notes": {
+        running: "Searching notes (semantic) on Attio",
+        done: "Search notes (semantic) on Attio",
+      },
+      "get-note-body": {
+        running: "Retrieving note on Attio",
+        done: "Retrieve note on Attio",
+      },
+      "search-meetings": {
+        running: "Searching meetings on Attio",
+        done: "Search meetings on Attio",
+      },
+      "search-call-recordings-by-metadata": {
+        running: "Searching call recordings on Attio",
+        done: "Search call recordings on Attio",
+      },
+      "semantic-search-call-recordings": {
+        running: "Searching call recordings (semantic) on Attio",
+        done: "Search call recordings (semantic) on Attio",
+      },
+      "get-call-recording": {
+        running: "Retrieving call recording on Attio",
+        done: "Retrieve call recording on Attio",
+      },
+      "search-emails-by-metadata": {
+        running: "Searching emails on Attio",
+        done: "Search emails on Attio",
+      },
+      "semantic-search-emails": {
+        running: "Searching emails (semantic) on Attio",
+        done: "Search emails (semantic) on Attio",
+      },
+      "get-email-content": {
+        running: "Retrieving email on Attio",
+        done: "Retrieve email on Attio",
+      },
+      "list-workspace-members": {
+        running: "Listing workspace members on Attio",
+        done: "List workspace members on Attio",
+      },
+      "list-workspace-teams": {
+        running: "Listing workspace teams on Attio",
+        done: "List workspace teams on Attio",
+      },
+      whoami: {
+        running: "Checking user info on Attio",
+        done: "Check user info on Attio",
+      },
+      "create-record": {
+        running: "Creating record on Attio",
+        done: "Create record on Attio",
+      },
+      "upsert-record": {
+        running: "Upserting record on Attio",
+        done: "Upsert record on Attio",
+      },
+      "create-note": {
+        running: "Creating note on Attio",
+        done: "Create note on Attio",
+      },
+      "create-task": {
+        running: "Creating task on Attio",
+        done: "Create task on Attio",
+      },
+      "update-task": {
+        running: "Updating task on Attio",
+        done: "Update task on Attio",
+      },
     },
   },
   //Removed temporaly gitlab server
