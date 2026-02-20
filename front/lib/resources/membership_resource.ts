@@ -528,25 +528,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     MembershipResource.seatsCacheKeyResolver
   );
 
-  static async markMembershipFirstUse({
-    user,
-    workspace,
-  }: {
-    user: UserResource;
-    workspace: LightWorkspaceType;
-  }): Promise<boolean> {
-    const membership = await this.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace,
-    });
-
-    if (!membership || membership.firstUsedAt !== null) {
+  async markFirstUse(workspaceSid: string): Promise<boolean> {
+    if (this.firstUsedAt !== null) {
       return false;
     }
 
-    await membership.update({ firstUsedAt: new Date() });
+    await this.update({ firstUsedAt: new Date() });
 
-    await this.invalidateActiveSeatsCache(workspace.sId);
+    await MembershipResource.invalidateActiveSeatsCache(workspaceSid);
     return true;
   }
 

@@ -180,12 +180,8 @@ export async function handleEnterpriseSignUpFlow(
   const lightWorkspace = renderLightWorkspaceType({ workspace });
 
   // Early return if user is already a member of a workspace.
+  // First use is marked by login.ts after handleEnterpriseSignUpFlow returns.
   if (total !== 0) {
-    // Mark first use for provisioned membership if not yet marked (user is accessing the workspace).
-    await MembershipResource.markMembershipFirstUse({
-      user,
-      workspace: lightWorkspace,
-    });
     return { flow: null, workspace: lightWorkspace };
   }
 
