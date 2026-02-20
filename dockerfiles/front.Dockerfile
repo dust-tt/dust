@@ -64,6 +64,7 @@ ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
 ARG NEXT_PUBLIC_NOVU_API_URL
 ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ARG NEXT_PUBLIC_BUILD_DATE
+ARG DATADOG_ADDITIONAL_SERVICES
 ARG CONTENTFUL_SPACE_ID
 ARG CONTENTFUL_ACCESS_TOKEN
 
@@ -107,6 +108,20 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
+  for svc in $DATADOG_ADDITIONAL_SERVICES; do \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
+  --minified-path-prefix=/_next/static/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=${svc}-browser && \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
+  --minified-path-prefix=/app/front/.next/server/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=${svc} || exit 1; \
+  done && \
   find .next -type f -name "*.map" -print -delete; \
   fi
 

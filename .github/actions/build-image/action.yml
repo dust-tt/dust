@@ -150,6 +150,10 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
           build_args+=("--build-arg NEXT_PUBLIC_BUILD_DATE=$(date +%s)")
+          # Upload source maps for front-sse too (same image, different DD service name)
+          if [[ "$COMPONENT" == "front" ]]; then
+            build_args+=("--build-arg DATADOG_ADDITIONAL_SERVICES=front-sse")
+          fi
         fi
 
         # Only set Contentful credentials for front and front-edge builds (needed for ISR)
