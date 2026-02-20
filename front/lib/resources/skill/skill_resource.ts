@@ -1,7 +1,5 @@
-import {
-  getAgentConfiguration,
-  updateAgentRequirements,
-} from "@app/lib/api/assistant/configuration/agent";
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
@@ -1293,6 +1291,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (spaceId) => !this.requestedSpaceIds.includes(spaceId)
     );
 
+    const workspace = auth.getNonNullableWorkspace();
+
     await concurrentExecutor(
       agents,
       async (agent) => {
@@ -1302,15 +1302,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         // removed from the agent. In order to achieve this, we check if the agent has
         // any other capabilities that require the removed spaces.
         if (spaceIdsRemovedFromThisSkill.length > 0) {
-          const agentConfig = await getAgentConfiguration(auth, {
-            agentId: agent.sId,
+          const actionsMap = await fetchMCPServerActionConfigurations(auth, {
+            configurationIds: [agent.id],
             variant: "full",
           });
-          assert(agentConfig, "Agent configuration not found");
+          const actions = actionsMap.get(agent.id) ?? [];
 
-          const agentSkills = await SkillResource.listByAgentConfiguration(
+          const agentSkillModels = await AgentSkillModel.findAll({
+            where: {
+              agentConfigurationId: agent.id,
+              workspaceId: workspace.id,
+            },
+          });
+          const agentSkills = await SkillResource.fetchBySkillReferences(
             auth,
-            agentConfig
+            agentSkillModels.map((s) => ({
+              customSkillId: s.customSkillId,
+              globalSkillId: s.globalSkillId,
+            }))
           );
           const otherAgentSkills = agentSkills.filter(
             (skill) => skill.sId !== this.sId
@@ -1318,7 +1327,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
           const agentOtherCapabilitiesRequirements =
             await getAgentConfigurationRequirementsFromCapabilities(auth, {
-              actions: agentConfig.actions,
+              actions,
               skills: otherAgentSkills,
             });
 

@@ -1,5 +1,5 @@
 import { hardDeleteApp } from "@app/lib/api/apps";
-import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
+import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
