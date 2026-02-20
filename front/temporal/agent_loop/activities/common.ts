@@ -381,10 +381,23 @@ export async function updateResourceAndPublishEvent(
   });
 }
 
+const DEFAULT_WORKFLOW_ERROR_MESSAGE =
+  "An unexpected error occurred while generating the agent response. Please try again.";
+
+function toUserFriendlyMessage(message: string | undefined | null): string {
+  if (!message) {
+    return DEFAULT_WORKFLOW_ERROR_MESSAGE;
+  }
+  if (message === "Activity task timed out") {
+    return "The agent took too long to respond. Please try again.";
+  }
+  return message;
+}
+
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
-  error: Error
+  error: { message: string; name: string }
 ): Promise<void> {
   let authResult = await AuthenticatorClass.fromJSON(authType);
 
@@ -447,9 +460,10 @@ export async function notifyWorkflowError(
     messageId: agentMessageId,
     error: {
       code: "workflow_error",
-      message: error.message || "Workflow execution failed",
+      message: toUserFriendlyMessage(error.message),
       metadata: {
         category: "critical_failure",
+        errorTitle: "Agent response generation failed",
         // Ensure errorName is a string (not an Error object or undefined)
         errorName: error.name || "UnknownError",
       },
