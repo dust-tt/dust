@@ -7,6 +7,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { GongTranscriptModel } from "@connectors/lib/models/gong";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 import type { Logger } from "pino";
@@ -33,6 +34,7 @@ async function deletePrivateTranscripts(
   let nextId: number | undefined = 0;
   let totalChecked = 0;
   let totalPrivate = 0;
+  let totalMissing = 0;
   let hasMore = true;
 
   do {
@@ -69,12 +71,19 @@ async function deletePrivateTranscripts(
       cursor = nextPageCursor;
     } while (cursor);
 
+    const missingTranscripts = transcripts.filter(
+      (t) => !callMetadataMap.has(t.callId)
+    );
+
     const privateTranscripts = transcripts.filter(
-      (t) => callMetadataMap.get(t.callId)?.isPrivate === true
+      (t) =>
+        callMetadataMap.has(t.callId) &&
+        callMetadataMap.get(t.callId)?.isPrivate === true
     );
 
     totalChecked += transcripts.length;
     totalPrivate += privateTranscripts.length;
+    totalMissing += missingTranscripts.length;
 
     logger.info(
       {
@@ -82,14 +91,17 @@ async function deletePrivateTranscripts(
         privateInBatch: privateTranscripts.length,
         totalChecked,
         totalPrivate,
+        totalMissing,
       },
       "Processed batch."
     );
 
-    if (privateTranscripts.length > 0 && execute) {
+    const transcriptsToDelete = [...privateTranscripts, ...missingTranscripts];
+
+    if (execute) {
       // Delete from core.
       await concurrentExecutor(
-        privateTranscripts,
+        transcriptsToDelete,
         async (transcript) => {
           await deleteDataSourceDocument(
             dataSourceConfig,
@@ -108,7 +120,7 @@ async function deletePrivateTranscripts(
       // Delete from connectors DB.
       await GongTranscriptModel.destroy({
         where: {
-          callId: privateTranscripts.map((t) => t.callId),
+          callId: transcriptsToDelete.map((t) => t.callId),
           connectorId: connector.id,
         },
       });
@@ -118,12 +130,26 @@ async function deletePrivateTranscripts(
     hasMore = transcripts.length === BATCH_SIZE;
   } while (hasMore);
 
-  logger.info({ totalChecked, totalPrivate, execute }, "Done.");
+  logger.info({ totalChecked, totalPrivate, totalMissing }, "Done.");
 }
 
 makeScript(
-  { connectorId: { type: "number", required: true } },
+  { connectorId: { type: "number", required: false } },
   async ({ connectorId, execute }, logger) => {
-    await deletePrivateTranscripts(connectorId, { execute, logger });
+    let connectorIds: number[];
+    if (connectorId) {
+      connectorIds = [connectorId];
+    } else {
+      const connectors = await ConnectorResource.listByType("gong", {});
+      connectorIds = connectors.map((c) => c.id);
+      logger.info(
+        { count: connectorIds.length },
+        "No connectorId provided, running on all gong connectors."
+      );
+    }
+
+    for (const connectorId of connectorIds) {
+      await deletePrivateTranscripts(connectorId, { execute, logger });
+    }
   }
 );
