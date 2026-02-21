@@ -4,12 +4,10 @@ import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
-  Avatar,
   Button,
-  Checkbox,
   CheckIcon,
-  ListGroup,
-  ListItem,
+  createSelectionColumn,
+  DataTable,
   SearchInput,
   Sheet,
   SheetContainer,
@@ -18,7 +16,27 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import { useEffect, useMemo, useState } from "react";
+
+type UserRowData = {
+  sId: string;
+  fullName: string;
+  email: string;
+  image: string;
+  onClick?: () => void;
+};
+
+type UserRowInfo = { row: { original: UserRowData } };
+
+function getUserTableRows(members: SpaceUserType[]): UserRowData[] {
+  return members.map((user) => ({
+    sId: user.sId,
+    fullName: user.fullName,
+    email: user.email ?? "",
+    image: user.image ?? "",
+  }));
+}
 
 interface ManageUsersPanelProps {
   isOpen: boolean;
@@ -42,7 +60,6 @@ export function ManageUsersPanel({
   const sendNotification = useSendNotification();
   const doUpdateSpace = useUpdateSpace({ owner });
 
-  // Fetch workspace members
   const { members, isLoading } = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm: searchText,
@@ -50,11 +67,9 @@ export function ManageUsersPanel({
     pageSize: 100,
   });
 
-  // Current selected members and editors (persists even when members disappear from search)
   const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
 
-  // Initialize current members/editors from props when modal opens
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setCurrentMembers(new Set(currentProjectMembers.map((m) => m.sId)));
@@ -63,17 +78,14 @@ export function ManageUsersPanel({
     );
   }, [isOpen, currentProjectMembers]);
 
-  const toggleUser = (userId: string) => {
-    setCurrentMembers((prev) => {
+  const toggleEditor = (userId: string) => {
+    if (!currentMembers.has(userId)) {
+      return;
+    }
+    setCurrentEditors((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) {
         next.delete(userId);
-        // Also remove from editors if they were an editor
-        setCurrentEditors((prevEditors) => {
-          const nextEditors = new Set(prevEditors);
-          nextEditors.delete(userId);
-          return nextEditors;
-        });
       } else {
         next.add(userId);
       }
@@ -81,25 +93,9 @@ export function ManageUsersPanel({
     });
   };
 
-  const toggleEditor = (userId: string) => {
-    // Only toggle if they're a member
-    if (currentMembers.has(userId)) {
-      setCurrentEditors((prev) => {
-        const next = new Set(prev);
-        if (next.has(userId)) {
-          next.delete(userId);
-        } else {
-          next.add(userId);
-        }
-        return next;
-      });
-    }
-  };
-
   const handleSave = async () => {
     setIsSaving(true);
 
-    // Members are those who are not editors, editors are separate
     const memberIds = Array.from(currentMembers).filter(
       (id) => !currentEditors.has(id)
     );
@@ -116,7 +112,6 @@ export function ManageUsersPanel({
       return;
     }
 
-    // Call the API to update the space with new members
     const updatedSpace = await doUpdateSpace(
       space,
       {
@@ -133,7 +128,6 @@ export function ManageUsersPanel({
     );
 
     if (updatedSpace) {
-      // Notify parent component to refetch members list
       await onSuccess?.();
       setIsOpen(false);
     }
@@ -145,15 +139,94 @@ export function ManageUsersPanel({
     setIsOpen(false);
   };
 
-  // Get selected users data for button label
-  const selectedMembersCount = currentMembers.size;
+  const rows = useMemo(() => getUserTableRows(members), [members]);
+
+  const rowSelectionState: RowSelectionState = useMemo(() => {
+    const state: Record<string, boolean> = {};
+    for (const sId of currentMembers) {
+      state[sId] = true;
+    }
+    return state;
+  }, [currentMembers]);
+
+  const handleRowSelectionChange = (newSelection: RowSelectionState) => {
+    const newMembers = new Set(
+      Object.entries(newSelection)
+        .filter(([, selected]) => selected)
+        .map(([sId]) => sId)
+    );
+    setCurrentMembers(newMembers);
+
+    setCurrentEditors((prevEditors) => {
+      const nextEditors = new Set(prevEditors);
+      for (const editorId of prevEditors) {
+        if (!newMembers.has(editorId)) {
+          nextEditors.delete(editorId);
+        }
+      }
+      return nextEditors;
+    });
+  };
+
+  const columns: ColumnDef<UserRowData>[] = useMemo(
+    () => [
+      createSelectionColumn<UserRowData>(),
+      {
+        accessorKey: "fullName",
+        header: "Name",
+        id: "fullName",
+        sortingFn: "text",
+        meta: {
+          className: "w-full",
+        },
+        cell: (info: UserRowInfo) => (
+          <DataTable.CellContent
+            avatarUrl={info.row.original.image}
+            roundedAvatar
+            description={info.row.original.email}
+          >
+            {info.row.original.fullName}
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        id: "editor",
+        header: "",
+        meta: {
+          className: "w-28",
+        },
+        cell: (info: UserRowInfo) => {
+          const { sId } = info.row.original;
+          const isMember = currentMembers.has(sId);
+          const isEditor = currentEditors.has(sId);
+
+          if (!isMember) {
+            return null;
+          }
+
+          return (
+            <DataTable.CellContent>
+              <Button
+                size="xs"
+                variant={isEditor ? "highlight" : "outline"}
+                label={isEditor ? "Editor" : "Set as editor"}
+                icon={isEditor ? CheckIcon : undefined}
+                onClick={(e) => {
+                  toggleEditor(sId);
+                  e.stopPropagation();
+                }}
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+    ],
+    [currentMembers, currentEditors, toggleEditor]
+  );
+
+  const canSave = currentEditors.size > 0 && !isSaving;
   const saveButtonLabel =
-    "Save" + (selectedMembersCount > 0 ? ` (${selectedMembersCount})` : "");
-
-  // Determine if at least one editor is selected
-  const selectedEditorsCount = currentEditors.size;
-
-  const canSave = selectedEditorsCount > 0 && !isSaving;
+    currentMembers.size > 0 ? `Save (${currentMembers.size})` : "Save";
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -170,78 +243,24 @@ export function ManageUsersPanel({
             className="mt-2"
           />
           <div className="flex min-h-0 flex-1 flex-col">
-            <ListGroup>
-              {isLoading ? (
-                <div className="flex items-center justify-center p-4">
-                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Loading users...
-                  </span>
-                </div>
-              ) : (
-                members.map((user) => {
-                  const isMember = currentMembers.has(user.sId);
-                  const isEditor = currentEditors.has(user.sId);
-                  return (
-                    <ListItem
-                      key={user.sId}
-                      itemsAlignment="center"
-                      onClick={() => toggleUser(user.sId)}
-                    >
-                      <div className="flex w-full items-center gap-3">
-                        <Checkbox
-                          checked={isMember}
-                          onCheckedChange={(checked) => {
-                            if (checked !== "indeterminate") {
-                              toggleUser(user.sId);
-                            }
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                        />
-                        <Avatar
-                          name={user.fullName}
-                          visual={user.image}
-                          size="sm"
-                          isRounded={true}
-                        />
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
-                            {user.fullName}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
-                            {user.email}
-                          </span>
-                        </div>
-                      </div>
-                      {isMember && isEditor && (
-                        <Button
-                          size="xs"
-                          variant="highlight"
-                          label="Editor"
-                          icon={CheckIcon}
-                          onClick={(e) => {
-                            toggleEditor(user.sId);
-                            e.stopPropagation();
-                          }}
-                        />
-                      )}
-                      {isMember && !isEditor && (
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          label="Set as editor"
-                          onClick={(e) => {
-                            toggleEditor(user.sId);
-                            e.stopPropagation();
-                          }}
-                        />
-                      )}
-                    </ListItem>
-                  );
-                })
-              )}
-            </ListGroup>
+            {isLoading ? (
+              <div className="flex items-center justify-center p-4">
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Loading users...
+                </span>
+              </div>
+            ) : (
+              <DataTable
+                data={rows}
+                columns={columns}
+                rowSelection={rowSelectionState}
+                setRowSelection={handleRowSelectionChange}
+                enableRowSelection
+                getRowId={(row) => row.sId}
+                filter={searchText}
+                filterColumn="fullName"
+              />
+            )}
           </div>
         </SheetContainer>
         <SheetFooter
