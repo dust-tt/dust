@@ -173,7 +173,8 @@ ENV DD_VERSION=${COMMIT_HASH}
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-CMD ["node", "server.js"]
+# See https://github.com/DataDog/dd-trace-js/issues/4003#issuecomment-3586947577
+CMD ["node", "--require", "dd-trace/init", "server.js"]
 
 # Workers image (Full Node.js environment) for front-workers deployment
 FROM node:20.19.2 AS workers
@@ -242,4 +243,4 @@ ENV DD_VERSION=${COMMIT_HASH}
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-CMD ["node", "dist/start_worker.js"]
+CMD ["node", "--require", "dd-trace/init", "dist/start_worker.js"]
