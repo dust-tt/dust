@@ -26,6 +26,8 @@ enum AnimationType: String, CaseIterable {
     case walk = "walk"
     case notification = "notification"
     case sleep = "sleep"
+    case walkToSleep = "walk_to_sleep"
+    case sleepToWalk = "sleep_to_walk"
 }
 
 enum NotificationMovement {
@@ -52,6 +54,7 @@ struct CatType: Identifiable, Hashable {
         CatType(id: "shiba", displayName: "Pistache", notificationMovement: .none),
         CatType(id: "chalom", displayName: "Chalom", notificationMovement: .side),
         CatType(id: "sundae", displayName: "Sundae", notificationMovement: .none),
+        CatType(id: "lou", displayName: "Lou", notificationMovement: .none),
     ]
 
     static let `default` = CatType(id: "soupinou", displayName: "Soupinou", notificationMovement: .side)
