@@ -57,27 +57,6 @@ const CORE_VALIDATE_CSV_FAKE_RESPONSE = {
   },
 };
 
-// Mock environment config
-vi.mock("@dust-tt/types", async (importOriginal) => {
-  const mod = (await importOriginal()) as Record<string, any>;
-  return {
-    ...mod,
-    EnvironmentConfig: {
-      ...mod.EnvironmentConfig,
-      getEnvVariable: vi.fn((key: string) => {
-        switch (key) {
-          case "DUST_PRIVATE_UPLOADS_BUCKET":
-            return "test-private-bucket";
-          case "DUST_UPLOAD_BUCKET":
-            return "test-public-bucket";
-          default:
-            return process.env[key];
-        }
-      }),
-    },
-  };
-});
-
 vi.mock(import("@app/lib/api/config"), (() => ({
   default: {
     getCoreAPIConfig: vi.fn().mockReturnValue({

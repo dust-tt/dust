@@ -1,9 +1,11 @@
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-  DEFAULT_PROJECT_SEARCH_ACTION_NAME,
+  DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/constants";
-import { CONVERSATION_LIST_FILES_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  CONVERSATION_FILES_SERVER_NAME,
+  CONVERSATION_LIST_FILES_ACTION_NAME,
+} from "@app/lib/api/actions/servers/conversation_files/metadata";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
@@ -199,7 +201,7 @@ describe("getJITServers", () => {
       });
 
       const projectSearchServer = jitServers.find(
-        (server) => server.name === DEFAULT_PROJECT_SEARCH_ACTION_NAME
+        (server) => server.name === DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME
       );
 
       // The project search server should be present with proper configuration.
@@ -225,7 +227,7 @@ describe("getJITServers", () => {
       });
 
       const projectSearchServer = jitServers.find(
-        (server) => server.name === DEFAULT_PROJECT_SEARCH_ACTION_NAME
+        (server) => server.name === DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME
       );
 
       expect(projectSearchServer).toBeUndefined();
@@ -420,7 +422,7 @@ describe("getJITServers", () => {
       });
 
       const searchServer = jitServers.find(
-        (server) => server.name === DEFAULT_CONVERSATION_SEARCH_ACTION_NAME
+        (server) => server.name === CONVERSATION_FILES_SERVER_NAME
       );
 
       expect(searchServer).toBeDefined();
@@ -507,7 +509,7 @@ describe("getJITServers", () => {
       });
 
       const conversationFilesServer = jitServers.find(
-        (server) => server.name === DEFAULT_CONVERSATION_SEARCH_ACTION_NAME
+        (server) => server.name === CONVERSATION_FILES_SERVER_NAME
       );
 
       // conversation_files server is included whenever there are attachments.
@@ -551,7 +553,7 @@ describe("getJITServers", () => {
       // Files server (list/include): present whenever there are attachments.
       const filesServer = jitServers.find(
         (server) =>
-          server.name === DEFAULT_CONVERSATION_SEARCH_ACTION_NAME &&
+          server.name === CONVERSATION_FILES_SERVER_NAME &&
           server.description ===
             "Access and include files from the conversation"
       );
@@ -607,7 +609,7 @@ describe("getJITServers", () => {
       expect(serverNames).toContain(
         DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME
       );
-      expect(serverNames).toContain(DEFAULT_CONVERSATION_SEARCH_ACTION_NAME);
+      expect(serverNames).toContain(CONVERSATION_FILES_SERVER_NAME);
     });
   });
 

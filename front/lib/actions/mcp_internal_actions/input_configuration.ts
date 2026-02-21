@@ -35,7 +35,7 @@ import type {
   JSONSchema7Type as JSONSchemaType,
 } from "json-schema";
 
-function getDataSourceURI(config: DataSourceConfiguration): string {
+export function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
   if (sId) {
     return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/${sId}`;
