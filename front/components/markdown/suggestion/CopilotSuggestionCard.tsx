@@ -61,7 +61,7 @@ function mapSuggestionStateToCardState(
 interface InstructionsSuggestionCardProps {
   agentSuggestion: AgentInstructionsSuggestionType;
   focusOnSuggestion: (id: string) => void;
-  getCommittedInstructionsHtml: () => string;
+  frozenInstructionsHtml: string;
 }
 
 // Re-render only when suggestion identity/state or callbacks change.
@@ -70,25 +70,24 @@ const InstructionsSuggestionCard = memo(
   function InstructionsSuggestionCard({
     agentSuggestion,
     focusOnSuggestion,
-    getCommittedInstructionsHtml,
+    frozenInstructionsHtml,
   }: InstructionsSuggestionCardProps) {
     const { content, targetBlockId } = agentSuggestion.suggestion;
     const { state, sId } = agentSuggestion;
 
     const blockHtml = useMemo(() => {
-      const instructionsHtml = getCommittedInstructionsHtml();
-      if (!instructionsHtml) {
+      if (!frozenInstructionsHtml) {
         return "";
       }
 
       const parser = new DOMParser();
-      const doc = parser.parseFromString(instructionsHtml, "text/html");
+      const doc = parser.parseFromString(frozenInstructionsHtml, "text/html");
       const targetElement = doc.querySelector(
         `[data-block-id="${targetBlockId}"]`
       );
 
       return targetElement ? targetElement.outerHTML : "";
-    }, [targetBlockId, getCommittedInstructionsHtml]);
+    }, [frozenInstructionsHtml, targetBlockId]);
 
     const editor = useEditor(
       {
@@ -565,8 +564,15 @@ interface SuggestionCardProps {
 export function CopilotSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
-  const { focusOnSuggestion, getCommittedInstructionsHtml } =
+  const { focusOnSuggestion, getFrozenInstructionsHtml } =
     useCopilotSuggestions();
+
+  // Call directly each render - caching happens inside getFrozenInstructionsHtml
+  // This allows it to capture HTML once editor is ready, even if not ready on first render
+  const frozenInstructionsHtml =
+    agentSuggestion.kind === "instructions"
+      ? getFrozenInstructionsHtml(agentSuggestion.sId)
+      : "";
 
   switch (agentSuggestion.kind) {
     case "instructions":
@@ -574,7 +580,7 @@ export function CopilotSuggestionCard({
         <InstructionsSuggestionCard
           agentSuggestion={agentSuggestion}
           focusOnSuggestion={focusOnSuggestion}
-          getCommittedInstructionsHtml={getCommittedInstructionsHtml}
+          frozenInstructionsHtml={frozenInstructionsHtml}
         />
       );
     case "tools":

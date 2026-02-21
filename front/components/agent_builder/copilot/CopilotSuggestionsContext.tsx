@@ -53,6 +53,9 @@ export interface CopilotSuggestionsContextType {
   registerEditor: (editor: Editor) => void;
   getCommittedInstructionsHtml: () => string;
 
+  // Get frozen snapshot of instructions HTML for a suggestion (captured once, never changes)
+  getFrozenInstructionsHtml: (sId: string) => string;
+
   // Actions on suggestions. Returns true on success, false on failure.
   acceptSuggestion: (sId: string) => Promise<boolean>;
   rejectSuggestion: (sId: string) => Promise<boolean>;
@@ -130,6 +133,8 @@ function CopilotSuggestionsProviderContent({
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
+  // Frozen HTML cache - captures instructions HTML once per suggestion, never changes
+  const frozenHtmlCacheRef = useRef<Map<string, string>>(new Map());
 
   // Local state for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
   const [processedSuggestions, setProcessedSuggestions] = useState<
@@ -686,12 +691,35 @@ function CopilotSuggestionsProviderContent({
     return stripHtmlAttributes(editor.getHTML());
   }, []);
 
+  // Get frozen snapshot of instructions HTML for a suggestion
+  // Captures once per sId, persists across all re-renders and component lifecycles
+  const getFrozenInstructionsHtml = useCallback((sId: string): string => {
+    // Return cached value if already captured
+    if (frozenHtmlCacheRef.current.has(sId)) {
+      return frozenHtmlCacheRef.current.get(sId)!;
+    }
+
+    // Capture and cache the current instructions HTML (only if non-empty)
+    const editor = editorRef.current;
+    if (!editor) {
+      return "";
+    }
+
+    const html = stripHtmlAttributes(editor.getHTML());
+    // Only cache non-empty HTML - this allows retrying until editor is ready with content
+    if (html && html.trim().length > 0) {
+      frozenHtmlCacheRef.current.set(sId, html);
+    }
+    return html;
+  }, []);
+
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
       acceptAllInstructionSuggestions,
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
+      getFrozenInstructionsHtml,
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
@@ -708,6 +736,7 @@ function CopilotSuggestionsProviderContent({
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
+      getFrozenInstructionsHtml,
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
