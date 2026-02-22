@@ -29,6 +29,9 @@ export type DiffBlockProps = {
   collapsedLines?: number;
   changes?: DiffChange[];
   children?: React.ReactNode;
+  // Controlled expansion state (optional - falls back to internal state if not provided)
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 };
 
 const DEFAULT_COLLAPSED_LINES = 6;
@@ -44,6 +47,8 @@ export function DiffBlock({
   actions,
   className,
   collapsedLines = DEFAULT_COLLAPSED_LINES,
+  expanded: controlledExpanded,
+  onExpandedChange,
 }: DiffBlockProps) {
   const hasContent = changes !== undefined || children !== undefined;
   if (!hasContent) {
@@ -52,11 +57,17 @@ export function DiffBlock({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Use controlled state if provided, otherwise use internal state
+  const isControlled = controlledExpanded !== undefined;
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const isExpanded = isControlled ? controlledExpanded : internalExpanded;
+
   const [isCollapsible, setIsCollapsible] = useState(false);
   const [isMeasured, setIsMeasured] = useState(false);
   const [collapsedHeight, setCollapsedHeight] = useState<number>();
   const [expandedHeight, setExpandedHeight] = useState<number>();
+  const userInteractedRef = useRef(false);
 
   useLayoutEffect(() => {
     const element = contentRef.current;
@@ -86,9 +97,8 @@ export function DiffBlock({
 
       const isOverflowing = fullHeight > nextCollapsedHeight + 1;
       setIsCollapsible(isOverflowing);
-      if (!isOverflowing) {
-        setIsExpanded(false);
-      }
+      // Never auto-collapse - user must manually click "Show less"
+      // (Prevents unwanted collapse during editor re-renders)
       setIsMeasured(true);
     };
 
@@ -171,7 +181,19 @@ export function DiffBlock({
               size="xs"
               variant="outline"
               label={isExpanded ? "Show less" : "Show more"}
-              onClick={() => setIsExpanded((value) => !value)}
+              onClick={() => {
+                // Mark that user has interacted - prevent future auto-collapse
+                userInteractedRef.current = true;
+                const newValue = !isExpanded;
+
+                if (isControlled && onExpandedChange) {
+                  // Controlled mode - notify parent
+                  onExpandedChange(newValue);
+                } else {
+                  // Uncontrolled mode - update internal state
+                  setInternalExpanded(newValue);
+                }
+              }}
               aria-expanded={isExpanded}
             />
           </div>

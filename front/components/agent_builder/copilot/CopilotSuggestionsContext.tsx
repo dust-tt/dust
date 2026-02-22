@@ -56,6 +56,10 @@ export interface CopilotSuggestionsContextType {
   // Get frozen snapshot of instructions HTML for a suggestion (captured once, never changes)
   getFrozenInstructionsHtml: (sId: string) => string;
 
+  // DiffBlock expansion state (persists across remounts)
+  getDiffBlockExpanded: (sId: string) => boolean;
+  setDiffBlockExpanded: (sId: string, expanded: boolean) => void;
+
   // Actions on suggestions. Returns true on success, false on failure.
   acceptSuggestion: (sId: string) => Promise<boolean>;
   rejectSuggestion: (sId: string) => Promise<boolean>;
@@ -135,6 +139,8 @@ function CopilotSuggestionsProviderContent({
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
   // Frozen HTML cache - captures instructions HTML once per suggestion, never changes
   const frozenHtmlCacheRef = useRef<Map<string, string>>(new Map());
+  // DiffBlock expansion state - persists across component remounts
+  const diffBlockExpansionRef = useRef<Map<string, boolean>>(new Map());
 
   // Local state for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
   const [processedSuggestions, setProcessedSuggestions] = useState<
@@ -219,72 +225,89 @@ function CopilotSuggestionsProviderContent({
     [suggestions, processedSuggestions]
   );
 
-  // Resolve a suggestion with its relations from context.
-  const getSuggestionWithRelations = useCallback(
-    (sId: string): AgentSuggestionWithRelationsType | null => {
-      const suggestion = getSuggestion(sId);
+  // Pre-compute enriched suggestions map for stable object references
+  // This prevents unnecessary re-renders from object reference changes
+  // Includes both API suggestions and locally processed (accepted/rejected) suggestions
+  const enrichedSuggestionsMap = useMemo(() => {
+    const map = new Map<string, AgentSuggestionWithRelationsType>();
 
-      if (!suggestion) {
-        return null;
-      }
+    // Combine API suggestions and locally processed suggestions
+    const allSuggestions = [
+      ...suggestions,
+      ...Array.from(processedSuggestions.values()),
+    ];
+
+    for (const suggestion of allSuggestions) {
+      let enriched: AgentSuggestionWithRelationsType | null = null;
 
       switch (suggestion.kind) {
         case "tools":
         case "sub_agent": {
           const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
-          if (!tool) {
-            return null;
+          if (tool) {
+            enriched = { ...suggestion, relations: { tool } };
           }
-
-          return { ...suggestion, relations: { tool } };
+          break;
         }
 
         case "skills": {
           const skill = skillsMap.get(suggestion.suggestion.skillId);
-          if (!skill) {
-            return null;
+          if (skill) {
+            enriched = { ...suggestion, relations: { skill } };
           }
-
-          return { ...suggestion, relations: { skill } };
+          break;
         }
 
         case "model": {
           const model = getModelConfigByModelId(suggestion.suggestion.modelId);
-          if (!model) {
-            return null;
+          if (model) {
+            enriched = { ...suggestion, relations: { model } };
           }
-
-          return { ...suggestion, relations: { model } };
+          break;
         }
 
         case "knowledge": {
           const dataSourceView = dataSourceViewsMap.get(
             suggestion.suggestion.dataSourceViewId
           );
-          if (!dataSourceView || !searchServerView) {
-            return null;
+          if (dataSourceView && searchServerView) {
+            enriched = {
+              ...suggestion,
+              relations: { dataSourceView, searchServerView },
+            };
           }
-
-          return {
-            ...suggestion,
-            relations: { dataSourceView, searchServerView },
-          };
+          break;
         }
 
         case "instructions":
-          return { ...suggestion, relations: null };
+          enriched = { ...suggestion, relations: null };
+          break;
 
         default:
           assertNever(suggestion);
       }
+
+      if (enriched) {
+        map.set(suggestion.sId, enriched);
+      }
+    }
+
+    return map;
+  }, [
+    suggestions,
+    processedSuggestions,
+    skillsMap,
+    mcpServerViewsMap,
+    dataSourceViewsMap,
+    searchServerView,
+  ]);
+
+  // Resolve a suggestion with its relations - simple lookup from memoized map
+  const getSuggestionWithRelations = useCallback(
+    (sId: string): AgentSuggestionWithRelationsType | null => {
+      return enrichedSuggestionsMap.get(sId) ?? null;
     },
-    [
-      getSuggestion,
-      skillsMap,
-      mcpServerViewsMap,
-      dataSourceViewsMap,
-      searchServerView,
-    ]
+    [enrichedSuggestionsMap]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
@@ -713,12 +736,23 @@ function CopilotSuggestionsProviderContent({
     return html;
   }, []);
 
+  // Get DiffBlock expansion state (persists across remounts)
+  const getDiffBlockExpanded = useCallback((sId: string): boolean => {
+    return diffBlockExpansionRef.current.get(sId) ?? false;
+  }, []);
+
+  // Set DiffBlock expansion state (persists across remounts)
+  const setDiffBlockExpanded = useCallback((sId: string, expanded: boolean) => {
+    diffBlockExpansionRef.current.set(sId, expanded);
+  }, []);
+
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
       acceptAllInstructionSuggestions,
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
+      getDiffBlockExpanded,
       getFrozenInstructionsHtml,
       getPendingSuggestions,
       getSuggestionWithRelations,
@@ -729,6 +763,7 @@ function CopilotSuggestionsProviderContent({
       rejectAllInstructionSuggestions,
       rejectSuggestion,
       scrollToNextSuggestion,
+      setDiffBlockExpanded,
       triggerRefetch,
     }),
     [
@@ -736,6 +771,7 @@ function CopilotSuggestionsProviderContent({
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
+      getDiffBlockExpanded,
       getFrozenInstructionsHtml,
       getPendingSuggestions,
       getSuggestionWithRelations,
@@ -746,6 +782,7 @@ function CopilotSuggestionsProviderContent({
       rejectAllInstructionSuggestions,
       rejectSuggestion,
       scrollToNextSuggestion,
+      setDiffBlockExpanded,
       triggerRefetch,
     ]
   );

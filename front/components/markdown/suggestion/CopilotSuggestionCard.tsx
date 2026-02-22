@@ -38,7 +38,7 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 function mapSuggestionStateToCardState(
@@ -62,6 +62,8 @@ interface InstructionsSuggestionCardProps {
   agentSuggestion: AgentInstructionsSuggestionType;
   focusOnSuggestion: (id: string) => void;
   frozenInstructionsHtml: string;
+  getDiffBlockExpanded: (sId: string) => boolean;
+  setDiffBlockExpanded: (sId: string, expanded: boolean) => void;
 }
 
 // Re-render only when suggestion identity/state or callbacks change.
@@ -71,9 +73,30 @@ const InstructionsSuggestionCard = memo(
     agentSuggestion,
     focusOnSuggestion,
     frozenInstructionsHtml,
+    getDiffBlockExpanded,
+    setDiffBlockExpanded,
   }: InstructionsSuggestionCardProps) {
     const { content, targetBlockId } = agentSuggestion.suggestion;
     const { state, sId } = agentSuggestion;
+
+    // Initialize from context, then manage locally (triggers re-renders on change)
+    const [isExpanded, setIsExpanded] = useState(() =>
+      getDiffBlockExpanded(sId)
+    );
+
+    // Persist to context when state changes
+    const handleExpandedChange = useCallback(
+      (expanded: boolean) => {
+        setIsExpanded(expanded); // ← Local state update triggers re-render!
+        setDiffBlockExpanded(sId, expanded); // Persist to context for remount
+      },
+      [sId, setDiffBlockExpanded]
+    );
+
+    // Restore from context on mount (handles remount from state change)
+    useEffect(() => {
+      setIsExpanded(getDiffBlockExpanded(sId));
+    }, [sId, getDiffBlockExpanded]);
 
     const blockHtml = useMemo(() => {
       if (!frozenInstructionsHtml) {
@@ -114,6 +137,8 @@ const InstructionsSuggestionCard = memo(
     return (
       <div className="mb-2">
         <DiffBlock
+          expanded={isExpanded}
+          onExpandedChange={handleExpandedChange}
           actions={
             isPending ? (
               <Button
@@ -564,8 +589,12 @@ interface SuggestionCardProps {
 export function CopilotSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
-  const { focusOnSuggestion, getFrozenInstructionsHtml } =
-    useCopilotSuggestions();
+  const {
+    focusOnSuggestion,
+    getFrozenInstructionsHtml,
+    getDiffBlockExpanded,
+    setDiffBlockExpanded,
+  } = useCopilotSuggestions();
 
   // Call directly each render - caching happens inside getFrozenInstructionsHtml
   // This allows it to capture HTML once editor is ready, even if not ready on first render
@@ -581,6 +610,8 @@ export function CopilotSuggestionCard({
           agentSuggestion={agentSuggestion}
           focusOnSuggestion={focusOnSuggestion}
           frozenInstructionsHtml={frozenInstructionsHtml}
+          getDiffBlockExpanded={getDiffBlockExpanded}
+          setDiffBlockExpanded={setDiffBlockExpanded}
         />
       );
     case "tools":
