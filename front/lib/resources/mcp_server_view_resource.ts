@@ -79,7 +79,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   private async init(
     auth: Authenticator,
     systemSpace: SpaceResource,
-    prefetchedRemoteServers?: Map<ModelId, RemoteMCPServerResource>
+    prefetchedRemoteServers: Map<ModelId, RemoteMCPServerResource>
   ): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
       let remoteServer =
