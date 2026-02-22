@@ -652,6 +652,7 @@ export const isDataSourceNodeListType = (
 
 const RenderedWarehouseNodeSchema = z.object({
   nodeId: z.string(),
+  tableId: z.string().nullable(),
   title: z.string(),
   parentTitle: z.string().nullable(),
   mimeType: z.string(),
