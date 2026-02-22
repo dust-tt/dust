@@ -13,18 +13,19 @@ describe("services", () => {
       expect(ALL_SERVICES).toContain("front-workers");
       expect(ALL_SERVICES).toContain("front-spa-poke");
       expect(ALL_SERVICES).toContain("front-spa-app");
+      expect(ALL_SERVICES).toContain("viz");
     });
 
-    it("has 9 services total", () => {
-      expect(ALL_SERVICES).toHaveLength(9);
+    it("has 10 services total", () => {
+      expect(ALL_SERVICES).toHaveLength(10);
     });
 
     it("has sdk as first service (start order)", () => {
       expect(ALL_SERVICES[0]).toBe("sdk");
     });
 
-    it("has front-spa-app as last service", () => {
-      expect(ALL_SERVICES[ALL_SERVICES.length - 1]).toBe("front-spa-app");
+    it("has viz as last service", () => {
+      expect(ALL_SERVICES[ALL_SERVICES.length - 1]).toBe("viz");
     });
 
     it("is immutable (readonly tuple)", () => {
@@ -61,6 +62,7 @@ describe("services", () => {
         "front-workers",
         "front-spa-poke",
         "front-spa-app",
+        "viz",
       ];
 
       // All should be valid ServiceName values

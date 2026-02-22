@@ -11,6 +11,7 @@ describe("ports", () => {
       expect(ports.core).toBe(10001);
       expect(ports.connectors).toBe(10002);
       expect(ports.oauth).toBe(10006);
+      expect(ports.viz).toBe(10007);
       expect(ports.postgres).toBe(10432);
       expect(ports.redis).toBe(10379);
       expect(ports.qdrantHttp).toBe(10333);
@@ -39,6 +40,7 @@ describe("ports", () => {
       expect(ports.core).toBe(base + PORT_OFFSETS.core);
       expect(ports.connectors).toBe(base + PORT_OFFSETS.connectors);
       expect(ports.oauth).toBe(base + PORT_OFFSETS.oauth);
+      expect(ports.viz).toBe(base + PORT_OFFSETS.viz);
       expect(ports.postgres).toBe(base + PORT_OFFSETS.postgres);
       expect(ports.redis).toBe(base + PORT_OFFSETS.redis);
       expect(ports.qdrantHttp).toBe(base + PORT_OFFSETS.qdrantHttp);

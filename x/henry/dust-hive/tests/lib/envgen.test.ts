@@ -110,6 +110,14 @@ describe("envgen", () => {
       expect(content2).toContain("TEMPORAL_NAMESPACE=dust-hive-env-b");
     });
 
+    it("exports viz service variables", () => {
+      const content = generateEnvSh("test", ports);
+      expect(content).toContain("export VIZ_PUBLIC_URL=http://localhost:10007");
+      expect(content).toContain(
+        "export ALLOWED_VISUALIZATION_ORIGIN=http://localhost:3000,http://localhost:3011,http://localhost:10000,http://localhost:10011"
+      );
+    });
+
     it("includes section comments for organization", () => {
       const content = generateEnvSh("test", ports);
       expect(content).toContain("# === Ports");
@@ -118,6 +126,7 @@ describe("envgen", () => {
       expect(content).toContain("# === Inter-service URLs");
       expect(content).toContain("# === Database URIs");
       expect(content).toContain("# === Service URIs");
+      expect(content).toContain("# === Viz service");
     });
 
     it("ends with newline", () => {
