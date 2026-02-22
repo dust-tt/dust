@@ -78,13 +78,20 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   private async init(
     auth: Authenticator,
-    systemSpace: SpaceResource
+    systemSpace: SpaceResource,
+    prefetchedRemoteServers?: Map<ModelId, RemoteMCPServerResource>
   ): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
-      const remoteServer = await RemoteMCPServerResource.findByPk(
-        auth,
-        this.remoteMCPServerId
-      );
+      let remoteServer =
+        prefetchedRemoteServers?.get(this.remoteMCPServerId) ?? null;
+
+      if (!remoteServer) {
+        remoteServer = await RemoteMCPServerResource.findByPk(
+          auth,
+          this.remoteMCPServerId
+        );
+      }
+
       if (!remoteServer) {
         return new Err(
           new DustError(
@@ -267,10 +274,17 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       filteredViews.push(...views);
     } else {
       const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+      const remoteServers = await RemoteMCPServerResource.findByModelIds(
+        auth,
+        removeNulls(views.map((v) => v.remoteMCPServerId))
+      );
+      const remoteServerMap = new Map(remoteServers.map((s) => [s.id, s]));
+
       await concurrentExecutor(
         views,
         async (view) => {
-          const r = await view.init(auth, systemSpace);
+          const r = await view.init(auth, systemSpace, remoteServerMap);
           if (r.isOk()) {
             filteredViews.push(view);
           }
