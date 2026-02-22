@@ -1,4 +1,5 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
@@ -16,6 +17,7 @@ export type GetWorkspaceAuthContextResponseType = {
   isAdmin: boolean;
   isBuilder: boolean;
   isEligibleForTrial?: boolean;
+  vizUrl: string;
 };
 
 async function handler(
@@ -86,6 +88,7 @@ async function handler(
     isAdmin: auth.isAdmin(),
     isBuilder: auth.isBuilder(),
     ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
+    vizUrl: config.getVizPublicUrl(),
   });
 }
 

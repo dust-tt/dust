@@ -9,6 +9,7 @@ import { Spinner } from "@dust-tt/sparkle";
 interface PublicInteractiveContentContainerProps {
   shareToken: string;
   workspaceId: string;
+  vizUrl: string;
 }
 
 /**
@@ -18,6 +19,7 @@ interface PublicInteractiveContentContainerProps {
 export function PublicInteractiveContentContainer({
   shareToken,
   workspaceId,
+  vizUrl,
 }: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
     shareToken,
@@ -45,6 +47,7 @@ export function PublicInteractiveContentContainer({
             fileName={frameMetadata.fileName}
             shareToken={shareToken}
             workspaceId={workspaceId}
+            vizUrl={vizUrl}
           />
         );
 
