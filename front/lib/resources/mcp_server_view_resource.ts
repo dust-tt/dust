@@ -82,8 +82,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     prefetchedRemoteServers: Map<ModelId, RemoteMCPServerResource>
   ): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
-      let remoteServer =
-        prefetchedRemoteServers?.get(this.remoteMCPServerId);
+      let remoteServer = prefetchedRemoteServers?.get(this.remoteMCPServerId);
 
       if (!remoteServer) {
         return new Err(
