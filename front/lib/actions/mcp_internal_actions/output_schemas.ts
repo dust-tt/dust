@@ -652,7 +652,9 @@ export const isDataSourceNodeListType = (
 
 const RenderedWarehouseNodeSchema = z.object({
   nodeId: z.string(),
-  tableId: z.string().nullable(),
+  // TODO(2026-02-22 aubin): remove optional after a few weeks.
+  // Having an optional here makes the type retro-compatible for the front-end schema check.
+  tableId: z.string().nullable().optional(),
   title: z.string(),
   parentTitle: z.string().nullable(),
   mimeType: z.string(),
