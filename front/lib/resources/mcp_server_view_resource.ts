@@ -83,14 +83,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   ): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
       let remoteServer =
-        prefetchedRemoteServers?.get(this.remoteMCPServerId) ?? null;
-
-      if (!remoteServer) {
-        remoteServer = await RemoteMCPServerResource.findByPk(
-          auth,
-          this.remoteMCPServerId
-        );
-      }
+        prefetchedRemoteServers?.get(this.remoteMCPServerId);
 
       if (!remoteServer) {
         return new Err(
@@ -166,9 +159,25 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const resource = new this(MCPServerViewResource.model, server.get(), space);
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    const r = await resource.init(auth, systemSpace);
-    if (r.isErr()) {
-      throw r.error;
+
+    const remoteServersByModelId = new Map<ModelId, RemoteMCPServerResource>();
+    if (blob.remoteMCPServerId) {
+      const remoteServer = await RemoteMCPServerResource.findByPk(
+        auth,
+        blob.remoteMCPServerId
+      );
+      if (remoteServer) {
+        remoteServersByModelId.set(remoteServer.id, remoteServer);
+      }
+    }
+
+    const initResult = await resource.init(
+      auth,
+      systemSpace,
+      remoteServersByModelId
+    );
+    if (initResult.isErr()) {
+      throw initResult.error;
     }
 
     return resource;
