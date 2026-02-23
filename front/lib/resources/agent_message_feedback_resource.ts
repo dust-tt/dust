@@ -49,26 +49,26 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   readonly message?: Attributes<MessageModel>;
   readonly user?: Attributes<UserModel>;
-  readonly conversationId?: string;
+  readonly conversation?: Pick<ConversationModel, "sId">;
 
   constructor(
-    model: ModelStatic<AgentMessageFeedbackModel>,
+    _: ModelStatic<AgentMessageFeedbackModel>,
     blob: Attributes<AgentMessageFeedbackModel>,
     {
       message,
       user,
-      conversationId,
+      conversation,
     }: {
       message?: Attributes<MessageModel>;
       user?: Attributes<UserModel>;
-      conversationId?: string;
+      conversation?: Attributes<ConversationModel>;
     } = {}
   ) {
     super(AgentMessageFeedbackModel, blob);
 
     this.message = message;
     this.user = user;
-    this.conversationId = conversationId;
+    this.conversation = conversation;
   }
 
   get sId(): string {
@@ -96,22 +96,16 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     {
       message,
       user,
-      conversationId,
     }: {
       message?: Attributes<MessageModel>;
       user?: Attributes<UserModel>;
-      conversationId?: string;
     } = {}
   ): Promise<AgentMessageFeedbackResource> {
-    const agentMessageFeedback = await AgentMessageFeedbackModel.create({
+    const agentMessageFeedback = await this.model.create({
       ...blob,
     });
 
-    return new AgentMessageFeedbackResource(
-      AgentMessageFeedbackModel,
-      agentMessageFeedback.get(),
-      { message, user, conversationId }
-    );
+    return new this(this.model, agentMessageFeedback.get(), { message, user });
   }
 
   async delete(
@@ -175,16 +169,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where.agentConfigurationId = agentConfigurationId;
     }
 
-    const feedback = await AgentMessageFeedbackModel.findOne({ where });
+    const feedback = await this.model.findOne({ where });
 
     if (!feedback) {
       return null;
     }
 
-    return new AgentMessageFeedbackResource(
-      AgentMessageFeedbackModel,
-      feedback.get()
-    );
+    return new this(this.model, feedback.get());
   }
 
   static async getAgentConfigurationFeedbacksByDescVersion({
@@ -229,7 +220,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       };
     }
 
-    const agentMessageFeedback = await AgentMessageFeedbackModel.findAll({
+    const agentMessageFeedback = await this.model.findAll({
       where,
       include: [
         {
@@ -269,15 +260,11 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
 
     return agentMessageFeedback.map((feedback) => {
-      return new AgentMessageFeedbackResource(
-        AgentMessageFeedbackModel,
-        feedback.get(),
-        {
-          message: feedback.agentMessage?.message,
-          user: feedback.user,
-          conversationId: feedback.agentMessage?.message?.conversation?.sId,
-        }
-      );
+      return new this(this.model, feedback.get(), {
+        message: feedback.agentMessage?.message,
+        user: feedback.user,
+        conversation: feedback.agentMessage?.message?.conversation,
+      });
     });
   }
 
@@ -292,7 +279,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     workspace: WorkspaceType;
     transaction?: Transaction;
   }) {
-    const agentMessageFeedback = await AgentMessageFeedbackModel.findAll({
+    const agentMessageFeedback = await this.model.findAll({
       where: {
         // IMPORTANT: Necessary for global models who share ids across workspaces.
         workspaceId: workspace.id,
@@ -334,14 +321,10 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return agentMessageFeedback
       .filter((feedback) => Boolean(feedback.user))
       .map((feedback) => {
-        return new AgentMessageFeedbackResource(
-          AgentMessageFeedbackModel,
-          feedback.get(),
-          {
-            user: feedback.user,
-            conversationId: feedback.agentMessage?.message?.conversation?.sId,
-          }
-        );
+        return new this(this.model, feedback.get(), {
+          user: feedback.user,
+          conversation: feedback.agentMessage?.message?.conversation,
+        });
       });
   }
 
@@ -355,7 +338,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       dateMinusXDays.setDate(dateMinusXDays.getDate() - daysOld);
     }
     const workspace = auth.getNonNullableWorkspace();
-    const feedbackCount = await AgentMessageFeedbackModel.findAndCountAll({
+    const feedbackCount = await this.model.findAndCountAll({
       attributes: ["agentConfigurationId", "thumbDirection"],
       where: {
         workspaceId: workspace.id,
@@ -381,7 +364,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     // Start from feedbacks (filtered by userId + workspaceId) and join back to
     // messages (filtered by conversationId). This is more selective than scanning
     // all messages in the conversation.
-    const feedbackRows = await AgentMessageFeedbackModel.findAll({
+    const feedbackRows = await this.model.findAll({
       where: {
         userId: user.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -472,7 +455,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       return new Err(new Error("Agent message not found"));
     }
 
-    const agentMessageFeedback = await AgentMessageFeedbackModel.findOne({
+    const agentMessageFeedback = await this.model.findOne({
       where: {
         userId: user.id,
         agentMessageId: message.agentMessage.id,
@@ -480,10 +463,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       },
     });
     const agentMessageFeedbackResource = agentMessageFeedback
-      ? new AgentMessageFeedbackResource(
-          AgentMessageFeedbackModel,
-          agentMessageFeedback.get()
-        )
+      ? new this(this.model, agentMessageFeedback.get())
       : null;
 
     const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
@@ -551,7 +531,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   ): Promise<AgentMessageFeedbackResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const feedbacks = await AgentMessageFeedbackModel.findAll({
+    const feedbacks = await this.model.findAll({
       where: {
         agentMessageId,
         workspaceId: workspace.id,
@@ -560,7 +540,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
 
     return feedbacks.map((feedback) => {
-      return new AgentMessageFeedbackResource(this.model, feedback.get());
+      return new this(this.model, feedback.get());
     });
   }
 
@@ -578,7 +558,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       createdAt: this.createdAt,
       agentConfigurationId: this.agentConfigurationId,
       agentConfigurationVersion: this.agentConfigurationVersion,
-      conversationId: this.conversationId,
+      conversationId: this.conversation?.sId,
       ...(this.user
         ? {
             userName: this.user.name,

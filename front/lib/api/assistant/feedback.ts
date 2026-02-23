@@ -6,7 +6,6 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 
 /**
@@ -112,27 +111,25 @@ export async function upsertMessageFeedback(
     });
   }
 
-  try {
-    const newFeedback = await AgentMessageFeedbackResource.makeNew({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      // If the agent is global, we use the agent configuration id from the agent message
-      // Otherwise, we use the agent configuration id from the agent configuration
-      agentConfigurationId,
-      agentConfigurationVersion: agentMessage.agentConfigurationVersion,
-      agentMessageId: agentMessage.id,
-      userId: user.id,
-      thumbDirection,
-      content,
-      isConversationShared: isConversationShared ?? false,
-      dismissed: false,
-    });
-    return new Ok({
-      agentConfigurationId,
-      feedbackId: newFeedback.sId,
-    });
-  } catch (e) {
-    return new Err(normalizeError(e));
-  }
+  const newFeedback = await AgentMessageFeedbackResource.makeNew({
+    workspaceId: auth.getNonNullableWorkspace().id,
+    // If the agent is global, we use the agent configuration id from the agent message
+    // Otherwise, we use the agent configuration id from the agent configuration
+    agentConfigurationId,
+    agentConfigurationVersion: agentMessage.agentConfigurationVersion,
+    conversationId: conversation.id,
+    agentMessageId: agentMessage.id,
+    userId: user.id,
+    thumbDirection,
+    content,
+    isConversationShared: isConversationShared ?? false,
+    dismissed: false,
+  });
+
+  return new Ok({
+    agentConfigurationId,
+    feedbackId: newFeedback.sId,
+  });
 }
 
 /**
