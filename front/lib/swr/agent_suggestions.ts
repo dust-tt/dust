@@ -51,7 +51,10 @@ export function useAgentSuggestions({
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions?${queryString}`
       : null,
     suggestionsFetcher,
-    { disabled }
+    {
+      disabled,
+      revalidateOnFocus: false,
+    }
   );
 
   return {
