@@ -364,6 +364,52 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  private static readonly ROLE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+  private static readonly roleCacheKeyResolver = ({
+    userModelId,
+    workspaceModelId,
+  }: {
+    userModelId: ModelId;
+    workspaceModelId: ModelId;
+  }) => `role:user:${userModelId}:workspace:${workspaceModelId}`;
+
+  private static async _getActiveRoleForUserInWorkspaceUncached({
+    userModelId,
+    workspaceModelId,
+  }: {
+    userModelId: ModelId;
+    workspaceModelId: ModelId;
+  }): Promise<MembershipRoleType | "none"> {
+    const membership = await MembershipModel.findOne({
+      attributes: ["role"],
+      where: {
+        userId: userModelId,
+        workspaceId: workspaceModelId,
+        startAt: {
+          [Op.lte]: new Date(),
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+        },
+      },
+    });
+    return membership?.role ?? "none";
+  }
+
+  private static getActiveRoleForUserInWorkspaceCached = cacheWithRedis(
+    MembershipResource._getActiveRoleForUserInWorkspaceUncached,
+    (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
+      MembershipResource.roleCacheKeyResolver(params),
+    { ttlMs: MembershipResource.ROLE_CACHE_TTL_MS, cacheNullValues: false }
+  );
+
+  private static invalidateRoleCache = invalidateCacheWithRedis(
+    MembershipResource._getActiveRoleForUserInWorkspaceUncached,
+    (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
+      MembershipResource.roleCacheKeyResolver(params)
+  );
+
   static async getActiveRoleForUserInWorkspace({
     user,
     workspace,
@@ -372,23 +418,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
-  }): Promise<Attributes<MembershipModel>["role"] | "none"> {
-    const membership = await this.model.findOne({
-      attributes: ["role"],
-      where: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: {
-          [Op.lte]: new Date(),
-        },
-        endAt: {
-          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
-        },
-      },
-      transaction,
+  }): Promise<MembershipRoleType | "none"> {
+    if (transaction) {
+      return this._getActiveRoleForUserInWorkspaceUncached({
+        userModelId: user.id,
+        workspaceModelId: workspace.id,
+      });
+    }
+    return this.getActiveRoleForUserInWorkspaceCached({
+      userModelId: user.id,
+      workspaceModelId: workspace.id,
     });
-
-    return membership?.role ?? "none";
   }
 
   static async getActiveMembershipOfUserInWorkspace({
@@ -491,11 +531,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  // Seat counting with caching - used to track active seats in a workspace
+  private static readonly SEATS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
   private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
     `count-active-seats-in-workspace:${workspaceId}`;
 
-  static async countActiveSeatsInWorkspace(
+  private static async _countActiveSeatsInWorkspaceUncached(
     workspaceId: string
   ): Promise<number> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -509,16 +550,22 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  static countActiveSeatsInWorkspaceCached = cacheWithRedis(
-    MembershipResource.countActiveSeatsInWorkspace,
+  private static countActiveSeatsInWorkspaceCached = cacheWithRedis(
+    MembershipResource._countActiveSeatsInWorkspaceUncached,
     MembershipResource.seatsCacheKeyResolver,
-    { ttlMs: 60 * 10 * 1000 } // 10 minutes
+    { ttlMs: MembershipResource.SEATS_CACHE_TTL_MS, cacheNullValues: false }
   );
 
-  static invalidateActiveSeatsCache = invalidateCacheWithRedis(
-    MembershipResource.countActiveSeatsInWorkspace,
+  private static invalidateActiveSeatsCache = invalidateCacheWithRedis(
+    MembershipResource._countActiveSeatsInWorkspaceUncached,
     MembershipResource.seatsCacheKeyResolver
   );
+
+  static async countActiveSeatsInWorkspace(
+    workspaceId: string
+  ): Promise<number> {
+    return this.countActiveSeatsInWorkspaceCached(workspaceId);
+  }
 
   protected override async update(
     blob: Partial<Attributes<MembershipModel>>,
@@ -653,6 +700,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     // Invalidate the active seats cache for this workspace.
     await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+    await MembershipResource.invalidateRoleCache({
+      userModelId: user.id,
+      workspaceModelId: workspace.id,
+    });
 
     return new MembershipResource(MembershipModel, newMembership.get());
   }
@@ -750,6 +801,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     // Invalidate the active seats cache for this workspace.
     await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+    await MembershipResource.invalidateRoleCache({
+      userModelId: user.id,
+      workspaceModelId: workspace.id,
+    });
 
     return new Ok({
       role: membership.role,
@@ -848,6 +903,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         user,
         workspace,
         newRole,
+      });
+      await MembershipResource.invalidateRoleCache({
+        userModelId: user.id,
+        workspaceModelId: workspace.id,
       });
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
@@ -1018,6 +1077,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (workspace) {
       await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
     }
+    await MembershipResource.invalidateRoleCache({
+      userModelId: this.userId,
+      workspaceModelId: this.workspaceId,
+    });
 
     return new Ok(undefined);
   }
