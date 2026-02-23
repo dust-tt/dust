@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -303,6 +303,24 @@ export function AgentMessage({
   const isCancelled = agentMessage.status === "cancelled";
   const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
+
+  // Derive streamingState for animation control:
+  // - "streaming": actively receiving content
+  // - "cancelled": user stopped generation or error occurred (stop animation immediately)
+  // - "ended": streaming completed naturally (let animation finish)
+  const streamingState: StreamingState = useMemo(() => {
+    if (shouldStream) {
+      return "streaming";
+    }
+    if (
+      agentMessage.status === "cancelled" ||
+      agentMessage.status === "failed"
+    ) {
+      return "cancelled";
+    }
+
+    return "ended";
+  }, [shouldStream, agentMessage.status]);
 
   const references = useMemo(
     () =>
@@ -811,12 +829,7 @@ export function AgentMessage({
               isLastMessage={isLastMessage}
               agentMessage={agentMessage}
               references={references}
-              streaming={shouldStream}
-              lastTokenClassification={
-                agentMessage.streaming.agentState === "thinking"
-                  ? "tokens"
-                  : null
-              }
+              streamingState={streamingState}
               activeReferences={activeReferences}
               setActiveReferences={setActiveReferences}
               triggeringUser={triggeringUser}
@@ -840,8 +853,7 @@ function AgentMessageContent({
   isLastMessage,
   agentMessage,
   references,
-  streaming,
-  lastTokenClassification,
+  streamingState,
   owner,
   conversationId,
   activeReferences,
@@ -862,8 +874,7 @@ function AgentMessageContent({
   }) => Promise<void>;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
-  streaming: boolean;
-  lastTokenClassification: null | "tokens" | "chain_of_thought";
+  streamingState: StreamingState;
   activeReferences: { index: number; document: MCPReferenceCitation }[];
   setActiveReferences: (
     references: {
@@ -1118,7 +1129,7 @@ function AgentMessageContent({
             <AgentMessageMarkdown
               content={sanitizeVisualizationContent(agentMessage.content)}
               owner={owner}
-              isStreaming={streaming && lastTokenClassification === "tokens"}
+              streamingState={streamingState}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}

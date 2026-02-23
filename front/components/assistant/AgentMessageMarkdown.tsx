@@ -1,4 +1,5 @@
-import { Markdown } from "@dust-tt/sparkle";
+import type { StreamingState } from "@dust-tt/sparkle";
+import { StreamingAnimationMarkdown } from "@dust-tt/sparkle";
 import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -30,7 +31,7 @@ export const AgentMessageMarkdown = ({
   additionalMarkdownComponents = {} as Components,
   additionalMarkdownPlugins = [] as PluggableList,
   isLastMessage = false,
-  isStreaming = false,
+  streamingState = "ended",
   isInstructions = false,
   textColor,
   compactSpacing,
@@ -40,7 +41,7 @@ export const AgentMessageMarkdown = ({
   owner: WorkspaceType;
   content: string;
   isLastMessage?: boolean;
-  isStreaming?: boolean;
+  streamingState?: StreamingState;
   isInstructions?: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
@@ -85,12 +86,12 @@ export const AgentMessageMarkdown = ({
   }, [isInstructions, additionalMarkdownPlugins]);
 
   return (
-    <Markdown
+    <StreamingAnimationMarkdown
       content={processedContentIfIsInstructions}
       additionalMarkdownComponents={markdownComponents}
       additionalMarkdownPlugins={markdownPlugins}
       isLastMessage={isLastMessage}
-      isStreaming={isStreaming}
+      streamingState={streamingState}
       textColor={textColor}
       compactSpacing={compactSpacing}
       forcedTextSize={forcedTextSize}

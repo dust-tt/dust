@@ -3,8 +3,8 @@ import {
   Card,
   cn,
   ContentMessage,
-  Markdown,
   Spinner,
+  StreamingAnimationMarkdown,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
@@ -119,9 +119,10 @@ export function AgentMessageActions({
               {!chainOfThought ? (
                 <AnimatedText variant="primary">Thinking...</AnimatedText>
               ) : (
-                <Markdown
+                <StreamingAnimationMarkdown
+                  delimiter={" "}
                   content={chainOfThought}
-                  isStreaming={false}
+                  streamingState="streaming"
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground dark:text-muted-foreground-night"
                   isLastMessage={false}
