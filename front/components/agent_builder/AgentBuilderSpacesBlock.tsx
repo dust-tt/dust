@@ -285,7 +285,7 @@ export function AgentBuilderSpacesBlock({
               className="mt-4"
             />
           </SheetHeader>
-          <SheetContainer className="p-0">
+          <SheetContainer isListSelector>
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
               selectedSpaces={draftSelectedSpaces}
