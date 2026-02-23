@@ -1,9 +1,10 @@
+import { setBaseUrlResolver } from "@app/lib/api/config";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { resHandler } from "@extension/shared/lib/swr";
 import { useAuth } from "@extension/ui/components/auth/AuthProvider";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 interface ExtensionFetcherProviderProps {
   children: ReactNode;
@@ -12,16 +13,28 @@ interface ExtensionFetcherProviderProps {
 export function ExtensionFetcherProvider({
   children,
 }: ExtensionFetcherProviderProps) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+
+  useEffect(() => {
+    if (user?.dustDomain) {
+      setBaseUrlResolver(() => user.dustDomain);
+    }
+    return () => setBaseUrlResolver(null);
+  }, [user?.dustDomain]);
 
   const { fetcher, fetcherWithBody } = useMemo(() => {
+    const dustDomain = user?.dustDomain ?? "";
+
+    const resolveUrl = (url: string) =>
+      url.startsWith("/") ? `${dustDomain}${url}` : url;
+
     const addAuthHeaders = (headers: HeadersInit = {}): HeadersInit => ({
       ...headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     });
 
     const fetcher: FetcherFn = async (url, init) => {
-      const res = await fetch(url, {
+      const res = await fetch(resolveUrl(url), {
         ...init,
         headers: addAuthHeaders(init?.headers),
       });
@@ -32,7 +45,7 @@ export function ExtensionFetcherProvider({
       [url, body, method],
       init
     ) => {
-      const res = await fetch(url, {
+      const res = await fetch(resolveUrl(url), {
         ...init,
         method,
         headers: addAuthHeaders({
@@ -45,7 +58,7 @@ export function ExtensionFetcherProvider({
     };
 
     return { fetcher, fetcherWithBody };
-  }, [token]);
+  }, [token, user?.dustDomain]);
 
   return (
     <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
