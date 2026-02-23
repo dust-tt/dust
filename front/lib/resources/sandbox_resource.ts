@@ -104,6 +104,20 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.update({ lastActivityAt: new Date() }, transaction);
   }
 
+  async updateForRecreation(
+    providerId: string,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<[affectedCount: number]> {
+    return this.update(
+      {
+        providerId,
+        status: "running" as SandboxStatus,
+        lastActivityAt: new Date(),
+      },
+      transaction
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
