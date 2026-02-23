@@ -394,14 +394,25 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         base64Data = result.data;
       } else {
         const attachmentErrorText = await getErrorText(response);
-        return new Err(
-          new MCPError(
-            `Failed to fetch attachment via API: ${attachmentErrorText}`
-          )
-        );
+        const lowerError = attachmentErrorText.toLowerCase();
+
+        // Gmail sometimes returns attachmentIds that look valid but fail with
+        // "invalid attachment token". Fall back to fetching from the MIME body.
+        if (!lowerError.includes("invalid") && !lowerError.includes("token")) {
+          return new Err(
+            new MCPError(
+              `Failed to fetch attachment via Gmail API (messageId: ${messageId}, ` +
+                `filename: "${filename}"): ${attachmentErrorText}`
+            )
+          );
+        }
       }
-    } else {
-      // For inline content (no real attachmentId), fetch from message body
+    }
+
+    // Fallback: fetch attachment data from the message MIME body.
+    // Used when hasRealAttachmentId is false (inline content) or when the
+    // attachments API returned an invalid token error.
+    if (!base64Data) {
       const messageResponse = await fetchFromGmail(
         `/gmail/v1/users/me/messages/${encodedMessageId}?format=full`,
         accessToken,
@@ -411,7 +422,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       if (!messageResponse.ok) {
         const messageErrorText = await getErrorText(messageResponse);
         return new Err(
-          new MCPError(`Failed to fetch message: ${messageErrorText}`)
+          new MCPError(
+            `Failed to fetch message for attachment fallback (messageId: ${messageId}): ${messageErrorText}`
+          )
         );
       }
 
@@ -421,14 +434,13 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       if (!base64Data) {
         return new Err(
           new MCPError(
-            `Inline attachment data not found in message body. This attachment may not be retrievable.`
+            `Attachment data not found in message body (messageId: ${messageId}, ` +
+              `filename: "${filename}", partId: ${partId}, mimeType: ${mimeType}). ` +
+              `This can happen when Gmail returns an invalid attachment token and ` +
+              `the attachment is too large to be included inline in the message payload.`
           )
         );
       }
-    }
-
-    if (!base64Data) {
-      return new Err(new MCPError("Failed to retrieve attachment data"));
     }
 
     // Gmail returns URL-safe base64, convert to standard base64
