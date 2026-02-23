@@ -1,6 +1,5 @@
 /**
- * Shared SPA platform implementation
- * Used when running in Vite SPA or Chrome extension environment (React Router)
+ * Shared extension platform implementation
  */
 
 import type {
@@ -11,7 +10,7 @@ import type {
   ScriptProps,
   TransitionOptions,
   UrlObject,
-} from "@dust-tt/front/lib/platform/types";
+} from "@app/lib/platform/types";
 import {
   Children,
   isValidElement,
@@ -101,26 +100,21 @@ function urlToString(url: string | UrlObject): string {
 }
 
 /**
- * Global event emitter for router events in SPA
+ * Global event emitter for router events in extension
  * This mimics Next.js router events to work with NavigationLoadingContext
  */
-type RouterEventCallback = (...args: unknown[]) => void;
-
-const routerEventListeners: Map<string, Set<RouterEventCallback>> = new Map();
+type RouterEventCallback = (url: string) => void;
 
 function createRouterEvents(): RouterEvents {
   return {
     on: (event: string, callback: RouterEventCallback) => {
-      if (!routerEventListeners.has(event)) {
-        routerEventListeners.set(event, new Set());
-      }
-      routerEventListeners.get(event)!.add(callback);
+      return;
     },
     off: (event: string, callback: RouterEventCallback) => {
-      routerEventListeners.get(event)?.delete(callback);
+      return;
     },
     emit: (event: string, ...args: unknown[]) => {
-      routerEventListeners.get(event)?.forEach((callback) => callback(...args));
+      return;
     },
   };
 }
@@ -270,7 +264,7 @@ export function useAppRouter(): AppRouter {
   // React Router doesn't track hash - always use window.location.hash
   const hash = window.location.hash;
 
-  // In SPA mode, router is always ready (no SSR hydration needed)
+  // In extension, router is always ready (no SSR hydration needed)
   const isReady = true;
 
   return useMemo(
@@ -290,7 +284,7 @@ export function useAppRouter(): AppRouter {
 }
 
 /**
- * Head component for SPA - manages document head elements
+ * Head component for extension - manages document head elements
  * This is a simplified implementation that extracts title and link elements
  */
 export function Head({ children }: HeadProps) {
@@ -302,7 +296,10 @@ export function Head({ children }: HeadProps) {
         return;
       }
 
-      const props = child.props as Record<string, unknown>;
+      const props = child.props;
+      if (typeof props !== "object" || props === null) {
+        return;
+      }
 
       if (child.type === "title") {
         const previousTitle = document.title;
@@ -344,7 +341,7 @@ export function Head({ children }: HeadProps) {
 }
 
 /**
- * Script component for SPA - loads external scripts
+ * Script component for extension - loads external scripts
  */
 export function Script({ id, src, children }: ScriptProps) {
   useEffect(() => {
@@ -374,8 +371,7 @@ export function Script({ id, src, children }: ScriptProps) {
 export const LinkWrapper = ReactRouterLinkWrapper;
 
 /**
- * Image component for SPA - renders a standard img element
- * In Next.js this uses next/image for optimization, but in SPA we use a regular img
+ * Image component for extension - renders a standard img element
  */
 export function Image({
   width,
@@ -401,7 +397,7 @@ export function Image({
 }
 
 /**
- * Hook to get page context (auth data) in SPA
+ * Hook to get page context (auth data) in extension
  * Uses React Router's outlet context
  */
 export function usePageContext<T>(): T | null {
@@ -414,7 +410,7 @@ export function usePageContext<T>(): T | null {
 }
 
 /**
- * Hook to get route params in SPA
+ * Hook to get route params in extension
  * Returns route parameters from the URL (e.g., :wId, :aId)
  */
 export function usePathParams(): Record<string, string | undefined> {
@@ -450,7 +446,7 @@ export function useRequiredPathParam(name: string): string {
 }
 
 /**
- * Hook to get a search/query param in SPA
+ * Hook to get a search/query param in extension
  * Returns the value of the specified query parameter or null
  */
 export function useSearchParam(name: string): string | null {
@@ -459,7 +455,7 @@ export function useSearchParam(name: string): string | null {
 }
 
 /**
- * Navigation blocker for SPA using React Router's useBlocker.
+ * Navigation blocker for extension using React Router's useBlocker.
  * Intercepts ALL navigation (browser back/forward, links, programmatic)
  * and calls onBlock to determine whether to proceed or cancel.
  */

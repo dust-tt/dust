@@ -1,4 +1,4 @@
-import type { ExtensionWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@app/types/user";
 import { classNames, Spinner } from "@dust-tt/sparkle";
 import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";

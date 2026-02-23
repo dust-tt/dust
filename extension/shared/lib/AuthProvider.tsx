@@ -1,7 +1,7 @@
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { SubscriptionType } from "@app/types/plan";
+import type { ExtensionWorkspaceType, WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
-import type { WorkspaceType } from "@dust-tt/client";
 import type { AuthError, StoredUser } from "@extension/shared/services/auth";
 import { useAuthHook } from "@extension/ui/components/auth/useAuth";
 import type { ReactNode } from "react";
@@ -15,7 +15,7 @@ type ExtensionAuthContextType = {
   setAuthError: (error: AuthError | null) => void;
   redirectToSSOLogin: (workspace: WorkspaceType) => void;
   user: StoredUser | null;
-  workspace: WorkspaceType | undefined;
+  workspace: ExtensionWorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
   handleLogin: () => void;
