@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React from "react";
+import React, { useState } from "react";
 
 import { Button, DiffBlock, EyeIcon } from "../index_with_tw_base";
 
@@ -59,6 +59,12 @@ const longDiffExample = [
 ];
 
 export const Default: Story = {
+  render: (args) => {
+    const [expanded, setExpanded] = useState(false);
+    return (
+      <DiffBlock {...args} expanded={expanded} onExpandedChange={setExpanded} />
+    );
+  },
   args: {
     changes: diffExample,
     actions: (
@@ -74,6 +80,12 @@ export const Default: Story = {
 };
 
 export const CollapsedPreview: Story = {
+  render: (args) => {
+    const [expanded, setExpanded] = useState(false);
+    return (
+      <DiffBlock {...args} expanded={expanded} onExpandedChange={setExpanded} />
+    );
+  },
   args: {
     changes: longDiffExample,
   },

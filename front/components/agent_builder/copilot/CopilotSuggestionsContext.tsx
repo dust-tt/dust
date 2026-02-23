@@ -264,8 +264,7 @@ function CopilotSuggestionsProviderContent({
     []
   );
 
-  // Pre-compute enriched suggestions map for stable object references
-  // This prevents unnecessary re-renders from object reference changes
+  // Pre-compute enriched suggestions map with stable object references
   // Includes both API suggestions and locally processed (accepted/rejected) suggestions
   const enrichedSuggestionsMap = useMemo(() => {
     const map = new Map<string, AgentSuggestionWithRelationsType>();
@@ -632,8 +631,7 @@ function CopilotSuggestionsProviderContent({
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
         dispatchDelayedBlurRef.current();
-        // Don't auto-scroll to next suggestion - let user stay at current position
-        // scrollToNextSuggestionRef.current(sId);
+        scrollToNextSuggestionRef.current(sId);
       }
 
       return true;

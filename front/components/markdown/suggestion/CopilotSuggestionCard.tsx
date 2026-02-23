@@ -84,19 +84,14 @@ const InstructionsSuggestionCard = memo(
       getDiffBlockExpanded(sId)
     );
 
-    // Persist to context when state changes
+    // Update local state (triggers re-render) and persist to context (survives remount)
     const handleExpandedChange = useCallback(
       (expanded: boolean) => {
-        setIsExpanded(expanded); // ← Local state update triggers re-render!
-        setDiffBlockExpanded(sId, expanded); // Persist to context for remount
+        setIsExpanded(expanded);
+        setDiffBlockExpanded(sId, expanded);
       },
       [sId, setDiffBlockExpanded]
     );
-
-    // Note: We don't need useEffect to restore from context because:
-    // 1. useState initializes from context on mount
-    // 2. State persists across re-renders automatically
-    // 3. If component unmounts/remounts, useState will re-initialize from context
 
     const blockHtml = useMemo(() => {
       if (!frozenInstructionsHtml) {
@@ -584,23 +579,19 @@ function KnowledgeSuggestionCard({
 
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
-  // Context functions passed as props to avoid context subscription
-  focusOnSuggestion: (id: string) => void;
-  getFrozenInstructionsHtml: (sId: string) => string;
-  getDiffBlockExpanded: (sId: string) => boolean;
-  setDiffBlockExpanded: (sId: string, expanded: boolean) => void;
 }
 
 export const CopilotSuggestionCard = memo(
-  function CopilotSuggestionCard({
-    agentSuggestion,
-    focusOnSuggestion,
-    getFrozenInstructionsHtml,
-    getDiffBlockExpanded,
-    setDiffBlockExpanded,
-  }: SuggestionCardProps) {
-    // Call directly each render - caching happens inside getFrozenInstructionsHtml
-    // This allows it to capture HTML once editor is ready, even if not ready on first render
+  function CopilotSuggestionCard({ agentSuggestion }: SuggestionCardProps) {
+    // Subscribe to main context directly (no loading state, so won't re-render on SWR changes)
+    const {
+      focusOnSuggestion,
+      getFrozenInstructionsHtml,
+      getDiffBlockExpanded,
+      setDiffBlockExpanded,
+    } = useCopilotSuggestions();
+
+    // getFrozenInstructionsHtml caches internally after first capture
     const frozenInstructionsHtml =
       agentSuggestion.kind === "instructions"
         ? getFrozenInstructionsHtml(agentSuggestion.sId)
@@ -631,20 +622,9 @@ export const CopilotSuggestionCard = memo(
         assertNever(agentSuggestion);
     }
   },
-  (prev, next) => {
-    // Only compare suggestion content, not function references
-    // Functions from context get new references even when behavior hasn't changed
-    // This causes unnecessary re-renders, so we skip function comparison
-    if (prev.agentSuggestion.sId !== next.agentSuggestion.sId) {
-      return false;
-    }
-    if (prev.agentSuggestion.state !== next.agentSuggestion.state) {
-      return false;
-    }
-
-    // Skip re-render - only sId and state matter for rendering
-    return true;
-  }
+  (prev, next) =>
+    prev.agentSuggestion.sId === next.agentSuggestion.sId &&
+    prev.agentSuggestion.state === next.agentSuggestion.state
 );
 
 interface SuggestionCardSkeletonProps {

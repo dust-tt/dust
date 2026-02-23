@@ -186,6 +186,7 @@ export function AgentBuilderView({
   const [agentDescription, setAgentDescription] = useState(
     template ? "" : agent?.description || ""
   );
+  const [diffBlockExpanded, setDiffBlockExpanded] = useState(false);
   const actionCardComponents: Components = useMemo(
     () =>
       ({
@@ -1115,6 +1116,8 @@ export function AgentBuilderView({
                               ) : null}
                               <DiffBlock
                                 changes={parseDiffString(diffContent)}
+                                expanded={diffBlockExpanded}
+                                onExpandedChange={setDiffBlockExpanded}
                                 actions={
                                   <Button
                                     variant="outline"

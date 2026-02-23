@@ -56,16 +56,8 @@ export function getCopilotSuggestionPlugin() {
     sId,
     kind,
   }: CopilotSuggestionPluginProps) => {
-    const {
-      getSuggestionWithRelations,
-      triggerRefetch,
-      hasAttemptedRefetch,
-      // Extract context functions to pass as props to CopilotSuggestionCard
-      focusOnSuggestion,
-      getFrozenInstructionsHtml,
-      getDiffBlockExpanded,
-      setDiffBlockExpanded,
-    } = useCopilotSuggestions();
+    const { getSuggestionWithRelations, triggerRefetch, hasAttemptedRefetch } =
+      useCopilotSuggestions();
 
     // Separate subscription for loading state
     const { isSuggestionsValidating } = useCopilotSuggestionsLoading();
@@ -106,13 +98,7 @@ export function getCopilotSuggestionPlugin() {
 
     return (
       <div data-suggestion-s-id={sId}>
-        <CopilotSuggestionCard
-          agentSuggestion={suggestion}
-          focusOnSuggestion={focusOnSuggestion}
-          getFrozenInstructionsHtml={getFrozenInstructionsHtml}
-          getDiffBlockExpanded={getDiffBlockExpanded}
-          setDiffBlockExpanded={setDiffBlockExpanded}
-        />
+        <CopilotSuggestionCard agentSuggestion={suggestion} />
       </div>
     );
   };
