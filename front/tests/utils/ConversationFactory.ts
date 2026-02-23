@@ -217,16 +217,22 @@ export class ConversationFactory {
     conversationId,
     rank,
     agentConfigurationId,
+    agentConfigurationVersion = 0,
+    parentId = null,
+    version = 0,
   }: {
     workspace: WorkspaceType;
     conversationId: ModelId;
     rank: number;
     agentConfigurationId: string;
+    agentConfigurationVersion?: number;
+    parentId?: ModelId | null;
+    version?: number;
   }): Promise<MessageModel> {
     const agentMessageRow = await AgentMessageModel.create({
       status: "created",
       agentConfigurationId,
-      agentConfigurationVersion: 0,
+      agentConfigurationVersion,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -234,8 +240,9 @@ export class ConversationFactory {
     return MessageModel.create({
       sId: generateRandomModelSId(),
       rank,
+      version,
       conversationId,
-      parentId: null,
+      parentId,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });
