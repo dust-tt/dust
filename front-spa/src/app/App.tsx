@@ -1,4 +1,3 @@
-import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
@@ -535,15 +534,13 @@ export default function App() {
   return (
     <AppReadyProvider>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-        <PostHogTracker>
-          <RegionProvider>
-            <RootLayout>
-              <ErrorBoundary fallback={<GlobalErrorFallback />}>
-                <RouterProvider router={router} />
-              </ErrorBoundary>
-            </RootLayout>
-          </RegionProvider>
-        </PostHogTracker>
+        <RegionProvider>
+          <RootLayout>
+            <ErrorBoundary fallback={<GlobalErrorFallback />}>
+              <RouterProvider router={router} />
+            </ErrorBoundary>
+          </RootLayout>
+        </RegionProvider>
       </FetcherProvider>
     </AppReadyProvider>
   );
