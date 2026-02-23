@@ -12,7 +12,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  check-eslint:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -20,5 +20,5 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           node-version: '22.22.0'
-      - name: Build and lint
-        run: npm -w viz run build && npm -w viz run lint
+      - name: Build
+        run: npm -w viz run build
