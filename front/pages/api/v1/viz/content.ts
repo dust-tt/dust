@@ -148,14 +148,15 @@ async function handler(
     });
   }
 
-  // Frame must have a conversation context.
+  // Frame must have a conversation context or a project context
   const frameConversationId = file.useCaseMetadata?.conversationId;
-  if (!frameConversationId) {
+  const frameSpaceId = file.useCaseMetadata?.spaceId;
+  if (!frameConversationId && !frameSpaceId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Frame missing conversation context.",
+        message: "Frame missing conversation context or project context.",
       },
     });
   }
@@ -165,6 +166,7 @@ async function handler(
     contentType: file.contentType,
     metadata: {
       conversationId: result.file.useCaseMetadata?.conversationId,
+      spaceId: result.file.useCaseMetadata?.spaceId,
     },
   });
 }

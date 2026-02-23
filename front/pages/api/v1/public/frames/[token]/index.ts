@@ -3,8 +3,9 @@ import config from "@app/lib/api/config";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getConversationRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
@@ -140,6 +141,12 @@ async function handler(
         })
       : false;
 
+  const spaceId = file.useCaseMetadata?.spaceId;
+  const space =
+    spaceId && auth ? await SpaceResource.fetchById(auth, spaceId) : null;
+  const canRead =
+    space && space.isProject() && auth ? space.canRead(auth) : false;
+
   // Generate access token for viz rendering.
   const accessToken = generateVizAccessToken({
     contentType: file.contentType,
@@ -161,6 +168,9 @@ async function handler(
           config.getAppUrl()
         )
       : null,
+    // Only return the project URL if the user can read the project.
+    projectUrl:
+      canRead && spaceId ? getProjectRoute(workspace.sId, spaceId) : null,
   });
 }
 

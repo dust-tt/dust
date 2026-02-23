@@ -25,7 +25,7 @@ export function PublicFrameRenderer({
   workspaceId,
   vizUrl,
 }: PublicFrameRendererProps) {
-  const { conversationUrl, isFrameLoading, error, accessToken } =
+  const { conversationUrl, projectUrl, isFrameLoading, error, accessToken } =
     usePublicFrame({
       shareToken,
     });
@@ -62,6 +62,7 @@ export function PublicFrameRenderer({
         title={formatFilenameForDisplay(fileName ?? "Frame")}
         user={user}
         conversationUrl={conversationUrl}
+        projectUrl={projectUrl}
       />
 
       {/* Content */}
