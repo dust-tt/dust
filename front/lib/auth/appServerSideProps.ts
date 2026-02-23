@@ -48,6 +48,7 @@ function makeAuthProps(
       isAdmin: auth.isAdmin(),
       isBuilder: auth.isBuilder(),
       featureFlags,
+      vizUrl: config.getVizPublicUrl(),
     },
   };
 }

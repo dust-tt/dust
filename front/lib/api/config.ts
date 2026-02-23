@@ -297,8 +297,8 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
   },
   // Public viz URL (used by Gotenberg which routes through egress proxy).
-  getVizPublicUrl: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("VIZ_PUBLIC_URL");
+  getVizPublicUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("VIZ_PUBLIC_URL");
   },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
