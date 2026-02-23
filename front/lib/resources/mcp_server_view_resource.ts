@@ -254,9 +254,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           removeNulls(views.map((v) => v.internalMCPServerId)),
           systemSpace
         );
-      const internalServerMap = new Map(
-        internalServers.map((s) => [s.id, s])
-      );
+      const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
 
       for (const view of views) {
         if (view.remoteMCPServerId) {
