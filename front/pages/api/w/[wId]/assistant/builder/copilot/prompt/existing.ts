@@ -83,21 +83,35 @@ async function fetchFeedbackMarkdown(
     return "<feedback>\nNo feedback available.\n</feedback>";
   }
 
-  const positive = feedbacks.filter((f) => f.thumbDirection === "up").length;
-  const negative = feedbacks.filter((f) => f.thumbDirection === "down").length;
+  const positiveFeedbacks = feedbacks.filter(
+    (f) => f.thumbDirection === "up"
+  );
+  const negativeFeedbacks = feedbacks.filter(
+    (f) => f.thumbDirection === "down"
+  );
+
+  const formatItem = (f: AgentMessageFeedbackWithMetadataType): string => {
+    const content = f.content ? `: ${f.content}` : "";
+    return `- v${f.agentConfigurationVersion} by ${f.userName}${content}`;
+  };
 
   const lines = [
     "<feedback>",
-    `Summary: ${feedbacks.length} total, ${positive} positive, ${negative} negative`,
-    "",
+    `Summary: ${feedbacks.length} total, ${positiveFeedbacks.length} positive, ${negativeFeedbacks.length} negative`,
   ];
 
-  for (const f of feedbacks) {
-    const direction = f.thumbDirection === "up" ? "+" : "-";
-    const content = f.content ? `: ${f.content}` : "";
-    lines.push(
-      `- [${direction}] v${f.agentConfigurationVersion} by ${f.userName}${content}`
-    );
+  if (positiveFeedbacks.length > 0) {
+    lines.push("", "Positive:");
+    for (const f of positiveFeedbacks) {
+      lines.push(formatItem(f));
+    }
+  }
+
+  if (negativeFeedbacks.length > 0) {
+    lines.push("", "Negative:");
+    for (const f of negativeFeedbacks) {
+      lines.push(formatItem(f));
+    }
   }
 
   lines.push("</feedback>");
