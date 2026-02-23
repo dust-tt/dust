@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -407,5 +408,52 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
     const actualRequestedSpaceIds = data.agentConfiguration.requestedSpaceIds;
     expect(actualRequestedSpaceIds).toHaveLength(1);
     expect(actualRequestedSpaceIds).toContain(openSpace.sId);
+  });
+});
+
+describe("GET /api/w/[wId]/assistant/agent_configurations - instructionsHtml", () => {
+  it("should not include instructionsHtml in light variant but should in full variant", async () => {
+    const { req, res, user, authenticator } = await createPrivateApiMockRequest(
+      {
+        method: "POST",
+        role: "admin",
+      }
+    );
+
+    await SpaceFactory.defaults(authenticator);
+
+    const testInstructionsHtml =
+      '<p data-block-id="block1">Test instructions</p>';
+
+    // Create an agent with instructionsHtml via POST.
+    req.body = {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        name: "Agent With HTML",
+        instructionsHtml: testInstructionsHtml,
+        editors: [{ sId: user.sId }],
+      },
+    };
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const createdAgent = res._getJSONData().agentConfiguration;
+
+    // Light variant (via getAgentConfiguration) should nullify instructionsHtml.
+    const lightAgent = await getAgentConfiguration(authenticator, {
+      agentId: createdAgent.sId,
+      variant: "light",
+    });
+    expect(lightAgent).not.toBeNull();
+    // instructionsHtml is not part of LightAgentConfigurationType but we verify
+    // the runtime value is null (not leaked from the DB).
+    expect(lightAgent).toHaveProperty("instructionsHtml", null);
+
+    // Full variant (via getAgentConfiguration) should include instructionsHtml.
+    const fullAgent = await getAgentConfiguration(authenticator, {
+      agentId: createdAgent.sId,
+      variant: "full",
+    });
+    expect(fullAgent).not.toBeNull();
+    expect(fullAgent!.instructionsHtml).toBe(testInstructionsHtml);
   });
 });

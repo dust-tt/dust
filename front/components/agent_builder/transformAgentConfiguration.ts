@@ -1,7 +1,7 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
@@ -16,7 +16,7 @@ import uniqueId from "lodash/uniqueId";
  * as they will be populated reactively in the component.
  */
 export function transformAgentConfigurationToFormData(
-  agentConfiguration: LightAgentConfigurationType
+  agentConfiguration: AgentConfigurationType
 ): AgentBuilderFormData {
   return {
     agentSettings: {
@@ -177,7 +177,7 @@ export function convertActionsForFormData(
  * resets editors to current user, and defaults to private scope.
  */
 export function transformDuplicateAgentToFormData(
-  agentConfiguration: LightAgentConfigurationType,
+  agentConfiguration: AgentConfigurationType,
   user: UserType
 ): AgentBuilderFormData {
   const baseFormData =

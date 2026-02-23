@@ -55,7 +55,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { TemplateInfo } from "@app/types/assistant/templates";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
@@ -100,7 +100,7 @@ function processAdditionalConfigurationFromStorage(
 }
 
 interface AgentBuilderProps {
-  agentConfiguration?: LightAgentConfigurationType;
+  agentConfiguration?: AgentConfigurationType;
   duplicateAgentId?: string | null;
   conversationId?: string;
   onSaved?: () => void;
@@ -567,7 +567,7 @@ export default function AgentBuilder({
  * Inner component that has access to FormContext and can use the MCP server hook.
  */
 interface AgentBuilderContentProps {
-  agentConfiguration?: LightAgentConfigurationType;
+  agentConfiguration?: AgentConfigurationType;
   pendingAgentId: string | null;
   title: string;
   handleCancel: () => void;

@@ -116,7 +116,6 @@ export type LightAgentConfigurationType = {
   versionAuthorId: ModelId | null;
 
   instructions: string | null;
-  instructionsHtml: string | null;
 
   model: AgentModelConfigurationType;
 
@@ -160,6 +159,8 @@ export type LightAgentConfigurationType = {
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
+  instructionsHtml: string | null;
+
   // If empty, no actions are performed, otherwise the actions are performed.
   actions: MCPServerConfigurationType[];
   skills?: GlobalSkillId[];
