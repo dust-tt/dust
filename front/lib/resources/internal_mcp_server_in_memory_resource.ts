@@ -62,7 +62,10 @@ export class InternalMCPServerInMemoryResource {
     readonly availability: MCPServerAvailability
   ) {}
 
-  private static async init(auth: Authenticator, id: string) {
+  private static async init(
+    auth: Authenticator,
+    id: string
+  ): Promise<InternalMCPServerInMemoryResource | null> {
     const r = getInternalMCPServerNameAndWorkspaceId(id);
     if (r.isErr()) {
       return null;
@@ -252,25 +255,47 @@ export class InternalMCPServerInMemoryResource {
     id: string,
     systemSpace: SpaceResource
   ) {
-    // Fast path: Do not check for default internal MCP servers as they are always available.
-    const availability = getAvailabilityOfInternalMCPServerById(id);
-    if (availability === "manual") {
-      const server = await MCPServerViewModel.findOne({
-        attributes: ["internalMCPServerId"],
-        where: {
-          serverType: "internal",
-          internalMCPServerId: id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: systemSpace.id,
-        },
-      });
+    const results = await this.fetchByIds(auth, [id], systemSpace);
 
-      if (!server?.internalMCPServerId) {
-        return null;
-      }
+    return results[0] ?? null;
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[],
+    systemSpace: SpaceResource
+  ): Promise<InternalMCPServerInMemoryResource[]> {
+    if (ids.length === 0) {
+      return [];
     }
 
-    return InternalMCPServerInMemoryResource.init(auth, id);
+    // Fast path: Do not check for default internal MCP servers as they are always available.
+    const validIds = ids.filter(
+      (id) => getAvailabilityOfInternalMCPServerById(id) !== "manual"
+    );
+
+    const manualIds = ids.filter(
+      (id) => getAvailabilityOfInternalMCPServerById(id) === "manual"
+    );
+
+    const servers = await MCPServerViewModel.findAll({
+      attributes: ["internalMCPServerId"],
+      where: {
+        serverType: "internal",
+        internalMCPServerId: { [Op.in]: manualIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: systemSpace.id,
+      },
+    });
+    validIds.push(...removeNulls(servers.map((s) => s.internalMCPServerId)));
+
+    const resources = await concurrentExecutor(
+      validIds,
+      (id) => InternalMCPServerInMemoryResource.init(auth, id),
+      { concurrency: 10 }
+    );
+
+    return removeNulls(resources);
   }
 
   static async listAvailableInternalMCPServers(auth: Authenticator) {

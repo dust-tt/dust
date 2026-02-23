@@ -167,7 +167,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return servers.length > 0 ? servers[0] : null;
   }
 
-  static async findByModelIds(
+  static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[]
   ): Promise<RemoteMCPServerResource[]> {
