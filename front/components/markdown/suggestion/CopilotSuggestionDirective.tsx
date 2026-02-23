@@ -54,13 +54,19 @@ export function getCopilotSuggestionPlugin() {
     kind,
   }: CopilotSuggestionPluginProps) => {
     const {
-      getSuggestionWithRelations,
+      suggestionsWithRelationsMap,
       triggerRefetch,
       isSuggestionsValidating,
       hasAttemptedRefetch,
+      acceptSuggestion,
+      rejectSuggestion,
+      focusOnSuggestion,
+      getCommittedInstructionsHtml,
     } = useCopilotSuggestions();
 
-    const suggestion = sId ? getSuggestionWithRelations(sId) : null;
+    const suggestion = sId
+      ? (suggestionsWithRelationsMap.get(sId) ?? null)
+      : null;
 
     // Trigger refetch when suggestion not found and not currently fetching.
     // triggerRefetch queues the sId and marks it as attempted after fetch completes.
@@ -96,7 +102,13 @@ export function getCopilotSuggestionPlugin() {
 
     return (
       <div data-suggestion-s-id={sId}>
-        <CopilotSuggestionCard agentSuggestion={suggestion} />
+        <CopilotSuggestionCard
+          agentSuggestion={suggestion}
+          acceptSuggestion={acceptSuggestion}
+          rejectSuggestion={rejectSuggestion}
+          focusOnSuggestion={focusOnSuggestion}
+          getCommittedInstructionsHtml={getCommittedInstructionsHtml}
+        />
       </div>
     );
   };

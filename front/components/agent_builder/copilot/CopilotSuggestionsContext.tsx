@@ -38,9 +38,7 @@ import {
 } from "react";
 
 export interface CopilotSuggestionsContextType {
-  getSuggestionWithRelations: (
-    sId: string
-  ) => AgentSuggestionWithRelationsType | null;
+  suggestionsWithRelationsMap: Map<string, AgentSuggestionWithRelationsType>;
   getPendingSuggestions: () => AgentSuggestionType[];
   triggerRefetch: (sId: string) => void;
   isSuggestionsLoading: boolean;
@@ -214,73 +212,81 @@ function CopilotSuggestionsProviderContent({
     [suggestions, processedSuggestions]
   );
 
-  // Resolve a suggestion with its relations from context.
-  const getSuggestionWithRelations = useCallback(
-    (sId: string): AgentSuggestionWithRelationsType | null => {
-      const suggestion = getSuggestion(sId);
+  // Layer 1: Resolve relations for each suggestion without depending on
+  // processedSuggestions. This only recomputes on SWR refetch or when the
+  // relation lookup maps change, keeping object references stable across
+  // accept/reject actions.
+  const baseRelationsMap = useMemo(() => {
+    const map = new Map<string, AgentSuggestionWithRelationsType>();
 
-      if (!suggestion) {
-        return null;
-      }
-
+    for (const suggestion of suggestions) {
       switch (suggestion.kind) {
         case "tools":
         case "sub_agent": {
           const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
-          if (!tool) {
-            return null;
+          if (tool) {
+            map.set(suggestion.sId, { ...suggestion, relations: { tool } });
           }
-
-          return { ...suggestion, relations: { tool } };
+          break;
         }
 
         case "skills": {
           const skill = skillsMap.get(suggestion.suggestion.skillId);
-          if (!skill) {
-            return null;
+          if (skill) {
+            map.set(suggestion.sId, { ...suggestion, relations: { skill } });
           }
-
-          return { ...suggestion, relations: { skill } };
+          break;
         }
 
         case "model": {
           const model = getModelConfigByModelId(suggestion.suggestion.modelId);
-          if (!model) {
-            return null;
+          if (model) {
+            map.set(suggestion.sId, { ...suggestion, relations: { model } });
           }
-
-          return { ...suggestion, relations: { model } };
+          break;
         }
 
         case "knowledge": {
           const dataSourceView = dataSourceViewsMap.get(
             suggestion.suggestion.dataSourceViewId
           );
-          if (!dataSourceView || !searchServerView) {
-            return null;
+          if (dataSourceView && searchServerView) {
+            map.set(suggestion.sId, {
+              ...suggestion,
+              relations: { dataSourceView, searchServerView },
+            });
           }
-
-          return {
-            ...suggestion,
-            relations: { dataSourceView, searchServerView },
-          };
+          break;
         }
 
         case "instructions":
-          return { ...suggestion, relations: null };
+          map.set(suggestion.sId, { ...suggestion, relations: null });
+          break;
 
         default:
           assertNever(suggestion);
       }
-    },
-    [
-      getSuggestion,
-      skillsMap,
-      mcpServerViewsMap,
-      dataSourceViewsMap,
-      searchServerView,
-    ]
-  );
+    }
+
+    return map;
+  }, [suggestions, skillsMap, mcpServerViewsMap, dataSourceViewsMap, searchServerView]);
+
+  // Layer 2: Merge local processedSuggestions state on top of baseRelationsMap.
+  // Only entries whose state changed get a new object reference; untouched
+  // entries keep the same reference from layer 1 so that memo'd cards skip
+  // re-rendering.
+  const suggestionsWithRelationsMap = useMemo(() => {
+    const map = new Map(baseRelationsMap);
+
+    for (const [sId, processed] of processedSuggestions) {
+      const base = baseRelationsMap.get(sId);
+      if (base && base.state !== processed.state) {
+        map.set(sId, { ...base, state: processed.state });
+      }
+    }
+
+    return map;
+  }, [baseRelationsMap, processedSuggestions]);
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
   // Marks sIds as attempted only AFTER the fetch completes to avoid error flash.
@@ -693,7 +699,7 @@ function CopilotSuggestionsProviderContent({
       focusOnSuggestion,
       getCommittedInstructionsHtml,
       getPendingSuggestions,
-      getSuggestionWithRelations,
+      suggestionsWithRelationsMap,
       hasAttemptedRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
@@ -709,7 +715,7 @@ function CopilotSuggestionsProviderContent({
       focusOnSuggestion,
       getCommittedInstructionsHtml,
       getPendingSuggestions,
-      getSuggestionWithRelations,
+      suggestionsWithRelationsMap,
       hasAttemptedRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,

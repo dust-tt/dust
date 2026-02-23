@@ -4,7 +4,6 @@ import {
   generateUniqueActionName,
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
-import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
@@ -170,12 +169,17 @@ function getNewSubAgentAction(
 
 interface ToolSuggestionCardProps {
   agentSuggestion: AgentToolsSuggestionWithRelationsType;
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
 }
 
-function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
+function ToolSuggestionCard({
+  agentSuggestion,
+  acceptSuggestion,
+  rejectSuggestion,
+}: ToolSuggestionCardProps) {
   const { suggestion, relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
@@ -236,14 +240,17 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
 
 interface SubAgentSuggestionCardProps {
   agentSuggestion: AgentSubAgentSuggestionWithRelationsType;
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
 }
 
 function SubAgentSuggestionCard({
   agentSuggestion,
+  acceptSuggestion,
+  rejectSuggestion,
 }: SubAgentSuggestionCardProps) {
   const { suggestion, relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
   const { owner } = useAgentBuilderContext();
 
@@ -333,12 +340,17 @@ function SubAgentSuggestionCard({
 
 interface SkillSuggestionCardProps {
   agentSuggestion: AgentSkillsSuggestionWithRelationsType;
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
 }
 
-function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
+function SkillSuggestionCard({
+  agentSuggestion,
+  acceptSuggestion,
+  rejectSuggestion,
+}: SkillSuggestionCardProps) {
   const { suggestion, relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
@@ -401,14 +413,19 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
 
 interface ModelSuggestionCardProps {
   agentSuggestion: AgentModelSuggestionWithRelationsType;
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
 }
 
-function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
+function ModelSuggestionCard({
+  agentSuggestion,
+  acceptSuggestion,
+  rejectSuggestion,
+}: ModelSuggestionCardProps) {
   const { relations, suggestion, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const modelName =
     relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { control } = useFormContext<AgentBuilderFormData>();
 
   const { field: modelSettingsField } = useController({
@@ -462,14 +479,17 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
 
 interface KnowledgeSuggestionCardProps {
   agentSuggestion: AgentKnowledgeSuggestionWithRelationsType;
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
 }
 
 function KnowledgeSuggestionCard({
   agentSuggestion,
+  acceptSuggestion,
+  rejectSuggestion,
 }: KnowledgeSuggestionCardProps) {
   const { suggestion, relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
@@ -560,14 +580,19 @@ function KnowledgeSuggestionCard({
 
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
+  focusOnSuggestion: (id: string) => void;
+  getCommittedInstructionsHtml: () => string;
 }
 
-export function CopilotSuggestionCard({
+export const CopilotSuggestionCard = memo(function CopilotSuggestionCard({
   agentSuggestion,
+  acceptSuggestion,
+  rejectSuggestion,
+  focusOnSuggestion,
+  getCommittedInstructionsHtml,
 }: SuggestionCardProps) {
-  const { focusOnSuggestion, getCommittedInstructionsHtml } =
-    useCopilotSuggestions();
-
   switch (agentSuggestion.kind) {
     case "instructions":
       return (
@@ -578,19 +603,49 @@ export function CopilotSuggestionCard({
         />
       );
     case "tools":
-      return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
+      return (
+        <ToolSuggestionCard
+          agentSuggestion={agentSuggestion}
+          acceptSuggestion={acceptSuggestion}
+          rejectSuggestion={rejectSuggestion}
+        />
+      );
     case "sub_agent":
-      return <SubAgentSuggestionCard agentSuggestion={agentSuggestion} />;
+      return (
+        <SubAgentSuggestionCard
+          agentSuggestion={agentSuggestion}
+          acceptSuggestion={acceptSuggestion}
+          rejectSuggestion={rejectSuggestion}
+        />
+      );
     case "skills":
-      return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
+      return (
+        <SkillSuggestionCard
+          agentSuggestion={agentSuggestion}
+          acceptSuggestion={acceptSuggestion}
+          rejectSuggestion={rejectSuggestion}
+        />
+      );
     case "model":
-      return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
+      return (
+        <ModelSuggestionCard
+          agentSuggestion={agentSuggestion}
+          acceptSuggestion={acceptSuggestion}
+          rejectSuggestion={rejectSuggestion}
+        />
+      );
     case "knowledge":
-      return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
+      return (
+        <KnowledgeSuggestionCard
+          agentSuggestion={agentSuggestion}
+          acceptSuggestion={acceptSuggestion}
+          rejectSuggestion={rejectSuggestion}
+        />
+      );
     default:
       assertNever(agentSuggestion);
   }
-}
+});
 
 interface SuggestionCardSkeletonProps {
   kind?: AgentSuggestionKind;
