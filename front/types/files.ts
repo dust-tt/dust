@@ -30,6 +30,7 @@ export type FileUseCase =
 export type FileUseCaseMetadata = {
   conversationId?: string;
   spaceId?: string;
+  sourceConversationId?: string;
   generatedTables?: string[];
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
