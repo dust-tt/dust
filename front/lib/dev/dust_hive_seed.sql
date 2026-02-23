@@ -142,8 +142,8 @@ link_conversations AS (
 
 -- Step 6: Create membership
 inserted_membership AS (
-  INSERT INTO memberships ("workspaceId", "userId", role, origin, "startAt", "endAt", "createdAt", "updatedAt")
-  SELECT w.id, u.id, 'admin', 'invited', NOW(), NULL, NOW(), NOW()
+  INSERT INTO memberships ("workspaceId", "userId", role, origin, "startAt", "endAt", "firstUsedAt", "createdAt", "updatedAt")
+  SELECT w.id, u.id, 'admin', 'invited', NOW(), NULL, NOW(), NOW(), NOW()
   FROM inserted_workspace w
   CROSS JOIN inserted_user u
   RETURNING id
