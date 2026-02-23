@@ -39,7 +39,6 @@ import type {
   AdditionalConfigurationInBuilderType,
   BuilderAction,
 } from "@app/components/shared/tools_picker/types";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -53,6 +52,7 @@ import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -500,8 +500,12 @@ export default function AgentBuilder({
     void form.handleSubmit(handleSubmit, handleFormErrors)();
   };
 
-  const handleCancel = async () => {
-    await appLayoutBack(owner, router);
+  const handleCancel = () => {
+    if (window.history.state?.idx > 0) {
+      router.back();
+    } else {
+      void router.replace(getConversationRoute(owner.sId));
+    }
   };
 
   const { isDirty, isSubmitting } = form.formState;
@@ -566,7 +570,7 @@ interface AgentBuilderContentProps {
   agentConfiguration?: LightAgentConfigurationType;
   pendingAgentId: string | null;
   title: string;
-  handleCancel: () => Promise<void>;
+  handleCancel: () => void;
   saveLabel: string;
   handleSave: () => void;
   isSaveDisabled: boolean;
