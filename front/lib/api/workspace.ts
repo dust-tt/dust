@@ -12,7 +12,10 @@ import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  type WorkspaceConversationKillSwitchValue as WorkspaceConversationKillSwitchValueResource,
+  WorkspaceResource,
+} from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -26,7 +29,7 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isStringArray, removeNulls } from "@app/types/shared/utils/general";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { md5 } from "@app/types/shared/utils/hashing";
 import type {
   LightWorkspaceType,
@@ -405,11 +408,12 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
-export const KILL_SWITCH_METADATA_KEY = "killSwitched";
-export const FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
-export type WorkspaceConversationKillSwitchValue = {
-  conversationIds: string[];
-};
+export const KILL_SWITCH_METADATA_KEY =
+  WorkspaceResource.KILL_SWITCH_METADATA_KEY;
+export const FULL_WORKSPACE_KILL_SWITCH_VALUE =
+  WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE;
+export type WorkspaceConversationKillSwitchValue =
+  WorkspaceConversationKillSwitchValueResource;
 export type WorkspaceKillSwitchValue =
   | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
@@ -426,32 +430,23 @@ export interface WorkspaceMetadata {
 export function isWorkspaceConversationKillSwitchValue(
   killSwitched: unknown
 ): killSwitched is WorkspaceConversationKillSwitchValue {
-  if (typeof killSwitched !== "object" || killSwitched === null) {
-    return false;
-  }
-
-  if (!("conversationIds" in killSwitched)) {
-    return false;
-  }
-
-  return isStringArray(killSwitched.conversationIds);
+  return WorkspaceResource.isWorkspaceConversationKillSwitchValue(killSwitched);
 }
 
 export function isWorkspaceKillSwitchedForAllAPIs(
   killSwitched: unknown
 ): boolean {
-  return killSwitched === FULL_WORKSPACE_KILL_SWITCH_VALUE;
+  return WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(killSwitched);
 }
 
 export function isWorkspaceConversationKillSwitched(
   killSwitched: unknown,
   conversationId: string
 ): boolean {
-  if (!isWorkspaceConversationKillSwitchValue(killSwitched)) {
-    return false;
-  }
-
-  return killSwitched.conversationIds.includes(conversationId);
+  return WorkspaceResource.isWorkspaceConversationKillSwitched(
+    killSwitched,
+    conversationId
+  );
 }
 
 export async function updateWorkspaceMetadata(

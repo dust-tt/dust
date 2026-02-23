@@ -41,7 +41,7 @@ import {
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { isRoleType } from "@app/types/user";
 import fs from "fs/promises";
 import parseArgs from "minimist";
@@ -395,9 +395,6 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
       const conversationId = args.cId;
-      if (!isString(conversationId)) {
-        throw new Error("Invalid --cId argument: must be a string");
-      }
       const conversation = await ConversationResource.fetchById(
         auth,
         conversationId
@@ -449,9 +446,6 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const conversationId = args.cId;
-      if (!isString(conversationId)) {
-        throw new Error("Invalid --cId argument: must be a string");
-      }
       const updateResult = await w.updateConversationKillSwitch({
         conversationId,
         operation: "unblock",
