@@ -137,6 +137,7 @@ export { default as SidebarLeftCloseIcon } from "./SidebarLeftClose";
 export { default as SidebarLeftOpenIcon } from "./SidebarLeftOpen";
 export { default as SidebarRightCloseIcon } from "./SidebarRightClose";
 export { default as SidebarRightOpenIcon } from "./SidebarRightOpen";
+export { default as SidekickIcon } from "./Sidekick";
 export { default as SpaceClosedIcon } from "./SpaceClosed";
 export { default as SpaceOpenIcon } from "./SpaceOpen";
 export { default as SpacesIcon } from "./Spaces";

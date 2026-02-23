@@ -7,8 +7,11 @@ import {
   Card,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
+  CodeSlashIcon,
   ContactsRobotIcon,
   ContactsUserIcon,
+  Dialog,
+  DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -53,12 +56,14 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 // Store conversations by ID for lookup (for dynamically generated conversations)
 const conversationCache = new Map<string, Conversation>();
 
+import { AgentBuilderView } from "../components/AgentBuilderView";
 import { ConversationView } from "../components/ConversationView";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
 import { PersonAgentView } from "../components/PersonAgentView";
 import { ProfilePanel } from "../components/Profile";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   type Agent,
   type Conversation,
@@ -129,7 +134,7 @@ function DustMain() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState<
-    "inbox" | "space" | "conversation" | "agent" | "person" | null
+    "inbox" | "space" | "conversation" | "agent" | "person" | "templates" | null
   >("inbox");
   const [cameFromInbox, setCameFromInbox] = useState<boolean>(false);
   const [cameFromPersonAgent, setCameFromPersonAgent] =
@@ -143,6 +148,9 @@ function DustMain() {
   const [selectedCollaboratorType, setSelectedCollaboratorType] = useState<
     "agent" | "person" | null
   >(null);
+  const [selectedTemplateForBuilder, setSelectedTemplateForBuilder] =
+    useState<Template | null>(null);
+  const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -755,7 +763,7 @@ function DustMain() {
       <ScrollArea className="s-flex-1">
         <ScrollBar orientation="vertical" size="minimal" />
         {/* Search Bar */}
-        <div className="s-flex s-gap-2 s-p-2 s-px-2">
+        <div className="s-flex s-gap-1 s-p-2 s-px-2 s-items-center">
           <SearchInput
             name="conversation-search"
             value={searchText}
@@ -763,12 +771,90 @@ function DustMain() {
             placeholder="Search"
             className="s-flex-1"
           />
-          {/* <Button
+          <Button
             variant="primary"
             tooltip="New Conversation"
             size="sm"
             icon={ChatBubbleLeftRightIcon}
-          /> */}
+            label="New"
+            onClick={handleNewConversation}
+          />
+          <DropdownMenu
+            open={isAgentsDropdownOpen}
+            onOpenChange={setIsAgentsDropdownOpen}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={MoreIcon}
+                aria-label="More options"
+                onClick={(e: MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel label="Agents" />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger
+                  icon={PlusIcon}
+                  label="Build an agent"
+                />
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    icon={PencilSquareIcon}
+                    label="From scratch"
+                    onClick={(e: MouseEvent) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    icon={LightbulbIcon}
+                    label="Browse templates"
+                    onClick={(e: MouseEvent) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsAgentsDropdownOpen(false);
+                      setShowProfileView(false);
+                      setSelectedView("templates");
+                      setSelectedConversationId(null);
+                      setSelectedSpaceId(null);
+                      setPreviousSpaceId(null);
+                      setCameFromInbox(false);
+                      setCameFromPersonAgent(false);
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Open YAML"
+                    icon={CodeSlashIcon}
+                    onClick={(e: MouseEvent) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem
+                label="Edit agent"
+                icon={PencilSquareIcon}
+                onClick={(e: MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+              <DropdownMenuItem
+                label="Manage agents"
+                icon={ContactsUserIcon}
+                onClick={(e: MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {/* Collapsible Sections */}
         <NavigationList className="s-px-2">
@@ -1370,6 +1456,18 @@ function DustMain() {
     }
   };
 
+  function handleNewConversation() {
+    setShowProfileView(false);
+    setSelectedConversationId("new-conversation");
+    setSelectedView(null);
+    setSelectedSpaceId(null);
+    setPreviousSpaceId(null);
+    setSelectedCollaboratorId(null);
+    setSelectedCollaboratorType(null);
+    setCameFromInbox(false);
+    setCameFromPersonAgent(false);
+  }
+
   // Main content
   const mainContent =
     // Priority 0: Show profile when opened from user menu
@@ -1414,7 +1512,14 @@ function DustMain() {
           setCameFromInbox(false);
         }}
       />
-    ) : // Priority 3: Show person/agent view if a collaborator is selected
+    ) : // Priority 3: Show template selection when Browse templates is clicked
+    selectedView === "templates" ? (
+      <div className="s-h-full s-overflow-auto">
+        <TemplateSelection
+          onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
+        />
+      </div>
+    ) : // Priority 4: Show person/agent view if a collaborator is selected
     selectedCollaborator &&
       selectedCollaboratorId &&
       selectedCollaboratorType &&
@@ -1437,7 +1542,7 @@ function DustMain() {
           // so the navigation item stays selected
         }}
       />
-    ) : // Priority 4: Show space view if a space is selected
+    ) : // Priority 5: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
       <GroupConversationView
         space={selectedSpace}
@@ -1453,7 +1558,7 @@ function DustMain() {
         }}
       />
     ) : (
-      // Priority 4: Show welcome/new conversation view
+      // Priority 6: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
@@ -1489,6 +1594,30 @@ function DustMain() {
         collapsible={true}
         onSidebarToggle={setIsSidebarCollapsed}
       />
+      <Dialog
+        open={selectedTemplateForBuilder !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedTemplateForBuilder(null);
+          }
+        }}
+      >
+        <DialogContent
+          size="full"
+          className="s-flex s-h-full s-max-h-full s-rounded-none s-p-0 s-overflow-hidden"
+        >
+          {selectedTemplateForBuilder && (
+            <AgentBuilderView
+              template={{
+                handle: selectedTemplateForBuilder.handle,
+                emoji: selectedTemplateForBuilder.emoji,
+                backgroundColor: selectedTemplateForBuilder.backgroundColor,
+              }}
+              onClose={() => setSelectedTemplateForBuilder(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
