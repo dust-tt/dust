@@ -7,10 +7,6 @@ import {
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
-import {
-  FULL_WORKSPACE_KILL_SWITCH_VALUE,
-  KILL_SWITCH_METADATA_KEY,
-} from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -201,7 +197,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const metadata = {
         ...(w.metadata ?? {}),
-        [KILL_SWITCH_METADATA_KEY]: FULL_WORKSPACE_KILL_SWITCH_VALUE,
+        [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
+          WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
       };
 
       const updateResult = await WorkspaceResource.updateMetadata(
@@ -227,7 +224,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const metadata = { ...(w.metadata ?? {}) };
-      delete metadata[KILL_SWITCH_METADATA_KEY];
+      delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
 
       const updateResult = await WorkspaceResource.updateMetadata(
         w.id,

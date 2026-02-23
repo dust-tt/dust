@@ -13,7 +13,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
-  type WorkspaceConversationKillSwitchValue as WorkspaceConversationKillSwitchValueResource,
+  type WorkspaceConversationKillSwitchValue,
   WorkspaceResource,
 } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -408,14 +408,8 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
-export const KILL_SWITCH_METADATA_KEY =
-  WorkspaceResource.KILL_SWITCH_METADATA_KEY;
-export const FULL_WORKSPACE_KILL_SWITCH_VALUE =
-  WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE;
-export type WorkspaceConversationKillSwitchValue =
-  WorkspaceConversationKillSwitchValueResource;
-export type WorkspaceKillSwitchValue =
-  | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
+type WorkspaceKillSwitchValue =
+  | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
 
 export interface WorkspaceMetadata {
@@ -425,28 +419,6 @@ export interface WorkspaceMetadata {
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
-}
-
-export function isWorkspaceConversationKillSwitchValue(
-  killSwitched: unknown
-): killSwitched is WorkspaceConversationKillSwitchValue {
-  return WorkspaceResource.isWorkspaceConversationKillSwitchValue(killSwitched);
-}
-
-export function isWorkspaceKillSwitchedForAllAPIs(
-  killSwitched: unknown
-): boolean {
-  return WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(killSwitched);
-}
-
-export function isWorkspaceConversationKillSwitched(
-  killSwitched: unknown,
-  conversationId: string
-): boolean {
-  return WorkspaceResource.isWorkspaceConversationKillSwitched(
-    killSwitched,
-    conversationId
-  );
 }
 
 export async function updateWorkspaceMetadata(

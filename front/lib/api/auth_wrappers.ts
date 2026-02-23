@@ -1,10 +1,6 @@
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
-  isWorkspaceConversationKillSwitched,
-  isWorkspaceKillSwitchedForAllAPIs,
-} from "@app/lib/api/workspace";
-import {
   Authenticator,
   getAPIKey,
   getApiKeyNameFromHeaders,
@@ -14,6 +10,7 @@ import {
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -98,7 +95,10 @@ function getConversationKillSwitchErrorForRequest(
     return null;
   }
 
-  return isWorkspaceConversationKillSwitched(killSwitched, conversationId)
+  return WorkspaceResource.isWorkspaceConversationKillSwitched(
+    killSwitched,
+    conversationId
+  )
     ? getConversationKillSwitchError()
     : null;
 }
@@ -296,7 +296,11 @@ export function withSessionAuthenticationForWorkspace<T>(
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
       }
-      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+      if (
+        WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
+          owner.metadata?.killSwitched
+        )
+      ) {
         return apiError(req, res, getWorkspaceKillSwitchError());
       }
       const conversationKillSwitchError =
@@ -457,7 +461,7 @@ export function withPublicAPIAuthentication<T>(
             return apiError(req, res, getMaintenanceError(maintenance));
           }
           if (
-            isWorkspaceKillSwitchedForAllAPIs(
+            WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
               auth.workspace()?.metadata?.killSwitched
             )
           ) {
@@ -527,7 +531,11 @@ export function withPublicAPIAuthentication<T>(
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
       }
-      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+      if (
+        WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(
+          owner.metadata?.killSwitched
+        )
+      ) {
         return apiError(req, res, getWorkspaceKillSwitchError());
       }
       const conversationKillSwitchError =
