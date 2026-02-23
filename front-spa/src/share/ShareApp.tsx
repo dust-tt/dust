@@ -5,19 +5,25 @@ import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
+import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 const router = createBrowserRouter(
   [
-    // Frame: /share/frame/:token
     {
-      path: "/share/frame/:token",
-      element: <SharedFramePage />,
-    },
-    // File: /share/file/:token (redirects to frame)
-    {
-      path: "/share/file/:token",
-      element: <SharedFilePage />,
+      element: <RootRouterLayout />,
+      children: [
+        // Frame: /share/frame/:token
+        {
+          path: "/share/frame/:token",
+          element: <SharedFramePage />,
+        },
+        // File: /share/file/:token (redirects to frame)
+        {
+          path: "/share/file/:token",
+          element: <SharedFilePage />,
+        },
+      ],
     },
   ],
   {

@@ -13,6 +13,7 @@ import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout"
 import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
 import { ConversationRouterLayout } from "@spa/app/layouts/ConversationRouterLayout";
 import { DustAppRouterLayout } from "@spa/app/layouts/DustAppRouterLayout";
+import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { SpaceRouterLayout } from "@spa/app/layouts/SpaceRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
@@ -332,197 +333,219 @@ const SsoEnforcedPage = withSuspense(
 
 const router = createBrowserRouter(
   [
-    { path: "/", element: <IndexPage /> },
     {
-      path: "/w/:wId",
-      element: <WorkspacePage />,
+      element: <RootRouterLayout />,
       children: [
-        // Routes WITH shared AppContentLayout (navigation, sidebar, title bar)
+        { path: "/", element: <IndexPage /> },
         {
-          element: <AppContentRouterLayout />,
+          path: "/w/:wId",
+          element: <WorkspacePage />,
           children: [
-            // Index - redirect to conversation/new
+            // Routes WITH shared AppContentLayout (navigation, sidebar, title bar)
             {
-              index: true,
-              element: <RedirectWithSearchParams to="conversation/new" />,
-            },
-
-            // Profile
-            { path: "me", element: <ProfilePage /> },
-
-            // Conversation (wrapped with ConversationLayout)
-            {
-              path: "conversation",
-              element: <ConversationRouterLayout />,
+              element: <AppContentRouterLayout />,
               children: [
-                { path: ":cId", element: <ConversationPage /> },
+                // Index - redirect to conversation/new
                 {
-                  path: "space/:spaceId",
-                  element: <SpaceConversationsPage />,
+                  index: true,
+                  element: <RedirectWithSearchParams to="conversation/new" />,
                 },
+
+                // Profile
+                { path: "me", element: <ProfilePage /> },
+
+                // Conversation (wrapped with ConversationLayout)
+                {
+                  path: "conversation",
+                  element: <ConversationRouterLayout />,
+                  children: [
+                    { path: ":cId", element: <ConversationPage /> },
+                    {
+                      path: "space/:spaceId",
+                      element: <SpaceConversationsPage />,
+                    },
+                  ],
+                },
+
+                {
+                  element: <AdminRouterLayout />,
+                  children: [
+                    { path: "members", element: <MembersPage /> },
+                    { path: "workspace", element: <WorkspaceSettingsPage /> },
+                    { path: "analytics", element: <AnalyticsPage /> },
+                    { path: "subscription", element: <SubscriptionPage /> },
+                    {
+                      path: "subscription/manage",
+                      element: <ManageSubscriptionPage />,
+                    },
+                    {
+                      path: "subscription/payment_processing",
+                      element: <PaymentProcessingPage />,
+                    },
+                    { path: "developers/api-keys", element: <APIKeysPage /> },
+                    {
+                      path: "developers/credits-usage",
+                      element: <CreditsUsagePage />,
+                    },
+                    {
+                      path: "developers/providers",
+                      element: <ProvidersPage />,
+                    },
+                    {
+                      path: "developers/dev-secrets",
+                      element: <SecretsPage />,
+                    },
+                  ],
+                },
+
+                // Labs
+                { path: "labs", element: <LabsPage /> },
+                { path: "labs/transcripts", element: <TranscriptsPage /> },
+                {
+                  path: "labs/mcp_actions",
+                  element: <MCPActionsDashboardPage />,
+                },
+                {
+                  path: "labs/mcp_actions/:agentId",
+                  element: <AgentMCPActionsPage />,
+                },
+
+                // Spaces
+                {
+                  path: "spaces/:spaceId",
+                  element: <SpaceRouterLayout />,
+                  children: [
+                    { index: true, element: <SpacePage /> },
+                    {
+                      path: "categories/actions",
+                      element: <SpaceActionsPage />,
+                    },
+                    { path: "categories/apps", element: <SpaceAppsListPage /> },
+                    {
+                      path: "categories/triggers",
+                      element: <SpaceTriggersPage />,
+                    },
+                    {
+                      path: "categories/:category",
+                      element: <SpaceCategoryPage />,
+                    },
+                    {
+                      path: "categories/:category/data_source_views/:dataSourceViewId",
+                      element: <DataSourceViewPage />,
+                    },
+                  ],
+                },
+
+                // Apps
+                {
+                  path: "spaces/:spaceId/apps/:aId",
+                  element: <DustAppRouterLayout />,
+                  children: [
+                    { index: true, element: <AppViewPage /> },
+                    { path: "settings", element: <AppSettingsPage /> },
+                    {
+                      path: "specification",
+                      element: <AppSpecificationPage />,
+                    },
+                    { path: "datasets", element: <DatasetsPage /> },
+                    { path: "datasets/new", element: <NewDatasetPage /> },
+                    { path: "datasets/:name", element: <DatasetPage /> },
+                    { path: "runs", element: <RunsPage /> },
+                    { path: "runs/:runId", element: <RunPage /> },
+                  ],
+                },
+
+                // Builder (pages with sidebar layout)
+                { path: "builder/agents", element: <ManageAgentsPage /> },
+                { path: "builder/agents/create", element: <CreateAgentPage /> },
+                { path: "builder/skills", element: <ManageSkillsPage /> },
+
+                // Spaces redirect (inside layout to preserve sidebar)
+                { path: "spaces", element: <SpacesRedirectPage /> },
               ],
             },
 
+            // Routes WITHOUT AppContentLayout (no sidebar/navigation chrome)
+
+            // Builder (full-page editors without sidebar)
+            { path: "builder/agents/new", element: <NewAgentPage /> },
+            { path: "builder/agents/:aId", element: <EditAgentPage /> },
+            { path: "builder/skills/new", element: <CreateSkillPage /> },
+            { path: "builder/skills/:sId", element: <EditSkillPage /> },
+
+            // Legacy assistants -> agents redirects
             {
-              element: <AdminRouterLayout />,
-              children: [
-                { path: "members", element: <MembersPage /> },
-                { path: "workspace", element: <WorkspaceSettingsPage /> },
-                { path: "analytics", element: <AnalyticsPage /> },
-                { path: "subscription", element: <SubscriptionPage /> },
-                {
-                  path: "subscription/manage",
-                  element: <ManageSubscriptionPage />,
-                },
-                {
-                  path: "subscription/payment_processing",
-                  element: <PaymentProcessingPage />,
-                },
-                { path: "developers/api-keys", element: <APIKeysPage /> },
-                {
-                  path: "developers/credits-usage",
-                  element: <CreditsUsagePage />,
-                },
-                { path: "developers/providers", element: <ProvidersPage /> },
-                { path: "developers/dev-secrets", element: <SecretsPage /> },
-              ],
+              path: "builder/assistants",
+              element: <RedirectWithSearchParams to="../builder/agents" />,
+            },
+            {
+              path: "builder/assistants/create",
+              element: (
+                <RedirectWithSearchParams to="../builder/agents/create" />
+              ),
+            },
+            {
+              path: "builder/assistants/new",
+              element: <RedirectWithSearchParams to="../builder/agents/new" />,
+            },
+            {
+              path: "builder/assistants/dust",
+              element: (
+                <RedirectWithSearchParams to="../builder/agents#?selectedTab=global" />
+              ),
+            },
+            {
+              path: "builder/assistants/:aId",
+              element: <AssistantAgentRedirect />,
             },
 
-            // Labs
-            { path: "labs", element: <LabsPage /> },
-            { path: "labs/transcripts", element: <TranscriptsPage /> },
-            { path: "labs/mcp_actions", element: <MCPActionsDashboardPage /> },
+            // Onboarding (paywall-whitelisted: accessible even when canUseProduct is false)
             {
-              path: "labs/mcp_actions/:agentId",
-              element: <AgentMCPActionsPage />,
+              path: "welcome",
+              element: <WelcomePage />,
+              handle: { requireCanUseProduct: false },
             },
-
-            // Spaces
             {
-              path: "spaces/:spaceId",
-              element: <SpaceRouterLayout />,
-              children: [
-                { index: true, element: <SpacePage /> },
-                { path: "categories/actions", element: <SpaceActionsPage /> },
-                { path: "categories/apps", element: <SpaceAppsListPage /> },
-                {
-                  path: "categories/triggers",
-                  element: <SpaceTriggersPage />,
-                },
-                {
-                  path: "categories/:category",
-                  element: <SpaceCategoryPage />,
-                },
-                {
-                  path: "categories/:category/data_source_views/:dataSourceViewId",
-                  element: <DataSourceViewPage />,
-                },
-              ],
+              path: "subscribe",
+              element: <SubscribePage />,
+              handle: { requireCanUseProduct: false },
             },
-
-            // Apps
             {
-              path: "spaces/:spaceId/apps/:aId",
-              element: <DustAppRouterLayout />,
-              children: [
-                { index: true, element: <AppViewPage /> },
-                { path: "settings", element: <AppSettingsPage /> },
-                { path: "specification", element: <AppSpecificationPage /> },
-                { path: "datasets", element: <DatasetsPage /> },
-                { path: "datasets/new", element: <NewDatasetPage /> },
-                { path: "datasets/:name", element: <DatasetPage /> },
-                { path: "runs", element: <RunsPage /> },
-                { path: "runs/:runId", element: <RunPage /> },
-              ],
+              path: "trial",
+              element: <TrialPage />,
+              handle: { requireCanUseProduct: false },
             },
-
-            // Builder (pages with sidebar layout)
-            { path: "builder/agents", element: <ManageAgentsPage /> },
-            { path: "builder/agents/create", element: <CreateAgentPage /> },
-            { path: "builder/skills", element: <ManageSkillsPage /> },
-
-            // Spaces redirect (inside layout to preserve sidebar)
-            { path: "spaces", element: <SpacesRedirectPage /> },
+            {
+              path: "trial-ended",
+              element: <TrialEndedPage />,
+              handle: { requireCanUseProduct: false },
+            },
+            {
+              path: "verify",
+              element: <VerifyPage />,
+              handle: { requireCanUseProduct: false },
+            },
           ],
         },
-
-        // Routes WITHOUT AppContentLayout (no sidebar/navigation chrome)
-
-        // Builder (full-page editors without sidebar)
-        { path: "builder/agents/new", element: <NewAgentPage /> },
-        { path: "builder/agents/:aId", element: <EditAgentPage /> },
-        { path: "builder/skills/new", element: <CreateSkillPage /> },
-        { path: "builder/skills/:sId", element: <EditSkillPage /> },
-
-        // Legacy assistants -> agents redirects
         {
-          path: "builder/assistants",
-          element: <RedirectWithSearchParams to="../builder/agents" />,
+          element: <AuthenticatedPage />,
+          children: [
+            { path: "/invite-choose", element: <InviteChoosePage /> },
+            { path: "/no-workspace", element: <NoWorkspacePage /> },
+            { path: "/sso-enforced", element: <SsoEnforcedPage /> },
+          ],
         },
+        // Redirect /poke/* to the poke app (e.g., poke.dust.tt)
+        { path: "/poke/*", element: <PokeRedirect /> },
         {
-          path: "builder/assistants/create",
-          element: <RedirectWithSearchParams to="../builder/agents/create" />,
+          element: <UnauthenticatedPage />,
+          children: [
+            { path: "/w/:wId/join", element: <JoinPage /> },
+            { path: "/login-error", element: <LoginErrorPage /> },
+            { path: "/maintenance", element: <MaintenancePage /> },
+            { path: "*", element: <Custom404 /> },
+          ],
         },
-        {
-          path: "builder/assistants/new",
-          element: <RedirectWithSearchParams to="../builder/agents/new" />,
-        },
-        {
-          path: "builder/assistants/dust",
-          element: (
-            <RedirectWithSearchParams to="../builder/agents#?selectedTab=global" />
-          ),
-        },
-        {
-          path: "builder/assistants/:aId",
-          element: <AssistantAgentRedirect />,
-        },
-
-        // Onboarding (paywall-whitelisted: accessible even when canUseProduct is false)
-        {
-          path: "welcome",
-          element: <WelcomePage />,
-          handle: { requireCanUseProduct: false },
-        },
-        {
-          path: "subscribe",
-          element: <SubscribePage />,
-          handle: { requireCanUseProduct: false },
-        },
-        {
-          path: "trial",
-          element: <TrialPage />,
-          handle: { requireCanUseProduct: false },
-        },
-        {
-          path: "trial-ended",
-          element: <TrialEndedPage />,
-          handle: { requireCanUseProduct: false },
-        },
-        {
-          path: "verify",
-          element: <VerifyPage />,
-          handle: { requireCanUseProduct: false },
-        },
-      ],
-    },
-    {
-      element: <AuthenticatedPage />,
-      children: [
-        { path: "/invite-choose", element: <InviteChoosePage /> },
-        { path: "/no-workspace", element: <NoWorkspacePage /> },
-        { path: "/sso-enforced", element: <SsoEnforcedPage /> },
-      ],
-    },
-    // Redirect /poke/* to the poke app (e.g., poke.dust.tt)
-    { path: "/poke/*", element: <PokeRedirect /> },
-    {
-      element: <UnauthenticatedPage />,
-      children: [
-        { path: "/w/:wId/join", element: <JoinPage /> },
-        { path: "/login-error", element: <LoginErrorPage /> },
-        { path: "/maintenance", element: <MaintenancePage /> },
-        { path: "*", element: <Custom404 /> },
       ],
     },
   ],
