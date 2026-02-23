@@ -1,6 +1,7 @@
 import { ZendeskCastKnownErrorsInterceptor } from "@connectors/connectors/zendesk/temporal/cast_known_errors";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import { resolveConnectorWorkflowsPath } from "@connectors/lib/temporal_workflow_path";
 import logger from "@connectors/logger/logger";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
@@ -14,7 +15,7 @@ import * as incremental_activities from "./incremental_activities";
 export async function runZendeskWorkers() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const syncWorker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    workflowsPath: resolveConnectorWorkflowsPath("zendesk"),
     activities: { ...activities, ...incremental_activities, ...gc_activities },
     taskQueue: QUEUE_NAME,
     connection,

@@ -13,7 +13,7 @@
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",
-    "start:worker": "tsx ./src/start_worker.ts",
+    "start:worker": "node ./dist/start_worker.js",
     "start:dev": "tsx ./src/start.ts -p 3002",
     "start:dev:web": "tsx ./src/start_server.ts -p 3002",
     "start:dev:worker": "tsx ./src/start_worker.ts",

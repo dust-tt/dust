@@ -55,7 +55,15 @@ RUN if [ -n "$DATADOG_API_KEY" ]; then \
   --project-path=connectors \
   --release-version=$COMMIT_HASH \
   --service=connectors \
-  --disable-git; \
+  --disable-git && \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./dist \
+  --minified-path-prefix=/app/connectors/dist/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=connectors \
+  --release-version=$COMMIT_HASH \
+  --service=connectors-worker \
+  --disable-git && \
+  find dist -type f -name "*.map" -delete; \
   fi
 
 EXPOSE 3002

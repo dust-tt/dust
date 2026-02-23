@@ -6,6 +6,7 @@ import {
 } from "@connectors/connectors/notion/temporal/config";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import { resolveConnectorWorkflowsPath } from "@connectors/lib/temporal_workflow_path";
 import logger from "@connectors/logger/logger";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
@@ -14,7 +15,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 export async function runNotionWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows/index"),
+    workflowsPath: resolveConnectorWorkflowsPath("notion", "workflows/index"),
     activities,
     taskQueue: QUEUE_NAME,
     connection,
@@ -49,7 +50,7 @@ export async function runNotionWorker() {
 export async function runNotionGarbageCollectWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows/index"),
+    workflowsPath: resolveConnectorWorkflowsPath("notion", "workflows/index"),
     activities,
     taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
     connection,

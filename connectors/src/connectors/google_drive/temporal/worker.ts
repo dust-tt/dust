@@ -3,6 +3,7 @@ import { GoogleDriveCastKnownErrorsInterceptor } from "@connectors/connectors/go
 import * as sync_status from "@connectors/lib/sync_status";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import { resolveConnectorWorkflowsPath } from "@connectors/lib/temporal_workflow_path";
 import logger from "@connectors/logger/logger";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
@@ -16,7 +17,7 @@ import {
 export async function runGoogleWorkers() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const workerFullSync = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    workflowsPath: resolveConnectorWorkflowsPath("google_drive"),
     activities: { ...activities, ...sync_status },
     taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
     stickyQueueScheduleToStartTimeout: "1m",
@@ -50,7 +51,7 @@ export async function runGoogleWorkers() {
   });
 
   const workerIncrementalSync = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    workflowsPath: resolveConnectorWorkflowsPath("google_drive"),
     activities: { ...activities, ...sync_status },
     taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 15,
