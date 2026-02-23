@@ -20,7 +20,10 @@ import {
   getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
-import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
+import {
+  MCPOAuthProvider,
+  MCPOAuthProviderError,
+} from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
@@ -35,6 +38,7 @@ import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
+import { invalidateOAuthConnectionAccessTokenCache } from "@app/types/oauth/client/access_token";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -332,6 +336,8 @@ export async function connectToMCPServer(
           const url = new URL(remoteMCPServer.url);
 
           let token: OAuthTokens | undefined;
+          let oauthConnectionType: "personal" | "workspace" | undefined;
+          let oauthConnectionId: string | undefined;
 
           // If the server has a shared secret, we use it to authenticate.
           if (remoteMCPServer.sharedSecret) {
@@ -346,7 +352,7 @@ export async function connectToMCPServer(
           else if (remoteMCPServer.authorization) {
             // We only fetch the personal token if we are running a tool.
             // Otherwise, for listing tools etc.., we use the workspace token.
-            const connectionType =
+            oauthConnectionType =
               params.oAuthUseCase === "personal_actions" &&
               agentLoopContext?.runContext
                 ? "personal"
@@ -354,9 +360,10 @@ export async function connectToMCPServer(
 
             const c = await getConnectionForMCPServer(auth, {
               mcpServerId: params.mcpServerId,
-              connectionType: connectionType,
+              connectionType: oauthConnectionType,
             });
             if (c.isOk()) {
+              oauthConnectionId = c.value.connection.connection_id;
               token = {
                 access_token: c.value.access_token,
                 token_type: "bearer",
@@ -366,7 +373,7 @@ export async function connectToMCPServer(
             } else {
               const scope = remoteMCPServer.authorization.scope;
 
-              if (connectionType === "personal") {
+              if (oauthConnectionType === "personal") {
                 // Check if admin connection exists for the server.
                 // We only check if the connection resource exists (not if the token is valid)
                 // because for personal_actions we just need to know if admin setup is done.
@@ -394,7 +401,7 @@ export async function connectToMCPServer(
                     scope
                   )
                 );
-              } else if (connectionType === "workspace") {
+              } else if (oauthConnectionType === "workspace") {
                 // Workspace connection required — admin must set up or reconnect.
                 return new Err(
                   new MCPServerRequiresAdminAuthenticationError(
@@ -404,7 +411,7 @@ export async function connectToMCPServer(
                   )
                 );
               } else {
-                assertNever(connectionType);
+                assertNever(oauthConnectionType);
               }
             }
           }
@@ -421,9 +428,39 @@ export async function connectToMCPServer(
 
             await connectToRemoteMCPServer(mcpClient, url, req);
           } catch (e: unknown) {
+            // When the MCP SDK receives a 401/403 from the remote server, it
+            // calls unimplemented methods on MCPOAuthProvider which throw
+            // MCPOAuthProviderError. This reliably indicates token rejection.
+            if (
+              e instanceof MCPOAuthProviderError &&
+              remoteMCPServer.authorization &&
+              oauthConnectionType
+            ) {
+              if (oauthConnectionId) {
+                invalidateOAuthConnectionAccessTokenCache(oauthConnectionId);
+              }
+              const scope = remoteMCPServer.authorization.scope;
+              if (oauthConnectionType === "personal") {
+                return new Err(
+                  new MCPServerPersonalAuthenticationRequiredError(
+                    params.mcpServerId,
+                    remoteMCPServer.authorization.provider,
+                    scope
+                  )
+                );
+              }
+              return new Err(
+                new MCPServerRequiresAdminAuthenticationError(
+                  params.mcpServerId,
+                  remoteMCPServer.authorization.provider,
+                  scope
+                )
+              );
+            }
+
             logger.error(
               {
-                connectionType,
+                oauthConnectionType,
                 serverType,
                 workspaceId: auth.getNonNullableWorkspace().sId,
                 error: e,

@@ -18,6 +18,12 @@ const CACHE = new Map<
   }
 >();
 
+export function invalidateOAuthConnectionAccessTokenCache(
+  connectionId: string
+): void {
+  CACHE.delete(connectionId);
+}
+
 export async function getOAuthConnectionAccessToken({
   config,
   logger,

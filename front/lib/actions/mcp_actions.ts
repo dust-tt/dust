@@ -52,6 +52,7 @@ import {
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
+import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
@@ -77,6 +78,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
@@ -606,6 +608,35 @@ export async function* tryCallMCPTool(
             `The tool execution timed out, error: ${error.message}`,
             { cause: error }
           );
+        }
+      }
+    }
+
+    // When the MCP SDK receives a 401/403 from the remote server during a
+    // tool call (e.g., StreamableHTTP where each call is a separate HTTP
+    // request), it calls unimplemented methods on MCPOAuthProvider which
+    // throw MCPOAuthProviderError. Trigger re-authentication.
+    if (
+      error instanceof MCPOAuthProviderError &&
+      isServerSideMCPToolConfiguration(toolConfiguration)
+    ) {
+      const mcpServerView = await MCPServerViewResource.fetchById(
+        auth,
+        toolConfiguration.mcpServerViewId
+      );
+      if (mcpServerView) {
+        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+          auth,
+          mcpServerView.mcpServerId
+        );
+        if (remoteMCPServer?.authorization) {
+          return {
+            isError: false,
+            content: makePersonalAuthenticationError(
+              remoteMCPServer.authorization.provider,
+              remoteMCPServer.authorization.scope
+            ).content,
+          };
         }
       }
     }
