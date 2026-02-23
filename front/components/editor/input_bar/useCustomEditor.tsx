@@ -29,7 +29,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
-const SUBMIT_COOLDOWN_MS = 400;
+const SUBMIT_COOLDOWN_MS = 640;
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
