@@ -105,7 +105,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             .map((m) => m.sId)
         )
       );
-    } else {
+    } else if (mode === "editors-only") {
       const editorIds = new Set(props.editors.map((e) => e.sId));
       setCurrentMembers(editorIds);
       // Seed the user map with initial editors.
@@ -182,7 +182,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         await props.onSuccess?.();
         setIsOpen(false);
       }
-    } else {
+    } else if (mode === "editors-only") {
       const selectedUsers = Array.from(currentMembers)
         .map((sId) => userMapRef.current.get(sId))
         .filter((user): user is UserType => user !== undefined);
