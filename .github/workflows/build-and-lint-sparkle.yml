@@ -12,11 +12,11 @@ permissions:
   pull-requests: write
 
 jobs:
-  check-eslint:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
-      - name: Lint and build
-        run: npm -w sparkle run lint && npm -w sparkle run build
+      - name: Build
+        run: npm -w sparkle run build

@@ -36,9 +36,7 @@
       "!!extension/shared/lib/swr.ts",
       "!!extension/packages",
       "!!**/package-lock.json",
-      "!!**/__snapshots__",
-      "lefthook.yml",
-      ".github/**/*.yml"
+      "!!**/__snapshots__"
     ]
   },
   "formatter": {

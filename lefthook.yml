@@ -97,6 +97,6 @@ pre-commit:
 
     # Biome checks (all JS/TS files in monorepo)
     biome:
-      glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
+      glob: "*.{js,jsx,ts,tsx,json,css,scss,md}"
       run: npm run biome:lefthook -- {staged_files}
       stage_fixed: true
