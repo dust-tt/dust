@@ -22,35 +22,19 @@ const DEFAULT_APP_URL = isDevelopment()
   ? "http://localhost:3011"
   : "https://app.dust.tt";
 
-// Returns a redirect if the workspace should use the SPA, or the feature flags
-// for inclusion in the SSR props.
-const checkSpaRedirectAndGetFeatureFlags = async (
+function getSpaRedirect(
   context: GetServerSidePropsContext,
-  auth: Authenticator
-): Promise<
-  | { type: "redirect"; redirect: { destination: string; permanent: false } }
-  | { type: "flags"; featureFlags: WhitelistableFeature[] }
-> => {
+  featureFlags: WhitelistableFeature[]
+): { destination: string; permanent: false } | null {
   const isEdge = process.env.NEXT_PUBLIC_DATADOG_SERVICE === "front-edge";
-
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
 
   if (!isEdge && !featureFlags.includes("dust_no_spa")) {
     const appUrl = config.getAppUrl(true) || DEFAULT_APP_URL;
-
-    const destination = context.resolvedUrl;
-    return {
-      type: "redirect",
-      redirect: {
-        destination: `${appUrl}${destination}`,
-        permanent: false,
-      },
-    };
+    return { destination: `${appUrl}${context.resolvedUrl}`, permanent: false };
   }
 
-  return { type: "flags", featureFlags };
-};
+  return null;
+}
 
 function makeAuthProps(
   auth: Authenticator,
@@ -70,57 +54,57 @@ function makeAuthProps(
 
 export const appGetServerSideProps =
   withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
-    const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
-    if (result.type === "redirect") {
-      return { redirect: result.redirect };
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const redirect = getSpaRedirect(context, featureFlags);
+    if (redirect) {
+      return { redirect };
     }
-    return makeAuthProps(auth, result.featureFlags);
+    return makeAuthProps(auth, featureFlags);
   });
 
 export const appGetServerSidePropsForBuilders =
   withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
     if (!auth.isBuilder()) {
-      return {
-        notFound: true,
-      };
+      return { notFound: true };
     }
 
-    const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
-    if (result.type === "redirect") {
-      return { redirect: result.redirect };
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const redirect = getSpaRedirect(context, featureFlags);
+    if (redirect) {
+      return { redirect };
     }
-    return makeAuthProps(auth, result.featureFlags);
+    return makeAuthProps(auth, featureFlags);
   });
 
 export const appGetServerSidePropsForAdmin =
   withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
     if (!auth.isAdmin()) {
-      return {
-        notFound: true,
-      };
+      return { notFound: true };
     }
 
-    const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
-    if (result.type === "redirect") {
-      return { redirect: result.redirect };
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const redirect = getSpaRedirect(context, featureFlags);
+    if (redirect) {
+      return { redirect };
     }
-    return makeAuthProps(auth, result.featureFlags);
+    return makeAuthProps(auth, featureFlags);
   });
 
 export const appGetServerSidePropsPaywallWhitelisted =
   withDefaultUserAuthPaywallWhitelisted<AuthContextValue>(
     async (context, auth) => {
       if (!auth.workspace() || !auth.isUser()) {
-        return {
-          notFound: true,
-        };
+        return { notFound: true };
       }
 
-      const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
-      if (result.type === "redirect") {
-        return { redirect: result.redirect };
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      const redirect = getSpaRedirect(context, featureFlags);
+      if (redirect) {
+        return { redirect };
       }
-      return makeAuthProps(auth, result.featureFlags);
+      return makeAuthProps(auth, featureFlags);
     }
   );
 
@@ -128,16 +112,17 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
   withDefaultUserAuthPaywallWhitelisted<AuthContextValue>(
     async (context, auth) => {
       if (!auth.workspace() || !auth.isAdmin()) {
-        return {
-          notFound: true,
-        };
+        return { notFound: true };
       }
 
-      const result = await checkSpaRedirectAndGetFeatureFlags(context, auth);
-      if (result.type === "redirect") {
-        return { redirect: result.redirect };
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      const redirect = getSpaRedirect(context, featureFlags);
+      if (redirect) {
+        return { redirect };
       }
-      return makeAuthProps(auth, result.featureFlags);
+      return makeAuthProps(auth, featureFlags);
     }
   );
 
