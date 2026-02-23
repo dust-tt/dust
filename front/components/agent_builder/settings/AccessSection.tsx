@@ -3,7 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import { EditorsSheet } from "@app/components/shared/EditorsSheet";
+import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isBuilder } from "@app/types/user";
 import {
