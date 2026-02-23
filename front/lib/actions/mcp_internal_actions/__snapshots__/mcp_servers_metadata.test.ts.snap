@@ -6,8 +6,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_agent_info": "never_ask",
   },
   "agent_copilot_context": {
-    "get_agent_feedback": "never_ask",
-    "get_agent_insights": "never_ask",
     "get_agent_template": "never_ask",
     "get_available_agents": "never_ask",
     "get_available_knowledge": "never_ask",

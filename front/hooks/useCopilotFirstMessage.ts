@@ -8,18 +8,19 @@ function getEndpoint({
   isNewAgent,
   templateInfo,
   conversationId,
+  agentConfigurationId,
 }: {
   workspaceSId: string;
   isNewAgent: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
+  agentConfigurationId?: string;
 }): string {
   if (templateInfo && templateInfo.copilotInstructions) {
     return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/template?templateId=${templateInfo.templateId}`;
   }
-  if (!isNewAgent) {
-    // TODO(copilot): send actual agent id
-    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing`;
+  if (!isNewAgent && agentConfigurationId) {
+    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing?agentConfigurationId=${agentConfigurationId}`;
   }
   if (conversationId) {
     return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/shrink-wrap?conversationId=${conversationId}`;
@@ -32,11 +33,13 @@ export function useCopilotFirstMessage({
   isNewAgent,
   templateInfo,
   conversationId,
+  agentConfigurationId,
 }: {
   owner: WorkspaceType;
   isNewAgent: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
+  agentConfigurationId?: string;
 }) {
   const endpoint = useMemo(
     () =>
@@ -45,8 +48,9 @@ export function useCopilotFirstMessage({
         isNewAgent,
         templateInfo,
         conversationId,
+        agentConfigurationId,
       }),
-    [owner.sId, isNewAgent, templateInfo, conversationId]
+    [owner.sId, isNewAgent, templateInfo, conversationId, agentConfigurationId]
   );
 
   const getFirstMessage = useCallback(async (): Promise<string> => {

@@ -170,45 +170,6 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       done: "Inspect agent",
     },
   },
-  get_agent_feedback: {
-    description: "Get user feedback for the agent.",
-    schema: {
-      limit: z
-        .number()
-        .optional()
-        .default(50)
-        .describe("Maximum number of feedback items to return (default: 50)"),
-      filter: z
-        .enum(["active", "all"])
-        .optional()
-        .default("active")
-        .describe(
-          "Filter type: 'active' for non-dismissed feedback only (default), 'all' for all feedback"
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing agent feedback",
-      done: "List agent feedback",
-    },
-  },
-  get_agent_insights: {
-    description:
-      "Get insight and analytics data for the agent, including the number of active users, " +
-      "the conversation and message counts, and the feedback statistics.",
-    schema: {
-      days: z
-        .number()
-        .optional()
-        .default(30)
-        .describe("Number of days to include in the analysis (default: 30)"),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing agent insights",
-      done: "List agent insights",
-    },
-  },
   // Suggestion tools
   suggest_prompt_edits: {
     description:

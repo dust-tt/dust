@@ -75,12 +75,8 @@ Each edit should be scoped to its section.`,
       userMessage:
         "Users have been complaining. Can you look at the feedback and suggest improvements?",
       mockState: WELL_STRUCTURED_AGENT,
-      expectedToolCalls: [
-        "get_agent_info",
-        "get_agent_feedback",
-        "suggest_prompt_edits",
-      ],
-      judgeCriteria: `Should call get_agent_feedback and generate fixes that address specific feedback themes.
+      expectedToolCalls: ["get_agent_info", "suggest_prompt_edits"],
+      judgeCriteria: `Should use the pre-injected feedback data and generate fixes that address specific feedback themes.
 Must cite feedback in explanations ("Based on feedback about...").
 Should NOT make changes unrelated to the feedback.`,
     },
