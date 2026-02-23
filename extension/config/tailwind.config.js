@@ -778,6 +778,7 @@ module.exports = {
     require("@tailwindcss/forms"),
     require("tailwind-scrollbar-hide"),
     require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
     plugin(function ({ addBase, theme }) {
       addBase({
         ".heading-base": {
@@ -957,7 +958,11 @@ module.exports = {
       });
     }),
   ],
-  content: ["./ui/**/*.tsx", "./platforms/chrome/components/*.tsx"],
+  content: [
+    "./ui/**/*.tsx",
+    "./platforms/chrome/components/*.tsx",
+    "../front/**/*.tsx",
+  ],
   safelist: [
     {
       pattern: /^bg-/,
