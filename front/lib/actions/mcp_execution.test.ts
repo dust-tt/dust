@@ -87,8 +87,8 @@ describe("processToolResults", () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
     // Generate text that exceeds MAX_TEXT_CONTENT_SIZE (400KB).
-    // With Buffer.byteLength on ASCII, 1 char = 1 byte.
-    const largeText = "x".repeat(MAX_TEXT_CONTENT_SIZE + 1);
+    // computeTextByteSize uses text.length * 2, so length > MAX_TEXT_CONTENT_SIZE / 2 triggers it.
+    const largeText = "x".repeat(MAX_TEXT_CONTENT_SIZE / 2 + 1);
 
     const { outputItems } = await processToolResults(auth, {
       action,
@@ -115,7 +115,8 @@ describe("processToolResults", () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
     // Generate resource text that exceeds MAX_RESOURCE_CONTENT_SIZE (20MB).
-    const largeResourceText = "y".repeat(MAX_RESOURCE_CONTENT_SIZE + 1);
+    // computeTextByteSize uses text.length * 2, so length > MAX_RESOURCE_CONTENT_SIZE / 2 triggers it.
+    const largeResourceText = "y".repeat(MAX_RESOURCE_CONTENT_SIZE / 2 + 1);
 
     const { outputItems } = await processToolResults(auth, {
       action,
