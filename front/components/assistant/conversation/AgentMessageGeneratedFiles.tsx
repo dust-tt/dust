@@ -3,7 +3,7 @@ import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 import {
   frameSlideshowContentType,
-  isFrameContentType,
+  isInteractiveContentType,
 } from "@app/types/files";
 import { getTime } from "@app/types/shared/utils/date_utils";
 import {
@@ -22,7 +22,7 @@ function getDescriptionForContentType(
     return "Presentation";
   }
 
-  if (isFrameContentType(file.contentType)) {
+  if (isInteractiveContentType(file.contentType)) {
     return "Frames";
   }
 

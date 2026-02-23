@@ -365,19 +365,6 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 export const frameContentType = "application/vnd.dust.frame";
 export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
 
-export type FrameContentType =
-  | typeof frameContentType
-  | typeof frameSlideshowContentType;
-
-export function isFrameContentType(
-  contentType: string
-): contentType is FrameContentType {
-  return (
-    contentType === frameContentType ||
-    contentType === frameSlideshowContentType
-  );
-}
-
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
   // Custom for frame code files managed by interactive_content MCP server.
@@ -394,10 +381,6 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
     isSafeToDisplay: true,
   },
 } as const satisfies Record<string, FileFormat>;
-
-export function isInteractiveContentContentType(contentType: string): boolean {
-  return Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS).includes(contentType);
-}
 
 // Define a type for Interactive Content file content types.
 export type InteractiveContentFileContentType =
@@ -462,7 +445,7 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isInteractiveContentFileContentType(
+export function isInteractiveContentType(
   contentType: string
 ): contentType is InteractiveContentFileContentType {
   return !!INTERACTIVE_CONTENT_FILE_FORMATS[
@@ -474,7 +457,7 @@ export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isInteractiveContentFileContentType(contentType) ||
+    isInteractiveContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }

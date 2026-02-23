@@ -14,7 +14,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   frameSlideshowContentType,
-  isFrameContentType,
+  isInteractiveContentType,
 } from "@app/types/files";
 import type { PdfOptions } from "@app/types/shared/document_renderer";
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
@@ -87,7 +87,10 @@ async function handler(
   }
 
   // Only allow Frame files.
-  if (!file.isInteractiveContent || !isFrameContentType(file.contentType)) {
+  if (
+    !file.isInteractiveContent ||
+    !isInteractiveContentType(file.contentType)
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

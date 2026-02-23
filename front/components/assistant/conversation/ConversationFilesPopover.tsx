@@ -8,7 +8,7 @@ import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   frameContentType,
   frameSlideshowContentType,
-  isInteractiveContentContentType,
+  isInteractiveContentType,
 } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -134,9 +134,7 @@ const FileGroupSection = ({
   onFileClick,
   owner,
 }: FileGroupSectionProps) => {
-  const isInteractiveContent = isInteractiveContentContentType(
-    group.contentType
-  );
+  const isInteractiveContent = isInteractiveContentType(group.contentType);
 
   return (
     <div className="space-y-2">

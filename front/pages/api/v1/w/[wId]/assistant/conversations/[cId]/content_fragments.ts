@@ -10,7 +10,7 @@ import {
   isContentFragmentInputWithInlinedContent,
 } from "@app/types/api/internal/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isInteractiveContentFileContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import type { PostContentFragmentResponseType } from "@dust-tt/client";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -171,9 +171,7 @@ async function handler(
 
       const publicContentFragment =
         !contentFragmentRes.value ||
-        isInteractiveContentFileContentType(
-          contentFragmentRes.value.contentType
-        )
+        isInteractiveContentType(contentFragmentRes.value.contentType)
           ? undefined
           : {
               ...contentFragmentRes.value,

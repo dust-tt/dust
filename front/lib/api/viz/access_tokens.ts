@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import type { FrameContentType } from "@app/types/files";
+import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
   fileShareScopeSchema,
   frameContentType,
@@ -28,7 +28,7 @@ export function generateVizAccessToken({
   shareScope,
   workspaceId,
 }: {
-  contentType: FrameContentType;
+  contentType: InteractiveContentFileContentType;
   fileToken: string;
   userId?: string;
   shareScope: "public" | "workspace";

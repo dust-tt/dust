@@ -28,11 +28,7 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
-import {
-  ALL_FILE_FORMATS,
-  isFrameContentType,
-  isInteractiveContentFileContentType,
-} from "@app/types/files";
+import { ALL_FILE_FORMATS, isInteractiveContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -419,7 +415,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   get isInteractiveContent(): boolean {
-    return isInteractiveContentFileContentType(this.contentType);
+    return isInteractiveContentType(this.contentType);
   }
 
   // Cloud storage logic.
@@ -754,7 +750,7 @@ export class FileResource extends BaseResource<FileModel> {
       "getShareUrlForShareableFile called on non-interactive content file"
     );
 
-    if (isFrameContentType(this.contentType)) {
+    if (isInteractiveContentType(this.contentType)) {
       return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
     }
 
