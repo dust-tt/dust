@@ -1,4 +1,4 @@
-import type { Logger } from "@app/logger/logger";
+import logger, { Logger } from "@app/logger/logger";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -57,7 +57,7 @@ function groupFeedbacksByConversation(
   feedbacks: AgentMessageFeedbackModel[],
   logger: Logger
 ): Map<ModelId, ModelId[]> {
-  const byConversation = new Map<ModelId, ModelId[]>();
+  const feedbackByConversation = new Map<ModelId, ModelId[]>();
 
   for (const feedback of feedbacks) {
     const conversationId = feedback.agentMessage?.message?.conversation?.id;
@@ -70,15 +70,15 @@ function groupFeedbacksByConversation(
       continue;
     }
 
-    const ids = byConversation.get(conversationId);
+    const ids = feedbackByConversation.get(conversationId);
     if (ids) {
       ids.push(feedback.id);
     } else {
-      byConversation.set(conversationId, [feedback.id]);
+      feedbackByConversation.set(conversationId, [feedback.id]);
     }
   }
 
-  return byConversation;
+  return feedbackByConversation;
 }
 
 async function updateBatch(
@@ -102,8 +102,13 @@ async function updateBatch(
 
 async function backfillWorkspace(
   workspace: LightWorkspaceType,
-  execute: boolean,
-  logger: Logger
+  {
+    execute,
+    logger,
+  }: {
+    execute: boolean;
+    logger: Logger;
+  }
 ) {
   const workspaceLogger = logger.child({ workspaceId: workspace.id });
 
@@ -135,6 +140,6 @@ async function backfillWorkspace(
 
 makeScript({}, async ({ execute }, logger) => {
   await runOnAllWorkspaces(async (workspace) => {
-    await backfillWorkspace(workspace, execute, logger);
+    await backfillWorkspace(workspace, { execute, logger });
   });
 });
