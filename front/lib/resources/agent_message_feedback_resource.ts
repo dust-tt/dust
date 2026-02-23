@@ -49,7 +49,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   readonly message?: Attributes<MessageModel>;
   readonly user?: Attributes<UserModel>;
-  readonly conversation?: Pick<ConversationModel, "sId">;
+  readonly conversation?: Attributes<ConversationModel>;
 
   constructor(
     _: ModelStatic<AgentMessageFeedbackModel>,
