@@ -37,8 +37,6 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
   Cell,
   Line,
