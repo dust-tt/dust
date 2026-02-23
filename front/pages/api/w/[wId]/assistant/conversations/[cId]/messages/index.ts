@@ -1,13 +1,13 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { isCopilotConversation } from "@app/lib/api/actions/servers/helpers";
-import {
-  ensureMessageIdempotency,
-  getMessageIdempotencyKey,
-} from "@app/lib/api/assistant/messages_idempotency";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
+import {
+  ensureMessageIdempotency,
+  getMessageIdempotencyKey,
+} from "@app/lib/api/assistant/messages_idempotency";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
