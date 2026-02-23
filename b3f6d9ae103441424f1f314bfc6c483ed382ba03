@@ -1,0 +1,23 @@
+front/admin/register_audit_log_schemas.ts
+  fa2921d7d7801773 2,8-11,13,22-41,46-49,51,54-67,71-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "b3f6d9ae103441424f1f314bfc6c483ed382ba03",
+  "prompts": {
+    "fa2921d7d7801773": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7d8f99f-a2e0-4795-887c-77f6ebafb87d",
+        "model": "<synthetic>"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 72,
+      "total_deletions": 25,
+      "accepted_lines": 56,
+      "overriden_lines": 0
+    }
+  }
+}
