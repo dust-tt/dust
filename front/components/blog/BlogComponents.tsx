@@ -7,6 +7,7 @@ import { Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 export const BLOG_PAGE_SIZE = 12;
+export const SEO_PAGE_SIZE = 10;
 
 export function BlogHeader() {
   return (
@@ -197,4 +198,42 @@ interface BlogLayoutProps {
 
 export function BlogLayout({ children }: BlogLayoutProps) {
   return <Grid>{children}</Grid>;
+}
+
+interface SeoArticleListProps {
+  posts: BlogPostSummary[];
+}
+
+export function SeoArticleList({ posts }: SeoArticleListProps) {
+  if (posts.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="col-span-12 mt-12 border-t border-gray-200 pt-8">
+      <h2 className="mb-4 text-lg font-semibold text-foreground">
+        Further reading
+      </h2>
+      <ul className="divide-y divide-gray-100">
+        {posts.map((post) => (
+          <li key={post.id}>
+            <LinkWrapper
+              href={`/blog/${post.slug}`}
+              className="flex items-baseline justify-between gap-4 py-3 hover:text-highlight"
+            >
+              <span className="text-base font-medium text-foreground">
+                {post.title}
+              </span>
+              <span className="shrink-0 text-sm text-muted-foreground">
+                {formatTimestampToFriendlyDate(
+                  new Date(post.createdAt).getTime(),
+                  "short"
+                )}
+              </span>
+            </LinkWrapper>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
