@@ -219,15 +219,15 @@ export function GongOptionComponent({
                   size="sm"
                   label={
                     selectedProfile
-                      ? selectedProfile.name.length > 20
-                        ? selectedProfile.name.slice(0, 20) + "..."
+                      ? selectedProfile.name.length > 15
+                        ? selectedProfile.name.slice(0, 15) + "..."
                         : selectedProfile.name
                       : "All calls"
                   }
                   isSelect
                   disabled={readOnly || !isAdmin || loading}
                   tooltip={selectedProfile?.name}
-                  className="w-36 overflow-hidden px-4"
+                  className="w-40 overflow-hidden px-4"
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
