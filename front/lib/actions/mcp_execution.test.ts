@@ -48,7 +48,7 @@ async function setupTest() {
   });
 
   const toolConfiguration: LightServerSideMCPToolConfigurationType = {
-    id: -1 as any,
+    id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
     name: "test_tool",
