@@ -3,22 +3,27 @@ import { ConversationContainerVirtuoso } from "@app/components/assistant/convers
 import { NoOpConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations/useConversation";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   BarHeader,
   Button,
-  ChevronLeftIcon,
   ExternalLinkIcon,
+  MenuIcon,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/ui/components/auth/ProtectedRoute";
 import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
-import { ConversationsListButton } from "@extension/ui/components/conversation/ConversationsListButton";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
-import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useContext, useMemo } from "react";
+import { useParams } from "react-router-dom";
 
 export const MainPage = ({
   user,
@@ -29,7 +34,7 @@ export const MainPage = ({
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
 
-  const navigate = useNavigate();
+  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
   // Parse conversation ID from catch-all path
   const params = useParams();
@@ -37,7 +42,11 @@ export const MainPage = ({
     if (!params["*"]) {
       return null;
     }
-    const match = params["*"].match(/conversations\/([^/]+)/);
+    const match = params["*"].match(/conversation\/([^/]+)/);
+    const isNewConversation = match && match[1] === "new";
+    if (isNewConversation) {
+      return null;
+    }
     return match ? match[1] : null;
   }, [params]);
 
@@ -67,25 +76,32 @@ export const MainPage = ({
           description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
           title="Attach files to the conversation"
         >
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent
+              side="left"
+              className="flex w-full max-w-xs flex-1 bg-muted-background dark:bg-muted-background-night"
+            >
+              <SheetHeader className="bg-muted-background p-0" hideButton>
+                <SheetTitle className="hidden" />
+              </SheetHeader>
+              <div className="overflow-y-auto">
+                <AgentSidebarMenu owner={workspace} hideActions />
+              </div>
+            </SheetContent>
+          </Sheet>
           <BarHeader
             title={headerTitle}
             tooltip={headerTitle}
             leftActions={
-              conversationId && (
-                <Button
-                  icon={ChevronLeftIcon}
-                  variant="ghost"
-                  onClick={() => {
-                    navigate("/");
-                  }}
-                  size="sm"
-                />
-              )
+              <Button
+                variant="ghost"
+                icon={MenuIcon}
+                onClick={() => setSidebarOpen(true)}
+              />
             }
             rightActions={
               conversationId ? (
                 <div className="items-right flex flex-row">
-                  <ConversationsListButton size="sm" />
                   <Button
                     icon={ExternalLinkIcon}
                     variant="ghost"
@@ -97,7 +113,6 @@ export const MainPage = ({
                 </div>
               ) : (
                 <div className="items-right flex flex-row space-x-1">
-                  <ConversationsListButton size="sm" />
                   <UserDropdownMenu user={user} handleLogout={handleLogout} />
                 </div>
               )

@@ -1,3 +1,6 @@
+import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { LinkWrapper } from "@app/lib/platform";
+import { SparkleContext } from "@dust-tt/sparkle";
 import { ProtectedRoute } from "@extension/ui/components/auth/ProtectedRoute";
 import { LoginPage } from "@extension/ui/pages/LoginPage";
 import { MainPage } from "@extension/ui/pages/MainPage";
@@ -34,11 +37,17 @@ export const routes = [
     element: (
       <ProtectedRoute>
         {({ user, workspace, handleLogout }) => (
-          <MainPage
-            user={user}
-            workspace={workspace}
-            handleLogout={handleLogout}
-          />
+          <SparkleContext.Provider
+            value={{ components: { link: LinkWrapper } }}
+          >
+            <SidebarProvider>
+              <MainPage
+                user={user}
+                workspace={workspace}
+                handleLogout={handleLogout}
+              />
+            </SidebarProvider>
+          </SparkleContext.Provider>
         )}
       </ProtectedRoute>
     ),
