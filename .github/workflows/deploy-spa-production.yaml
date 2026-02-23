@@ -35,6 +35,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:

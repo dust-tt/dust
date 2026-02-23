@@ -32,6 +32,7 @@ runs:
         path: |
           node_modules
           front/node_modules
+          front-spa/node_modules
           connectors/node_modules
           sparkle/node_modules
           cli/node_modules
