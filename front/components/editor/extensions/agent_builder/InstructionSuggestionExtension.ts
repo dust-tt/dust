@@ -46,12 +46,12 @@ export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
 const CLASSES = {
   remove:
-    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
+    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 cursor-default",
   removeDimmed:
-    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
-  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
+    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400 cursor-default",
+  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 cursor-default",
   addDimmed:
-    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400",
+    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400 cursor-default",
 };
 
 export function diffBlockContent(
@@ -367,6 +367,22 @@ function buildDecorations(
   return DecorationSet.create(state.doc, decorations);
 }
 
+// Check if a transaction step modifies a specific range
+function stepModifiesRange(
+  step: { forEach: (f: (oldStart: number, oldEnd: number) => void) => void },
+  rangeStart: number,
+  rangeEnd: number
+): boolean {
+  let modifies = false;
+  step.forEach((oldStart, oldEnd) => {
+    // Ranges overlap if they don't end before or start after each other
+    if (oldEnd > rangeStart && oldStart < rangeEnd) {
+      modifies = true;
+    }
+  });
+  return modifies;
+}
+
 function createPlugin(getHighlightedId: () => string | null) {
   return new Plugin<PluginState>({
     key: pluginKey,
@@ -428,13 +444,7 @@ function createPlugin(getHighlightedId: () => string | null) {
     },
 
     filterTransaction(tr, state) {
-      // Allow transactions that don't modify the document (e.g., selection changes, metadata)
-      if (!tr.docChanged) {
-        return true;
-      }
-
-      // Allow transactions with our plugin's metadata (accepting/rejecting suggestions)
-      if (tr.getMeta(pluginKey)) {
+      if (!tr.docChanged || tr.getMeta(pluginKey)) {
         return true;
       }
 
@@ -443,7 +453,7 @@ function createPlugin(getHighlightedId: () => string | null) {
         return true;
       }
 
-      // For each suggestion, find the block range and check if the transaction modifies it
+      // Block modifications to any suggestion block content
       for (const suggestion of pluginState.suggestions.values()) {
         for (const op of suggestion.operations) {
           const found = findBlockByBlockId(state.doc, op.targetBlockId);
@@ -451,29 +461,14 @@ function createPlugin(getHighlightedId: () => string | null) {
             continue;
           }
 
-          // Check content range (excluding block boundaries)
           const contentStart = found.pos + 1;
           const contentEnd = found.pos + found.node.nodeSize - 1;
 
-          // Check if any step in the transaction affects this block's content
           for (let i = 0; i < tr.steps.length; i++) {
-            const map = tr.mapping.slice(0, i);
-            const mappedStart = map.map(contentStart);
-            const mappedEnd = map.map(contentEnd);
+            const mappedStart = tr.mapping.slice(0, i).map(contentStart);
+            const mappedEnd = tr.mapping.slice(0, i).map(contentEnd);
 
-            let affectsBlock = false;
-            tr.mapping.maps[i].forEach((oldStart, oldEnd) => {
-              // Check if the modification overlaps with the suggestion block content
-              if (
-                (oldStart >= mappedStart && oldStart < mappedEnd) ||
-                (oldEnd > mappedStart && oldEnd <= mappedEnd) ||
-                (oldStart <= mappedStart && oldEnd >= mappedEnd)
-              ) {
-                affectsBlock = true;
-              }
-            });
-
-            if (affectsBlock) {
+            if (stepModifiesRange(tr.mapping.maps[i], mappedStart, mappedEnd)) {
               return false;
             }
           }
