@@ -9,6 +9,7 @@ import {
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
 import { isDevelopment } from "@app/types/shared/env";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { GetServerSidePropsContext } from "next";
 import type { ReactElement } from "react";
 
@@ -21,114 +22,89 @@ const DEFAULT_APP_URL = isDevelopment()
   ? "http://localhost:3011"
   : "https://app.dust.tt";
 
-const redirectToDustSpa = async (
+function getSpaRedirect(
   context: GetServerSidePropsContext,
-  auth: Authenticator
-) => {
+  featureFlags: WhitelistableFeature[]
+): { destination: string; permanent: false } | null {
   const isEdge = process.env.NEXT_PUBLIC_DATADOG_SERVICE === "front-edge";
-
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
 
   if (!isEdge && !featureFlags.includes("dust_no_spa")) {
     const appUrl = config.getAppUrl(true) || DEFAULT_APP_URL;
-
-    const destination = context.resolvedUrl;
-    return {
-      redirect: {
-        destination: `${appUrl}${destination}`,
-        permanent: false,
-      },
-    };
+    return { destination: `${appUrl}${context.resolvedUrl}`, permanent: false };
   }
 
   return null;
-};
+}
+
+function makeAuthProps(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[]
+): { props: AuthContextValue } {
+  return {
+    props: {
+      workspace: auth.getNonNullableWorkspace(),
+      subscription: auth.getNonNullableSubscription(),
+      user: auth.getNonNullableUser().toJSON(),
+      isAdmin: auth.isAdmin(),
+      isBuilder: auth.isBuilder(),
+      featureFlags,
+    },
+  };
+}
 
 export const appGetServerSideProps =
   withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
-    const redirect = await redirectToDustSpa(context, auth);
-    return (
-      redirect ?? {
-        props: {
-          workspace: auth.getNonNullableWorkspace(),
-          subscription: auth.getNonNullableSubscription(),
-          user: auth.getNonNullableUser().toJSON(),
-          isAdmin: auth.isAdmin(),
-          isBuilder: auth.isBuilder(),
-        },
-      }
-    );
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const redirect = getSpaRedirect(context, featureFlags);
+    if (redirect) {
+      return { redirect };
+    }
+    return makeAuthProps(auth, featureFlags);
   });
 
 export const appGetServerSidePropsForBuilders =
   withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
     if (!auth.isBuilder()) {
-      return {
-        notFound: true,
-      };
+      return { notFound: true };
     }
 
-    const redirect = await redirectToDustSpa(context, auth);
-
-    return (
-      redirect ?? {
-        props: {
-          workspace: auth.getNonNullableWorkspace(),
-          subscription: auth.getNonNullableSubscription(),
-          user: auth.getNonNullableUser().toJSON(),
-          isAdmin: auth.isAdmin(),
-          isBuilder: auth.isBuilder(),
-        },
-      }
-    );
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const redirect = getSpaRedirect(context, featureFlags);
+    if (redirect) {
+      return { redirect };
+    }
+    return makeAuthProps(auth, featureFlags);
   });
 
 export const appGetServerSidePropsForAdmin =
   withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
     if (!auth.isAdmin()) {
-      return {
-        notFound: true,
-      };
+      return { notFound: true };
     }
 
-    const redirect = await redirectToDustSpa(context, auth);
-
-    return (
-      redirect ?? {
-        props: {
-          workspace: auth.getNonNullableWorkspace(),
-          subscription: auth.getNonNullableSubscription(),
-          user: auth.getNonNullableUser().toJSON(),
-          isAdmin: auth.isAdmin(),
-          isBuilder: auth.isBuilder(),
-        },
-      }
-    );
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const redirect = getSpaRedirect(context, featureFlags);
+    if (redirect) {
+      return { redirect };
+    }
+    return makeAuthProps(auth, featureFlags);
   });
 
 export const appGetServerSidePropsPaywallWhitelisted =
   withDefaultUserAuthPaywallWhitelisted<AuthContextValue>(
     async (context, auth) => {
       if (!auth.workspace() || !auth.isUser()) {
-        return {
-          notFound: true,
-        };
+        return { notFound: true };
       }
 
-      const redirect = await redirectToDustSpa(context, auth);
-
-      return (
-        redirect ?? {
-          props: {
-            workspace: auth.getNonNullableWorkspace(),
-            subscription: auth.getNonNullableSubscription(),
-            user: auth.getNonNullableUser().toJSON(),
-            isAdmin: auth.isAdmin(),
-            isBuilder: auth.isBuilder(),
-          },
-        }
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
       );
+      const redirect = getSpaRedirect(context, featureFlags);
+      if (redirect) {
+        return { redirect };
+      }
+      return makeAuthProps(auth, featureFlags);
     }
   );
 
@@ -136,24 +112,17 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
   withDefaultUserAuthPaywallWhitelisted<AuthContextValue>(
     async (context, auth) => {
       if (!auth.workspace() || !auth.isAdmin()) {
-        return {
-          notFound: true,
-        };
+        return { notFound: true };
       }
 
-      const redirect = await redirectToDustSpa(context, auth);
-
-      return (
-        redirect ?? {
-          props: {
-            workspace: auth.getNonNullableWorkspace(),
-            subscription: auth.getNonNullableSubscription(),
-            user: auth.getNonNullableUser().toJSON(),
-            isAdmin: auth.isAdmin(),
-            isBuilder: auth.isBuilder(),
-          },
-        }
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
       );
+      const redirect = getSpaRedirect(context, featureFlags);
+      if (redirect) {
+        return { redirect };
+      }
+      return makeAuthProps(auth, featureFlags);
     }
   );
 

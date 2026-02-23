@@ -5,8 +5,11 @@ import {
   useSetNavChildren,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import type { LabsFeatureItemType } from "@app/types/labs";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
@@ -51,7 +54,7 @@ const getVisibleFeatures = (featureFlags: WhitelistableFeature[]) => {
 export function LabsPage() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags();
 
   const visibleFeatures = getVisibleFeatures(featureFlags);
 

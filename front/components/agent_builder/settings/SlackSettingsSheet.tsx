@@ -1,7 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -200,7 +200,7 @@ export function SlackSettingsSheet({
   slackDataSource,
 }: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { hasFeature } = useFeatureFlags();
   const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
     []
   );

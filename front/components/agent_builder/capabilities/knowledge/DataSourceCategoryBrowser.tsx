@@ -3,10 +3,10 @@ import type { DataSourceListItem } from "@app/components/agent_builder/capabilit
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
@@ -45,9 +45,7 @@ export function DataSourceCategoryBrowser({
   const { setCategoryEntry, removeNode } = useDataSourceBuilderContext();
 
   const confirm = useContext(ConfirmContext);
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hasFeature } = useFeatureFlags();
 
   const categoryItems = useMemo((): DataSourceListItem[] => {
     if (!isSpaceInfoLoading && spaceInfo) {

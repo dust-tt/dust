@@ -1,10 +1,12 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { SubscriptionType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -15,6 +17,7 @@ export type GetWorkspaceAuthContextResponseType = {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isBuilder: boolean;
+  featureFlags: WhitelistableFeature[];
   isEligibleForTrial?: boolean;
 };
 
@@ -79,12 +82,15 @@ async function handler(
     ? await isWorkspaceEligibleForTrial(auth)
     : false;
 
+  const featureFlags = await getFeatureFlags(workspace);
+
   return res.status(200).json({
     user: user.toJSON(),
     workspace,
     subscription,
     isAdmin: auth.isAdmin(),
     isBuilder: auth.isBuilder(),
+    featureFlags,
     ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
   });
 }

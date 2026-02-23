@@ -10,10 +10,13 @@ import {
   useSetNavChildren,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -93,14 +96,11 @@ export function ManageAgentsPage() {
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
 
-  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags();
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") && !isBuilder;
-  const shouldDisableAgentFetching =
-    isFeatureFlagsLoading || isRestrictedFromAgentCreation;
+  const shouldDisableAgentFetching = isRestrictedFromAgentCreation;
   const isSearchActive = assistantSearch.trim() !== "";
 
   const [selectedSearchTab, setSelectedSearchTab] = useState<
@@ -255,7 +255,7 @@ export function ManageAgentsPage() {
   }, []);
 
   useEffect(() => {
-    if (isFeatureFlagsLoading || isRestrictedFromAgentCreation) {
+    if (isRestrictedFromAgentCreation) {
       return;
     }
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -271,7 +271,7 @@ export function ManageAgentsPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [isFeatureFlagsLoading, isRestrictedFromAgentCreation]);
+  }, [isRestrictedFromAgentCreation]);
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
@@ -283,11 +283,7 @@ export function ManageAgentsPage() {
 
   return (
     <>
-      {isFeatureFlagsLoading ? (
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      ) : isRestrictedFromAgentCreation ? (
+      {isRestrictedFromAgentCreation ? (
         <Custom404 />
       ) : (
         <>

@@ -1,6 +1,7 @@
 import type { SubscriptionType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { createContext, useContext } from "react";
+import { createContext, useCallback, useContext } from "react";
 
 // Context for pages that have workspace (app pages, workspace-scoped poke pages).
 // User is non-nullable because withDefaultUserAuthRequirements guarantees authentication.
@@ -10,6 +11,7 @@ export interface AuthContextValue {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isBuilder: boolean;
+  featureFlags: WhitelistableFeature[];
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,6 +22,22 @@ export function useAuth(): AuthContextValue {
     throw new Error("useAuth must be used within AuthProvider");
   }
   return ctx;
+}
+
+export function useFeatureFlags() {
+  const { featureFlags } = useAuth();
+
+  const hasFeature = useCallback(
+    (flag: WhitelistableFeature | null | undefined) => {
+      if (!flag) {
+        return true;
+      }
+      return featureFlags.includes(flag);
+    },
+    [featureFlags]
+  );
+
+  return { featureFlags, hasFeature };
 }
 
 export function useWorkspace(): LightWorkspaceType {

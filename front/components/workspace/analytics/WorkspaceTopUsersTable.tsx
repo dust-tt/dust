@@ -1,6 +1,7 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useFeatureFlags, useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
+import { useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
 import {
   Button,
   DataTable,
@@ -86,7 +87,7 @@ export function WorkspaceTopUsersTable({
     }
   );
 
-  const { hasFeature } = useFeatureFlags({ workspaceId });
+  const { hasFeature } = useFeatureFlags();
   const showExport = hasFeature("analytics_csv_export");
 
   const [isDownloading, setIsDownloading] = useState(false);
