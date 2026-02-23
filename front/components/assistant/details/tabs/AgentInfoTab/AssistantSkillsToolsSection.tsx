@@ -14,7 +14,10 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
-import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type {
+  MCPServerTypeWithViews,
+  MCPServerViewType,
+} from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
@@ -24,15 +27,37 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, CommandIcon, Spinner, Tooltip } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  CommandIcon,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
-import { useMemo } from "react";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
   owner: LightWorkspaceType;
   isDustAgent: boolean;
+}
+
+const TOOLS_INITIAL_COUNT = 10;
+
+interface ActionData {
+  title: string;
+  description: string | null;
+  avatar: ReactNode;
+  order: number;
+}
+
+function isActionData(
+  item: ActionData | MCPServerViewType
+): item is ActionData {
+  return "avatar" in item;
 }
 
 const HIDDEN_DUST_ACTIONS = [
@@ -45,7 +70,7 @@ const HIDDEN_DUST_ACTIONS = [
 // Since Dust is configured with one search for all, plus individual searches for each managed data source,
 // we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
 // We use the `hidden_dust_search_` prefix to identify these additional searches.
-const isHiddenDustAction = (action: MCPServerConfigurationType) => {
+function isHiddenDustAction(action: MCPServerConfigurationType): boolean {
   if (action.name.startsWith("hidden_dust_search_")) {
     return true;
   }
@@ -55,7 +80,7 @@ const isHiddenDustAction = (action: MCPServerConfigurationType) => {
     );
   }
   return false;
-};
+}
 
 export function AssistantSkillsToolsSection({
   agentConfiguration,
@@ -87,7 +112,17 @@ export function AssistantSkillsToolsSection({
 
   const sortedSkills = useMemo(() => _.sortBy(skills, "name"), [skills]);
 
-  const hasTools = sortedActions.length > 0 || availableToolsets.length > 0;
+  const allTools = useMemo(
+    () => [...sortedActions, ...availableToolsets],
+    [sortedActions, availableToolsets]
+  );
+
+  const [visibleToolsCount, setVisibleToolsCount] =
+    useState(TOOLS_INITIAL_COUNT);
+  const visibleTools = allTools.slice(0, visibleToolsCount);
+  const hasMore = allTools.length > visibleToolsCount;
+
+  const hasTools = allTools.length > 0;
   const hasSkills = skills.length > 0;
 
   return (
@@ -131,39 +166,51 @@ export function AssistantSkillsToolsSection({
                 <Spinner size="xs" />
               </div>
             ) : (
-              sortedActions.map((action) => (
-                <Tooltip
-                  key={action.title}
-                  label={action.description ?? action.title}
-                  trigger={
-                    <div className="flex flex-row items-center gap-2">
-                      {action.avatar}
-                      <div className="truncate">{action.title}</div>
-                    </div>
-                  }
-                  tooltipTriggerAsChild
-                />
-              ))
+              visibleTools.map((tool) => {
+                if (isActionData(tool)) {
+                  return (
+                    <Tooltip
+                      key={tool.title}
+                      label={tool.description ?? tool.title}
+                      trigger={
+                        <div className="flex flex-row items-center gap-2">
+                          {tool.avatar}
+                          <div className="truncate">{tool.title}</div>
+                        </div>
+                      }
+                      tooltipTriggerAsChild
+                    />
+                  );
+                }
+                const avatar = getAvatarFromIcon(tool.server.icon, "xs");
+                const displayName = getMcpServerViewDisplayName(tool);
+                const description = getMcpServerViewDescription(tool);
+                return (
+                  <Tooltip
+                    key={tool.sId}
+                    label={description ?? displayName}
+                    trigger={
+                      <div className="flex flex-row items-center gap-2">
+                        {avatar}
+                        <div className="truncate">{displayName}</div>
+                      </div>
+                    }
+                    tooltipTriggerAsChild
+                  />
+                );
+              })
             )}
-            {availableToolsets.map((view) => {
-              const avatar = getAvatarFromIcon(view.server.icon, "xs");
-              const displayName = getMcpServerViewDisplayName(view);
-              const description = getMcpServerViewDescription(view);
-              return (
-                <Tooltip
-                  key={view.sId}
-                  label={description ?? displayName}
-                  trigger={
-                    <div className="flex flex-row items-center gap-2">
-                      {avatar}
-                      <div className="truncate">{displayName}</div>
-                    </div>
-                  }
-                  tooltipTriggerAsChild
-                />
-              );
-            })}
           </div>
+          {hasMore && (
+            <div className="flex w-full justify-center">
+              <Button
+                label={`Show all ${allTools.length} tools`}
+                variant="outline"
+                size="xs"
+                onClick={() => setVisibleToolsCount(allTools.length)}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -227,12 +274,7 @@ function useAvailableToolsets({
 function renderOtherAction(
   action: MCPServerConfigurationType,
   mcpServers: MCPServerTypeWithViews[]
-): {
-  title: string;
-  description: string | null;
-  avatar: React.ReactNode;
-  order: number;
-} | null {
+): ActionData | null {
   if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.sId === action.mcpServerViewId)
