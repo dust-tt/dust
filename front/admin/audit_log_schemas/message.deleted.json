@@ -1,0 +1,7 @@
+{
+  "action": "message.deleted",
+  "targets": [
+    { "type": "conversation" },
+    { "type": "message" }
+  ]
+}

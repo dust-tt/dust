@@ -1,0 +1,12 @@
+{
+  "action": "workspace.providers_changed",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "previousProviders": { "type": "string" },
+    "newProviders": { "type": "string" },
+    "previousEmbeddingProvider": { "type": "string" },
+    "newEmbeddingProvider": { "type": "string" }
+  }
+}

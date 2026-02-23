@@ -1,0 +1,7 @@
+{
+  "action": "membership.revoked",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "user" }
+  ]
+}

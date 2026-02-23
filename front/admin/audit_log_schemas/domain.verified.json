@@ -1,0 +1,9 @@
+{
+  "action": "domain.verified",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "domain": { "type": "string" }
+  }
+}

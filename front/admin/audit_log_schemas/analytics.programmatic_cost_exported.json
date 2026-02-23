@@ -1,0 +1,10 @@
+{
+  "action": "analytics.programmatic_cost_exported",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "period": { "type": "string" },
+    "rowCount": { "type": "string" }
+  }
+}

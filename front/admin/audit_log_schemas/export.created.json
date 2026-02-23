@@ -1,0 +1,10 @@
+{
+  "action": "export.created",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "table": { "type": "string" },
+    "mode": { "type": "string" }
+  }
+}

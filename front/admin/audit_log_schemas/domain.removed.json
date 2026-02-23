@@ -1,0 +1,9 @@
+{
+  "action": "domain.removed",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "domain": { "type": "string" }
+  }
+}

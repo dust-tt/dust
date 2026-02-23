@@ -1,0 +1,10 @@
+{
+  "action": "workspace.sso_enforcement_changed",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "previousValue": { "type": "string" },
+    "newValue": { "type": "string" }
+  }
+}

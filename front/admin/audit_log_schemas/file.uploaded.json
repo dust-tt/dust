@@ -1,0 +1,11 @@
+{
+  "action": "file.uploaded",
+  "targets": [
+    { "type": "file" }
+  ],
+  "metadata": {
+    "contentType": { "type": "string" },
+    "fileSize": { "type": "string" },
+    "useCase": { "type": "string" }
+  }
+}

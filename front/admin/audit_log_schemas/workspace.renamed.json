@@ -1,0 +1,10 @@
+{
+  "action": "workspace.renamed",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "previousName": { "type": "string" },
+    "newName": { "type": "string" }
+  }
+}

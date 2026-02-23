@@ -1,0 +1,12 @@
+{
+  "action": "integration.connected",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "integration" }
+  ],
+  "metadata": {
+    "connectionType": { "type": "string" },
+    "serverType": { "type": "string" },
+    "mcpServerId": { "type": "string" }
+  }
+}
