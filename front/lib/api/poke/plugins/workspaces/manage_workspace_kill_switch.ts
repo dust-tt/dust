@@ -1,12 +1,12 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  WORKSPACE_KILL_SWITCH_OPERATIONS,
+  type WorkspaceKillSwitchOperation,
+  WorkspaceResource,
+} from "@app/lib/resources/workspace_resource";
 import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
-const WORKSPACE_KILL_SWITCH_OPERATIONS = ["block", "unblock"] as const;
-type WorkspaceKillSwitchOperation =
-  (typeof WORKSPACE_KILL_SWITCH_OPERATIONS)[number];
 
 function isWorkspaceKillSwitchOperation(
   operation: string
@@ -54,57 +54,31 @@ export const workspaceKillSwitchPlugin = createPlugin({
       return new Err(new Error(`Workspace not found: wId='${workspace.sId}'`));
     }
 
-    const currentKillSwitch =
-      workspaceResource.metadata?.[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
-    const isFullyBlocked =
-      WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(currentKillSwitch);
-    let metadata: Record<string, string | number | boolean | object> | null =
-      null;
-
-    switch (operationArg) {
-      case "block":
-        if (isFullyBlocked) {
-          return new Ok({
-            display: "text",
-            value: `Workspace "${workspace.name}" was already fully blocked for emergency maintenance.`,
-          });
-        }
-
-        metadata = {
-          ...(workspaceResource.metadata ?? {}),
-          [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
-            WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
-        };
-        break;
-      case "unblock":
-        if (!isFullyBlocked) {
-          return new Ok({
-            display: "text",
-            value: `Workspace "${workspace.name}" was not fully blocked.`,
-          });
-        }
-
-        metadata = { ...(workspaceResource.metadata ?? {}) };
-        delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
-        break;
-      default:
-        return assertNever(operationArg);
-    }
-
-    const updateResult = await WorkspaceResource.updateMetadata(
-      workspaceResource.id,
-      metadata
-    );
+    const updateResult = await workspaceResource.updateWorkspaceKillSwitch({
+      operation: operationArg,
+    });
     if (updateResult.isErr()) {
       return new Err(updateResult.error);
     }
+    const { wasUpdated } = updateResult.value;
 
-    return new Ok({
-      display: "text",
-      value:
-        operationArg === "block"
-          ? `Workspace "${workspace.name}" is now fully blocked for emergency maintenance.`
-          : `Workspace "${workspace.name}" is now unblocked.`,
-    });
+    switch (operationArg) {
+      case "block":
+        return new Ok({
+          display: "text",
+          value: wasUpdated
+            ? `Workspace "${workspace.name}" is now fully blocked for emergency maintenance.`
+            : `Workspace "${workspace.name}" was already fully blocked for emergency maintenance.`,
+        });
+      case "unblock":
+        return new Ok({
+          display: "text",
+          value: wasUpdated
+            ? `Workspace "${workspace.name}" is now unblocked.`
+            : `Workspace "${workspace.name}" was not fully blocked.`,
+        });
+      default:
+        return assertNever(operationArg);
+    }
   },
 });
