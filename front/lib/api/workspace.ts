@@ -419,6 +419,7 @@ export interface WorkspaceMetadata {
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
+  phoneCountry?: string;
 }
 
 export async function updateWorkspaceMetadata(

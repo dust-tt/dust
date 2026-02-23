@@ -1,3 +1,4 @@
+import { updateWorkspaceMetadata } from "@app/lib/api/workspace";
 import { checkOtp } from "@app/lib/api/workspace_verification/twilio";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
@@ -5,6 +6,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { VerificationErrorType } from "@app/types/workspace_verification";
+import parsePhoneNumber from "libphonenumber-js";
 
 export type ValidateVerificationError = {
   type: VerificationErrorType;
@@ -72,6 +74,13 @@ export async function validateVerification(
   }
 
   await attempt.markVerified();
+
+  const parsed = parsePhoneNumber(phoneNumber);
+  if (parsed?.country) {
+    await updateWorkspaceMetadata(workspace, {
+      phoneCountry: parsed.country,
+    });
+  }
 
   logger.info(
     {
