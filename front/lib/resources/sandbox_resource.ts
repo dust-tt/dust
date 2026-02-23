@@ -12,8 +12,7 @@ import { Ok } from "@app/types/shared/result";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SandboxResource
-  extends ReadonlyAttributesType<SandboxModel> {}
+export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
@@ -97,9 +96,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.update({ status }, transaction);
   }
 
-  async updateLastActivityAt(
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<[affectedCount: number]> {
+  async updateLastActivityAt({
+    transaction,
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<[affectedCount: number]> {
     return this.update({ lastActivityAt: new Date() }, transaction);
   }
 
