@@ -18,8 +18,6 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isAgentPauseOutputResourceType,
-  isRunAgentChainOfThoughtProgressOutput,
-  isRunAgentGenerationTokensProgressOutput,
   isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
@@ -35,7 +33,6 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -56,168 +53,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-export function MCPRunAgentActionDetails(props: ToolExecutionDetailsProps) {
-  const { hasFeature } = useFeatureFlags({ workspaceId: props.owner.sId });
-
-  if (hasFeature("run_agent_child_stream")) {
-    return <MCPRunAgentActionDetailsWithChildStream {...props} />;
-  }
-  return <MCPRunAgentActionDetailsLegacy {...props} />;
-}
-
-// Legacy implementation: streams via forwarded tool_notification events.
-function MCPRunAgentActionDetailsLegacy({
-  lastNotification,
-  owner,
-  toolOutput,
-  toolParams,
-  displayContext,
-}: ToolExecutionDetailsProps) {
-  const addedMCPServerViewIds: string[] = useMemo(() => {
-    if (!toolParams["toolsetsToAdd"]) {
-      return emptyArray();
-    }
-    return toolParams["toolsetsToAdd"] as string[];
-  }, [toolParams]);
-
-  const { spaces } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: ["global"],
-    disabled: addedMCPServerViewIds.length === 0,
-  });
-  const { serverViews: mcpServerViews } = useMCPServerViews({
-    owner,
-    space: spaces[0] ?? undefined,
-    availability: "all",
-    disabled: addedMCPServerViewIds.length === 0,
-  });
-
-  const queryResource = toolOutput?.find(isRunAgentQueryResourceType) ?? null;
-  const resultResource = toolOutput?.find(isRunAgentResultResourceType) ?? null;
-  const handoverResource =
-    toolOutput?.find(isAgentPauseOutputResourceType) ?? null;
-
-  const generatedFiles =
-    toolOutput
-      ?.filter(isToolGeneratedFile)
-      .map((o) => o.resource)
-      .filter((r) => !r.hidden) ?? [];
-
-  const [query, setQuery] = useState<string | null>(null);
-  const [childAgentId, setChildAgentId] = useState<string | null>(null);
-
-  const [streamedChainOfThought, setStreamedChainOfThought] = useState<
-    string | null
-  >(null);
-  const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (queryResource) {
-      setQuery(queryResource.resource.text);
-      setChildAgentId(queryResource.resource.childAgentId);
-    }
-    if (lastNotification?._meta.data.output) {
-      const output = lastNotification._meta.data.output;
-      if (isStoreResourceProgressOutput(output)) {
-        const runAgentQueryResource = output.contents.find(
-          isRunAgentQueryResourceType
-        );
-        if (runAgentQueryResource) {
-          setQuery(runAgentQueryResource.resource.text);
-          setChildAgentId(runAgentQueryResource.resource.childAgentId);
-        }
-      } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
-        setStreamedChainOfThought(output.chainOfThought);
-      } else if (isRunAgentGenerationTokensProgressOutput(output)) {
-        setStreamedResponse(output.text);
-      }
-    }
-  }, [queryResource, lastNotification]);
-
-  const response = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.text;
-    }
-    return streamedResponse;
-  }, [resultResource, streamedResponse]);
-
-  const chainOfThought = useMemo(() => {
-    if (resultResource && resultResource.resource.chainOfThought) {
-      return resultResource.resource.chainOfThought;
-    }
-    return streamedChainOfThought;
-  }, [resultResource, streamedChainOfThought]);
-
-  const { agentConfiguration: childAgent } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: childAgentId,
-  });
-
-  const isBusy = useMemo(() => {
-    return !resultResource;
-  }, [resultResource]);
-
-  const isStreamingChainOfThought = useMemo(() => {
-    return isBusy && chainOfThought !== null && response === null;
-  }, [isBusy, chainOfThought, response]);
-
-  const isStreamingResponse = useMemo(() => {
-    return isBusy && response !== null && !resultResource;
-  }, [isBusy, response, resultResource]);
-
-  const conversationUrl = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.uri;
-    }
-    return null;
-  }, [resultResource]);
-
-  const references = useMemo(() => {
-    if (!resultResource?.resource.refs) {
-      return {};
-    }
-    const mcpReferenceCitations: { [key: string]: MCPReferenceCitation } = {};
-    Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
-      mcpReferenceCitations[key] = {
-        provider: citation.provider,
-        contentType:
-          citation.contentType as AllSupportedWithDustSpecificFileContentType,
-        title: citation.title,
-        href: citation.href,
-        description: citation.description,
-        fileId: key,
-      };
-    });
-    return mcpReferenceCitations;
-  }, [resultResource]);
-
-  if (!childAgent) {
-    return null;
-  }
-
-  return (
-    <MCPRunAgentActionDetailsDisplay
-      displayContext={displayContext}
-      owner={owner}
-      query={query}
-      childAgent={childAgent}
-      isBusy={isBusy}
-      isStreamingChainOfThought={isStreamingChainOfThought}
-      isStreamingResponse={isStreamingResponse}
-      chainOfThought={chainOfThought}
-      response={response}
-      conversationUrl={conversationUrl}
-      references={references}
-      addedMCPServerViewIds={addedMCPServerViewIds}
-      mcpServerViews={mcpServerViews}
-      handoverResource={handoverResource}
-      generatedFiles={generatedFiles}
-    />
-  );
-}
-
-// New implementation: subscribes directly to the child agent's EventSource.
-function MCPRunAgentActionDetailsWithChildStream({
+export function MCPRunAgentActionDetails({
   lastNotification,
   owner,
   toolOutput,
@@ -364,7 +200,6 @@ function MCPRunAgentActionDetailsWithChildStream({
   );
 }
 
-// Shared display component for both legacy and child stream implementations.
 interface MCPRunAgentActionDetailsDisplayProps {
   displayContext: ActionDetailsDisplayContext;
   owner: LightWorkspaceType;
