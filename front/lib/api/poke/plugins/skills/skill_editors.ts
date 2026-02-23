@@ -3,7 +3,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
-import type { UserType } from "@app/types/user";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 const updateSkillEditorsLogger = logger.child({
   activity: "update-skill-editors",
@@ -15,6 +15,8 @@ export const updateSkillEditorsPlugin = createPlugin({
     name: "Update Skill Editors",
     description:
       "Select which members should be editors of this skill. Uncheck to remove, check to add.",
+    warning:
+      "WARNING: This plugin must not be used without the explicit approval of the customer.",
     resourceTypes: ["skills"],
     args: {
       members: {
@@ -97,9 +99,9 @@ export const updateSkillEditorsPlugin = createPlugin({
 
     // Add new editors.
     if (usersToAdd.length > 0) {
-      const usersToAddTypes = usersToAdd
-        .map((id) => userMap.get(id))
-        .filter((user): user is UserType => user !== undefined);
+      const usersToAddTypes = removeNulls(
+        usersToAdd.map((id) => userMap.get(id))
+      );
       const addResult = await editorGroup.dangerouslyAddMembers(auth, {
         users: usersToAddTypes,
       });
@@ -112,9 +114,9 @@ export const updateSkillEditorsPlugin = createPlugin({
 
     // Remove editors.
     if (usersToRemove.length > 0) {
-      const usersToRemoveTypes = usersToRemove
-        .map((id) => userMap.get(id))
-        .filter((user): user is UserType => user !== undefined);
+      const usersToRemoveTypes = removeNulls(
+        usersToRemove.map((id) => userMap.get(id))
+      );
       const removeResult = await editorGroup.dangerouslyRemoveMembers(auth, {
         users: usersToRemoveTypes,
       });
@@ -126,15 +128,13 @@ export const updateSkillEditorsPlugin = createPlugin({
     }
 
     // Prepare success message.
-    const addedNames = usersToAdd
-      .map((id) => userMap.get(id))
-      .filter((user): user is UserType => user !== undefined)
-      .map((user) => user.fullName || user.email);
+    const addedNames = removeNulls(usersToAdd.map((id) => userMap.get(id))).map(
+      (user) => user.fullName || user.email
+    );
 
-    const removedNames = usersToRemove
-      .map((id) => userMap.get(id))
-      .filter((user): user is UserType => user !== undefined)
-      .map((user) => user.fullName || user.email);
+    const removedNames = removeNulls(
+      usersToRemove.map((id) => userMap.get(id))
+    ).map((user) => user.fullName || user.email);
 
     let message = "Successfully updated editors:";
     if (addedNames.length > 0) {
