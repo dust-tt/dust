@@ -2,7 +2,6 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -765,29 +764,34 @@ describe("agent_copilot_context tools", () => {
       );
 
       // Create a conversation with two exchanges to get two agent messages.
-      await ConversationFactory.create(authenticator, {
+      const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agentV1.sId,
         messagesCreatedAt: [new Date(), new Date()],
       });
 
-      const agentMessages = await AgentMessageModel.findAll({
-        where: {
-          agentConfigurationId: agentV1.sId,
-          workspaceId: workspace.id,
-        },
-      });
+      const conversationRes = await getConversation(
+        authenticator,
+        conversation.sId
+      );
+      expect(conversationRes.isOk()).toBe(true);
+      if (!conversationRes.isOk()) {
+        return;
+      }
+      const agentMessages = conversationRes.value.content
+        .flat()
+        .filter((m) => m.type === "agent_message");
 
       await createFeedback(
         workspace.id,
         agentV0,
-        agentMessages[0].id,
+        agentMessages[0].agentMessageId,
         user.id,
         "down"
       );
       await createFeedback(
         workspace.id,
         agentV1,
-        agentMessages[1].id,
+        agentMessages[1].agentMessageId,
         user.id,
         "up"
       );
@@ -841,29 +845,34 @@ describe("agent_copilot_context tools", () => {
       );
 
       // Create a conversation with three exchanges to get three agent messages.
-      await ConversationFactory.create(authenticator, {
+      const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agentV1.sId,
         messagesCreatedAt: [new Date(), new Date(), new Date()],
       });
-      const agentMessages = await AgentMessageModel.findAll({
-        where: {
-          agentConfigurationId: agentV1.sId,
-          workspaceId: workspace.id,
-        },
-      });
+      const conversationRes = await getConversation(
+        authenticator,
+        conversation.sId
+      );
+      expect(conversationRes.isOk()).toBe(true);
+      if (!conversationRes.isOk()) {
+        return;
+      }
+      const agentMessages = conversationRes.value.content
+        .flat()
+        .filter((m) => m.type === "agent_message");
 
       // Create two feedbacks on v0 (old version).
       await createFeedback(
         workspace.id,
         agentV0,
-        agentMessages[0].id,
+        agentMessages[0].agentMessageId,
         user.id,
         "down"
       );
       await createFeedback(
         workspace.id,
         agentV0,
-        agentMessages[1].id,
+        agentMessages[1].agentMessageId,
         user.id,
         "up"
       );
@@ -872,7 +881,7 @@ describe("agent_copilot_context tools", () => {
       await createFeedback(
         workspace.id,
         agentV1,
-        agentMessages[2].id,
+        agentMessages[2].agentMessageId,
         user.id,
         "up"
       );
