@@ -1226,6 +1226,8 @@ const NotificationRunAgentContentSchema = z.object({
   childAgentId: z.string(),
   conversationId: z.string(),
   query: z.string(),
+  childConversationUrl: z.string().nullable().optional(),
+  childConversationEventsUrl: z.string().nullable().optional(),
 });
 
 const NotificationRunAgentChainOfThoughtSchema = z.object({
