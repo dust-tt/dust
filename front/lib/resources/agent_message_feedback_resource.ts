@@ -377,41 +377,41 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     conversation: ConversationWithoutContentType
   ) {
     const user = auth.getNonNullableUser();
-    const workspace = auth.getNonNullableWorkspace();
 
-    const feedbacks = await AgentMessageFeedbackModel.findAll({
+    // Start from feedbacks (filtered by userId + workspaceId) and join back to
+    // messages (filtered by conversationId). This is more selective than scanning
+    // all messages in the conversation.
+    const feedbackRows = await AgentMessageFeedbackModel.findAll({
       where: {
         userId: user.id,
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          attributes: ["id"],
+          required: true,
+          include: [
+            {
+              model: MessageModel,
+              as: "message",
+              attributes: ["id", "sId"],
+              required: true,
+              where: {
+                conversationId: conversation.id,
+              },
+            },
+          ],
+        },
+      ],
     });
 
-    if (feedbacks.length === 0) {
-      return [];
-    }
-
-    const agentMessageIds = feedbacks.map((f) => f.agentMessageId);
-    const messages = await MessageModel.findAll({
-      where: {
-        conversationId: conversation.id,
-        workspaceId: workspace.id,
-        agentMessageId: { [Op.in]: agentMessageIds },
-      },
-      attributes: ["id", "sId", "agentMessageId"],
+    return feedbackRows.map((feedback) => {
+      return new this(this.model, feedback.get(), {
+        message: feedback.agentMessage?.message,
+      });
     });
-
-    const messageByAgentMessageId = new Map(
-      messages.map((m) => [m.agentMessageId, m])
-    );
-
-    return feedbacks
-      .filter((f) => messageByAgentMessageId.has(f.agentMessageId))
-      .map(
-        (f) =>
-          new this(this.model, f.get(), {
-            message: messageByAgentMessageId.get(f.agentMessageId),
-          })
-      );
   }
 
   static async getFeedbackWithConversationContext({
