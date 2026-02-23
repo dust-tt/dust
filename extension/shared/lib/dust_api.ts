@@ -1,11 +1,12 @@
 import { DustAPI } from "@dust-tt/client";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import { useAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useMemo } from "react";
 
 export const useDustAPI = () => {
   const platform = usePlatform();
-  const { token, isAuthenticated, isUserSetup, user, workspace } = useAuth();
+  const { token, isAuthenticated, isUserSetup, user, workspace } =
+    useExtensionAuth();
 
   const commitHash = process.env.COMMIT_HASH;
   const extensionVersion = process.env.VERSION;

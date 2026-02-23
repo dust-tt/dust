@@ -1,9 +1,5 @@
-import type {
-  ExtensionWorkspaceType,
-  Result,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/client";
+import type { ExtensionWorkspaceType, UserType } from "@app/types/user";
+import type { Result, WorkspaceType } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import {
   DEFAULT_DUST_API_DOMAIN,

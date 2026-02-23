@@ -1,4 +1,4 @@
-import type { ExtensionWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@app/types/user";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { InputBarContext } from "@extension/ui/components/input_bar/InputBarContext";
 import type { FileUploaderService } from "@extension/ui/hooks/useFileUploaderService";

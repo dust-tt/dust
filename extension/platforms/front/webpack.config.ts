@@ -66,6 +66,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
       extensions: [".tsx", ".ts", ".js"],
       alias: {
         "@extension": path.resolve(__dirname, "../../"),
+        "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
         "@app": path.resolve(__dirname, "../../../front"),
       },
       fallback: {
@@ -74,6 +75,8 @@ export const getConfig = ({ env }: { env: Environment }) => {
         stream: require.resolve("stream-browserify"),
         buffer: require.resolve("buffer/"),
         url: require.resolve("url/"),
+        zlib: false,
+        assert: false,
       },
     },
     plugins: [
@@ -83,6 +86,10 @@ export const getConfig = ({ env }: { env: Environment }) => {
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
+      }),
+      new webpack.EnvironmentPlugin({
+        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
+          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
       }),
       new Dotenv({
         path: isDevelopment

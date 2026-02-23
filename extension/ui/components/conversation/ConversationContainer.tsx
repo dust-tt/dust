@@ -1,8 +1,5 @@
-import type {
-  AgentMentionType,
-  ContentFragmentType,
-  ExtensionWorkspaceType,
-} from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@app/types/user";
+import type { AgentMentionType, ContentFragmentType } from "@dust-tt/client";
 import { cn, Page, useSendNotification } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useMcpServer } from "@extension/shared/hooks/useMcpServer";

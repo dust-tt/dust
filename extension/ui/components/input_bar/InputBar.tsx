@@ -1,8 +1,8 @@
+import type { ExtensionWorkspaceType } from "@app/types/user";
 import type {
   AgentMentionType,
   ConversationPublicType,
   DataSourceViewContentNodeType,
-  ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";

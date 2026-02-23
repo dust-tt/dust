@@ -1,7 +1,7 @@
+import type { ExtensionWorkspaceType } from "@app/types/user";
 import type {
   AgentMentionType,
   DataSourceViewContentNodeType,
-  ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import {
