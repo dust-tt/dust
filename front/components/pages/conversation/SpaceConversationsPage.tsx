@@ -371,6 +371,7 @@ export function SpaceConversationsPage() {
         isOpen={isInvitePanelOpen}
         setIsOpen={setIsInvitePanelOpen}
         owner={owner}
+        mode="space-members"
         space={spaceInfo}
         currentProjectMembers={spaceInfo.members}
         onSuccess={() => mutateSpaceInfo()}

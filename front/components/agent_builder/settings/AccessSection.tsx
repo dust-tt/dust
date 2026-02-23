@@ -3,7 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import { EditorsSheet } from "@app/components/shared/EditorsSheet";
+import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isBuilder } from "@app/types/user";
 import {
@@ -15,6 +15,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
   SlackLogo,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
@@ -41,6 +42,7 @@ export function AccessSection() {
   });
 
   const [showSlackSettings, setShowSlackSettings] = useState(false);
+  const [isEditorsOpen, setIsEditorsOpen] = useState(false);
 
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
@@ -69,11 +71,21 @@ export function AccessSection() {
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <EditorsSheet
+        <Button
+          variant="outline"
+          size="sm"
+          icon={UserGroupIcon}
+          label="Editors"
+          onClick={() => setIsEditorsOpen(true)}
+          type="button"
+        />
+        <ManageUsersPanel
+          isOpen={isEditorsOpen}
+          setIsOpen={setIsEditorsOpen}
           owner={owner}
+          mode="editors-only"
           editors={editors || []}
           onEditorsChange={onChangeEditors}
-          description="People who can use and edit the agent."
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
