@@ -16,6 +16,9 @@ import { CommandExitError } from "e2b";
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;
 
+// TODO(SANDBOX-S1): Offload large outputs to a temporary file on the sandbox
+// (like coding agents do). The model would only see tail-truncated output plus
+// the path to the full output file, which it can read back if needed.
 function formatExecOutput(result: ExecResult): string {
   const parts: string[] = [];
 

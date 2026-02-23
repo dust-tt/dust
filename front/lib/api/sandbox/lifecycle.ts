@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import type { SandboxProvider } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -19,9 +18,6 @@ export async function ensureSandboxActive(
   conversationId: ModelId,
   provider: SandboxProvider
 ): Promise<Result<EnsureSandboxResult, Error>> {
-  const e2bConfig = config.getE2BSandboxConfig();
-  const templateId = e2bConfig?.templateId;
-
   const existing = await SandboxResource.fetchByConversationId(
     auth,
     conversationId
@@ -30,7 +26,7 @@ export async function ensureSandboxActive(
   // No existing sandbox — create one.
   if (!existing) {
     try {
-      const handle = await provider.create({ templateId });
+      const handle = await provider.create({});
       const sandbox = await SandboxResource.makeNew(auth, {
         conversationId,
         providerId: handle.providerId,
@@ -73,7 +69,7 @@ export async function ensureSandboxActive(
 
     case "deleted": {
       try {
-        const handle = await provider.create({ templateId });
+        const handle = await provider.create({});
         await existing.updateForRecreation(handle.providerId);
 
         logger.info(
