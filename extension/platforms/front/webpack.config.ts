@@ -66,7 +66,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
       extensions: [".tsx", ".ts", ".js"],
       alias: {
         "@extension": path.resolve(__dirname, "../../"),
-        "@app/lib/platform": path.resolve(__dirname, "./platform"),
+        "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
         "@app": path.resolve(__dirname, "../../../front"),
       },
       fallback: {

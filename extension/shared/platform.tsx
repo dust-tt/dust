@@ -1,6 +1,6 @@
 /**
- * SPA platform implementation
- * Used when running in Vite SPA environment (React Router)
+ * Shared SPA platform implementation
+ * Used when running in Vite SPA or Chrome extension environment (React Router)
  */
 
 import type {
@@ -12,7 +12,6 @@ import type {
   TransitionOptions,
   UrlObject,
 } from "@dust-tt/front/lib/platform/types";
-import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import {
   Children,
   isValidElement,
@@ -30,6 +29,7 @@ import {
   useParams as useRouterParams,
   useSearchParams as useRouterSearchParams,
 } from "react-router-dom";
+import { ReactRouterLinkWrapper } from "./ReactRouterLinkWrapper";
 
 /**
  * Safe wrapper around useNavigate that handles the case where

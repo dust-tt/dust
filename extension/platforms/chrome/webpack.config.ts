@@ -93,7 +93,7 @@ export const getConfig = async ({
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
         "@extension": path.resolve(__dirname, "../../"),
-        "@app/lib/platform": path.resolve(__dirname, "./platform"),
+        "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
         "@app": path.resolve(__dirname, "../../../front"),
         redis: false,
       },
