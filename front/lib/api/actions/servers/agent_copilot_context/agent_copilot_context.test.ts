@@ -750,6 +750,8 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("only returns current version feedback when latestVersionOnly=true (default)", async () => {
+      await useRealGetAgentFeedbacks();
+
       const { authenticator, workspace } = await createResourceTest({
         role: "admin",
       });
@@ -796,8 +798,6 @@ describe("agent_copilot_context tools", () => {
         "up"
       );
 
-      await useRealGetAgentFeedbacks();
-
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
@@ -831,6 +831,8 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("returns all versions feedback when latestVersionOnly=false", async () => {
+      await useRealGetAgentFeedbacks();
+
       const { authenticator, workspace } = await createResourceTest({
         role: "admin",
       });
@@ -885,8 +887,6 @@ describe("agent_copilot_context tools", () => {
         user.id,
         "up"
       );
-
-      await useRealGetAgentFeedbacks();
 
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
