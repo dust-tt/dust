@@ -7,13 +7,10 @@ import {
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
-import {
-  FULL_WORKSPACE_KILL_SWITCH_VALUE,
-  KILL_SWITCH_METADATA_KEY,
-} from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -200,7 +197,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const metadata = {
         ...(w.metadata ?? {}),
-        [KILL_SWITCH_METADATA_KEY]: FULL_WORKSPACE_KILL_SWITCH_VALUE,
+        [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
+          WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
       };
 
       const updateResult = await WorkspaceResource.updateMetadata(
@@ -226,7 +224,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const metadata = { ...(w.metadata ?? {}) };
-      delete metadata[KILL_SWITCH_METADATA_KEY];
+      delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
 
       const updateResult = await WorkspaceResource.updateMetadata(
         w.id,
@@ -379,6 +377,101 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
+    case "block": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const conversationId = args.cId;
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversation) {
+        throw new Error(`Conversation not found: cId='${conversationId}'`);
+      }
+
+      const updateResult = await w.updateConversationKillSwitch({
+        conversationId,
+        operation: "block",
+      });
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+      if (!updateResult.value.wasUpdated) {
+        logger.info(
+          {
+            wId: w.sId,
+            cId: conversationId,
+          },
+          "Conversation was already blocked"
+        );
+        return;
+      }
+
+      logger.info(
+        {
+          wId: w.sId,
+          cId: conversationId,
+          wasAlreadyBlocked: updateResult.value.wasBlockedBefore,
+        },
+        "Conversation blocked"
+      );
+      return;
+    }
+
+    case "unblock": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const conversationId = args.cId;
+      const updateResult = await w.updateConversationKillSwitch({
+        conversationId,
+        operation: "unblock",
+      });
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+      if (!updateResult.value.wasUpdated) {
+        logger.info(
+          {
+            wId: w.sId,
+            cId: conversationId,
+          },
+          "Conversation was not blocked"
+        );
+        return;
+      }
+
+      logger.info(
+        {
+          wId: w.sId,
+          cId: conversationId,
+          wasBlockedBefore: updateResult.value.wasBlockedBefore,
+        },
+        "Conversation unblocked"
+      );
+      return;
+    }
+
     case "render-for-model": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -466,6 +559,10 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
 
       return;
     }
+
+    default:
+      logger.error(`Unknown conversation command: ${command}`);
+      logger.error("Possible values: `block`, `unblock`, `render-for-model`");
   }
 };
 
