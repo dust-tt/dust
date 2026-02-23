@@ -38,7 +38,7 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 function mapSuggestionStateToCardState(
@@ -93,10 +93,10 @@ const InstructionsSuggestionCard = memo(
       [sId, setDiffBlockExpanded]
     );
 
-    // Restore from context on mount (handles remount from state change)
-    useEffect(() => {
-      setIsExpanded(getDiffBlockExpanded(sId));
-    }, [sId, getDiffBlockExpanded]);
+    // Note: We don't need useEffect to restore from context because:
+    // 1. useState initializes from context on mount
+    // 2. State persists across re-renders automatically
+    // 3. If component unmounts/remounts, useState will re-initialize from context
 
     const blockHtml = useMemo(() => {
       if (!frozenInstructionsHtml) {
@@ -584,50 +584,68 @@ function KnowledgeSuggestionCard({
 
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
+  // Context functions passed as props to avoid context subscription
+  focusOnSuggestion: (id: string) => void;
+  getFrozenInstructionsHtml: (sId: string) => string;
+  getDiffBlockExpanded: (sId: string) => boolean;
+  setDiffBlockExpanded: (sId: string, expanded: boolean) => void;
 }
 
-export function CopilotSuggestionCard({
-  agentSuggestion,
-}: SuggestionCardProps) {
-  const {
+export const CopilotSuggestionCard = memo(
+  function CopilotSuggestionCard({
+    agentSuggestion,
     focusOnSuggestion,
     getFrozenInstructionsHtml,
     getDiffBlockExpanded,
     setDiffBlockExpanded,
-  } = useCopilotSuggestions();
+  }: SuggestionCardProps) {
+    // Call directly each render - caching happens inside getFrozenInstructionsHtml
+    // This allows it to capture HTML once editor is ready, even if not ready on first render
+    const frozenInstructionsHtml =
+      agentSuggestion.kind === "instructions"
+        ? getFrozenInstructionsHtml(agentSuggestion.sId)
+        : "";
 
-  // Call directly each render - caching happens inside getFrozenInstructionsHtml
-  // This allows it to capture HTML once editor is ready, even if not ready on first render
-  const frozenInstructionsHtml =
-    agentSuggestion.kind === "instructions"
-      ? getFrozenInstructionsHtml(agentSuggestion.sId)
-      : "";
+    switch (agentSuggestion.kind) {
+      case "instructions":
+        return (
+          <InstructionsSuggestionCard
+            agentSuggestion={agentSuggestion}
+            focusOnSuggestion={focusOnSuggestion}
+            frozenInstructionsHtml={frozenInstructionsHtml}
+            getDiffBlockExpanded={getDiffBlockExpanded}
+            setDiffBlockExpanded={setDiffBlockExpanded}
+          />
+        );
+      case "tools":
+        return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
+      case "sub_agent":
+        return <SubAgentSuggestionCard agentSuggestion={agentSuggestion} />;
+      case "skills":
+        return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
+      case "model":
+        return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
+      case "knowledge":
+        return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
+      default:
+        assertNever(agentSuggestion);
+    }
+  },
+  (prev, next) => {
+    // Only compare suggestion content, not function references
+    // Functions from context get new references even when behavior hasn't changed
+    // This causes unnecessary re-renders, so we skip function comparison
+    if (prev.agentSuggestion.sId !== next.agentSuggestion.sId) {
+      return false;
+    }
+    if (prev.agentSuggestion.state !== next.agentSuggestion.state) {
+      return false;
+    }
 
-  switch (agentSuggestion.kind) {
-    case "instructions":
-      return (
-        <InstructionsSuggestionCard
-          agentSuggestion={agentSuggestion}
-          focusOnSuggestion={focusOnSuggestion}
-          frozenInstructionsHtml={frozenInstructionsHtml}
-          getDiffBlockExpanded={getDiffBlockExpanded}
-          setDiffBlockExpanded={setDiffBlockExpanded}
-        />
-      );
-    case "tools":
-      return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "sub_agent":
-      return <SubAgentSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "skills":
-      return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "model":
-      return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "knowledge":
-      return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
-    default:
-      assertNever(agentSuggestion);
+    // Skip re-render - only sId and state matter for rendering
+    return true;
   }
-}
+);
 
 interface SuggestionCardSkeletonProps {
   kind?: AgentSuggestionKind;

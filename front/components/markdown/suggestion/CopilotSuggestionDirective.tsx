@@ -5,7 +5,10 @@
  * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
  */
 
-import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import {
+  useCopilotSuggestions,
+  useCopilotSuggestionsLoading,
+} from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import {
   CopilotSuggestionCard,
   SuggestionCardSkeleton,
@@ -56,9 +59,16 @@ export function getCopilotSuggestionPlugin() {
     const {
       getSuggestionWithRelations,
       triggerRefetch,
-      isSuggestionsValidating,
       hasAttemptedRefetch,
+      // Extract context functions to pass as props to CopilotSuggestionCard
+      focusOnSuggestion,
+      getFrozenInstructionsHtml,
+      getDiffBlockExpanded,
+      setDiffBlockExpanded,
     } = useCopilotSuggestions();
+
+    // Separate subscription for loading state
+    const { isSuggestionsValidating } = useCopilotSuggestionsLoading();
 
     const suggestion = sId ? getSuggestionWithRelations(sId) : null;
 
@@ -96,7 +106,13 @@ export function getCopilotSuggestionPlugin() {
 
     return (
       <div data-suggestion-s-id={sId}>
-        <CopilotSuggestionCard agentSuggestion={suggestion} />
+        <CopilotSuggestionCard
+          agentSuggestion={suggestion}
+          focusOnSuggestion={focusOnSuggestion}
+          getFrozenInstructionsHtml={getFrozenInstructionsHtml}
+          getDiffBlockExpanded={getDiffBlockExpanded}
+          setDiffBlockExpanded={setDiffBlockExpanded}
+        />
       </div>
     );
   };

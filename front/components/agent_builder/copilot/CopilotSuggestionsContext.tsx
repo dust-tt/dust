@@ -43,8 +43,6 @@ export interface CopilotSuggestionsContextType {
   ) => AgentSuggestionWithRelationsType | null;
   getPendingSuggestions: () => AgentSuggestionType[];
   triggerRefetch: (sId: string) => void;
-  isSuggestionsLoading: boolean;
-  isSuggestionsValidating: boolean;
 
   // Refetch tracking (persists across component remounts).
   hasAttemptedRefetch: (sId: string) => boolean;
@@ -81,6 +79,25 @@ export const useCopilotSuggestions = () => {
   if (!context) {
     throw new Error(
       "useCopilotSuggestions must be used within a CopilotSuggestionsProvider"
+    );
+  }
+  return context;
+};
+
+export interface CopilotSuggestionsLoadingContextType {
+  isSuggestionsLoading: boolean;
+  isSuggestionsValidating: boolean;
+}
+
+const CopilotSuggestionsLoadingContext = createContext<
+  CopilotSuggestionsLoadingContextType | undefined
+>(undefined);
+
+export const useCopilotSuggestionsLoading = () => {
+  const context = useContext(CopilotSuggestionsLoadingContext);
+  if (!context) {
+    throw new Error(
+      "useCopilotSuggestionsLoading must be used within a CopilotSuggestionsProvider"
     );
   }
   return context;
@@ -208,21 +225,43 @@ function CopilotSuggestionsProviderContent({
   const isSuggestionsLoading = isPendingLoading || isOutdatedLoading;
   const isSuggestionsValidating = isPendingValidating;
 
+  // Store SWR mutate functions in refs for stable function references
+  const mutatePendingRef = useRef(mutatePending);
+  mutatePendingRef.current = mutatePending;
+
+  const mutateOutdatedRef = useRef(mutateOutdated);
+  mutateOutdatedRef.current = mutateOutdated;
+
+  // Stable wrapper
   const mutateSuggestions = useCallback(async () => {
-    await Promise.all([mutatePending(), mutateOutdated()]);
-  }, [mutatePending, mutateOutdated]);
+    await Promise.all([
+      mutatePendingRef.current(),
+      mutateOutdatedRef.current(),
+    ]);
+  }, []);
+
+  // Store suggestions state in refs for stable function references
+  const suggestionsRef = useRef(suggestions);
+  suggestionsRef.current = suggestions;
+
+  const processedSuggestionsRef = useRef(processedSuggestions);
+  processedSuggestionsRef.current = processedSuggestions;
 
   // Get suggestion: check local state first, then backend (n is small, .find is fine)
   const getSuggestion = useCallback(
     (sId: string) =>
-      processedSuggestions.get(sId) ?? suggestions.find((s) => s.sId === sId),
-    [processedSuggestions, suggestions]
+      processedSuggestionsRef.current.get(sId) ??
+      suggestionsRef.current.find((s) => s.sId === sId),
+    []
   );
 
-  // Get pending suggestions: backend suggestions not yet processed locally
+  // Stable wrapper - get pending suggestions
   const getPendingSuggestions = useCallback(
-    () => suggestions.filter((s) => !processedSuggestions.has(s.sId)),
-    [suggestions, processedSuggestions]
+    () =>
+      suggestionsRef.current.filter(
+        (s) => !processedSuggestionsRef.current.has(s.sId)
+      ),
+    []
   );
 
   // Pre-compute enriched suggestions map for stable object references
@@ -302,12 +341,16 @@ function CopilotSuggestionsProviderContent({
     searchServerView,
   ]);
 
-  // Resolve a suggestion with its relations - simple lookup from memoized map
+  // Store enrichedSuggestionsMap in ref for stable function reference
+  const enrichedSuggestionsMapRef = useRef(enrichedSuggestionsMap);
+  enrichedSuggestionsMapRef.current = enrichedSuggestionsMap;
+
+  // Stable wrapper - resolve a suggestion with its relations
   const getSuggestionWithRelations = useCallback(
     (sId: string): AgentSuggestionWithRelationsType | null => {
-      return enrichedSuggestionsMap.get(sId) ?? null;
+      return enrichedSuggestionsMapRef.current.get(sId) ?? null;
     },
-    [enrichedSuggestionsMap]
+    []
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
@@ -315,24 +358,25 @@ function CopilotSuggestionsProviderContent({
   const debounceTimerRef = useRef<NodeJS.Timeout>();
   const attemptedRefetchRef = useRef<Set<string>>(new Set());
 
-  const triggerRefetch = useCallback(
-    (sId: string) => {
-      attemptedRefetchRef.current.add(sId);
+  const mutateSuggestionsRef = useRef(mutateSuggestions);
+  mutateSuggestionsRef.current = mutateSuggestions;
 
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
+  // Stable wrapper
+  const triggerRefetch = useCallback((sId: string) => {
+    attemptedRefetchRef.current.add(sId);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      await mutateSuggestionsRef.current();
+      for (const id of attemptedRefetchRef.current) {
+        refetchAttemptedRef.current.add(id);
       }
-
-      debounceTimerRef.current = setTimeout(async () => {
-        await mutateSuggestions();
-        for (const id of attemptedRefetchRef.current) {
-          refetchAttemptedRef.current.add(id);
-        }
-        attemptedRefetchRef.current.clear();
-      }, 100);
-    },
-    [mutateSuggestions]
-  );
+      attemptedRefetchRef.current.clear();
+    }, 100);
+  }, []);
 
   const { patchSuggestions } = usePatchAgentSuggestions({
     agentConfigurationId,
@@ -483,65 +527,84 @@ function CopilotSuggestionsProviderContent({
     });
   }, []);
 
-  const focusOnSuggestion = useCallback(
-    (suggestionId: string) => {
-      const editor = editorRef.current;
-      if (!editor) {
-        return;
-      }
-      const suggestion = getSuggestion(suggestionId);
-      if (!suggestion || suggestion.kind !== "instructions") {
-        return;
-      }
-      const position = getSuggestionPosition(editor, suggestionId);
+  // Store latest implementations in refs to avoid breaking function reference stability
+  const getSuggestionRef = useRef(getSuggestion);
+  getSuggestionRef.current = getSuggestion;
 
-      if (position !== null) {
-        editor
-          .chain()
-          .focus()
-          .setTextSelection(position)
-          .scrollIntoView()
-          .run();
+  const highlightSuggestionRef = useRef(highlightSuggestion);
+  highlightSuggestionRef.current = highlightSuggestion;
 
-        highlightSuggestion(suggestionId, true);
-      }
-    },
-    [getSuggestion, highlightSuggestion]
-  );
+  // Stable wrapper - never changes reference, calls latest implementation
+  const focusOnSuggestion = useCallback((suggestionId: string) => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    const suggestion = getSuggestionRef.current(suggestionId);
+    if (!suggestion || suggestion.kind !== "instructions") {
+      return;
+    }
+    const position = getSuggestionPosition(editor, suggestionId);
 
-  const scrollToNextSuggestion = useCallback(
-    (acceptedSuggestionId: string) => {
-      const editor = editorRef.current;
-      const pendingInstructions = getPendingSuggestions().filter(
+    if (position !== null) {
+      editor.chain().focus().setTextSelection(position).scrollIntoView().run();
+
+      highlightSuggestionRef.current(suggestionId, true);
+    }
+  }, []); // Empty deps - truly stable
+
+  const getPendingSuggestionsRef = useRef(getPendingSuggestions);
+  getPendingSuggestionsRef.current = getPendingSuggestions;
+
+  const scrollCopilotToSuggestionRef = useRef(scrollCopilotToSuggestion);
+  scrollCopilotToSuggestionRef.current = scrollCopilotToSuggestion;
+
+  const focusOnSuggestionRef = useRef(focusOnSuggestion);
+  focusOnSuggestionRef.current = focusOnSuggestion;
+
+  // Stable wrapper
+  const scrollToNextSuggestion = useCallback((acceptedSuggestionId: string) => {
+    const editor = editorRef.current;
+    const pendingInstructions = getPendingSuggestionsRef
+      .current()
+      .filter(
         (s) => s.kind === "instructions" && s.sId !== acceptedSuggestionId
       );
-      if (pendingInstructions.length === 0) {
-        return;
-      }
+    if (pendingInstructions.length === 0) {
+      return;
+    }
 
-      // Order by document position (top to bottom in the instruction form)
-      const sorted =
-        editor && !editor.isDestroyed
-          ? [...pendingInstructions].sort((a, b) => {
-              const posA = getSuggestionPosition(editor, a.sId);
-              const posB = getSuggestionPosition(editor, b.sId);
-              if (posA === null) {
-                return 1;
-              }
-              if (posB === null) {
-                return -1;
-              }
-              return posA - posB;
-            })
-          : pendingInstructions;
+    // Order by document position (top to bottom in the instruction form)
+    const sorted =
+      editor && !editor.isDestroyed
+        ? [...pendingInstructions].sort((a, b) => {
+            const posA = getSuggestionPosition(editor, a.sId);
+            const posB = getSuggestionPosition(editor, b.sId);
+            if (posA === null) {
+              return 1;
+            }
+            if (posB === null) {
+              return -1;
+            }
+            return posA - posB;
+          })
+        : pendingInstructions;
 
-      const next = sorted[0];
-      focusOnSuggestion(next.sId);
-      scrollCopilotToSuggestion(next.sId);
-    },
-    [getPendingSuggestions, focusOnSuggestion, scrollCopilotToSuggestion]
-  );
+    const next = sorted[0];
+    focusOnSuggestionRef.current(next.sId);
+    scrollCopilotToSuggestionRef.current(next.sId);
+  }, []);
 
+  const patchSuggestionsRef = useRef(patchSuggestions);
+  patchSuggestionsRef.current = patchSuggestions;
+
+  const dispatchDelayedBlurRef = useRef(dispatchDelayedBlur);
+  dispatchDelayedBlurRef.current = dispatchDelayedBlur;
+
+  const scrollToNextSuggestionRef = useRef(scrollToNextSuggestion);
+  scrollToNextSuggestionRef.current = scrollToNextSuggestion;
+
+  // Stable wrapper
   const acceptSuggestion = useCallback(
     async (sId: string): Promise<boolean> => {
       const editor = editorRef.current;
@@ -549,7 +612,7 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const suggestion = getSuggestion(sId);
+      const suggestion = getSuggestionRef.current(sId);
       if (!suggestion) {
         return false;
       }
@@ -559,7 +622,7 @@ function CopilotSuggestionsProviderContent({
         new Map(prev).set(sId, { ...suggestion, state: "approved" })
       );
 
-      const result = await patchSuggestions([sId], "approved");
+      const result = await patchSuggestionsRef.current([sId], "approved");
       if (!result || result.suggestions.length === 0) {
         setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
         return false;
@@ -568,20 +631,17 @@ function CopilotSuggestionsProviderContent({
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
-        dispatchDelayedBlur();
-        scrollToNextSuggestion(sId);
+        dispatchDelayedBlurRef.current();
+        // Don't auto-scroll to next suggestion - let user stay at current position
+        // scrollToNextSuggestionRef.current(sId);
       }
 
       return true;
     },
-    [
-      patchSuggestions,
-      getSuggestion,
-      dispatchDelayedBlur,
-      scrollToNextSuggestion,
-    ]
+    []
   );
 
+  // Stable wrapper
   const rejectSuggestion = useCallback(
     async (sId: string): Promise<boolean> => {
       const editor = editorRef.current;
@@ -589,7 +649,7 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const suggestion = getSuggestion(sId);
+      const suggestion = getSuggestionRef.current(sId);
       if (!suggestion) {
         return false;
       }
@@ -599,7 +659,7 @@ function CopilotSuggestionsProviderContent({
         new Map(prev).set(sId, { ...suggestion, state: "rejected" })
       );
 
-      const result = await patchSuggestions([sId], "rejected");
+      const result = await patchSuggestionsRef.current([sId], "rejected");
       if (!result || result.suggestions.length === 0) {
         setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
         return false;
@@ -613,9 +673,10 @@ function CopilotSuggestionsProviderContent({
 
       return true;
     },
-    [patchSuggestions, getSuggestion]
+    []
   );
 
+  // Stable wrapper
   const acceptAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {
       const editor = editorRef.current;
@@ -623,16 +684,16 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const instructionSuggestions = getPendingSuggestions().filter(
-        (s) => s.kind === "instructions"
-      );
+      const instructionSuggestions = getPendingSuggestionsRef
+        .current()
+        .filter((s) => s.kind === "instructions");
 
       if (instructionSuggestions.length === 0) {
         return true;
       }
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
-      const result = await patchSuggestions(
+      const result = await patchSuggestionsRef.current(
         instructionSuggestionIds,
         "approved"
       );
@@ -652,17 +713,13 @@ function CopilotSuggestionsProviderContent({
         appliedSuggestionsRef.current.delete(sId);
       }
 
-      highlightSuggestion(null);
-      dispatchDelayedBlur();
+      highlightSuggestionRef.current(null);
+      dispatchDelayedBlurRef.current();
 
       return true;
-    }, [
-      patchSuggestions,
-      getPendingSuggestions,
-      dispatchDelayedBlur,
-      highlightSuggestion,
-    ]);
+    }, []);
 
+  // Stable wrapper
   const rejectAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {
       const editor = editorRef.current;
@@ -670,16 +727,16 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const instructionSuggestions = getPendingSuggestions().filter(
-        (s) => s.kind === "instructions"
-      );
+      const instructionSuggestions = getPendingSuggestionsRef
+        .current()
+        .filter((s) => s.kind === "instructions");
 
       if (instructionSuggestions.length === 0) {
         return true;
       }
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
-      const result = await patchSuggestions(
+      const result = await patchSuggestionsRef.current(
         instructionSuggestionIds,
         "rejected"
       );
@@ -699,10 +756,10 @@ function CopilotSuggestionsProviderContent({
         appliedSuggestionsRef.current.delete(sId);
       }
 
-      highlightSuggestion(null);
+      highlightSuggestionRef.current(null);
 
       return true;
-    }, [patchSuggestions, getPendingSuggestions, highlightSuggestion]);
+    }, []);
 
   const getCommittedInstructionsHtml = useCallback(() => {
     const editor = editorRef.current;
@@ -746,6 +803,14 @@ function CopilotSuggestionsProviderContent({
     diffBlockExpansionRef.current.set(sId, expanded);
   }, []);
 
+  const loadingValue: CopilotSuggestionsLoadingContextType = useMemo(
+    () => ({
+      isSuggestionsLoading,
+      isSuggestionsValidating,
+    }),
+    [isSuggestionsLoading, isSuggestionsValidating]
+  );
+
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
       acceptAllInstructionSuggestions,
@@ -757,8 +822,6 @@ function CopilotSuggestionsProviderContent({
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
-      isSuggestionsLoading,
-      isSuggestionsValidating,
       registerEditor,
       rejectAllInstructionSuggestions,
       rejectSuggestion,
@@ -776,8 +839,6 @@ function CopilotSuggestionsProviderContent({
       getPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
-      isSuggestionsLoading,
-      isSuggestionsValidating,
       registerEditor,
       rejectAllInstructionSuggestions,
       rejectSuggestion,
@@ -788,10 +849,12 @@ function CopilotSuggestionsProviderContent({
   );
 
   return (
-    <CopilotSuggestionsContext.Provider value={value}>
-      <EditorHighlightSync editorRef={editorRef} />
-      {children}
-    </CopilotSuggestionsContext.Provider>
+    <CopilotSuggestionsLoadingContext.Provider value={loadingValue}>
+      <CopilotSuggestionsContext.Provider value={value}>
+        <EditorHighlightSync editorRef={editorRef} />
+        {children}
+      </CopilotSuggestionsContext.Provider>
+    </CopilotSuggestionsLoadingContext.Provider>
   );
 }
 
