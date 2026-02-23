@@ -64,6 +64,10 @@ export QDRANT_USE_SHARDING=false
 export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 
+# === Viz service ===
+export VIZ_PUBLIC_URL=http://localhost:${ports.viz}
+export ALLOWED_VISUALIZATION_ORIGIN=http://localhost:3000,http://localhost:3011,http://localhost:${ports.front},http://localhost:${ports.frontSpaApp}
+
 # === Region & auth overrides (used by front cross-region and Dust CLI) ===
 export DUST_US_URL=http://localhost:${ports.front}
 export DUST_EU_URL=http://localhost:${ports.front}
