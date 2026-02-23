@@ -119,7 +119,7 @@ export function useVisualizationAPI(
       handler: (data: SupportedMessage) => void
     ): (() => void) => {
       const messageHandler = (event: MessageEvent) => {
-        if (!allowedOrigins.includes(event.origin)) {
+        if (!isOriginAllowed(event.origin, allowedOrigins)) {
           console.log(
             `Ignored message from unauthorized origin: ${
               event.origin
@@ -468,6 +468,20 @@ export function VisualizationWrapper({
   );
 }
 
+/**
+ * Check if an origin matches any of the allowed origins.
+ * Supports wildcard patterns like "*.preview.dust.tt" which match any subdomain.
+ */
+function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
+  return allowedOrigins.some((allowed) => {
+    if (allowed.startsWith("https://*.")) {
+      const suffix = allowed.slice("https://*".length); // e.g. ".preview.dust.tt"
+      return origin.startsWith("https://") && origin.endsWith(suffix);
+    }
+    return origin === allowed;
+  });
+}
+
 export function makeSendCrossDocumentMessage({
   identifier,
   allowedOrigins,
@@ -483,7 +497,7 @@ export function makeSendCrossDocumentMessage({
       const messageUniqueId = Math.random().toString();
 
       const listener = (event: MessageEvent) => {
-        if (!allowedOrigins.includes(event.origin)) {
+        if (!isOriginAllowed(event.origin, allowedOrigins)) {
           console.log(
             `Ignored message from unauthorized origin: ${event.origin}`
           );
