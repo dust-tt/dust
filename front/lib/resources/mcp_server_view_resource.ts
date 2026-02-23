@@ -30,7 +30,6 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { tracer } from "@app/logger/tracer";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -76,53 +75,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     this.remoteToolsMetadata = includes?.remoteToolsMetadata;
   }
 
-  private async init(
-    auth: Authenticator,
-    systemSpace: SpaceResource,
-    prefetchedRemoteServers: Map<ModelId, RemoteMCPServerResource>
-  ): Promise<Result<void, DustError>> {
-    if (this.remoteMCPServerId) {
-      let remoteServer = prefetchedRemoteServers?.get(this.remoteMCPServerId);
-
-      if (!remoteServer) {
-        return new Err(
-          new DustError(
-            "remote_server_not_found",
-            "Remote server not found, it should have been fetched by the base fetch."
-          )
-        );
-      }
-
-      this.remoteMCPServer = remoteServer;
-      return new Ok(undefined);
-    }
-
-    if (this.internalMCPServerId) {
-      const internalServer = await InternalMCPServerInMemoryResource.fetchById(
-        auth,
-        this.internalMCPServerId,
-        systemSpace
-      );
-      if (!internalServer) {
-        return new Err(
-          new DustError(
-            "internal_server_not_found",
-            "Internal server not found, it might have been deleted from the list of internal servers. Action: clear the mcp server views of orphan internal servers."
-          )
-        );
-      }
-      this.internalMCPServer = internalServer;
-      return new Ok(undefined);
-    }
-
-    return new Err(
-      new DustError(
-        "internal_error",
-        "We could not find the server because it was of an unknown type, this should never happen."
-      )
-    );
-  }
-
   private static async makeNew(
     auth: Authenticator,
     blob: Omit<
@@ -157,26 +109,35 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     const resource = new this(MCPServerViewResource.model, server.get(), space);
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const remoteServersByModelId = new Map<ModelId, RemoteMCPServerResource>();
     if (blob.remoteMCPServerId) {
       const remoteServer = await RemoteMCPServerResource.findByPk(
         auth,
         blob.remoteMCPServerId
       );
-      if (remoteServer) {
-        remoteServersByModelId.set(remoteServer.id, remoteServer);
+      if (!remoteServer) {
+        throw new DustError(
+          "remote_server_not_found",
+          "Remote server not found, it should have been fetched by the base fetch."
+        );
       }
-    }
-
-    const initResult = await resource.init(
-      auth,
-      systemSpace,
-      remoteServersByModelId
-    );
-    if (initResult.isErr()) {
-      throw initResult.error;
+      resource.remoteMCPServer = remoteServer;
+    } else if (blob.internalMCPServerId) {
+      const systemSpace =
+        await SpaceResource.fetchWorkspaceSystemSpace(auth);
+      const internalServer =
+        await InternalMCPServerInMemoryResource.fetchById(
+          auth,
+          blob.internalMCPServerId,
+          systemSpace
+        );
+      if (!internalServer) {
+        throw new DustError(
+          "internal_server_not_found",
+          "Internal server not found, it might have been deleted from the list of internal servers."
+        );
+      }
+      resource.internalMCPServer = internalServer;
     }
 
     return resource;
@@ -283,22 +244,40 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     } else {
       const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-      const remoteServers = await RemoteMCPServerResource.findByModelIds(
+      const remoteServers = await RemoteMCPServerResource.fetchByModelIds(
         auth,
         removeNulls(views.map((v) => v.remoteMCPServerId))
       );
       const remoteServerMap = new Map(remoteServers.map((s) => [s.id, s]));
 
-      await concurrentExecutor(
-        views,
-        async (view) => {
-          const r = await view.init(auth, systemSpace, remoteServerMap);
-          if (r.isOk()) {
-            filteredViews.push(view);
-          }
-        },
-        { concurrency: 10 }
+      const internalServers =
+        await InternalMCPServerInMemoryResource.fetchByIds(
+          auth,
+          removeNulls(views.map((v) => v.internalMCPServerId)),
+          systemSpace
+        );
+      const internalServerMap = new Map(
+        internalServers.map((s) => [s.id, s])
       );
+
+      for (const view of views) {
+        if (view.remoteMCPServerId) {
+          const remote = remoteServerMap.get(view.remoteMCPServerId);
+          if (!remote) {
+            continue;
+          }
+          view.remoteMCPServer = remote;
+        } else if (view.internalMCPServerId) {
+          const internal = internalServerMap.get(view.internalMCPServerId);
+          if (!internal) {
+            continue;
+          }
+          view.internalMCPServer = internal;
+        } else {
+          continue;
+        }
+        filteredViews.push(view);
+      }
     }
 
     if (includeMetadata && filteredViews.length > 0) {

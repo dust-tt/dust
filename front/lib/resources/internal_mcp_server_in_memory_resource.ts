@@ -62,7 +62,10 @@ export class InternalMCPServerInMemoryResource {
     readonly availability: MCPServerAvailability
   ) {}
 
-  private static async init(auth: Authenticator, id: string) {
+  private static async init(
+    auth: Authenticator,
+    id: string
+  ): Promise<InternalMCPServerInMemoryResource | null> {
     const r = getInternalMCPServerNameAndWorkspaceId(id);
     if (r.isErr()) {
       return null;
@@ -271,6 +274,43 @@ export class InternalMCPServerInMemoryResource {
     }
 
     return InternalMCPServerInMemoryResource.init(auth, id);
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[],
+    systemSpace: SpaceResource
+  ): Promise<InternalMCPServerInMemoryResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const validIds = ids.filter(
+      (id) => getAvailabilityOfInternalMCPServerById(id) !== "manual"
+    );
+
+    const manualIds = ids.filter(
+      (id) => getAvailabilityOfInternalMCPServerById(id) === "manual"
+    );
+
+    const servers = await MCPServerViewModel.findAll({
+      attributes: ["internalMCPServerId"],
+      where: {
+        serverType: "internal",
+        internalMCPServerId: { [Op.in]: manualIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: systemSpace.id,
+      },
+    });
+    validIds.push(...removeNulls(servers.map((s) => s.internalMCPServerId)));
+
+    const resources = await concurrentExecutor(
+      validIds,
+      (id) => InternalMCPServerInMemoryResource.init(auth, id),
+      { concurrency: 10 }
+    );
+
+    return removeNulls(resources);
   }
 
   static async listAvailableInternalMCPServers(auth: Authenticator) {
