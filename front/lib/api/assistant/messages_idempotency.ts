@@ -4,6 +4,7 @@ import logger from "@app/logger/logger";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 
 const MESSAGE_IDEMPOTENCY_WINDOW_SECONDS = 30;
 const MESSAGE_IDEMPOTENCY_KEY_HEADER = "x-idempotency-key";
@@ -32,7 +33,7 @@ export function getMessageIdempotencyKey(
   }
 
   if (
-    typeof idempotencyKey !== "string" ||
+    !isString(idempotencyKey) ||
     idempotencyKey.length === 0 ||
     idempotencyKey.length > MAX_MESSAGE_IDEMPOTENCY_KEY_LENGTH
   ) {
