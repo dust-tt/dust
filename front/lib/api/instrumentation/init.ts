@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { FilteredLangfuseSpanProcessor } from "@app/lib/api/instrumentation/processor";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { configureGlobalLogger, LogLevel } from "@langfuse/core";
 import type { Resource } from "@opentelemetry/resources";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
@@ -23,6 +24,9 @@ export function initializeOpenTelemetryInstrumentation({
   }
 
   try {
+    // Suppress noisy "[Langfuse SDK] [WARN] No active OTEL span in context" warnings.
+    configureGlobalLogger({ level: LogLevel.ERROR });
+
     resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]: serviceName,
     });
