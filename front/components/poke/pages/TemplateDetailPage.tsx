@@ -717,7 +717,7 @@ export function TemplateDetailPage() {
             control={form.control}
             name="agentFacingDescription"
             title="Agent Facing Description"
-            placeholder="Description for agent copilot context"
+            placeholder="Description for agent Sidekick context"
             previewMardown={true}
           />
           <TextareaField
@@ -737,8 +737,8 @@ export function TemplateDetailPage() {
           <TextareaField
             control={form.control}
             name="copilotInstructions"
-            title="Copilot Instructions"
-            placeholder="Instructions for the copilot..."
+            title="Sidekick Instructions"
+            placeholder="Instructions for the Sidekick..."
             previewMardown={true}
           />
           <PresetActionsField

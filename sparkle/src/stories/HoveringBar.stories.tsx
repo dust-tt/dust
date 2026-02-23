@@ -40,7 +40,12 @@ export const Default: Story = {
 
 export const WithLabel = () => (
   <HoveringBar>
-    <Button label="Ask Copilot" size="sm" variant="ghost" icon={SparklesIcon} />
+    <Button
+      label="Ask Sidekick"
+      size="sm"
+      variant="ghost"
+      icon={SparklesIcon}
+    />
     <HoveringBar.Separator />
     <Button
       icon={BoldIcon}

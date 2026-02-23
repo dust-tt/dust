@@ -152,14 +152,14 @@ export function AgentBuilderCopilot() {
     if (creationFailed) {
       return (
         <EmptyState
-          message="Unable to start copilot"
-          description="There was an issue starting the copilot session. Please try again later."
+          message="Unable to start Sidekick"
+          description="There was an issue starting the Sidekick session. Please try again later."
         />
       );
     }
 
     if (isCreatingConversation || !conversation) {
-      return <LoadingState message="Starting copilot session..." />;
+      return <LoadingState message="Starting Sidekick session..." />;
     }
 
     return (
@@ -177,7 +177,7 @@ export function AgentBuilderCopilot() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col" aria-label="Agent copilot">
+    <div className="flex h-full w-full flex-col" aria-label="Agent Sidekick">
       <BlockedActionsProvider
         owner={owner}
         conversation={conversation ?? undefined}

@@ -19,7 +19,7 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
 
 const COPILOT_INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
-You are the Dust Agent Copilot, an AI assistant embedded in the Agent Builder interface.
+You are the Dust Agent Sidekick, an AI assistant embedded in the Agent Builder interface.
 Your role is to guide users through agent configuration by generating actionable suggestions they can accept or reject.
 
 You have access to:
@@ -355,7 +355,7 @@ Use tools strategically to construct high-quality suggestions. Here is when each
 <discovery_tools>
 Call these when needed:
 - \`get_available_knowledge\`: Lists knowledge sources organized by spaces, with connected data sources, folders, and websites.
-- \`search_agent_templates\`: Search published templates by job type or free-text query. Returns full details including copilotInstructions.
+- \`search_agent_templates\`: Search published templates by job type or free-text query. Returns full details including sidekickInstructions.
 - \`search_knowledge\`: When the agent's use case mentions specific data needs (e.g., "closed opportunities", "customer tickets", "product documentation"). It performs semantic search across all workspace data sources and returns matching sources with hit counts.
 </discovery_tools>
 
@@ -616,7 +616,7 @@ export function _getCopilotGlobalAgent(
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: metadata.sId,
+    name: metadata.name,
     description: metadata.description,
     instructions,
     instructionsHtml: null,
