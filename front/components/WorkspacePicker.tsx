@@ -1,4 +1,3 @@
-import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
 import { isDevelopment } from "@app/types/shared/env";
@@ -25,7 +24,6 @@ export const WorkspacePickerRadioGroup = ({
   user,
   workspace,
 }: WorkspacePickerRadioGroupProps) => {
-  const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useAppRouter();
 
   const organizations = user.organizations;
@@ -42,9 +40,6 @@ export const WorkspacePickerRadioGroup = ({
                 value={org.externalId || ""}
                 onClick={async () => {
                   if (org.externalId && org.externalId !== workspace.sId) {
-                    await setNavigationSelection({
-                      lastWorkspaceId: org.externalId,
-                    });
                     await router.push(
                       `${config.getApiBaseUrl()}/api/workos/login?organizationId=${org.id}`
                     );
@@ -63,9 +58,6 @@ export const WorkspacePickerRadioGroup = ({
                   value={ws.sId}
                   onClick={async () => {
                     if (ws.sId !== workspace.sId) {
-                      await setNavigationSelection({
-                        lastWorkspaceId: ws.sId,
-                      });
                       await router.push(`/w/${ws.sId}/`);
                     }
                   }}

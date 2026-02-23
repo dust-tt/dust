@@ -6,7 +6,6 @@ import {
   getUserFromSession,
   makeGetServerSidePropsRequirementsWrapper,
 } from "@app/lib/iam/session";
-import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { Landing } from "@app/pages/home";
@@ -47,14 +46,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     }
 
     // Try to go to the last selected workspace.
-    const selection = await getPersistedNavigationSelection(u);
-    if (
-      selection.lastWorkspaceId &&
-      user.workspaces.find((w) => w.sId === selection.lastWorkspaceId)
-    ) {
-      url = `/w/${selection.lastWorkspaceId}`;
-    }
-
     if (organizationId) {
       const organization = user.organizations?.find(
         (o) => o.id === organizationId
