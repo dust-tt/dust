@@ -23,6 +23,11 @@ jobs:
           build-sdks: "true"
       - name: Typecheck
         run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
+      - name: Build Temporal Bundles
+        working-directory: connectors
+        env:
+          CONNECTORS_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
+        run: npm run build:temporal-bundles
   tests:
     runs-on: ubuntu-latest
     steps:
