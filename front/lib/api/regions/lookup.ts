@@ -10,8 +10,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   InvitationsLookupRequestBodyType,
   InvitationsLookupResponse,
-  ShareTokenLookupRequestBodyType,
-  ShareTokenLookupResponse,
   UserLookupRequestBodyType,
   UserLookupResponse,
   WorkspaceLookupRequestBodyType,
@@ -274,34 +272,6 @@ export async function fetchInvitationsFromOtherRegion(
     return new Ok(invitations);
   } catch (err) {
     return new Err(normalizeError(err));
-  }
-}
-
-export async function lookupShareToken(
-  token: string
-): Promise<Result<RegionType | null, Error>> {
-  const { url, name } = config.getOtherRegionInfo();
-  const body: ShareTokenLookupRequestBodyType = { token };
-
-  try {
-    // eslint-disable-next-line no-restricted-globals
-    const otherRegionResponse = await fetch(`${url}/api/lookup/share-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.getLookupApiSecret()}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data: ShareTokenLookupResponse = await otherRegionResponse.json();
-    if (isAPIErrorResponse(data)) {
-      return new Err(new Error(data.error.message));
-    }
-
-    return new Ok(data.exists ? name : null);
-  } catch (error) {
-    return new Err(normalizeError(error));
   }
 }
 
