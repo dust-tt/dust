@@ -42,9 +42,21 @@ vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
 }));
 
-// Reset mocks between tests to prevent interference.
-beforeEach(() => {
-  vi.resetAllMocks();
+// Reset only file-local mocks between tests.
+// Avoid vi.resetAllMocks() as it resets global mocks like the Redis mock from vite.setup.ts.
+beforeEach(async () => {
+  const [overview, feedback, templateSuggestion, copilotHelpers] =
+    await Promise.all([
+      import("@app/lib/api/assistant/observability/overview"),
+      import("@app/lib/api/assistant/feedback"),
+      import("@app/lib/api/assistant/template_suggestion"),
+      import("@app/lib/api/actions/servers/agent_copilot_helpers"),
+    ]);
+
+  vi.mocked(overview.fetchAgentOverview).mockReset();
+  vi.mocked(feedback.getAgentFeedbacks).mockReset();
+  vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
+  vi.mocked(copilotHelpers.getAgentConfigurationIdFromContext).mockReset();
 });
 
 function getToolByName(name: string) {

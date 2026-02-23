@@ -15,9 +15,14 @@ export class UserFactory {
     return UserResource.makeNew(this.defaultParams(false, createdAt));
   }
 
+  static async withoutLastLogin() {
+    return UserResource.makeNew(this.defaultParams(false, new Date(), null));
+  }
+
   private static defaultParams = (
     superUser: boolean = false,
-    createdAt: Date = new Date()
+    createdAt: Date = new Date(),
+    lastLoginAt: Date | null = new Date()
   ) => {
     return {
       sId: generateRandomModelSId(),
@@ -35,7 +40,7 @@ export class UserFactory {
 
       isDustSuperUser: superUser,
       createdAt,
-      lastLoginAt: new Date(),
+      lastLoginAt,
     };
   };
 }

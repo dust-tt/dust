@@ -5,6 +5,7 @@ import { checkDataSourcesConsistency } from "@app/lib/production_checks/checks/c
 import { checkEndedBackendOnlySubscriptions } from "@app/lib/production_checks/checks/check_ended_backend_only_subscriptions";
 import { checkExcessCredits } from "@app/lib/production_checks/checks/check_excess_credits";
 import { checkExtraneousWorkflows } from "@app/lib/production_checks/checks/check_extraneous_workflows_for_paused_connectors";
+import { checkMembershipActiveUsersConsistency } from "@app/lib/production_checks/checks/check_membership_active_users_consistency";
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
 import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_paused_connectors";
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
@@ -74,6 +75,11 @@ export const REGISTERED_CHECKS: Check[] = [
   {
     name: "check_ended_backend_only_subscriptions",
     check: checkEndedBackendOnlySubscriptions,
+    everyHour: 24,
+  },
+  {
+    name: "check_membership_active_users_consistency",
+    check: checkMembershipActiveUsersConsistency,
     everyHour: 24,
   },
 ];
