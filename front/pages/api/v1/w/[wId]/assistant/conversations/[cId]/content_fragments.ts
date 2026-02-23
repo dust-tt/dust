@@ -1,8 +1,3 @@
-import type { PostContentFragmentResponseType } from "@dust-tt/client";
-import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -10,11 +5,16 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types";
+} from "@app/types/api/internal/assistant";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isInteractiveContentFileContentType } from "@app/types/files";
+import type { PostContentFragmentResponseType } from "@dust-tt/client";
+import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger
@@ -169,7 +169,28 @@ async function handler(
         });
       }
 
-      res.status(200).json({ contentFragment: contentFragmentRes.value });
+      const publicContentFragment =
+        !contentFragmentRes.value ||
+        isInteractiveContentFileContentType(
+          contentFragmentRes.value.contentType
+        )
+          ? undefined
+          : {
+              ...contentFragmentRes.value,
+              contentType: contentFragmentRes.value.contentType,
+            };
+
+      if (!publicContentFragment) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Content fragment is not supported.",
+          },
+        });
+      }
+
+      res.status(200).json({ contentFragment: publicContentFragment });
       return;
     default:
       return apiError(req, res, {

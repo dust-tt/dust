@@ -7,7 +7,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 // We create a WorkOS organization only if:
 // - the workspace has a domain associated
@@ -32,7 +32,7 @@ async function shouldCreateWorkOSOrganization(
   }
 
   const activeSubscription =
-    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
   if (activeSubscription && !activeSubscription.isLegacyFreeNoPlan()) {
     return { shouldCreate: true, domain: undefined };
   }

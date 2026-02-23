@@ -1,11 +1,11 @@
-import type { ReactElement } from "react";
-
 import { PaymentProcessingPage } from "@app/components/pages/workspace/subscription/PaymentProcessingPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { ReactElement } from "react";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = appGetServerSidePropsForAdmin;
 
 const PageWithAuthLayout = PaymentProcessingPage as AppPageWithLayout;

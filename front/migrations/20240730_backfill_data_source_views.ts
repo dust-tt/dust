@@ -6,7 +6,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 async function backfillDataSourceViewsForWorkspace(
   workspace: LightWorkspaceType,

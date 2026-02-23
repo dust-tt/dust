@@ -7,8 +7,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
-import { isSupportedFileContentType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isSupportedFileContentType } from "@app/types/files";
 
 async function backfillAvatars(
   workspace: LightWorkspaceType,

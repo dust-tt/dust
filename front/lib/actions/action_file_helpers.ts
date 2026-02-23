@@ -6,7 +6,7 @@ import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIDataSourceDocumentSection } from "@app/types";
+import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 
 /**
  * Generate a plain text file.

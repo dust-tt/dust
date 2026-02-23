@@ -22,11 +22,14 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type {
-  ModelId,
   MultiActionPreset,
   TemplateActionPreset,
-} from "@app/types";
-import { asDisplayName, asDisplayToolName } from "@app/types";
+} from "@app/types/assistant/templates";
+import type { ModelId } from "@app/types/shared/model_id";
+import {
+  asDisplayName,
+  asDisplayToolName,
+} from "@app/types/shared/utils/string_utils";
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string

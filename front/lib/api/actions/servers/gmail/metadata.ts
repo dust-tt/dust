@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const GMAIL_TOOL_NAME = "gmail" as const;
 
@@ -204,7 +203,7 @@ export const GMAIL_SERVER = {
     description: "Access messages and email drafts.",
     authorization: {
       provider: "google_drive",
-      supported_use_cases: ["personal_actions"],
+      supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
         "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
     },

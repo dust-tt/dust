@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentSkillsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/skills";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useAgentConfigurationSkills({
   owner,
@@ -13,6 +12,7 @@ export function useAgentConfigurationSkills({
   agentConfigurationId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetAgentSkillsResponseBody> = fetcher;
 
   const { data, isLoading } = useSWRWithDefaults(

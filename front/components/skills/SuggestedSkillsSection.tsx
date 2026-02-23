@@ -1,3 +1,10 @@
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { useAppRouter } from "@app/lib/platform";
+import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   Card,
@@ -7,14 +14,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { useAppRouter } from "@app/lib/platform";
-import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType, UserType } from "@app/types";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 type SuggestedSkillCardProps = {
   skill: SkillWithRelationsType;

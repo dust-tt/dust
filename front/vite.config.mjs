@@ -11,6 +11,7 @@ export default defineConfig({
     globalSetup: "./vite.globalSetup.ts",
     passWithNoTests: true,
     exclude: ["**/node_modules/**", "**/dist/**"],
+    maxConcurrency: 20,
 
     testTimeout: (function getTestTimeout() {
       const isDebug =
@@ -38,6 +39,8 @@ export default defineConfig({
       return {
         pool: "forks",
         isolate: true, // Each test file gets its own process
+        maxWorkers: 5,
+        minWorkers: 1,
       };
     })(),
   },

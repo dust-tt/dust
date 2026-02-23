@@ -1,14 +1,9 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-import type { SWRMutationConfiguration } from "swr/mutation";
-import useSWRMutation from "swr/mutation";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -21,13 +16,17 @@ import type {
 } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
-import type { LightWorkspaceType } from "@app/types";
-import { Ok } from "@app/types";
 import type {
   SkillStatus,
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
+import type { SWRMutationConfiguration } from "swr/mutation";
+import useSWRMutation from "swr/mutation";
 
 export function useSkill(options: {
   workspaceId: string;
@@ -67,6 +66,7 @@ export function useSkill({
   isSkillError: boolean;
   mutateSkill: () => void;
 } {
+  const { fetcher } = useFetcher();
   const skillFetcher: Fetcher<
     GetSkillResponseBody | GetSkillWithRelationsResponseBody
   > = fetcher;
@@ -100,6 +100,7 @@ export function useSkills({
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsResponseBody> = fetcher;
 
   const queryParams = new URLSearchParams();
@@ -134,6 +135,7 @@ export function useSkillsWithRelations({
   disabled?: boolean;
   status: SkillStatus;
 }) {
+  const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
 
   const { data, isLoading, mutate } = useSWRWithDefaults(
@@ -150,6 +152,7 @@ export function useSkillsWithRelations({
 }
 
 export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcher } = useFetcher();
   const getSimilarSkills = useCallback(
     async (
       naturalDescription: string,
@@ -174,7 +177,7 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
       );
       return new Ok(response.similar_skills);
     },
-    [owner.sId]
+    [owner.sId, fetcher]
   );
 
   return { getSimilarSkills };
@@ -307,6 +310,7 @@ export function useSkillHistory({
   limit?: number;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const skillHistoryFetcher: Fetcher<GetSkillHistoryResponseBody> = fetcher;
 
   const queryParams = limit ? `?limit=${limit}` : "";
@@ -335,6 +339,7 @@ export function useSkillWithRelations(
     string
   >
 ) {
+  const { fetcher } = useFetcher();
   const { trigger, isMutating } = useSWRMutation(
     `/api/w/${owner.sId}/skills`,
     async (url: string, { arg }: { arg: string }) => {

@@ -10,8 +10,8 @@ import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_stor
 import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
-} from "@app/types";
-import { CoreAPI } from "@app/types";
+} from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
 
 export async function getDataSourceFolders({
   dataSourceCoreIds,

@@ -1,5 +1,3 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import type { OAuthError } from "@app/lib/api/oauth";
 import type {
   BaseOAuthStrategyProvider,
@@ -9,10 +7,14 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Ok } from "@app/types";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
 
 export class VantaOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({ connection }: { connection: OAuthConnectionType }) {

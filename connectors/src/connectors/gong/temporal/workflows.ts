@@ -1,15 +1,14 @@
 import {
-  executeChild,
-  proxyActivities,
-  workflowInfo,
-} from "@temporalio/workflow";
-
-import {
   makeGongGarbageCollectionWorkflowIdFromParentId,
   makeGongSyncTranscriptsWorkflowIdFromParentId,
 } from "@connectors/connectors/gong/lib/internal_ids";
 import type * as activities from "@connectors/connectors/gong/temporal/activities";
 import type { ModelId } from "@connectors/types";
+import {
+  executeChild,
+  proxyActivities,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const {
   gongCheckGarbageCollectionStateActivity,

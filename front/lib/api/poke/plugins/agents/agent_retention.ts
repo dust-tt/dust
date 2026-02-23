@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const agentRetentionPlugin = createPlugin({
   manifest: {

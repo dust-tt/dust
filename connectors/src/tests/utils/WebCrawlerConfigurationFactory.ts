@@ -1,7 +1,6 @@
-import type { Attributes } from "sequelize";
-
 import { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
+import type { Attributes } from "sequelize";
 
 export class WebCrawlerConfigurationResourceFactory {
   /**

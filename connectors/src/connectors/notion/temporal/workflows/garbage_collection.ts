@@ -1,12 +1,3 @@
-import {
-  continueAsNew,
-  patched,
-  proxyActivities,
-  sleep,
-  workflowInfo,
-} from "@temporalio/workflow";
-import PQueue from "p-queue";
-
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import {
   GC_BATCHES_PER_RUN,
@@ -18,6 +9,14 @@ import {
 } from "@connectors/connectors/notion/temporal/config";
 import { performUpserts } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
+import {
+  continueAsNew,
+  patched,
+  proxyActivities,
+  sleep,
+  workflowInfo,
+} from "@temporalio/workflow";
+import PQueue from "p-queue";
 
 const { garbageCollectBatch } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minute",

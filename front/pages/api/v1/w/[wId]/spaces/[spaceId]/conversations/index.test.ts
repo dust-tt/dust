@@ -1,6 +1,4 @@
-import { describe, it, vi } from "vitest";
-import { expect } from "vitest";
-
+// biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for setup and verification
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -11,6 +9,7 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -318,7 +317,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
     });
 
     // Set updatedAt using raw SQL
-    // eslint-disable-next-line dust/no-raw-sql
+
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
       {
@@ -328,7 +327,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
         },
       }
     );
-    // eslint-disable-next-line dust/no-raw-sql
+
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
       {
@@ -338,7 +337,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
         },
       }
     );
-    // eslint-disable-next-line dust/no-raw-sql
+
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
       {

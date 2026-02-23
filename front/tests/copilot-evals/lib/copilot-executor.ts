@@ -8,7 +8,7 @@ import type {
   MockAgentState,
   ToolCall,
 } from "@app/tests/copilot-evals/lib/types";
-import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
+import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 
 export async function executeCopilot(
   auth: Authenticator,

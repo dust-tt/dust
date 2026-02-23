@@ -1,7 +1,6 @@
-import { CompanyIcon } from "@dust-tt/sparkle";
-
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
+import { CompanyIcon } from "@dust-tt/sparkle";
 
 export const b2bSaasConfig: IndustryPageConfig = {
   seo: {

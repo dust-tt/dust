@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -9,6 +7,7 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
+import { makeScript } from "scripts/helpers";
 
 const FOLDER_CONCURRENCY = 10;
 

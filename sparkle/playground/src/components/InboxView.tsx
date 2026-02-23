@@ -295,14 +295,15 @@ export function InboxView({
                               })
                               .replace("24:", "00:");
 
-                            // Generate random message count (1-4)
-                            const messageCount = Math.floor(
-                              Math.random() * 4 + 1
-                            );
-
-                            // Generate random reply count (1-8)
+                            // Generate random counts respecting mentionCount <= unreadCount <= replyCount
                             const replyCount = Math.floor(
                               Math.random() * 8 + 1
+                            );
+                            const messageCount = Math.floor(
+                              Math.random() * replyCount + 1
+                            );
+                            const mentionCount = Math.floor(
+                              Math.random() * (messageCount + 1)
                             );
 
                             return (
@@ -313,8 +314,9 @@ export function InboxView({
                                 time={time}
                                 replySection={
                                   <ReplySection
-                                    totalMessages={replyCount}
-                                    newMessages={messageCount}
+                                    replyCount={replyCount}
+                                    unreadCount={messageCount}
+                                    mentionCount={mentionCount}
                                     avatars={avatarProps}
                                     lastMessageBy={
                                       avatarProps[0]?.name || "Unknown"
@@ -398,14 +400,15 @@ export function InboxView({
                                 })
                                 .replace("24:", "00:");
 
-                              // Generate random message count (1-4)
-                              const messageCount = Math.floor(
-                                Math.random() * 4 + 1
-                              );
-
-                              // Generate random reply count (1-8)
+                              // Generate random counts respecting mentionCount <= unreadCount <= replyCount
                               const replyCount = Math.floor(
                                 Math.random() * 8 + 1
+                              );
+                              const messageCount = Math.floor(
+                                Math.random() * replyCount + 1
+                              );
+                              const mentionCount = Math.floor(
+                                Math.random() * (messageCount + 1)
                               );
 
                               return (
@@ -416,8 +419,9 @@ export function InboxView({
                                   time={time}
                                   replySection={
                                     <ReplySection
-                                      totalMessages={replyCount}
-                                      newMessages={messageCount}
+                                      replyCount={replyCount}
+                                      unreadCount={messageCount}
+                                      mentionCount={mentionCount}
                                       avatars={avatarProps}
                                       lastMessageBy={
                                         avatarProps[0]?.name || "Unknown"

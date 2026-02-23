@@ -1,5 +1,3 @@
-import type { OAuth2Client } from "googleapis-common";
-
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
@@ -16,6 +14,7 @@ import type {
   GoogleDriveObjectType,
   ModelId,
 } from "@connectors/types";
+import type { OAuth2Client } from "googleapis-common";
 
 export async function upsertGdriveDocument(
   dataSourceConfig: DataSourceConfig,

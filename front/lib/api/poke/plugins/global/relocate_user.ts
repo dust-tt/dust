@@ -3,7 +3,9 @@ import type { RegionType } from "@app/lib/api/regions/config";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { Err, mapToEnumValues, normalizeError, Ok } from "@app/types";
+import { mapToEnumValues } from "@app/types/poke/plugins";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const relocateUserPlugin = createPlugin({
   manifest: {

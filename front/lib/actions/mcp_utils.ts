@@ -1,7 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isSupportedImageContentType } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {
@@ -11,7 +8,7 @@ import {
   isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
@@ -26,16 +23,16 @@ import logger from "@app/logger/logger";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
-  Result,
   SupportedFileContentType,
   SupportedImageContentType,
-} from "@app/types";
-import {
-  Err,
-  hasNullUnicodeCharacter,
-  isSupportedFileContentType,
-  Ok,
-} from "@app/types";
+} from "@app/types/files";
+import { isSupportedFileContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isSupportedImageContentType } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 type ResourceInfo =
   | { type: "image"; contentType: SupportedImageContentType }
@@ -96,11 +93,12 @@ export function rewriteContentForModel(
     isToolGeneratedFile(content) &&
     isSupportedFileContentType(content.resource.contentType)
   ) {
-    const attachment = getAttachmentFromToolOutput({
+    const attachment = getAttachmentFromFile({
       fileId: content.resource.fileId,
       contentType: content.resource.contentType,
       title: content.resource.title,
       snippet: content.resource.snippet,
+      isInProjectContext: content.resource.isInProjectContext ?? false,
     });
     const xml = renderAttachmentXml({ attachment });
     let text = content.resource.text;

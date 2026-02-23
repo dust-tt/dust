@@ -1,4 +1,4 @@
-import { GPT_4_1_MODEL_CONFIG } from "@app/types";
+import { GPT_4_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 
 // Used when returning an agent with status 'disabled_by_admin'
 export const dummyModelConfiguration = {

@@ -1,8 +1,8 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { postConversation } from "@app/shared/lib/conversation";
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { useFileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import { Spinner } from "@dust-tt/sparkle";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { postConversation } from "@extension/shared/lib/conversation";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 

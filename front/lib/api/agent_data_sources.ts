@@ -1,8 +1,3 @@
-import sortBy from "lodash/sortBy";
-import uniqBy from "lodash/uniqBy";
-import type { WhereAttributeHashValue } from "sequelize";
-import { Op, Sequelize } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -14,15 +9,20 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentsUsageType,
   ConnectorProvider,
-  DataSourceViewCategory,
-  ModelId,
-  Result,
-} from "@app/types";
-import { CONNECTOR_PROVIDERS, Err, Ok } from "@app/types";
+} from "@app/types/data_source";
+import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
+import type { WhereAttributeHashValue } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching

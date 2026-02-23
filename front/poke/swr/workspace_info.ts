@@ -1,15 +1,15 @@
-import type { Fetcher } from "swr";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetWorkspaceDatasourceRetrievalResponse } from "@app/pages/api/poke/workspaces/[wId]/observability/datasource-retrieval";
 import type { PokeGetWorkspaceInfo } from "@app/pages/api/poke/workspaces/[wId]/workspace-info";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { Fetcher } from "swr";
 
 export function usePokeWorkspaceInfo({
   disabled,
   owner,
 }: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
   const workspaceInfoFetcher: Fetcher<PokeGetWorkspaceInfo> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/workspace-info`,
@@ -36,6 +36,7 @@ export function usePokeWorkspaceDatasourceRetrieval({
   days = DEFAULT_PERIOD_DAYS,
   disabled,
 }: UsePokeWorkspaceDatasourceRetrievalProps) {
+  const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<PokeGetWorkspaceDatasourceRetrievalResponse> =
     fetcher;
   const params = new URLSearchParams({ days: days.toString() });

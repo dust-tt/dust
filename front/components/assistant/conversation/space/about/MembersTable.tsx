@@ -1,3 +1,8 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useUpdateSpace } from "@app/lib/swr/spaces";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -10,17 +15,13 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
 
-import { ConfirmContext } from "@app/components/Confirm";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType, SpaceUserType } from "@app/types";
-
 interface MembersTableProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
   isEditor?: boolean;
+  mutateSpaceInfo: () => Promise<void>;
 }
 
 type MemberRowData = {
@@ -52,14 +53,11 @@ export function MembersTable({
   selectedMembers,
   searchSelectedMembers,
   isEditor,
+  mutateSpaceInfo,
 }: MembersTableProps) {
   const sendNotifications = useSendNotification();
 
   const doUpdate = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
   const confirm = useContext(ConfirmContext);
 
   const removeMember = useCallback(
@@ -74,15 +72,22 @@ export function MembersTable({
         return;
       }
 
-      const updateMember = await doUpdate(space, {
-        isRestricted: space.isRestricted,
-        memberIds: updatedMembers
-          .filter((member) => !member.isEditor)
-          .map((member) => member.sId),
-        editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
-        managementMode: "manual",
-        name: space.name,
-      });
+      const updateMember = await doUpdate(
+        space,
+        {
+          isRestricted: space.isRestricted,
+          memberIds: updatedMembers
+            .filter((member) => !member.isEditor)
+            .map((member) => member.sId),
+          editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+          managementMode: "manual",
+          name: space.name,
+        },
+        {
+          title: "Successfully removed member",
+          description: "Project member was successfully removed.",
+        }
+      );
       if (updateMember) {
         await mutateSpaceInfo();
       }
@@ -97,11 +102,12 @@ export function MembersTable({
         return;
       }
       const toggledMemberIndex = selectedMembers.indexOf(toggledMember);
+      const newIsEditorValue = !toggledMember.isEditor;
       const updatedMembers = [
         ...selectedMembers.slice(0, toggledMemberIndex),
         {
           ...selectedMembers[toggledMemberIndex],
-          isEditor: !toggledMember.isEditor,
+          isEditor: newIsEditorValue,
         },
         ...selectedMembers.slice(toggledMemberIndex + 1),
       ];
@@ -115,17 +121,28 @@ export function MembersTable({
         return;
       }
 
-      const updateMember = await doUpdate(space, {
-        isRestricted: space.isRestricted,
-        memberIds: updatedMembers
-          .filter((member) => !member.isEditor)
-          .map((member) => member.sId),
-        editorIds: updatedMembers
-          .filter((member) => member.isEditor)
-          .map((member) => member.sId),
-        managementMode: "manual",
-        name: space.name,
-      });
+      const updateMember = await doUpdate(
+        space,
+        {
+          isRestricted: space.isRestricted,
+          memberIds: updatedMembers
+            .filter((member) => !member.isEditor)
+            .map((member) => member.sId),
+          editorIds: updatedMembers
+            .filter((member) => member.isEditor)
+            .map((member) => member.sId),
+          managementMode: "manual",
+          name: space.name,
+        },
+        {
+          title: newIsEditorValue
+            ? "Successfully added editor"
+            : "Successfully removed editor",
+          description: newIsEditorValue
+            ? "Project editor was successfully added."
+            : "Project editor was successfully removed.",
+        }
+      );
       if (updateMember) {
         await mutateSpaceInfo();
       }

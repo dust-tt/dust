@@ -1,8 +1,9 @@
 "use client";
+
+import { classNames as cn } from "@app/lib/utils";
 import type { MotionStyle, Transition } from "motion/react";
 import { motion } from "motion/react";
 
-import { classNames as cn } from "@app/lib/utils";
 interface BorderBeamProps {
   /**
    * The size of the border beam.

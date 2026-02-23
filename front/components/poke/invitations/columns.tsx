@@ -1,3 +1,6 @@
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import {
   ClipboardIcon,
   IconButton,
@@ -5,10 +8,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { MembershipInvitationTypeWithLink } from "@app/types";
 
 export function makeColumnsForInvitations(
   onRevokeInvitation: (email: string) => Promise<void>,

@@ -1,3 +1,6 @@
+import type { Authenticator } from "@app/lib/auth";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
 import type {
   Attributes,
   Model,
@@ -5,9 +8,6 @@ import type {
   Transaction,
   WhereAttributeHashValue,
 } from "sequelize";
-
-import type { Authenticator } from "@app/lib/auth";
-import type { ModelId, Result } from "@app/types";
 
 interface BaseResourceConstructor<
   T extends BaseResource<M>,

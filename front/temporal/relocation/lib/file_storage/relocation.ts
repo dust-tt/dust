@@ -6,7 +6,7 @@ import {
   isJSONStringifyRangeError,
   isStringTooLongError,
 } from "@app/temporal/relocation/activities/types";
-import { isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
 
 const RELOCATION_PATH_PREFIX = "relocations";
 

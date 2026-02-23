@@ -7,9 +7,9 @@ import type {
   PluginArgDefinition,
   PluginArgs,
   PluginManifest,
-  Result,
   SupportedResourceType,
-} from "@app/types";
+} from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
 
 interface FormidableFile {
   filepath: string;

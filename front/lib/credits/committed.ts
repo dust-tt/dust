@@ -1,6 +1,3 @@
-import assert from "assert";
-import type Stripe from "stripe";
-
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -10,16 +7,18 @@ import {
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  makeCreditPurchaseOneOffInvoice,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
+  makeCreditPurchaseOneOffInvoice,
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
+import type Stripe from "stripe";
 
 export async function startCreditFromProOneOffInvoice({
   auth,

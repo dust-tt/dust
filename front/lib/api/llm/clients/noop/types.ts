@@ -1,5 +1,5 @@
-import type { ModelIdType } from "@app/types";
-import { NOOP_MODEL_ID } from "@app/types";
+import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 
 export const NOOP_WHITELISTED_MODEL_IDS = [NOOP_MODEL_ID] as const;
 

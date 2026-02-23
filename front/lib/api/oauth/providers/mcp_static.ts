@@ -1,5 +1,5 @@
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
-import type { OAuthProvider } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
 
 // This provider is used to authenticate with MCP servers that require static OAuth credentials.
 // It behaves exactly like the MCP provider but does requires the user to provide the various oauth credentials instead of using the discovery process.

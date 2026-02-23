@@ -1,3 +1,5 @@
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
@@ -6,9 +8,6 @@ import {
   SparklesIcon,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type { WorkspaceType } from "@app/types";
 
 interface DontLoseSectionProps {
   owner: WorkspaceType;

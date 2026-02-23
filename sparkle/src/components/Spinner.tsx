@@ -1,6 +1,3 @@
-import Lottie from "lottie-react";
-import React from "react";
-
 import { customColors } from "@sparkle/lib/colors";
 import animColor from "@sparkle/lottie/spinnerColor";
 import animColorLG from "@sparkle/lottie/spinnerColorLG";
@@ -11,6 +8,8 @@ import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
 import animLight from "@sparkle/lottie/spinnerLight";
 import animLightLG from "@sparkle/lottie/spinnerLightLG";
 import animLightXS from "@sparkle/lottie/spinnerLightXS";
+import Lottie from "lottie-react";
+import React from "react";
 
 type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
 const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;

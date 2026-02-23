@@ -1,3 +1,8 @@
+import { EmojiDropdown } from "@app/components/editor/input_bar/EmojiDropdown";
+import type {
+  EmojiDropdownOnKeyDown,
+  EmojiDropdownProps,
+} from "@app/components/editor/input_bar/types";
 import type { Range } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
 import { PluginKey } from "@tiptap/pm/state";
@@ -7,12 +12,6 @@ import type {
   SuggestionProps,
 } from "@tiptap/suggestion";
 import type { RefAttributes } from "react";
-
-import { EmojiDropdown } from "@app/components/editor/input_bar/EmojiDropdown";
-import type {
-  EmojiDropdownOnKeyDown,
-  EmojiDropdownProps,
-} from "@app/components/editor/input_bar/types";
 
 export const emojiPluginKey = new PluginKey("emoji-suggestion");
 

@@ -1,3 +1,11 @@
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokeTables } from "@app/poke/swr";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Checkbox,
@@ -7,14 +15,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { useRequiredPathParam } from "@app/lib/platform";
-import { usePokeTables } from "@app/poke/swr";
-import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
-import type { DataSourceType, LightWorkspaceType } from "@app/types";
 
 type QueryResult = {
   schema: Array<{

@@ -1,3 +1,7 @@
+import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { filterAndSortAgents } from "@app/lib/utils";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -10,10 +14,6 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
-import { filterAndSortAgents } from "@app/lib/utils";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
 interface AgentPickerProps {
   owner: WorkspaceType;

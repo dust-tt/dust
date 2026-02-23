@@ -1,21 +1,18 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type {
-  AllSupportedWithDustSpecificFileContentType,
-  ContentFragmentType,
-  MentionType,
-  ModelId,
-  RichMention,
-} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
+import type { ContentFragmentType } from "../content_fragment";
+import type { AllSupportedWithDustSpecificFileContentType } from "../files";
+import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
   GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
+import type { MentionType, RichMention } from "./mentions";
 
 export type MessageVisibility = "visible" | "deleted";
 
@@ -113,6 +110,8 @@ export type UserMessageContext = {
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
   selectedSkillIds?: string[];
+  apiKeyId?: number | null;
+  authMethod?: string | null;
 };
 
 export type AgenticMessageData = {

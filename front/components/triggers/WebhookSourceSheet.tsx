@@ -1,21 +1,3 @@
-import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
-import {
-  Button,
-  InformationCircleIcon,
-  LockIcon,
-  MultiPageSheet,
-  MultiPageSheetContent,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import _ from "lodash";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
-
 import { ConfirmContext } from "@app/components/Confirm";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type {
@@ -45,13 +27,32 @@ import {
 } from "@app/lib/swr/webhook_source";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
-import { asDisplayName } from "@app/types";
+import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type {
   WebhookProvider,
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
+import {
+  Button,
+  InformationCircleIcon,
+  LockIcon,
+  MultiPageSheet,
+  MultiPageSheetContent,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 
 export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }

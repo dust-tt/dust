@@ -1,3 +1,12 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
+import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
+import { isInvalidJson } from "@app/components/agent_builder/utils";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useModels } from "@app/lib/swr/models";
+import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
 import {
   Button,
   cn,
@@ -16,16 +25,6 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
-import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
-import { isInvalidJson } from "@app/components/agent_builder/utils";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
-import { useModels } from "@app/lib/swr/models";
-import { isSupportingResponseFormat } from "@app/types";
 
 const RESPONSE_FORMAT_PLACEHOLDER =
   "Example:\n\n" +

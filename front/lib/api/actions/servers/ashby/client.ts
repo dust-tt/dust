@@ -1,5 +1,3 @@
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -11,7 +9,10 @@ import type {
   AshbyCandidateNote,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
+  AshbyJob,
+  AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
+  AshbyUserSearchRequest,
 } from "@app/lib/api/actions/servers/ashby/types";
 import {
   AshbyApplicationFeedbackListResponseSchema,
@@ -19,28 +20,26 @@ import {
   AshbyCandidateCreateNoteResponseSchema,
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
+  AshbyJobListResponseSchema,
+  AshbyReferralCreateResponseSchema,
+  AshbyReferralFormInfoResponseSchema,
   AshbyReportSynchronousResponseSchema,
+  AshbyUserSearchResponseSchema,
 } from "@app/lib/api/actions/servers/ashby/types";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { decrypt, Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { decrypt } from "@app/types/shared/utils/hashing";
+import type { z } from "zod";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyClient(
-  extra: ToolHandlerExtra
-): Promise<Result<AshbyClient, MCPError>> {
-  const auth = extra.auth;
-  const toolConfig = extra.agentLoopContext?.runContext?.toolConfiguration;
-
-  if (!auth) {
-    return new Err(
-      new MCPError("Authentication context not available.", {
-        tracked: false,
-      })
-    );
-  }
+export async function getAshbyClient({
+  auth,
+  agentLoopContext,
+}: ToolHandlerExtra): Promise<Result<AshbyClient, MCPError>> {
+  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
 
   if (
     !toolConfig ||
@@ -123,6 +122,7 @@ export class AshbyClient {
     if (!parseResult.success) {
       logger.error(
         {
+          endpoint,
           error: parseResult.error.message,
         },
         "[Ashby] Invalid API response format"
@@ -197,5 +197,52 @@ export class AshbyClient {
     }
 
     return new Ok(response.value.results);
+  }
+
+  async searchUser(request: AshbyUserSearchRequest) {
+    return this.postRequest(
+      "user.search",
+      request,
+      AshbyUserSearchResponseSchema
+    );
+  }
+
+  async getReferralFormInfo() {
+    return this.postRequest(
+      "referralForm.info",
+      {},
+      AshbyReferralFormInfoResponseSchema
+    );
+  }
+
+  async createReferral(request: AshbyReferralCreateRequest) {
+    return this.postRequest(
+      "referral.create",
+      request,
+      AshbyReferralCreateResponseSchema
+    );
+  }
+
+  async listJobs(): Promise<Result<AshbyJob[], Error>> {
+    const allJobs: AshbyJob[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const response = await this.postRequest(
+        "job.list",
+        { cursor },
+        AshbyJobListResponseSchema
+      );
+      if (response.isErr()) {
+        return response;
+      }
+
+      allJobs.push(...response.value.results);
+      cursor = response.value.moreDataAvailable
+        ? response.value.nextCursor
+        : undefined;
+    } while (cursor);
+
+    return new Ok(allJobs);
   }
 }

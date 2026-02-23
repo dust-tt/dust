@@ -1,12 +1,11 @@
-import { ToolsIcon } from "@dust-tt/sparkle";
-
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { INTERNAL_SERVERS_WITH_WEBSEARCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfigurationWithName } from "@app/lib/actions/types/guards";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import type { AgentConfigurationType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { ToolsIcon } from "@dust-tt/sparkle";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
@@ -43,8 +42,10 @@ export function getRetrievalTopK({
     );
   }
 
-  const searchActions = stepActions.filter((tool) =>
-    isServerSideMCPToolConfigurationWithName(tool, "search")
+  const searchActions = stepActions.filter(
+    (tool) =>
+      isServerSideMCPToolConfigurationWithName(tool, "search") ||
+      isServerSideMCPToolConfigurationWithName(tool, "conversation_files")
   );
   const includeActions = stepActions.filter((tool) =>
     isServerSideMCPToolConfigurationWithName(tool, "include_data")

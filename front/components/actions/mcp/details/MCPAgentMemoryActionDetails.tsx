@@ -1,3 +1,5 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   ActionLightbulbIcon,
   Card,
@@ -10,9 +12,6 @@ import type {
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
 import { useMemo } from "react";
-
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 
 export function MCPAgentMemoryRetrieveActionDetails({
   toolOutput,

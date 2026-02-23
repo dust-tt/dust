@@ -1,3 +1,4 @@
+import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import {
   Icon,
   InformationCircleIcon,
@@ -6,8 +7,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
-
-import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 
 export function InternalBearerTokenSection() {
   const {

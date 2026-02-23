@@ -1,18 +1,17 @@
-import { useMemo } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo } from "react";
+import type { Fetcher } from "swr";
 
 /**
  * Workspace domains
@@ -25,6 +24,7 @@ export function useWorkspaceDomains({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const { data, error, mutate } = useSWRWithDefaults<
     string,
     GetWorkspaceDomainsResponseBody
@@ -94,6 +94,7 @@ export function useWorkOSSSOStatus({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const { data, error, isLoading, mutate } = useSWRWithDefaults<
     string,
     WorkOSConnectionSyncStatus
@@ -159,6 +160,7 @@ export function useWorkOSDSyncStatus({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const { data, error, isLoading, mutate } = useSWRWithDefaults<
     string,
     WorkOSConnectionSyncStatus
@@ -221,6 +223,7 @@ export function useProvisioningStatus({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const provisioningStatusFetcher: Fetcher<GetProvisioningStatusResponseBody> =
     fetcher;
 

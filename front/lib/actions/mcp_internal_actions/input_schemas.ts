@@ -1,11 +1,11 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z, ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
 
 /**
  * URI pattern for configuring the data source to use within an action.

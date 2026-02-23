@@ -1,6 +1,3 @@
-import assert from "assert";
-import isNumber from "lodash/isNumber";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -9,7 +6,10 @@ import {
   WORKSPACE_RETENTION_MAX_DAYS,
   WORKSPACE_RETENTION_MIN_DAYS,
 } from "@app/temporal/scrub_workspace/config";
-import type { Result, WorkspaceType } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
+import assert from "assert";
+import isNumber from "lodash/isNumber";
 
 export type DataRetentionConfig = {
   workspace: number;

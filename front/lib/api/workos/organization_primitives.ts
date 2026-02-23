@@ -1,11 +1,10 @@
+import { getWorkOS } from "@app/lib/api/workos/client";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { Organization } from "@workos-inc/node";
 import { DomainDataState, OrganizationDomainState } from "@workos-inc/node";
 import uniqueId from "lodash/uniqueId";
-
-import { getWorkOS } from "@app/lib/api/workos/client";
-import type { LightWorkspaceType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 
 function isWorkOSNotFoundEntityError(error: unknown): boolean {
   return (

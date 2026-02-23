@@ -5,7 +5,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { CoreAppAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
 import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
 
 export async function processApp({
   dustAPIProjectId,

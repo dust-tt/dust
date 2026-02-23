@@ -1,6 +1,5 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
-
 import { LinkWrapper } from "@app/lib/platform";
+import { ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 
 type PageNumber = number | "ellipsis-start" | "ellipsis-end";
 

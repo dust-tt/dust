@@ -1,6 +1,7 @@
 import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { AgentObservability } from "@app/components/observability/AgentObservability";
-import type { AgentConfigurationType, WorkspaceType } from "@app/types";
+import { CombinedInsightsContent } from "@app/components/observability/CombinedInsightsContent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { WorkspaceType } from "@app/types/user";
 
 interface AgentInsightsTabProps {
   owner: WorkspaceType;
@@ -13,7 +14,7 @@ export function AgentInsightsTab({
 }: AgentInsightsTabProps) {
   return (
     <ObservabilityProvider>
-      <AgentObservability
+      <CombinedInsightsContent
         owner={owner}
         agentConfigurationId={agentConfiguration.sId}
         isCustomAgent={agentConfiguration.scope !== "global"}

@@ -1,12 +1,12 @@
-import { useCallback, useState } from "react";
-
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   buildProjectKickoffPrompt,
   PROJECT_KICKOFF_AGENT,
 } from "@app/lib/api/assistant/project_kickoff";
-import type { SpaceType, UserType, WorkspaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { useCallback, useState } from "react";
 
 export function useProjectKickoff({
   owner,
@@ -33,7 +33,7 @@ export function useProjectKickoff({
 
     const prompt = buildProjectKickoffPrompt({
       projectName: space.name,
-      userName: user.username,
+      userFullName: user.fullName,
     });
 
     const result = await createConversationWithMessage({

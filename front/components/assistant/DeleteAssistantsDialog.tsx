@@ -1,3 +1,7 @@
+import { useBatchDeleteAgentConfigurations } from "@app/lib/swr/assistants";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -8,13 +12,6 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useBatchDeleteAgentConfigurations } from "@app/lib/swr/assistants";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
-import { pluralize } from "@app/types";
 
 interface DeleteAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];

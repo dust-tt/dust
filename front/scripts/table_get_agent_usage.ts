@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -10,7 +8,8 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Op } from "sequelize";
 
 makeScript(
   {

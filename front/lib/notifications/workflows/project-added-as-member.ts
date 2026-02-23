@@ -1,18 +1,23 @@
-import { workflow } from "@novu/framework";
-import z from "zod";
-
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
+import {
+  ensureSlackNotificationsReady,
+  getNovuClient,
+} from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { Result, SpaceType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
 import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { SpaceType } from "@app/types/space";
+import { workflow } from "@novu/framework";
+import z from "zod";
 
 const ProjectAddedAsMemberPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -133,6 +138,39 @@ export const projectAddedAsMemberWorkflow = workflow(
       }
     );
 
+    await step.chat(
+      "slack-notification",
+      async () => {
+        const projectUrl =
+          config.getAppUrl() +
+          getProjectRoute(payload.workspaceId, payload.projectId);
+
+        const baseMessage = `${details.userThatAddedYouFullname} added you to project "${details.projectName}"`;
+
+        const message = `${baseMessage}\n<${projectUrl}|View project>`;
+
+        return {
+          body: message,
+        };
+      },
+      {
+        skip: async () => {
+          const shouldSkip = await shouldSkipProject({ payload });
+          if (shouldSkip) {
+            return true;
+          }
+          const { isReady } = await ensureSlackNotificationsReady(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+          if (!isReady) {
+            return true;
+          }
+          return false;
+        },
+      }
+    );
+
     await step.email(
       "send-email",
       async () => {
@@ -146,7 +184,7 @@ export const projectAddedAsMemberWorkflow = workflow(
           action: {
             label: "View project",
             url:
-              process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
+              config.getClientFacingUrl() +
               getProjectRoute(payload.workspaceId, payload.projectId),
           },
         });

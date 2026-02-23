@@ -1,3 +1,4 @@
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { makeFeedbackSubmittedBlock } from "@connectors/connectors/slack/chat/blocks";
 import {
   getSlackClient,

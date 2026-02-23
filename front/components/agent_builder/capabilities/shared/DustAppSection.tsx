@@ -1,3 +1,10 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useApps } from "@app/lib/swr/apps";
+import type { AppType, DustAppRunConfigurationType } from "@app/types/app";
+import type { SpaceType } from "@app/types/space";
 import {
   Button,
   Card,
@@ -13,19 +20,9 @@ import {
 import { PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { useApps } from "@app/lib/swr/apps";
-import type {
-  AppType,
-  DustAppRunConfigurationType,
-  SpaceType,
-} from "@app/types";
 
 interface AppTableData extends AppType {
   onClick: () => void;

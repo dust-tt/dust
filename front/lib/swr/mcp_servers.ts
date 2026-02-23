@@ -1,6 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher, SWRConfiguration } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -21,7 +18,7 @@ import type {
   MCPServerConnectionType,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
   GetMCPServersResponseBody,
@@ -50,33 +47,30 @@ import type {
 } from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
-import type {
-  LightWorkspaceType,
-  SpaceType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type {
   MCPOAuthUseCase,
   OAuthProvider,
   OAuthUseCase,
-  Result,
-} from "@app/types";
-import {
-  Err,
-  isAdmin,
-  isAPIErrorResponse,
-  isSupportedOAuthCredential,
-  Ok,
-  removeNulls,
-  setupOAuthConnection,
-} from "@app/types";
+} from "@app/types/oauth/lib";
+import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;
   connectionId: string;
 };
 
-function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
+export function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: !isAdmin(owner),
@@ -111,12 +105,14 @@ export function useMCPServer({
   owner: LightWorkspaceType;
   serverId: string;
 }) {
+  const { fetcher } = useFetcher();
   const serverFetcher: Fetcher<GetMCPServerResponseBody> = fetcher;
 
   const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
 
   const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
     disabled,
+    revalidateOnFocus: false,
   });
 
   if (!serverId) {
@@ -146,6 +142,7 @@ export function useAvailableMCPServers({
   space?: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = space
@@ -181,6 +178,7 @@ export function useMCPServers({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/mcp`;
@@ -625,6 +623,7 @@ export function useMCPServerConnections({
   connectionType: MCPServerConnectionConnectionType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const connectionsFetcher: Fetcher<GetConnectionsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -902,7 +901,6 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       }
 
       const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
         provider,
         useCase,
@@ -956,6 +954,7 @@ export function useMCPServerViews({
   availability?: MCPServerAvailability | "all";
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsResponseBody> = fetcher;
   const url = getMCPServerViewsKey(owner, space, availability);
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
@@ -1049,6 +1048,7 @@ export function useMCPServersUsage({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersUsageResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/mcp/usage`,
@@ -1074,6 +1074,7 @@ export function useMCPServerViewsNotActivated({
   space: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsNotActivatedResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
@@ -1219,6 +1220,7 @@ function useMCPServerViewsFromSpacesBase(
   availabilities: MCPServerAvailability[],
   swrOptions?: SWRConfiguration
 ) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
 
   const spaceIds = spaces.map((s) => s.sId).join(",");

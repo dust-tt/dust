@@ -13,8 +13,8 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   AgentModelConfigurationType,
-  ModelId,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
 
 function getModelForAgentConfiguration(
   agent: AgentConfigurationModel

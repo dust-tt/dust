@@ -1,10 +1,9 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-
 import { useAppRouter, usePathParam } from "@app/lib/platform";
 import { useFinalize } from "@app/lib/swr/oauth";
 import logger from "@app/logger/logger";
-import { isOAuthProvider } from "@app/types";
+import { isOAuthProvider } from "@app/types/oauth/lib";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo } from "react";
 
 export function OAuthFinalizePage() {
   const router = useAppRouter();

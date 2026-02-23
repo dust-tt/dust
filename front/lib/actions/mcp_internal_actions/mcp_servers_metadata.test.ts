@@ -22,11 +22,6 @@
  * tool registration.
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import * as fs from "fs";
-import * as path from "path";
-import { describe, expect, it } from "vitest";
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -40,13 +35,8 @@ import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { LEGACY_REGION_BIT } from "@app/lib/resources/string_ids";
-
-// Path to the expected metadata snapshot file
-const EXPECTED_METADATA_PATH = path.join(
-  __dirname,
-  "__snapshots__",
-  "mcp_servers_metadata.expected.json"
-);
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { describe, expect, it } from "vitest";
 
 interface ServerMetadataSnapshot {
   name: string;
@@ -230,66 +220,7 @@ async function collectAllServersMetadata(): Promise<ServerMetadataSnapshot[]> {
   return servers.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/**
- * Save the metadata snapshot to disk.
- */
-function saveSnapshot(metadata: ServerMetadataSnapshot[]): void {
-  const snapshotDir = path.dirname(EXPECTED_METADATA_PATH);
-  if (!fs.existsSync(snapshotDir)) {
-    fs.mkdirSync(snapshotDir, { recursive: true });
-  }
-
-  const json = JSON.stringify(metadata, null, 2);
-  fs.writeFileSync(EXPECTED_METADATA_PATH, json, "utf-8");
-}
-
-/**
- * Load the existing metadata snapshot from disk.
- */
-function loadSnapshot(): ServerMetadataSnapshot[] | null {
-  if (!fs.existsSync(EXPECTED_METADATA_PATH)) {
-    return null;
-  }
-
-  const json = fs.readFileSync(EXPECTED_METADATA_PATH, "utf-8");
-  return JSON.parse(json) as ServerMetadataSnapshot[];
-}
-
 describe("MCP Servers Metadata Snapshot", () => {
-  const shouldUpdateSnapshot =
-    process.env.UPDATE_MCP_METADATA_SNAPSHOT === "1" ||
-    process.env.UPDATE_MCP_METADATA_SNAPSHOT === "true";
-
-  it("should match the expected metadata snapshot", async () => {
-    const currentMetadata = await collectAllServersMetadata();
-
-    if (shouldUpdateSnapshot) {
-      saveSnapshot(currentMetadata);
-      console.log(`Updated metadata snapshot at: ${EXPECTED_METADATA_PATH}`);
-      return;
-    }
-
-    const expectedMetadata = loadSnapshot();
-
-    if (!expectedMetadata) {
-      // Create the initial snapshot
-      saveSnapshot(currentMetadata);
-      console.log(
-        `Created new metadata snapshot at: ${EXPECTED_METADATA_PATH}`
-      );
-      console.log(
-        "Please review and commit this file to track MCP server metadata changes."
-      );
-      return;
-    }
-
-    // Compare
-    expect(
-      currentMetadata,
-      "If the diff is expected, run: 'UPDATE_MCP_METADATA_SNAPSHOT=1 NODE_ENV=test npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts' to update the snapshot."
-    ).toEqual(expectedMetadata);
-  });
-
   it("should have all servers accounted for", async () => {
     const currentMetadata = await collectAllServersMetadata();
 
@@ -317,6 +248,30 @@ describe("MCP Servers Metadata Snapshot", () => {
       throw new Error(
         `Failed to extract metadata from ${serversWithErrors.length} server(s):\n${errorDetails}`
       );
+    }
+  });
+
+  it("should have stable tool stakes across all servers", () => {
+    const allStakes: Record<string, Record<string, MCPToolStakeLevelType>> = {};
+
+    for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
+      const stakes = getInternalMCPServerToolStakes(serverName);
+      allStakes[serverName] = sortToolsStakes(stakes) ?? {};
+    }
+
+    try {
+      expect(allStakes).toMatchSnapshot();
+    } catch (error) {
+      const hint =
+        "\n\nTool stakes changed. Review the diff above and run:\n" +
+        "  NODE_ENV=test npm test -- --update lib/actions/" +
+        "mcp_internal_actions/mcp_servers_metadata.test.ts\n" +
+        "to update the snapshot.";
+
+      if (error instanceof Error) {
+        error.message += hint;
+      }
+      throw error;
     }
   });
 });

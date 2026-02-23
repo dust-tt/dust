@@ -1,7 +1,6 @@
+import { useAppRouter } from "@app/lib/platform";
 import escapeRegExp from "lodash/escapeRegExp";
 import { useEffect, useState } from "react";
-
-import { useAppRouter } from "@app/lib/platform";
 
 export function useSpaceSidebarItemFocus({ path }: { path: string }) {
   const router = useAppRouter();

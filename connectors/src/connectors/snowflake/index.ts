@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
-
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -31,9 +28,14 @@ import {
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorPermission, ContentNode } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  DataSourceConfig,
+} from "@connectors/types";
 import { isSnowflakeCredentials } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child({
   connector: "snowflake",
@@ -108,9 +110,26 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       snowflakeConfigBlob
     );
 
-    const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
-    if (launchRes.isErr()) {
-      throw launchRes.error;
+    try {
+      const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
+      if (launchRes.isErr()) {
+        throw launchRes.error;
+      }
+    } catch (e) {
+      logger.error(
+        { error: e, connectorId: connector.id },
+        "Failed to launch Snowflake sync workflow, rolling back connector creation"
+      );
+
+      const deleteRes = await connector.delete();
+      if (deleteRes.isErr()) {
+        logger.error(
+          { error: deleteRes.error, connectorId: connector.id },
+          "Failed to delete Snowflake connector during rollback"
+        );
+      }
+
+      throw e;
     }
 
     return new Ok(connector.id.toString());

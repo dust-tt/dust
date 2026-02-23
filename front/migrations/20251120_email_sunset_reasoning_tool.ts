@@ -5,7 +5,8 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { isString, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import { z } from "zod";
 
 const MAIL_CONCURRENCY = 5;

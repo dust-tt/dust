@@ -7,14 +7,6 @@ import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
 
-import { PortProvider } from "@app/platforms/chrome/context/PortContext";
-import { ChromePlatformService } from "@app/platforms/chrome/services/platform";
-import {
-  PlatformProvider,
-  usePlatform,
-} from "@app/shared/context/PlatformContext";
-import { AuthProvider } from "@app/ui/components/auth/AuthProvider";
-import { routes } from "@app/ui/pages/routes";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Button,
@@ -23,6 +15,15 @@ import {
   Notification,
   Page,
 } from "@dust-tt/sparkle";
+import { PortProvider } from "@extension/platforms/chrome/context/PortContext";
+import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
+import {
+  PlatformProvider,
+  usePlatform,
+} from "@extension/shared/context/PlatformContext";
+import { ExtensionFetcherProvider } from "@extension/shared/lib/FetcherProvider";
+import { AuthProvider } from "@extension/ui/components/auth/AuthProvider";
+import { routes } from "@extension/ui/pages/routes";
 import { compare } from "compare-versions";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -112,9 +113,11 @@ const App = () => {
     <PlatformProvider platformService={platformService}>
       <PortProvider>
         <AuthProvider>
-          <Notification.Area>
-            <ChromeExtensionWrapper />
-          </Notification.Area>
+          <ExtensionFetcherProvider>
+            <Notification.Area>
+              <ChromeExtensionWrapper />
+            </Notification.Area>
+          </ExtensionFetcherProvider>
         </AuthProvider>
       </PortProvider>
     </PlatformProvider>

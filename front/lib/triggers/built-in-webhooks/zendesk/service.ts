@@ -2,10 +2,12 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { ZendeskWebhookStoredMetadata } from "@app/lib/triggers/built-in-webhooks/zendesk/types";
 import logger from "@app/logger/logger";
-import type { Result, WorkspaceType } from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import type { NoAdditionalData } from "@app/types/triggers/webhooks";
+import type { WorkspaceType } from "@app/types/user";
 
 export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
   async setupZendeskConnection({

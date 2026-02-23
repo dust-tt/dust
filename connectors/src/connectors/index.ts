@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
-
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { DiscordBotConnectorManager } from "@connectors/connectors/discord_bot";
@@ -23,11 +20,14 @@ import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type {
+  DataSourceConfig,
   DiscordBotConfigurationType,
+  ModelId,
   SlackConfigurationType,
   WebCrawlerConfiguration,
 } from "@connectors/types";
-import type { DataSourceConfig, ModelId } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 
 type ConnectorManager =
   | NotionConnectorManager

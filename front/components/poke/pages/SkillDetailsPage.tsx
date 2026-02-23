@@ -1,13 +1,3 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  LinkWrapper,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
-import { JsonViewer } from "@textea/json-viewer";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -18,6 +8,15 @@ import {
   usePokeSkillDetails,
   usePokeSkillVersions,
 } from "@app/poke/swr/skill_details";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  LinkWrapper,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+import { JsonViewer } from "@textea/json-viewer";
 
 export function SkillDetailsPage() {
   const owner = useWorkspace();

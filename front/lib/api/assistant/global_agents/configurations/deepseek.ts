@@ -2,11 +2,9 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import type { AgentConfigurationType } from "@app/types";
-import {
-  FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
-  GLOBAL_AGENTS_SID,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function _getDeepSeekR1GlobalAgent({
   auth,

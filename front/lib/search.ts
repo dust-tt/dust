@@ -1,12 +1,12 @@
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type {
-  ContentNodesViewType,
   CoreAPINodesSearchFilter,
   CoreAPISearchScope,
-  Result,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {

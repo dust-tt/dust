@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { untrustedFetch } from "@app/lib/egress/server";
@@ -7,7 +5,8 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
-import { sendUserOperationMessage } from "@app/types";
+import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 // Company size thresholds
 const ENTERPRISE_THRESHOLD = 100;
@@ -388,6 +387,7 @@ async function enrichCompanyFromDomain(domain: string): Promise<{
   }
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<EnrichmentResponse>

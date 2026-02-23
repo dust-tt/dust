@@ -1,3 +1,22 @@
+import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
+import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
+import type {
+  FileBlob,
+  FileBlobWithFileId,
+} from "@app/hooks/useFileUploaderService";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { FileUseCase } from "@app/types/files";
+import {
+  getSupportedNonImageFileExtensions,
+  isSupportedDelimitedTextContentType,
+} from "@app/types/files";
+import type { PlanType } from "@app/types/plan";
+import { slugify } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Dialog,
@@ -10,29 +29,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
-import type {
-  FileBlob,
-  FileBlobWithFileId,
-} from "@app/hooks/useFileUploaderService";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type {
-  ContentNode,
-  DataSourceViewType,
-  FileUseCase,
-  LightWorkspaceType,
-  PlanType,
-} from "@app/types";
-import {
-  getSupportedNonImageFileExtensions,
-  isSupportedDelimitedTextContentType,
-  slugify,
-} from "@app/types";
 
 // Helper to check if a file should be treated as a table based on its MIME type
 function isDelimitedFile(file: File): boolean {
@@ -296,6 +294,7 @@ export const MultipleFilesUpload = ({
   }, [handleFileInputBlur]);
 
   // Effect: open file input when the dialog is opened
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen && !wasOpened) {
       const ref = fileInputRef.current;

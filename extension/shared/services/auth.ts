@@ -1,10 +1,3 @@
-import {
-  DEFAULT_DUST_API_DOMAIN,
-  DUST_EU_URL,
-  DUST_US_URL,
-  WORKOS_CLAIM_NAMESPACE,
-} from "@app/shared/lib/config";
-import type { StorageService } from "@app/shared/services/storage";
 import type {
   ExtensionWorkspaceType,
   Result,
@@ -12,6 +5,13 @@ import type {
   WorkspaceType,
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import {
+  DEFAULT_DUST_API_DOMAIN,
+  DUST_EU_URL,
+  DUST_US_URL,
+  WORKOS_CLAIM_NAMESPACE,
+} from "@extension/shared/lib/config";
+import type { StorageService } from "@extension/shared/services/storage";
 
 export type Organization = {
   id: string;

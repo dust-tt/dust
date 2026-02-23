@@ -1,15 +1,15 @@
-import { ContentMessage } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import type { SpaceType } from "@app/types";
-import { pluralize, removeNulls } from "@app/types";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
+import { ContentMessage } from "@dust-tt/sparkle";
+import { useMemo } from "react";
+import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderRequestedSpacesSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();

@@ -1,6 +1,3 @@
-import _ from "lodash";
-import type { z } from "zod";
-
 import {
   isZendeskNotFoundError,
   ZendeskApiError,
@@ -46,6 +43,9 @@ import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type { z } from "zod";
 
 const RATE_LIMIT_MAX_RETRIES = 5;
 const RATE_LIMIT_TIMEOUT_SECONDS = 60;
@@ -159,7 +159,7 @@ export class ZendeskClient {
       let jsonResponse;
       try {
         jsonResponse = await rawResponse.json();
-      } catch (e) {
+      } catch (_e) {
         statsDClient.increment("zendesk_api.requests.error.count", 1, tags);
         throw new ZendeskApiError(
           "Error parsing Zendesk API response",

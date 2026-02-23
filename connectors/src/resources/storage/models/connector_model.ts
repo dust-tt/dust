@@ -1,13 +1,12 @@
-import type { ConnectorProvider } from "@dust-tt/client";
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 import type {
   ConnectorErrorType,
   ConnectorSyncStatus,
 } from "@connectors/types";
+import type { ConnectorProvider } from "@dust-tt/client";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export interface ConnectorMetadata {
   rateLimited?: { at: Date } | null;

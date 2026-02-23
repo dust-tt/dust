@@ -1,10 +1,9 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import parseArgs from "minimist";
-
 import { runCommand } from "@connectors/lib/cli";
 import type { AdminCommandType } from "@connectors/types";
 import { AdminCommandSchema } from "@connectors/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import parseArgs from "minimist";
 
 const main = async () => {
   // set env var INTERACTIVE=1 to enable interactive mode

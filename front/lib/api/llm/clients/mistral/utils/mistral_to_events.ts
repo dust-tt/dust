@@ -1,12 +1,3 @@
-import type {
-  CompletionEvent,
-  ContentChunk,
-  ToolCall,
-  UsageInfo,
-} from "@mistralai/mistralai/models/components";
-import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
-import compact from "lodash/compact";
-
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
@@ -23,7 +14,15 @@ import {
 } from "@app/lib/api/llm/types/predicates";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type {
+  CompletionEvent,
+  ContentChunk,
+  ToolCall,
+  UsageInfo,
+} from "@mistralai/mistralai/models/components";
+import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
+import compact from "lodash/compact";
 
 export async function* streamLLMEvents({
   completionEvents,

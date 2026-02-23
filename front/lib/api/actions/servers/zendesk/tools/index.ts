@@ -15,7 +15,7 @@ import {
 } from "@app/lib/api/actions/servers/zendesk/rendering";
 import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 function isTrackedError(error: Error): boolean {
   return !(error instanceof ZendeskApiError && error.isInvalidInput);

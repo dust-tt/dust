@@ -1,8 +1,20 @@
+import { useVisualizationRetry } from "@app/hooks/conversations";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
+import datadogLogger from "@app/logger/datadogLogger";
+import type {
+  CommandResultMap,
+  VisualizationRPCCommand,
+  VisualizationRPCRequest,
+} from "@app/types/assistant/visualization";
+import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   Button,
-  cn,
   CodeBlock,
   ContentMessage,
+  cn,
   ExclamationCircleIcon,
   Markdown,
   Sheet,
@@ -12,8 +24,9 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { SetStateAction } from "react";
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -21,18 +34,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { useVisualizationRetry } from "@app/lib/swr/conversations";
-import datadogLogger from "@app/logger/datadogLogger";
-import type {
-  CommandResultMap,
-  VisualizationRPCCommand,
-  VisualizationRPCRequest,
-} from "@app/types";
-import { isVisualizationRPCRequest } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface BaseVisualization {
   complete: boolean;
@@ -346,7 +347,7 @@ export const VisualizationActionIframe = forwardRef<
       params.set("fullHeight", "true");
     }
 
-    return `${process.env.NEXT_PUBLIC_VIZ_URL}/content?${params.toString()}`;
+    return `${config.getClientFacingVizUrl()}/content?${params.toString()}`;
   }, [visualization, isInDrawer]);
 
   return (

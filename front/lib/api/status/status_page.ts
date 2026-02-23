@@ -1,8 +1,11 @@
+import logger from "@app/logger/logger";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import logger from "@app/logger/logger";
+const StatusPageComponentCodec = t.type({
+  name: t.string,
+});
 
 const StatusPageUnresolvedIncident = t.type({
   name: t.string,
@@ -12,11 +15,16 @@ const StatusPageUnresolvedIncident = t.type({
     })
   ),
   shortlink: t.string,
+  components: t.array(StatusPageComponentCodec),
 });
 
 const StatusPageResponseSchema = t.array(StatusPageUnresolvedIncident);
 
-type StatusPageReponseType = t.TypeOf<typeof StatusPageResponseSchema>;
+export type StatusPageIncidentType = t.TypeOf<
+  typeof StatusPageUnresolvedIncident
+>;
+
+type StatusPageReponseType = StatusPageIncidentType[];
 
 export async function getUnresolvedIncidents({
   apiToken,

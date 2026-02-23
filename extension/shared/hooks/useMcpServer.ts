@@ -1,6 +1,6 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { normalizeError } from "@app/shared/lib/utils";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { normalizeError } from "@extension/shared/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**

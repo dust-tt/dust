@@ -1,6 +1,5 @@
-import minimist from "minimist";
-
 import { startServer } from "@connectors/api_server";
+import minimist from "minimist";
 
 const argv = minimist(process.argv.slice(2));
 if (!argv.p) {

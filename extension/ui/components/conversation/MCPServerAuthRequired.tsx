@@ -1,4 +1,3 @@
-import { asDisplayName } from "@app/shared/lib/utils";
 import {
   Button,
   CloudArrowLeftRightIcon,
@@ -18,6 +17,7 @@ import {
   SalesforceLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
+import { asDisplayName } from "@extension/shared/lib/utils";
 import type { ComponentType } from "react";
 
 const PROVIDER_ICONS: Record<string, ComponentType<{ className?: string }>> = {

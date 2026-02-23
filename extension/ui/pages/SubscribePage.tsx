@@ -1,5 +1,3 @@
-import type { ProtectedRouteChildrenProps } from "@app/ui/components/auth/ProtectedRoute";
-import { UserDropdownMenu } from "@app/ui/components/navigation/UserDropdownMenu";
 import {
   BarHeader,
   Button,
@@ -8,6 +6,8 @@ import {
   Page,
   RocketIcon,
 } from "@dust-tt/sparkle";
+import type { ProtectedRouteChildrenProps } from "@extension/ui/components/auth/ProtectedRoute";
+import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
 
 export const SubscribePage = ({

@@ -1,10 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { KeyType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { KeyType } from "@app/types/key";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostKeysResponseBody = {
   key: KeyType;

@@ -1,5 +1,6 @@
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = withDefaultUserAuthRequirements<
   Record<string, never>
 >(async (context) => {
@@ -15,6 +16,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function AssistantsDustRedirect() {
   return null;
 }

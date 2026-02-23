@@ -1,11 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
-import {
-  ScheduleOverlapPolicy,
-  WorkflowNotFoundError,
-} from "@temporalio/client";
-
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
@@ -23,10 +15,17 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import {
+  isScheduleAlreadyRunning,
   makeConfluenceSyncWorkflowId,
   normalizeError,
 } from "@connectors/types";
-import { isScheduleAlreadyRunning } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,

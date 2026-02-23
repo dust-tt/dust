@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomCollection,
@@ -29,6 +27,7 @@ import type {
   ModelId,
 } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { Op } from "sequelize";
 
 export const UNTITLED_COLLECTION_NAME = "Untitled Collection";
 

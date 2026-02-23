@@ -1,6 +1,4 @@
 // All mime types are okay to use from the public API.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import {
   isConversationIncludableFileContentType,
@@ -8,23 +6,25 @@ import {
   isSearchableContentType,
 } from "@app/lib/api/assistant/conversation/content_types";
 import logger from "@app/logger/logger";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type {
-  ContentFragmentInputWithContentNode,
   ContentFragmentType,
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
-  ContentNodeType,
   FileContentFragmentType,
   SupportedContentFragmentType,
-  SupportedFileContentType,
-} from "@app/types";
+} from "@app/types/content_fragment";
 import {
-  DATA_SOURCE_NODE_ID,
   isContentNodeContentFragment,
   isExpiredContentFragment,
   isFileContentFragment,
-} from "@app/types";
+} from "@app/types/content_fragment";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import type { AllSupportedFileContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export type BaseConversationAttachmentType = {
   title: string;
@@ -35,6 +35,7 @@ export type BaseConversationAttachmentType = {
   isIncludable: boolean;
   isSearchable: boolean;
   isQueryable: boolean;
+  isInProjectContext: boolean;
 };
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
@@ -135,6 +136,7 @@ export function getAttachmentFromContentNodeContentFragment(
     isIncludable,
     isQueryable,
     isSearchable,
+    isInProjectContext: false, // For now, content nodes can only be from the conversation, not the project. To be revisited if/when we allow connected data in the projects.
   };
 
   return {
@@ -185,6 +187,7 @@ export function getAttachmentFromFileContentFragment(
     isIncludable,
     isQueryable,
     isSearchable,
+    isInProjectContext: cf.isInProjectContext,
   };
 
   return {
@@ -193,16 +196,18 @@ export function getAttachmentFromFileContentFragment(
   };
 }
 
-export function getAttachmentFromToolOutput({
+export function getAttachmentFromFile({
   fileId,
   contentType,
   title,
   snippet,
+  isInProjectContext,
 }: {
   fileId: string;
-  contentType: SupportedFileContentType;
+  contentType: AllSupportedFileContentType;
   title: string;
   snippet: string | null;
+  isInProjectContext: boolean;
 }): FileAttachmentType {
   const canDoJIT = snippet !== null;
   const isIncludable = isConversationIncludableFileContentType(contentType);
@@ -220,6 +225,7 @@ export function getAttachmentFromToolOutput({
     isIncludable,
     isQueryable,
     isSearchable,
+    isInProjectContext,
   };
 }
 
@@ -245,6 +251,7 @@ export function renderAttachmentXml({
     `type="${attachment.contentType}"`,
     `title="${attachment.title}"`,
     `version="${attachment.contentFragmentVersion}"`,
+    `isInProjectContext="${attachment.isInProjectContext}"`,
     `isIncludable="${attachment.isIncludable}"`,
     `isQueryable="${attachment.isQueryable}"`,
     `isSearchable="${attachment.isSearchable}"`,

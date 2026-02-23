@@ -1,9 +1,9 @@
 import type {
-  ContentFragmentType,
   ConversationType,
   UserMessageType,
-} from "@app/types";
-import { isContentFragmentType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
 
 export function getRelatedContentFragments(
   conversation: ConversationType,

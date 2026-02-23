@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { getGithubCodeDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
 import {
   getCodeRootInternalId,
@@ -17,6 +15,7 @@ import {
 } from "@connectors/lib/models/github";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
 
 const FOLDER_CONCURRENCY = 10;
 

@@ -1,7 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-import { beforeEach, describe, expect, it } from "vitest";
-
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -16,8 +12,11 @@ import {
   seedSkill,
 } from "@app/scripts/seed/factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightWorkspaceType } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { LightWorkspaceType } from "@app/types/user";
+import * as fs from "fs";
+import * as path from "path";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // Load assets from JSON files (same as seed.ts)
 function loadAssets(): Assets {

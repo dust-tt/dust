@@ -1,10 +1,9 @@
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { GongTranscriptModel } from "@connectors/lib/models/gong";
 import type Logger from "@connectors/logger/logger";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 const BATCH_SIZE = 1024;
 

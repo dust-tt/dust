@@ -1,9 +1,9 @@
-import type { RouteChangeMesssage } from "@app/platforms/chrome/messages";
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import type { StoredUser } from "@app/shared/services/auth";
-import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import { classNames, Spinner } from "@dust-tt/sparkle";
+import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import type { StoredUser } from "@extension/shared/services/auth";
+import { useAuth } from "@extension/ui/components/auth/AuthProvider";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";

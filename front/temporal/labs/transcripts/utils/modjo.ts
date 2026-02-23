@@ -1,13 +1,13 @@
-import { either } from "fp-ts";
-import { pipe } from "fp-ts/function";
-import * as t from "io-ts";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
-import { isModjoCredentials, OAuthAPI } from "@app/types";
+import { isModjoCredentials } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { either } from "fp-ts";
+import { pipe } from "fp-ts/function";
+import * as t from "io-ts";
 
 /**
  * Error thrown when Modjo API returns a 401 Unauthorized response,

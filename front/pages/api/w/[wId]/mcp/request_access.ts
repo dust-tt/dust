@@ -1,9 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -13,6 +7,11 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import { isLeft } from "fp-ts/lib/Either";
+import { escape } from "html-escaper";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const PostRequestActionsAccessBodySchema = t.type({
   emailMessage: t.string,

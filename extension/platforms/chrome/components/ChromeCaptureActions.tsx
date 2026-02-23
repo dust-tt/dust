@@ -1,6 +1,6 @@
-import { useCurrentUrlAndDomain } from "@app/platforms/chrome/hooks/useCurrentDomain";
-import type { CaptureActionsProps } from "@app/shared/services/platform";
 import { Button, CameraIcon, DocumentPlusIcon } from "@dust-tt/sparkle";
+import { useCurrentUrlAndDomain } from "@extension/platforms/chrome/hooks/useCurrentDomain";
+import type { CaptureActionsProps } from "@extension/shared/services/platform";
 
 export function ChromeCaptureActions({
   fileUploaderService,

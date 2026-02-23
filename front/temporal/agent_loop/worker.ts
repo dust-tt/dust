@@ -1,13 +1,3 @@
-import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
-import type { Context } from "@temporalio/activity";
-import {
-  makeWorkflowExporter,
-  OpenTelemetryActivityInboundInterceptor,
-  OpenTelemetryActivityOutboundInterceptor,
-} from "@temporalio/interceptors-opentelemetry/lib/worker";
-import { Worker } from "@temporalio/worker";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
 import {
   initializeOpenTelemetryInstrumentation,
   resource,
@@ -21,17 +11,23 @@ import {
   finalizeErroredAgentLoopActivity,
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
-import {
-  logAgentLoopPhaseCompletionActivity,
-  logAgentLoopPhaseStartActivity,
-  logAgentLoopStepCompletionActivity,
-} from "@app/temporal/agent_loop/activities/instrumentation";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
+import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import { isDevelopment, removeNulls } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
+import type { Context } from "@temporalio/activity";
+import {
+  makeWorkflowExporter,
+  OpenTelemetryActivityInboundInterceptor,
+  OpenTelemetryActivityOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/worker";
+import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -54,9 +50,6 @@ export async function runAgentLoopWorker() {
       finalizeSuccessfulAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
-      logAgentLoopPhaseCompletionActivity,
-      logAgentLoopPhaseStartActivity,
-      logAgentLoopStepCompletionActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
@@ -68,6 +61,7 @@ export async function runAgentLoopWorker() {
     // This also bounds the time until an activity may receive a cancellation signal.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
+    maxConcurrentActivityTaskExecutions: 75,
     interceptors: {
       workflowModules: removeNulls([
         !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"
@@ -89,6 +83,7 @@ export async function runAgentLoopWorker() {
     sinks: {
       // @ts-expect-error InMemorySpanExporter type mismatch.
       exporter: makeWorkflowExporter(spanExporter, resource),
+      ...instrumentationSinks,
     },
     bundlerOptions: {
       // Update the webpack config to use aliases from our tsconfig.json. This let us import code

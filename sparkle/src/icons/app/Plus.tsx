@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
+
 const SvgPlus = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -11,7 +12,7 @@ const SvgPlus = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M10.5 10.5V5h3v5.5H19v3h-5.5V19h-3v-5.5H5v-3h5.5Z"
+      d="M10.5 10.5V5h3v5.5H19v3h-5.5V19h-3v-5.5H5v-3z"
     />
   </svg>
 );

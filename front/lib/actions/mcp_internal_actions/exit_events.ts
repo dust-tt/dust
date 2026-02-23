@@ -1,6 +1,3 @@
-import type { MCPApproveExecutionEvent } from "@dust-tt/client";
-import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
-
 import type {
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
@@ -9,11 +6,13 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
   ConversationWithoutContentType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { MCPApproveExecutionEvent } from "@dust-tt/client";
+import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 
 /**
  * Server-only utility for processing exit/pause events from MCP tool outputs.

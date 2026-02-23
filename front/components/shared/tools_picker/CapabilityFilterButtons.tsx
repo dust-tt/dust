@@ -1,6 +1,5 @@
-import { Button } from "@dust-tt/sparkle";
-
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
+import { Button } from "@dust-tt/sparkle";
 
 interface CapabilityFilterButtonsProps {
   filter: CapabilityFilterType;

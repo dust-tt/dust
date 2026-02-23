@@ -69,6 +69,14 @@ interface BooleanArgDefinition extends BaseArgDefinition {
   type: "boolean";
   values?: never;
   variant?: "checkbox" | "toggle";
+  async?: false;
+}
+
+interface AsyncBooleanArgDefinition extends BaseArgDefinition {
+  type: "boolean";
+  values?: never;
+  variant?: "checkbox" | "toggle";
+  async: true;
 }
 
 interface FileArgDefinition extends BaseArgDefinition {
@@ -88,6 +96,7 @@ export type PluginArgDefinition =
   | TextArgDefinition
   | NumberArgDefinition
   | BooleanArgDefinition
+  | AsyncBooleanArgDefinition
   | FileArgDefinition
   | DateArgDefinition;
 

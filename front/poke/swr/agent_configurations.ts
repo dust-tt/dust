@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetAgentConfigurationsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { Fetcher } from "swr";
 
 type PokeAgentConfigurationsProps = PokeConditionalFetchProps & {
   agentsGetView?: "admin_internal" | "archived";
@@ -17,6 +16,7 @@ export function usePokeAgentConfigurations({
   disabled,
   owner,
 }: PokeAgentConfigurationsProps) {
+  const { fetcher } = useFetcher();
   const agentConfigurationsFetcher: Fetcher<PokeGetAgentConfigurationsResponseBody> =
     fetcher;
 

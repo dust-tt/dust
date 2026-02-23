@@ -1,3 +1,4 @@
+import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   Button,
   CloudArrowLeftRightIcon,
@@ -5,8 +6,6 @@ import {
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-
-import type { LabsTranscriptsConfigurationType } from "@app/types";
 
 interface ModjoConnectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;

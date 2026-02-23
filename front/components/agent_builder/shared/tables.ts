@@ -1,18 +1,16 @@
-import { fetcherWithBody } from "@app/lib/swr/swr";
+import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+import type { LightContentNode } from "@app/types/api/public/spaces";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function getTableIdForContentNode(
   dataSource: DataSourceType,
@@ -57,7 +55,8 @@ export function getTableIdForContentNode(
 async function expandFolderToTables(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
-  folderNode: LightContentNode
+  folderNode: LightContentNode,
+  fetcherWithBody: FetcherWithBodyFn
 ): Promise<LightContentNode[]> {
   try {
     const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
@@ -94,11 +93,13 @@ async function expandFolderToTables(
 export async function expandFoldersToTables(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
-  folderNodes: LightContentNode[]
+  folderNodes: LightContentNode[],
+  fetcherWithBody: FetcherWithBodyFn
 ): Promise<LightContentNode[]> {
   const tablesArrays = await concurrentExecutor(
     folderNodes,
-    (folderNode) => expandFolderToTables(owner, dataSourceView, folderNode),
+    (folderNode) =>
+      expandFolderToTables(owner, dataSourceView, folderNode, fetcherWithBody),
     { concurrency: 5 }
   );
 

@@ -1,9 +1,9 @@
-import type { Connection } from "jsforce";
-
 import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { SF_API_VERSION } from "@app/lib/api/actions/servers/salesforce/helpers";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Connection } from "jsforce";
 
 function isValidSalesforceId(id: string): boolean {
   if (!id || typeof id !== "string") {

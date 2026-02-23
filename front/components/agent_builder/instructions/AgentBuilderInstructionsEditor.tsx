@@ -1,4 +1,39 @@
-import { cn, markdownStyles } from "@dust-tt/sparkle";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useCopilotHighlight } from "@app/components/agent_builder/copilot/CopilotHighlightContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
+import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
+import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/InstructionsMenuBar";
+import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
+import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
+import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
+import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import {
+  getActiveSuggestions,
+  getSuggestionBlockRect,
+  InstructionSuggestionExtension,
+} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
+import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import {
+  cleanupPastedHTML,
+  stripHtmlAttributes,
+} from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
+import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { ContainerWithTopBar, cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -7,52 +42,110 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import { useEffect, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useController } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
-import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
-import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
-import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
-import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
-import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
-import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
-import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
-import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
-import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
-import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
-import {
-  getActiveSuggestions,
-  InstructionSuggestionExtension,
-} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
-import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import {
-  cleanupPastedHTML,
-  stripHtmlAttributes,
-} from "@app/components/editor/input_bar/cleanupPastedHTML";
-import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
-import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
-import { escapeUnrecognizedHtmlTags } from "@app/components/editor/lib/escapeUnrecognizedHtmlTags";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { LightAgentConfigurationType } from "@app/types";
+import { BLUR_EVENT_NAME, INSTRUCTIONS_DEBOUNCE_MS } from "./constants";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
-export const BLUR_EVENT_NAME = "agent:instructions:blur";
+/**
+ * Base rendering extensions for the agent instructions editor.
+ * Used by the full editor and by read-only preview pages (e.g. poke).
+ */
+export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
+  return [
+    Markdown,
+    InstructionsDocumentExtension,
+    StarterKit.configure({
+      document: false, // Disabled, we use a custom document to enforce a single instructions root node.
+      heading: false, // Disabled, we use a custom one, see below.
+      hardBreak: false, // Disabled, we use custom EmptyLineParagraphExtension instead.
+      paragraph: {
+        HTMLAttributes: {
+          class: markdownStyles.paragraph(),
+        },
+      },
+      orderedList: {
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      },
+      listItem: false, // Disabled, we use ListItemExtension to fix nested list marker parsing.
+      link: false, // we use custom LinkExtension instead
+      bulletList: {
+        HTMLAttributes: {
+          class: markdownStyles.unorderedList(),
+        },
+      },
+      blockquote: false,
+      horizontalRule: false,
+      strike: false,
+      undoRedo: {
+        depth: 100,
+      },
+      code: false, // Disabled, we use custom CodeExtension to handle escaped backticks.
+      codeBlock: {
+        HTMLAttributes: {
+          class: markdownStyles.codeBlock(),
+        },
+      },
+    }),
+    CodeExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.codeInline(),
+      },
+    }),
+    ListItemExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.list(),
+      },
+    }),
+    InstructionsRootExtension,
+    BlockIdExtension,
+    InstructionBlockExtension,
+    HeadingExtension.configure({
+      levels: [1, 2, 3, 4, 5, 6],
+      HTMLAttributes: { class: "mt-4 mb-3" },
+    }),
+    EmojiExtension,
+    LinkExtension.configure({
+      HTMLAttributes: {
+        class: "text-blue-600 hover:underline hover:text-blue-800",
+      },
+      autolink: false,
+      openOnClick: false,
+    }),
+  ];
+}
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto p-2 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
-    "bg-muted-background dark:bg-muted-background-night",
   ],
   {
     variants: {
+      embedded: {
+        true: [
+          "rounded-b-xl border-0 bg-transparent",
+          "focus:ring-0 focus:outline-none focus:border-0",
+        ],
+        false: [
+          "border rounded-xl",
+          "bg-muted-background dark:bg-muted-background-night",
+          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
+          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
+          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
+        ],
+      },
       error: {
         true: [
           "border-warning-500 dark:border-warning-500-night",
@@ -69,23 +162,29 @@ const editorVariants = cva(
       },
     },
     defaultVariants: {
+      embedded: false,
       error: false,
     },
   }
 );
 
+function ToolbarSlot({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
 interface AgentBuilderInstructionsEditorProps {
   compareVersion?: LightAgentConfigurationType | null;
   isInstructionDiffMode?: boolean;
+  children?: ReactNode;
 }
 
 export function AgentBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
+  children,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasCopilot = hasFeature("agent_builder_copilot");
+  const hasCopilot = useIsAgentBuilderCopilotEnabled();
 
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -102,57 +201,18 @@ export function AgentBuilderInstructionsEditor({
   const initialContentSetRef = useRef(false);
 
   const suggestionsContext = useCopilotSuggestions();
+  const { highlightedSuggestionId } = useCopilotHighlight();
+
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
+  const [lineStyle, setLineStyle] = useState<{
+    top: number;
+    height: number;
+  } | null>(null);
 
   const extensions = useMemo(() => {
     const extensions: Extensions = [
-      Markdown,
-      InstructionsDocumentExtension,
-      StarterKit.configure({
-        document: false, // Disabled, we use a custom document to enforce a single instructions root node.
-        heading: false, // Disabled, we use a custom one, see below.
-        hardBreak: false, // Disabled, we use custom EmptyLineParagraphExtension instead.
-        paragraph: {
-          HTMLAttributes: {
-            class: markdownStyles.paragraph(),
-          },
-        },
-        orderedList: {
-          HTMLAttributes: {
-            class: markdownStyles.orderedList(),
-          },
-        },
-        listItem: {
-          HTMLAttributes: {
-            class: markdownStyles.list(),
-          },
-        },
-        link: false, // we use custom LinkExtension instead
-        bulletList: {
-          HTMLAttributes: {
-            class: markdownStyles.unorderedList(),
-          },
-        },
-        blockquote: false,
-        horizontalRule: false,
-        strike: false,
-        undoRedo: {
-          depth: 100,
-        },
-        code: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-        codeBlock: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-      }),
-      InstructionsRootExtension,
+      ...buildAgentInstructionsReadOnlyExtensions(),
       KeyboardShortcutsExtension,
-      BlockIdExtension,
-      InstructionBlockExtension,
       AgentInstructionDiffExtension,
       InstructionSuggestionExtension,
       BlockInsertExtension.configure({
@@ -182,23 +242,6 @@ export function AgentBuilderInstructionsEditor({
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
-      HeadingExtension.configure({
-        levels: [1, 2, 3, 4, 5, 6],
-        HTMLAttributes: {
-          class: "mt-4 mb-3",
-        },
-      }),
-      EmojiExtension,
-      LinkExtension.configure({
-        HTMLAttributes: {
-          class: "text-blue-600 hover:underline hover:text-blue-800",
-        },
-        autolink: false,
-        openOnClick: false,
-      }),
-    ];
-
-    extensions.push(
       MentionExtension.configure({
         owner,
         HTMLAttributes: {
@@ -214,8 +257,8 @@ export function AgentBuilderInstructionsEditor({
             users: true,
           },
         }),
-      })
-    );
+      }),
+    ];
 
     return extensions;
   }, [owner, suggestionHandler]);
@@ -229,7 +272,7 @@ export function AgentBuilderInstructionsEditor({
           // Strip style/class/id attributes to store clean HTML structure.
           instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
         }
-      }, 250),
+      }, INSTRUCTIONS_DEBOUNCE_MS),
     [field, instructionsHtmlField, isInstructionDiffMode]
   );
 
@@ -263,6 +306,7 @@ export function AgentBuilderInstructionsEditor({
   // Set initial content after editor is created, then focus
   // This is separated from useEditor() to avoid Safari race conditions
   // Only runs once when editor is first created
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!editor || editor.isDestroyed || initialContentSetRef.current) {
       return;
@@ -291,13 +335,10 @@ export function AgentBuilderInstructionsEditor({
           emitUpdate: false,
         });
       } else if (field.value) {
-        editor.commands.setContent(
-          escapeUnrecognizedHtmlTags(field.value, editor.schema),
-          {
-            emitUpdate: false,
-            contentType: "markdown",
-          }
-        );
+        editor.commands.setContent(preprocessMarkdownForEditor(field.value), {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
       }
 
       // Then focus after content is set
@@ -333,7 +374,10 @@ export function AgentBuilderInstructionsEditor({
     editor.setOptions({
       editorProps: {
         attributes: {
-          class: editorVariants({ error: displayError }),
+          class: editorVariants({
+            embedded: true,
+            error: displayError,
+          }),
         },
         // Preserve the transformPastedHTML handler when updating editorProps
         transformPastedHTML(html: string) {
@@ -356,6 +400,13 @@ export function AgentBuilderInstructionsEditor({
     if (editor.isFocused) {
       return;
     }
+
+    // Skip while the editor is in diff mode — the diff mode effect handles
+    // content sync after exiting diff to guarantee correct ordering.
+    if (editor.storage.agentInstructionDiff?.isDiffMode) {
+      return;
+    }
+
     const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
       // Use requestAnimationFrame to ensure DOM is ready (Safari fix).
@@ -369,7 +420,7 @@ export function AgentBuilderInstructionsEditor({
             });
           } else {
             editor.commands.setContent(
-              escapeUnrecognizedHtmlTags(field.value, editor.schema),
+              preprocessMarkdownForEditor(field.value),
               {
                 emitUpdate: false,
                 contentType: "markdown",
@@ -381,41 +432,169 @@ export function AgentBuilderInstructionsEditor({
     }
   }, [editor, field.value, instructionsHtmlField.value]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;
     }
 
-    if (isInstructionDiffMode && compareVersion) {
-      if (editor.storage.agentInstructionDiff?.isDiffMode) {
-        editor.commands.exitDiff();
+    // Use requestAnimationFrame to defer editor commands outside the React
+    // lifecycle. Tiptap internally calls flushSync when processing commands,
+    // which is not allowed inside useEffect.
+    requestAnimationFrame(() => {
+      if (!editor || editor.isDestroyed) {
+        return;
       }
 
-      const currentText = editor.getMarkdown();
-      const compareText = compareVersion.instructions ?? "";
+      if (isInstructionDiffMode && compareVersion) {
+        if (editor.storage.agentInstructionDiff?.isDiffMode) {
+          editor.commands.exitDiff();
+        }
 
-      editor.commands.applyDiff(compareText, currentText);
-      editor.setEditable(false);
-    } else if (!isInstructionDiffMode && editor) {
-      if (editor.storage.agentInstructionDiff?.isDiffMode) {
-        editor.commands.exitDiff();
-        editor.setEditable(true);
+        const currentText = editor.getMarkdown();
+        const compareText = compareVersion.instructions ?? "";
+
+        editor.commands.applyDiff(compareText, currentText);
+        editor.setEditable(false);
+      } else if (!isInstructionDiffMode) {
+        if (editor.storage.agentInstructionDiff?.isDiffMode) {
+          editor.commands.exitDiff();
+          editor.setEditable(true);
+
+          // After exiting diff, sync editor content with the current form
+          // value. The regular content sync effect skips while the editor is in
+          // diff mode, so we handle content restoration here.
+          if (field.value !== undefined) {
+            const currentContent = editor.getMarkdown();
+            if (currentContent !== field.value) {
+              editor.commands.setContent(
+                preprocessMarkdownForEditor(field.value),
+                { emitUpdate: false, contentType: "markdown" }
+              );
+              // Regenerate the HTML field with fresh block IDs.
+              instructionsHtmlField.onChange(
+                stripHtmlAttributes(editor.getHTML())
+              );
+            }
+          }
+        }
       }
-    }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstructionDiffMode, compareVersion, editor]);
+
+  const updateLineStyle = useCallback(() => {
+    if (!highlightedSuggestionId || !editorWrapperRef.current || !editor) {
+      setLineStyle(null);
+      return;
+    }
+
+    const blockRect = getSuggestionBlockRect(editor, highlightedSuggestionId);
+    if (!blockRect) {
+      setLineStyle(null);
+      return;
+    }
+
+    const formRect = editorWrapperRef.current.getBoundingClientRect();
+    const clampedTop = Math.max(blockRect.top, formRect.top);
+    const clampedBottom = Math.min(blockRect.bottom, formRect.bottom);
+
+    if (clampedTop >= clampedBottom) {
+      setLineStyle(null);
+      return;
+    }
+
+    setLineStyle({
+      top: clampedTop - formRect.top,
+      height: clampedBottom - clampedTop,
+    });
+  }, [highlightedSuggestionId, editor]);
+
+  useLayoutEffect(() => {
+    updateLineStyle();
+  }, [updateLineStyle]);
+
+  useEffect(() => {
+    if (!highlightedSuggestionId || !editor) {
+      return;
+    }
+    const scrollContainer = editor.view.dom.parentElement;
+    scrollContainer?.addEventListener("scroll", updateLineStyle);
+    window.addEventListener("resize", updateLineStyle);
+    return () => {
+      scrollContainer?.removeEventListener("scroll", updateLineStyle);
+      window.removeEventListener("resize", updateLineStyle);
+    };
+  }, [highlightedSuggestionId, editor, updateLineStyle]);
+
+  const toolbarExtra =
+    React.Children.toArray(children).find(
+      (child): child is React.ReactElement<{ children: ReactNode }> =>
+        React.isValidElement(child) && child.type === ToolbarSlot
+    )?.props?.children ?? null;
+
+  const pendingInstructionSuggestions = suggestionsContext
+    ? suggestionsContext
+        .getPendingSuggestions()
+        .filter((s) => s.kind === "instructions")
+    : [];
+  const hasPendingInstructionSuggestions =
+    pendingInstructionSuggestions.length > 0;
+
+  const handleAcceptAll = () => {
+    void suggestionsContext.acceptAllInstructionSuggestions();
+  };
+  const handleRejectAll = () => {
+    void suggestionsContext.rejectAllInstructionSuggestions();
+  };
+
+  const editorContent = (
+    <div
+      ref={editorWrapperRef}
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px"
+    >
+      {hasCopilot && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1 w-0.5 rounded-full bg-highlight-300 transition-all duration-150 dark:bg-highlight-300-night"
+          style={
+            lineStyle
+              ? { top: lineStyle.top, height: lineStyle.height, opacity: 1 }
+              : { top: 0, height: 0, opacity: 0 }
+          }
+        />
+      )}
+      <EditorContent editor={editor} />
+      {editor && hasCopilot && (
+        <SuggestionBubbleMenu editor={editor} containerRef={editorWrapperRef} />
+      )}
+      {!hasCopilot && (
+        // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
+        <div className="absolute bottom-2 right-2">
+          <InstructionTipsPopover owner={owner} />
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex h-full flex-col gap-1">
-      <div className="relative p-px">
-        <EditorContent editor={editor} />
-        {editor && <SuggestionBubbleMenu editor={editor} />}
-        {!hasCopilot && (
-          // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
-          <div className="absolute bottom-2 right-2">
-            <InstructionTipsPopover owner={owner} />
-          </div>
-        )}
-      </div>
+      <ContainerWithTopBar
+        error={displayError}
+        topBar={
+          <InstructionsMenuBar
+            editor={editor}
+            onAcceptAll={handleAcceptAll}
+            onRejectAll={handleRejectAll}
+            showSuggestionActions={
+              hasCopilot && hasPendingInstructionSuggestions
+            }
+            toolbarExtra={toolbarExtra}
+          />
+        }
+      >
+        {editorContent}
+      </ContainerWithTopBar>
       {editor && (
         <CharacterCountDisplay
           count={currentCharacterCount}
@@ -426,6 +605,8 @@ export function AgentBuilderInstructionsEditor({
     </div>
   );
 }
+
+AgentBuilderInstructionsEditor.ToolbarSlot = ToolbarSlot;
 
 interface CharacterCountDisplayProps {
   count: number;

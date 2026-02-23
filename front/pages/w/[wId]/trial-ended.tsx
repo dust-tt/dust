@@ -1,11 +1,11 @@
-import type { ReactElement } from "react";
-
 import { TrialEndedPage } from "@app/components/pages/onboarding/TrialEndedPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsPaywallWhitelistedForAdmin } from "@app/lib/auth/appServerSideProps";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { ReactElement } from "react";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps =
   appGetServerSidePropsPaywallWhitelistedForAdmin;
 

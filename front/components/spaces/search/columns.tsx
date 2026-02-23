@@ -1,9 +1,8 @@
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { DataSourceViewContentNode } from "@app/types";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;

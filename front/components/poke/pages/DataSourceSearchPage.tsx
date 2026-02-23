@@ -1,6 +1,3 @@
-import { Input, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -8,7 +5,9 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
-import type { DocumentType } from "@app/types";
+import type { DocumentType } from "@app/types/document";
+import { Input, Spinner } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 export function DataSourceSearchPage() {
   const owner = useWorkspace();

@@ -7,7 +7,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 async function deleteUnmanagedDataSourceViewsForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,

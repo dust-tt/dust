@@ -1,10 +1,11 @@
-import { cva } from "class-variance-authority";
-import React, { useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Tooltip } from "@sparkle/components";
 import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { useState } from "react";
 
 export const AVATAR_SIZES = [
   "xxs",
@@ -27,9 +28,9 @@ const avatarVariants = cva(
     variants: {
       size: {
         xxs: "s-h-5 s-w-5",
-        xs: "s-h-6 s-w-6",
-        sm: "s-h-8 s-w-8",
-        md: "s-h-10 s-w-10",
+        xs: "s-h-7 s-w-7",
+        sm: "s-h-9 s-w-9",
+        md: "s-h-12 s-w-12",
         lg: "s-h-16 s-w-16",
         xl: "s-h-20 s-w-20",
         "2xl": "s-h-36 s-w-36",
@@ -156,7 +157,7 @@ const getTextVariant = (name: string) => {
   return txtColors[Math.abs(hash) % txtColors.length];
 };
 
-interface AvatarProps {
+export interface AvatarProps {
   size?: AvatarSizeType;
   name?: string;
   emoji?: string;
@@ -258,7 +259,7 @@ export function Avatar({
 const AVATAR_STACK_SIZES = ["xs", "sm", "md"] as const;
 type AvatarStackSizeType = (typeof AVATAR_STACK_SIZES)[number];
 
-interface AvatarStackProps {
+export interface AvatarStackProps {
   avatars: AvatarProps[];
   nbVisibleItems?: number;
   size?: AvatarStackSizeType;

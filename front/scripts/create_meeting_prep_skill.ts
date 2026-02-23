@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -18,8 +16,9 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
-import { AGENT_GROUP_PREFIX } from "@app/types";
+import { AGENT_GROUP_PREFIX } from "@app/types/groups";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Transaction } from "sequelize";
 
 const CORE_SERVERS: readonly InternalMCPServerNameType[] = [
   "web_search_&_browse",

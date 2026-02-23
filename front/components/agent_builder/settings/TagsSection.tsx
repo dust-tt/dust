@@ -1,6 +1,3 @@
-import { useMemo, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { TagsSelector } from "@app/components/agent_builder/settings/TagsSelector";
@@ -8,14 +5,14 @@ import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTags } from "@app/lib/swr/tags";
-import type {
-  APIError,
-  BuilderSuggestionsType,
-  Result,
-  WorkspaceType,
-} from "@app/types";
-import { isBuilder } from "@app/types";
+import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
 import type { TagType } from "@app/types/tag";
+import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
+import { useMemo, useState } from "react";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 const MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS = 20;
 
@@ -114,6 +111,7 @@ export function TagsSection() {
         }
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (err) {
       sendNotification({
         title: "Could not get tag suggestions.",

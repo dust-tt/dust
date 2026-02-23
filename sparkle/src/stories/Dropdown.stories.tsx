@@ -997,7 +997,17 @@ export const WithTooltips: Story = {
               >
                 <DropdownMenuItem icon={AttachmentIcon} label="Add Knowledge" />
               </DropdownTooltipTrigger>
-              <DropdownMenuItem label="Save Draft" />
+              <DropdownTooltipTrigger
+                description="This feature is disabled because you need to configure settings first."
+                side="right"
+                sideOffset={8}
+              >
+                <DropdownMenuItem
+                  label="Save Draft"
+                  icon={CloudArrowDownIcon}
+                  disabled
+                />
+              </DropdownTooltipTrigger>
             </DropdownMenuContent>
           </DropdownMenu>
 

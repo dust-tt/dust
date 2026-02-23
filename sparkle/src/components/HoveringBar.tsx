@@ -1,9 +1,8 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 const hoveringBarVariants = cva(
   cn(

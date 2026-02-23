@@ -1,21 +1,21 @@
-import { beforeEach, describe, expect, it } from "vitest";
-
+import { loadAllModels } from "@app/admin/db";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  GroupSpaceEditorResource,
-  GroupSpaceMemberResource,
-} from "@app/lib/resources/group_space_resource";
+import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -106,6 +106,9 @@ describe("SpaceResource", () => {
         if (result.isErr()) {
           expect(result.error).toBeInstanceOf(DustError);
           expect(result.error.code).toBe("unauthorized");
+          expect(result.error.message).toBe(
+            "You do not have permission to update space permissions."
+          );
         }
       });
 
@@ -198,7 +201,7 @@ describe("SpaceResource", () => {
 
       it("should restore suspended members when switching from group to manual mode", async () => {
         // Add members first
-        await regularGroup.addMembers(adminAuth, {
+        await regularGroup.dangerouslyAddMembers(adminAuth, {
           users: [user1.toJSON(), user2.toJSON()],
         });
 
@@ -403,7 +406,7 @@ describe("SpaceResource", () => {
 
       it("should suspend active members when switching from manual to group mode", async () => {
         // Add members first
-        await regularGroup.addMembers(adminAuth, {
+        await regularGroup.dangerouslyAddMembers(adminAuth, {
           users: [user1.toJSON(), user2.toJSON()],
         });
 
@@ -632,7 +635,7 @@ describe("SpaceResource", () => {
       });
     });
 
-    describe("project space editor and member permissions", () => {
+    describe("project editor and member permissions", () => {
       let projectSpace: SpaceResource;
       let projectMemberGroup: GroupResource;
       let projectEditorGroup: GroupResource;
@@ -691,7 +694,7 @@ describe("SpaceResource", () => {
 
         it("should not allow simple members to update space permissions", async () => {
           // Add user as a simple member
-          await projectMemberGroup.addMember(adminAuth, {
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
             user: memberUser.toJSON(),
           });
 
@@ -752,7 +755,7 @@ describe("SpaceResource", () => {
 
         it("should allow editors to manage members through updatePermissions", async () => {
           // Add editor to the editor group
-          await projectEditorGroup.addMember(adminAuth, {
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
             user: editorUser.toJSON(),
           });
 
@@ -829,8 +832,9 @@ describe("SpaceResource", () => {
 
         it("should not allow simple members to update space permissions", async () => {
           // Add user as a simple member to the provisioned group
-          await provisionedMemberGroup.addMember(adminAuth, {
+          await provisionedMemberGroup.dangerouslyAddMember(adminAuth, {
             user: memberUser.toJSON(),
+            allowProvisionnedGroups: true,
           });
 
           // Create an authenticator for the member user
@@ -874,6 +878,7 @@ describe("SpaceResource", () => {
           );
 
           // Non-member should NOT be able to update space permissions
+          // Authorization check happens before group manipulation, so we get unauthorized
           const result = await reloadedSpace!.updatePermissions(nonMemberAuth, {
             name: "Test Project Space",
             isRestricted: true,
@@ -888,10 +893,11 @@ describe("SpaceResource", () => {
           }
         });
 
-        it("should allow editors to manage members through updatePermissions", async () => {
+        it("should allow editors to manage members groups through updatePermissions", async () => {
           // Add editor to the provisioned editor group
-          await provisionedEditorGroup.addMember(adminAuth, {
+          await provisionedEditorGroup.dangerouslyAddMember(adminAuth, {
             user: editorUser.toJSON(),
+            allowProvisionnedGroups: true,
           });
 
           // Create another provisioned group for the new members
@@ -902,8 +908,9 @@ describe("SpaceResource", () => {
           });
 
           // Add members to the new provisioned group
-          await newProvisionedMemberGroup.addMembers(adminAuth, {
+          await newProvisionedMemberGroup.dangerouslyAddMembers(adminAuth, {
             users: [user1.toJSON(), user2.toJSON(), editorUser.toJSON()],
+            allowProvisionnedGroups: true,
           });
 
           // Create an authenticator for the editor user
@@ -1036,20 +1043,6 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === projectSpace.id)).toBe(false);
     });
 
-    it("should include public spaces", async () => {
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
-
-      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
-    });
-
     it("should include deleted spaces when includeDeleted is true", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       await regularSpace.delete(adminAuth, { hardDelete: false });
@@ -1075,14 +1068,6 @@ describe("SpaceResource", () => {
     it("should include all space types when all options are true", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       const projectSpace = await SpaceFactory.project(workspace);
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
 
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
         includeConversationsSpace: true,
@@ -1095,10 +1080,8 @@ describe("SpaceResource", () => {
       expect(spaceKinds).toContain("conversations");
       expect(spaceKinds).toContain("regular");
       expect(spaceKinds).toContain("project");
-      expect(spaceKinds).toContain("public");
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
       expect(spaces.some((s) => s.id === projectSpace.id)).toBe(true);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
     });
   });
 
@@ -1217,7 +1200,7 @@ describe("SpaceResource", () => {
       expect(userSpaces.some((s) => s.id === restrictedSpace.id)).toBe(false);
 
       // Add user to the group
-      await restrictedGroup.addMembers(adminAuth, {
+      await restrictedGroup.dangerouslyAddMembers(adminAuth, {
         users: [user1.toJSON()],
       });
 
@@ -1245,7 +1228,7 @@ describe("SpaceResource", () => {
 
       // Add user to the project group
       if (projectGroup) {
-        await projectGroup.addMembers(adminAuth, {
+        await projectGroup.dangerouslyAddMembers(adminAuth, {
           users: [user1.toJSON()],
         });
 
@@ -1259,20 +1242,6 @@ describe("SpaceResource", () => {
           await SpaceResource.listWorkspaceSpacesAsMember(user1Auth);
         expect(user1Spaces.some((s) => s.id === projectSpace.id)).toBe(true);
       }
-    });
-
-    it("should return public spaces for all workspace members", async () => {
-      const publicSpace = await SpaceResource.makeNew(
-        {
-          name: "Public Space",
-          kind: "public",
-          workspaceId: workspace.id,
-        },
-        { members: [] }
-      );
-
-      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
-      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
     });
 
     it("should return admin's spaces correctly", async () => {
@@ -1376,23 +1345,6 @@ describe("SpaceResource", () => {
       });
     });
 
-    describe("public space", () => {
-      it("should return true for all workspace members", async () => {
-        const publicSpace = await SpaceResource.makeNew(
-          {
-            name: "Public Space",
-            kind: "public",
-            workspaceId: workspace.id,
-          },
-          { members: [] }
-        );
-
-        expect(publicSpace.isMember(adminAuth)).toBe(true);
-        expect(publicSpace.isMember(userAuth)).toBe(true);
-        expect(publicSpace.isMember(nonMemberAuth)).toBe(true);
-      });
-    });
-
     describe("regular space - open (with global group)", () => {
       it("should return true for all workspace members", async () => {
         regularGroup = await GroupResource.makeNew({
@@ -1437,7 +1389,7 @@ describe("SpaceResource", () => {
         expect(restrictedSpace.isMember(nonMemberAuth)).toBe(false);
 
         // Add user1 to the group
-        await restrictedGroup.addMembers(adminAuth, {
+        await restrictedGroup.dangerouslyAddMembers(adminAuth, {
           users: [user1.toJSON()],
         });
 
@@ -1503,7 +1455,7 @@ describe("SpaceResource", () => {
         expect(projectSpace.isMember(nonMemberAuth)).toBe(false);
 
         // Add user1 to the group
-        await restrictedGroup.addMembers(adminAuth, {
+        await restrictedGroup.dangerouslyAddMembers(adminAuth, {
           users: [user1.toJSON()],
         });
 
@@ -1522,6 +1474,189 @@ describe("SpaceResource", () => {
         expect(updatedSpace?.isMember(user1Auth)).toBe(true);
         expect(updatedSpace?.isMember(nonMemberAuth)).toBe(false);
       });
+    });
+  });
+});
+
+describe("searchProjectsByNamePaginated", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let globalGroup: GroupResource;
+  let systemGroup: GroupResource;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const { globalGroup: gGroup, systemGroup: sGroup } =
+      await GroupFactory.defaults(workspace);
+    globalGroup = gGroup;
+    systemGroup = sGroup;
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+      globalGroup,
+      systemGroup,
+    });
+  });
+
+  it("excludes project spaces user cannot read", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const permittedSpace = await SpaceFactory.project(workspace);
+    const unpermittedSpace = await SpaceFactory.project(workspace);
+
+    await permittedSpace.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 20, orderDirection: "asc" },
+    });
+
+    expect(result.spaces.some((s) => s.id === permittedSpace.id)).toBe(true);
+    expect(result.spaces.some((s) => s.id === unpermittedSpace.id)).toBe(false);
+  });
+
+  it("returns empty array when user has no readable project spaces", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    await SpaceFactory.project(workspace);
+    await SpaceFactory.project(workspace);
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 20, orderDirection: "asc" },
+    });
+
+    expect(result.spaces).toHaveLength(0);
+  });
+
+  it("filters by query within readable spaces only", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const permittedSpace1 = await SpaceFactory.project(workspace);
+    await permittedSpace1.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const permittedSpace2 = await SpaceFactory.project(workspace);
+    await permittedSpace2.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const unpermittedSpace = await SpaceFactory.project(workspace);
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      query: "project",
+      pagination: { limit: 20, orderDirection: "asc" },
+    });
+
+    expect(result.spaces.some((s) => s.id === permittedSpace1.id)).toBe(true);
+    expect(result.spaces.some((s) => s.id === permittedSpace2.id)).toBe(true);
+    expect(result.spaces.some((s) => s.id === unpermittedSpace.id)).toBe(false);
+  });
+});
+
+// List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
+// These are Sequelize model names (modelName property), not TypeScript class names
+const KNOWN_SPACE_RELATED_MODELS = [
+  "agent_project_configuration",
+  "app",
+  "conversation",
+  "data_source",
+  "data_source_view",
+  "group_vaults",
+  "mcp_server_view",
+  "user_project_digest",
+  "project_metadata",
+  "webhook_sources_view",
+];
+
+describe("SpaceResource cleanup on delete", () => {
+  describe("model relationship detection", () => {
+    /**
+     * This test ensures that when a space is deleted, all related resources are properly cleaned up.
+     * If you add a new model with a `vaultId` or `spaceId` foreign key, you MUST:
+     * 1. Add it to the KNOWN_SPACE_RELATED_MODELS list above
+     * 2. Add proper cleanup logic in `scrubSpaceActivity`
+     */
+
+    it("should detect any new models with space relationships", async () => {
+      loadAllModels();
+      const models = frontSequelize.models;
+      const modelsWithSpaceFK: string[] = [];
+
+      // Scan all models for foreign keys pointing to the spaces table.
+      const spaceTableName = SpaceModel.getTableName();
+      Object.entries(models).forEach(([modelName, model]) => {
+        const attributes = model.getAttributes();
+
+        const hasSpaceFK = Object.values(attributes).some((attr) => {
+          const ref = (attr as { references?: { model?: string } }).references;
+          return ref?.model === spaceTableName;
+        });
+
+        if (hasSpaceFK) {
+          modelsWithSpaceFK.push(modelName);
+        }
+      });
+
+      // Sort for consistent comparison
+      modelsWithSpaceFK.sort();
+      const knownModels = [...KNOWN_SPACE_RELATED_MODELS].sort();
+
+      if (modelsWithSpaceFK.length !== knownModels.length) {
+        const missing = modelsWithSpaceFK.filter(
+          (m) => !knownModels.includes(m)
+        );
+        const extra = knownModels.filter((m) => !modelsWithSpaceFK.includes(m));
+
+        let errorMessage = "Space-related models have changed!\n\n";
+
+        if (missing.length > 0) {
+          errorMessage += `New models detected with space relationships:\n${missing.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "You MUST:\n" +
+            "1. Add these models to KNOWN_SPACE_RELATED_MODELS in space_resource_cleanup.test.ts\n" +
+            "2. Add proper cleanup logic in `scrubSpaceActivity`\n";
+        }
+
+        if (extra.length > 0) {
+          errorMessage += `Models removed or renamed:\n${extra.map((m) => `  - ${m}`).join("\n")}\n\n`;
+          errorMessage +=
+            "Remove these from KNOWN_SPACE_RELATED_MODELS in space_resource_cleanup.test.ts\n";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      // Verify they match exactly
+      expect(modelsWithSpaceFK).toEqual(knownModels);
     });
   });
 });

@@ -1,5 +1,5 @@
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { ConversationMetadata } from "@app/types";
+import type { ConversationMetadata } from "@app/types/assistant/conversation";
 
 // TODO(copilot 2026-01-23): move all copilot mcp servers and these helpers in dedicated folder
 export interface CopilotMetadata {
@@ -20,6 +20,10 @@ function extractCopilotMetadata(
     };
   }
   return null;
+}
+
+export function isCopilotConversation(metadata: ConversationMetadata): boolean {
+  return extractCopilotMetadata(metadata) !== null;
 }
 
 /**

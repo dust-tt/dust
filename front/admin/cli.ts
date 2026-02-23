@@ -1,7 +1,3 @@
-import fs from "fs/promises";
-import parseArgs from "minimist";
-import path from "path";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
@@ -11,6 +7,10 @@ import {
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
+import {
+  FULL_WORKSPACE_KILL_SWITCH_VALUE,
+  KILL_SWITCH_METADATA_KEY,
+} from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -38,8 +38,13 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import { ConnectorsAPI, isRoleType, removeNulls } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { isRoleType } from "@app/types/user";
+import fs from "fs/promises";
+import parseArgs from "minimist";
+import path from "path";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -183,10 +188,62 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
 
+    case "block": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const metadata = {
+        ...(w.metadata ?? {}),
+        [KILL_SWITCH_METADATA_KEY]: FULL_WORKSPACE_KILL_SWITCH_VALUE,
+      };
+
+      const updateResult = await WorkspaceResource.updateMetadata(
+        w.id,
+        metadata
+      );
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+
+      logger.info({ wId: w.sId }, "Workspace blocked");
+      return;
+    }
+
+    case "unblock": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const w = await WorkspaceResource.fetchById(args.wId);
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const metadata = { ...(w.metadata ?? {}) };
+      delete metadata[KILL_SWITCH_METADATA_KEY];
+
+      const updateResult = await WorkspaceResource.updateMetadata(
+        w.id,
+        metadata
+      );
+      if (updateResult.isErr()) {
+        throw new Error(updateResult.error.message);
+      }
+
+      logger.info({ wId: w.sId }, "Workspace unblocked");
+      return;
+    }
+
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `create`, `upgrade`, `downgrade`, `pause-connectors`, `unpause-connectors`"
+        "Possible values: `create`, `upgrade`, `downgrade`, `pause-connectors`, `unpause-connectors`, `block`, `unblock`"
       );
   }
 };

@@ -1,5 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import type {
   DatabaseSchemaResourceType,
   ExampleRowsResourceType,
@@ -10,6 +8,7 @@ import {
   getGenericDialectInstructions,
   SALESFORCE_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/dialect_instructions";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export function getSchemaContent(schemas: { dbml: string }[]): {
   type: "resource";

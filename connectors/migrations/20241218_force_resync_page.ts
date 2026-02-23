@@ -1,9 +1,8 @@
-import { makeScript } from "scripts/helpers";
-
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { upsertPageWorkflow } from "@connectors/connectors/notion/temporal/workflows/admins";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { connectorsSequelize } from "@connectors/resources/storage";
+import { makeScript } from "scripts/helpers";
 
 makeScript({}, async (execute, logger) => {
   const client = await getTemporalClient();

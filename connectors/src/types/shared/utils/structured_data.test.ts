@@ -1,9 +1,7 @@
 import * as Path from "node:path";
-
+import { decodeBuffer } from "@connectors/connectors/shared/file";
 import fs from "fs";
 import { describe, expect, it } from "vitest";
-
-import { decodeBuffer } from "@connectors/connectors/shared/file";
 
 import { parseAndStringifyCsv } from "./structured_data";
 

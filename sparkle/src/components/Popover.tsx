@@ -1,8 +1,7 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 import { useEffect, useState } from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 const PopoverRoot = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;

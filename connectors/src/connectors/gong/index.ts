@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
 import {
@@ -24,6 +21,7 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
 import {
   createSchedule,
   deleteSchedule,
@@ -35,6 +33,8 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const logger = mainLogger.child({ provider: "gong" });
 
@@ -123,6 +123,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           },
         ],
         taskQueue: QUEUE_NAME,
+        typedSearchAttributes: [
+          {
+            key: connectorIdSearchAttribute,
+            value: connector.id,
+          },
+        ],
+        memo: {
+          connectorId: connector.id,
+        },
       },
       scheduleId: makeGongSyncScheduleId(connector),
       policies: SCHEDULE_POLICIES,

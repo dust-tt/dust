@@ -1,3 +1,9 @@
+import { getPriceAsString } from "@app/lib/client/subscription";
+import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import { usePurchaseCredits } from "@app/lib/swr/credits";
+import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
   Checkbox,
@@ -19,13 +25,6 @@ import {
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
-
-import { getPriceAsString } from "@app/lib/client/subscription";
-import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
-import { usePurchaseCredits } from "@app/lib/swr/credits";
-import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { StripePricingData } from "@app/types/stripe/pricing";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 

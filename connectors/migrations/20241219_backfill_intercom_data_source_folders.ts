@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import {
   getHelpCenterCollectionInternalId,
   getParentIdsForCollection,
@@ -17,6 +15,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
 
 async function createFolderNodes(execute: boolean) {
   const connectors = await ConnectorResource.listByType("intercom", {});

@@ -1,3 +1,5 @@
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 import type {
   ForeignKey,
   InitOptions,
@@ -7,9 +9,6 @@ import type {
   NonAttribute,
 } from "sequelize";
 import { DataTypes } from "sequelize";
-
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 
 export class ConnectorBaseModel<M extends Model> extends BaseModel<M> {
   declare connectorId: ForeignKey<ConnectorModel["id"]>;

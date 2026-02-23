@@ -40,4 +40,7 @@ else
 fi
 
 TARGET_ENCODED=$(echo "$TARGET" | sed 's/:/%3A/g; s/\./%2E/g')
-open "dustcat://notify?target=${TARGET_ENCODED}&title=Codex+ready"
+# Only notify if DustHiveCat is already running (don't relaunch after quit)
+if pgrep -x DustHiveCat > /dev/null 2>&1; then
+    open -g "dustcat://notify?target=${TARGET_ENCODED}&title=Codex+ready"
+fi

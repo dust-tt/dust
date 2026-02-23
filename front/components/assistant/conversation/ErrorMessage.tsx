@@ -1,3 +1,6 @@
+import { useSubmitFunction } from "@app/lib/client/utils";
+import type { GenericErrorContent } from "@app/types/assistant/agent";
+import { isAgentErrorCategory } from "@app/types/assistant/agent";
 import {
   ArrowPathIcon,
   Button,
@@ -7,10 +10,6 @@ import {
   InformationCircleIcon,
   Popover,
 } from "@dust-tt/sparkle";
-
-import { useSubmitFunction } from "@app/lib/client/utils";
-import type { GenericErrorContent } from "@app/types";
-import { isAgentErrorCategory } from "@app/types";
 
 interface ErrorMessageProps {
   error: GenericErrorContent;

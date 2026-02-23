@@ -1,9 +1,3 @@
-import { getConnectorProviderLogoWithFallback } from "@app/shared/lib/connector_providers";
-import {
-  getIcon,
-  isCustomResourceIconType,
-  isInternalAllowedIcon,
-} from "@app/shared/lib/resources_icons";
 import type { ContentFragmentType } from "@dust-tt/client";
 import {
   Citation,
@@ -21,6 +15,12 @@ import {
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { getConnectorProviderLogoWithFallback } from "@extension/shared/lib/connector_providers";
+import {
+  getIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@extension/shared/lib/resources_icons";
 import type React from "react";
 
 export type FileAttachment = {

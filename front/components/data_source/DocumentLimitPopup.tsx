@@ -1,3 +1,6 @@
+import { useAppRouter } from "@app/lib/platform";
+import type { PlanType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -6,9 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-
-import { useAppRouter } from "@app/lib/platform";
-import type { LightWorkspaceType, PlanType } from "@app/types";
 
 type DocumentLimitPopupProps = {
   isOpen: boolean;

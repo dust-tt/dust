@@ -1,10 +1,9 @@
-import { parse } from "csv-parse/sync";
-import { readFileSync } from "fs";
-
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
+import { parse } from "csv-parse/sync";
+import { readFileSync } from "fs";
 
 type AgentRecord = {
   name: string;

@@ -1,5 +1,3 @@
-import { BoltIcon, Chip } from "@dust-tt/sparkle";
-
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -7,6 +5,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { isToolsetsResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { BoltIcon, Chip } from "@dust-tt/sparkle";
 
 export function MCPListToolsActionDetails({
   owner,

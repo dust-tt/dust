@@ -6,7 +6,7 @@ import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import { CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types/core/core_api";
 
 const BATCH_SIZE = 512;
 const CONCURRENCY = 8;
@@ -28,7 +28,6 @@ async function getCoreDataSourceId(
 ): Promise<number | null> {
   const coreSequelize = getCorePrimaryDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql
   const [row] = await coreSequelize.query<{ id: number }>(
     `SELECT id
      FROM data_sources
@@ -57,7 +56,6 @@ async function getZendeskTicketNodeBatch({
 }): Promise<{ hasMore: boolean; nextId: number; nodes: ZendeskTicketNode[] }> {
   const coreSequelize = getCorePrimaryDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql
   const nodes = await coreSequelize.query<ZendeskTicketNode>(
     `SELECT id, node_id
      FROM data_sources_nodes

@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
-
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -53,8 +50,10 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  DataSourceConfig,
 } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 export const ZENDESK_CONFIG_KEYS = {
   TICKET_TAGS_TO_INCLUDE: "zendeskTicketTagsToInclude",

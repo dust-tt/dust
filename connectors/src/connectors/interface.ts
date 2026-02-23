@@ -1,14 +1,13 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorConfiguration,
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  DataSourceConfig,
+  ModelId,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 
 export type CreateConnectorErrorCode = "INVALID_CONFIGURATION";
 

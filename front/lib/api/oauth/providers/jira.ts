@@ -1,13 +1,15 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import type { ExtraConfigType } from "@app/types";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import type { ParsedUrlQuery } from "querystring";
 
 export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({

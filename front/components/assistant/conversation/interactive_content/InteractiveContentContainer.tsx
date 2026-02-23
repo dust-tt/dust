@@ -1,16 +1,13 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { useFileMetadata } from "@app/lib/swr/files";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
-import { frameContentType } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { frameContentType } from "@app/types/files";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 interface InteractiveContentContainerProps {
   conversation: ConversationWithoutContentType;

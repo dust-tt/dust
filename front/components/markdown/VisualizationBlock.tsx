@@ -1,9 +1,8 @@
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import type { LightWorkspaceType } from "@app/types/user";
 import { MarkdownContentContext } from "@dust-tt/sparkle";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
-
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import type { LightWorkspaceType } from "@app/types";
 
 const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 

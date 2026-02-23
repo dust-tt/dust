@@ -1,5 +1,3 @@
-import type { Logger } from "pino";
-
 import { getJoinedChannels } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackClient,
@@ -9,6 +7,7 @@ import { ProviderRateLimitError } from "@connectors/lib/error";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { concurrentExecutor } from "@connectors/types";
+import type { Logger } from "pino";
 
 import { makeScript } from "./helpers";
 

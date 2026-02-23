@@ -1,7 +1,6 @@
+import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 const RESIZE_DIRECTIONS = ["none", "vertical", "horizontal", "both"] as const;
 

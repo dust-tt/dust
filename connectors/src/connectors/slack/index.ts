@@ -1,7 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import { WebClient } from "@slack/web-api";
-
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -45,8 +41,8 @@ import type {
   DataSourceConfig,
   ModelId,
   SlackConfigurationType,
+  SlackCredentials,
 } from "@connectors/types";
-import type { SlackCredentials } from "@connectors/types";
 import {
   concurrentExecutor,
   isSlackAutoReadPatterns,
@@ -54,6 +50,9 @@ import {
   safeParseJSON,
 } from "@connectors/types";
 import { getConnectionCredentials } from "@connectors/types/oauth/client/credentials";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { WebClient } from "@slack/web-api";
 
 export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
   readonly provider: ConnectorProvider = "slack";

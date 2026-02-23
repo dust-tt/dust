@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
+import config from "@app/lib/api/config";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_DELAY_BASE_MS = 3000; // 3 seconds base delay
 const RECONNECT_DELAY_JITTER_MS = 5000; // +0-5 seconds random jitter
@@ -52,7 +51,7 @@ const stableEventSourceManager = {
       urlWithCommitHash.hash;
 
     const newSource = new EventSource(
-      `${getApiBaseUrl()}${pathWithQueryAndHash}`,
+      `${config.getApiBaseUrl()}${pathWithQueryAndHash}`,
       { withCredentials: true }
     );
     this.sources.set(uniqueId, newSource);
@@ -102,6 +101,7 @@ export function useEventSource(
   // across renders and component lifecycles.
   const sourceManager = stableEventSourceManager;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const connect = useCallback(() => {
     const url = buildURL(lastEvent.current);
     if (!url) {
@@ -171,6 +171,7 @@ export function useEventSource(
     return source;
   }, [buildURL, onEventCallback, uniqueId, sourceManager]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!isReadyToConsumeStream || isError) {
       return;

@@ -1,5 +1,5 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
 import { InteractiveImageGrid } from "@dust-tt/sparkle";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
 import { useEffect, useState } from "react";
 import { visit } from "unist-util-visit";
 

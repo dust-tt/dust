@@ -1,4 +1,3 @@
-import { CONNECTOR_CONFIGURATIONS } from "@app/shared/lib/connector_providers";
 import type {
   ContentNodeType,
   DataSourceType,
@@ -14,6 +13,7 @@ import {
   LockIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
+import { CONNECTOR_CONFIGURATIONS } from "@extension/shared/lib/connector_providers";
 
 import { assertNeverAndIgnore } from "./assertNeverAndIgnore";
 

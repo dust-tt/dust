@@ -4,13 +4,11 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { FileResource } from "@app/lib/resources/file_resource";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
-import type {
-  CoreAPIError,
-  CoreAPITable,
-  Result,
-  WorkspaceType,
-} from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import type { CoreAPIError, CoreAPITable } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 
 type NotFoundError = {
   type: "table_not_found" | "file_not_found";

@@ -1,15 +1,14 @@
+import type {
+  SlashCommand,
+  SlashCommandDropdownRef,
+} from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { AttachmentIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { Suggestion } from "@tiptap/suggestion";
-
-import type {
-  SlashCommand,
-  SlashCommandDropdownRef,
-} from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 
 const slashCommandPluginKey = new PluginKey("slashCommand");
 
@@ -21,7 +20,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
     id: "add-knowledge",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
     icon: AttachmentIcon,
-    label: "Add knowledge",
+    label: "Attach knowledge",
     tooltip: {
       description: "Use company knowledge for context.",
       media: (
@@ -42,6 +41,19 @@ export interface SlashCommandExtensionOptions {
 export const SlashCommandExtension =
   Extension.create<SlashCommandExtensionOptions>({
     name: "slashCommand",
+
+    addStorage() {
+      return {
+        // Tracks whether the editor has been focused at least once by the user.
+        // This prevents the slash command dropdown from triggering when content
+        // ending with "/" is loaded programmatically via setContent on mount.
+        hasBeenFocused: false,
+      };
+    },
+
+    onFocus() {
+      this.storage.hasBeenFocused = true;
+    },
 
     addOptions() {
       return {
@@ -68,10 +80,13 @@ export const SlashCommandExtension =
     },
 
     addProseMirrorPlugins() {
+      const extensionStorage = this.storage;
+
       return [
         Suggestion({
           editor: this.editor,
           ...this.options.suggestion,
+          allow: () => extensionStorage.hasBeenFocused,
           command: ({ editor, range, props }) => {
             if (props.action === INSERT_KNOWLEDGE_NODE_ACTION) {
               editor

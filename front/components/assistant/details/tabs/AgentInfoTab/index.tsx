@@ -1,16 +1,16 @@
-import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
-
-import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
+import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { AgentConfigurationType, WorkspaceType } from "@app/types";
-import {
-  GLOBAL_AGENTS_SID,
-  isString,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import type { WorkspaceType } from "@app/types/user";
+import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { useEffect, useMemo, useRef } from "react";
 
 export function AgentInfoTab({
   agentConfiguration,
@@ -27,10 +27,11 @@ export function AgentInfoTab({
 
   const isGlobalAgent = agentConfiguration.scope === "global";
   const displayKnowledge = !isGlobalAgent || isDustAgent;
+
+  const instructions = agentConfiguration.instructions ?? "";
+  const instructionsHtml = agentConfiguration.instructionsHtml ?? null;
   const displayInstructions =
-    !isGlobalAgent &&
-    isString(agentConfiguration?.instructions) &&
-    agentConfiguration.instructions.length > 0;
+    !isGlobalAgent && (instructionsHtml !== null || instructions.length > 0);
 
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -57,7 +58,7 @@ export function AgentInfoTab({
         </div>
       )}
 
-      {displayInstructions && isString(agentConfiguration.instructions) && (
+      {displayInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Instructions
@@ -68,11 +69,9 @@ export function AgentInfoTab({
                 "dark:border-border-night dark:bg-muted-background-night"
             )}
           >
-            <AgentMessageMarkdown
-              content={agentConfiguration.instructions}
-              owner={owner}
-              compactSpacing={true}
-              isInstructions={true}
+            <ReadOnlyInstructionsEditor
+              instructions={instructions}
+              instructionsHtml={instructionsHtml}
             />
           </div>
         </div>
@@ -110,4 +109,63 @@ export function AgentInfoTab({
       )}
     </div>
   );
+}
+
+interface ReadOnlyInstructionsEditorProps {
+  instructions: string;
+  instructionsHtml: string | null;
+}
+
+function ReadOnlyInstructionsEditor({
+  instructions,
+  instructionsHtml,
+}: ReadOnlyInstructionsEditorProps) {
+  const extensions = useMemo(
+    () => buildAgentInstructionsReadOnlyExtensions(),
+    []
+  );
+
+  const initialContentSetRef = useRef(false);
+
+  const editor = useEditor(
+    {
+      extensions,
+      editable: false,
+      immediatelyRender: false,
+    },
+    [extensions]
+  );
+
+  useEffect(() => {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      initialContentSetRef.current ||
+      (!instructions && !instructionsHtml)
+    ) {
+      return;
+    }
+
+    initialContentSetRef.current = true;
+
+    requestAnimationFrame(() => {
+      if (editor && !editor.isDestroyed) {
+        if (instructionsHtml) {
+          editor.commands.setContent(instructionsHtml, {
+            emitUpdate: false,
+          });
+        } else if (instructions) {
+          editor.commands.setContent(
+            preprocessMarkdownForEditor(instructions),
+            {
+              emitUpdate: false,
+              contentType: "markdown",
+            }
+          );
+        }
+      }
+    });
+  }, [editor, instructions, instructionsHtml]);
+
+  return <EditorContent editor={editor} />;
 }

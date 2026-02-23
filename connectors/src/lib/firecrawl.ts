@@ -1,6 +1,5 @@
-import FirecrawlApp from "@mendable/firecrawl-js";
-
 import { apiConfig } from "@connectors/lib/api/config";
+import FirecrawlApp from "@mendable/firecrawl-js";
 
 let firecrawlApp: FirecrawlApp;
 

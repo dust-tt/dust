@@ -1,7 +1,7 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { GPT_4_TURBO_MODEL_ID } from "@app/types";
-import { Err } from "@app/types";
+import { GPT_4_TURBO_MODEL_ID } from "@app/types/assistant/models/openai";
+import { Err } from "@app/types/shared/result";
 
 const { LIVE, WORKSPACE } = process.env;
 

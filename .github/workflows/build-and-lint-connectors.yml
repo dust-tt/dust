@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  tsc:
+  tsgo:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -21,6 +21,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
+          node-version: '22.22.0'
       - name: Typecheck
         run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
   lint:
@@ -31,6 +32,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
+          node-version: '22.22.0'
       - name: Lint
         run: npm -w connectors run lint
   tests:
@@ -41,8 +43,9 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
+          node-version: '22.22.0'
       - name: Install Postgres
-        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
+        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
         with:
           postgresql docker image: mirror.gcr.io/postgres
           postgresql version: "14.13"

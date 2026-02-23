@@ -3,7 +3,7 @@ import { DataSourceNodeTable } from "@app/components/agent_builder/capabilities/
 import { DataSourceViewTable } from "@app/components/agent_builder/capabilities/knowledge/DataSourceViewTable";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { findDataSourceViewFromNavigationHistory } from "@app/components/data_source_view/context/utils";
-import type { ContentNodesViewType } from "@app/types";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 
 interface DataSourceNavigationViewProps {
   viewType: ContentNodesViewType;

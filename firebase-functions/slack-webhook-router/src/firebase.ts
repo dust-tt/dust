@@ -1,7 +1,7 @@
-import { onRequest } from "firebase-functions/v2/https";
-import { setGlobalOptions } from "firebase-functions/v2";
-import { createApp } from "./app.js";
 import { defineString } from "firebase-functions/params";
+import { setGlobalOptions } from "firebase-functions/v2";
+import { onRequest } from "firebase-functions/v2/https";
+import { createApp } from "./app.js";
 
 const serviceAccount = defineString("SERVICE_ACCOUNT");
 

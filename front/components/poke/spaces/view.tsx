@@ -7,7 +7,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeSpaceType } from "@app/types";
+import type { PokeSpaceType } from "@app/types/poke";
 
 interface ViewSpaceTableProps {
   space: PokeSpaceType;

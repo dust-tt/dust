@@ -5,9 +5,6 @@
  * Displays tool information with logo, description, and action buttons.
  */
 
-import { Button, ContentMessage } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
-
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -19,12 +16,16 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
-import type { WorkspaceType } from "@app/types";
-import { asDisplayToolName, GLOBAL_SPACE_NAME } from "@app/types";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import { Button, ContentMessage } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo, useState } from "react";
 
 interface ToolSetupCardProps {
   toolName: string;

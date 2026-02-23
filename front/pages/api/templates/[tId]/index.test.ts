@@ -1,8 +1,7 @@
+import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
-
-import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 
 import handler from "./index";
 

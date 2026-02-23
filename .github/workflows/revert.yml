@@ -1,16 +1,18 @@
 name: Revert Workflow
+run-name: Revert ${{ inputs.component }} in ${{ inputs.regions }}
 
 on:
   workflow_dispatch:
     inputs:
-      region:
-        description: "Region to revert"
+      regions:
+        description: "Regions to revert"
         required: true
-        default: "us-central1"
+        default: "all"
         type: choice
         options:
           - "us-central1"
           - "europe-west1"
+          - "all"
       image_tag:
         description: "The image tag/SHA to deploy"
         type: string
@@ -73,23 +75,40 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ inputs.image_tag }}
-          region: ${{ inputs.region }}
+          region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           is_revert: true
 
-  revert:
+  create-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ inputs.regions }}" = "all" ]; then
+            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
+          fi
+
+  validate-image:
     permissions:
       contents: read
       id-token: write
-    needs: [notify-start]
+    needs: [notify-start, create-matrix]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: ${{ fromJson(needs.create-matrix.outputs.matrix) }}
+      fail-fast: true
     steps:
       - uses: actions/checkout@v3
 
       - name: Set project ID
         id: project
         run: |
-          if [ "${{ inputs.region }}" = "us-central1" ]; then
+          if [ "${{ matrix.region }}" = "us-central1" ]; then
             echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
           else
             echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
@@ -108,9 +127,9 @@ jobs:
 
       - name: Validate image tag exists
         run: |
-          echo "Validating image tag ${{ inputs.image_tag }} exists for ${{ inputs.component }} in ${{ inputs.region }}"
+          echo "Validating image tag ${{ inputs.image_tag }} exists for ${{ inputs.component }} in ${{ matrix.region }}"
 
-          IMAGE_REPO="${{ inputs.region }}-docker.pkg.dev/${{ steps.project.outputs.PROJECT_ID }}/dust-images/${{ inputs.component }}"
+          IMAGE_REPO="${{ matrix.region }}-docker.pkg.dev/${{ steps.project.outputs.PROJECT_ID }}/dust-images/${{ inputs.component }}"
 
           if ! gcloud container images describe "${IMAGE_REPO}:${{ inputs.image_tag }}" --quiet >/dev/null 2>&1; then
             echo "❌ Image tag '${{ inputs.image_tag }}' not found in registry ${IMAGE_REPO}"
@@ -122,7 +141,26 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Image tag '${{ inputs.image_tag }}' exists in registry" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Image tag '${{ inputs.image_tag }}' exists in ${{ matrix.region }} registry" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ inputs.image_tag }}
+          region: ${{ matrix.region }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+          is_revert: true
+
+  revert:
+    needs: [notify-start, validate-image]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Generate token
         id: generate-token
@@ -143,7 +181,7 @@ jobs:
               repo: 'dust-infra',
               event_type: 'trigger-component-revert',
               client_payload: {
-                regions: '${{ inputs.region }}',
+                regions: '${{ inputs.regions }}',
                 component: '${{ inputs.component }}',
                 image_tag: '${{ inputs.image_tag }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
@@ -160,7 +198,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ inputs.image_tag }}
-          region: ${{ inputs.region }}
+          region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
           is_revert: true

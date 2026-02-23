@@ -1,14 +1,14 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getUserFromSession } from "@app/lib/iam/session";
+import { fetchUserFromSession } from "@app/lib/iam/users";
 import { apiError } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetNoWorkspaceAuthContextResponseType = {
-  user: UserTypeWithWorkspaces;
+  user: UserType;
   defaultWorkspaceId: string | null;
 };
 
@@ -42,7 +42,7 @@ async function handler(
     }
   }
 
-  const user = await getUserFromSession(session);
+  const user = await fetchUserFromSession(session);
 
   if (!user) {
     if (session) {
@@ -65,7 +65,7 @@ async function handler(
   }
 
   return res.status(200).json({
-    user,
+    user: user.toJSON(),
     defaultWorkspaceId: session.workspaceId ?? null,
   });
 }

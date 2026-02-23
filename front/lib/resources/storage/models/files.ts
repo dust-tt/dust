@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -10,7 +7,14 @@ import type {
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
-} from "@app/types";
+} from "@app/types/files";
+import {
+  type CreationOptional,
+  DataTypes,
+  type ForeignKey,
+  literal,
+  type NonAttribute,
+} from "sequelize";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
@@ -83,6 +87,15 @@ FileModel.init(
     indexes: [
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "userId"] },
+      {
+        fields: [
+          "workspaceId",
+          "useCase",
+          "status",
+          // index on the JSONB field, not the best but it works
+          literal("(\"useCaseMetadata\" #>> '{spaceId}')"),
+        ],
+      },
     ],
   }
 );

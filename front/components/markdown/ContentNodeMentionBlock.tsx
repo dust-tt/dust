@@ -1,4 +1,5 @@
 import { AttachmentChip } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 import { visit } from "unist-util-visit";
 

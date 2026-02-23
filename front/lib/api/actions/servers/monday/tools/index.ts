@@ -34,7 +34,7 @@ import {
   uploadFileToColumn,
 } from "@app/lib/api/actions/servers/monday/helpers";
 import { MONDAY_TOOLS_METADATA } from "@app/lib/api/actions/servers/monday/metadata";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof MONDAY_TOOLS_METADATA> = {
   get_boards: async (_params, { authInfo }) => {

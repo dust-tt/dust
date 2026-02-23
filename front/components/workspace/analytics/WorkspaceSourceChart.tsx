@@ -1,5 +1,3 @@
-import { Cell, Pie, PieChart, Tooltip } from "recharts";
-
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
@@ -9,6 +7,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useWorkspaceContextOrigin } from "@app/lib/swr/workspaces";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface WorkspaceSourceChartProps {
   workspaceId: string;

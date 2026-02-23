@@ -1,9 +1,5 @@
-import { useEffect, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
-import { getApiBaseUrl } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
@@ -12,14 +8,15 @@ import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspac
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
-import type {
-  ConnectorPermission,
-  DataSourceType,
-  LightWorkspaceType,
-  RegionRedirectError,
-} from "@app/types";
+import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useEffect } from "react";
+import type { Fetcher } from "swr";
 
 export function usePokeRegion() {
+  const { fetcher } = useFetcher();
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
 
   const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
@@ -44,6 +41,7 @@ export function usePokeConnectorPermissions({
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
@@ -77,6 +75,7 @@ export function usePokeWorkspaces({
   disabled?: boolean;
   limit?: number;
 } = {}) {
+  const { fetcher } = useFetcher();
   const workspacesFetcher: Fetcher<GetPokeWorkspacesResponseBody> = fetcher;
 
   const queryParams = [
@@ -106,6 +105,7 @@ export function usePokeWorkspaces({
 }
 
 export function usePokePlans() {
+  const { fetcher } = useFetcher();
   const plansFetcher: Fetcher<GetPokePlansResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults("/api/poke/plans", plansFetcher);
@@ -124,6 +124,7 @@ export function usePokeFeatureFlags({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const featureFlagsFetcher: Fetcher<GetPokeFeaturesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -147,6 +148,7 @@ export function usePokeWorkOSDSyncStatus({
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
+  const { fetcher } = useFetcher();
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/dsync`,
     fetcher,
@@ -165,7 +167,7 @@ interface UsePokeAuthContextResult<T> {
   authContext: T | undefined;
   isAuthenticated: boolean;
   isAuthContextLoading: boolean;
-  isAuthContextError: boolean;
+  authContextError: APIErrorResponse | Error | undefined;
 }
 
 export function usePokeAuthContext(options?: {
@@ -182,8 +184,8 @@ export function usePokeAuthContext(options: {
 export function usePokeAuthContext(
   options: { workspaceId?: string; disabled?: boolean } = {}
 ) {
+  const { fetcher } = useFetcher();
   const { workspaceId, disabled } = options;
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const regionContext = useRegionContextSafe();
 
   const url = workspaceId
@@ -214,26 +216,10 @@ export function usePokeAuthContext(
     }
   }, [regionRedirect, mutate, regionContext]);
 
-  // Handle login redirect.
-  useEffect(() => {
-    if (error && !regionRedirect) {
-      setIsRedirecting(true);
-      if (error.error?.type === "not_authenticated") {
-        window.location.href = `${getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(
-          window.location.pathname + window.location.search
-        )}`;
-      } else {
-        //TODO: Handle other error types with nicer messages.
-        window.location.href = `/404`;
-      }
-    }
-  }, [error, regionRedirect]);
-
   return {
     authContext: isRegionRedirectResponse ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading:
-      isLoading || !!isRegionRedirectResponse || isRedirecting,
-    isAuthContextError: !!error,
+    isAuthContextLoading: isLoading || !!isRegionRedirectResponse,
+    authContextError: error,
   };
 }

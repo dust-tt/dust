@@ -1,13 +1,3 @@
-import {
-  Button,
-  ContextItem,
-  Input,
-  SliderToggle,
-  ZendeskLogo,
-  ZendeskWhiteLogo,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
 import { ZendeskCustomFieldFilters } from "@app/components/data_source/ZendeskCustomTagFilters";
 import { ZendeskOrganizationTagFilters } from "@app/components/data_source/ZendeskOrganizationTagFilters";
 import { ZendeskRateLimitConfig } from "@app/components/data_source/ZendeskRateLimitConfig";
@@ -17,7 +7,17 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  ContextItem,
+  Input,
+  SliderToggle,
+  ZendeskLogo,
+  ZendeskWhiteLogo,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 export function ZendeskConfigView({
   owner,

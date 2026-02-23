@@ -1,23 +1,21 @@
-import { Button, CheckCircleIcon, ClockIcon, Spinner } from "@dust-tt/sparkle";
-import { useContext, useState } from "react";
-
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
-import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
 import { cleanSpecificationFromCore } from "@app/lib/api/run";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
+import Custom404 from "@app/pages/404";
+import { Button, CheckCircleIcon, ClockIcon, Spinner } from "@dust-tt/sparkle";
+import { useContext, useState } from "react";
 
 export function RunPage() {
-  const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const runId = useRequiredPathParam("runId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder } = useAuth();
+  const { isAdmin, isBuilder } = useAuth();
 
   const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
@@ -86,12 +84,7 @@ export function RunPage() {
 
   // Show 404 on error or if app/run not found after loading completes
   if (isAppError || isRunError || (!pageIsLoading && (!app || !run))) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (pageIsLoading || !app || !run || !spec) {
@@ -103,12 +96,7 @@ export function RunPage() {
   }
 
   return (
-    <DustAppPageLayout
-      owner={owner}
-      subscription={subscription}
-      app={app}
-      currentTab="runs"
-    >
+    <>
       <div className="mt-8 flex flex-col">
         <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
           <div className="flex flex-col items-start">
@@ -191,6 +179,6 @@ export function RunPage() {
         />
       </div>
       <div className="mt-4"></div>
-    </DustAppPageLayout>
+    </>
   );
 }

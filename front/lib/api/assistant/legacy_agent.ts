@@ -1,4 +1,4 @@
-import type { AgentConfigurationType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
 export function isLegacyAgentConfiguration(
   agentConfiguration: AgentConfigurationType

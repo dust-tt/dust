@@ -1,8 +1,9 @@
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button } from "@sparkle/components/Button";
 import { Counter } from "@sparkle/components/Counter";
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 interface NotificationButtonProps {
   buttonProps: React.ComponentProps<typeof Button>;

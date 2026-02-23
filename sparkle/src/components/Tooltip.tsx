@@ -1,12 +1,11 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import * as React from "react";
-import { useEffect, useState } from "react";
-
 import {
   KeyboardShortcut,
-  KeyboardShortcutProps,
+  type KeyboardShortcutProps,
 } from "@sparkle/components/KeyboardShortcut";
 import { classNames } from "@sparkle/lib/utils";
+import * as React from "react";
+import { useEffect, useState } from "react";
 
 const TooltipProvider = TooltipPrimitive.Provider;
 

@@ -1,13 +1,3 @@
-import {
-  continueAsNew,
-  defineQuery,
-  executeChild,
-  proxyActivities,
-  sleep,
-  workflowInfo,
-} from "@temporalio/workflow";
-import PQueue from "p-queue";
-
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import {
   INTERVAL_BETWEEN_SYNCS_MS,
@@ -17,6 +7,15 @@ import {
 } from "@connectors/connectors/notion/temporal/config";
 import { performUpserts } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
+import {
+  continueAsNew,
+  defineQuery,
+  executeChild,
+  proxyActivities,
+  sleep,
+  workflowInfo,
+} from "@temporalio/workflow";
+import PQueue from "p-queue";
 
 // re-export all the workflows to make temporal happy
 export * from "./admins";

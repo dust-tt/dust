@@ -1,13 +1,16 @@
+import type { SparkleLinkProps } from "@dust-tt/sparkle";
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import url from "url";
-import { SparkleLinkProps } from "@dust-tt/sparkle";
 
 // Link wrapper that uses React Router's Link for SPA navigation
 export const ReactRouterLinkWrapper = forwardRef<
   HTMLAnchorElement,
   SparkleLinkProps
->(function ReactRouterLinkWrapper({ href, children, ...props }, ref) {
+>(function ReactRouterLinkWrapper(
+  { href, children, shallow: _shallow, replace, prefetch: _prefetch, ...props },
+  ref
+) {
   // Convert UrlObject to string if needed
   const hrefString = typeof href !== "string" ? url.format(href) : href;
 
@@ -25,7 +28,7 @@ export const ReactRouterLinkWrapper = forwardRef<
   }
 
   return (
-    <Link ref={ref} to={hrefString} {...props}>
+    <Link ref={ref} to={hrefString} replace={replace} {...props}>
       {children}
     </Link>
   );

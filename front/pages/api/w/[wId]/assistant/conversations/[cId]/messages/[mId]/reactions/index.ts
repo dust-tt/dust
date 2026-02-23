@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -21,14 +16,21 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
-  ContentFragmentType,
   ConversationType,
   MessageReactionType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isAgentMessageType, isProjectConversation } from "@app/types";
-import { isUserMessageType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isProjectConversation,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const MessageReactionRequestBodySchema = t.type({
   reaction: t.string,

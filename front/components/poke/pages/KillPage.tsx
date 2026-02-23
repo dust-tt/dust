@@ -1,12 +1,12 @@
-import { SliderToggle, Spinner } from "@dust-tt/sparkle";
-import React, { useState } from "react";
-import { useSWRConfig } from "swr/_internal";
-
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
+import { SliderToggle, Spinner } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
+import { useSWRConfig } from "swr/_internal";
 
 const killSwitchMap: Record<
   KillSwitchType,

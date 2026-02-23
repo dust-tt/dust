@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -9,12 +7,14 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { ConnectorConfiguration, WithAPIErrorResponse } from "@app/types";
+import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
 import {
   ConnectorsAPI,
-  ioTsParsePayload,
   UpdateConnectorConfigurationTypeSchema,
-} from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDataSourceConfigurationResponseBody = {
   configuration: ConnectorConfiguration;

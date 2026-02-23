@@ -1,5 +1,5 @@
 import type { AllPlugins } from "@app/lib/api/poke/types";
-import type { SupportedResourceType } from "@app/types";
+import type { SupportedResourceType } from "@app/types/poke/plugins";
 
 import * as allPlugins from "./plugins";
 

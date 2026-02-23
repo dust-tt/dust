@@ -23,17 +23,16 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { CoreAPIDataSourceConfig, CoreAPIFolder } from "@app/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  Err,
-  Ok,
-} from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
+import type {
+  CoreAPIDataSourceConfig,
+  CoreAPIFolder,
+} from "@app/types/core/data_source";
+import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
+import { Err, Ok } from "@app/types/shared/result";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({

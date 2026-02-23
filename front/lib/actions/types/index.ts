@@ -3,12 +3,12 @@ import type {
   LightMCPToolConfigurationType,
   MCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
-  AllSupportedFileContentType,
   ConversationType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { AllSupportedFileContentType } from "@app/types/files";
 
 export type FileAuthorizationInfo = {
   fileId: string;
@@ -51,6 +51,7 @@ export type ActionGeneratedFileType = {
   hidden?: boolean;
   createdAt?: number;
   updatedAt?: number;
+  isInProjectContext?: boolean;
 };
 
 export type AgentLoopRunContextType = {

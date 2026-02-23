@@ -1,19 +1,3 @@
-import {
-  ArrowDownOnSquareIcon,
-  Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
-  ExternalLinkIcon,
-  Markdown,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Spinner,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useState } from "react";
-
 import { clientFetch } from "@app/lib/egress/client";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
@@ -26,13 +10,29 @@ import {
   useFileSignedUrl,
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
-import type { WorkspaceType } from "@app/types";
 import {
   isMarkdownContentType,
   isPdfContentType,
   isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
 } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  ArrowDownOnSquareIcon,
+  Button,
+  ExternalLinkIcon,
+  Markdown,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useState } from "react";
 
 /**
  * Content types compatible with the external viewer (currently Microsoft Office Online).
@@ -53,15 +53,14 @@ function isViewerCompatible(contentType: string): boolean {
   );
 }
 
-type ViewMode = "preview" | "ingested";
-
 type FilePreviewCategory =
   | "pdf"
   | "viewer"
   | "audio"
   | "markdown"
   | "csv"
-  | "text";
+  | "text"
+  | "image";
 
 interface FilePreviewConfig {
   category: FilePreviewCategory;
@@ -110,6 +109,14 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
+  if (isSupportedImageContentType(contentType)) {
+    return {
+      category: "image",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
   return {
     category: "text",
     needsProcessedVersion: false,
@@ -117,22 +124,15 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
   };
 }
 
-function TextContent({ text, viewMode }: { text: string; viewMode: ViewMode }) {
-  if (viewMode === "ingested") {
-    return (
-      <pre className="whitespace-pre-wrap break-words text-sm">{text}</pre>
-    );
-  }
+function TextContent({ text }: { text: string }) {
   return <Markdown content={text} isStreaming={false} />;
 }
 
 function AudioFileRenderer({
   content,
-  viewMode,
   audioUrl,
 }: {
   content: ProcessedContent;
-  viewMode: ViewMode;
   audioUrl: string;
 }) {
   return (
@@ -145,7 +145,7 @@ function AudioFileRenderer({
           <h4 className="text-sm font-semibold text-muted-foreground">
             Transcript
           </h4>
-          <TextContent text={content.text} viewMode={viewMode} />
+          <TextContent text={content.text} />
         </div>
       )}
       {!content.text && (
@@ -160,7 +160,6 @@ function AudioFileRenderer({
 interface FileContentRendererProps {
   file: FileWithCreatorType;
   owner: WorkspaceType;
-  viewMode: ViewMode;
   previewConfig: FilePreviewConfig;
   rawFileContent: string | null;
   processedContent: ProcessedContent | null;
@@ -175,7 +174,6 @@ function getViewerUrl(signedUrl: string): string {
 function FileContentRenderer({
   file,
   owner,
-  viewMode,
   previewConfig,
   rawFileContent,
   processedContent,
@@ -194,7 +192,7 @@ function FileContentRenderer({
 
     case "viewer":
       if (viewerSignedUrlError && rawFileContent) {
-        return <TextContent text={rawFileContent} viewMode={viewMode} />;
+        return <TextContent text={rawFileContent} />;
       }
       if (viewerSignedUrl) {
         return (
@@ -211,8 +209,15 @@ function FileContentRenderer({
       return (
         <AudioFileRenderer
           content={processedContent ?? { text: "", format: "audio" }}
-          viewMode={viewMode}
           audioUrl={getFileViewUrl(owner, file.sId)}
+        />
+      );
+    case "image":
+      return (
+        <img
+          src={getFileViewUrl(owner, file.sId)}
+          alt={file.fileName}
+          className="max-h-[80vh] w-full rounded-lg object-contain"
         />
       );
 
@@ -220,9 +225,11 @@ function FileContentRenderer({
     case "csv":
     case "text":
       if (processedContent) {
-        return <TextContent text={processedContent.text} viewMode={viewMode} />;
+        return <TextContent text={processedContent.text} />;
       }
       return null;
+    default:
+      assertNever(previewConfig.category);
   }
 }
 
@@ -230,15 +237,9 @@ interface FilePreviewContentProps {
   file: FileWithCreatorType | null;
   owner: WorkspaceType;
   isOpen: boolean;
-  viewMode: ViewMode;
 }
 
-function FilePreviewContent({
-  file,
-  owner,
-  isOpen,
-  viewMode,
-}: FilePreviewContentProps) {
+function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
   const previewConfig = getFilePreviewConfig(file?.contentType ?? "");
 
   // Fetch processed content directly (bypasses SWR to avoid caching Response
@@ -282,7 +283,11 @@ function FilePreviewContent({
       fileId: file?.sId ?? null,
       owner,
       config: {
-        disabled: !isOpen || !file || previewConfig.needsProcessedVersion,
+        disabled:
+          !isOpen ||
+          !file ||
+          previewConfig.needsProcessedVersion ||
+          previewConfig.category === "image",
       },
     });
 
@@ -305,12 +310,14 @@ function FilePreviewContent({
 
   const hasError =
     !previewConfig.needsProcessedVersion && !!originalContentError;
+  const isImage = previewConfig.category === "image";
   const isContentLoading =
     isOpen &&
     file &&
     !hasError &&
     !isPdf &&
     !isViewer &&
+    !isImage &&
     (previewConfig.needsProcessedVersion
       ? !isProcessedTextLoaded
       : !rawFileContent);
@@ -339,18 +346,10 @@ function FilePreviewContent({
       return null;
     }
 
-    if (viewMode === "ingested") {
-      if (!rawFileContent) {
-        return <Spinner />;
-      }
-      return <TextContent text={rawFileContent} viewMode="ingested" />;
-    }
-
     return (
       <FileContentRenderer
         file={file}
         owner={owner}
-        viewMode={viewMode}
         previewConfig={previewConfig}
         rawFileContent={rawFileContent}
         processedContent={processedContent}
@@ -376,8 +375,6 @@ export function FilePreviewSheet({
   isOpen,
   onOpenChange,
 }: FilePreviewSheetProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("preview");
-
   const previewConfig = getFilePreviewConfig(file?.contentType ?? "");
   const isViewer = previewConfig.category === "viewer";
 
@@ -386,12 +383,6 @@ export function FilePreviewSheet({
     owner,
     config: { disabled: !isOpen || !file || !isViewer },
   });
-
-  useEffect(() => {
-    if (!isOpen) {
-      setViewMode("preview");
-    }
-  }, [isOpen]);
 
   const handleDownload = () => {
     if (file) {
@@ -420,56 +411,32 @@ export function FilePreviewSheet({
                 : undefined
             }
           >
-            <div className="flex w-full flex-col items-start gap-3">
-              <span className="truncate">{file?.fileName}</span>
+            <div className="flex w-full items-center gap-2">
+              <span className="flex-1 truncate">{file?.fileName}</span>
               {file && (
-                <div className="flex w-full items-center gap-2">
-                  <ButtonsSwitchList
-                    key={file.sId}
-                    defaultValue={viewMode}
-                    size="xs"
-                  >
-                    <ButtonsSwitch
-                      value="preview"
-                      label="Preview"
-                      onClick={() => setViewMode("preview")}
-                    />
-                    <ButtonsSwitch
-                      value="ingested"
-                      label="Ingested data"
-                      onClick={() => setViewMode("ingested")}
-                    />
-                  </ButtonsSwitchList>
-                  <div className="flex-1" />
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon-xs"
+                    icon={ArrowDownOnSquareIcon}
+                    tooltip="Download"
+                    onClick={handleDownload}
+                  />
+                  {previewConfig.supportsExternalViewer && (
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={ArrowDownOnSquareIcon}
-                      tooltip="Download"
-                      onClick={handleDownload}
+                      icon={ExternalLinkIcon}
+                      tooltip="Open in browser"
+                      onClick={handleOpenInBrowser}
                     />
-                    {previewConfig.supportsExternalViewer && (
-                      <Button
-                        variant="outline"
-                        size="icon-xs"
-                        icon={ExternalLinkIcon}
-                        tooltip="Open in browser"
-                        onClick={handleOpenInBrowser}
-                      />
-                    )}
-                  </div>
+                  )}
                 </div>
               )}
             </div>
           </SheetTitle>
         </SheetHeader>
-        <FilePreviewContent
-          file={file}
-          owner={owner}
-          isOpen={isOpen}
-          viewMode={viewMode}
-        />
+        <FilePreviewContent file={file} owner={owner} isOpen={isOpen} />
       </SheetContent>
     </Sheet>
   );

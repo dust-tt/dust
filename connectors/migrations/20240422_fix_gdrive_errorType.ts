@@ -37,7 +37,7 @@ async function main() {
         `Successfully fetched root folder for connector`
       );
       toReEnable.push(connector.id);
-    } catch (e) {
+    } catch (_e) {
       // no-op, this is expected
     }
   }

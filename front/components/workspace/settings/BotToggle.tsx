@@ -1,3 +1,14 @@
+import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
+import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import { setupOAuthConnection } from "@app/types/oauth/client/setup";
+import type { OAuthProvider, OAuthUseCase } from "@app/types/oauth/lib";
+import { Err, Ok } from "@app/types/shared/result";
+import type { SpaceType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowPathIcon,
   BookOpenIcon,
@@ -6,21 +17,6 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type {
-  ConnectorProvider,
-  DataSourceType,
-  OAuthProvider,
-  OAuthUseCase,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, Ok, setupOAuthConnection } from "@app/types";
 
 export function BotToggle({
   owner,
@@ -66,7 +62,6 @@ export function BotToggle({
   const createBotConnectionAndDataSource = async () => {
     // OAuth flow
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: oauth.provider,
       useCase: oauth.useCase ?? "connection",
@@ -154,7 +149,6 @@ export function BotToggle({
               icon={ArrowPathIcon}
               onClick={async () => {
                 const cRes = await setupOAuthConnection({
-                  dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
                   owner,
                   provider: oauth.provider,
                   useCase: oauth.useCase ?? "connection",

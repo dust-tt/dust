@@ -1,18 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-import type { File } from "@google-cloud/storage";
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-import type { Readable, Writable } from "stream";
-import { validate } from "uuid";
-
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -29,6 +17,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { copyContent } from "@app/lib/utils/files";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -38,21 +27,29 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@app/types";
+} from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
-  Err,
   frameContentType,
   isInteractiveContentFileContentType,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
-
+} from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { File } from "@google-cloud/storage";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
+import type { Readable, Writable } from "stream";
+import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
@@ -163,6 +160,7 @@ export class FileResource extends BaseResource<FileModel> {
       where: { token },
       // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
       // point we don't know the workspaceId.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {
@@ -421,10 +419,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   get isInteractiveContent(): boolean {
-    return (
-      this.useCase === "conversation" &&
-      isInteractiveContentFileContentType(this.contentType)
-    );
+    return isInteractiveContentFileContentType(this.contentType);
   }
 
   // Cloud storage logic.
@@ -702,6 +697,7 @@ export class FileResource extends BaseResource<FileModel> {
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       return null;
     }
@@ -970,29 +966,12 @@ export class FileResource extends BaseResource<FileModel> {
         useCaseMetadata,
       });
 
-      // Get a read stream from the source file's original version.
-      const readStream = sourceFile.getReadStream({
-        auth,
-        version: "original",
-      });
+      await copyContent(auth, sourceFile, newFile);
 
-      // Use processAndStoreFile to handle the content processing and storage.
-      const { processAndStoreFile } = await import(
-        "@app/lib/api/files/processing"
-      );
-      const result = await processAndStoreFile(auth, {
-        file: newFile,
-        content: {
-          type: "readable",
-          value: readStream,
-        },
-      });
+      // Mark the new file as ready.
+      await newFile.markAsReady();
 
-      if (result.isErr()) {
-        return new Err(result.error);
-      }
-
-      return new Ok(result.value);
+      return new Ok(newFile);
     } catch (error) {
       return new Err(normalizeError(error));
     }

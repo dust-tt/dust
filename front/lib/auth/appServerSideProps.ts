@@ -1,6 +1,4 @@
-import type { GetServerSidePropsContext } from "next";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -10,7 +8,9 @@ import {
   withDefaultUserAuthRequirements,
   withPublicAuthRequirements,
 } from "@app/lib/iam/session";
-import { isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import type { GetServerSidePropsContext } from "next";
+import type { ReactElement } from "react";
 
 // Type for page components with a getLayout function.
 export type AppPageWithLayout<P = object> = React.FC<P> & {
@@ -25,17 +25,19 @@ const redirectToDustSpa = async (
   context: GetServerSidePropsContext,
   auth: Authenticator
 ) => {
+  const isEdge = process.env.NEXT_PUBLIC_DATADOG_SERVICE === "front-edge";
+
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (featureFlags.includes("dust_spa")) {
+  if (!isEdge && !featureFlags.includes("dust_no_spa")) {
     const appUrl = config.getAppUrl(true) || DEFAULT_APP_URL;
 
     const destination = context.resolvedUrl;
     return {
       redirect: {
         destination: `${appUrl}${destination}`,
-        permanent: true,
+        permanent: false,
       },
     };
   }
@@ -154,6 +156,13 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
       );
     }
   );
+
+// For authenticated pages outside workspace context (e.g. /invite-choose, /no-workspace).
+// Checks session only — redirects to login if unauthenticated, no workspace required.
+export const appGetServerSidePropsForUserNoWorkspace =
+  withDefaultUserAuthPaywallWhitelisted<object>(async () => {
+    return { props: {} };
+  });
 
 // For public pages that don't require authentication
 export const appGetServerSidePropsPublic = withPublicAuthRequirements<object>(

@@ -1,5 +1,3 @@
-import { removeDiacritics, subFilter } from "@app/shared/lib/utils";
-import { useConversations } from "@app/ui/components/conversation/useConversations";
 import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import {
   Button,
@@ -16,6 +14,8 @@ import {
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
+import { removeDiacritics, subFilter } from "@extension/shared/lib/utils";
+import { useConversations } from "@extension/ui/components/conversation/useConversations";
 import moment from "moment";
 import React, { useState } from "react";
 import type { NavigateFunction } from "react-router-dom";

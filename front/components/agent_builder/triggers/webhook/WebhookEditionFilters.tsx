@@ -1,3 +1,18 @@
+import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import {
+  useTriggerEstimation,
+  useWebhookFilterGenerator,
+} from "@app/lib/swr/agent_triggers";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type {
+  PresetWebhook,
+  WebhookEvent,
+} from "@app/types/triggers/webhooks_source_preset";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
@@ -7,23 +22,9 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
-
-import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
-import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { useDebounceWithAbort } from "@app/hooks/useDebounce";
-import {
-  useTriggerEstimation,
-  useWebhookFilterGenerator,
-} from "@app/lib/swr/agent_triggers";
-import type { LightWorkspaceType } from "@app/types";
-import { normalizeError, pluralize } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import type {
-  PresetWebhook,
-  WebhookEvent,
-} from "@app/types/triggers/webhooks_source_preset";
 
 interface WebhookEditionFiltersProps {
   isEditor: boolean;

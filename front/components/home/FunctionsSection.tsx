@@ -1,6 +1,6 @@
-import React from "react";
-
 import { H2 } from "@app/components/home/ContentComponents";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React from "react";
 
 import { CardCarousel } from "./CardCarousel";
 import { FunctionCard } from "./FunctionCard";

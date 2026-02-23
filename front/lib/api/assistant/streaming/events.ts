@@ -15,7 +15,7 @@ import type {
   ConversationWithoutContentType,
   UserMessageNewEvent,
   UserMessageTypeWithContentFragments,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**

@@ -1,5 +1,3 @@
-import type { ContentFragmentsType } from "@app/shared/lib/types";
-import type { PlatformService } from "@app/shared/services/platform";
 import type {
   AgentMentionType,
   AgentMessageNewEvent,
@@ -16,6 +14,8 @@ import type {
   UserType,
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { ContentFragmentsType } from "@extension/shared/lib/types";
+import type { PlatformService } from "@extension/shared/services/platform";
 
 type SubmitMessageError = {
   type:

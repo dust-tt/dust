@@ -1,9 +1,9 @@
-import type { ActionContext, Event } from "@workos-inc/node";
-
 import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { ActionContext, Event } from "@workos-inc/node";
 
 // WorkOS sends webhooks from a fixed set of IP addresses.
 const workosIpAddresses = [

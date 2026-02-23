@@ -1,13 +1,13 @@
-import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
-
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { ExecutionStats } from "@app/components/poke/triggers/ExecutionStats";
 import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeTriggerDetails } from "@app/poke/swr/trigger_details";
+import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function TriggerDetailsPage() {
   const owner = useWorkspace();
@@ -57,7 +57,7 @@ export function TriggerDetailsPage() {
           owner={owner}
           editorUser={editorUser}
         />
-        <div className="mt-4 flex grow flex-col">
+        <div className="mt-4 flex grow flex-col gap-4">
           <PluginList
             pluginResourceTarget={{
               resourceType: "triggers",
@@ -66,19 +66,13 @@ export function TriggerDetailsPage() {
             }}
           />
           {trigger.kind === "webhook" && (
-            <PokeRecentWebhookRequests owner={owner} trigger={trigger} />
-          )}
-          {trigger.customPrompt && (
-            <div className="border-material-200 my-4 flex min-h-24 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
-              <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
-                <h2 className="text-md font-bold">Custom Prompt</h2>
-              </div>
-              <div className="flex flex-grow flex-col justify-center p-4">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {trigger.customPrompt}
-                </p>
-              </div>
-            </div>
+            <>
+              <ExecutionStats owner={owner} triggerId={trigger.sId} />
+              <PokeRecentWebhookRequests
+                owner={owner}
+                triggerId={trigger.sId}
+              />
+            </>
           )}
           <ConversationDataTable owner={owner} trigger={trigger} />
         </div>

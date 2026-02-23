@@ -1,3 +1,5 @@
+import { clientFetch } from "@app/lib/egress/client";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Input,
@@ -12,9 +14,6 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
-
-import { clientFetch } from "@app/lib/egress/client";
-import type { WorkspaceType } from "@app/types";
 
 export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
   const [disable, setDisabled] = useState(true);
@@ -44,6 +43,7 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
     return valid;
   }, [owner.name, workspaceName]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setDisabled(!formValidation());
   }, [workspaceName, formValidation]);

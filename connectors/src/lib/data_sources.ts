@@ -1,3 +1,16 @@
+import { apiConfig } from "@connectors/lib/api/config";
+import { getDustAPI } from "@connectors/lib/api/dust_api";
+import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
+import type { DataSourceConfig, ProviderVisibility } from "@connectors/types";
+import {
+  isValidDate,
+  safeSubstring,
+  stripNullBytes,
+  WithRetriesError,
+  withRetries,
+} from "@connectors/types";
 import type {
   CoreAPIDataSourceDocumentBlob,
   GetDocumentBlobResponseType,
@@ -8,8 +21,7 @@ import type {
   UpsertDatabaseTableRequestType,
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
-import type { AxiosRequestConfig, AxiosResponse } from "axios";
-import type { AxiosError } from "axios";
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
@@ -19,16 +31,6 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
-
-import { apiConfig } from "@connectors/lib/api/config";
-import { getDustAPI } from "@connectors/lib/api/dust_api";
-import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
-import logger from "@connectors/logger/logger";
-import { statsDClient } from "@connectors/logger/withlogging";
-import type { ProviderVisibility } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
-import { isValidDate, safeSubstring, stripNullBytes } from "@connectors/types";
-import { withRetries, WithRetriesError } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
 

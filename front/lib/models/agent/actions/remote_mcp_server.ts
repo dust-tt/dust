@@ -1,6 +1,3 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -10,6 +7,8 @@ import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerModel> {
   declare createdAt: CreationOptional<Date>;
@@ -44,7 +43,7 @@ RemoteMCPServerModel.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(2048),
       allowNull: false,
     },
     icon: {
@@ -57,7 +56,7 @@ RemoteMCPServerModel.init(
       defaultValue: DEFAULT_MCP_ACTION_VERSION,
     },
     cachedName: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(2048),
       allowNull: false,
     },
     cachedDescription: {

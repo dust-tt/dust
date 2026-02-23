@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetGroupDetails } from "@app/pages/api/poke/workspaces/[wId]/groups/[groupId]/details";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 interface UsePokeGroupDetailsProps {
   disabled?: boolean;
@@ -15,6 +14,7 @@ export function usePokeGroupDetails({
   owner,
   groupId,
 }: UsePokeGroupDetailsProps) {
+  const { fetcher } = useFetcher();
   const groupDetailsFetcher: Fetcher<PokeGetGroupDetails> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/groups/${groupId}/details`,

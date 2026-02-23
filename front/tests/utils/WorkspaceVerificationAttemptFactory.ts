@@ -1,7 +1,6 @@
-import { faker } from "@faker-js/faker";
-
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import { faker } from "@faker-js/faker";
 
 export class WorkspaceVerificationAttemptFactory {
   static async create(

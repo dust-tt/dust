@@ -1,10 +1,10 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import { useSWRWithDefaults } from "@app/shared/lib/swr";
 import type {
   ContentNodesViewType,
   DataSourceContentNodeType,
   SearchRequestBodyType,
 } from "@dust-tt/client";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import { useSWRWithDefaults } from "@extension/shared/lib/swr";
 import { useMemo } from "react";
 
 type SearchKey = ["searchNodes", string, SearchRequestBodyType];

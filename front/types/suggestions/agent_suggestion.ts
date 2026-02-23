@@ -1,10 +1,10 @@
-import { z } from "zod";
-
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { z } from "zod";
 
 export const AGENT_SUGGESTION_KINDS = [
   "instructions",
@@ -12,6 +12,7 @@ export const AGENT_SUGGESTION_KINDS = [
   "sub_agent",
   "skills",
   "model",
+  "knowledge",
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
@@ -28,6 +29,8 @@ export type AgentSuggestionState = (typeof AGENT_SUGGESTION_STATES)[number];
 export const AGENT_SUGGESTION_SOURCES = ["reinforcement", "copilot"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
+
+export const INSTRUCTIONS_ROOT_TARGET_BLOCK_ID = "instructions-root";
 
 const ToolsSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
@@ -62,6 +65,12 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
+const KnowledgeSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  dataSourceViewId: z.string(),
+  description: z.string().optional(),
+});
+
 export type ToolsSuggestionType = z.infer<typeof ToolsSuggestionSchema>;
 export type SubAgentSuggestionType = z.infer<typeof SubAgentSuggestionSchema>;
 export type SkillsSuggestionType = z.infer<typeof SkillsSuggestionSchema>;
@@ -69,6 +78,7 @@ export type InstructionsSuggestionSchemaType = z.infer<
   typeof InstructionsSuggestionSchema
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
+export type KnowledgeSuggestionType = z.infer<typeof KnowledgeSuggestionSchema>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
@@ -90,8 +100,15 @@ export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
   return ModelSuggestionSchema.safeParse(data).success;
 }
 
+export function isKnowledgeSuggestion(
+  data: unknown
+): data is KnowledgeSuggestionType {
+  return KnowledgeSuggestionSchema.safeParse(data).success;
+}
+
 export type SuggestionPayload =
   | InstructionsSuggestionSchemaType
+  | KnowledgeSuggestionType
   | ModelSuggestionType
   | SkillsSuggestionType
   | SubAgentSuggestionType
@@ -109,6 +126,10 @@ export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
     suggestion: InstructionsSuggestionSchema,
   }),
   z.object({ kind: z.literal("model"), suggestion: ModelSuggestionSchema }),
+  z.object({
+    kind: z.literal("knowledge"),
+    suggestion: KnowledgeSuggestionSchema,
+  }),
 ]);
 
 export type AgentSuggestionData = z.infer<typeof AgentSuggestionDataSchema>;
@@ -139,6 +160,31 @@ export type AgentInstructionsSuggestionType = Extract<
   { kind: "instructions" }
 >;
 
+export type AgentToolsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "tools" }
+>;
+
+export type AgentSubAgentSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "sub_agent" }
+>;
+
+export type AgentSkillsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "skills" }
+>;
+
+export type AgentModelSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "model" }
+>;
+
+export type AgentKnowledgeSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "knowledge" }
+>;
+
 export interface ToolSuggestionRelations {
   tool: MCPServerViewType;
 }
@@ -155,19 +201,32 @@ export interface ModelSuggestionRelations {
   model: ModelConfigurationType;
 }
 
+export interface KnowledgeSuggestionRelations {
+  dataSourceView: DataSourceViewType;
+  searchServerView: MCPServerViewType;
+}
+
+export type AgentToolsSuggestionWithRelationsType = AgentToolsSuggestionType & {
+  relations: ToolSuggestionRelations;
+};
+
+export type AgentSubAgentSuggestionWithRelationsType =
+  AgentSubAgentSuggestionType & { relations: SubAgentSuggestionRelations };
+
+export type AgentSkillsSuggestionWithRelationsType =
+  AgentSkillsSuggestionType & { relations: SkillSuggestionRelations };
+
+export type AgentModelSuggestionWithRelationsType = AgentModelSuggestionType & {
+  relations: ModelSuggestionRelations;
+};
+
+export type AgentKnowledgeSuggestionWithRelationsType =
+  AgentKnowledgeSuggestionType & { relations: KnowledgeSuggestionRelations };
+
 export type AgentSuggestionWithRelationsType =
-  | (Extract<AgentSuggestionType, { kind: "tools" }> & {
-      relations: ToolSuggestionRelations;
-    })
-  | (Extract<AgentSuggestionType, { kind: "sub_agent" }> & {
-      relations: SubAgentSuggestionRelations;
-    })
-  | (Extract<AgentSuggestionType, { kind: "skills" }> & {
-      relations: SkillSuggestionRelations;
-    })
-  | (Extract<AgentSuggestionType, { kind: "model" }> & {
-      relations: ModelSuggestionRelations;
-    })
-  | (AgentInstructionsSuggestionType & {
-      relations: null;
-    });
+  | AgentToolsSuggestionWithRelationsType
+  | AgentSubAgentSuggestionWithRelationsType
+  | AgentSkillsSuggestionWithRelationsType
+  | AgentModelSuggestionWithRelationsType
+  | AgentKnowledgeSuggestionWithRelationsType
+  | (AgentInstructionsSuggestionType & { relations: null });

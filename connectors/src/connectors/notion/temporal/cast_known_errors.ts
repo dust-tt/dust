@@ -1,4 +1,8 @@
 import {
+  ProviderTransientError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
+import {
   APIErrorCode,
   APIResponseError,
   RequestTimeoutError,
@@ -9,11 +13,6 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import {
-  ProviderTransientError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
 
 export class NotionCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor

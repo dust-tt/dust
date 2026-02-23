@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
+
 const SvgFolder = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -11,7 +12,7 @@ const SvgFolder = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M11.414 6H22v15H2V3h5.563a3 3 0 0 1 2.338 1.12L11.414 6Z"
+      d="M11.414 6H22v15H2V3h5.563a3 3 0 0 1 2.338 1.12z"
     />
   </svg>
 );

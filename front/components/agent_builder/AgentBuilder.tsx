@@ -1,8 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import set from "lodash/set";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
@@ -16,13 +11,14 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import {
   CopilotSuggestionsProvider,
   useCopilotSuggestions,
 } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
-import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
@@ -43,7 +39,6 @@ import type {
   AdditionalConfigurationInBuilderType,
   BuilderAction,
 } from "@app/components/shared/tools_picker/types";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -55,13 +50,28 @@ import { useEditors } from "@app/lib/swr/agent_editors";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
-import { emptyArray } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LightAgentConfigurationType } from "@app/types";
-import { isBuilder, isString, normalizeError, removeNulls } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { TemplateInfo } from "@app/types/assistant/templates";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import { isBuilder } from "@app/types/user";
+import { zodResolver } from "@hookform/resolvers/zod";
+import set from "lodash/set";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useForm } from "react-hook-form";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
@@ -92,26 +102,34 @@ function processAdditionalConfigurationFromStorage(
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
   duplicateAgentId?: string | null;
+  conversationId?: string;
+  onSaved?: () => void;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
   duplicateAgentId,
+  conversationId,
+  onSaved,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { fetcherWithBody } = useFetcher();
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
+  const hasPendingCreationRef = useRef(false);
 
-  const { actions, isActionsLoading } = useAgentConfigurationActions(
-    owner.sId,
-    duplicateAgentId ?? agentConfiguration?.sId ?? null
-  );
+  const { actions, isActionsLoading, mutateActions } =
+    useAgentConfigurationActions(
+      owner.sId,
+      duplicateAgentId ?? agentConfiguration?.sId ?? null
+    );
 
   const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
@@ -219,14 +237,26 @@ export default function AgentBuilder({
     }
 
     if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user, owner);
+      return transformTemplateToFormData(
+        assistantTemplate,
+        user,
+        owner,
+        hasFeature
+      );
     }
 
     return getDefaultAgentFormData({
       owner,
       user,
     });
-  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user, owner]);
+  }, [
+    agentConfiguration,
+    duplicateAgentId,
+    assistantTemplate,
+    user,
+    owner,
+    hasFeature,
+  ]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -237,6 +267,7 @@ export default function AgentBuilder({
     },
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const currentValues = form.getValues();
 
@@ -306,10 +337,15 @@ export default function AgentBuilder({
 
   // Create pending agent on mount for NEW agents only
   useEffect(() => {
-    // Only create pending agent for new agents (not editing or duplicating)
-    if (agentConfiguration || duplicateAgentId || pendingAgentId) {
+    if (
+      agentConfiguration ||
+      duplicateAgentId ||
+      pendingAgentId ||
+      hasPendingCreationRef.current
+    ) {
       return;
     }
+    hasPendingCreationRef.current = true;
 
     const createPendingAgent = async () => {
       try {
@@ -361,6 +397,7 @@ export default function AgentBuilder({
         areSlackChannelsChanged: form.getFieldState(
           "agentSettings.slackChannels"
         ).isDirty,
+        fetcherWithBody,
       });
 
       if (!result.isOk()) {
@@ -400,8 +437,9 @@ export default function AgentBuilder({
         });
       }
 
-      // Mutate triggers to refresh from backend (ensures newly created triggers have sIds)
-      await mutateTriggers();
+      // Mutate triggers and actions to refresh from backend
+      await Promise.all([mutateTriggers(), mutateActions()]);
+      onSaved?.();
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}?showCreatedDialog=1`;
@@ -462,8 +500,12 @@ export default function AgentBuilder({
     void form.handleSubmit(handleSubmit, handleFormErrors)();
   };
 
-  const handleCancel = async () => {
-    await appLayoutBack(owner, router);
+  const handleCancel = () => {
+    if (window.history.state?.idx > 0) {
+      router.back();
+    } else {
+      void router.replace(getConversationRoute(owner.sId));
+    }
   };
 
   const { isDirty, isSubmitting } = form.formState;
@@ -505,6 +547,15 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
+            templateInfo={
+              assistantTemplate
+                ? {
+                    templateId: assistantTemplate.sId,
+                    copilotInstructions: assistantTemplate.copilotInstructions,
+                  }
+                : undefined
+            }
+            conversationId={conversationId}
           />
         </CopilotSuggestionsProvider>
       </FormProvider>
@@ -519,7 +570,7 @@ interface AgentBuilderContentProps {
   agentConfiguration?: LightAgentConfigurationType;
   pendingAgentId: string | null;
   title: string;
-  handleCancel: () => Promise<void>;
+  handleCancel: () => void;
   saveLabel: string;
   handleSave: () => void;
   isSaveDisabled: boolean;
@@ -535,6 +586,8 @@ interface AgentBuilderContentProps {
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
+  templateInfo?: TemplateInfo;
+  conversationId?: string;
 }
 
 function AgentBuilderContent({
@@ -550,17 +603,17 @@ function AgentBuilderContent({
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
   isNewAgent,
+  templateInfo,
+  conversationId,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const isCopilotEnabled = useIsAgentBuilderCopilotEnabled();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const suggestionsContext = useCopilotSuggestions();
 
-  // Initialize the client-side MCP server for the agent builder copilot.
-  // Only enabled when the agent_builder_copilot feature flag is active.
   const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
-    enabled: hasFeature("agent_builder_copilot"),
+    enabled: isCopilotEnabled,
   });
 
   const handleSaveWithValidation = useCallback(async () => {
@@ -622,6 +675,7 @@ function AgentBuilderContent({
         />
       )}
       <AgentBuilderLayout
+        copilotEnabled={isCopilotEnabled}
         leftPanel={
           <AgentBuilderLeftPanel
             title={title}
@@ -636,6 +690,7 @@ function AgentBuilderContent({
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
             isTriggersLoading={isTriggersLoading}
+            initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
           />
         }
         rightPanel={
@@ -648,10 +703,13 @@ function AgentBuilderContent({
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
             isNewAgent={isNewAgent}
+            templateInfo={templateInfo}
+            conversationId={conversationId}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
+                conversationId={conversationId}
               />
             </ConversationSidePanelProvider>
           </CopilotPanelProvider>

@@ -1,12 +1,11 @@
-import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
-
 import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { DiscordConfigurationResource } from "@connectors/resources/discord_configuration_resource";
 import { normalizeError } from "@connectors/types";
 import { getHeaderFromUserEmail } from "@connectors/types/shared/headers";
+import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 export const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
 

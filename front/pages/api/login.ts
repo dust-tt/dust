@@ -1,12 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
   handleRegularSignupFlow,
 } from "@app/lib/api/signup";
-import { getApiBaseUrl } from "@app/lib/egress/client";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -18,7 +16,9 @@ import type { UTMParams } from "@app/lib/utils/utm";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
@@ -51,6 +51,7 @@ async function handler(
 
   let targetWorkspace: LightWorkspaceType | null = null;
   let targetFlow: "joined" | null = null;
+  let activeMemberships: MembershipResource[] = [];
 
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
   // meaning the user is going through the invite by email flow.
@@ -109,22 +110,29 @@ async function handler(
     if (flow === "unauthorized") {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
-        `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+        `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
       return;
     }
 
     targetWorkspace = workspace;
     targetFlow = flow;
+
+    // Fetch memberships for first use marking.
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
+    activeMemberships = memberships;
   } else {
     const { memberships } = await MembershipResource.getActiveMemberships({
       users: [user],
     });
+    activeMemberships = memberships;
 
     // When user has no memberships, and no invitation is already provided, check if there is a
     // pending invitation.
     const pendingInvitations =
-      memberships.length === 0 && !membershipInvite
+      activeMemberships.length === 0 && !membershipInvite
         ? await MembershipInvitationResource.listPendingForEmail({
             email: user.email,
           })
@@ -132,7 +140,7 @@ async function handler(
 
     // More than one pending invitation, redirect to invite choose page - otherwise use the first one.
     if (pendingInvitations && pendingInvitations.length > 1) {
-      res.redirect("/invite-choose");
+      res.redirect(`${config.getAppUrl()}/invite-choose`);
       return;
     }
 
@@ -147,7 +155,7 @@ async function handler(
           handleRegularSignupFlow(
             session,
             user,
-            memberships,
+            activeMemberships,
             targetWorkspaceId,
             utmParams
           );
@@ -164,7 +172,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
+          `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
@@ -174,15 +182,19 @@ async function handler(
         await user.unsafeDelete();
       }
 
+      const ssoLoginUrl = await makeEnterpriseConnectionInitiateLoginUrl(
+        error.workspaceId,
+        null
+      );
       res.redirect(
-        `${getApiBaseUrl()}/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
       );
       return;
     }
 
     const { flow, workspace } = result.value;
     if (flow === "no-auto-join" || flow === "revoked") {
-      res.redirect(`/no-workspace?flow=${flow}`);
+      res.redirect(`${config.getAppUrl()}/no-workspace?flow=${flow}`);
       return;
     }
 
@@ -192,7 +204,7 @@ async function handler(
 
   const u = await getUserFromSession(session);
   if (!u || u.workspaces.length === 0) {
-    res.redirect("/no-workspace?flow=revoked");
+    res.redirect(`${config.getAppUrl()}/no-workspace?flow=revoked`);
     return;
   }
 
@@ -202,6 +214,16 @@ async function handler(
   };
 
   await user.recordLoginActivity();
+
+  // Mark first use for provisioned membership when user accesses a workspace.
+  if (targetWorkspace) {
+    const targetMembership = activeMemberships.find(
+      (m) => m.workspaceId === targetWorkspace.id
+    );
+    if (targetMembership) {
+      await targetMembership.markFirstUse();
+    }
+  }
 
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this

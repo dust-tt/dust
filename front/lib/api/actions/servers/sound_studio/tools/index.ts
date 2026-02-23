@@ -6,7 +6,8 @@ import {
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SOUND_STUDIO_TOOLS_METADATA } from "@app/lib/api/actions/servers/sound_studio/metadata";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
   generate_sound_effects: async ({
@@ -34,7 +35,9 @@ const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
           resource: {
             name: fileName,
             blob: base64,
-            text: "Your sound effect was generated successfully.",
+            _meta: {
+              text: "Your sound effect was generated successfully.",
+            },
             mimeType: "audio/mpeg",
             uri: fileName,
           },

@@ -1,4 +1,4 @@
-import { normalizeError } from "@app/shared/lib/utils";
+import { normalizeError } from "@extension/shared/lib/utils";
 import type { ApplicationDraftUpdate } from "@frontapp/plugin-sdk";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

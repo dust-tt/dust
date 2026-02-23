@@ -1,27 +1,10 @@
-import {
-  BoltIcon,
-  Button,
-  Chip,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Icon,
-  LoadingBlock,
-  ToolsIcon,
-} from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
-
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
-import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
+import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
-  mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -33,16 +16,42 @@ import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSkills } from "@app/lib/swr/skill_configurations";
+import {
+  useSkills,
+  useSkillWithRelations,
+} from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
-import type { WorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillType,
+  SkillWithRelationsType,
+} from "@app/types/assistant/skill_configuration";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  Chip,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuTrigger,
+  DropdownTooltipTrigger,
+  Icon,
+  LoadingBlock,
+  MoreIcon,
+  ToolsIcon,
+} from "@dust-tt/sparkle";
+import { useEffect, useMemo, useState } from "react";
+
+type MergedCapabilityItem =
+  | { kind: "skill"; skill: SkillType; sortName: string }
+  | { kind: "tool"; serverView: MCPServerViewType; sortName: string };
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -62,61 +71,183 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   );
 }
 
-interface CapabilityItemProps {
-  id: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  description: string | null;
-  onClick?: () => void;
-  keyPrefix: string;
-  endComponent?: React.ReactNode;
-  disabled?: boolean;
-  className?: string;
+interface SkillMenuItemProps {
+  skill: SkillType;
+  onSelect: (skill: SkillType) => void;
+  onDetails: (skillSId: string) => void;
+  closeDropdown: () => void;
 }
 
-function CapabilityItem({
-  id,
-  icon,
-  label,
-  description,
-  onClick,
-  keyPrefix,
-  endComponent,
-  disabled,
-  className,
-}: CapabilityItemProps) {
+function SkillMenuItem({
+  skill,
+  onSelect,
+  onDetails,
+  closeDropdown,
+}: SkillMenuItemProps) {
+  const description = skill.userFacingDescription;
+  const key = `skills-picker-${skill.sId}`;
+
+  const menuItem = (
+    <DropdownMenuItem
+      key={key}
+      id={key}
+      icon={getSkillAvatarIcon(skill.icon)}
+      label={skill.name}
+      truncateText
+      className="group py-1"
+      endComponent={
+        <Button
+          icon={MoreIcon}
+          variant="outline"
+          size="mini"
+          className="opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onDetails(skill.sId);
+            closeDropdown();
+          }}
+        />
+      }
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        trackEvent({
+          area: TRACKING_AREAS.TOOLS,
+          object: "skill_select",
+          action: TRACKING_ACTIONS.SELECT,
+          extra: {
+            skill_id: skill.sId,
+            skill_name: skill.name,
+          },
+        });
+        onSelect(skill);
+        closeDropdown();
+      }}
+    />
+  );
+
+  if (description) {
+    return (
+      <DropdownTooltipTrigger
+        key={key}
+        description={description}
+        side="right"
+        sideOffset={8}
+      >
+        {menuItem}
+      </DropdownTooltipTrigger>
+    );
+  }
+
+  return menuItem;
+}
+
+interface ToolMenuItemProps {
+  serverView: MCPServerViewType;
+  onSelect: (serverView: MCPServerViewType) => void;
+  onDetails: (serverView: MCPServerViewType) => void;
+  closeDropdown: () => void;
+}
+
+function ToolMenuItem({
+  serverView,
+  onSelect,
+  onDetails,
+  closeDropdown,
+}: ToolMenuItemProps) {
+  const description = getMcpServerViewDescription(serverView);
+  const key = `capabilities-picker-${serverView.sId}`;
+
+  const menuItem = (
+    <DropdownMenuItem
+      key={key}
+      id={key}
+      icon={() => getAvatar(serverView.server)}
+      label={getMcpServerViewDisplayName(serverView)}
+      truncateText
+      className="group py-1"
+      endComponent={
+        <Button
+          icon={MoreIcon}
+          variant="outline"
+          size="mini"
+          className="opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onDetails(serverView);
+            closeDropdown();
+          }}
+        />
+      }
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        trackEvent({
+          area: TRACKING_AREAS.TOOLS,
+          object: "tool_select",
+          action: TRACKING_ACTIONS.SELECT,
+          extra: {
+            tool_id: serverView.sId,
+            tool_name: serverView.server.name,
+          },
+        });
+        onSelect(serverView);
+        closeDropdown();
+      }}
+    />
+  );
+
+  if (description) {
+    return (
+      <DropdownTooltipTrigger
+        key={key}
+        description={description}
+        side="right"
+        sideOffset={8}
+      >
+        {menuItem}
+      </DropdownTooltipTrigger>
+    );
+  }
+
+  return menuItem;
+}
+
+interface UninstalledToolMenuItemProps {
+  server: MCPServerType;
+  onSetup: (server: MCPServerType) => void;
+}
+
+function UninstalledToolMenuItem({
+  server,
+  onSetup,
+}: UninstalledToolMenuItemProps) {
   return (
     <DropdownMenuItem
-      key={`${keyPrefix}-${id}`}
-      id={`${keyPrefix}-${id}`}
-      icon={icon}
-      label={label}
-      description={description ?? undefined}
+      key={`tools-to-install-${server.sId}`}
+      id={`tools-to-install-${server.sId}`}
+      icon={() => getAvatar(server)}
+      label={asDisplayName(server.name)}
       truncateText
-      endComponent={endComponent}
-      disabled={disabled}
-      className={className}
-      onClick={
-        onClick
-          ? (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onClick();
-            }
-          : undefined
-      }
+      endComponent={<Chip size="xs" color="golden" label="Configure" />}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onSetup(server);
+      }}
     />
   );
 }
 
 interface CapabilitiesPickerProps {
   owner: WorkspaceType;
+  user: UserType | null;
   selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
-  onDeselect: (serverView: MCPServerViewType) => void;
   selectedSkills: SkillType[];
   onSkillSelect: (skill: SkillType) => void;
-  onSkillDeselect: (skill: SkillType) => void;
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
@@ -124,9 +255,9 @@ interface CapabilitiesPickerProps {
 
 export function CapabilitiesPicker({
   owner,
+  user,
   selectedMCPServerViews,
   onSelect,
-  onDeselect,
   selectedSkills,
   onSkillSelect,
   isLoading = false,
@@ -136,8 +267,6 @@ export function CapabilitiesPicker({
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [filter, setFilter] = useState<CapabilityFilterType>("all");
-
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
@@ -145,6 +274,16 @@ export function CapabilitiesPicker({
   const [isSettingUpServer, setIsSettingUpServer] = useState(false);
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
+
+  // Detail sheet state
+  const [selectedSkillForDetails, setSelectedSkillForDetails] =
+    useState<SkillWithRelationsType | null>(null);
+  const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
+    useState<MCPServerViewType | null>(null);
+
+  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
+    onSuccess: ({ skill }) => setSelectedSkillForDetails(skill),
+  });
 
   const shouldFetchToolsData =
     isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
@@ -195,25 +334,20 @@ export function CapabilitiesPicker({
     }
   }, [serverViews, pendingServerToAdd, onSelect]);
 
-  const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
-    const filteredServerViews = serverViews.filter(
-      (v) =>
-        isJITMCPServerView(v) &&
-        (searchText.length === 0 ||
-          getMcpServerViewDisplayName(v)
-            .toLowerCase()
-            .includes(searchText.toLowerCase()) ||
-          getMcpServerViewDescription(v)
-            .toLowerCase()
-            .includes(searchText.toLowerCase()))
-    );
-
-    return {
-      filteredServerViews: filteredServerViews,
-      filteredServerViewsUnselected: filteredServerViews
-        .filter((v) => !selectedMCPServerViewIds.includes(v.sId))
-        .sort(mcpServerViewSortingFn),
-    };
+  const filteredServerViewsUnselected = useMemo(() => {
+    return serverViews
+      .filter(
+        (v) =>
+          isJITMCPServerView(v) &&
+          (searchText.length === 0 ||
+            getMcpServerViewDisplayName(v)
+              .toLowerCase()
+              .includes(searchText.toLowerCase()) ||
+            getMcpServerViewDescription(v)
+              .toLowerCase()
+              .includes(searchText.toLowerCase()))
+      )
+      .filter((v) => !selectedMCPServerViewIds.includes(v.sId));
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
   const { availableMCPServers, isAvailableMCPServersLoading } =
@@ -250,6 +384,26 @@ export function CapabilitiesPicker({
         );
       });
   }, [skills, selectedSkills, searchText]);
+
+  const mergedItems = useMemo(() => {
+    const items: MergedCapabilityItem[] = [
+      ...filteredSkillsUnselected.map(
+        (skill): MergedCapabilityItem => ({
+          kind: "skill",
+          skill,
+          sortName: skill.name.toLowerCase(),
+        })
+      ),
+      ...filteredServerViewsUnselected.map(
+        (serverView): MergedCapabilityItem => ({
+          kind: "tool",
+          serverView,
+          sortName: getMcpServerViewDisplayName(serverView).toLowerCase(),
+        })
+      ),
+    ];
+    return [...items].sort((a, b) => a.sortName.localeCompare(b.sortName));
+  }, [filteredSkillsUnselected, filteredServerViewsUnselected]);
 
   // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
   // - We filter by manual availability to show only servers that need install step, and by search text if present.
@@ -292,20 +446,10 @@ export function CapabilitiesPicker({
     return !!setupSheetServer || !!setupSheetRemoteServerConfig;
   }, [setupSheetServer, setupSheetRemoteServerConfig]);
 
-  const showSkillsSection = filter === "all" || filter === "skills";
-  const showToolsSection = filter === "all" || filter === "tools";
-
-  const hasVisibleSkills =
-    showSkillsSection && filteredSkillsUnselected.length > 0;
-  const hasVisibleTools =
-    showToolsSection &&
-    (filteredServerViewsUnselected.length > 0 ||
-      filteredUninstalledServers.length > 0);
+  const hasVisibleItems =
+    mergedItems.length > 0 || filteredUninstalledServers.length > 0;
   const hasNoVisibleItems =
-    isSkillsDataReady &&
-    isToolsDataReady &&
-    !hasVisibleSkills &&
-    !hasVisibleTools;
+    isSkillsDataReady && isToolsDataReady && !hasVisibleItems;
 
   return (
     <>
@@ -321,7 +465,6 @@ export function CapabilitiesPicker({
               action: TRACKING_ACTIONS.OPEN,
             });
             setSearchText("");
-            setFilter("all");
           } else {
             setIsClosing(true);
           }
@@ -337,7 +480,7 @@ export function CapabilitiesPicker({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="max-h-96 w-96"
+          className="max-h-96 w-64"
           align="start"
           onAnimationEnd={() => {
             if (!isOpen) {
@@ -345,141 +488,85 @@ export function CapabilitiesPicker({
             }
           }}
           dropdownHeaders={
-            <>
-              <DropdownMenuSearchbar
-                autoFocus
-                name="search-capabilities"
-                placeholder="Search capabilities"
-                value={searchText}
-                onChange={setSearchText}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && filteredServerViews.length > 0) {
-                    const isSelected = selectedMCPServerViewIds.includes(
-                      filteredServerViews[0].sId
-                    );
-                    if (isSelected) {
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "tool_deselect",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          tool_id: filteredServerViews[0].sId,
-                          tool_name: filteredServerViews[0].server.name,
-                        },
-                      });
-                      onDeselect(filteredServerViews[0]);
-                    } else {
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "tool_select",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          tool_id: filteredServerViews[0].sId,
-                          tool_name: filteredServerViews[0].server.name,
-                        },
-                      });
-                      onSelect(filteredServerViews[0]);
-                    }
-                    setSearchText("");
-                    setIsOpen(false);
-                  }
-                }}
-              />
-              <div className="px-3 py-2">
-                <CapabilityFilterButtons
-                  filter={filter}
-                  setFilter={setFilter}
-                  size="xs"
-                />
-              </div>
-              <DropdownMenuSeparator />
-            </>
-          }
-        >
-          {!(showSkillsSection && isSkillsDataReady) &&
-            !(showToolsSection && isToolsDataReady) && (
-              <CapabilitiesPickerLoading />
-            )}
-
-          {isSkillsDataReady && hasVisibleSkills && (
-            <>
-              <div className="text-element-700 px-4 py-2 text-xs font-semibold">
-                Skills
-              </div>
-              {filteredSkillsUnselected.map((skill) => (
-                <CapabilityItem
-                  key={`skills-picker-${skill.sId}`}
-                  id={skill.sId}
-                  icon={getSkillAvatarIcon(skill.icon)}
-                  label={skill.name}
-                  description={skill.userFacingDescription}
-                  keyPrefix="skills-picker"
-                  onClick={() => {
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-capabilities"
+              placeholder="Search capabilities"
+              value={searchText}
+              onChange={setSearchText}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && mergedItems.length > 0) {
+                  const first = mergedItems[0];
+                  if (first.kind === "skill") {
                     trackEvent({
                       area: TRACKING_AREAS.TOOLS,
                       object: "skill_select",
                       action: TRACKING_ACTIONS.SELECT,
                       extra: {
-                        skill_id: skill.sId,
-                        skill_name: skill.name,
+                        skill_id: first.skill.sId,
+                        skill_name: first.skill.name,
                       },
                     });
-                    onSkillSelect(skill);
-                    setIsOpen(false);
-                  }}
-                />
-              ))}
-            </>
+                    onSkillSelect(first.skill);
+                  } else {
+                    trackEvent({
+                      area: TRACKING_AREAS.TOOLS,
+                      object: "tool_select",
+                      action: TRACKING_ACTIONS.SELECT,
+                      extra: {
+                        tool_id: first.serverView.sId,
+                        tool_name: first.serverView.server.name,
+                      },
+                    });
+                    onSelect(first.serverView);
+                  }
+                  setSearchText("");
+                  setIsOpen(false);
+                }
+              }}
+            />
+          }
+        >
+          {(!isSkillsDataReady || !isToolsDataReady) && (
+            <CapabilitiesPickerLoading />
           )}
 
-          {isToolsDataReady &&
-            showToolsSection &&
-            filteredServerViewsUnselected.length > 0 && (
-              <>
-                <div className="text-element-700 px-4 py-2 text-xs font-semibold">
-                  Tools
-                </div>
-                {filteredServerViewsUnselected.map((v) => (
-                  <CapabilityItem
-                    key={`capabilities-picker-${v.sId}`}
-                    id={v.sId}
-                    icon={() => getAvatar(v.server)}
-                    label={getMcpServerViewDisplayName(v)}
-                    description={getMcpServerViewDescription(v)}
-                    keyPrefix="capabilities-picker"
-                    onClick={() => {
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "tool_select",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          tool_id: v.sId,
-                          tool_name: v.server.name,
-                        },
-                      });
-                      onSelect(v);
-                      setIsOpen(false);
-                    }}
-                  />
-                ))}
-              </>
-            )}
+          {isSkillsDataReady &&
+            isToolsDataReady &&
+            mergedItems.map((item) => {
+              switch (item.kind) {
+                case "skill":
+                  return (
+                    <SkillMenuItem
+                      key={`skills-picker-${item.skill.sId}`}
+                      skill={item.skill}
+                      onSelect={onSkillSelect}
+                      onDetails={(sId) => void fetchSkillWithRelations(sId)}
+                      closeDropdown={() => setIsOpen(false)}
+                    />
+                  );
+                case "tool":
+                  return (
+                    <ToolMenuItem
+                      key={`capabilities-picker-${item.serverView.sId}`}
+                      serverView={item.serverView}
+                      onSelect={onSelect}
+                      onDetails={setSelectedServerViewForDetails}
+                      closeDropdown={() => setIsOpen(false)}
+                    />
+                  );
+                default:
+                  return null;
+              }
+            })}
 
           {isToolsDataReady &&
-            showToolsSection &&
             filteredUninstalledServers.length > 0 &&
             filteredUninstalledServers.map((server) => (
-              <CapabilityItem
+              <UninstalledToolMenuItem
                 key={`tools-to-install-${server.sId}`}
-                id={server.sId}
-                icon={() => getAvatar(server)}
-                label={asDisplayName(server.name)}
-                description={server.description}
-                keyPrefix="tools-to-install"
-                endComponent={
-                  <Chip size="xs" color="golden" label="Configure" />
-                }
-                onClick={() => {
+                server={server}
+                onSetup={(server) => {
                   const remoteMcpServerConfig = getDefaultRemoteMCPServerByName(
                     server.name
                   );
@@ -501,26 +588,15 @@ export function CapabilitiesPicker({
             ))}
 
           {hasNoVisibleItems && (
-            <CapabilityItem
-              id="no-selected"
+            <DropdownMenuItem
+              id="capabilities-picker-no-selected"
               icon={() => <Icon visual={BoltIcon} size="xs" />}
               label={
                 searchText.length > 0
                   ? "No result"
-                  : filter !== "all"
-                    ? `No more ${filter} to select`
-                    : "No more skills or tools to select"
+                  : "No more skills or tools to select"
               }
-              description={
-                searchText.length > 0
-                  ? filter !== "all"
-                    ? `No ${filter} found matching your search.`
-                    : "No skills or tools found matching your search."
-                  : filter !== "all"
-                    ? `All available ${filter} are already selected.`
-                    : "All available skills and tools are already selected."
-              }
-              keyPrefix="capabilities-picker"
+              truncateText
               disabled
               className="italic"
             />
@@ -572,6 +648,23 @@ export function CapabilitiesPicker({
           }}
         />
       )}
+
+      {user && (
+        <SkillDetailsSheet
+          skill={selectedSkillForDetails}
+          onClose={() => setSelectedSkillForDetails(null)}
+          owner={owner}
+          user={user}
+        />
+      )}
+
+      <MCPServerDetails
+        owner={owner}
+        mcpServerView={selectedServerViewForDetails}
+        isOpen={!!selectedServerViewForDetails}
+        onClose={() => setSelectedServerViewForDetails(null)}
+        readOnly
+      />
     </>
   );
 }

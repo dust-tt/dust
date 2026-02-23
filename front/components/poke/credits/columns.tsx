@@ -1,10 +1,9 @@
-import { Chip } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
-import { dateToHumanReadable } from "@app/types";
+import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
+import { Chip } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 function formatMicroUsdToUsd(microUsdAmount: number): string {
   return `$${(microUsdAmount / 1_000_000).toFixed(2)}`;

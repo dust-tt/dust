@@ -1,7 +1,7 @@
-import { useFrontContext } from "@app/platforms/front/context/FrontProvider";
-import { FrontPlatformService } from "@app/platforms/front/services/platform";
-import { PlatformProvider } from "@app/shared/context/PlatformContext";
 import { Spinner } from "@dust-tt/sparkle";
+import { useFrontContext } from "@extension/platforms/front/context/FrontProvider";
+import { FrontPlatformService } from "@extension/platforms/front/services/platform";
+import { PlatformProvider } from "@extension/shared/context/PlatformContext";
 import { useEffect, useMemo } from "react";
 
 const updateTheme = (isDark: boolean) => {

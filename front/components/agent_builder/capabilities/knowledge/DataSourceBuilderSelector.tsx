@@ -1,14 +1,3 @@
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import {
-  Breadcrumbs,
-  Button,
-  CloudArrowLeftRightIcon,
-  cn,
-  SearchInput,
-  Separator,
-} from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
@@ -32,19 +21,36 @@ import {
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAppRouter } from "@app/lib/platform";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
-import { useSpacesSearch, useSystemSpace } from "@app/lib/swr/spaces";
-import type { ContentNodesViewType } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import {
+  useSpaceProjectsLookup,
+  useSpacesSearch,
+  useSystemSpace,
+} from "@app/lib/swr/spaces";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import {
+  Breadcrumbs,
+  Button,
+  CloudArrowLeftRightIcon,
+  cn,
+  SearchInput,
+  Separator,
+} from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useEffect, useMemo, useState } from "react";
 
 type DataSourceBuilderSelectorProps = {
   viewType: ContentNodesViewType;
+  initialRequestedSpaceIds?: string[];
 };
 
 export const DataSourceBuilderSelector = ({
   viewType,
+  initialRequestedSpaceIds,
 }: DataSourceBuilderSelectorProps) => {
   const { owner } = useAgentBuilderContext();
-  const { spaces } = useSpacesContext();
+  const { spaces, isSpacesLoading } = useSpacesContext();
   const { supportedDataSourceViews: dataSourceViews } =
     useDataSourceViewsContext();
   const { navigationHistory, navigateTo, setSpaceEntry, setCategoryEntry } =
@@ -77,11 +83,30 @@ export const DataSourceBuilderSelector = ({
     }
   }, [debouncedSearch]);
 
+  // The agent might be linked to some open projects that the user is not
+  // a member of, so we fetch them here.
+  const missingSpaceIds = useMemo(() => {
+    if (!initialRequestedSpaceIds?.length || isSpacesLoading) {
+      return [];
+    }
+    const spaceIds = new Set(spaces.map((s) => s.sId));
+    return initialRequestedSpaceIds.filter((id) => !spaceIds.has(id));
+  }, [initialRequestedSpaceIds, spaces, isSpacesLoading]);
+
+  const { spaces: missingSpaces } = useSpaceProjectsLookup({
+    workspaceId: owner.sId,
+    spaceIds: missingSpaceIds,
+  });
+
+  const allSpaces = useMemo(() => {
+    return [...spaces, ...missingSpaces];
+  }, [spaces, missingSpaces]);
+
   // Filter spaces to only those with data source views
   const filteredSpaces = useMemo(() => {
     const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
-    return spaces.filter((s) => spaceIds.has(s.sId));
-  }, [spaces, dataSourceViews]);
+    return allSpaces.filter((s) => spaceIds.has(s.sId));
+  }, [allSpaces, dataSourceViews]);
 
   // Get current space and node for search - memoized to prevent re-rendering issues
   const currentSpace = useMemo(

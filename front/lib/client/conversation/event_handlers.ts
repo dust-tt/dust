@@ -1,6 +1,12 @@
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
-import type { AgentMessageNewEvent, UserMessageNewEvent } from "@app/types";
-import { isAgentMessageType, isUserMessageType } from "@app/types";
+import type {
+  AgentMessageNewEvent,
+  UserMessageNewEvent,
+} from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 
 // Function to update the participants with the new message from the event.
 export function getUpdatedParticipantsFromEvent(

@@ -1,7 +1,6 @@
-import type { LoggerInterface } from "@dust-tt/client";
-
 import type { parsePageProperties } from "@connectors/connectors/notion/lib/notion_api";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
+import type { LoggerInterface } from "@dust-tt/client";
 
 export function getTagsForPage({
   title,

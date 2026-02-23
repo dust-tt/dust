@@ -2,7 +2,7 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
-import type { ContentNodeType } from "@app/types";
+import type { ContentNodeType } from "@app/types/core/content_node";
 
 export type ToolSearchRawResult = {
   externalId: string;

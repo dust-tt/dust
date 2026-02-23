@@ -1,4 +1,4 @@
-import type { StorageService } from "@app/shared/services/storage";
+import type { StorageService } from "@extension/shared/services/storage";
 
 export class ChromeStorageService implements StorageService {
   private storage = chrome.storage.local;

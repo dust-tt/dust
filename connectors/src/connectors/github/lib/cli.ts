@@ -1,6 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-import { Op } from "sequelize";
-
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
   launchGithubCodeSyncDailyCronWorkflow,
@@ -25,6 +22,8 @@ import type {
   AdminSuccessResponseType,
   GithubCommandType,
 } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
+import { Op } from "sequelize";
 
 async function getGitHubConnector(args: GithubCommandType["args"]) {
   if (args.connectorId) {

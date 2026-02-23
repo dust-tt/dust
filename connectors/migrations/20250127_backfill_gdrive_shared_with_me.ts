@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
@@ -10,6 +8,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const connectors = await ConnectorResource.listByType("google_drive", {});

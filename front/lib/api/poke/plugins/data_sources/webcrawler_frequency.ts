@@ -2,15 +2,12 @@ import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
-import type { AdminCommandType } from "@app/types";
-import {
-  ConnectorsAPI,
-  CrawlingFrequencies,
-  Err,
-  FREQUENCY_DISPLAY_TEXT,
-  mapToEnumValues,
-  Ok,
-} from "@app/types";
+import type { AdminCommandType } from "@app/types/connectors/admin/cli";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { CrawlingFrequencies } from "@app/types/connectors/webcrawler";
+import { mapToEnumValues } from "@app/types/poke/plugins";
+import { Err, Ok } from "@app/types/shared/result";
+import { FREQUENCY_DISPLAY_TEXT } from "@app/types/website";
 
 export const changeWebcrawlerFrequency = createPlugin({
   manifest: {

@@ -1,10 +1,9 @@
-import type { ConversationPublicType } from "@dust-tt/client";
-
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types";
+import type { ConversationPublicType } from "@dust-tt/client";
 
 /**
  * Formats raw conversation content into a plain text document section for data source upsert.
@@ -24,7 +23,9 @@ export async function formatConversationForUpsert({
     // Only take the last version of each rank
     const msg = versions[versions.length - 1];
 
-    if (!msg) continue;
+    if (!msg) {
+      continue;
+    }
 
     let prefix: string | null = null;
     let content: string | null = null;

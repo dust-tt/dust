@@ -1,7 +1,6 @@
-import { Button } from "@dust-tt/sparkle";
-
 import { H1, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
+import { Button } from "@dust-tt/sparkle";
 
 export function PlatformIntroSection() {
   return (

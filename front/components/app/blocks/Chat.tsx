@@ -1,5 +1,17 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import ModelPicker from "@app/components/app/ModelPicker";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { supportsResponseFormat } from "@app/lib/providers";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Checkbox,
   Collapsible,
@@ -10,20 +22,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import ModelPicker from "@app/components/app/ModelPicker";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
-import { supportsResponseFormat } from "@app/lib/providers";
-import { classNames, shallowBlockClone } from "@app/lib/utils";
-import type {
-  AppType,
-  BlockType,
-  RunType,
-  SpecificationBlockType,
-  SpecificationType,
-  WorkspaceType,
-} from "@app/types";
 
 import Block from "./Block";
 
@@ -140,6 +138,7 @@ export default function Chat({
       setIsResponseFormatJsonValid(true);
       onBlockUpdate(b);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       setIsResponseFormatJsonValid(false);
     }

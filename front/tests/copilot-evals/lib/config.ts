@@ -28,10 +28,7 @@ const COPILOT_MCP_SERVERS = [
 export async function getCopilotConfig(): Promise<CopilotConfig> {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const copilotConfig = _getCopilotGlobalAgent(auth, {
-    copilotMCPServerViews: null,
-    copilotUserMetadata: null,
-  });
+  const copilotConfig = _getCopilotGlobalAgent(auth, null);
 
   const tools: AgentActionSpecification[] = [];
 

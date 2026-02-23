@@ -1,3 +1,17 @@
+import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
+import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
+import { ConfirmContext } from "@app/components/Confirm";
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import {
+  useProjectMetadata,
+  useSpaceInfo,
+  useUpdateProjectMetadata,
+  useUpdateSpace,
+} from "@app/lib/swr/spaces";
+import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
+import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
@@ -11,21 +25,6 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-
-import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
-import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
-import { ConfirmContext } from "@app/components/Confirm";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
-import {
-  useProjectMetadata,
-  useSpaceInfo,
-  useUpdateProjectMetadata,
-  useUpdateSpace,
-} from "@app/lib/swr/spaces";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { LightWorkspaceType } from "@app/types";
-import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
-import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
@@ -78,7 +77,7 @@ export function SpaceAboutTab({
   }, [projectMetadata, form]);
 
   const doUpdate = useUpdateSpace({ owner });
-  const { mutateSpaceInfo } = useSpaceInfo({
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
@@ -87,9 +86,13 @@ export function SpaceAboutTab({
   });
 
   const onSaveName = async () => {
+    const newProjectName = projectName.trim();
+    if (!newProjectName || newProjectName === space.name.trim()) {
+      return;
+    }
     const confirmed = await confirm({
       title: "Update project name?",
-      message: `The project name will be changed to "${projectName}".`,
+      message: `The project name will be changed to "${newProjectName}".`,
       validateVariant: "warning",
     });
 
@@ -97,16 +100,23 @@ export function SpaceAboutTab({
       return;
     }
 
-    const updated = await doUpdate(space, {
-      isRestricted,
-      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
-      managementMode: "manual",
-      name: projectName,
-    });
+    const updated = await doUpdate(
+      space,
+      {
+        isRestricted,
+        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: newProjectName,
+      },
+      {
+        title: "Successfully updated project name",
+        description: "Project name was successfully updated.",
+      }
+    );
 
     if (updated) {
-      await mutateSpaceInfo();
+      await mutateSpaceInfoRegardlessOfQueryParams();
       // Optimistically update the space name in the sidebar without refetching
       void mutateSpaceSummary();
       setIsEditingName(false);
@@ -145,16 +155,23 @@ export function SpaceAboutTab({
       return;
     }
 
-    const updated = await doUpdate(space, {
-      isRestricted: !newIsPublic,
-      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
-      managementMode: "manual",
-      name: space.name,
-    });
+    const updated = await doUpdate(
+      space,
+      {
+        isRestricted: !newIsPublic,
+        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: space.name,
+      },
+      {
+        title: "Successfully updated project visibility",
+        description: "Project visibility was successfully updated.",
+      }
+    );
 
     if (updated) {
-      await mutateSpaceInfo();
+      await mutateSpaceInfoRegardlessOfQueryParams();
     }
   };
 
@@ -167,9 +184,10 @@ export function SpaceAboutTab({
           <div className="flex w-full min-w-0 gap-2">
             <Input
               value={projectName}
+              disabled={!isProjectEditor}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setProjectName(e.target.value);
-                setIsEditingName(e.target.value !== space.name);
+                setIsEditingName(e.target.value.trim() !== space.name.trim());
               }}
               placeholder="Enter project name"
               containerClassName="flex-1"
@@ -205,7 +223,7 @@ export function SpaceAboutTab({
                   ? "Loading..."
                   : "Describe what this project is about..."
               }
-              disabled={isProjectMetadataLoading}
+              disabled={isProjectMetadataLoading || !isProjectEditor}
               minRows={3}
               resize="vertical"
               className="flex-1"
@@ -235,7 +253,7 @@ export function SpaceAboutTab({
           <div className="flex items-center justify-between gap-4 border-y border-border py-4">
             <div className="flex flex-col">
               <div className="heading-sm text-foreground dark:text-foreground-night">
-                Opened to everyone
+                Open to everyone
               </div>
               <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Anyone in the workspace can find and join the project.
@@ -276,6 +294,7 @@ export function SpaceAboutTab({
                 selectedMembers={projectMembers}
                 searchSelectedMembers={searchSelectedMembers}
                 isEditor={isProjectEditor}
+                mutateSpaceInfo={() => mutateSpaceInfoRegardlessOfQueryParams()}
               />
             </ScrollArea>
           </>

@@ -1,8 +1,7 @@
-import type { RedisClientType } from "redis";
-import { createClient } from "redis";
-
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
+import type { RedisClientType } from "redis";
+import { createClient } from "redis";
 
 // We have two distinct Redis URIs: REDIS_URI and REDIS_CACHE_URI.
 // These are singletons for each URI.
@@ -14,7 +13,8 @@ type RedisUsageTagsType =
   | "google_drive_incremental_sync"
   | "throttle"
   | "lock"
-  | "rate_limiter";
+  | "rate_limiter"
+  | "slack_auth";
 
 const REDIS_CACHE_USAGE_TAG = "cache_with_redis";
 

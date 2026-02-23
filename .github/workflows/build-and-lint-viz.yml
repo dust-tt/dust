@@ -18,5 +18,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: '22.22.0'
       - name: Build and lint
         run: npm -w viz run build && npm -w viz run lint

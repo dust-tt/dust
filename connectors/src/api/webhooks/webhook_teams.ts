@@ -1,10 +1,3 @@
-import type { TurnContext } from "botbuilder";
-import {
-  CloudAdapter,
-  ConfigurationBotFrameworkAuthentication,
-} from "botbuilder";
-import type { Request, Response } from "express";
-
 import {
   createErrorAdaptiveCard,
   createInteractiveToolApprovalAdaptiveCard,
@@ -34,6 +27,12 @@ import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { TurnContext } from "botbuilder";
+import {
+  CloudAdapter,
+  ConfigurationBotFrameworkAuthentication,
+} from "botbuilder";
+import type { Request, Response } from "express";
 
 // CloudAdapter configuration - simplified for incoming message validation only
 const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({

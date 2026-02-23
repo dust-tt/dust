@@ -1,12 +1,11 @@
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 makeScript(
   {

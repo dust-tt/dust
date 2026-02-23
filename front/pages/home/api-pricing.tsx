@@ -1,8 +1,4 @@
-import { Button, SearchInput } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import React, { useMemo, useState } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -18,6 +14,11 @@ import {
   MODEL_PROVIDER_IDS,
 } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { Button, SearchInput } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useMemo, useState } from "react";
 
 const ALL_PROVIDERS_LABEL = "All";
 
@@ -193,6 +194,7 @@ function PricingTable({ rows }: PricingTableProps) {
   );
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function ApiPricingPage() {
   const router = useRouter();
   const [selectedProvider, setSelectedProvider] =

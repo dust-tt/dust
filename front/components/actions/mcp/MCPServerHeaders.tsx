@@ -1,8 +1,7 @@
+import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
 import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
 import { useCallback } from "react";
-
-import { WebCrawlerHeaderRedactedValue } from "@app/types";
 
 type Header = { key: string; value: string };
 

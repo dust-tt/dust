@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
@@ -8,7 +6,9 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
@@ -21,7 +21,7 @@ async function handler(
 ): Promise<void> {
   const { aId } = req.query;
 
-  if (typeof aId !== "string") {
+  if (!isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -69,13 +69,24 @@ async function handler(
           paginationRes.error
         );
       }
-      const filter = req.query.filter === "all" ? "all" : "active";
+      const {
+        filter: filterParam,
+        version: versionParam,
+        days: daysParam,
+      } = req.query;
+      const filter = filterParam === "all" ? "all" : "active";
+      const version = isString(versionParam)
+        ? parseInt(versionParam, 10)
+        : undefined;
+      const days = isString(daysParam) ? parseInt(daysParam, 10) : undefined;
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
         withMetadata: req.query.withMetadata === "true",
         paginationParams: paginationRes.value,
         filter,
+        version: Number.isNaN(version) ? undefined : version,
+        days: Number.isNaN(days) ? undefined : days,
       });
 
       if (feedbacksRes.isErr()) {
@@ -84,9 +95,7 @@ async function handler(
 
       const feedbacks = feedbacksRes.value;
 
-      res.status(200).json({
-        feedbacks: feedbacks,
-      });
+      res.status(200).json({ feedbacks });
       return;
 
     default:

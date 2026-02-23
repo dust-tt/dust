@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { Err } from "@app/types";
+import { Err } from "@app/types/shared/result";
 
 // The following plugins are no-op plugins for the upgrade and downgrade endpoints.
 // They are used to save a plugin record in the database for the upgrade and downgrade endpoints.

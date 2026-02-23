@@ -1,10 +1,9 @@
-import { faker } from "@faker-js/faker";
-import type { Organization } from "@workos-inc/node";
-import { describe, expect, it, vi } from "vitest";
-
 import * as workosClient from "@app/lib/api/workos/client";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { faker } from "@faker-js/faker";
+import type { Organization } from "@workos-inc/node";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 

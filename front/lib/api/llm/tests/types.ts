@@ -3,12 +3,12 @@ import type {
   TestStructuredOutputKey,
   TestStructuredOutputSchema,
 } from "@app/lib/api/llm/tests/schemas";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
-} from "@app/types";
+} from "@app/types/assistant/models/types";
 
 export type TestConfig = {
   modelId: ModelIdType;

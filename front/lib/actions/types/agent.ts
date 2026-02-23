@@ -1,9 +1,8 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import type {
   ClientSideMCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type UnsavedServerSideMCPServerConfigurationType = Omit<
   ServerSideMCPServerConfigurationType,

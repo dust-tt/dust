@@ -1,3 +1,12 @@
+import NewBlock from "@app/components/app/NewBlock";
+import { classNames } from "@app/lib/utils";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowPathIcon,
   Button,
@@ -10,17 +19,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import NewBlock from "@app/components/app/NewBlock";
-import { classNames } from "@app/lib/utils";
-import type {
-  AppType,
-  BlockType,
-  RunType,
-  SpecificationBlockType,
-  SpecificationType,
-  WorkspaceType,
-} from "@app/types";
 
 import Output from "./Output";
 

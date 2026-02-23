@@ -1,7 +1,6 @@
+import { H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@dust-tt/sparkle";
 import type { FC } from "react";
-
-import { H2 } from "@app/components/home/ContentComponents";
 
 export interface DemoVideoProps {
   sectionTitle?: string;

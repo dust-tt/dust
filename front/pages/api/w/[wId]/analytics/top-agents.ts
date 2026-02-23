@@ -1,8 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
@@ -10,7 +5,11 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { estypes } from "@elastic/elasticsearch";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
@@ -20,6 +19,7 @@ const QuerySchema = z.object({
 export type WorkspaceTopAgentRow = {
   agentId: string;
   name: string;
+  pictureUrl: string | null;
   messageCount: number;
   userCount: number;
 };
@@ -123,7 +123,7 @@ async function handler(
         agentIds.length > 0
           ? await getAgentConfigurations(auth, {
               agentIds,
-              variant: "light",
+              variant: "extra_light",
             })
           : [];
       const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
@@ -134,6 +134,7 @@ async function handler(
         return {
           agentId,
           name: agent?.name ?? "Unknown agent",
+          pictureUrl: agent?.pictureUrl ?? null,
           messageCount: bucket.doc_count ?? 0,
           userCount: Math.round(bucket.unique_users?.value ?? 0),
         };

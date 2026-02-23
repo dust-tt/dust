@@ -1,3 +1,10 @@
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import {
+  dollarsToMicroUsd,
+  microUsdToDollarsString,
+  monthlyCapDollarsSchema,
+} from "@app/components/workspace/api-keys/utils";
+import type { KeyType } from "@app/types/key";
 import {
   Input,
   Sheet,
@@ -8,17 +15,10 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
-
-import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
-import {
-  dollarsToMicroUsd,
-  microUsdToDollarsString,
-  monthlyCapDollarsSchema,
-} from "@app/components/workspace/api-keys/utils";
-import type { KeyType } from "@app/types";
 
 const formSchema = z.object({
   capValueDollars: monthlyCapDollarsSchema,

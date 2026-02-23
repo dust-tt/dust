@@ -1,10 +1,9 @@
-import ValTown from "@valtown/sdk";
-
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
-import { decrypt } from "@app/types";
+import { decrypt } from "@app/types/shared/utils/hashing";
+import ValTown from "@valtown/sdk";
 
 interface ValTownError {
   status?: number;

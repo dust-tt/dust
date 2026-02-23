@@ -1,6 +1,5 @@
-import React from "react";
-
 import { cn } from "@sparkle/lib/utils";
+import React from "react";
 
 import { ListItem } from "./ListItem";
 

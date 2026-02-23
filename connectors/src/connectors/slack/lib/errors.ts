@@ -1,3 +1,4 @@
+import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
 import type {
   ChatPostMessageResponse,
   CodedError,
@@ -7,8 +8,6 @@ import type {
 } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
 import type { Attributes } from "sequelize";
-
-import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
 
 function isCodedError(error: unknown): error is CodedError {
   return error != null && typeof error === "object" && "code" in error;

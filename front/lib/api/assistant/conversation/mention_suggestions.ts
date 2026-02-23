@@ -4,9 +4,9 @@ import { fetchConversationParticipants } from "@app/lib/api/assistant/participan
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
-  sortEditorSuggestionUsers,
   SUGGESTION_DISPLAY_LIMIT,
   SUGGESTION_PRIORITY,
+  sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -16,8 +16,11 @@ import type {
   RichAgentMentionInConversation,
   RichMention,
   RichUserMentionInConversation,
-} from "@app/types";
-import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
+} from "@app/types/assistant/mentions";
+import {
+  toRichAgentMentionType,
+  toRichUserMentionType,
+} from "@app/types/assistant/mentions";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
@@ -234,6 +237,8 @@ export const suggestionsOfMentions = async (
       variant: "light",
     });
 
+    const activeAgentIds = new Set(agentConfigurations.map((a) => a.sId));
+
     const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
       .filter((a) => a.status === "active")
       .map((a) => ({
@@ -242,6 +247,13 @@ export const suggestionsOfMentions = async (
         lastActivityAt:
           participantAgents.find((pa) => pa.id === a.sId)?.lastActivityAt ?? 0,
       }));
+
+    // Include participant agents not already in the fetched configurations
+    // (e.g. the copilot agent which is excluded from global agent listings).
+    const missingParticipants = participantAgents.filter(
+      (pa) => !activeAgentIds.has(pa.id)
+    );
+    activeAgents.push(...missingParticipants);
 
     const filteredAgents = filterAndSortEditorSuggestionAgents(
       normalizedQuery,

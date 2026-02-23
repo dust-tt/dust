@@ -1,11 +1,10 @@
-import { ActionIcons } from "@dust-tt/sparkle";
-
 import {
   InternalActionIcons,
   isCustomResourceIconType,
 } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { ActionIcons } from "@dust-tt/sparkle";
 
 export function getInfoPageTitle(
   infoMCPServerView: MCPServerViewType | null

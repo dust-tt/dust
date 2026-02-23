@@ -1,13 +1,3 @@
-import {
-  ChevronDownIcon,
-  cn,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-} from "@dust-tt/sparkle";
-import { CheckCircle, Circle } from "lucide-react";
-import React from "react";
-
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
   PokeCommand,
@@ -19,6 +9,15 @@ import {
 } from "@app/components/poke/shadcn/ui/command";
 import { PokeFormControl } from "@app/components/poke/shadcn/ui/form";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
+import {
+  ChevronDownIcon,
+  cn,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@dust-tt/sparkle";
+import { CheckCircle, Circle } from "lucide-react";
+import React from "react";
 
 interface EnumSelectProps {
   label?: string;

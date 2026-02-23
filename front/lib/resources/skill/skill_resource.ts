@@ -1,21 +1,5 @@
-import assert from "assert";
-import groupBy from "lodash/groupBy";
-import isEqual from "lodash/isEqual";
-import omit from "lodash/omit";
-import uniq from "lodash/uniq";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op } from "sequelize";
-
-import {
-  getAgentConfiguration,
-  updateAgentRequirements,
-} from "@app/lib/api/assistant/configuration/agent";
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,6 +29,7 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/regi
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -57,27 +42,39 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
-  AgentsUsageType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type {
   ConversationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-} from "@app/types";
-import {
-  Err,
-  isGlobalAgentId,
-  normalizeError,
-  Ok,
-  removeNulls,
-  SKILL_GROUP_PREFIX,
-} from "@app/types";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+} from "@app/types/assistant/conversation";
 import type {
   SkillStatus,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
+import { SKILL_GROUP_PREFIX } from "@app/types/groups";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
+import groupBy from "lodash/groupBy";
+import isEqual from "lodash/isEqual";
+import omit from "lodash/omit";
+import uniq from "lodash/uniq";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -584,7 +581,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       const allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
         auth,
-        removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId))
+        removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
+        { includeMetadata: false }
       );
 
       allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
@@ -1293,6 +1291,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (spaceId) => !this.requestedSpaceIds.includes(spaceId)
     );
 
+    const workspace = auth.getNonNullableWorkspace();
+
     await concurrentExecutor(
       agents,
       async (agent) => {
@@ -1302,15 +1302,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         // removed from the agent. In order to achieve this, we check if the agent has
         // any other capabilities that require the removed spaces.
         if (spaceIdsRemovedFromThisSkill.length > 0) {
-          const agentConfig = await getAgentConfiguration(auth, {
-            agentId: agent.sId,
+          const actionsMap = await fetchMCPServerActionConfigurations(auth, {
+            configurationIds: [agent.id],
             variant: "full",
           });
-          assert(agentConfig, "Agent configuration not found");
+          const actions = actionsMap.get(agent.id) ?? [];
 
-          const agentSkills = await SkillResource.listByAgentConfiguration(
+          const agentSkillModels = await AgentSkillModel.findAll({
+            where: {
+              agentConfigurationId: agent.id,
+              workspaceId: workspace.id,
+            },
+          });
+          const agentSkills = await SkillResource.fetchBySkillReferences(
             auth,
-            agentConfig
+            agentSkillModels.map((s) => ({
+              customSkillId: s.customSkillId,
+              globalSkillId: s.globalSkillId,
+            }))
           );
           const otherAgentSkills = agentSkills.filter(
             (skill) => skill.sId !== this.sId
@@ -1318,7 +1327,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
           const agentOtherCapabilitiesRequirements =
             await getAgentConfigurationRequirementsFromCapabilities(auth, {
-              actions: agentConfig.actions,
+              actions,
               skills: otherAgentSkills,
             });
 
@@ -1504,6 +1513,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         transaction
       );
 
+      // Suspend all editor group memberships for this skill.
+      if (affectedCount > 0 && this.editorGroup) {
+        await GroupMembershipModel.update(
+          { status: "suspended" },
+          {
+            where: {
+              groupId: this.editorGroup.id,
+              workspaceId: this.workspaceId,
+              status: "active",
+              startAt: { [Op.lte]: new Date() },
+              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+            },
+            transaction,
+          }
+        );
+      }
+
       return { affectedCount };
     });
   }
@@ -1512,6 +1538,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     assert(this.canWrite(auth), "User is not authorized to restore this skill");
 
     const [affectedCount] = await this.update({ status: "active" });
+
+    // Restore all editor group memberships (set suspended → active).
+    if (affectedCount > 0 && this.editorGroup) {
+      await GroupMembershipModel.update(
+        { status: "active" },
+        {
+          where: {
+            groupId: this.editorGroup.id,
+            workspaceId: this.workspaceId,
+            status: "suspended",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+        }
+      );
+    }
 
     return { affectedCount };
   }

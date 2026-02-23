@@ -1,14 +1,23 @@
-import { ContextItem, LargeAssistantCard } from "@dust-tt/sparkle";
-
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
-import type { TemplateTagCodeType, TemplateTagsType } from "@app/types";
+import type {
+  TemplateTagCodeType,
+  TemplateTagsType,
+} from "@app/types/assistant/templates";
+import {
+  AssistantCard,
+  CardGrid,
+  ContextItem,
+  LargeAssistantCard,
+} from "@dust-tt/sparkle";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
   openTemplateModal: (templateId: string) => void;
   templateTagsMapping: TemplateTagsType;
   selectedTags: TemplateTagCodeType[];
+  hasCopilot: boolean;
+  onTemplateClick: (templateId: string) => void;
 }
 
 export function AgentTemplateGrid({
@@ -16,6 +25,8 @@ export function AgentTemplateGrid({
   openTemplateModal,
   templateTagsMapping,
   selectedTags,
+  hasCopilot,
+  onTemplateClick,
 }: AgentTemplateGridProps) {
   if (!templates.length) {
     return null;
@@ -42,17 +53,32 @@ export function AgentTemplateGrid({
                 title={templateTagsMapping[tagName].label}
                 hasBorder={false}
               />
-              <div className="grid grid-cols-2 gap-2">
-                {templatesForTag.map((template) => (
-                  <LargeAssistantCard
-                    key={template.sId}
-                    title={template.handle}
-                    pictureUrl={template.pictureUrl}
-                    description={template.description ?? ""}
-                    onClick={() => openTemplateModal(template.sId)}
-                  />
-                ))}
-              </div>
+              {hasCopilot ? (
+                <CardGrid>
+                  {templatesForTag.map((template) => (
+                    <AssistantCard
+                      key={template.sId}
+                      title={template.handle}
+                      pictureUrl={template.pictureUrl}
+                      description={template.userFacingDescription ?? ""}
+                      onClick={() => onTemplateClick(template.sId)}
+                      variant="secondary"
+                    />
+                  ))}
+                </CardGrid>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {templatesForTag.map((template) => (
+                    <LargeAssistantCard
+                      key={template.sId}
+                      title={template.handle}
+                      pictureUrl={template.pictureUrl}
+                      description={template.userFacingDescription ?? ""}
+                      onClick={() => openTemplateModal(template.sId)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           );
         })

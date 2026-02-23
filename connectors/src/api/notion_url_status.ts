@@ -1,5 +1,3 @@
-import type { Request, Response } from "express";
-
 import {
   checkNotionUrl,
   findNotionUrl,
@@ -11,6 +9,7 @@ import {
 } from "@connectors/connectors/notion/lib/utils";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { Request, Response } from "express";
 
 type NotionUrlStatus = {
   notion: {

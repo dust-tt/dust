@@ -11,27 +11,26 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type {
   AgentMessageType,
-  ContentFragmentType,
   ConversationType,
   LightAgentMessageType,
   LightConversationType,
   LightMessageType,
   MessageType,
-  Result,
   UserMessageType,
   UserMessageTypeWithContentFragments,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  Err,
   isAgentMessageType,
-  isArrayOf,
-  isContentFragmentType,
   isUserMessageType,
   isUserMessageTypeWithContentFragments,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isArrayOf } from "@app/types/shared/typescipt_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 // Helper type to map viewType to the correct message type
 type MessageTypeForView<V extends "light" | "full"> = V extends "light"

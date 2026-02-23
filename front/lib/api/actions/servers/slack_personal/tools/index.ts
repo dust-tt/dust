@@ -1,17 +1,13 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import uniqBy from "lodash/uniqBy";
-
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  executeGetUser,
-  executeListUsers,
+  executeListUserGroups,
   executePostMessage,
   executeReadThreadMessages,
   executeScheduleMessage,
   executeSearchChannels,
+  executeSearchUser,
   getSlackClient,
   isSlackMissingScope,
   resolveChannelDisplayName,
@@ -32,15 +28,17 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { TimeFrame } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { stripNullBytes } from "@app/types/shared/utils/string_utils";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import {
-  Err,
-  normalizeError,
-  Ok,
   parseTimeFrame,
-  stripNullBytes,
   timeFrameFromNow,
-} from "@app/types";
+} from "@app/types/shared/utils/time_frame";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import uniqBy from "lodash/uniqBy";
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 
@@ -351,7 +349,7 @@ export interface SlackPersonalToolsResult {
 
 export function createSlackPersonalTools(
   auth: Authenticator,
-  _mcpServerId: string,
+  mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
 ): SlackPersonalToolsResult {
   const handlers: ToolHandlers<typeof SLACK_PERSONAL_TOOLS_METADATA> = {
@@ -604,17 +602,16 @@ export function createSlackPersonalTools(
       }
     },
 
-    list_users: async ({ nameFilter, includeUserGroups }, { authInfo }) => {
+    search_user: async ({ query, search_all }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeListUsers({
-          nameFilter,
+        return await executeSearchUser(query, search_all ?? false, {
           accessToken,
-          includeUserGroups,
+          mcpServerId,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
@@ -622,26 +619,26 @@ export function createSlackPersonalTools(
           return authError;
         }
         return new Err(
-          new MCPError(`Error listing users: ${normalizeError(error)}`)
+          new MCPError(`Error searching user: ${normalizeError(error)}`)
         );
       }
     },
 
-    get_user: async ({ userId }, { authInfo }) => {
+    list_user_groups: async (_params, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeGetUser({ userId, accessToken });
+        return await executeListUserGroups({ accessToken });
       } catch (error) {
         const authError = handleSlackAuthError(error);
         if (authError) {
           return authError;
         }
         return new Err(
-          new MCPError(`Error retrieving user info: ${normalizeError(error)}`)
+          new MCPError(`Error listing user groups: ${normalizeError(error)}`)
         );
       }
     },

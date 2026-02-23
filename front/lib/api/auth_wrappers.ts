@@ -1,8 +1,9 @@
-import { TokenExpiredError } from "jsonwebtoken";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
+import {
+  isWorkspaceConversationKillSwitched,
+  isWorkspaceKillSwitchedForAllAPIs,
+} from "@app/lib/api/workspace";
 import {
   Authenticator,
   getAPIKey,
@@ -16,15 +17,18 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
-import {
-  getGroupIdsFromHeaders,
-  getRoleFromHeaders,
-  getUserEmailFromHeaders,
-} from "@app/types";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorResponse,
+} from "@app/types/error";
+import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
+import { getUserEmailFromHeaders } from "@app/types/user";
+import { TokenExpiredError } from "jsonwebtoken";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 function getMaintenanceError(
   maintenance: string | number | true | object
@@ -50,6 +54,53 @@ function getMaintenanceError(
       message: `Service is currently unavailable. [${maintenance}]`,
     },
   };
+}
+
+function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message:
+        "Access to this workspace has been disabled for emergency maintenance.",
+    },
+  };
+}
+
+function getConversationKillSwitchError(): APIErrorWithStatusCode {
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message:
+        "Access to this conversation has been disabled for emergency maintenance.",
+    },
+  };
+}
+
+const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
+
+function getAssistantConversationIdFromRequest(
+  req: NextApiRequest
+): string | null {
+  if (!req.url?.includes(ASSISTANT_CONVERSATION_ROUTE_FRAGMENT)) {
+    return null;
+  }
+  return isString(req.query.cId) ? req.query.cId : null;
+}
+
+function getConversationKillSwitchErrorForRequest(
+  req: NextApiRequest,
+  killSwitched: unknown
+): APIErrorWithStatusCode | null {
+  const conversationId = getAssistantConversationIdFromRequest(req);
+  if (!conversationId) {
+    return null;
+  }
+
+  return isWorkspaceConversationKillSwitched(killSwitched, conversationId)
+    ? getConversationKillSwitchError()
+    : null;
 }
 
 /**
@@ -122,6 +173,10 @@ export function withSessionAuthenticationForPoke<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
+ * This function now supports both cookie-based sessions and bearer token authentication.
+ * If a session cookie is present, it will be used. Otherwise, it will attempt to authenticate
+ * using a bearer token from the Authorization header.
+ *
  * @param handler
  * @param opts
  * @returns
@@ -131,7 +186,7 @@ export function withSessionAuthenticationForWorkspace<T>(
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
-    session: SessionWithUser
+    session: SessionWithUser | null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
@@ -139,11 +194,10 @@ export function withSessionAuthenticationForWorkspace<T>(
     allowMissingWorkspace?: boolean;
   } = {}
 ) {
-  return withSessionAuthentication(
+  return withLogging(
     async (
       req: NextApiRequestWithContext,
-      res: NextApiResponse<WithAPIErrorResponse<T>>,
-      session: SessionWithUser
+      res: NextApiResponse<WithAPIErrorResponse<T>>
     ) => {
       const { wId } = req.query;
       if (typeof wId !== "string" || !wId) {
@@ -156,7 +210,57 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      const auth = await Authenticator.fromSession(session, wId);
+      // Try to get session from cookies first
+      const session = await getSession(req, res);
+      let auth: Authenticator;
+
+      if (session) {
+        // Use session-based authentication
+        auth = await Authenticator.fromSession(session, wId);
+      } else {
+        // Try bearer token authentication as fallback
+        const bearerTokenRes = await getBearerToken(req);
+        if (bearerTokenRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The user does not have an active session or is not authenticated.",
+            },
+          });
+        }
+
+        const token = bearerTokenRes.value;
+        if (!isOAuthToken(token)) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+
+        try {
+          const authRes = await handleWorkOSAuth(req, res, token, wId);
+          if (authRes.isErr()) {
+            return apiError(req, res, authRes.error);
+          }
+          auth = authRes.value;
+        } catch (error) {
+          logger.error({ error }, "Failed to verify token");
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_oauth_token_error",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+      }
 
       const owner = auth.workspace();
       const plan = auth.plan();
@@ -192,6 +296,17 @@ export function withSessionAuthenticationForWorkspace<T>(
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
       }
+      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+        return apiError(req, res, getWorkspaceKillSwitchError());
+      }
+      const conversationKillSwitchError =
+        getConversationKillSwitchErrorForRequest(
+          req,
+          owner.metadata?.killSwitched
+        );
+      if (conversationKillSwitchError) {
+        return apiError(req, res, conversationKillSwitchError);
+      }
 
       const user = auth.user();
       if (!user) {
@@ -217,7 +332,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
       return handler(req, res, auth, session);
     },
-    opts
+    opts.isStreaming
   );
 }
 
@@ -341,6 +456,21 @@ export function withPublicAPIAuthentication<T>(
           if (maintenance) {
             return apiError(req, res, getMaintenanceError(maintenance));
           }
+          if (
+            isWorkspaceKillSwitchedForAllAPIs(
+              auth.workspace()?.metadata?.killSwitched
+            )
+          ) {
+            return apiError(req, res, getWorkspaceKillSwitchError());
+          }
+          const conversationKillSwitchError =
+            getConversationKillSwitchErrorForRequest(
+              req,
+              auth.workspace()?.metadata?.killSwitched
+            );
+          if (conversationKillSwitchError) {
+            return apiError(req, res, conversationKillSwitchError);
+          }
 
           return await handler(req, res, auth, null);
         } catch (error) {
@@ -396,6 +526,17 @@ export function withPublicAPIAuthentication<T>(
       const maintenance = owner.metadata?.maintenance;
       if (maintenance) {
         return apiError(req, res, getMaintenanceError(maintenance));
+      }
+      if (isWorkspaceKillSwitchedForAllAPIs(owner.metadata?.killSwitched)) {
+        return apiError(req, res, getWorkspaceKillSwitchError());
+      }
+      const conversationKillSwitchError =
+        getConversationKillSwitchErrorForRequest(
+          req,
+          owner.metadata?.killSwitched
+        );
+      if (conversationKillSwitchError) {
+        return apiError(req, res, conversationKillSwitchError);
       }
 
       // Authenticator created from a key has the builder role if the key is associated with

@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateWorkspaceMetadata } from "@app/lib/api/workspace";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const toggleAutoCreateSpacePlugin = createPlugin({
   manifest: {

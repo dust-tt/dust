@@ -1,9 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { finalizeConnection } from "@app/lib/api/oauth";
-import type { OAuthConnectionType, WithAPIErrorResponse } from "@app/types";
-import { isOAuthProvider } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { OAuthConnectionType } from "@app/types/oauth/lib";
+import { isOAuthProvider } from "@app/types/oauth/lib";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,

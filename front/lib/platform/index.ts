@@ -15,6 +15,7 @@ export {
   LinkWrapper,
   Script,
   useAppRouter,
+  useNavigationBlocker,
   usePathParam,
   usePathParams,
   useRequiredPathParam,

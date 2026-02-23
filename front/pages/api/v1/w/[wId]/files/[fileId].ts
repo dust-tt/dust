@@ -1,6 +1,3 @@
-import type { FileUploadedRequestResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
@@ -16,11 +13,13 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { getSecureFileAction } from "@app/pages/api/w/[wId]/files/[fileId]";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   isConversationFileUseCase,
   isPubliclySupportedUseCase,
-} from "@app/types";
+} from "@app/types/files";
+import type { FileUploadedRequestResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const VALID_VIEW_VERSIONS: FileVersion[] = ["original", "processed"];
 

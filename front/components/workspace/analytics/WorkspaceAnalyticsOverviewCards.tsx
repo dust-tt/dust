@@ -1,7 +1,6 @@
-import { Spinner, ValueCard } from "@dust-tt/sparkle";
-
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { useWorkspaceAnalyticsOverview } from "@app/lib/swr/workspaces";
+import { Spinner, ValueCard } from "@dust-tt/sparkle";
 
 interface WorkspaceAnalyticsOverviewCardsProps {
   workspaceId: string;

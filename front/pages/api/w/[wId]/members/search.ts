@@ -1,20 +1,17 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import { formatValidationErrors } from "io-ts-reporters";
-import { BooleanFromString, NumberFromString, withFallback } from "io-ts-types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  GroupKind,
-  UserTypeWithWorkspace,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { GroupKindCodec } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { GroupKind } from "@app/types/groups";
+import { GroupKindCodec } from "@app/types/groups";
+import type { UserTypeWithWorkspace } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import { formatValidationErrors } from "io-ts-reporters";
+import { BooleanFromString, NumberFromString, withFallback } from "io-ts-types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const DEFAULT_PAGE_LIMIT = 25;
 

@@ -1,7 +1,16 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
+import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
+import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
+import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
+import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import {
   BarChartIcon,
   Button,
-  ListCheckIcon,
   MagicIcon,
   RobotIcon,
   ScrollArea,
@@ -12,24 +21,11 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
-import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
-import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
-import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
-import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
-import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useState } from "react";
 
 type AgentBuilderRightPanelTabType =
   | "copilot"
   | "preview"
-  | "feedback"
   | "template"
   | "insights";
 
@@ -67,7 +63,7 @@ function PanelHeader({
                 {hasCopilot && (
                   <TabsTrigger
                     value="copilot"
-                    label="Copilot"
+                    label="Copilot (Beta)"
                     icon={RobotIcon}
                     onClick={() => onTabChange("copilot")}
                   />
@@ -84,13 +80,7 @@ function PanelHeader({
                   icon={BarChartIcon}
                   onClick={() => onTabChange("insights")}
                 />
-                <TabsTrigger
-                  value="feedback"
-                  label="Feedback"
-                  icon={ListCheckIcon}
-                  onClick={() => onTabChange("feedback")}
-                />
-                {hasTemplate && (
+                {hasTemplate && !hasCopilot && (
                   <TabsTrigger
                     value="template"
                     label="Template"
@@ -153,14 +143,7 @@ function CollapsedTabs({
         tooltip="Insights"
         onClick={() => onTabSelect("insights")}
       />
-      <Button
-        icon={ListCheckIcon}
-        variant="ghost"
-        size="sm"
-        tooltip="Feedback"
-        onClick={() => onTabSelect("feedback")}
-      />
-      {hasTemplate && (
+      {hasTemplate && !hasCopilot && (
         <Button
           icon={MagicIcon}
           variant="ghost"
@@ -177,6 +160,7 @@ interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
   hasCopilot: boolean;
+  conversationId?: string;
 }
 
 function ExpandedContent({
@@ -207,7 +191,7 @@ function ExpandedContent({
       <ObservabilityProvider>
         {selectedTab === "insights" &&
           (agentConfigurationSId ? (
-            <AgentBuilderObservability
+            <AgentBuilderInsights
               agentConfigurationSId={agentConfigurationSId}
             />
           ) : (
@@ -215,21 +199,7 @@ function ExpandedContent({
               <EmptyPlaceholder
                 icon={BarChartIcon}
                 title="Waiting for data"
-                description="Use your agent or share it with your team to see feedback data."
-              />
-            </TabContentLayout>
-          ))}
-        {selectedTab === "feedback" &&
-          (agentConfigurationSId ? (
-            <AgentBuilderPerformance
-              agentConfigurationSId={agentConfigurationSId}
-            />
-          ) : (
-            <TabContentLayout title="Feedback">
-              <EmptyPlaceholder
-                icon={ListCheckIcon}
-                title="Waiting for feedback"
-                description="When users give feedback on responses, you'll see it here."
+                description="Use your agent or share it with your team to see insights data."
               />
             </TabContentLayout>
           ))}
@@ -240,22 +210,36 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
+  conversationId?: string;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
+  conversationId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
-  const { assistantTemplate, owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { assistantTemplate } = useAgentBuilderContext();
+  const hasCopilot = useIsAgentBuilderCopilotEnabled();
 
   const hasTemplate = !!assistantTemplate;
-  const hasCopilot = hasFeature("agent_builder_copilot");
 
-  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : "preview"
-  );
+  // Default tab priority:
+  // - Template tab: when building from a template (copilot OFF)
+  // - Copilot tab: when copilot is enabled and prereqs met
+  // - Preview tab: fallback when copilot not available
+  function getDefaultTab(): AgentBuilderRightPanelTabType {
+    if (hasTemplate && !hasCopilot) {
+      return "template";
+    }
+    if (hasCopilot) {
+      return "copilot";
+    }
+    return "preview";
+  }
+
+  const [selectedTab, setSelectedTab] =
+    useState<AgentBuilderRightPanelTabType>(getDefaultTab);
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen((prev) => !prev);
@@ -287,6 +271,7 @@ export function AgentBuilderRightPanel({
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
           hasCopilot={hasCopilot}
+          conversationId={conversationId}
         />
       ) : (
         <CollapsedTabs

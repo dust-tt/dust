@@ -3,7 +3,7 @@ import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction
 import { getProviderStrategy } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import type { OAuthProvider } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
 
 export function oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
   provider: OAuthProvider

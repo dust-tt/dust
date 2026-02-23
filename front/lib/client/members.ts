@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import type { RoleType, UserTypeWithWorkspace } from "@app/types";
+import type { RoleType, UserTypeWithWorkspace } from "@app/types/user";
 
 export async function handleMembersRoleChange({
   members,

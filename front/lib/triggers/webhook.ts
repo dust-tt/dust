@@ -4,7 +4,6 @@ import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -21,21 +20,21 @@ import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";
-import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
-import {
-  Err,
-  errorToString,
-  isString,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import type {
   TriggerType,
+  WebhookRequestTriggerStatus,
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  errorToString,
+  normalizeError,
+} from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
@@ -814,9 +813,11 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
   {
     trigger,
     limit = 15,
+    status,
   }: {
     trigger: TriggerType;
     limit?: number;
+    status?: WebhookRequestTriggerStatus;
   }
 ): Promise<
   {
@@ -835,6 +836,7 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
     {
       triggerId: trigger.id,
       limit,
+      status,
     }
   );
 

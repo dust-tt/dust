@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import type {
@@ -17,6 +15,7 @@ import {
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
+import type { Transaction } from "sequelize";
 
 export class ZendeskConnectorStrategy
   implements ConnectorProviderStrategy<"zendesk">

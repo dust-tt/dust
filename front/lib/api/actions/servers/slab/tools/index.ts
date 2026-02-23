@@ -20,7 +20,7 @@ import {
   filterByArchived,
   filterByPublished,
 } from "@app/lib/api/actions/servers/slab/utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const MAX_CONTENT_SIZE = 32000;
 

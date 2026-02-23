@@ -1,7 +1,6 @@
-import { Op } from "sequelize";
-
 import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import type { ModelId } from "@connectors/types";
+import { Op } from "sequelize";
 
 /**
  * Count the number of files that were synced (upserted) during this sync run.

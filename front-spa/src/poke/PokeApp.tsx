@@ -1,18 +1,8 @@
-import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
-import { PokePage } from "@spa/poke/layouts/PokePage";
-import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
-import {
-  createBrowserRouter,
-  Navigate,
-  RouterProvider,
-  useParams,
-} from "react-router-dom";
-
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
-import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
+import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/AssistantInstructionsPage";
+import { CacheLookupPage } from "@dust-tt/front/components/poke/pages/CacheLookupPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
 import { ConversationPage } from "@dust-tt/front/components/poke/pages/ConversationPage";
 import { DashboardPage } from "@dust-tt/front/components/poke/pages/DashboardPage";
@@ -38,9 +28,22 @@ import { SpacePage } from "@dust-tt/front/components/poke/pages/SpacePage";
 import { TemplateDetailPage } from "@dust-tt/front/components/poke/pages/TemplateDetailPage";
 import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/TemplatesListPage";
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
+import { WebhookSourceDetailsPage } from "@dust-tt/front/components/poke/pages/WebhookSourceDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
-import { useLocation } from "react-router-dom";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
+import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import Custom404 from "@dust-tt/front/pages/404";
+import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
+import { PokePage } from "@spa/poke/layouts/PokePage";
+import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 
 // Redirect component that strips /poke prefix
 function PokeRedirect() {
@@ -65,6 +68,7 @@ const router = createBrowserRouter(
         { path: "templates", element: <TemplatesListPage /> },
         { path: "templates/:tId", element: <TemplateDetailPage /> },
         { path: "plugins", element: <PluginsPage /> },
+        { path: "cache", element: <CacheLookupPage /> },
         { path: "connectors/:connectorId", element: <ConnectorRedirectPage /> },
       ],
     },
@@ -76,6 +80,10 @@ const router = createBrowserRouter(
         { index: true, element: <WorkspacePage /> },
         { path: "memberships", element: <MembershipsPage /> },
         { path: "llm-traces/:runId", element: <LLMTracePage /> },
+        {
+          path: "assistants/:aId/instructions",
+          element: <AssistantInstructionsPage />,
+        },
         { path: "assistants/:aId", element: <AssistantDetailsPage /> },
         {
           path: "assistants/:aId/triggers/:triggerId",
@@ -106,6 +114,10 @@ const router = createBrowserRouter(
           path: "spaces/:spaceId/mcp_server_views/:svId",
           element: <MCPServerViewPage />,
         },
+        {
+          path: "webhook-sources/:wsId",
+          element: <WebhookSourceDetailsPage />,
+        },
       ],
     },
     // Redirect /poke/* to /* (strip /poke prefix)
@@ -120,11 +132,13 @@ const router = createBrowserRouter(
 export default function PokeApp() {
   return (
     <AppReadyProvider>
-      <RegionProvider>
-        <RootLayout>
-          <RouterProvider router={router} />
-        </RootLayout>
-      </RegionProvider>
+      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+        <RegionProvider>
+          <RootLayout>
+            <RouterProvider router={router} />
+          </RootLayout>
+        </RegionProvider>
+      </FetcherProvider>
     </AppReadyProvider>
   );
 }

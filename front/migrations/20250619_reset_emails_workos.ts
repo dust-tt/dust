@@ -7,7 +7,7 @@ import { fetchUserFromWorkOS } from "@app/lib/api/workos/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 interface CsvRecord {
   email: string;

@@ -1,8 +1,10 @@
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
-import { addWorkOSOrganizationDomain } from "@app/lib/api/workos/organization";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import {
+  addWorkOSOrganizationDomain,
+  getOrCreateWorkOSOrganization,
+} from "@app/lib/api/workos/organization";
 import {
   getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
@@ -10,8 +12,9 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain } from "@app/lib/utils";
-import type { Result } from "@app/types";
-import { Err, mapToEnumValues, Ok } from "@app/types";
+import { mapToEnumValues } from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 async function handleAddDomain(
   auth: Authenticator,

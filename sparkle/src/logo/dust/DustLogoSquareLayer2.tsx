@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
+
 const SvgDustLogoSquareLayer2 = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -12,11 +13,11 @@ const SvgDustLogoSquareLayer2 = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="#3B82F6"
       fillRule="evenodd"
-      d="M12 36a6 6 0 0 1 0-12h36v12H12Z"
+      d="M12 36a6 6 0 0 1 0-12h36v12z"
       clipRule="evenodd"
     />
-    <path fill="#418B5C" d="M12 0H0v24h12V0Z" />
-    <path fill="#E14322" d="M48 0H24v12h24V0Z" />
+    <path fill="#418B5C" d="M12 0H0v24h12z" />
+    <path fill="#E14322" d="M48 0H24v12h24z" />
   </svg>
 );
 export default SvgDustLogoSquareLayer2;

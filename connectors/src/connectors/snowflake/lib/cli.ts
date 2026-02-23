@@ -1,5 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -10,6 +8,7 @@ import type {
   SnowflakeFetchTableResponseType,
 } from "@connectors/types";
 import { isSnowflakeCredentials } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
 
 import { fetchDatabases, fetchSchemas, fetchTables } from "./snowflake_api";
 

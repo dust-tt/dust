@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
+// biome-ignore lint/plugin/nextjsNoDataFetchingInGetssp: pre-existing
 export const getServerSideProps = withSuperUserAuthRequirements(
   async (context) => {
     const { path } = context.params ?? {};
@@ -19,6 +20,7 @@ export const getServerSideProps = withSuperUserAuthRequirements(
   }
 );
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function PokeCatchAll() {
   // This component will never render due to the redirect
   return null;

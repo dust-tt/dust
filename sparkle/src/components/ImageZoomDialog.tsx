@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Button,
@@ -14,6 +14,7 @@ import {
   XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React, { useCallback, useState } from "react";
 
 function downloadFile(url: string, filename: string) {
   const link = document.createElement("a");
@@ -67,10 +68,7 @@ function ImageZoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        size="xl"
-        className="s-max-w-[90vw] s-overflow-hidden s-p-3"
-      >
+      <DialogContent size="fit" className="s-overflow-hidden s-p-3">
         <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
           {/* Previous button */}
           {navigation?.hasPrevious && (
@@ -86,7 +84,7 @@ function ImageZoomDialog({
           )}
 
           {/* Image container */}
-          <div className="s-relative">
+          <div className="s-relative s-rounded s-overflow-hidden">
             {image.isLoading ? (
               <div
                 className={cn(
@@ -102,7 +100,7 @@ function ImageZoomDialog({
                 <img
                   src={image.src}
                   alt={image.alt ?? ""}
-                  className="s-max-h-full s-max-w-full s-rounded-lg s-object-contain"
+                  className="s-max-h-full s-max-w-full s-object-contain"
                   onLoad={() => setImageLoaded(true)}
                 />
                 <DialogClose asChild>

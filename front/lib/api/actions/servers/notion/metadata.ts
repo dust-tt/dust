@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const NOTION_TOOL_NAME = "notion" as const;
 
@@ -395,6 +394,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     description:
       "Add a single content block to a Notion page. For multiple blocks, call this action multiple times. Only supports adding to Notion pages. Blocks that can contain children include: page, toggle, to-do, bulleted list, numbered list, callout, and quote.",
     schema: {
+      after: z
+        .string()
+        .optional()
+        .describe("The ID of the existing block to insert after."),
       blockId: z.string().describe("The ID of the parent block or page."),
       children: z
         .array(NotionBlockSchema)

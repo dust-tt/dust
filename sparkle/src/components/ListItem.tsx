@@ -1,7 +1,6 @@
-import { cva } from "class-variance-authority";
-import React, { ReactNode } from "react";
-
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React, { type ReactNode } from "react";
 
 const listItemVariants = cva(
   "s-group s-flex s-w-full s-flex-row s-gap-3 s-p-3",

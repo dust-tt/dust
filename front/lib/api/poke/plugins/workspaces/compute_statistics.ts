@@ -2,7 +2,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
+import { fileSizeToHumanReadable } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const computeWorkspaceStatsPlugin = createPlugin({
   manifest: {

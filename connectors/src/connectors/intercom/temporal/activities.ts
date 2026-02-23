@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomArticles,
@@ -45,6 +43,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { Op } from "sequelize";
 
 const INTERCOM_CONVO_BATCH_SIZE = 20;
 const INTERCOM_ARTICLE_BATCH_SIZE = 20;

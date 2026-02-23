@@ -1,6 +1,3 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -9,9 +6,11 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type {
   ContentFragmentExpiredReason,
   ContentFragmentVersion,
-  ContentNodeType,
   SupportedContentFragmentType,
-} from "@app/types";
+} from "@app/types/content_fragment";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentModel> {
   declare createdAt: CreationOptional<Date>;

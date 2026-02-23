@@ -1,15 +1,15 @@
-import { DUST_US_URL, FRONT_EXTENSION_URL } from "@app/shared/lib/config";
-import { generatePKCE } from "@app/shared/lib/utils";
-import type { StoredTokens } from "@app/shared/services/auth";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { DUST_US_URL, FRONT_EXTENSION_URL } from "@extension/shared/lib/config";
+import { generatePKCE } from "@extension/shared/lib/utils";
+import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
   getConnectionDetails,
   getDustDomain,
-} from "@app/shared/services/auth";
-import type { StorageService } from "@app/shared/services/storage";
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+} from "@extension/shared/services/auth";
+import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
 
 const POPUP_CONFIG = {

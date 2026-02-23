@@ -1,13 +1,11 @@
 import assert from "node:assert";
-
-import _ from "lodash";
-import { makeScript } from "scripts/helpers";
-
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { WebCrawlerFolderModel } from "@connectors/lib/models/webcrawler";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { concurrentExecutor } from "@connectors/types";
+import _ from "lodash";
+import { makeScript } from "scripts/helpers";
 
 makeScript(
   {

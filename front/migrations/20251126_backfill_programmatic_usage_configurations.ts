@@ -14,7 +14,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const BASE_TOKEN_MARKUP_PERCENT = 30;
 
@@ -36,8 +36,9 @@ async function backfillWorkspace(
   const workspaceLogger = logger.child({ workspaceId: workspace.sId });
 
   // Get active subscription and check if it's enterprise.
-  const subscription =
-    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
 
   if (!subscription || !subscription.stripeSubscriptionId) {
     workspaceLogger.info("Skipping: no active subscription found");

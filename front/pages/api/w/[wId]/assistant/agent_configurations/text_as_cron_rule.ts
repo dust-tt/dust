@@ -1,16 +1,15 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import {
-  generateCronRule,
   GENERIC_ERROR_MESSAGE,
+  generateCronRule,
   INVALID_TIMEZONE_MESSAGE,
   TOO_FREQUENT_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type PostTextAsCronRuleResponseBody = {
   cronRule: string;

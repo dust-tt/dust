@@ -1,12 +1,15 @@
-import { Button, cn } from "@dust-tt/sparkle";
-import { Clock, User } from "lucide-react";
-import React, { useState } from "react";
-
 import { PluginRunDetailsModal } from "@app/components/poke/plugins/PluginRunDetailsModal";
 import { PluginRunStatusChip } from "@app/components/poke/plugins/PluginRunStatusChip";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokePluginRuns } from "@app/poke/swr/plugins";
-import type { PluginResourceTarget, PluginRunType } from "@app/types";
+import type {
+  PluginResourceTarget,
+  PluginRunType,
+} from "@app/types/poke/plugins";
+import { Button, cn } from "@dust-tt/sparkle";
+import { Clock, User } from "lucide-react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
 
 interface PluginRunsListProps {
   pluginResourceTarget: PluginResourceTarget;

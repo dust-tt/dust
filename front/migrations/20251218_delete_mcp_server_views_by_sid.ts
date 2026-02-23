@@ -20,7 +20,7 @@ import type {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 type SoftDeletableWithBypass<M extends SoftDeletableWorkspaceAwareModel> =
   ModelStatic<M> & {

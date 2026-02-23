@@ -1,16 +1,14 @@
-import type { Editor } from "@tiptap/react";
-import type { ReactNode } from "react";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import {
+  CopilotHighlightProvider,
+  useCopilotHighlight,
+} from "@app/components/agent_builder/copilot/CopilotHighlightContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
+import {
+  BLUR_EVENT_NAME,
+  INSTRUCTIONS_DEBOUNCE_MS,
+} from "@app/components/agent_builder/instructions/constants";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -20,13 +18,24 @@ import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
   AgentSuggestionType,
   AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
+import type { Editor } from "@tiptap/react";
+import type { ReactNode, RefObject } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export interface CopilotSuggestionsContextType {
   getSuggestionWithRelations: (
@@ -51,6 +60,9 @@ export interface CopilotSuggestionsContextType {
   rejectAllInstructionSuggestions: () => Promise<boolean>;
 
   focusOnSuggestion: (suggestionId: string) => void;
+
+  // Scroll both panels to bring the next pending suggestion into view after accept.
+  scrollToNextSuggestion: (acceptedSuggestionId: string) => void;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -67,6 +79,22 @@ export const useCopilotSuggestions = () => {
   return context;
 };
 
+interface EditorHighlightSyncProps {
+  editorRef: RefObject<Editor | null>;
+}
+
+// Pushes React highlight state into the editor so decorations stay in sync
+function EditorHighlightSync({ editorRef }: EditorHighlightSyncProps) {
+  const { highlightedSuggestionId } = useCopilotHighlight();
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor && !editor.isDestroyed) {
+      editor.commands.setHighlightedSuggestion(highlightedSuggestionId);
+    }
+  }, [highlightedSuggestionId, editorRef]);
+  return null;
+}
+
 interface CopilotSuggestionsProviderProps {
   children: ReactNode;
   agentConfigurationId: string | null;
@@ -76,15 +104,34 @@ export const CopilotSuggestionsProvider = ({
   children,
   agentConfigurationId,
 }: CopilotSuggestionsProviderProps) => {
+  return (
+    <CopilotHighlightProvider>
+      <CopilotSuggestionsProviderContent
+        agentConfigurationId={agentConfigurationId}
+      >
+        {children}
+      </CopilotSuggestionsProviderContent>
+    </CopilotHighlightProvider>
+  );
+};
+
+function CopilotSuggestionsProviderContent({
+  children,
+  agentConfigurationId,
+}: CopilotSuggestionsProviderProps) {
   const { owner } = useAgentBuilderContext();
   const { skills } = useSkillsContext();
-  const { mcpServerViews } = useMCPServerViewsContext();
+  const { mcpServerViews, mcpServerViewsWithKnowledge } =
+    useMCPServerViewsContext();
+  const { supportedDataSourceViews: dataSourceViews } =
+    useDataSourceViewsContext();
+  const { highlightSuggestion } = useCopilotHighlight();
   const [isEditorReady, setIsEditorReady] = useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
 
-  // Local state for processed (accepted/rejected) suggestions - prevents card "blink"
+  // Local state for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
   const [processedSuggestions, setProcessedSuggestions] = useState<
     Map<string, AgentSuggestionType>
   >(new Map());
@@ -94,8 +141,7 @@ export const CopilotSuggestionsProvider = ({
     []
   );
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasCopilot = hasFeature("agent_builder_copilot");
+  const hasCopilot = useIsAgentBuilderCopilotEnabled();
 
   const skillsMap = useMemo(
     () => new Map(skills.map((s) => [s.sId, s])),
@@ -107,17 +153,53 @@ export const CopilotSuggestionsProvider = ({
     [mcpServerViews]
   );
 
+  const dataSourceViewsMap = useMemo(
+    () =>
+      new Map(dataSourceViews.map((dsv: DataSourceViewType) => [dsv.sId, dsv])),
+    [dataSourceViews]
+  );
+
+  const searchServerView = useMemo(
+    () =>
+      mcpServerViewsWithKnowledge.find((v) => v.server.name === "search") ??
+      null,
+    [mcpServerViewsWithKnowledge]
+  );
+
   const {
-    suggestions,
-    isSuggestionsLoading,
-    isSuggestionsValidating,
-    mutateSuggestions,
+    suggestions: pendingSuggestions,
+    isSuggestionsLoading: isPendingLoading,
+    isSuggestionsValidating: isPendingValidating,
+    mutateSuggestions: mutatePending,
   } = useAgentSuggestions({
     agentConfigurationId,
     disabled: !hasCopilot,
     state: ["pending"],
     workspaceId: owner.sId,
   });
+
+  const {
+    suggestions: outdatedSuggestions,
+    isSuggestionsLoading: isOutdatedLoading,
+    mutateSuggestions: mutateOutdated,
+  } = useAgentSuggestions({
+    agentConfigurationId,
+    disabled: !hasCopilot,
+    state: ["outdated"],
+    limit: 50,
+    workspaceId: owner.sId,
+  });
+
+  const suggestions = useMemo(
+    () => [...pendingSuggestions, ...outdatedSuggestions],
+    [pendingSuggestions, outdatedSuggestions]
+  );
+  const isSuggestionsLoading = isPendingLoading || isOutdatedLoading;
+  const isSuggestionsValidating = isPendingValidating;
+
+  const mutateSuggestions = useCallback(async () => {
+    await Promise.all([mutatePending(), mutateOutdated()]);
+  }, [mutatePending, mutateOutdated]);
 
   // Get suggestion: check local state first, then backend (n is small, .find is fine)
   const getSuggestion = useCallback(
@@ -142,15 +224,7 @@ export const CopilotSuggestionsProvider = ({
       }
 
       switch (suggestion.kind) {
-        case "tools": {
-          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
-          if (!tool) {
-            return null;
-          }
-
-          return { ...suggestion, relations: { tool } };
-        }
-
+        case "tools":
         case "sub_agent": {
           const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
           if (!tool) {
@@ -178,6 +252,20 @@ export const CopilotSuggestionsProvider = ({
           return { ...suggestion, relations: { model } };
         }
 
+        case "knowledge": {
+          const dataSourceView = dataSourceViewsMap.get(
+            suggestion.suggestion.dataSourceViewId
+          );
+          if (!dataSourceView || !searchServerView) {
+            return null;
+          }
+
+          return {
+            ...suggestion,
+            relations: { dataSourceView, searchServerView },
+          };
+        }
+
         case "instructions":
           return { ...suggestion, relations: null };
 
@@ -185,7 +273,13 @@ export const CopilotSuggestionsProvider = ({
           assertNever(suggestion);
       }
     },
-    [getSuggestion, skillsMap, mcpServerViewsMap]
+    [
+      getSuggestion,
+      skillsMap,
+      mcpServerViewsMap,
+      dataSourceViewsMap,
+      searchServerView,
+    ]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
@@ -234,6 +328,17 @@ export const CopilotSuggestionsProvider = ({
     checkEditorReady();
   }, []);
 
+  // Dispatch the blur event after a delay so the editor's debounced form sync
+  // (250ms) completes first, ensuring the instructions field is up-to-date
+  // when the description/avatar auto-generation reads it.
+  const BLUR_DISPATCH_DELAY_MS = INSTRUCTIONS_DEBOUNCE_MS + 50;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  const dispatchDelayedBlur = useCallback(() => {
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
+    }, BLUR_DISPATCH_DELAY_MS);
+  }, []);
+
   // Apply pending instruction suggestions to the editor when they arrive from backend.
   useEffect(() => {
     const editor = editorRef.current;
@@ -247,16 +352,26 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
-    // Get current pending instruction suggestion IDs.
+    // Pending = from API with state pending, excluding those we've locally processed as rejected/approved.
+    // This prevents re-application when SWR cache hasn't updated yet after reject/accept.
     const currentPendingIds = new Set(
       suggestions
         .filter((s) => s.state === "pending" && s.kind === "instructions")
+        .filter((s) => {
+          const processed = processedSuggestions.get(s.sId);
+          return !processed || processed.state === "pending";
+        })
         .map((s) => s.sId)
     );
 
     // Remove marks for suggestions that were applied but are no longer pending.
+    // Skip IDs we've marked approved (optimistic or confirmed) so we don't reject during accept.
     for (const appliedId of appliedSuggestionsRef.current) {
-      if (!currentPendingIds.has(appliedId)) {
+      const processed = processedSuggestions.get(appliedId);
+      if (
+        !currentPendingIds.has(appliedId) &&
+        processed?.state !== "approved"
+      ) {
         editor.commands.rejectSuggestion(appliedId);
         appliedSuggestionsRef.current.delete(appliedId);
       }
@@ -267,7 +382,7 @@ export const CopilotSuggestionsProvider = ({
     for (const suggestion of suggestions) {
       // Only apply pending instruction suggestions.
       if (
-        suggestion.state !== "pending" ||
+        !currentPendingIds.has(suggestion.sId) ||
         suggestion.kind !== "instructions"
       ) {
         continue;
@@ -304,7 +419,100 @@ export const CopilotSuggestionsProvider = ({
         )
       );
     }
-  }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
+  }, [
+    suggestions,
+    isSuggestionsLoading,
+    isEditorReady,
+    patchSuggestions,
+    processedSuggestions,
+  ]);
+
+  useEffect(() => {
+    if (isSuggestionsLoading) {
+      return;
+    }
+
+    const serverOutdatedSuggestions = suggestions.filter(
+      (s) => s.state === "outdated" && !processedSuggestions.has(s.sId)
+    );
+
+    if (serverOutdatedSuggestions.length > 0) {
+      setProcessedSuggestions((prev) =>
+        serverOutdatedSuggestions.reduce(
+          (map, s) => map.set(s.sId, s),
+          new Map(prev)
+        )
+      );
+    }
+  }, [suggestions, isSuggestionsLoading, processedSuggestions]);
+
+  const scrollCopilotToSuggestion = useCallback((sId: string) => {
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-suggestion-s-id="${sId}"]`
+      );
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, []);
+
+  const focusOnSuggestion = useCallback(
+    (suggestionId: string) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      const suggestion = getSuggestion(suggestionId);
+      if (!suggestion || suggestion.kind !== "instructions") {
+        return;
+      }
+      const position = getSuggestionPosition(editor, suggestionId);
+
+      if (position !== null) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(position)
+          .scrollIntoView()
+          .run();
+
+        highlightSuggestion(suggestionId, true);
+      }
+    },
+    [getSuggestion, highlightSuggestion]
+  );
+
+  const scrollToNextSuggestion = useCallback(
+    (acceptedSuggestionId: string) => {
+      const editor = editorRef.current;
+      const pendingInstructions = getPendingSuggestions().filter(
+        (s) => s.kind === "instructions" && s.sId !== acceptedSuggestionId
+      );
+      if (pendingInstructions.length === 0) {
+        return;
+      }
+
+      // Order by document position (top to bottom in the instruction form)
+      const sorted =
+        editor && !editor.isDestroyed
+          ? [...pendingInstructions].sort((a, b) => {
+              const posA = getSuggestionPosition(editor, a.sId);
+              const posB = getSuggestionPosition(editor, b.sId);
+              if (posA === null) {
+                return 1;
+              }
+              if (posB === null) {
+                return -1;
+              }
+              return posA - posB;
+            })
+          : pendingInstructions;
+
+      const next = sorted[0];
+      focusOnSuggestion(next.sId);
+      scrollCopilotToSuggestion(next.sId);
+    },
+    [getPendingSuggestions, focusOnSuggestion, scrollCopilotToSuggestion]
+  );
 
   const acceptSuggestion = useCallback(
     async (sId: string): Promise<boolean> => {
@@ -318,7 +526,7 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      // Optimistic update for card state
+      // Optimistic update for snappy card disappearance
       setProcessedSuggestions((prev) =>
         new Map(prev).set(sId, { ...suggestion, state: "approved" })
       );
@@ -329,15 +537,21 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      // Update editor only on success
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
+        dispatchDelayedBlur();
+        scrollToNextSuggestion(sId);
       }
 
       return true;
     },
-    [patchSuggestions, getSuggestion]
+    [
+      patchSuggestions,
+      getSuggestion,
+      dispatchDelayedBlur,
+      scrollToNextSuggestion,
+    ]
   );
 
   const rejectSuggestion = useCallback(
@@ -410,8 +624,16 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.delete(sId);
       }
 
+      highlightSuggestion(null);
+      dispatchDelayedBlur();
+
       return true;
-    }, [patchSuggestions, getPendingSuggestions]);
+    }, [
+      patchSuggestions,
+      getPendingSuggestions,
+      dispatchDelayedBlur,
+      highlightSuggestion,
+    ]);
 
   const rejectAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {
@@ -449,8 +671,10 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.delete(sId);
       }
 
+      highlightSuggestion(null);
+
       return true;
-    }, [patchSuggestions, getPendingSuggestions]);
+    }, [patchSuggestions, getPendingSuggestions, highlightSuggestion]);
 
   const getCommittedInstructionsHtml = useCallback(() => {
     const editor = editorRef.current;
@@ -460,23 +684,6 @@ export const CopilotSuggestionsProvider = ({
 
     // Get HTML and strip styling attributes while preserving data-block-id.
     return stripHtmlAttributes(editor.getHTML());
-  }, []);
-
-  const focusOnSuggestion = useCallback((suggestionId: string) => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
-    const position = getSuggestionPosition(editor, suggestionId);
-    if (position !== null) {
-      editor
-        .chain()
-        .focus()
-        // Position + 1 to trigger the suggestion bubble menu
-        .setTextSelection(position + 1)
-        .scrollIntoView()
-        .run();
-    }
   }, []);
 
   const value: CopilotSuggestionsContextType = useMemo(
@@ -493,6 +700,7 @@ export const CopilotSuggestionsProvider = ({
       registerEditor,
       rejectAllInstructionSuggestions,
       rejectSuggestion,
+      scrollToNextSuggestion,
       triggerRefetch,
     }),
     [
@@ -508,15 +716,17 @@ export const CopilotSuggestionsProvider = ({
       registerEditor,
       rejectAllInstructionSuggestions,
       rejectSuggestion,
+      scrollToNextSuggestion,
       triggerRefetch,
     ]
   );
 
   return (
     <CopilotSuggestionsContext.Provider value={value}>
+      <EditorHighlightSync editorRef={editorRef} />
       {children}
     </CopilotSuggestionsContext.Provider>
   );
-};
+}
 
 CopilotSuggestionsProvider.displayName = "CopilotSuggestionsProvider";

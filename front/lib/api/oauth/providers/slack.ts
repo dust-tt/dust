@@ -1,6 +1,3 @@
-import assert from "assert";
-import type { ParsedUrlQuery } from "querystring";
-
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
 import type {
@@ -13,11 +10,16 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+import type { ParsedUrlQuery } from "querystring";
 
 export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({

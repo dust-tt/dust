@@ -2,8 +2,10 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostSkillResponseBody } from "@app/pages/api/w/[wId]/skills";
 import type { PatchSkillResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
-import type { Result, UserType, WorkspaceType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 export async function submitSkillBuilderForm({
   formData,

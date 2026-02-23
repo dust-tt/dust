@@ -6,8 +6,9 @@ import {
   isFathomWebhookMetadata,
 } from "@app/lib/triggers/built-in-webhooks/fathom/types";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export class FathomWebhookService implements RemoteWebhookService<"fathom"> {

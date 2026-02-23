@@ -1,13 +1,3 @@
-import {
-  Button,
-  ChevronRightIcon,
-  Chip,
-  LinkWrapper,
-  Logo,
-} from "@dust-tt/sparkle";
-import type { ComponentProps } from "react";
-import { useCallback, useEffect, useState } from "react";
-
 import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
@@ -25,8 +15,17 @@ import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
-import type { PokeItemBase } from "@app/types";
-import { isDevelopment } from "@app/types";
+import type { PokeItemBase } from "@app/types/poke";
+import { isDevelopment } from "@app/types/shared/env";
+import {
+  Button,
+  ChevronRightIcon,
+  Chip,
+  LinkWrapper,
+  Logo,
+} from "@dust-tt/sparkle";
+import type { ComponentProps } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const MIN_SEARCH_CHARACTERS = 2;
 
@@ -78,6 +77,7 @@ function PokeNavbar({
           <Button href="/poke/templates" variant="ghost" label="Templates" />
           <Button href="/poke/plugins" variant="ghost" label="Plugins" />
           <Button href="/poke/kill" variant="ghost" label="Kill Switches" />
+          <Button href="/poke/cache" variant="ghost" label="Cache" />
           <Button href="/poke/pokefy" variant="ghost" label="Pokefy URL" />
           <Button
             href="/poke/production-checks"

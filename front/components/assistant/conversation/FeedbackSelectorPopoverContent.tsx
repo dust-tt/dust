@@ -1,7 +1,6 @@
-import { Avatar, Page } from "@dust-tt/sparkle";
-
 import { useEditors } from "@app/lib/swr/agent_editors";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Avatar, Page } from "@dust-tt/sparkle";
 
 interface FeedbackSelectorPopoverContentProps {
   owner: LightWorkspaceType;

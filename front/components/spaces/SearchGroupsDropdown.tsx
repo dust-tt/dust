@@ -1,3 +1,6 @@
+import { useGroups } from "@app/lib/swr/groups";
+import type { GroupType } from "@app/types/groups";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -6,12 +9,10 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   PlusIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
-import { UserGroupIcon } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo, useState } from "react";
-
-import { useGroups } from "@app/lib/swr/groups";
-import type { GroupType, LightWorkspaceType } from "@app/types";
 
 interface SearchGroupsDropdownProps {
   owner: LightWorkspaceType;

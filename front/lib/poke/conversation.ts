@@ -3,13 +3,11 @@ import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type {
-  ConversationError,
-  ModelId,
-  PokeConversationType,
-  Result,
-} from "@app/types";
-import { Ok } from "@app/types";
+import type { ConversationError } from "@app/types/assistant/conversation";
+import type { PokeConversationType } from "@app/types/poke";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 export async function getPokeConversation(
   auth: Authenticator,

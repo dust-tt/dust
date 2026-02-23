@@ -1,8 +1,3 @@
-import { assertNever } from "@dust-tt/client";
-import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-
 import {
   GithubWebhookPayloadSchema,
   isCommentPayload,
@@ -28,8 +23,11 @@ import {
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import type { ModelId, WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
+import type { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 
 const HANDLED_WEBHOOKS = {
   installation_repositories: new Set(["added", "removed"]),

@@ -9,6 +9,7 @@ export const ALL_SERVICES = [
   "front-workers",
   "front-spa-poke",
   "front-spa-app",
+  "viz",
 ] as const;
 
 // Services that run in "cold" state (build watchers)

@@ -1,0 +1,10 @@
+{
+  "name": "@dust-tt/sandbox-benchmark-daytona",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Local dependency scope for Daytona sandbox benchmark",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@daytonaio/sdk": "0.140.0"
+  }
+}

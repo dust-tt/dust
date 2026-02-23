@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { GetProfilerResponse } from "@app/pages/api/debug/profiler";
 import { makeScript } from "@app/scripts/helpers";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 makeScript({}, async ({ execute }) => {
   if (!execute) {

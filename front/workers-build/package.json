@@ -10,7 +10,7 @@
     "@temporalio/common": "1.12.1",
     "@temporalio/worker": "1.12.1",
     "blake3": "^2.1.7",
-    "dd-trace": "^5.52.0",
+    "dd-trace": "^5.87.0",
     "isomorphic-dompurify": "^2.32.0",
     "pg": "^8.8.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0"

@@ -1,13 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Ok } from "@dust-tt/client";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-import { col, fn, Op } from "sequelize";
-
 import {
   getArticleInternalId,
   getBrandInternalId,
@@ -28,6 +18,15 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ContentNode } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

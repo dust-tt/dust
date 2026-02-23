@@ -1,3 +1,6 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { sendRequestFeatureAccessEmail } from "@app/lib/email";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   PlusIcon,
@@ -11,10 +14,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { sendRequestFeatureAccessEmail } from "@app/lib/email";
-import type { LightWorkspaceType } from "@app/types";
 
 interface RequestFeatureAccessModal {
   owner: LightWorkspaceType;
@@ -52,6 +51,7 @@ export function RequestFeatureAccessModal({
       });
       setMessage("");
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       sendNotification({
         type: "error",

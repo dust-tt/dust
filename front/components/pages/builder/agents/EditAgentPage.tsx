@@ -1,13 +1,12 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import Custom404 from "@app/pages/404";
+import { Spinner } from "@dust-tt/sparkle";
 
 export function EditAgentPage() {
-  const router = useAppRouter();
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const agentId = useRequiredPathParam("aId");
@@ -16,6 +15,7 @@ export function EditAgentPage() {
     agentConfiguration,
     isAgentConfigurationLoading,
     isAgentConfigurationError,
+    mutateAgentConfiguration,
   } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentId,
@@ -26,12 +26,7 @@ export function EditAgentPage() {
     (!isAgentConfigurationLoading && !agentConfiguration) ||
     (agentConfiguration && !agentConfiguration.canEdit && !isAdmin)
   ) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <Custom404 />;
   }
 
   if (isAgentConfigurationLoading || !agentConfiguration) {
@@ -57,7 +52,10 @@ export function EditAgentPage() {
       isAdmin={isAdmin}
       assistantTemplate={null}
     >
-      <AgentBuilder agentConfiguration={agentConfiguration} />
+      <AgentBuilder
+        agentConfiguration={agentConfiguration}
+        onSaved={mutateAgentConfiguration}
+      />
     </AgentBuilderProvider>
   );
 }

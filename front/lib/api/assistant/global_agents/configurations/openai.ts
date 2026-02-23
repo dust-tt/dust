@@ -10,19 +10,19 @@ import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type {
   AgentConfigurationStatus,
   AgentConfigurationType,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
-  GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   GPT_5_2_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O3_MODEL_CONFIG,
-} from "@app/types";
+} from "@app/types/assistant/models/openai";
 
 /**
  * GLOBAL AGENTS CONFIGURATION

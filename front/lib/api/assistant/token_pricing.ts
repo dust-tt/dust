@@ -1,6 +1,9 @@
 import type { RunUsageType } from "@app/lib/resources/run_resource";
-import type { ImageModelIdType, ModelIdType } from "@app/types";
-import type { StaticModelIdType } from "@app/types/assistant/models/models";
+import type {
+  ImageModelIdType,
+  StaticModelIdType,
+} from "@app/types/assistant/models/models";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
 type PricingEntry = {
@@ -130,6 +133,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 6.25,
     cache_read_input_tokens: 0.5,
   },
+  "claude-sonnet-4-6": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
   "claude-3-opus-20240229": {
     input: 15.0,
     output: 75.0,
@@ -191,7 +200,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // Conservative: pricing is 2/12 for first 200k tokens
   // then 4/18 beyond that.
   "gemini-3-pro-preview": {
-    input: 2,
+    input: 4,
+    output: 18,
+  },
+  // Gemini 3.1 Pro: same pricing structure as 3 Pro (2/12 for <=200k, 4/18 for >200k)
+  // Using conservative pricing for the higher tier
+  "gemini-3.1-pro-preview": {
+    input: 4,
     output: 18,
   },
   "gemini-3-flash-preview": {
@@ -243,17 +258,41 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.55,
     output: 2.19,
   },
+  // https://app.fireworks.ai/models/fireworks/deepseek-r1-0528
   "accounts/fireworks/models/deepseek-r1-0528": {
     input: 1.35,
     output: 5.4,
+    cache_read_input_tokens: 0.68,
   },
+  // https://fireworks.ai/models/fireworks/deepseek-v3p2
   "accounts/fireworks/models/deepseek-v3p2": {
-    input: 1.2,
-    output: 1.2,
+    input: 0.56,
+    output: 1.68,
+    cache_read_input_tokens: 0.28,
   },
+  // https://fireworks.ai/models/fireworks/kimi-k2-instruct-0905
   "accounts/fireworks/models/kimi-k2-instruct-0905": {
-    input: 0.4,
-    output: 0.4,
+    input: 0.6,
+    output: 2.5,
+    cache_read_input_tokens: 0.3,
+  },
+  // https://fireworks.ai/models/fireworks/kimi-k2p5
+  "accounts/fireworks/models/kimi-k2p5": {
+    input: 0.6,
+    output: 3.0,
+    cache_read_input_tokens: 0.1,
+  },
+  // https://app.fireworks.ai/models/fireworks/minimax-m2p5
+  "accounts/fireworks/models/minimax-m2p5": {
+    input: 0.3,
+    output: 0.2,
+    cache_read_input_tokens: 0.029,
+  },
+  // https://app.fireworks.ai/models/fireworks/glm-5
+  "accounts/fireworks/models/glm-5": {
+    input: 0.01,
+    output: 0.2,
+    cache_read_input_tokens: 0.002,
   },
   "grok-3-latest": {
     input: 2.0,

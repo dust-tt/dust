@@ -1,7 +1,3 @@
-import { Chip, Separator, Spinner, Tooltip } from "@dust-tt/sparkle";
-import sortBy from "lodash/sortBy";
-import { useCallback, useMemo, useState } from "react";
-
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -14,8 +10,12 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, Separator, Spinner, Tooltip } from "@dust-tt/sparkle";
+import sortBy from "lodash/sortBy";
+import { useCallback, useMemo, useState } from "react";
 
 interface SkillInfoTabProps {
   skill: SkillType;

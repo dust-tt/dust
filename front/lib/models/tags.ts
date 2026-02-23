@@ -1,9 +1,8 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { TagKind } from "@app/types/tag";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export class TagModel extends WorkspaceAwareModel<TagModel> {
   declare createdAt: CreationOptional<Date>;

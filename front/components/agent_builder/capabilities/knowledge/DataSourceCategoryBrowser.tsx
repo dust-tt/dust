@@ -1,6 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
-import React, { useCallback, useContext, useMemo } from "react";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
@@ -11,17 +8,20 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
-  AgentsUsageType,
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
-  SpaceType,
-  WhitelistableFeature,
-} from "@app/types";
+} from "@app/types/api/public/spaces";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
   isDataSourceViewCategoryWithoutApps,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/api/public/spaces";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import { Spinner } from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useContext, useMemo } from "react";
 
 interface CategoryRowData {
   id: DataSourceViewCategoryWithoutApps;

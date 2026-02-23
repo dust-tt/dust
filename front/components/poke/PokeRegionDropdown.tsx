@@ -1,3 +1,7 @@
+import type { RegionType } from "@app/lib/api/regions/config";
+import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { getRegionDisplay } from "@app/lib/poke/regions";
 import {
   Button,
   DropdownMenu,
@@ -5,11 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-
-import type { RegionType } from "@app/lib/api/regions/config";
-import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
-import { getRegionDisplay } from "@app/lib/poke/regions";
 
 interface PokeRegionDropdownProps {
   currentRegion?: RegionType;

@@ -213,6 +213,15 @@ export async function gongSyncTranscriptsActivity({
         return;
       }
 
+      // Always filter out private transcripts.
+      if (transcriptMetadata.metaData.isPrivate === true) {
+        logger.info(
+          { ...loggerArgs, callId: transcript.callId },
+          "[Gong] Skipping private transcript."
+        );
+        return;
+      }
+
       const { parties = [] } = transcriptMetadata;
 
       const participants = await getGongUsers(connector, {

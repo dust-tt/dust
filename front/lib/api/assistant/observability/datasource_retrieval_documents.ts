@@ -1,5 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
@@ -12,10 +10,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIContentNode } from "@app/types";
-import { CoreAPI } from "@app/types";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 
 type DatasourceRetrievalParentGroupData = {
   parentId: string | null;

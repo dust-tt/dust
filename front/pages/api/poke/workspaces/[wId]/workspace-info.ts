@@ -1,7 +1,3 @@
-import { format } from "date-fns/format";
-import type { NextApiRequest, NextApiResponse } from "next";
-import type Stripe from "stripe";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
@@ -13,15 +9,16 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ExtensionConfigurationType,
-  ProgrammaticUsageConfigurationType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WithAPIErrorResponse,
-  WorkspaceDomain,
-} from "@app/types";
-import { WHITELISTABLE_FEATURES } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ExtensionConfigurationType } from "@app/types/extension";
+import type { SubscriptionType } from "@app/types/plan";
+import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
+import type { WorkspaceDomain } from "@app/types/workspace";
+import { format } from "date-fns/format";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type Stripe from "stripe";
 
 export type PokeGetWorkspaceInfo = {
   activeSubscription: SubscriptionType;

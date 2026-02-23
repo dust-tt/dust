@@ -1,8 +1,9 @@
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
-import { ButtonProps } from "@sparkle/components/";
-import { Button, ButtonVariantType } from "@sparkle/components/Button";
+import type { ButtonProps } from "@sparkle/components/";
+import { Button, type ButtonVariantType } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib";
+import React from "react";
 
 const flexSeparatorVariants: Record<ButtonVariantType, string> = {
   primary: "s-bg-background/50 dark:s-text-background-night/50",

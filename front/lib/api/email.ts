@@ -2,13 +2,15 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
-import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import sgMail from "@sendgrid/mail";
 
 let sgMailClient: typeof sgMail | null = null;
 
@@ -213,29 +215,54 @@ export async function sendCreditUsageAlertEmail({
   });
 }
 
-// Avoid using this function directly, use sendEmailWithTemplate instead.
-export async function sendEmail(email: string, message: any) {
-  const msg = { ...message, to: email };
+export async function sendEmailToRecipients({
+  to,
+  cc,
+  message,
+}: {
+  to: string[];
+  cc?: string[];
+  message: any;
+}) {
+  const recipients = [...to, ...(cc ?? [])];
+  const msg = {
+    ...message,
+    to,
+    ...(cc && cc.length > 0 ? { cc } : {}),
+  };
 
   // In dev we want to make sure we don't send emails to real users.
-  // We prevent sending an email if it's not to a @dust.tt address.
-  if (isDevelopment() && !email.endsWith("@dust.tt")) {
-    logger.error(
-      { email, subject: message.subject },
-      "Prevented sending email in development mode to an external email."
+  // We prevent sending emails if any recipient is not in @dust.tt.
+  if (isDevelopment()) {
+    const externalRecipients = recipients.filter(
+      (recipient) => !recipient.endsWith("@dust.tt")
     );
-    return;
+    if (externalRecipients.length > 0) {
+      logger.error(
+        { externalRecipients, subject: message.subject },
+        "Prevented sending email in development mode to external recipients."
+      );
+      return;
+    }
   }
 
   try {
     await getSgMailClient().send(msg);
-    logger.info({ email, subject: message.subject }, "Sending email");
+    logger.info({ to, cc, subject: message.subject }, "Sending email");
   } catch (error) {
     logger.error(
-      { error, email, subject: message.subject },
+      { error, to, cc, subject: message.subject },
       "Error sending email."
     );
   }
+}
+
+// Avoid using this function directly, use sendEmailWithTemplate instead.
+export async function sendEmail(email: string, message: any) {
+  await sendEmailToRecipients({
+    to: [email],
+    message,
+  });
 }
 
 interface sendEmailWithTemplateParams {

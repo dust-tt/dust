@@ -1,6 +1,3 @@
-import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
-import React, { useState } from "react";
-
 import { DontLoseSection } from "@app/components/paywall/DontLoseSection";
 import { TrialPricingCard } from "@app/components/paywall/TrialPricingCard";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
@@ -9,7 +6,10 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import type { BillingPeriod } from "@app/types";
+import type { BillingPeriod } from "@app/types/plan";
+import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import React, { useState } from "react";
 
 export function TrialEndedPage() {
   const { workspace } = useAuth();

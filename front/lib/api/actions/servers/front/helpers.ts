@@ -1,6 +1,3 @@
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -8,7 +5,10 @@ import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/gu
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
-import { decrypt, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { decrypt } from "@app/types/shared/utils/hashing";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 
 export const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
@@ -152,13 +152,11 @@ export async function getFrontAPIToken(
   return apiToken;
 }
 
-export async function getFrontAPITokenFromExtra(
-  extra: ToolHandlerExtra
-): Promise<string> {
-  if (!extra.auth) {
-    throw new MCPError("No authenticator provided");
-  }
-  return getFrontAPIToken(extra.auth, extra.agentLoopContext);
+export async function getFrontAPITokenFromExtra({
+  auth,
+  agentLoopContext,
+}: ToolHandlerExtra): Promise<string> {
+  return getFrontAPIToken(auth, agentLoopContext);
 }
 
 interface FrontConversation {

@@ -1,3 +1,7 @@
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { useDataSourceUsage } from "@app/lib/swr/data_sources";
+import type { DataSourceType } from "@app/types/data_source";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -8,10 +12,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { useDataSourceUsage } from "@app/lib/swr/data_sources";
-import type { DataSourceType, LightWorkspaceType } from "@app/types";
 
 interface DeleteStaticDataSourceDialogProps {
   owner: LightWorkspaceType;

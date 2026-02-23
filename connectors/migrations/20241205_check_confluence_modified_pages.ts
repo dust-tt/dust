@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { getConfluenceClient } from "@connectors/connectors/confluence/lib/utils";
 import {
   fetchConfluenceConfigurationActivity,
@@ -11,6 +9,7 @@ import {
 } from "@connectors/lib/error";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConfluenceClientError } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
 
 makeScript(
   {

@@ -1,3 +1,4 @@
+import { useAppRouter } from "@app/lib/platform";
 import {
   Button,
   Dialog,
@@ -5,8 +6,6 @@ import {
   DialogFooter,
   DialogHeader,
 } from "@dust-tt/sparkle";
-
-import { useAppRouter } from "@app/lib/platform";
 
 interface UpgradePlanDialogProps {
   isOpen: boolean;

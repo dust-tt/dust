@@ -1,29 +1,3 @@
-import {
-  BoltIcon,
-  Button,
-  cn,
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Icon,
-  LinkIcon,
-  MoreIcon,
-  PencilSquareIcon,
-  Toolbar,
-  Tooltip,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, { useCallback, useContext, useMemo, useState } from "react";
-
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
@@ -50,8 +24,34 @@ import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
-  WorkspaceType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  BoltIcon,
+  Button,
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Icon,
+  LinkIcon,
+  MoreIcon,
+  PencilSquareIcon,
+  Toolbar,
+  Tooltip,
+  TrashIcon,
+} from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
+import { EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import type React from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 interface UserMessageEditorProps {
   editor: Editor | null;

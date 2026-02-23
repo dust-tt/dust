@@ -1,10 +1,3 @@
-import type {
-  AutoPaginatable,
-  DefaultCustomAttributes,
-  Directory,
-  DirectoryUserWithGroups,
-} from "@workos-inc/node";
-
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
@@ -16,6 +9,12 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import type {
+  AutoPaginatable,
+  DefaultCustomAttributes,
+  Directory,
+  DirectoryUserWithGroups,
+} from "@workos-inc/node";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

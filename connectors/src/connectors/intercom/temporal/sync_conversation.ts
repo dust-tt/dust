@@ -1,5 +1,3 @@
-import TurndownService from "turndown";
-
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomConversation } from "@connectors/connectors/intercom/lib/intercom_api";
 import type {
@@ -31,6 +29,7 @@ import {
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import TurndownService from "turndown";
 
 const turndownService = new TurndownService();
 

@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { expectArrayOfObjectsWithSpecificLength } from "@app/tests/utils/utils";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 

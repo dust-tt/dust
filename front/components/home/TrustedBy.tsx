@@ -1,14 +1,14 @@
-import { Button } from "@dust-tt/sparkle";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4 } from "@app/components/home/ContentComponents";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
 import { useGeolocation } from "@app/lib/swr/geo";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { Button } from "@dust-tt/sparkle";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",

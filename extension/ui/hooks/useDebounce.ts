@@ -1,3 +1,4 @@
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { debounce } from "lodash";
 import { useEffect, useRef, useState } from "react";
 

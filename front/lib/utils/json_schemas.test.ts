@@ -1,12 +1,11 @@
 // It's okay here as we are hardcoding the input schemas and testing agains't the public ones.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { describe, expect, it } from "vitest";
 
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ensurePathExists, setValueAtPath } from "@app/lib/utils/json_schemas";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { describe, expect, it } from "vitest";
 
 describe("JSON Schema Utilities", () => {
   describe("ensurePathExists and setValueAtPath", () => {

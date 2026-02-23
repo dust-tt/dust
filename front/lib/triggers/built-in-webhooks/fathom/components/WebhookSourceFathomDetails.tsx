@@ -1,8 +1,7 @@
-import { Chip, Page } from "@dust-tt/sparkle";
-
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { RECORDING_TYPE_LABELS } from "@app/lib/triggers/built-in-webhooks/fathom/constants";
 import { isFathomWebhookMetadata } from "@app/lib/triggers/built-in-webhooks/fathom/types";
+import { Chip, Page } from "@dust-tt/sparkle";
 
 export function WebhookSourceFathomDetails({
   webhookSource,

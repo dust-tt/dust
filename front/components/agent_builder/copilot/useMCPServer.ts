@@ -1,12 +1,11 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useFormContext } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/copilot/tools/getAgentConfig";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 // Server name used for MCP registration. This is a client-side MCP server
 // exclusively used by the Agent Builder Copilot to access live form state.

@@ -1,4 +1,4 @@
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 
 export const rankAgentsByPopularity = (
   agents: LightAgentConfigurationType[],

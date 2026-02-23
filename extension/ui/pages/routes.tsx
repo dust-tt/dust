@@ -1,8 +1,8 @@
-import { ProtectedRoute } from "@app/ui/components/auth/ProtectedRoute";
-import { LoginPage } from "@app/ui/pages/LoginPage";
-import { MainPage } from "@app/ui/pages/MainPage";
-import { RunPage } from "@app/ui/pages/RunPage";
-import { SubscribePage } from "@app/ui/pages/SubscribePage";
+import { ProtectedRoute } from "@extension/ui/components/auth/ProtectedRoute";
+import { LoginPage } from "@extension/ui/pages/LoginPage";
+import { MainPage } from "@extension/ui/pages/MainPage";
+import { RunPage } from "@extension/ui/pages/RunPage";
+import { SubscribePage } from "@extension/ui/pages/SubscribePage";
 
 export const routes = [
   {

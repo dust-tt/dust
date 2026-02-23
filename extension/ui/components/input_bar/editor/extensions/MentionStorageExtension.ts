@@ -1,4 +1,4 @@
-import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@extension/ui/components/input_bar/editor/suggestion";
 import { Extension } from "@tiptap/react";
 
 declare module "@tiptap/core" {

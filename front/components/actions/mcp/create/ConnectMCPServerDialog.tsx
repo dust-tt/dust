@@ -1,15 +1,3 @@
-import {
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
-
 import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
@@ -38,9 +26,19 @@ import {
   useDiscoverOAuthMetadata,
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
-import { OAUTH_PROVIDER_NAMES } from "@app/types";
+import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 interface ConnectMCPServerDialogProps {
   owner: WorkspaceType;
@@ -90,7 +88,6 @@ export function ConnectMCPServerDialog({
   });
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { updateServerView } = useUpdateMCPServerView(owner, mcpServerView);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const serverType = useMemo(
     () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
@@ -192,7 +189,6 @@ export function ConnectMCPServerDialog({
       createMCPServerConnection,
       updateServerView,
       onBeforeAssociateConnection: () => setExternalIsLoading(true),
-      hasGoogleDriveWriteFeature: hasFeature("google_drive_write_enabled"),
     });
 
     if (submitRes.isErr()) {

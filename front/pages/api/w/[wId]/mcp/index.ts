@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
@@ -16,7 +12,11 @@ import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type {
+  MCPServerType,
+  MCPServerTypeWithViews,
+  MCPServerViewType,
+} from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -24,15 +24,15 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import {
-  getOverridablePersonalAuthInputs,
-  headersArrayToRecord,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetMCPServersResponseBody = {
   success: true;
@@ -96,25 +96,30 @@ async function handler(
       const internalMCPs =
         await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
-      const servers = [...remoteMCPs, ...internalMCPs].sort((a, b) =>
-        a.toJSON().name.localeCompare(b.toJSON().name)
+      const servers = [...remoteMCPs, ...internalMCPs]
+        .map((r) => r.toJSON())
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      // Batch-fetch all views in a single query instead of N+1.
+      const allViews = await MCPServerViewResource.listByMCPServers(
+        auth,
+        servers.map((s) => s.sId)
       );
+
+      const viewsByServerId = new Map<string, MCPServerViewType[]>();
+      for (const view of allViews) {
+        const serverId = view.mcpServerId;
+        const existing = viewsByServerId.get(serverId) ?? [];
+        existing.push(view.toJSON());
+        viewsByServerId.set(serverId, existing);
+      }
 
       return res.status(200).json({
         success: true,
-        servers: await concurrentExecutor(
-          servers,
-          async (r) => {
-            const server = r.toJSON();
-            const views = (
-              await MCPServerViewResource.listByMCPServer(auth, server.sId)
-            ).map((v) => v.toJSON());
-            return { ...server, views };
-          },
-          {
-            concurrency: 10,
-          }
-        ),
+        servers: servers.map((server) => ({
+          ...server,
+          views: viewsByServerId.get(server.sId) ?? [],
+        })),
       });
     }
     case "POST": {
@@ -140,6 +145,17 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message: "URL is required",
+            },
+          });
+        }
+
+        if (url.length > 2048) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "MCP server URL exceeds maximum length (2048 characters).",
             },
           });
         }
@@ -204,6 +220,16 @@ async function handler(
 
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const name = defaultConfig?.name || metadata.name;
+        if (name.length > 2048) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "MCP server name exceeds maximum length (2048 characters).",
+            },
+          });
+        }
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -272,6 +298,23 @@ async function handler(
 
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          const { hasConflict, name } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
+
+          if (hasConflict) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `An existing Tool is already using the name "${name}"`,
+              },
+            });
+          }
 
           await MCPServerViewResource.create(auth, {
             systemView,
@@ -392,6 +435,23 @@ async function handler(
                 type: "invalid_request_error",
                 message:
                   "Missing system view for internal MCP server, it should have been created when creating the internal server.",
+              },
+            });
+          }
+
+          const { hasConflict, name } =
+            await MCPServerViewResource.hasNameConflictInSpace(
+              auth,
+              systemView,
+              globalSpace
+            );
+
+          if (hasConflict) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `An existing Tool is already using the name "${name}"`,
               },
             });
           }

@@ -1,17 +1,6 @@
-import DOMPurify from "isomorphic-dompurify";
-import moment from "moment-timezone";
-
 import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
-import { pluralize } from "@app/types";
-
-const OUTLOOK_EVENT_BODY_SANITIZE_CONFIG = {
-  ALLOWED_TAGS: [],
-  KEEP_CONTENT: true,
-
-  // These tags get COMPLETELY removed (tag + content inside)
-  FORBID_TAGS: ["style", "script"],
-  FORBID_ATTR: ["style"],
-};
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import moment from "moment-timezone";
 
 interface EnrichedOutlookEventDateTime {
   dateTime: string;
@@ -25,16 +14,21 @@ interface EnrichedOutlookEvent extends Omit<OutlookEvent, "start" | "end"> {
   end: EnrichedOutlookEventDateTime;
 }
 
-function decodeHtmlEntities(text: string): string {
-  return text
+function stripHtmlTags(html: string): string {
+  return html
+    .replace(/<style[^>]*>.*?<\/style>/gi, "")
+    .replace(/<script[^>]*>.*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/\n\s*\n\s*\n/g, "\n\n")
     .replace(/&#x27;/g, "'")
-    .replace(/&apos;/g, "'");
+    .replace(/&apos;/g, "'")
+    .trim();
 }
 
 function parseDateTimeInTimezone(
@@ -137,12 +131,7 @@ export function renderOutlookEvent(
   if (enrichedEvent.body?.content) {
     const bodyContent =
       enrichedEvent.body.contentType === "html"
-        ? decodeHtmlEntities(
-            DOMPurify.sanitize(
-              enrichedEvent.body.content,
-              OUTLOOK_EVENT_BODY_SANITIZE_CONFIG
-            )
-          )
+        ? stripHtmlTags(enrichedEvent.body.content)
         : enrichedEvent.body.content;
 
     if (bodyContent.trim()) {
@@ -160,10 +149,10 @@ export function renderOutlookEvent(
   if (enrichedEvent.attendees && enrichedEvent.attendees.length > 0) {
     const attendeeList = enrichedEvent.attendees
       .map((a) => {
-        const name = a.emailAddress.name ?? a.emailAddress.address ?? "Unknown";
-        const status = a.status.response
-          ? ` (response: ${a.status.response})`
-          : "";
+        const name = a.emailAddress.name
+          ? `${a.emailAddress.name} (${a.emailAddress.address})`
+          : (a.emailAddress.address ?? "Unknown");
+        const status = a.status.response ? ` - ${a.status.response}` : "";
         return `${name}${status}`;
       })
       .join(", ");

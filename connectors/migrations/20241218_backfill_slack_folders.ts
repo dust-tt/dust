@@ -1,11 +1,10 @@
-import { makeScript } from "scripts/helpers";
-
 import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
 
 const FOLDER_CONCURRENCY = 16;
 

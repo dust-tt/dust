@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
@@ -9,12 +7,11 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  DataSourceViewContentNode,
-  SearchWarningCode,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SearchTablesResponseBody = {
   tables: DataSourceViewContentNode[];

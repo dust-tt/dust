@@ -1,9 +1,10 @@
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
@@ -28,6 +29,18 @@ import {
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 import type { WorkspaceType } from "@app/types/user";
+
+export function getFastestWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+  }
+  return getSmallWhitelistedModel(owner);
+}
 
 export function getSmallWhitelistedModel(
   owner: WorkspaceType
@@ -72,7 +85,7 @@ export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
   }
   return getLargeNonAnthropicWhitelistedModel(owner);
 }
@@ -109,8 +122,25 @@ export enum GLOBAL_AGENTS_SID {
   DUST = "dust",
   DUST_EDGE = "dust-edge",
   DUST_QUICK = "dust-quick",
+  DUST_QUICK_MEDIUM = "dust-quick-medium",
   DUST_OAI = "dust-oai",
+  DUST_GOOG = "dust-goog",
+  DUST_GOOG_MEDIUM = "dust-goog-medium",
   DUST_NEXT = "dust-next",
+  DUST_NEXT_MEDIUM = "dust-next-medium",
+  DUST_ANT = "dust-ant",
+  DUST_ANT_MEDIUM = "dust-ant-medium",
+  DUST_ANT_HIGH = "dust-ant-high",
+  DUST_KIMI = "dust-kimi",
+  DUST_KIMI_MEDIUM = "dust-kimi-medium",
+  DUST_KIMI_HIGH = "dust-kimi-high",
+  DUST_GLM = "dust-glm",
+  DUST_GLM_MEDIUM = "dust-glm-medium",
+  DUST_GLM_HIGH = "dust-glm-high",
+  DUST_MINIMAX = "dust-minimax",
+  DUST_MINIMAX_MEDIUM = "dust-minimax-medium",
+  DUST_MINIMAX_HIGH = "dust-minimax-high",
+  DUST_NEXT_HIGH = "dust-next-high",
   DEEP_DIVE = "deep-dive",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
@@ -153,6 +183,14 @@ export enum GLOBAL_AGENTS_SID {
 
 export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
+}
+
+const AGENT_IDS_RESTRICTED_TO_BUILDER = new Set<string>([
+  GLOBAL_AGENTS_SID.COPILOT,
+]);
+
+export function canShowAgentConversationActions(agentId: string): boolean {
+  return !AGENT_IDS_RESTRICTED_TO_BUILDER.has(agentId);
 }
 
 export function getGlobalAgentAuthorName(agentId: string): string {

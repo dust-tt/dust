@@ -1,15 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import { rm } from "fs/promises";
-import * as reporter from "io-ts-reporters";
-import { Octokit, RequestError } from "octokit";
-import type {
-  RequestInfo as UndiciRequestInfo,
-  RequestInit as UndiciRequestInit,
-} from "undici";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
-
 import {
   isBadCredentials,
   isGithubIssueWasDeletedError,
@@ -42,6 +30,17 @@ import {
   EnvironmentConfig,
   getOAuthConnectionAccessToken,
 } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import { rm } from "fs/promises";
+import * as reporter from "io-ts-reporters";
+import { Octokit, RequestError } from "octokit";
+import type {
+  RequestInfo as UndiciRequestInfo,
+  RequestInit as UndiciRequestInit,
+} from "undici";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const API_PAGE_SIZE = 100;
 const REPOSITORIES_API_PAGE_SIZE = 25;
@@ -236,7 +235,8 @@ export async function getRepoIssuesPage(
       throw new ProviderWorkflowError(
         "github",
         `401 - Transient BadCredentialErrror`,
-        "transient_upstream_activity_error"
+        "transient_upstream_activity_error",
+        err
       );
     }
 
@@ -308,7 +308,8 @@ export async function getIssue(
       throw new ProviderWorkflowError(
         "github",
         `401 - Transient BadCredentialErrror`,
-        "transient_upstream_activity_error"
+        "transient_upstream_activity_error",
+        err
       );
     }
 

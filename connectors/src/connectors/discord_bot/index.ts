@@ -1,6 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import type {
   ConnectorManagerError,
   CreateConnectorErrorCode,
@@ -18,6 +15,8 @@ import type {
   DiscordBotConfigurationType,
 } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 export class DiscordBotConnectorManager extends BaseConnectorManager<DiscordBotConfigurationType> {
   readonly provider: ConnectorProvider = "discord_bot";

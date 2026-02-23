@@ -1,5 +1,3 @@
-import { QueryTypes } from "sequelize";
-
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
   getAuthObject,
@@ -13,6 +11,7 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { connectorsSequelize } from "@connectors/resources/storage";
+import { QueryTypes } from "sequelize";
 
 const { LIVE } = process.env;
 

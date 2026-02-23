@@ -1,8 +1,7 @@
-import * as t from "io-ts";
-
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
+import * as t from "io-ts";
 
 export type ScheduleConfig = {
   cron: string;
@@ -64,6 +63,16 @@ export type TriggerStatus = (typeof TRIGGER_STATUSES)[number];
 export function isValidTriggerStatus(status: string): status is TriggerStatus {
   return (TRIGGER_STATUSES as readonly string[]).includes(status);
 }
+
+export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
+  "workflow_start_succeeded",
+  "workflow_start_failed",
+  "not_matched",
+  "rate_limited",
+] as const;
+
+export type WebhookRequestTriggerStatus =
+  (typeof WEBHOOK_REQUEST_TRIGGER_STATUSES)[number];
 
 export type TriggerOrigin = "user" | "agent";
 

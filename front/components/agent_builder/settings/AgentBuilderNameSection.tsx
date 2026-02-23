@@ -1,3 +1,8 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { getNameSuggestions } from "@app/components/agent_builder/settings/utils";
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   Button,
   DropdownMenu,
@@ -10,12 +15,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getNameSuggestions } from "@app/components/agent_builder/settings/utils";
-import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
-import { useSendNotification } from "@app/hooks/useNotification";
 
 const NAME_FIELD_NAME = "agentSettings.name";
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;

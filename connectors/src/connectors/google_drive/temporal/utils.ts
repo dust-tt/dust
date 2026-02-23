@@ -1,15 +1,14 @@
-import { removeNulls } from "@dust-tt/client";
-import type { drive_v3 } from "googleapis";
-import { google } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-import { GaxiosError, OAuth2Client } from "googleapis-common";
-
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
+import { removeNulls } from "@dust-tt/client";
+import type { drive_v3 } from "googleapis";
+import { google } from "googleapis";
+import type { GaxiosResponse } from "googleapis-common";
+import { GaxiosError, OAuth2Client } from "googleapis-common";
 
 export function getInternalId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;

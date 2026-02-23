@@ -1,12 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
@@ -18,12 +15,15 @@ import type {
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
 import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
 import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceViewForAdminType,
   WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 
 export function useWebhookSourceViews({
   owner,
@@ -34,6 +34,7 @@ export function useWebhookSourceViews({
   space?: SpaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookSourceViewsResponseBody> = fetcher;
   const url =
     space !== undefined
@@ -64,6 +65,7 @@ export function useWebhookSourceViewsFromSpaces(
   spaces: SpaceType[],
   disabled?: boolean
 ) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookSourceViewsListResponseBody> = fetcher;
 
   const spaceIds = spaces.map((s) => s.sId).join(",");
@@ -89,6 +91,7 @@ export function useWebhookSourcesWithViews({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookSourcesResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/webhook_sources`;
@@ -197,6 +200,7 @@ export function useUpdateWebhookSourceView({
 
         return true;
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -261,6 +265,7 @@ export function useDeleteWebhookSource({
           throw new Error("Delete operation failed");
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -289,6 +294,7 @@ export function useWebhookSourceViewsByWebhookSource({
   webhookSourceId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetSpecificWebhookSourceViewsResponseBody> =
     fetcher;
   const url = `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}/views`;
@@ -349,6 +355,7 @@ export function useAddWebhookSourceViewToSpace({
 
         await mutateWebhookSourcesWithViews();
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -428,6 +435,7 @@ export function useRemoveWebhookSourceViewFromSpace({
           }
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       } catch (error) {
         sendNotification({
           type: "error",
@@ -453,6 +461,7 @@ export function useWebhookRequestTriggersForTrigger({
   triggerId: string | null;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookRequestsResponseBody> = fetcher;
 
   const url =

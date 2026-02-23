@@ -3,8 +3,8 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { isAgentMessageType } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 
 /**
  * Handle mentions in the agent message content.

@@ -1,39 +1,3 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
-import { retryMessage } from "@app/shared/lib/conversation";
-import { formatTimestring } from "@app/shared/lib/utils";
-import type { StoredUser } from "@app/shared/services/auth";
-import type {
-  AgentMessageStateEvent,
-  MessageTemporaryState,
-} from "@app/ui/components/agents/state/messageReducer";
-import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
-import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
-import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
-import type { FeedbackSelectorBaseProps } from "@app/ui/components/conversation/FeedbackSelector";
-import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
-import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
-import { MCPServerAuthRequired } from "@app/ui/components/conversation/MCPServerAuthRequired";
-import {
-  AgentMentionBlock,
-  agentMentionDirective,
-} from "@app/ui/components/markdown/AgentMentionBlock";
-import {
-  CitationsContext,
-  CiteBlock,
-  getCiteDirective,
-} from "@app/ui/components/markdown/CiteBlock";
-import {
-  getImgPlugin,
-  imgDirective,
-} from "@app/ui/components/markdown/ImageBlock";
-import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
-import {
-  getUserMentionPlugin,
-  userMentionDirective,
-} from "@app/ui/components/markdown/UserMentionBlock";
-import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
-import { useEventSource } from "@app/ui/hooks/useEventSource";
 import type {
   AgentMessagePublicType,
   LightAgentConfigurationType,
@@ -68,9 +32,46 @@ import {
   InformationCircleIcon,
   Markdown,
   Popover,
+  Tooltip,
   useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { assertNeverAndIgnore } from "@extension/shared/lib/assertNeverAndIgnore";
+import { retryMessage } from "@extension/shared/lib/conversation";
+import { formatTimestring } from "@extension/shared/lib/utils";
+import type { StoredUser } from "@extension/shared/services/auth";
+import type {
+  AgentMessageStateEvent,
+  MessageTemporaryState,
+} from "@extension/ui/components/agents/state/messageReducer";
+import { messageReducer } from "@extension/ui/components/agents/state/messageReducer";
+import { ActionValidationContext } from "@extension/ui/components/conversation/ActionValidationProvider";
+import { AgentMessageActions } from "@extension/ui/components/conversation/AgentMessageActions";
+import type { FeedbackSelectorBaseProps } from "@extension/ui/components/conversation/FeedbackSelector";
+import { FeedbackSelector } from "@extension/ui/components/conversation/FeedbackSelector";
+import { GenerationContext } from "@extension/ui/components/conversation/GenerationContextProvider";
+import { MCPServerAuthRequired } from "@extension/ui/components/conversation/MCPServerAuthRequired";
+import {
+  AgentMentionBlock,
+  agentMentionDirective,
+} from "@extension/ui/components/markdown/AgentMentionBlock";
+import {
+  CitationsContext,
+  CiteBlock,
+  getCiteDirective,
+} from "@extension/ui/components/markdown/CiteBlock";
+import {
+  getImgPlugin,
+  imgDirective,
+} from "@extension/ui/components/markdown/ImageBlock";
+import type { MarkdownCitation } from "@extension/ui/components/markdown/MarkdownCitation";
+import {
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@extension/ui/components/markdown/UserMentionBlock";
+import { useSubmitFunction } from "@extension/ui/components/utils/useSubmitFunction";
+import { useEventSource } from "@extension/ui/hooks/useEventSource";
 import { marked } from "marked";
 import {
   useCallback,
@@ -111,6 +112,49 @@ export function makeMCPActionCitation(
       <DocumentTextIcon />
     ),
   };
+}
+
+const UNDERSTAND_LLMS_CONTEXT_WINDOW_URL =
+  "https://docs.dust.tt/docs/understanding-llms-context-windows";
+
+function PrunedContextChip() {
+  return (
+    <Tooltip
+      label={
+        <div className="flex flex-col gap-2 py-2">
+          <div className="font-semibold">
+            This conversation reached its size limit
+          </div>
+          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p>
+              The agent can only process so much information at once. We removed
+              some <strong>data from earlier steps</strong> to make room. For
+              better accuracy, start a fresh conversation.
+            </p>
+            <p>
+              <a
+                href={UNDERSTAND_LLMS_CONTEXT_WINDOW_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground dark:hover:text-foreground-night"
+              >
+                Learn more
+              </a>
+            </p>
+          </div>
+        </div>
+      }
+      className="max-w-sm"
+      trigger={
+        <Chip
+          label="Context limit reached"
+          size="xs"
+          color="white"
+          icon={InformationCircleIcon}
+        />
+      }
+    />
+  );
 }
 
 export const getCitationsFromActions = (
@@ -182,7 +226,8 @@ interface AgentMessageProps {
 
 type AgentMessageStateWithControlEvent =
   | AgentMessageStateEvent
-  | { type: "end-of-stream" };
+  | { type: "end-of-stream" }
+  | { type: "agent_context_pruned" };
 
 function makeInitialMessageStreamState(
   message: AgentMessagePublicType
@@ -225,6 +270,8 @@ export function AgentMessage({
     message,
     makeInitialMessageStreamState
   );
+
+  const [prunedContext, setPrunedContext] = useState(false);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -316,6 +363,11 @@ export function AgentMessage({
         setBlockedAuthAction({
           mcpServerDisplayName: eventPayload.data.metadata.mcpServerDisplayName,
         });
+        return;
+      }
+
+      if (eventType === "agent_context_pruned") {
+        setPrunedContext(true);
         return;
       }
 
@@ -675,6 +727,7 @@ export function AgentMessage({
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={renderName}
+      infoChip={prunedContext ? <PrunedContextChip /> : undefined}
       type="agent"
       timestamp={
         parentAgent ? undefined : formatTimestring(agentMessageToRender.created)

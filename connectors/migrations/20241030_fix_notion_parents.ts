@@ -1,6 +1,3 @@
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-
 import { getParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -14,6 +11,8 @@ import {
 } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 async function findAllDescendants(
   nodes: (NotionPageModel | NotionDatabaseModel)[],

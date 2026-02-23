@@ -1,12 +1,11 @@
+import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
+import { DustConnectorWorkflowError } from "@connectors/lib/error";
 import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
-import { DustConnectorWorkflowError } from "@connectors/lib/error";
 
 export class GongCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor

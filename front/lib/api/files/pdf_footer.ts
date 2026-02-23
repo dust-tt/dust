@@ -1,7 +1,6 @@
+import logger from "@app/logger/logger";
 import fs from "fs";
 import path from "path";
-
-import logger from "@app/logger/logger";
 
 const LOGO_PATH = "public/static/landing/logos/dust/Dust_LogoSquare.svg";
 

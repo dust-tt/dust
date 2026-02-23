@@ -1,11 +1,10 @@
-import { makeScript } from "scripts/helpers";
-
 import { makeSpaceInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConfluenceSpaceModel } from "@connectors/lib/models/confluence";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
 
 const FOLDER_CONCURRENCY = 10;
 

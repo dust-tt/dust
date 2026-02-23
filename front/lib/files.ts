@@ -1,3 +1,4 @@
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 
 export const FILE_ID_PATTERN = "fil_[A-Za-z0-9]{10,}";

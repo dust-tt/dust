@@ -1,9 +1,3 @@
-import type { ConnectorProvider } from "@dust-tt/client";
-import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
-import { Runtime } from "@temporalio/worker/lib/runtime";
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
 import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runDustProjectWorker } from "@connectors/connectors/dust_project/temporal/worker";
@@ -14,6 +8,11 @@ import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/wo
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
 import { closeRedisClients } from "@connectors/types/shared/redis_client";
+import type { ConnectorProvider } from "@dust-tt/client";
+import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
+import { Runtime } from "@temporalio/worker/lib/runtime";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";

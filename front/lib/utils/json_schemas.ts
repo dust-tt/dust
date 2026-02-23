@@ -1,3 +1,5 @@
+import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import logger from "@app/logger/logger";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import type {
@@ -5,9 +7,6 @@ import type {
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
 import isEqual from "lodash/isEqual";
-
-import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import logger from "@app/logger/logger";
 
 /**
  * Type guard to check if a value is a JSONSchema object

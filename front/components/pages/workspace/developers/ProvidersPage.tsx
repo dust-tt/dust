@@ -1,14 +1,4 @@
 import {
-  Button,
-  Chip,
-  cn,
-  Container,
-  Page,
-  ShapesIcon,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
-import {
   MODEL_PROVIDER_CONFIGS,
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
@@ -20,8 +10,17 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import type { WorkspaceType } from "@app/types";
-import { redactString } from "@app/types";
+import { redactString } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Chip,
+  Container,
+  cn,
+  Page,
+  ShapesIcon,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface ProvidersProps {
   owner: WorkspaceType;

@@ -1,6 +1,3 @@
-import type { ParsedUrlQuery } from "querystring";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
 import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
@@ -15,14 +12,17 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
 import type {
+  ExtraConfigType,
   OAuthConnectionType,
   OAuthProvider,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
+import { z } from "zod";
 
 export const MCP_OAUTH_RESPONSE_TYPE = "code";
 export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
@@ -37,11 +37,13 @@ const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
   client_secret: z.string().optional(),
   scope: z.string().optional(),
   resource: z.string().optional(),
+  token_endpoint_auth_method: z.string().optional(),
 });
 
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   code_challenge: z.string(),
   code_verifier: z.string(),
+  token_endpoint_auth_method: z.string().optional(),
 });
 
 export type MCPOAuthConnectionMetadataType = z.infer<
@@ -241,6 +243,8 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           authorization_endpoint: connection.metadata.authorization_endpoint,
           scope: connection.metadata.scope,
           resource: connection.metadata.resource,
+          token_endpoint_auth_method:
+            connection.metadata.token_endpoint_auth_method,
           code_verifier,
           code_challenge,
           ...restConfig,

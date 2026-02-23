@@ -1,19 +1,20 @@
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
+import { Slot } from "@radix-ui/react-slot";
 import {
   Counter,
   Icon,
   LinkWrapper,
-  LinkWrapperProps,
+  type LinkWrapperProps,
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
-import { SpinnerProps } from "@sparkle/components/Spinner";
+import type { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const PULSE_ANIMATION_DURATION = 1;
 
@@ -502,17 +503,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         isRounded={isRounded}
         disabled={isLoading || props.disabled}
         className={cn(
-          (isPulsing || isPulsingBriefly) && "s-animate-pulse",
+          (isPulsing || isPulsingBriefly) && "s-animate-ring-pulse",
           isSelect && selectButtonSizeVariants({ size }),
           className
         )}
         aria-label={ariaLabel || tooltip || label}
-        style={
-          {
-            "--pulse-color": "#93C5FD",
-            "--duration": `${PULSE_ANIMATION_DURATION}s`,
-          } as React.CSSProperties
-        }
         asChild={shouldUseSlot}
         {...props}
         {...pointerEventProps}

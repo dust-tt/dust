@@ -1,13 +1,12 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
-
 import type {
   VoiceGender,
   VoiceLanguage,
   VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 
 interface VoiceDefinition {
   voiceId: string;

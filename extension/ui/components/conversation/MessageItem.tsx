@@ -1,21 +1,21 @@
-import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversation";
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
-import type { StoredUser } from "@app/shared/services/auth";
-import { AgentMessage } from "@app/ui/components/conversation/AgentMessage";
-import {
-  AttachmentCitation,
-  contentFragmentToAttachmentCitation,
-} from "@app/ui/components/conversation/AttachmentCitation";
-import type { FeedbackSelectorBaseProps } from "@app/ui/components/conversation/FeedbackSelector";
-import { UserMessage } from "@app/ui/components/conversation/UserMessage";
-import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import type {
   AgentMessagePublicType,
   ConversationMessageReactionsType,
   LightWorkspaceType,
   UserMessageType,
 } from "@dust-tt/client";
+import type { MessageWithContentFragmentsType } from "@extension/shared/lib/conversation";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import type { AgentMessageFeedbackType } from "@extension/shared/lib/feedbacks";
+import type { StoredUser } from "@extension/shared/services/auth";
+import { AgentMessage } from "@extension/ui/components/conversation/AgentMessage";
+import {
+  AttachmentCitation,
+  contentFragmentToAttachmentCitation,
+} from "@extension/ui/components/conversation/AttachmentCitation";
+import type { FeedbackSelectorBaseProps } from "@extension/ui/components/conversation/FeedbackSelector";
+import { UserMessage } from "@extension/ui/components/conversation/UserMessage";
+import { useSubmitFunction } from "@extension/ui/components/utils/useSubmitFunction";
 import React from "react";
 import { useSWRConfig } from "swr";
 

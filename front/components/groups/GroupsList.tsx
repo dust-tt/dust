@@ -1,3 +1,4 @@
+import type { GroupType } from "@app/types/groups";
 import {
   Button,
   DataTable,
@@ -8,8 +9,6 @@ import {
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import assert from "assert";
 import { useMemo } from "react";
-
-import type { GroupType } from "@app/types";
 
 type GroupRowData = {
   groupId: string;

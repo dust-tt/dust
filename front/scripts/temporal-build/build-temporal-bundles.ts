@@ -1,11 +1,10 @@
+import type { WorkerName } from "@app/temporal/worker_registry";
+import { ALL_WORKERS } from "@app/temporal/worker_registry";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { bundleWorkflowCode } from "@temporalio/worker";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
-import type { WorkerName } from "@app/temporal/worker_registry";
-import { ALL_WORKERS } from "@app/temporal/worker_registry";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface WorkerInfo {
   name: string;
@@ -59,8 +58,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "poke/temporal");
     case "production_checks":
       return path.join(baseDir, "temporal/production_checks");
-    case "project_journal_queue":
-      return path.join(baseDir, "temporal/project_journal_queue");
+    case "project_user_digest_queue":
+      return path.join(baseDir, "temporal/project_user_digest_queue");
     case "relocation":
       return path.join(baseDir, "temporal/relocation");
     case "remote_tools_sync":

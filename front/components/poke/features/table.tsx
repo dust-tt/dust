@@ -2,8 +2,10 @@ import { makeColumnsForFeatureFlags } from "@app/components/poke/features/column
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFeatureFlags } from "@app/lib/swr/poke";
-import type { WhitelistableFeature, WorkspaceType } from "@app/types";
-import { removeNulls, WHITELISTABLE_FEATURES_CONFIG } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { WHITELISTABLE_FEATURES_CONFIG } from "@app/types/shared/feature_flags";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 
 interface FeatureFlagsDataTableProps {
   owner: WorkspaceType;

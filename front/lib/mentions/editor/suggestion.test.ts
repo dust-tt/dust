@@ -1,15 +1,14 @@
-import { describe, expect, it } from "vitest";
-
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   RichAgentMentionInConversation,
   RichUserMentionInConversation,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+} from "@app/types/assistant/mentions";
+import { describe, expect, it } from "vitest";
 
 import {
   filterAndSortEditorSuggestionAgents,
-  sortEditorSuggestionUsers,
   SUGGESTION_PRIORITY,
+  sortEditorSuggestionUsers,
 } from "./suggestion";
 
 describe("filterAndSortEditorSuggestionAgents", () => {

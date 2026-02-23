@@ -1,4 +1,26 @@
 import {
+  PokeTable,
+  PokeTableBody,
+  PokeTableCell,
+  PokeTableCellWithLink,
+  PokeTableRow,
+} from "@app/components/poke/shadcn/ui/table";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { isWebhookBasedProvider } from "@app/lib/connector_providers";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  decodeSqids,
+  formatTimestampToFriendlyDate,
+  timeAgoFrom,
+} from "@app/lib/utils";
+import type { CheckStuckResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/check-stuck";
+import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
+import type { CoreAPIDataSource } from "@app/types/core/data_source";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
+import {
   BracesIcon,
   Button,
   Chip,
@@ -20,31 +42,6 @@ import {
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import { useState } from "react";
-
-import {
-  PokeTable,
-  PokeTableBody,
-  PokeTableCell,
-  PokeTableCellWithLink,
-  PokeTableRow,
-} from "@app/components/poke/shadcn/ui/table";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { isWebhookBasedProvider } from "@app/lib/connector_providers";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  decodeSqids,
-  formatTimestampToFriendlyDate,
-  timeAgoFrom,
-} from "@app/lib/utils";
-import type { CheckStuckResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/check-stuck";
-import type {
-  CoreAPIDataSource,
-  DataSourceType,
-  DataSourceViewType,
-  InternalConnectorType,
-  WorkspaceType,
-} from "@app/types";
-import { pluralize } from "@app/types";
 
 export function ViewDataSourceTable({
   connector,

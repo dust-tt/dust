@@ -1,4 +1,3 @@
-import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import {
   Button,
   ChevronDownIcon,
@@ -12,6 +11,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 

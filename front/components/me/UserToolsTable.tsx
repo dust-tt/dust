@@ -1,8 +1,3 @@
-import { Chip, DataTable, Label, SearchInput, Spinner } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-import keyBy from "lodash/keyBy";
-import { useCallback, useMemo, useState } from "react";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerViewDescription,
@@ -11,15 +6,19 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { useManualMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import {
   useDeleteMCPServerConnection,
+  useManualMCPServerViewsFromSpaces,
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, DataTable, Label, SearchInput, Spinner } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
+import keyBy from "lodash/keyBy";
+import { useCallback, useMemo, useState } from "react";
 
 interface UserTableRow {
   id: string;

@@ -1,9 +1,8 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export type SelectedSiteMetadata = {
   siteId: string;

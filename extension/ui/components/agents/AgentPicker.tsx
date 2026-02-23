@@ -1,4 +1,3 @@
-import { filterAndSortAgents } from "@app/shared/lib/utils";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -15,6 +14,7 @@ import {
   RobotIcon,
   ScrollArea,
 } from "@dust-tt/sparkle";
+import { filterAndSortAgents } from "@extension/shared/lib/utils";
 import { useEffect, useState } from "react";
 
 export function AgentPicker({

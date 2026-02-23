@@ -1,27 +1,70 @@
 import {
+  ActionCardBlock,
+  ArrowDownOnSquareIcon,
   ArrowLeftIcon,
+  AttachmentChip,
+  Avatar,
   Bar,
+  BoltIcon,
   Breadcrumbs,
   Button,
-  ConversationContainer,
-  ConversationMessage,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DocumentIcon,
+  ExternalLinkIcon,
   FolderIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
+  Icon,
+  ImageIcon,
+  ImageZoomDialog,
   Input,
+  Markdown,
   MoreIcon,
+  NotionLogo,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SlackLogo,
+  TableIcon,
 } from "@dust-tt/sparkle";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
+import type { ActionCardState, BreadcrumbItem } from "@dust-tt/sparkle";
+import {
+  NewConversationActiveIndicator,
+  NewConversationAgentMessage,
+  NewConversationContainer,
+  NewConversationMessageGroup,
+  NewConversationSectionHeading,
+  NewConversationUserMessage,
+} from "./NewConversationMessages";
+import { NewCitation } from "./NewCitation";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { getAgentById } from "../data/agents";
-import type { Agent, Conversation, Message, User } from "../data/types";
+import type {
+  Agent,
+  Conversation,
+  ConversationItem,
+  ConversationMessage,
+  MessageCitationData,
+  MessageGroupData,
+  MessageGroupType,
+  MessageReactionData,
+  User,
+} from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
 
@@ -35,42 +78,6 @@ interface ConversationViewProps {
   onBack?: () => void;
   conversationTitle?: string;
   projectTitle?: string;
-}
-
-function formatTimestamp(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) {
-    return "Just now";
-  } else if (diffMins < 60) {
-    return `${diffMins}m ago`;
-  } else if (diffHours < 24) {
-    return `${diffHours}h ago`;
-  } else if (diffDays === 1) {
-    return "Yesterday";
-  } else if (diffDays < 7) {
-    return `${diffDays}d ago`;
-  } else {
-    // Format as time if today, otherwise as date
-    const isToday = date.toDateString() === now.toDateString();
-    if (isToday) {
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } else {
-      return date.toLocaleDateString([], {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-  }
 }
 
 export function ConversationView({
@@ -91,6 +98,13 @@ export function ConversationView({
   const [displayTitle, setDisplayTitle] = useState(
     conversationTitle || conversation.title || "Conversation"
   );
+  const [isCitationSheetOpen, setIsCitationSheetOpen] = useState(false);
+  const [isImageZoomOpen, setIsImageZoomOpen] = useState(false);
+  const [selectedCitation, setSelectedCitation] =
+    useState<MessageCitationData | null>(null);
+  const [documentView, setDocumentView] = useState<"preview" | "extracted">(
+    "preview"
+  );
 
   useEffect(() => {
     const nextTitle = conversationTitle || conversation.title || "Conversation";
@@ -105,14 +119,17 @@ export function ConversationView({
     isRenameDialogOpen,
   ]);
 
-  // Get messages for this conversation, or randomly select from conversationsWithMessages
-  const messagesToDisplay: Message[] = (() => {
-    // If conversation has messages, use them
+  const getUserByOwnerId = (id: string): User | undefined =>
+    getUserById(id) || users.find((user) => user.id === id);
+
+  const getAgentByOwnerId = (id: string): Agent | undefined =>
+    getAgentById(id) || agents.find((agent) => agent.id === id);
+
+  const itemsToDisplay: ConversationItem[] = useMemo(() => {
     if (conversation.messages && conversation.messages.length > 0) {
       return conversation.messages;
     }
 
-    // Otherwise, randomly select messages from conversationsWithMessages
     if (conversationsWithMessages.length === 0) {
       return [];
     }
@@ -121,72 +138,268 @@ export function ConversationView({
       Math.random() * conversationsWithMessages.length
     );
     const sourceConversation = conversationsWithMessages[randomIndex];
-    const sourceMessages = sourceConversation.messages || [];
+    const sourceItems = sourceConversation.messages || [];
 
-    if (sourceMessages.length === 0) {
+    if (sourceItems.length === 0) {
       return [];
     }
 
-    // Map owner IDs to match current conversation participants
     const currentUserParticipants = conversation.userParticipants;
     const currentAgentParticipants = conversation.agentParticipants;
 
-    // Track which user/agent we've mapped to for round-robin distribution
     let userMessageCount = 0;
     let agentMessageCount = 0;
     const otherUsers = currentUserParticipants.filter(
       (id) => id !== locutor.id
     );
 
-    return sourceMessages.map((msg, index) => {
-      // Create a deterministic mapping based on message index to ensure consistency
-      let newOwnerId = msg.ownerId;
-      const newOwnerType = msg.ownerType;
+    const getMappedUserId = () => {
+      if (userMessageCount === 0 || userMessageCount % 2 === 0) {
+        return locutor.id;
+      }
+      if (otherUsers.length > 0) {
+        const mappedIndex =
+          Math.floor((userMessageCount - 1) / 2) % otherUsers.length;
+        return otherUsers[mappedIndex];
+      }
+      return locutor.id;
+    };
 
-      if (msg.ownerType === "user") {
-        // Alternate between locutor and other participants
-        // First user message goes to locutor, then cycle through others
-        if (userMessageCount === 0 || userMessageCount % 2 === 0) {
-          newOwnerId = locutor.id;
-        } else {
-          // Map to other participants, cycling through available users
-          if (otherUsers.length > 0) {
-            const mappedIndex =
-              Math.floor((userMessageCount - 1) / 2) % otherUsers.length;
-            newOwnerId = otherUsers[mappedIndex];
-          } else {
-            newOwnerId = locutor.id; // Fallback to locutor if no other users
+    const getMappedAgentId = (fallbackId: string) => {
+      if (currentAgentParticipants.length > 0) {
+        const mappedIndex = agentMessageCount % currentAgentParticipants.length;
+        return currentAgentParticipants[mappedIndex];
+      }
+      return fallbackId;
+    };
+
+    const resolveGroupType = (
+      ownerType: ConversationMessage["ownerType"],
+      ownerId: string
+    ): MessageGroupType => {
+      if (ownerType === "agent") {
+        return "agent";
+      }
+      return ownerId === locutor.id ? "locutor" : "interlocutor";
+    };
+
+    const resolveGroupData = (
+      message: ConversationMessage,
+      ownerId: string,
+      groupType: MessageGroupType
+    ): MessageGroupData => {
+      const owner =
+        message.ownerType === "agent"
+          ? getAgentByOwnerId(ownerId)
+          : getUserByOwnerId(ownerId);
+      const name =
+        groupType === "locutor"
+          ? undefined
+          : owner && "name" in owner
+            ? owner.name
+            : owner && "fullName" in owner
+              ? owner.fullName
+              : message.group.name;
+
+      const avatar =
+        groupType === "agent"
+          ? owner && "emoji" in owner
+            ? { emoji: owner.emoji, backgroundColor: owner.backgroundColor }
+            : message.group.avatar
+          : groupType === "interlocutor"
+            ? owner && "portrait" in owner
+              ? { visual: owner.portrait, isRounded: true }
+              : message.group.avatar
+            : message.group.avatar;
+
+      return {
+        ...message.group,
+        type: groupType,
+        name,
+        avatar,
+      };
+    };
+
+    return sourceItems.map((item, index) => {
+      if (item.kind !== "message") {
+        if (item.kind === "activeIndicator") {
+          if (item.type === "agent" && currentAgentParticipants.length > 0) {
+            const agentId = currentAgentParticipants[0];
+            const agent = getAgentByOwnerId(agentId);
+            return {
+              ...item,
+              name: agent?.name ?? item.name,
+              avatar: agent
+                ? { emoji: agent.emoji, backgroundColor: agent.backgroundColor }
+                : item.avatar,
+            };
+          }
+          if (item.type === "interlocutor") {
+            const userId = otherUsers[0] ?? locutor.id;
+            const user = getUserByOwnerId(userId);
+            return {
+              ...item,
+              name: user?.fullName ?? item.name,
+              avatar: user?.portrait
+                ? { visual: user.portrait, isRounded: true }
+                : item.avatar,
+            };
           }
         }
+        return item;
+      }
+
+      let newOwnerId = item.ownerId;
+      if (item.ownerType === "user") {
+        newOwnerId = getMappedUserId();
         userMessageCount++;
-      } else if (msg.ownerType === "agent") {
-        // Map to one of the current conversation's agent participants
-        if (currentAgentParticipants.length > 0) {
-          const mappedIndex =
-            agentMessageCount % currentAgentParticipants.length;
-          newOwnerId = currentAgentParticipants[mappedIndex];
-        } else {
-          // If no agents in current conversation, keep original agent
-          newOwnerId = msg.ownerId;
-        }
+      } else if (item.ownerType === "agent") {
+        newOwnerId = getMappedAgentId(item.ownerId);
         agentMessageCount++;
       }
 
+      const groupType = resolveGroupType(item.ownerType, newOwnerId);
+
       return {
-        ...msg,
+        ...item,
         id: `${conversation.id}-msg-${index}`,
         ownerId: newOwnerId,
-        ownerType: newOwnerType,
+        group: resolveGroupData(item, newOwnerId, groupType),
       };
     });
-  })();
+  }, [
+    conversation.agentParticipants,
+    conversation.id,
+    conversation.messages,
+    conversation.userParticipants,
+    conversationsWithMessages,
+    locutor.id,
+  ]);
+
+  const baseReactionsById = useMemo(() => {
+    const map = new Map<string, MessageReactionData[]>();
+    itemsToDisplay.forEach((item) => {
+      if (item.kind === "message" && item.reactions) {
+        map.set(item.id, item.reactions);
+      }
+    });
+    return map;
+  }, [itemsToDisplay]);
+
+  const lastMessageId = useMemo(() => {
+    for (let index = itemsToDisplay.length - 1; index >= 0; index -= 1) {
+      const item = itemsToDisplay[index];
+      if (item.kind === "message") {
+        return item.id;
+      }
+    }
+    return null;
+  }, [itemsToDisplay]);
+
+  const [reactionOverrides, setReactionOverrides] = useState<
+    Map<string, MessageReactionData[]>
+  >(new Map());
+
+  const [deletedMessages, setDeletedMessages] = useState<Set<string>>(
+    new Set()
+  );
+
+  useEffect(() => {
+    setReactionOverrides(new Map(baseReactionsById));
+  }, [baseReactionsById, conversation.id]);
+
+  useEffect(() => {
+    setDeletedMessages(new Set());
+  }, [conversation.id]);
+
+  const baseActionStates = useMemo(() => {
+    const map = new Map<string, ActionCardState>();
+    itemsToDisplay.forEach((item) => {
+      if (item.kind === "message" && item.actionCards) {
+        item.actionCards.forEach((card) => {
+          map.set(card.id, card.state ?? "active");
+        });
+      }
+    });
+    return map;
+  }, [itemsToDisplay]);
+
+  const [actionCardStates, setActionCardStates] = useState<
+    Map<string, ActionCardState>
+  >(new Map());
+
+  useEffect(() => {
+    setActionCardStates(new Map(baseActionStates));
+  }, [baseActionStates, conversation.id]);
+
+  const toggleReaction = useCallback(
+    (messageId: string, emoji: string) => {
+      setReactionOverrides((prev) => {
+        const next = new Map(prev);
+        const current = next.has(messageId)
+          ? (next.get(messageId) ?? [])
+          : (baseReactionsById.get(messageId) ?? []);
+        const existingIndex = current.findIndex(
+          (reaction) => reaction.emoji === emoji
+        );
+        let updated = [...current];
+
+        if (existingIndex >= 0) {
+          const existing = updated[existingIndex];
+          if (existing.reactedByLocutor) {
+            const nextCount = existing.count - 1;
+            if (nextCount <= 0) {
+              updated.splice(existingIndex, 1);
+            } else {
+              updated[existingIndex] = {
+                ...existing,
+                count: nextCount,
+                reactedByLocutor: false,
+              };
+            }
+          } else {
+            updated[existingIndex] = {
+              ...existing,
+              count: existing.count + 1,
+              reactedByLocutor: true,
+            };
+          }
+        } else {
+          updated = [...updated, { emoji, count: 1, reactedByLocutor: true }];
+        }
+
+        next.set(messageId, updated);
+        return next;
+      });
+    },
+    [baseReactionsById]
+  );
+
+  const markDeleted = useCallback((messageId: string) => {
+    setDeletedMessages((prev) => {
+      const next = new Set(prev);
+      next.add(messageId);
+      return next;
+    });
+  }, []);
+
+  const setActionCardState = useCallback(
+    (cardId: string, nextState: ActionCardState) => {
+      setActionCardStates((prev) => {
+        const next = new Map(prev);
+        next.set(cardId, nextState);
+        return next;
+      });
+    },
+    []
+  );
 
   // Auto-scroll to bottom on mount and when conversation changes
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [conversation.id, messagesToDisplay.length]);
+  }, [conversation.id, itemsToDisplay.length]);
 
   const breadcrumbItems: BreadcrumbItem[] = [];
 
@@ -212,6 +425,267 @@ export function ConversationView({
       setIsRenameDialogOpen(true);
     },
   });
+
+  const getCitationIcon = (
+    icon?: "table" | "document" | "slack" | "notion" | "image"
+  ) => {
+    switch (icon) {
+      case "table":
+        return TableIcon;
+      case "slack":
+        return SlackLogo;
+      case "notion":
+        return NotionLogo;
+      case "image":
+        return ImageIcon;
+      case "document":
+      default:
+        return DocumentIcon;
+    }
+  };
+
+  const renderMessageBody = (message: ConversationMessage) => {
+    const blocks: ReactNode[] = [];
+
+    if (message.content) {
+      blocks.push(<span key={`${message.id}-text`}>{message.content}</span>);
+    }
+
+    if (message.markdown) {
+      blocks.push(
+        <Markdown key={`${message.id}-markdown`} content={message.markdown} />
+      );
+    }
+
+    if (message.attachments && message.attachments.length > 0) {
+      blocks.push(
+        <div
+          key={`${message.id}-attachments`}
+          className="s-flex s-flex-col s-gap-2"
+        >
+          <div className="s-flex s-flex-wrap s-gap-2">
+            {message.attachments.map((attachment) => (
+              <AttachmentChip
+                key={attachment.id}
+                label={attachment.label}
+                icon={{ visual: DocumentIcon }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.actionCards && message.actionCards.length > 0) {
+      blocks.push(
+        <div
+          key={`${message.id}-action-cards`}
+          className="s-flex s-flex-col s-gap-3"
+        >
+          {message.actionCards.map((card) => {
+            const state = actionCardStates.get(card.id) ?? "active";
+            return (
+              <ActionCardBlock
+                key={card.id}
+                title={card.title}
+                acceptedTitle={card.acceptedTitle}
+                rejectedTitle={card.rejectedTitle}
+                description={card.description}
+                applyLabel={card.applyLabel}
+                rejectLabel={card.rejectLabel}
+                cardVariant={card.cardVariant}
+                actionsPosition={card.actionsPosition}
+                state={state}
+                onClickAccept={() => setActionCardState(card.id, "accepted")}
+                onClickReject={() => setActionCardState(card.id, "rejected")}
+                visual={
+                  card.visual ? (
+                    <Avatar
+                      size="sm"
+                      emoji={card.visual.emoji}
+                      backgroundColor={card.visual.backgroundColor}
+                    />
+                  ) : undefined
+                }
+              />
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (blocks.length === 0) {
+      return null;
+    }
+
+    if (blocks.length === 1) {
+      return blocks[0];
+    }
+
+    return <div className="s-flex s-flex-col s-gap-2">{blocks}</div>;
+  };
+
+  const conversationBlocks: React.ReactNode[] = [];
+  let currentGroupId: string | null = null;
+  let currentGroup: MessageGroupData | null = null;
+  let currentGroupMessages: ConversationMessage[] = [];
+
+  const flushGroup = () => {
+    if (!currentGroup || currentGroupMessages.length === 0) {
+      return;
+    }
+
+    const groupKey = `${currentGroup.id}-${currentGroupMessages[0].id}`;
+    const infoChip =
+      currentGroup.infoChip?.icon === "bolt" ? (
+        <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <Icon size="xs" visual={BoltIcon} />
+        </span>
+      ) : undefined;
+
+    const groupHasDeletedMessage = currentGroupMessages.some((message) =>
+      deletedMessages.has(message.id)
+    );
+    const completionStatus =
+      currentGroup.completionStatus && !groupHasDeletedMessage ? (
+        <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+          {currentGroup.completionStatus}
+        </span>
+      ) : undefined;
+
+    conversationBlocks.push(
+      <NewConversationMessageGroup
+        key={groupKey}
+        type={currentGroup.type}
+        avatar={
+          currentGroup.avatar
+            ? { ...currentGroup.avatar, name: currentGroup.name }
+            : undefined
+        }
+        name={currentGroup.name}
+        timestamp={currentGroup.timestamp}
+        infoChip={infoChip}
+        completionStatus={completionStatus}
+        hideCompletionStatus={groupHasDeletedMessage}
+        renderName={(name) => <span>{name}</span>}
+      >
+        {currentGroupMessages.map((message) => {
+          const isDeleted = deletedMessages.has(message.id);
+          const reactionsOverride = reactionOverrides.get(message.id);
+          const resolvedReactions =
+            reactionsOverride ?? message.reactions ?? [];
+          const citations = message.citations?.map((citation) => (
+            <NewCitation
+              key={citation.id}
+              visual={getCitationIcon(citation.icon)}
+              label={citation.title}
+              size="lg"
+              onClick={() => {
+                setSelectedCitation(citation);
+                if (citation.imgSrc) {
+                  setIsImageZoomOpen(true);
+                } else {
+                  setIsCitationSheetOpen(true);
+                }
+              }}
+              {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
+            />
+          ));
+
+          const messageContent = isDeleted ? (
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-italic">
+              Message deleted
+            </span>
+          ) : (
+            renderMessageBody(message)
+          );
+
+          if (currentGroup?.type === "agent") {
+            return (
+              <NewConversationAgentMessage
+                key={message.id}
+                citations={citations}
+                onDelete={() => markDeleted(message.id)}
+                hideActions={isDeleted}
+                isLastMessage={message.id === lastMessageId}
+              >
+                {messageContent}
+              </NewConversationAgentMessage>
+            );
+          }
+
+          return (
+            <NewConversationUserMessage
+              key={message.id}
+              reactions={isDeleted ? [] : resolvedReactions}
+              citations={citations}
+              onEmojiSelect={
+                isDeleted
+                  ? undefined
+                  : (emoji) => toggleReaction(message.id, emoji)
+              }
+              onReactionClick={
+                isDeleted
+                  ? undefined
+                  : (emoji) => toggleReaction(message.id, emoji)
+              }
+              onDelete={() => markDeleted(message.id)}
+              onEdit={
+                currentGroup?.type === "locutor" && !isDeleted
+                  ? (newContent) =>
+                      console.log(`Edit message ${message.id}:`, newContent)
+                  : undefined
+              }
+              defaultEditValue={message.content ?? message.markdown ?? ""}
+              hideActions={isDeleted}
+              isLastMessage={message.id === lastMessageId}
+            >
+              {messageContent}
+            </NewConversationUserMessage>
+          );
+        })}
+      </NewConversationMessageGroup>
+    );
+
+    currentGroupId = null;
+    currentGroup = null;
+    currentGroupMessages = [];
+  };
+
+  itemsToDisplay.forEach((item) => {
+    if (item.kind === "message") {
+      if (currentGroupId !== item.group.id) {
+        flushGroup();
+        currentGroupId = item.group.id;
+        currentGroup = item.group;
+      }
+      currentGroupMessages.push(item);
+      return;
+    }
+
+    flushGroup();
+
+    if (item.kind === "section") {
+      conversationBlocks.push(
+        <NewConversationSectionHeading key={item.id} label={item.label} />
+      );
+      return;
+    }
+
+    if (item.kind === "activeIndicator") {
+      conversationBlocks.push(
+        <NewConversationActiveIndicator
+          key={item.id}
+          type={item.type}
+          name={item.name}
+          action={item.action}
+          avatar={item.avatar}
+        />
+      );
+    }
+  });
+
+  flushGroup();
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
@@ -271,107 +745,109 @@ export function ConversationView({
       </Dialog>
 
       {/* Messages container - scrollable */}
-      <div
-        ref={scrollContainerRef}
-        className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
-      >
-        <ConversationContainer>
-          {messagesToDisplay.map((message) => {
-            const isLocutor = message.ownerId === locutor.id;
-            let owner: User | Agent | undefined;
-            let pictureUrl: string | undefined;
-            let name: string;
-
-            if (message.ownerType === "user") {
-              owner =
-                getUserById(message.ownerId) ||
-                users.find((u) => u.id === message.ownerId);
-              if (owner) {
-                pictureUrl = owner.portrait;
-                name = owner.fullName;
-              } else {
-                name = "Unknown User";
-              }
-            } else {
-              owner =
-                getAgentById(message.ownerId) ||
-                agents.find((a) => a.id === message.ownerId);
-              if (owner) {
-                name = owner.name;
-                pictureUrl = undefined; // Avatar will show name initials
-              } else {
-                name = "Unknown Agent";
-              }
-            }
-
-            // Determine message alignment
-            // Locutor's messages are type "user" and should align right
-            // Other users' messages are type "user" but align left
-            // Agent messages are type "agent" and align left
-            const messageType = message.type;
-            const isUserMessage = messageType === "user";
-            const isFromLocutor = isUserMessage && isLocutor;
-
-            return (
-              <div
-                key={message.id}
-                className={
-                  isFromLocutor
-                    ? "s-flex s-w-full s-justify-end"
-                    : "s-flex s-w-full s-justify-start"
-                }
-              >
-                <div
-                  className={
-                    isFromLocutor
-                      ? "s-flex s-w-full s-max-w-4xl s-justify-end"
-                      : "s-flex s-w-full s-max-w-4xl s-justify-start"
-                  }
-                >
-                  <ConversationMessage
-                    type={messageType}
-                    name={name}
-                    emoji={owner && "emoji" in owner ? owner.emoji : undefined}
-                    backgroundColor={
-                      owner && "emoji" in owner
-                        ? owner.backgroundColor
-                        : undefined
-                    }
-                    pictureUrl={pictureUrl}
-                    timestamp={formatTimestamp(message.timestamp)}
-                    buttons={
-                      messageType === "agent"
-                        ? [
-                            <Button
-                              key="thumb-up"
-                              icon={HandThumbUpIcon}
-                              onClick={() => {}}
-                              size="xs"
-                              variant="outline"
-                            />,
-                            <Button
-                              key="thumb-down"
-                              icon={HandThumbDownIcon}
-                              onClick={() => {}}
-                              size="xs"
-                              variant="outline"
-                            />,
-                          ]
-                        : undefined
-                    }
-                  >
-                    {message.content}
-                  </ConversationMessage>
-                </div>
-              </div>
-            );
-          })}
-          <div className="s-fixed s-bottom-4 s-w-full">
+      <div className="s-relative s-flex s-flex-1 s-flex-col s-overflow-hidden">
+        <div
+          ref={scrollContainerRef}
+          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
+        >
+          <NewConversationContainer>
+            <div ref={messagesEndRef} className="s-h-12 s-shrink-0" />
+            {conversationBlocks}
+            <div ref={messagesEndRef} className="s-h-32 s-shrink-0" />
+          </NewConversationContainer>
+        </div>
+        <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
+          <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
             <InputBar placeholder="Ask a question" className="s-shadow-xl" />
           </div>
-          <div ref={messagesEndRef} />
-        </ConversationContainer>
+        </div>
       </div>
+
+      {/* Image citation zoom dialog */}
+      {selectedCitation?.imgSrc && (
+        <ImageZoomDialog
+          open={isImageZoomOpen}
+          onOpenChange={(open) => {
+            setIsImageZoomOpen(open);
+            if (!open) setSelectedCitation(null);
+          }}
+          image={{
+            src: selectedCitation.imgSrc,
+            title: selectedCitation.title,
+          }}
+        />
+      )}
+
+      {/* Citation Preview Sheet */}
+      <Sheet
+        open={isCitationSheetOpen}
+        onOpenChange={(open: boolean) => {
+          setIsCitationSheetOpen(open);
+          if (!open) {
+            setSelectedCitation(null);
+            setDocumentView("preview");
+          }
+        }}
+      >
+        <SheetContent size="3xl" side="right">
+          <SheetHeader>
+            <SheetTitle>
+              <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
+                <div className="s-flex s-items-center s-gap-2">
+                  {selectedCitation && (
+                    <Icon
+                      visual={getCitationIcon(selectedCitation.icon)}
+                      size="md"
+                    />
+                  )}
+                  <span>{selectedCitation?.title || "Document View"}</span>
+                </div>
+                <div className="s-flex s-w-full s-items-center s-gap-2">
+                  <ButtonsSwitchList
+                    defaultValue="preview"
+                    size="xs"
+                    onValueChange={(value) => {
+                      if (value === "preview" || value === "extracted") {
+                        setDocumentView(value);
+                      }
+                    }}
+                  >
+                    <ButtonsSwitch value="preview" label="Preview" />
+                    <ButtonsSwitch
+                      value="extracted"
+                      label="Extracted information"
+                    />
+                  </ButtonsSwitchList>
+                  <div className="s-flex-1" />
+                  <div className="s-flex s-items-center s-gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      icon={ArrowDownOnSquareIcon}
+                      tooltip="Download"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      icon={ExternalLinkIcon}
+                      tooltip="Open in tab"
+                    />
+                  </div>
+                </div>
+              </div>
+            </SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                {documentView === "preview"
+                  ? "Document Preview"
+                  : "Extracted information"}
+              </p>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

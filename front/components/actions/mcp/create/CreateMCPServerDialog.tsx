@@ -1,15 +1,3 @@
-import {
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
-
 import { CustomHeadersConfigurationSection } from "@app/components/actions/mcp/create/CustomHeadersConfigurationSection";
 import { InternalBearerTokenSection } from "@app/components/actions/mcp/create/InternalBearerTokenSection";
 import { RemoteMCPServerConfigurationSection } from "@app/components/actions/mcp/create/RemoteMCPServerConfigurationSection";
@@ -40,18 +28,33 @@ import {
   useCreateRemoteMCPServer,
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 function getSubmitButtonLabel(
   isLoading: boolean,
-  authorization: AuthorizationInfo | null
+  authorization: AuthorizationInfo | null,
+  defaultServerConfig?: DefaultRemoteMCPServerConfig
 ): string {
   if (isLoading) {
     return "Loading...";
   }
   if (authorization) {
     return "Setup connection";
+  }
+  // Use "Next" for OAuth servers, "Save" for others
+  if (defaultServerConfig?.authMethod === "oauth-dynamic") {
+    return "Next";
   }
   return "Save";
 }
@@ -113,7 +116,6 @@ export function CreateMCPServerDialog({
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   useEffect(() => {
     if (isOpen) {
@@ -152,7 +154,6 @@ export function CreateMCPServerDialog({
       createWithURL,
       createInternalMCPServer,
       onBeforeCreateServer: () => setExternalIsLoading(true),
-      hasGoogleDriveWriteFeature: hasFeature("google_drive_write_enabled"),
     });
 
     if (submitRes.isErr()) {
@@ -281,7 +282,11 @@ export function CreateMCPServerDialog({
             }}
             rightButtonProps={{
               isLoading: isLoading,
-              label: getSubmitButtonLabel(isLoading, authorization),
+              label: getSubmitButtonLabel(
+                isLoading,
+                authorization,
+                defaultServerConfig
+              ),
               variant: "primary",
               disabled: isSubmitDisabled,
               onClick: (e) => {

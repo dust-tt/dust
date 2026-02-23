@@ -3,9 +3,9 @@ import {
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { useUser } from "@app/lib/swr/user";
 
 export function useReaction({
   owner,
@@ -16,7 +16,7 @@ export function useReaction({
   conversationId?: string | null;
   message: VirtuosoMessage;
 }) {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const { submit: onReactionToggle } = useSubmitFunction(
     async ({ emoji }: { emoji: string }) => {

@@ -1,8 +1,7 @@
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
-
-import { connectorsSequelize } from "@connectors/resources/storage";
 
 beforeEach(async (c) => {
   vi.clearAllMocks();

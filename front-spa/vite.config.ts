@@ -187,6 +187,7 @@ export default defineConfig(({ mode }) => {
     mode === "development" && env.VITE_REACT_SCAN === "true";
 
   return {
+    cacheDir: path.resolve(__dirname, ".vite"),
     base: basePath,
     root: path.resolve(__dirname, "."),
     publicDir: path.resolve(__dirname, "../front/public"),

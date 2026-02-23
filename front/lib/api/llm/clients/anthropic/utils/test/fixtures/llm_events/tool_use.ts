@@ -1,5 +1,5 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 export const toolUseLLMEvents: LLMEvent[] = [
   {
@@ -35,6 +35,13 @@ export const toolUseLLMEvents: LLMEvent[] = [
     content: {
       text: "Hello, how are you ?",
     },
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
+    type: "tool_call_delta",
     metadata: {
       clientId: "anthropic" as const,
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,

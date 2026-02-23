@@ -1,7 +1,6 @@
+import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 import * as ResizablePrimitive from "react-resizable-panels";
-
-import { cn } from "@sparkle/lib/utils";
 
 type ResizablePanelGroupProps = React.ComponentProps<
   typeof ResizablePrimitive.PanelGroup

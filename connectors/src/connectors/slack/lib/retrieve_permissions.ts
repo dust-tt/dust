@@ -1,7 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WebAPIPlatformError } from "@slack/web-api";
-
 import type { RetrievePermissionsErrorCode } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
@@ -14,6 +10,9 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ConnectorPermission, ContentNode } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WebAPIPlatformError } from "@slack/web-api";
 
 export async function retrievePermissions({
   connectorId,

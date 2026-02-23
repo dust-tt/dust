@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -7,6 +5,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type { Transaction } from "sequelize";
 
 export async function revokeAndTrackMembership(
   auth: Authenticator,

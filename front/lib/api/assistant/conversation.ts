@@ -1,8 +1,4 @@
-import assert from "assert";
-import type { NextApiRequest } from "next";
-import type { Transaction } from "sequelize";
-import { col } from "sequelize";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -10,6 +6,7 @@ import {
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   canAgentBeUsedInProjectConversation,
   createAgentMessages,
@@ -19,9 +16,12 @@ import {
 } from "@app/lib/api/assistant/conversation/mentions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+  MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
+  makeMessageRateLimitKeyForWorkspaceActor,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import {
@@ -63,45 +63,52 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+} from "@app/types/api/internal/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  APIErrorWithStatusCode,
-  ContentFragmentContextType,
-  ContentFragmentInputWithContentNode,
-  ContentFragmentInputWithFileIdType,
-  ContentFragmentType,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MentionType,
-  ModelId,
-  Result,
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
 import {
   ConversationError,
-  Err,
-  isAgentMention,
-  isContentFragmentInputWithContentNode,
-  isContentFragmentType,
-  isProviderWhitelisted,
-  isUserMention,
-  isUserMessageType,
-  md5,
-  Ok,
-  removeNulls,
-  toMentionType,
-} from "@app/types";
-import {
   isAgentMessageType,
   isProjectConversation,
+  isUserMessageType,
 } from "@app/types/assistant/conversation";
+import type { MentionType } from "@app/types/assistant/mentions";
+import {
+  isAgentMention,
+  isUserMention,
+  toMentionType,
+} from "@app/types/assistant/mentions";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
+import type {
+  ContentFragmentContextType,
+  ContentFragmentType,
+} from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { md5 } from "@app/types/shared/utils/hashing";
+import assert from "assert";
+import type { NextApiRequest } from "next";
+import type { Transaction } from "sequelize";
+import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
@@ -438,8 +445,7 @@ async function getConversationRankVersionLock(
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
-  // OK because we need to setup a lock
-  // eslint-disable-next-line dust/no-raw-sql
+  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },
@@ -594,7 +600,7 @@ export async function postUserMessage(
       agentIds: mentions
         .filter(isAgentMention)
         .map((mention) => mention.configurationId),
-      variant: "light",
+      variant: "extra_light",
     }),
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
@@ -681,6 +687,13 @@ export async function postUserMessage(
         transaction: t,
       })) ?? -1) + 1;
 
+    // Enrich context with auth data for analytics tracking.
+    const enrichedContext: UserMessageContext = {
+      ...context,
+      apiKeyId: auth.key()?.id ?? null,
+      authMethod: auth.authMethod(),
+    };
+
     // Return the user message without mentions.
     // This way typescript forces us to create the mentions after the user message is created.
     const userMessageWithoutMentions = await createUserMessage(auth, {
@@ -690,24 +703,11 @@ export async function postUserMessage(
         type: "create",
         user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
         rank: nextMessageRank++,
-        context,
+        context: enrichedContext,
         agenticMessageData,
       },
       transaction: t,
     });
-
-    // If a user is mentioned, we want to make sure the conversation has a title.
-    // This ensures that mentioned users receive a notification with a conversation title.
-    if (mentions.some(isUserMention)) {
-      await ensureConversationTitle(auth, {
-        conversation,
-        userMessage: {
-          ...userMessageWithoutMentions,
-          richMentions: [],
-          mentions: [],
-        },
-      });
-    }
 
     const richMentions = await createUserMentions(auth, {
       mentions,
@@ -752,6 +752,19 @@ export async function postUserMessage(
     };
   });
 
+  // If a user is mentioned, we want to make sure the conversation has a title.
+  // This ensures that mentioned users receive a notification with a conversation title.
+  if (mentions.some(isUserMention)) {
+    await ensureConversationTitle(auth, {
+      conversation,
+      userMessage: {
+        ...userMessage,
+        richMentions: [],
+        mentions: [],
+      },
+    });
+  }
+
   const conversationRes = await ConversationResource.fetchById(
     auth,
     conversation.sId
@@ -762,7 +775,7 @@ export async function postUserMessage(
     );
   }
   await triggerConversationUnreadNotifications(auth, {
-    conversation: conversationRes,
+    conversationId: conversationRes.sId,
     messageId: userMessage.sId,
   });
 
@@ -1259,7 +1272,7 @@ export async function retryAgentMessage(
       // Check if agent is still available to the user.
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: message.configuration.sId,
-        variant: "light",
+        variant: "extra_light",
       });
       if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
         throw new AgentMessageError(
@@ -1692,7 +1705,7 @@ async function checkMessagesLimit(
         message:
           messageLimit.limitType === "plan_message_limit_exceeded"
             ? "The message limit for this plan has been exceeded."
-            : "The rate limit for this workspace has been exceeded.",
+            : "Rate limit exceeded. Please retry later.",
       },
     });
   }
@@ -1802,6 +1815,30 @@ async function checkProgrammaticUsageRateLimit(
   };
 }
 
+function getMessageRateLimitActor(auth: Authenticator):
+  | {
+      type: "api_key";
+      id: number;
+    }
+  | {
+      type: "user";
+      id: number;
+    } {
+  const user = auth.user();
+  if (user) {
+    return { type: "user", id: user.id };
+  }
+
+  const apiKey = auth.key();
+  if (apiKey) {
+    return { type: "api_key", id: apiKey.id };
+  }
+
+  throw new Error(
+    "Unexpected unauthenticated call to assistant message rate limiter."
+  );
+}
+
 async function isMessagesLimitReached(
   auth: Authenticator,
   {
@@ -1814,14 +1851,30 @@ async function isMessagesLimitReached(
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
+  const actor = getMessageRateLimitActor(auth);
+
+  const actorRemainingMessages = await rateLimiter({
+    key: makeMessageRateLimitKeyForWorkspaceActor(owner, actor),
+    maxPerTimeframe: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
+    timeframeSeconds: MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+    logger,
+  });
+
+  if (actorRemainingMessages <= 0) {
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
     return checkProgrammaticUsageRateLimit(auth);
   }
 
   // Checking rate limit
-  const activeSeats =
-    await MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId);
+  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    owner.sId
+  );
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({
@@ -1897,4 +1950,166 @@ async function isMessagesLimitReached(
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
+}
+
+// Build the output messages, truncating content per message.
+const MAX_CONTENT_CHARS_PER_MESSAGE = 2_000;
+const MAX_TOTAL_CONTENT_CHARS = 20_000;
+
+function truncateContent(content: string | null): {
+  content: string | null;
+  contentTruncated: boolean;
+} {
+  if (!content || content.length <= MAX_CONTENT_CHARS_PER_MESSAGE) {
+    return { content, contentTruncated: false };
+  }
+  return {
+    content: content.slice(0, MAX_CONTENT_CHARS_PER_MESSAGE),
+    contentTruncated: true,
+  };
+}
+
+export async function getShrinkWrapedConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+    fromMessageIndex,
+    toMessageIndex,
+  }: {
+    conversationId: string;
+    fromMessageIndex?: number;
+    toMessageIndex?: number;
+  }
+): Promise<
+  Result<
+    {
+      type: "text";
+      text: string;
+    },
+    Error
+  >
+> {
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return new Err(
+      new Error(`Conversation not found or not accessible: ${conversationId}`)
+    );
+  }
+
+  const conversation = conversationRes.value;
+
+  // Flatten the 2D content array into a flat list of messages (last version of each).
+  const flatMessages: (UserMessageType | AgentMessageType)[] = [];
+  for (const messageVersions of conversation.content) {
+    if (messageVersions.length === 0) {
+      continue;
+    }
+    const lastVersion = messageVersions[messageVersions.length - 1];
+    if (isUserMessageType(lastVersion) || isAgentMessageType(lastVersion)) {
+      flatMessages.push(lastVersion);
+    }
+  }
+
+  // Apply message index range.
+  const from = fromMessageIndex ?? 0;
+  const to = toMessageIndex ?? flatMessages.length;
+  const isConversationTruncated = from > 0 || to < flatMessages.length;
+  const slicedMessages = flatMessages.slice(from, to);
+
+  // Build a map of agent message sId → list of agents it handed off to.
+  // An agent message B with parentAgentMessageId === A.sId means A handed off to B.
+  const handoffMap = new Map<string, { agentId: string }[]>();
+  for (const msg of flatMessages) {
+    if (isAgentMessageType(msg) && msg.parentAgentMessageId) {
+      const targets = handoffMap.get(msg.parentAgentMessageId) ?? [];
+      targets.push({ agentId: msg.configuration.sId });
+      handoffMap.set(msg.parentAgentMessageId, targets);
+    }
+  }
+
+  let currentTotalChars = 0;
+  const lines: string[] = [];
+
+  lines.push(`# ${conversation.sId}: ${conversation.title ?? "Untitled"}`);
+  if (isConversationTruncated) {
+    lines.push(`_(conversation truncated)_`);
+  }
+  lines.push("");
+
+  for (let i = 0; i < slicedMessages.length; i++) {
+    if (currentTotalChars >= MAX_TOTAL_CONTENT_CHARS) {
+      break;
+    }
+
+    const msg = slicedMessages[i];
+    const index = from + i;
+
+    if (isUserMessageType(msg)) {
+      const { content, contentTruncated } = truncateContent(msg.content);
+      currentTotalChars += content ? content.length : 0;
+
+      lines.push(`## Message ${index}: ${msg.sId}`);
+      lines.push(`at ${msg.created}`);
+      lines.push(`from user ${msg.context.username}`);
+      const mentions = msg.mentions.filter(isAgentMention);
+      if (mentions.length > 0) {
+        lines.push(
+          `mentions: ${mentions.map((m) => m.configurationId).join(", ")}`
+        );
+      }
+      lines.push("");
+      lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
+      lines.push(content ?? "_empty_");
+      lines.push("");
+      continue;
+    }
+
+    // Agent message.
+    const agentMsg = msg as AgentMessageType;
+    const { content, contentTruncated } = truncateContent(agentMsg.content);
+    currentTotalChars += content ? content.length : 0;
+
+    const status = agentMsg.status === "succeeded" ? "succeeded" : "failed";
+
+    lines.push(`## Message ${index}: ${agentMsg.sId}`);
+    lines.push(`at ${agentMsg.created}`);
+    lines.push(
+      `from agent ${agentMsg.configuration.sId} (${agentMsg.configuration.name}) - ${status}`
+    );
+    lines.push("");
+
+    // Actions.
+    if (agentMsg.actions.length > 0) {
+      lines.push("### Actions");
+      for (const action of agentMsg.actions) {
+        const actionStatus =
+          action.status === "succeeded" ? "success" : "error";
+        let actionLine = `- ${action.functionCallName} (${actionStatus})`;
+        if (action.internalMCPServerName === "run_agent") {
+          const childConvId = action.params.conversationId;
+          if (isString(childConvId)) {
+            actionLine += ` → child conversation: ${childConvId}`;
+          }
+        }
+        lines.push(actionLine);
+      }
+      lines.push("");
+    }
+
+    // Handoffs.
+    const handoffs = handoffMap.get(agentMsg.sId) ?? [];
+    if (handoffs.length > 0) {
+      lines.push(`Handed off to: ${handoffs.map((h) => h.agentId).join(", ")}`);
+      lines.push("");
+    }
+
+    lines.push(`### Content${contentTruncated ? " (truncated)" : ""}`);
+    lines.push(content ?? "_empty_");
+    lines.push("");
+  }
+
+  return new Ok({
+    type: "text" as const,
+    text: lines.join("\n"),
+  });
 }

@@ -1,13 +1,3 @@
-import assert from "assert";
-import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  NonAttribute,
-  Transaction,
-} from "sequelize";
-import { Op } from "sequelize";
-
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -16,6 +6,7 @@ import {
   getInternalMCPServerToolDisplayLabels,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
@@ -26,6 +17,7 @@ import type { StepContext } from "@app/lib/actions/types";
 import { isFileAuthorizationInfo } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
+import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
@@ -49,18 +41,40 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
-import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
+import tracer from "@app/logger/tracer";
 import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
+import type {
+  Attributes,
+  CreationAttributes,
+  NonAttribute,
+  Transaction,
+} from "sequelize";
+import { Op } from "sequelize";
 
 // Batch size for fetching output items to avoid loading too many large rows at once.
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
+
+function getDefaultRemoteDisplayLabels(
+  mcpServerName: string,
+  toolName: string
+): ToolDisplayLabels | null {
+  const server = getDefaultRemoteMCPServerByName(mcpServerName);
+  return server?.toolDisplayLabels?.[toolName] ?? null;
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -216,35 +230,39 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    const latestAgentMessages =
-      await conversation.getLatestAgentMessageIdByRank(auth);
-
-    const blockedActions = await AgentMCPActionModel.findAll({
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              required: true,
-              where: {
-                conversationId: conversation.id,
+    const [latestAgentMessages, blockedActions] = await Promise.all([
+      conversation.getLatestAgentMessageIdByRank(auth),
+      AgentMCPActionModel.findAll({
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            include: [
+              {
+                model: MessageModel,
+                as: "message",
+                required: true,
+                where: {
+                  conversationId: conversation.id,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+        where: {
+          workspaceId: owner.id,
+          status: {
+            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+          },
         },
-      ],
-      where: {
-        workspaceId: owner.id,
-        status: {
-          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
-        },
-      },
-      order: [["createdAt", "ASC"]],
-    });
+        order: [["createdAt", "ASC"]],
+      }),
+    ]);
+
+    const latestAgentMessageIds = new Set(
+      latestAgentMessages.map((m) => m.agentMessageId)
+    );
 
     const parentUserMessageIds = removeNulls(
       blockedActions.map((a) => a.agentMessage!.message!.parentId)
@@ -289,14 +307,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       })
     );
 
-    const agentConfigurations = await getAgentConfigurationsWithVersion(
-      auth,
-      agentConfigVersionPairs,
-      {
-        variant: "extra_light",
-      }
-    );
-
     const mcpServerViewIds = [
       ...new Set(
         removeNulls(
@@ -309,9 +319,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ),
     ];
 
-    const mcpServerViews = await MCPServerViewResource.fetchByIds(
-      auth,
-      mcpServerViewIds
+    const [agentConfigurations, mcpServerViews] = await Promise.all([
+      getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
+        variant: "extra_light",
+      }),
+      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
+    ]);
+
+    const agentConfigurationMap = new Map(
+      agentConfigurations.map((a) => [`${a.sId}:${a.version}`, a])
     );
 
     const mcpServerViewMap = new Map(
@@ -323,16 +339,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       assert(agentMessage?.message, "No message for agent message.");
 
       // Ignore actions that are not the latest version of the agent message.
-      if (
-        !latestAgentMessages.some((m) => m.agentMessageId === agentMessage.id)
-      ) {
+      if (!latestAgentMessageIds.has(agentMessage.id)) {
         continue;
       }
 
-      const agentConfiguration = agentConfigurations.find(
-        (a) =>
-          a.sId === agentMessage.agentConfigurationId &&
-          a.version === agentMessage.agentConfigurationVersion
+      const agentConfiguration = agentConfigurationMap.get(
+        `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
       );
       assert(agentConfiguration, "Agent not found.");
 
@@ -643,82 +655,91 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     auth: Authenticator,
     actions: AgentMCPActionResource[]
   ): Promise<AgentMCPActionWithOutputType[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    return tracer.trace(
+      "agent_mcp_action.enrich_with_output_items",
+      { resource: "agent_mcp_action" },
+      async (span) => {
+        span?.setTag("action_count", actions.length);
 
-    const outputItemsByActionId = _.groupBy(
-      Array.from(
-        (
-          await this.fetchOutputItemsByActionIds(
-            auth,
-            actions.map((a) => a.id)
+        const workspaceId = auth.getNonNullableWorkspace().id;
+
+        const outputItemsByActionId = _.groupBy(
+          Array.from(
+            (
+              await this.fetchOutputItemsByActionIds(
+                auth,
+                actions.map((a) => a.id)
+              )
+            ).values()
+          ).flat(),
+          "agentMCPActionId"
+        );
+
+        const fileIds = removeNulls(
+          Object.values(outputItemsByActionId).flatMap((o) =>
+            o.map((o) => o.fileId)
           )
-        ).values()
-      ).flat(),
-      "agentMCPActionId"
-    );
+        );
 
-    const fileIds = removeNulls(
-      Object.values(outputItemsByActionId).flatMap((o) =>
-        o.map((o) => o.fileId)
-      )
-    );
+        const fileById = _.keyBy(
+          // Using the model instead of the resource since we're mutating outputItems.
+          // Not super clean but everything happens in this one function and faster to write.
+          await FileModel.findAll({
+            where: {
+              workspaceId,
+              id: {
+                [Op.in]: fileIds,
+              },
+            },
+          }),
+          "id"
+        );
 
-    const fileById = _.keyBy(
-      // Using the model instead of the resource since we're mutating outputItems.
-      // Not super clean but everything happens in this one function and faster to write.
-      await FileModel.findAll({
-        where: {
-          workspaceId,
-          id: {
-            [Op.in]: fileIds,
-          },
-        },
-      }),
-      "id"
-    );
-
-    for (const outputItems of Object.values(outputItemsByActionId)) {
-      for (const item of outputItems) {
-        if (item.fileId) {
-          item.file = fileById[item.fileId.toString()];
-        }
-      }
-    }
-
-    return actions.map((action) => {
-      const outputItems = outputItemsByActionId[action.id.toString()] ?? [];
-      return {
-        ...action.toJSON(),
-        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-        generatedFiles: removeNulls(
-          outputItems.map((o) => {
-            if (!o.file) {
-              return null;
+        for (const outputItems of Object.values(outputItemsByActionId)) {
+          for (const item of outputItems) {
+            if (item.fileId) {
+              item.file = fileById[item.fileId.toString()];
             }
+          }
+        }
 
-            const file = o.file;
+        return actions.map((action) => {
+          const outputItems = outputItemsByActionId[action.id.toString()] ?? [];
+          return {
+            ...action.toJSON(),
+            output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+            generatedFiles: removeNulls(
+              outputItems.map((o) => {
+                if (!o.file) {
+                  return null;
+                }
 
-            const hidden =
-              o.content.type === "resource" &&
-              isToolGeneratedFile(o.content) &&
-              o.content.resource.hidden === true;
+                const file = o.file;
 
-            return {
-              fileId: FileResource.modelIdToSId({
-                id: file.id,
-                workspaceId: file.workspaceId,
-              }),
-              contentType: file.contentType,
-              title: file.fileName,
-              snippet: file.snippet,
-              createdAt: file.createdAt.getTime(),
-              updatedAt: file.updatedAt.getTime(),
-              ...(hidden ? { hidden: true } : {}),
-            };
-          })
-        ),
-      };
-    });
+                const hidden =
+                  o.content.type === "resource" &&
+                  isToolGeneratedFile(o.content) &&
+                  o.content.resource.hidden === true;
+
+                return {
+                  fileId: FileResource.modelIdToSId({
+                    id: file.id,
+                    workspaceId: file.workspaceId,
+                  }),
+                  contentType: file.contentType,
+                  title: file.fileName,
+                  snippet: file.snippet,
+                  createdAt: file.createdAt.getTime(),
+                  updatedAt: file.updatedAt.getTime(),
+                  isInProjectContext: file.useCase === "project_context",
+                  ...(hidden ? { hidden: true } : {}),
+                };
+              })
+            ),
+          };
+        });
+      }
+    );
   }
 
   toJSON(): AgentMCPActionType {
@@ -734,7 +755,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
           toolName
         ] ?? null)
-      : null;
+      : getDefaultRemoteDisplayLabels(
+          this.toolConfiguration.mcpServerName,
+          toolName
+        );
 
     return {
       id: this.id,

@@ -6,7 +6,8 @@ import {
   DropdownTooltipTrigger,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
-import React, {
+import type React from "react";
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -84,6 +85,7 @@ export const SlashCommandDropdown = forwardRef<
   );
 
   // Reset selected index when items change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setSelectedIndex(0);
   }, [items.length]);
@@ -106,6 +108,15 @@ export const SlashCommandDropdown = forwardRef<
 
   useEffect(() => {
     updateTriggerPosition();
+
+    const viewport = window.visualViewport;
+    if (viewport) {
+      // Event triggered when hitting CMD +/-.
+      viewport.addEventListener("resize", updateTriggerPosition);
+      return () => {
+        viewport.removeEventListener("resize", updateTriggerPosition);
+      };
+    }
   }, [updateTriggerPosition]);
 
   return (

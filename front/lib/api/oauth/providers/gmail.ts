@@ -1,6 +1,3 @@
-import type { ParsedUrlQuery } from "querystring";
-import querystring from "querystring";
-
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
 import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
@@ -14,10 +11,16 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
+import querystring from "querystring";
 
 export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
   requiresWorkspaceConnectionForPersonalAuth = true;

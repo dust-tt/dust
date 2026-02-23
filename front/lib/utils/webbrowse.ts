@@ -1,14 +1,13 @@
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { errorToString } from "@app/types/shared/utils/error_utils";
 import type {
   ErrorResponse,
   ScrapeParams,
   ScrapeResponse,
 } from "@mendable/firecrawl-js";
-import { FirecrawlError } from "@mendable/firecrawl-js";
-import FirecrawlApp from "@mendable/firecrawl-js";
-
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import { dustManagedCredentials, errorToString } from "@app/types";
+import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
 
 const credentials = dustManagedCredentials();
 
@@ -222,12 +221,19 @@ export const browseUrls = async (
     links?: boolean;
   }
 ): Promise<Array<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse>> => {
+  logger.info({ count: urls.length, urls }, "Starting to browse URLs");
+  const startTime = Date.now();
   const results = await concurrentExecutor(
     urls,
     async (url) => {
+      logger.info({ url }, "Browsing URL");
       return browseUrl(url, format, options);
     },
     { concurrency: chunkSize }
+  );
+  logger.info(
+    { urls, format, options, duration: Date.now() - startTime },
+    "Browsed URLs"
   );
 
   return results;

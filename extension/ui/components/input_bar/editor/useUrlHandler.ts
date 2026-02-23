@@ -1,6 +1,9 @@
-import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
-import { isUrlCandidate } from "@app/shared/lib/connectors";
 import type { DataSourceViewContentNodeType } from "@dust-tt/client";
+import type {
+  NodeCandidate,
+  UrlCandidate,
+} from "@extension/shared/lib/connectors";
+import { isUrlCandidate } from "@extension/shared/lib/connectors";
 import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
 

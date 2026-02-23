@@ -1,16 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import { getApiBaseUrl } from "@app/lib/egress/client";
+import config from "@app/lib/api/config";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray } from "@app/lib/swr/swr";
-import type {
-  ContentNodesViewType,
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
-import { normalizeError } from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -34,6 +31,7 @@ export function useUnifiedSearch({
   disabled = false,
   spaceIds,
   viewType = "all",
+  excludeNonRemoteDatabaseTables = false,
   includeDataSources = true,
   searchSourceUrls = false,
   includeTools = true,
@@ -45,6 +43,7 @@ export function useUnifiedSearch({
   disabled?: boolean;
   spaceIds?: string[];
   viewType?: Exclude<ContentNodesViewType, "data_warehouse">;
+  excludeNonRemoteDatabaseTables?: boolean;
   includeDataSources?: boolean;
   searchSourceUrls?: boolean;
   includeTools?: boolean;
@@ -93,11 +92,15 @@ export function useUnifiedSearch({
         params.append("spaceIds", spaceIds.join(","));
       }
 
+      if (excludeNonRemoteDatabaseTables) {
+        params.append("excludeNonRemoteDatabaseTables", "true");
+      }
+
       if (cursor) {
         params.append("cursor", cursor);
       }
 
-      const url = `${getApiBaseUrl()}/api/w/${owner.sId}/search?${params.toString()}`;
+      const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/search?${params.toString()}`;
       const eventSource = new EventSource(url, { withCredentials: true });
       eventSourceRef.current = eventSource;
 
@@ -149,6 +152,7 @@ export function useUnifiedSearch({
     },
     [
       disabled,
+      excludeNonRemoteDatabaseTables,
       includeDataSources,
       includeTools,
       owner.sId,
@@ -161,6 +165,7 @@ export function useUnifiedSearch({
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setKnowledgeResults([]);
     setToolResults([]);
@@ -187,6 +192,7 @@ export function useUnifiedSearch({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     disabled,
+    excludeNonRemoteDatabaseTables,
     includeDataSources,
     includeTools,
     owner.sId,

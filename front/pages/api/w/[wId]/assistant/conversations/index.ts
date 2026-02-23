@@ -1,7 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
@@ -11,6 +7,7 @@ import {
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -18,20 +15,23 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
+import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
-  ContentFragmentType,
   ConversationType,
   ConversationWithoutContentType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  ConversationError,
-  InternalPostConversationsRequestBodySchema,
-} from "@app/types";
+} from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
+  hasMore: boolean;
+  lastValue: string | null;
 };
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
@@ -52,12 +52,39 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversations =
-        await ConversationResource.listConversationsForUser(auth);
+      const paginationRes = getPaginationParams(req, {
+        defaultLimit: 100,
+        defaultOrderColumn: "updatedAt",
+        defaultOrderDirection: "desc",
+        supportedOrderColumn: ["updatedAt"],
+      });
+
+      if (paginationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: paginationRes.error.reason,
+          },
+        });
+      }
+
+      const pagination = paginationRes.value;
+
+      const result =
+        await ConversationResource.listPrivateConversationsForUserPaginated(
+          auth,
+          {
+            limit: pagination.limit,
+            lastValue: pagination.lastValue,
+            orderDirection: pagination.orderDirection,
+          }
+        );
+
       res.status(200).json({
-        conversations: conversations
-          .filter((c) => !c.spaceId)
-          .map((c) => c.toJSON()),
+        conversations: result.conversations.map((c) => c.toJSON()),
+        hasMore: result.hasMore,
+        lastValue: result.lastValue,
       });
       return;
 

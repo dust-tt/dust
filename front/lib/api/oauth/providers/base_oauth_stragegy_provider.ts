@@ -1,11 +1,12 @@
-import type { ParsedUrlQuery } from "querystring";
-
 import type { OAuthError } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExtraConfigType } from "@app/types";
-import type { Result } from "@app/types";
-import type { OAuthConnectionType } from "@app/types/oauth/lib";
-import type { OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  ExtraConfigType,
+  OAuthConnectionType,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import type { ParsedUrlQuery } from "querystring";
 
 // Use this if you need to associate credentials with the connection (eg: custom client_secret).
 export type RelatedCredential = {

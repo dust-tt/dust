@@ -1,6 +1,3 @@
-import { isTimeFrame } from "@app/shared/lib/time_frame";
-import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/ui/components/actions/mcp/details/MCPActionDetails";
 import type { AgentActionPublicType } from "@dust-tt/client";
 import { isExtractQueryResourceType } from "@dust-tt/client";
 import {
@@ -10,6 +7,9 @@ import {
   CollapsibleTrigger,
   ScanIcon,
 } from "@dust-tt/sparkle";
+import { isTimeFrame } from "@extension/shared/lib/time_frame";
+import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
+import type { MCPActionDetailsProps } from "@extension/ui/components/actions/mcp/details/MCPActionDetails";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 interface MCPExtractActionQueryProps {

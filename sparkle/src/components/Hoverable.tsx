@@ -1,9 +1,11 @@
 import { Slot } from "@radix-ui/react-slot";
+import {
+  LinkWrapper,
+  type LinkWrapperProps,
+} from "@sparkle/components/LinkWrapper";
+import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import { cn } from "@sparkle/lib/utils";
 
 export const HOVERABLE_VARIANTS = [
   "invisible",

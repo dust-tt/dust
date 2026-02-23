@@ -1,8 +1,9 @@
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { Result } from "@app/types";
-import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
+import { fileSizeToHumanReadable } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 type HumanReadableStats<Stats> = Omit<Stats, "text_size"> & {
   text_size: string;

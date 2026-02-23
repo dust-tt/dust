@@ -1,9 +1,4 @@
-import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useEffect, useMemo, useState } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   BLOG_PAGE_SIZE,
   BlogHeader,
@@ -18,7 +13,12 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getAllBlogPosts } from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
@@ -46,6 +46,7 @@ export const getServerSideProps: GetServerSideProps<
   };
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogListing({ posts }: BlogListingPageProps) {
   const router = useRouter();
   const initialTag = isString(router.query.tag) ? router.query.tag : null;

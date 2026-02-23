@@ -1,7 +1,6 @@
-import Lottie, { LottieRefCurrentProps } from "lottie-react";
-import React, { useEffect, useRef } from "react";
-
 import collapseBar from "@sparkle/lottie/collapseBar";
+import Lottie, { type LottieRefCurrentProps } from "lottie-react";
+import React, { useEffect, useRef } from "react";
 
 // Custom color definitions
 const customColors = {

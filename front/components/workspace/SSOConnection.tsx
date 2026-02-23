@@ -1,7 +1,7 @@
-import type { Organization } from "@workos-inc/node";
-
 import WorkOSSSOConnection from "@app/components/workspace/sso/WorkOSSSOConnection";
-import type { PlanType, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
+import type { Organization } from "@workos-inc/node";
 
 interface SSOConnectionProps {
   domains: Organization["domains"];

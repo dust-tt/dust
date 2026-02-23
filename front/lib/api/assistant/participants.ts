@@ -12,11 +12,13 @@ import type {
   AgentParticipantType,
   ConversationParticipantsType,
   ConversationWithoutContentType,
-  ModelId,
   ParticipantActionType,
-  Result,
-} from "@app/types";
-import { ConversationError, Err, formatUserFullName, Ok } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { formatUserFullName } from "@app/types/user";
 
 async function fetchAllUsersById(userIds: ModelId[]) {
   const users = await UserResource.fetchByModelIds(userIds);
@@ -36,7 +38,7 @@ async function fetchAllAgentsById(
 ): Promise<AgentParticipantType[]> {
   const agents = await getAgentConfigurations(auth, {
     agentIds: agentConfigurationIds,
-    variant: "light",
+    variant: "extra_light",
   });
 
   return agents.map((a) => ({

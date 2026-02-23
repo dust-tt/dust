@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { launchZendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -7,6 +5,7 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
+import { makeScript } from "scripts/helpers";
 
 async function migrateConnector(
   connector: ConnectorResource,

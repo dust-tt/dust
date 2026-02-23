@@ -340,8 +340,8 @@ export function PersonAgentView({
                                 time={time}
                                 replySection={
                                   <ReplySection
-                                    totalMessages={replyCount}
-                                    newMessages={
+                                    replyCount={replyCount}
+                                    unreadCount={
                                       bucketKey === "Today" ? messageCount : 0
                                     }
                                     avatars={[

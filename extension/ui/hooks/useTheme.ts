@@ -1,6 +1,6 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import type { Theme } from "@app/shared/services/platform";
-import { DEFAULT_THEME } from "@app/shared/services/platform";
+import { usePlatform } from "@extension/shared/context/PlatformContext";
+import type { Theme } from "@extension/shared/services/platform";
+import { DEFAULT_THEME } from "@extension/shared/services/platform";
 import { useEffect, useState } from "react";
 
 export const useTheme = () => {

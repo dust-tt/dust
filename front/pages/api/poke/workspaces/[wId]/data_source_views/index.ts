@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
@@ -7,11 +5,10 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgentsUsageType,
-  DataSourceViewType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type DataSourceViewWithUsage = DataSourceViewType & {
   usage: AgentsUsageType | null;

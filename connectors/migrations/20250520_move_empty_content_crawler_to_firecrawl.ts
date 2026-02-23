@@ -2,13 +2,13 @@
  * Move webcrawler_configurations that have their connector errorType = webcrawling_error_empty_content to customCrawler = firecrawl
  * They mustn't be part of a enterprise workspace
  */
-import fs from "fs";
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
 
 import { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { concurrentExecutor } from "@connectors/types";
+import fs from "fs";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 makeScript(
   {

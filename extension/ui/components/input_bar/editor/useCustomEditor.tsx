@@ -1,15 +1,18 @@
-import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
-import { DataSourceLinkExtension } from "@app/ui/components/input_bar/editor/extensions/DataSourceLinkExtension";
-import { MarkdownStyleExtension } from "@app/ui/components/input_bar/editor/extensions/MarkdownStyleExtension";
-import { MentionStorageExtension } from "@app/ui/components/input_bar/editor/extensions/MentionStorageExtension";
-import { MentionWithPasteExtension } from "@app/ui/components/input_bar/editor/extensions/MentionWithPasteExtension";
-import { URLDetectionExtension } from "@app/ui/components/input_bar/editor/extensions/URLDetectionExtension";
-import { URLStorageExtension } from "@app/ui/components/input_bar/editor/extensions/URLStorageExtension";
-import { createMarkdownSerializer } from "@app/ui/components/input_bar/editor/markdownSerializer";
-import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
-import type { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
+import type {
+  NodeCandidate,
+  UrlCandidate,
+} from "@extension/shared/lib/connectors";
+import { DataSourceLinkExtension } from "@extension/ui/components/input_bar/editor/extensions/DataSourceLinkExtension";
+import { MarkdownStyleExtension } from "@extension/ui/components/input_bar/editor/extensions/MarkdownStyleExtension";
+import { MentionStorageExtension } from "@extension/ui/components/input_bar/editor/extensions/MentionStorageExtension";
+import { MentionWithPasteExtension } from "@extension/ui/components/input_bar/editor/extensions/MentionWithPasteExtension";
+import { URLDetectionExtension } from "@extension/ui/components/input_bar/editor/extensions/URLDetectionExtension";
+import { URLStorageExtension } from "@extension/ui/components/input_bar/editor/extensions/URLStorageExtension";
+import { createMarkdownSerializer } from "@extension/ui/components/input_bar/editor/markdownSerializer";
+import type { EditorSuggestions } from "@extension/ui/components/input_bar/editor/suggestion";
+import type { SuggestionProps } from "@extension/ui/components/input_bar/editor/useMentionDropdown";
 import Paragraph from "@tiptap/extension-paragraph";
-import Placeholder from "@tiptap/extension-placeholder";
+import { Placeholder } from "@tiptap/extensions";
 import { PluginKey } from "@tiptap/pm/state";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
@@ -288,9 +291,14 @@ const useCustomEditor = ({
       },
     }),
     Placeholder.configure({
-      placeholder: "Ask an @agent a question, or get some @help",
+      placeholder: ({ node }) => {
+        if (node.type.name !== "paragraph") {
+          return "";
+        }
+        return "Ask an @agent a question, or get some @help";
+      },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     MarkdownStyleExtension,
     ParagraphExtension,

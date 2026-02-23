@@ -1,11 +1,10 @@
-import { QueryTypes } from "sequelize";
-
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { ActionLink, CheckFunction } from "@app/types";
+import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import { QueryTypes } from "sequelize";
 
 interface PausedConnector {
   id: number;
@@ -23,6 +22,7 @@ export const checkPausedConnectors: CheckFunction = async (
   const connectorsToReport: PausedConnector[] = [];
 
   // Get all paused connectors that have been paused for more than 15 days.
+  // biome-ignore lint/plugin/noRawSql: production check uses read replica
   const pausedConnectors: PausedConnector[] = await connectorsDb.query(
     `SELECT id, "workspaceId", "pausedAt" FROM connectors WHERE "pausedAt" IS NOT NULL AND "pausedAt" < NOW() - INTERVAL '15 day' and "errorType" IS NULL`,
     {
@@ -36,7 +36,7 @@ export const checkPausedConnectors: CheckFunction = async (
     .map((w) => renderLightWorkspaceType({ workspace: w }))
     .filter((w) => !w.metadata?.maintenance); // Exclude workspaces in maintenance mode (relocation or relocation done).
 
-  const subscriptionByWorkspaceSId =
+  const subscriptionsByWorkspaceId =
     await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
 
   // If the connector is paused and the workspace has a valid subscription, add it to the report.
@@ -46,7 +46,7 @@ export const checkPausedConnectors: CheckFunction = async (
       "Connector is paused. Checking if workspace has a valid subscription."
     );
 
-    const subscription = subscriptionByWorkspaceSId[connector.workspaceId];
+    const subscription = subscriptionsByWorkspaceId[connector.workspaceId];
 
     if (subscription && isUpgraded(subscription.getPlan())) {
       connectorsToReport.push(connector);

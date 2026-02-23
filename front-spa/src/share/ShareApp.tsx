@@ -1,11 +1,11 @@
-import { Notification, SparkleContext } from "@dust-tt/sparkle";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { SWRConfig } from "swr";
-
+import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-import { LinkWrapper } from "@dust-tt/front/lib/platform";
+import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
+import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
+import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 const router = createBrowserRouter(
   [
@@ -21,16 +21,18 @@ const router = createBrowserRouter(
     },
   ],
   {
-    basename: import.meta.env.VITE_BASE_PATH ?? "",
+    basename: import.meta.env?.VITE_BASE_PATH ?? "",
   }
 );
 
 export default function ShareApp() {
   return (
-    <RegionProvider>
-      <SWRConfig>
-        <RouterProvider router={router} />
-      </SWRConfig>
-    </RegionProvider>
+    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+      <RegionProvider>
+        <ErrorBoundary fallback={<GlobalErrorFallback />}>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
+      </RegionProvider>
+    </FetcherProvider>
   );
 }

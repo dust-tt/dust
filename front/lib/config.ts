@@ -1,4 +1,4 @@
-import type { BlockRunConfig, SpecificationType } from "@app/types";
+import type { BlockRunConfig, SpecificationType } from "@app/types/app";
 
 export function extractConfig(spec: SpecificationType): BlockRunConfig {
   const c = {} as { [key: string]: any };

@@ -1,12 +1,3 @@
-import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversation";
-import { getUpdatedMessagesFromEvent } from "@app/shared/lib/conversation";
-import { classNames } from "@app/shared/lib/utils";
-import type { StoredUser } from "@app/shared/services/auth";
-import MessageGroup from "@app/ui/components/conversation/MessageGroup";
-import { useConversationFeedbacks } from "@app/ui/components/conversation/useConversationFeedbacks";
-import { useConversationMarkAsRead } from "@app/ui/components/conversation/useConversationMarkAsRead";
-import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
-import { useEventSource } from "@app/ui/hooks/useEventSource";
 import { datadogLogs } from "@datadog/browser-logs";
 import type {
   AgentGenerationCancelledEvent,
@@ -21,6 +12,15 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { isAgentMention, isAgentMessage } from "@dust-tt/client";
+import type { MessageWithContentFragmentsType } from "@extension/shared/lib/conversation";
+import { getUpdatedMessagesFromEvent } from "@extension/shared/lib/conversation";
+import { classNames } from "@extension/shared/lib/utils";
+import type { StoredUser } from "@extension/shared/services/auth";
+import MessageGroup from "@extension/ui/components/conversation/MessageGroup";
+import { useConversationFeedbacks } from "@extension/ui/components/conversation/useConversationFeedbacks";
+import { useConversationMarkAsRead } from "@extension/ui/components/conversation/useConversationMarkAsRead";
+import { usePublicConversation } from "@extension/ui/components/conversation/usePublicConversation";
+import { useEventSource } from "@extension/ui/hooks/useEventSource";
 import debounce from "lodash/debounce";
 import groupBy from "lodash/groupBy";
 import { useCallback, useEffect, useMemo, useRef } from "react";

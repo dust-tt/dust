@@ -1,13 +1,13 @@
+import config from "@app/lib/api/config";
+import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
-
-import config from "@app/lib/api/config";
-import { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
 
 export const WorkOSJwtPayloadSchema = t.intersection([
   t.type({

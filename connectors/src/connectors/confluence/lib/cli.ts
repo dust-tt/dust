@@ -1,6 +1,3 @@
-import assert from "assert";
-import fs from "fs/promises";
-
 import {
   listConfluenceSpaces,
   pageHasReadRestrictions,
@@ -36,6 +33,8 @@ import type {
   ConfluenceSkipPageResponseType,
   ConfluenceUpsertPageResponseType,
 } from "@connectors/types";
+import assert from "assert";
+import fs from "fs/promises";
 
 export const confluence = async ({
   command,

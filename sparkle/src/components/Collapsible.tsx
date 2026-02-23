@@ -1,9 +1,8 @@
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-
 import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 import { Icon } from "./Icon";
 
@@ -90,7 +89,7 @@ const CollapsibleTrigger = React.forwardRef<
         ref={ref}
         disabled={disabled}
         className={cn(
-          "s-group/col s-flex s-w-full s-items-center s-gap-1 s-font-medium focus:s-outline-none focus:s-ring-0",
+          "s-group/col s-flex s-w-full s-items-center s-gap-1 s-font-semibold focus:s-outline-none focus:s-ring-0",
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className
         )}

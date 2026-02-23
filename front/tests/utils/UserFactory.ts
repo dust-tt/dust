@@ -1,7 +1,6 @@
-import { faker } from "@faker-js/faker";
-
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { faker } from "@faker-js/faker";
 
 export class UserFactory {
   static async basic() {
@@ -16,9 +15,14 @@ export class UserFactory {
     return UserResource.makeNew(this.defaultParams(false, createdAt));
   }
 
+  static async withoutLastLogin() {
+    return UserResource.makeNew(this.defaultParams(false, new Date(), null));
+  }
+
   private static defaultParams = (
     superUser: boolean = false,
-    createdAt: Date = new Date()
+    createdAt: Date = new Date(),
+    lastLoginAt: Date | null = new Date()
   ) => {
     return {
       sId: generateRandomModelSId(),
@@ -36,7 +40,7 @@ export class UserFactory {
 
       isDustSuperUser: superUser,
       createdAt,
-      lastLoginAt: new Date(),
+      lastLoginAt,
     };
   };
 }

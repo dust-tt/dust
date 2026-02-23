@@ -6,7 +6,6 @@ export const UNIQUE_SPACE_KINDS = [
 
 export const SPACE_KINDS = [
   ...UNIQUE_SPACE_KINDS,
-  "public", // Anyone can access it.
   "regular", // Can be open or restricted based on the groups assigned to the space (if the global group is assigned, it's open, otherwise it's restricted).
   "project", // Can be open or restricted based on the groups assigned to the space (if the global group is assigned, it's open, otherwise it's restricted).
 ] as const;
@@ -16,7 +15,6 @@ export type SpaceKind = (typeof SPACE_KINDS)[number];
 export type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 export type SpaceType = {
   createdAt: number;
-  description?: string;
   groupIds: string[];
   isRestricted: boolean;
   kind: SpaceKind;
@@ -25,6 +23,17 @@ export type SpaceType = {
   sId: string;
   updatedAt: number;
 };
+
+export type ProjectType = SpaceType & {
+  description: string | null;
+  isMember: boolean;
+};
+
+export function isProjectType(
+  space: SpaceType | ProjectType
+): space is ProjectType {
+  return space.kind === "project";
+}
 
 export function isUniqueSpaceKind(kind: SpaceKind): kind is UniqueSpaceKind {
   return UNIQUE_SPACE_KINDS.includes(kind as UniqueSpaceKind);

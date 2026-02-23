@@ -1,6 +1,3 @@
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
@@ -10,6 +7,8 @@ import {
 } from "@connectors/lib/models/zendesk";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 const QUERY_BATCH_SIZE = 256;
 const DOCUMENT_CONCURRENCY = 16;

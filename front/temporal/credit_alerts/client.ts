@@ -1,10 +1,9 @@
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import logger from "@app/logger/logger";
 import {
   WorkflowExecutionAlreadyStartedError,
   WorkflowIdReusePolicy,
 } from "@temporalio/client";
-
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
-import logger from "@app/logger/logger";
 
 import { QUEUE_NAME } from "./config";
 import { creditAlertWorkflow } from "./workflows";

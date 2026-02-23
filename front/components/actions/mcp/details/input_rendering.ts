@@ -4,8 +4,8 @@ import type {
   IncludeInputType,
   SearchInputTypeWithTags,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import type { TimeFrame } from "@app/types";
-import { parseTimeFrame } from "@app/types";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { parseTimeFrame } from "@app/types/shared/utils/time_frame";
 
 function renderMimeType(mimeType: string) {
   return mimeType

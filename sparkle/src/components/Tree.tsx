@@ -1,10 +1,4 @@
-import React, {
-  ComponentType,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import {
   Button,
@@ -18,8 +12,15 @@ import {
 } from "@sparkle/components/";
 import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import React, {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-import { Checkbox, CheckboxProps } from "./Checkbox";
+import { Checkbox, type CheckboxProps } from "./Checkbox";
 
 export interface TreeProps {
   children?: ReactNode;

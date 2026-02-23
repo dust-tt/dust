@@ -884,6 +884,7 @@ export class DustAPI {
     contentFragments,
     blocking = false,
     skipToolsValidation = false,
+    spaceId,
     params,
     signal,
   }: PublicPostConversationsRequestBody & {
@@ -905,6 +906,7 @@ export class DustAPI {
         contentFragments,
         blocking,
         skipToolsValidation,
+        spaceId,
       },
       signal,
     });
@@ -1113,6 +1115,7 @@ export class DustAPI {
         }
 
         let pendingEvents: AgentEvent[] = [];
+        let receivedEventsInThisConnection = false;
 
         const parser = createParser((event) => {
           if (event.type === "event") {
@@ -1155,6 +1158,7 @@ export class DustAPI {
 
               for (const event of pendingEvents) {
                 yield event;
+                receivedEventsInThisConnection = true;
 
                 if (terminalEventTypes.includes(event.type)) {
                   receivedTerminalEvent = true;
@@ -1186,13 +1190,16 @@ export class DustAPI {
 
         // Stream ended - check if we need to reconnect
         if (!receivedTerminalEvent && autoReconnect) {
-          // Only increment reconnect attempts for actual errors, not clean closures (pagination).
-          if (streamEndedWithError) {
+          if (streamEndedWithError || !receivedEventsInThisConnection) {
+            // Increment on errors AND empty clean closures (stale/finished stream).
             reconnectAttempts += 1;
+          } else {
+            // Successful connection with events: reset counter (like EventSource onopen).
+            reconnectAttempts = 0;
+          }
 
-            if (reconnectAttempts >= maxReconnectAttempts) {
-              throw new Error("Exceeded maximum reconnection attempts");
-            }
+          if (reconnectAttempts >= maxReconnectAttempts) {
+            throw new Error("Exceeded maximum reconnection attempts");
           }
 
           await new Promise((resolve) => setTimeout(resolve, reconnectDelay));

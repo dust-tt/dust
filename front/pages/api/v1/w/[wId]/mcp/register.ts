@@ -1,8 +1,3 @@
-import type { RegisterMCPResponseType } from "@dust-tt/client";
-import { PublicRegisterMCPRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
-
 import {
   MCPServerInstanceLimitError,
   registerMCPServer,
@@ -10,7 +5,11 @@ import {
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { RegisterMCPResponseType } from "@dust-tt/client";
+import { PublicRegisterMCPRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 /**
  * @swagger

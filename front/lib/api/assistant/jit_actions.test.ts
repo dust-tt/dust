@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-  DEFAULT_PROJECT_SEARCH_ACTION_NAME,
+  DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/constants";
-import { CONVERSATION_LIST_FILES_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  CONVERSATION_FILES_SERVER_NAME,
+  CONVERSATION_LIST_FILES_ACTION_NAME,
+} from "@app/lib/api/actions/servers/conversation_files/metadata";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
@@ -18,11 +18,10 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type {
-  AgentConfigurationType,
-  ConversationType,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock config to avoid requiring environment variables
 vi.mock("@app/lib/api/config", () => ({
@@ -69,7 +68,7 @@ describe("getJITServers", () => {
 
   describe("basic MCP servers", () => {
     it("should return common_utilities MCP server when no attachments", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -105,10 +104,11 @@ describe("getJITServers", () => {
           isIncludable: true,
           isSearchable: true,
           isQueryable: true,
+          isInProjectContext: false,
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -139,7 +139,7 @@ describe("getJITServers", () => {
         agentConfigurationId: agentConfig.id,
       });
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -159,7 +159,7 @@ describe("getJITServers", () => {
     it("should not include skill_management server when agent has no skills", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -194,20 +194,20 @@ describe("getJITServers", () => {
 
       expect(projectDatasourceView).toBeDefined();
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: conversationWithSpace,
         attachments: [],
       });
 
       const projectSearchServer = jitServers.find(
-        (server) => server.name === DEFAULT_PROJECT_SEARCH_ACTION_NAME
+        (server) => server.name === DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME
       );
 
       // The project search server should be present with proper configuration.
       expect(projectSearchServer).toBeDefined();
       expect(projectSearchServer?.description).toBe(
-        "Semantic search over the project context"
+        "Semantic search over the project context and conversations."
       );
       expect(projectSearchServer?.dataSources).toBeDefined();
       // The datasource configuration should include the project context datasource.
@@ -220,14 +220,14 @@ describe("getJITServers", () => {
     });
 
     it("should not include project search server when feature flag is disabled", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
       });
 
       const projectSearchServer = jitServers.find(
-        (server) => server.name === DEFAULT_PROJECT_SEARCH_ACTION_NAME
+        (server) => server.name === DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME
       );
 
       expect(projectSearchServer).toBeUndefined();
@@ -238,7 +238,7 @@ describe("getJITServers", () => {
       await FeatureFlagFactory.basic("projects", workspace);
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: {
           ...conversation,
@@ -260,7 +260,7 @@ describe("getJITServers", () => {
     });
 
     it("should not include project_manager server when feature flag is disabled", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: {
           ...conversation,
@@ -280,7 +280,7 @@ describe("getJITServers", () => {
       // Enable projects feature flag.
       await FeatureFlagFactory.basic("projects", workspace);
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -305,7 +305,7 @@ describe("getJITServers", () => {
         workspace.id
       );
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -323,7 +323,7 @@ describe("getJITServers", () => {
     });
 
     it("should not include schedules_management server for non-onboarding conversations", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -359,10 +359,11 @@ describe("getJITServers", () => {
           isIncludable: true,
           isSearchable: true,
           isQueryable: true,
+          isInProjectContext: false,
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -410,22 +411,23 @@ describe("getJITServers", () => {
           isIncludable: true,
           isSearchable: true,
           isQueryable: false,
+          isInProjectContext: false,
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
       });
 
       const searchServer = jitServers.find(
-        (server) => server.name === DEFAULT_CONVERSATION_SEARCH_ACTION_NAME
+        (server) => server.name === CONVERSATION_FILES_SERVER_NAME
       );
 
       expect(searchServer).toBeDefined();
       expect(searchServer?.description).toBe(
-        "Semantic search over all files from the conversation"
+        "Access and include files from the conversation"
       );
       expect(searchServer?.dataSources).toBeDefined();
       // Note: datasources array may be empty if conversation datasource view is not set up,
@@ -457,10 +459,11 @@ describe("getJITServers", () => {
           isIncludable: true,
           isSearchable: true,
           isQueryable: false,
+          isInProjectContext: false,
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -474,7 +477,7 @@ describe("getJITServers", () => {
       expect(queryTablesServer).toBeUndefined();
     });
 
-    it("should not include search server when no searchable attachments", async () => {
+    it("should include conversation_files server when attachments exist but are not searchable", async () => {
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(workspace, user, {
         useCase: "conversation",
@@ -495,19 +498,71 @@ describe("getJITServers", () => {
           isIncludable: true,
           isSearchable: false,
           isQueryable: true,
+          isInProjectContext: false,
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
       });
 
-      const searchServer = jitServers.find(
-        (server) => server.name === DEFAULT_CONVERSATION_SEARCH_ACTION_NAME
+      const conversationFilesServer = jitServers.find(
+        (server) => server.name === CONVERSATION_FILES_SERVER_NAME
       );
 
+      // conversation_files server is included whenever there are attachments.
+      expect(conversationFilesServer).toBeDefined();
+      expect(conversationFilesServer?.description).toBe(
+        "Access and include files from the conversation"
+      );
+    });
+
+    it("should not include search server when attachments are not searchable (search server is distinct from conversation_files)", async () => {
+      const user = auth.getNonNullableUser();
+      const file = await FileFactory.csv(workspace, user, {
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: conversation.sId,
+        },
+        status: "ready",
+      });
+
+      const attachments: ConversationAttachmentType[] = [
+        {
+          fileId: file.sId,
+          title: "test.csv",
+          contentType: "text/csv",
+          contentFragmentVersion: "latest",
+          snippet: "test snippet",
+          generatedTables: [file.sId],
+          isIncludable: true,
+          isSearchable: false,
+          isQueryable: true,
+          isInProjectContext: false,
+        },
+      ];
+
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments,
+      });
+
+      // Files server (list/include): present whenever there are attachments.
+      const filesServer = jitServers.find(
+        (server) =>
+          server.name === CONVERSATION_FILES_SERVER_NAME &&
+          server.description ===
+            "Access and include files from the conversation"
+      );
+      expect(filesServer).toBeDefined();
+
+      // Search server (semantic search over conversation files): only when searchable attachments exist.
+      const searchServer = jitServers.find((server) =>
+        server.description?.startsWith("Semantic search over all files")
+      );
       expect(searchServer).toBeUndefined();
     });
   });
@@ -535,10 +590,11 @@ describe("getJITServers", () => {
           isIncludable: true,
           isSearchable: true,
           isQueryable: true,
+          isInProjectContext: false,
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -553,13 +609,13 @@ describe("getJITServers", () => {
       expect(serverNames).toContain(
         DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME
       );
-      expect(serverNames).toContain(DEFAULT_CONVERSATION_SEARCH_ACTION_NAME);
+      expect(serverNames).toContain(CONVERSATION_FILES_SERVER_NAME);
     });
   });
 
   describe("server structure", () => {
     it("should return servers with correct structure", async () => {
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -612,10 +668,11 @@ describe("getJITServers", () => {
           isIncludable: true,
           isSearchable: true,
           isQueryable: true,
+          isInProjectContext: false,
         },
       ];
 
-      const jitServers = await getJITServers(auth, {
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,

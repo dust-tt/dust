@@ -7,7 +7,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { Err } from "@app/types";
+import { Err } from "@app/types/shared/result";
 
 export function createSandboxTools(
   _auth: Authenticator,

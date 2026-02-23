@@ -9,7 +9,6 @@
     "declaration": false,
     "noEmit": false,
     "isolatedModules": true,
-    "baseUrl": "./",
     "outDir": "./build",
     "rootDir": "./",
     "skipLibCheck": true,
@@ -22,9 +21,10 @@
     "noImplicitAny": true,
     "types": ["chrome", "react", "react-dom"],
     "paths": {
-      "@app/*": ["./*"]
+      "@extension/*": ["./*"],
+      "@app/*": ["../front/*"]
     }
   },
-  "include": ["./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
+  "include": ["./global.d.ts", "./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
   "exclude": ["node_modules", "build"]
 }

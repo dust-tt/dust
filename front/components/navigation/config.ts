@@ -1,3 +1,8 @@
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { AppType } from "@app/types/app";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
+import { isAdmin, isBuilder } from "@app/types/user";
 import {
   BarChartIcon,
   BracesIcon,
@@ -13,10 +18,6 @@ import {
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
 
 /**
  * Check if an actual route path matches any of the given route patterns.
@@ -172,8 +173,8 @@ export const getTopNavigationTabs = (
     icon: PlanetIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
-      currentRoute.startsWith("/w/[wId]/spaces/") ||
-      /^\/w\/[^/]+\/spaces\//.test(currentRoute),
+      currentRoute.startsWith("/w/[wId]/spaces") ||
+      /^\/w\/[^/]+\/spaces/.test(currentRoute),
     sizing: "hug",
     ref: spaceMenuButtonRef,
   });

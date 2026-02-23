@@ -1,7 +1,9 @@
-import { DEFAULT_CONVERSATION_SEARCH_ACTION_NAME } from "@app/lib/actions/constants";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
+  CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_LIST_FILES_ACTION_NAME,
+  CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 
 export const SALESFORCE_SERVER_INSTRUCTIONS = `You have access to the following tools: execute_read_query, list_objects, and describe_object.
@@ -116,5 +118,5 @@ export const DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS =
   "The `locate_in_tree` tool finds the path to a node in the filesystem tree.\n" +
   "The `semantic_search` tool performs a semantic search within the nodes designated by `nodeIds`.\n" +
   "Note: these tools are specific to data in the space denoted by the server name. For attachments and conversation files " +
-  `prefer using the \`${CONVERSATION_LIST_FILES_ACTION_NAME}\`, \`${CONVERSATION_CAT_FILE_ACTION_NAME}\` and ` +
-  `\`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` tools instead.`;
+  `prefer using the \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_LIST_FILES_ACTION_NAME)}\`, \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_CAT_FILE_ACTION_NAME)}\` and ` +
+  `\`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\` tools instead.`;

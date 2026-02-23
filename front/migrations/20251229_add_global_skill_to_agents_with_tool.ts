@@ -24,7 +24,7 @@ import { getInsertSQL, withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 
 // Safe chunk size for PostgreSQL's 65,535 parameter limit.
 // AgentSkillModel has 4 fields, so 65535/4 ≈ 16k. Using 5k for safety.

@@ -1,7 +1,6 @@
+import { useUser } from "@app/lib/swr/user";
 import { Novu } from "@novu/js";
 import { useEffect, useState } from "react";
-
-import { useUser } from "@app/lib/swr/user";
 
 export const useNovuClient = () => {
   const { user } = useUser();

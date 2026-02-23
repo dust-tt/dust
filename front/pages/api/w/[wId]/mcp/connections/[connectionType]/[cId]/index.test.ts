@@ -1,13 +1,12 @@
-import { describe, expect } from "vitest";
-import { it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 
@@ -25,6 +24,38 @@ describe("MCP Connection API Handler", () => {
       remoteServer,
       "personal"
     );
+
+    req.query.connectionType = "personal";
+    req.query.cId = connection.sId;
+    req.url = `/api/w/${workspace.sId}/mcp/connections/personal/${connection.sId}`;
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const response = res._getJSONData();
+    expect(response.connection.sId).toBe(connection.sId);
+  });
+
+  it("GET should ignore conversation kill switch on non-conversation routes", async () => {
+    const { req, res, workspace, authenticator } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+      });
+
+    const remoteServer = await RemoteMCPServerFactory.create(workspace);
+    const connection = await MCPServerConnectionFactory.remote(
+      authenticator,
+      remoteServer,
+      "personal"
+    );
+
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      killSwitched: {
+        conversationIds: [connection.sId],
+      },
+    });
+    if (updateResult.isErr()) {
+      throw updateResult.error;
+    }
 
     req.query.connectionType = "personal";
     req.query.cId = connection.sId;

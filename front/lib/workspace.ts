@@ -6,7 +6,7 @@ import type {
   RoleType,
   UserType,
   WorkspaceType,
-} from "@app/types";
+} from "@app/types/user";
 
 export function renderLightWorkspaceType({
   workspace,

@@ -1,3 +1,14 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import UserProvisioning from "@app/components/workspace/DirectorySync";
+import SSOConnection from "@app/components/workspace/SSOConnection";
+import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import {
+  useRemoveWorkspaceDomain,
+  useWorkspaceDomains,
+} from "@app/lib/swr/workos";
+import type { PlanType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 import {
   ActionGlobeAltIcon,
   Button,
@@ -14,16 +25,6 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
-
-import { ConfirmContext } from "@app/components/Confirm";
-import UserProvisioning from "@app/components/workspace/DirectorySync";
-import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
-import SSOConnection from "@app/components/workspace/SSOConnection";
-import {
-  useRemoveWorkspaceDomain,
-  useWorkspaceDomains,
-} from "@app/lib/swr/workos";
-import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
 
 import { WorkspaceSection } from "./WorkspaceSection";
 

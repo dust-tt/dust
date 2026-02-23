@@ -18,7 +18,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { launchStoreAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/client";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 async function backfillAgentAnalyticsWorkflow(

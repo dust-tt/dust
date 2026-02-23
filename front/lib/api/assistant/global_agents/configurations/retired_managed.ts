@@ -12,13 +12,13 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  ConnectorProvider,
-} from "@app/types";
+} from "@app/types/assistant/agent";
 import {
+  GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  GLOBAL_AGENTS_SID,
-} from "@app/types";
+} from "@app/types/assistant/assistant";
+import type { ConnectorProvider } from "@app/types/data_source";
 
 function _getManagedDataSourceAgent(
   auth: Authenticator,

@@ -1,7 +1,8 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, mapToEnumValues } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const restrictedSpaceAgentsPlugin = createPlugin({

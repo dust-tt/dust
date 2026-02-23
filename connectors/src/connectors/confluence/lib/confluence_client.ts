@@ -1,14 +1,13 @@
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { Headers } from "undici";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
-
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConfluenceClientError, EnvironmentConfig } from "@connectors/types";
+import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { Headers } from "undici";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 

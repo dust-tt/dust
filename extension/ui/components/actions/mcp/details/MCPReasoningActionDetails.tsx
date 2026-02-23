@@ -1,11 +1,11 @@
-import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/ui/components/actions/mcp/details/MCPActionDetails";
+import { isReasoningSuccessOutput, isThinkingOutput } from "@dust-tt/client";
+import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
+import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
+import type { MCPActionDetailsProps } from "@extension/ui/components/actions/mcp/details/MCPActionDetails";
 import {
   ReasoningSuccessBlock,
   ThinkingBlock,
-} from "@app/ui/components/actions/mcp/details/MCPToolOutputDetails";
-import { isReasoningSuccessOutput, isThinkingOutput } from "@dust-tt/client";
-import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
+} from "@extension/ui/components/actions/mcp/details/MCPToolOutputDetails";
 
 export function MCPReasoningActionDetails({
   action,

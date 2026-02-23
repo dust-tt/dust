@@ -1,3 +1,6 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -8,11 +11,8 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
 } from "@dust-tt/sparkle";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { LightWorkspaceType, UserType } from "@app/types";
 
 interface SearchMembersDropdownProps {
   owner: LightWorkspaceType;
@@ -57,6 +57,7 @@ export function SearchMembersDropdown({
   }, [members, isLoading, pagination.pageIndex]);
 
   // Effect to reset pagination when the search term changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setPagination(DefaultPagination);
   }, [searchTerm]);

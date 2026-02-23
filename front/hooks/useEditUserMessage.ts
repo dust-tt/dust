@@ -1,8 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { toMentionType } from "@app/types";
 import type { RichMention } from "@app/types/assistant/mentions";
+import { toMentionType } from "@app/types/assistant/mentions";
 
 export function useEditUserMessage({
   owner,

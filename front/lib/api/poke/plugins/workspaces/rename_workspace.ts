@@ -1,7 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const renameWorkspace = createPlugin({
   manifest: {

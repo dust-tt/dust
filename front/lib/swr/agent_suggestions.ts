@@ -1,12 +1,9 @@
-import { useCallback } from "react";
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -15,20 +12,25 @@ import type {
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
 
 export function useAgentSuggestions({
   agentConfigurationId,
   disabled,
   kind,
   state,
+  limit,
   workspaceId,
 }: {
   agentConfigurationId: string | null;
   disabled?: boolean;
   kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
+  limit?: number;
   workspaceId: string;
 }) {
+  const { fetcher } = useFetcher();
   const suggestionsFetcher: Fetcher<GetSuggestionsResponseBody> = fetcher;
 
   const urlParams = new URLSearchParams();
@@ -37,6 +39,9 @@ export function useAgentSuggestions({
   }
   if (kind) {
     urlParams.append("kind", kind);
+  }
+  if (limit !== undefined) {
+    urlParams.append("limit", limit.toString());
   }
 
   const queryString = urlParams.toString();

@@ -1,5 +1,3 @@
-import { heartbeat } from "@temporalio/activity";
-
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
@@ -7,7 +5,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
+import { heartbeat } from "@temporalio/activity";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
 const HEARTBEAT_RATE = 100;
@@ -65,7 +64,6 @@ export async function purgeConversationsBatchActivity({
       {
         batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
         includeDeleted: true,
-        includeTest: true,
       }
     );
 
@@ -177,7 +175,6 @@ export async function purgeAgentConversationsBatchActivity({
       },
       {
         includeDeleted: true,
-        includeTest: true,
       }
     );
 

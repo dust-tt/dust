@@ -5,6 +5,7 @@ import type {
   ProjectConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
@@ -23,10 +24,9 @@ export type RetrievalTimeframe =
     };
 
 export function renderDataSourceConfiguration(
+  auth: Authenticator,
   dataSourceConfig: AgentDataSourceConfigurationModel
 ): DataSourceConfiguration & { sId: string } {
-  const { dataSourceView } = dataSourceConfig;
-
   let tags: DataSourceFilter["tags"] = null;
 
   if (dataSourceConfig.tagsMode) {
@@ -40,12 +40,12 @@ export function renderDataSourceConfiguration(
   return {
     sId: makeSId("data_source_configuration", {
       id: dataSourceConfig.id,
-      workspaceId: dataSourceView.workspaceId,
+      workspaceId: dataSourceConfig.workspaceId,
     }),
-    workspaceId: dataSourceView.workspace.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
     dataSourceViewId: DataSourceViewResource.modelIdToSId({
-      id: dataSourceView.id,
-      workspaceId: dataSourceView.workspaceId,
+      id: dataSourceConfig.dataSourceViewId,
+      workspaceId: dataSourceConfig.workspaceId,
     }),
     filter: {
       parents:

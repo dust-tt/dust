@@ -4,7 +4,7 @@ import config from "@app/lib/api/config";
 import { getConnectorsReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 
 async function main() {
   const { LIVE } = process.env;

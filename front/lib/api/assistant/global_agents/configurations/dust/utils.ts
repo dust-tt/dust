@@ -1,8 +1,7 @@
-import memoizer from "lru-memoizer";
-
 import type { Authenticator } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import memoizer from "lru-memoizer";
 
 export const isDeepDiveDisabledByAdmin = memoizer.sync({
   load: async (auth: Authenticator): Promise<boolean> => {

@@ -1,7 +1,3 @@
-import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import { FirecrawlError } from "@mendable/firecrawl-js";
-
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -29,9 +25,9 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  DataSourceConfig,
   WebCrawlerConfigurationType,
 } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 import {
   DepthOptions,
   INTERNAL_MIME_TYPES,
@@ -40,6 +36,9 @@ import {
   WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
 } from "@connectors/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { FirecrawlError } from "@mendable/firecrawl-js";
 
 import {
   launchCrawlWebsiteWorkflow,

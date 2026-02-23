@@ -92,7 +92,8 @@ export const getConfig = async ({
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
-        "@app": path.resolve(__dirname, "../../"),
+        "@extension": path.resolve(__dirname, "../../"),
+        "@app": path.resolve(__dirname, "../../../front"),
         redis: false,
       },
       fallback: {
@@ -132,6 +133,7 @@ export const getConfig = async ({
             loader: "ts-loader",
             options: {
               configFile: resolvePath("../../tsconfig.json"),
+              transpileOnly: true,
             },
           },
           exclude: /node_modules/,

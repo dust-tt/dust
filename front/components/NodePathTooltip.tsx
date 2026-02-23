@@ -1,3 +1,7 @@
+import { useNodePath } from "@app/hooks/useNodePath";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Spinner,
   TooltipContent,
@@ -6,10 +10,6 @@ import {
   TooltipTrigger,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useState } from "react";
-
-import { useNodePath } from "@app/hooks/useNodePath";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 
 interface NodePathTooltipProps {
   node: DataSourceViewContentNode;

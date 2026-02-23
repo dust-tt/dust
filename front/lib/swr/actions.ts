@@ -1,18 +1,18 @@
+import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
 import uniqueId from "lodash/uniqueId";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
-
-import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
 
 export function useAgentConfigurationActions(
   ownerId: string,
   agentConfigurationId: string | null
 ) {
+  const { fetcher } = useFetcher();
   const disabled = agentConfigurationId === null;
   const actionsFetcher: Fetcher<GetActionsResponseBody> = fetcher;
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${ownerId}/builder/assistants/${agentConfigurationId}/actions`,
     actionsFetcher,
     {
@@ -34,6 +34,7 @@ export function useAgentConfigurationActions(
   return {
     actions: actionsWithIds,
     isActionsLoading: !error && !data && !disabled,
+    mutateActions: mutate,
     error,
   };
 }

@@ -1,6 +1,3 @@
-import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
-
 import * as activities from "@connectors/connectors/github/temporal/activities";
 import * as activitiesSyncCode from "@connectors/connectors/github/temporal/activities/sync_code";
 import { GithubCastKnownErrorsInterceptor } from "@connectors/connectors/github/temporal/cast_known_errors";
@@ -11,6 +8,8 @@ import {
 } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import type { Context } from "@temporalio/activity";
+import { Worker } from "@temporalio/worker";
 
 export async function runGithubWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();

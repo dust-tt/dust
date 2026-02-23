@@ -1,16 +1,18 @@
-import type { LightAgentConfigurationType } from "@dust-tt/client";
-
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
+  AUTHENTICATE_TOOL,
   LEAVE_FEEDBACK_DOWN,
   LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
+import type { LightAgentConfigurationType } from "@dust-tt/client";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -383,6 +385,45 @@ export function makeToolValidationBlock({
             toolName,
           } as RequestToolPermissionActionValueParsed),
           action_id: REJECT_TOOL_EXECUTION,
+        },
+      ],
+    },
+  ];
+}
+
+export function makeToolAuthenticationBlock({
+  agentName,
+  serverName,
+  conversationUrl,
+  value,
+}: {
+  agentName: string;
+  serverName: string;
+  conversationUrl: string;
+  value: string;
+}) {
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Agent \`@${agentName}\` requires personal authentication for \`${serverName}\``,
+      },
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Authenticate",
+            emoji: true,
+          },
+          url: conversationUrl,
+          action_id: AUTHENTICATE_TOOL,
+          value,
+          style: "primary",
         },
       ],
     },

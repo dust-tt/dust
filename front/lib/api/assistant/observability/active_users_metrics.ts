@@ -1,5 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
-
 import {
   bucketsToArray,
   formatUTCDateFromMillis,
@@ -7,6 +5,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 
 export interface ActiveUsersMetricsPoint {
   timestamp: number;

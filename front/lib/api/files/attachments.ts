@@ -6,8 +6,10 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType, Result } from "@app/types";
-import { Ok, removeNulls } from "@app/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
 // Therefore, we couldn't upsert them to the conversation datasource.

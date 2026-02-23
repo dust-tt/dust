@@ -1,3 +1,9 @@
+import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { useAppRouter } from "@app/lib/platform";
+import { useCheckProjectName } from "@app/lib/swr/projects";
+import { useCreateSpace } from "@app/lib/swr/spaces";
+import { getProjectRoute } from "@app/lib/utils/router";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Dialog,
@@ -10,13 +16,6 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useAppRouter } from "@app/lib/platform";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
-import { useCreateSpace } from "@app/lib/swr/spaces";
-import { getProjectRoute } from "@app/lib/utils/router";
-import type { LightWorkspaceType } from "@app/types";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -36,61 +35,70 @@ export function CreateProjectModal({
   const doCreate = useCreateSpace({ owner });
   const router = useAppRouter();
 
-  const sendNotification = useSendNotification();
-
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
+  });
+
+  const {
+    isNameAvailable,
+    isChecking,
+    setValue: setNameToCheck,
+  } = useCheckProjectName({
+    owner,
   });
 
   useEffect(() => {
     if (isOpen) {
       setProjectName("");
       setIsSaving(false);
+      setNameToCheck("");
     }
-  }, [isOpen]);
+  }, [isOpen, setNameToCheck]);
 
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
       setProjectName("");
       setIsSaving(false);
+      setNameToCheck("");
     }, 500);
-  }, [onClose]);
+  }, [onClose, setNameToCheck]);
 
   const onSave = useCallback(async () => {
     const trimmedName = projectName.trim();
-    if (!trimmedName) {
+    if (!trimmedName || !isNameAvailable) {
       return;
     }
 
     setIsSaving(true);
-    const createdSpace = await doCreate({
-      name: trimmedName,
-      isRestricted: !isPublic,
-      managementMode: "manual",
-      memberIds: [],
-      spaceKind: "project",
-    });
+    const createdSpace = await doCreate(
+      {
+        name: trimmedName,
+        isRestricted: !isPublic,
+        managementMode: "manual",
+        memberIds: [],
+        spaceKind: "project",
+      },
+      {
+        title: "Project created",
+        description: `Project "${trimmedName}" has been created.`,
+      }
+    );
 
     setIsSaving(false);
 
     if (createdSpace) {
       void mutateSpaceSummary();
-      sendNotification({
-        type: "success",
-        title: "Project created",
-        description: `Project "${trimmedName}" has been created.`,
-      });
       handleClose();
       void router.push(getProjectRoute(owner.sId, createdSpace.sId));
     }
   }, [
     projectName,
+    isNameAvailable,
     isPublic,
     doCreate,
     handleClose,
-    sendNotification,
     mutateSpaceSummary,
     router,
     owner.sId,
@@ -98,12 +106,15 @@ export function CreateProjectModal({
 
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && projectName.trim()) {
+      if (e.key === "Enter" && projectName.trim() && isNameAvailable) {
         void onSave();
       }
     },
-    [onSave, projectName]
+    [onSave, projectName, isNameAvailable]
   );
+
+  const nameNotAvailable =
+    projectName.trim() && !isChecking && !isNameAvailable;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -113,21 +124,30 @@ export function CreateProjectModal({
         </DialogHeader>
         <DialogContainer>
           <div className="flex w-full flex-col gap-y-4">
-            <Input
-              label="Project name"
-              placeholder="Enter project name"
-              value={projectName}
-              name="projectName"
-              onChange={(e) => {
-                setProjectName(e.target.value);
-              }}
-              onKeyDown={handleKeyPress}
-              autoFocus
-            />
+            <div className="flex flex-col">
+              <Input
+                label="Project name"
+                placeholder="Enter project name"
+                value={projectName}
+                name="projectName"
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setProjectName(newValue);
+                  setNameToCheck(newValue);
+                }}
+                onKeyDown={handleKeyPress}
+                autoFocus
+              />
+              {nameNotAvailable && (
+                <div className="mt-1 text-xs text-warning-500 dark:text-warning-500">
+                  A project or space with this name already exists.
+                </div>
+              )}
+            </div>
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col">
                 <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                  Opened to everyone
+                  Open to everyone
                 </div>
                 <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Anyone in the workspace can find and join the project.
@@ -146,7 +166,9 @@ export function CreateProjectModal({
           <Button
             label={isSaving ? "Creating..." : "Create"}
             onClick={onSave}
-            disabled={!projectName.trim() || isSaving}
+            disabled={
+              !projectName.trim() || isSaving || isChecking || !isNameAvailable
+            }
           />
         </DialogFooter>
       </DialogContent>

@@ -1,16 +1,4 @@
-import type { DirectoryGroup } from "@workos-inc/node";
-import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  Includeable,
-  InferAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
-import { Op, QueryTypes } from "sequelize";
-
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -27,30 +15,51 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
-  CombinedResourcePermissions,
-  GroupKind,
-  GroupType,
   LightAgentConfigurationType,
-  LightWorkspaceType,
-  ModelId,
-  ResourcePermission,
-  Result,
-  UserType,
-} from "@app/types";
-import {
-  AGENT_GROUP_PREFIX,
-  Err,
-  GROUP_KINDS,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+} from "@app/types/assistant/agent";
+import type { GroupKind, GroupType } from "@app/types/groups";
+import { AGENT_GROUP_PREFIX, GROUP_KINDS } from "@app/types/groups";
+import type { ResourcePermission } from "@app/types/resource_permissions";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { DirectoryGroup } from "@workos-inc/node";
+import assert from "assert";
+import type {
+  Attributes,
+  CreationAttributes,
+  Includeable,
+  InferAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
+const GROUP_IDS_CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
+
+/**
+ * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+ * ┃                                                                         ┃
+ * ┃  IMPORTANT: GroupResource DOES NOT and SHOULD NOT have permissions      ┃
+ * ┃  management of its own.                                                 ┃
+ * ┃                                                                         ┃
+ * ┃  Groups are designed to be used within the context of other resources   ┃
+ * ┃  (e.g., SpaceResource, AgentConfigurationResource). The permissions     ┃
+ * ┃  should be managed at the junction with parent resource level,          ┃
+ * ┃  not at the group level.                                                ┃
+ * ┃                                                                         ┃
+ * ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+ */
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -65,6 +74,223 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
     super(GroupModel, blob);
+  }
+
+  // Default group kinds for auth (excludes system groups).
+  private static readonly defaultAuthGroupKinds: GroupKind[] =
+    GROUP_KINDS.filter((k) => k !== "system");
+
+  private static readonly groupIdsCacheKeyResolver = ({
+    user,
+    workspace,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+  }) => `groups:user:${user.id}:workspace:${workspace.id}`;
+
+  private static async listUserGroupsForAuthUncached({
+    user,
+    workspace,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+  }): Promise<ModelId[]> {
+    return GroupResource.listUserGroupModelIdsInWorkspace({
+      user,
+      workspace,
+      groupKinds: GroupResource.defaultAuthGroupKinds,
+      dangerouslySkipMembershipCheck: true,
+    });
+  }
+
+  private static listUserGroupsForAuthCached = cacheWithRedis(
+    ({
+      user,
+      workspace,
+    }: {
+      user: UserResource;
+      workspace: LightWorkspaceType;
+    }) => GroupResource.listUserGroupsForAuthUncached({ user, workspace }),
+    GroupResource.groupIdsCacheKeyResolver,
+    { ttlMs: GROUP_IDS_CACHE_TTL_MS, cacheNullValues: false }
+  );
+
+  static async invalidateGroupIdsCacheForUser(
+    userId: ModelId,
+    workspaceId: ModelId
+  ): Promise<void> {
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+    const key = `cacheWithRedis--groups:user:${userId}:workspace:${workspaceId}`;
+    await redisCli.del(key);
+  }
+
+  static async batchInvalidateGroupIdsCacheForUsers(
+    userWorkspacePairs: Array<{ userId: ModelId; workspaceId: ModelId }>
+  ): Promise<void> {
+    if (userWorkspacePairs.length === 0) {
+      return;
+    }
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+    const keys = userWorkspacePairs.map(
+      ({ userId, workspaceId }) =>
+        `cacheWithRedis--groups:user:${userId}:workspace:${workspaceId}`
+    );
+    await redisCli.del(keys);
+  }
+
+  static async listUserGroupsForAuth({
+    user,
+    workspace,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+  }): Promise<ModelId[]> {
+    return this.listUserGroupsForAuthCached({ user, workspace });
+  }
+
+  /**
+   * Suspends all active members of the specified groups.
+   * Returns array of affected user ModelIds.
+   */
+  static async suspendMembersForGroups(
+    groupIds: ModelId[],
+    workspaceId: ModelId,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<ModelId[]> {
+    if (groupIds.length === 0) {
+      return [];
+    }
+
+    const affectedMemberships = await GroupMembershipModel.findAll({
+      where: {
+        groupId: { [Op.in]: groupIds },
+        workspaceId,
+        status: "active",
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+      attributes: ["userId"],
+      transaction,
+    });
+    const affectedUserIds = [
+      ...new Set(affectedMemberships.map((m) => m.userId)),
+    ];
+
+    await GroupMembershipModel.update(
+      { status: "suspended" },
+      {
+        where: {
+          groupId: { [Op.in]: groupIds },
+          workspaceId,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+
+    // Always invalidate - safe even if transaction rolls back (just causes cache miss)
+    if (affectedUserIds.length > 0) {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+        affectedUserIds.map((userId) => ({ userId, workspaceId }))
+      );
+    }
+
+    return affectedUserIds;
+  }
+
+  /**
+   * Restores all suspended members of the specified groups.
+   * Returns array of affected user ModelIds.
+   */
+  static async restoreMembersForGroups(
+    groupIds: ModelId[],
+    workspaceId: ModelId,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<ModelId[]> {
+    if (groupIds.length === 0) {
+      return [];
+    }
+
+    const affectedMemberships = await GroupMembershipModel.findAll({
+      where: {
+        groupId: { [Op.in]: groupIds },
+        workspaceId,
+        status: "suspended",
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+      attributes: ["userId"],
+      transaction,
+    });
+    const affectedUserIds = [
+      ...new Set(affectedMemberships.map((m) => m.userId)),
+    ];
+
+    await GroupMembershipModel.update(
+      { status: "active" },
+      {
+        where: {
+          groupId: { [Op.in]: groupIds },
+          workspaceId,
+          status: "suspended",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+
+    // Always invalidate
+    if (affectedUserIds.length > 0) {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+        affectedUserIds.map((userId) => ({ userId, workspaceId }))
+      );
+    }
+
+    return affectedUserIds;
+  }
+
+  /**
+   * Migrates all group memberships from one user to another within a workspace.
+   * Handles duplicate memberships by destroying them first.
+   */
+  static async migrateUserMemberships({
+    primaryUser,
+    secondaryUser,
+    workspace,
+  }: {
+    primaryUser: UserResource;
+    secondaryUser: UserResource;
+    workspace: LightWorkspaceType;
+  }): Promise<void> {
+    const primaryMemberships = await GroupMembershipModel.findAll({
+      where: { userId: primaryUser.id, workspaceId: workspace.id },
+      attributes: ["groupId"],
+    });
+    const primaryGroupIds = primaryMemberships.map((m) => m.groupId);
+
+    if (primaryGroupIds.length > 0) {
+      await GroupMembershipModel.destroy({
+        where: {
+          userId: secondaryUser.id,
+          groupId: primaryGroupIds,
+          workspaceId: workspace.id,
+        },
+      });
+    }
+
+    await GroupMembershipModel.update(
+      { userId: primaryUser.id },
+      { where: { userId: secondaryUser.id, workspaceId: workspace.id } }
+    );
+
+    // Always invalidate
+    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
+      { userId: primaryUser.id, workspaceId: workspace.id },
+      { userId: secondaryUser.id, workspaceId: workspace.id },
+    ]);
   }
 
   static async makeNew(
@@ -814,62 +1040,57 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    dangerouslySkipMembershipCheck = false,
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
+    // When true, skips the membership check. Only use this from
+    // Authenticator.fetchRoleGroupsAndSubscription (which handles
+    // the role === "none" safety reset) or when membership has been
+    // independently verified (e.g. fromKey).
+    dangerouslySkipMembershipCheck?: boolean;
     transaction?: Transaction;
   }): Promise<ModelId[]> {
-    // First we need to check if the user is a member of the workspace.
-    const workspaceMembership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user,
-        workspace,
-        transaction,
-      });
-    if (!workspaceMembership) {
-      return [];
-    }
-
-    // If yes, we can fetch the groups the user is a member of.
-    // First the global group which has no db entries and is always present.
-    let globalGroup: GroupModel | null = null;
-
-    if (groupKinds.includes("global")) {
-      globalGroup = await this.model.findOne({
-        attributes: ["id"],
-        where: {
-          workspaceId: workspace.id,
-          kind: "global",
-        },
-        transaction,
-      });
-
-      if (!globalGroup) {
-        throw new Error("Global group not found.");
+    if (!dangerouslySkipMembershipCheck) {
+      const workspaceMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace,
+          transaction,
+        });
+      if (!workspaceMembership) {
+        return [];
       }
     }
 
-    // eslint-disable-next-line dust/no-raw-sql -- We are using a raw query to optimize memory usage as people may have a lot of groups.
-    const userGroupModelIds = await frontSequelize.query<{ id: ModelId }>(
+    const includeGlobal = groupKinds.includes("global");
+
+    // Single query to fetch both the global group (implicit membership for all workspace members)
+    // and groups the user explicitly belongs to via group_memberships.
+    // biome-ignore lint/plugin/noRawSql: We are using a raw query to optimize memory usage as people may have a lot of groups.
+    const groups = await frontSequelize.query<{ id: ModelId; kind: string }>(
       `
-      SELECT id FROM groups
+      SELECT id, kind FROM groups
       WHERE "workspaceId" = :workspaceId
-      AND kind IN (:kind)
-      AND id IN (
-        SELECT "groupId" FROM group_memberships
-        WHERE "userId" = :userId
-        AND "workspaceId" = :workspaceId
-        AND "startAt" <= :now
-        AND ("endAt" IS NULL OR "endAt" > :now)
-        AND status = 'active'
+      AND kind IN (:groupKinds)
+      AND (
+        kind = 'global'
+        OR id IN (
+          SELECT "groupId" FROM group_memberships
+          WHERE "userId" = :userId
+          AND "workspaceId" = :workspaceId
+          AND "startAt" <= :now
+          AND ("endAt" IS NULL OR "endAt" > :now)
+          AND status = 'active'
+        )
       )
     `,
       {
         replacements: {
           workspaceId: workspace.id,
-          kind: groupKinds.filter((k) => k !== "global") as GroupKind[],
+          groupKinds,
           userId: user.id,
           now: new Date(),
         },
@@ -879,10 +1100,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
-    const groups = [
-      ...(globalGroup ? [globalGroup] : []),
-      ...userGroupModelIds,
-    ];
+    if (includeGlobal && !groups.some((g) => g.kind === "global")) {
+      throw new Error("Global group not found.");
+    }
 
     return groups.map((group) => group.id);
   }
@@ -1070,16 +1290,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   }
 
-  async addMembers(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyAddMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1093,14 +1316,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only admins or group editors can change group members"
-        )
-      );
-    }
+    assert(
+      this.kind === "regular" ||
+        this.kind === "space_editors" ||
+        this.kind === "agent_editors" ||
+        this.kind === "skill_editors" ||
+        (allowProvisionnedGroups && this.kind === "provisioned"),
+      `You can't add members to ${this.kind} groups.`
+    );
     const owner = auth.getNonNullableWorkspace();
 
     if (users.length === 0) {
@@ -1199,19 +1422,27 @@ export class GroupResource extends BaseResource<GroupModel> {
       { transaction }
     );
 
+    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
+    await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+      users.map((u) => ({ userId: u.id, workspaceId: owner.id }))
+    );
+
     return new Ok(undefined);
   }
 
-  async addMember(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyAddMember(
     auth: Authenticator,
     {
       user,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1225,23 +1456,26 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.addMembers(auth, {
+    return this.dangerouslyAddMembers(auth, {
       users: [user],
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups,
     });
   }
 
-  async removeMembers(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyRemoveMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1254,14 +1488,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only admins or group editors can change group members"
-        )
-      );
-    }
+    assert(
+      this.kind === "regular" ||
+        this.kind === "space_editors" ||
+        this.kind === "agent_editors" ||
+        this.kind === "skill_editors" ||
+        (allowProvisionnedGroups && this.kind === "provisioned"),
+      `You can't remove members from ${this.kind} groups.`
+    );
     const owner = auth.getNonNullableWorkspace();
     if (users.length === 0) {
       return new Ok(undefined);
@@ -1343,19 +1577,27 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
+    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
+    await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+      users.map((u) => ({ userId: u.id, workspaceId: owner.id }))
+    );
+
     return new Ok(undefined);
   }
 
-  async removeMember(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslyRemoveMember(
     auth: Authenticator,
     {
       user,
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1368,10 +1610,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.removeMembers(auth, {
+    return this.dangerouslyRemoveMembers(auth, {
       users: [user],
-      requestedPermissions,
       transaction,
+      allowProvisionnedGroups,
     });
   }
 
@@ -1494,15 +1736,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
-  async setMembers(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslySetMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
     }
   ): Promise<
@@ -1518,15 +1761,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only `admins` are authorized to manage groups"
-        )
-      );
-    }
-
     const userIds = users.map((u) => u.sId);
     const currentMembers = await this.getActiveMembers(auth, { transaction });
     const currentMemberIds = currentMembers.map((member) => member.sId);
@@ -1536,9 +1770,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, {
+      const addResult = await this.dangerouslyAddMembers(auth, {
         users: usersToAdd,
-        requestedPermissions,
         transaction,
       });
       if (addResult.isErr()) {
@@ -1551,9 +1784,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, {
+      const removeResult = await this.dangerouslyRemoveMembers(auth, {
         users: usersToRemove,
-        requestedPermissions,
         transaction,
       });
       if (removeResult.isErr()) {
@@ -1586,6 +1818,20 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
     try {
+      // Fetch active member user IDs before deletion for cache invalidation
+      const activeMemberships = await GroupMembershipModel.findAll({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        attributes: ["userId"],
+        transaction,
+      });
+      const memberUserIds = activeMemberships.map((m) => m.userId);
+
       await KeyModel.destroy({
         where: {
           groupId: this.id,
@@ -1625,6 +1871,13 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
         transaction,
       });
+
+      // Always invalidate cache for all former members - safe even if transaction rolls back (just causes cache miss)
+      if (memberUserIds.length > 0) {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          memberUserIds.map((userId) => ({ userId, workspaceId: owner.id }))
+        );
+      }
 
       return new Ok(undefined);
     } catch (err) {

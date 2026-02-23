@@ -8,7 +8,7 @@ import {
   renderOutlookEvent,
   renderOutlookEventList,
 } from "@app/lib/api/actions/servers/outlook/rendering";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof OUTLOOK_CALENDAR_TOOLS_METADATA> = {
   get_user_timezone: async (_, { authInfo }) => {

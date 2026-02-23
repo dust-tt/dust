@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
+
 export { ActionCard } from "./ActionCard";
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
@@ -38,6 +40,10 @@ export {
 } from "./Collapsible";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
+export {
+  ContainerWithTopBar,
+  type ContainerWithTopBarProps,
+} from "./ContainerWithTopBar";
 export {
   ContentMessage,
   ContentMessageAction,

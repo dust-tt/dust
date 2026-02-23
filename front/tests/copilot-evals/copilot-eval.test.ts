@@ -1,5 +1,3 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-
 import {
   COPILOT_ON_COPILOT,
   COPILOT_ON_COPILOT_TIMEOUT_MS,
@@ -22,6 +20,7 @@ import type {
   EvalResult,
 } from "@app/tests/copilot-evals/lib/types";
 import { allTestSuites } from "@app/tests/copilot-evals/test-suites";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("openai", async (importOriginal) => {
   const actual = await importOriginal();

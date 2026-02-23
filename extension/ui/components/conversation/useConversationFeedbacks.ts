@@ -1,6 +1,6 @@
-import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
-import { useSWRWithDefaults } from "@app/shared/lib/swr";
+import { useDustAPI } from "@extension/shared/lib/dust_api";
+import type { AgentMessageFeedbackType } from "@extension/shared/lib/feedbacks";
+import { useSWRWithDefaults } from "@extension/shared/lib/swr";
 import { useMemo } from "react";
 
 type FeedbacksKey =

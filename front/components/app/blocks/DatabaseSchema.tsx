@@ -1,13 +1,13 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { TablesManager } from "@app/components/app/blocks/Database";
-import type { WorkspaceType } from "@app/types";
 import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
-} from "@app/types";
-import type { BlockType, RunType } from "@app/types";
+} from "@app/types/app";
+import type { BlockType, RunType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 
 import Block from "./Block";
 

@@ -1,3 +1,7 @@
+import { useRunBlock } from "@app/lib/swr/apps";
+import type { AppType, SpecificationBlockType } from "@app/types/app";
+import type { TraceType } from "@app/types/run";
+import type { WorkspaceType } from "@app/types/user";
 import { Button, ClipboardIcon, Hoverable } from "@dust-tt/sparkle";
 import {
   CheckCircleIcon,
@@ -7,14 +11,6 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
-
-import { useRunBlock } from "@app/lib/swr/apps";
-import type {
-  AppType,
-  SpecificationBlockType,
-  TraceType,
-  WorkspaceType,
-} from "@app/types";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 

@@ -1,6 +1,3 @@
-import { useEffect, useRef } from "react";
-import type { UseFieldArrayAppend } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
@@ -14,7 +11,9 @@ import {
   isKnowledgeTemplateAction,
 } from "@app/lib/actions/mcp_helper";
 import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { TemplateActionPreset } from "@app/types";
+import type { TemplateActionPreset } from "@app/types/assistant/templates";
+import { useEffect, useRef } from "react";
+import type { UseFieldArrayAppend } from "react-hook-form";
 
 interface UsePresetActionHandlerProps {
   fields: AgentBuilderFormData["actions"];

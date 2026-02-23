@@ -1,14 +1,14 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import type { Logger } from "pino";
-
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getParents } from "@connectors/connectors/notion/lib/parents";
 import {
   NotionDatabaseModel,
   NotionPageModel,
 } from "@connectors/lib/models/notion";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import type { Logger } from "pino";
 
 // Define the type codec for the Notion OAuth response
 export const NotionOAuthResponse = t.type({

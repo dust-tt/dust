@@ -2,7 +2,7 @@ import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditio
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForSpaces } from "@app/components/poke/spaces/columns";
 import { usePokeSpaces } from "@app/poke/swr/spaces";
-import type { WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types/user";
 
 interface SpaceDataTableProps {
   owner: WorkspaceType;

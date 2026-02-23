@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { uninstallSlack } from "@connectors/connectors/slack";
 import { slackConfig } from "@connectors/connectors/slack/lib/config";
@@ -7,6 +5,7 @@ import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { concurrentExecutor } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
 
 async function markConnectorAsErrorAndUninstall({
   connectorId,

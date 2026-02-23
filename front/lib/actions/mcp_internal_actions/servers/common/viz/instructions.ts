@@ -1,4 +1,4 @@
-import { frameContentType } from "@app/types";
+import { frameContentType } from "@app/types/files";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:

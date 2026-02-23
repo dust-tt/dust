@@ -1,6 +1,5 @@
-import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
-
 import type * as activities from "@app/temporal/es_indexation/activities";
+import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import { indexUserSearchSignal } from "./signals";
 

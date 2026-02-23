@@ -1,22 +1,18 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
-  getAttachmentFromToolOutput,
+  getAttachmentFromFile,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
-import {
-  isAgentMessageType,
-  isContentFragmentType,
-  isInteractiveContentFileContentType,
-} from "@app/types";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 export function sanitizeFilename(filename: string): string {
   return filename
@@ -71,16 +67,13 @@ export async function getFileFromConversationAttachment(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        if (isInteractiveContentFileContentType(f.contentType)) {
-          continue;
-        }
-
         if (f.fileId === fileId) {
-          attachment = getAttachmentFromToolOutput({
+          attachment = getAttachmentFromFile({
             fileId: f.fileId,
             contentType: f.contentType,
             title: f.title,
             snippet: f.snippet,
+            isInProjectContext: f.isInProjectContext ?? false,
           });
           break;
         }

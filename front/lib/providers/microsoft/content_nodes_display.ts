@@ -1,4 +1,4 @@
-import type { DataSourceViewContentNode } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
 const SHAREPOINT_SITE_NAME_REGEX =
   /^https?:\/\/[^/]*sharepoint\.[^/]+\/(?::f:\/r\/)?(?:sites|teams)\/([^/?#]+)/i;

@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { softDeleteApp } from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -10,8 +5,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType, WithAPIErrorResponse } from "@app/types";
-import { APP_NAME_REGEXP } from "@app/types";
+import type { AppType } from "@app/types/app";
+import { APP_NAME_REGEXP } from "@app/types/app";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetOrPostAppResponseBody = {
   app: AppType;
@@ -116,7 +116,16 @@ async function handler(
         });
       }
 
-      await softDeleteApp(auth, app);
+      const deleteRes = await softDeleteApp(auth, app);
+      if (deleteRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: deleteRes.error.message,
+          },
+        });
+      }
 
       res.status(204).end();
       return;
@@ -127,7 +136,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, POST or DELETE is expected.",
+            "The method passed is not supported, GET, POST or DELETE is expected.",
         },
       });
   }

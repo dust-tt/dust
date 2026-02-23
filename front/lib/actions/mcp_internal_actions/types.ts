@@ -1,7 +1,6 @@
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
-
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 export const SearchInputSchema = z.object({
   query: z
@@ -188,6 +187,46 @@ export function isDataSourceFilesystemFindInputType(
   input: Record<string, unknown>
 ): input is DataSourceFilesystemFindInputType {
   return DataSourceFilesystemFindInputSchema.safeParse(input).success;
+}
+
+export const DataSourceFilesystemCatInputSchema = z.object({
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+  nodeId: z
+    .string()
+    .describe(
+      "The ID of the node to read. This is not the human-readable node title."
+    ),
+  offset: z
+    .number()
+    .optional()
+    .describe(
+      "The character position to start reading from (0-based). If not provided, starts from " +
+        "the beginning."
+    ),
+  limit: z
+    .number()
+    .optional()
+    .describe(
+      "The maximum number of characters to read. If not provided, reads all characters."
+    ),
+  grep: z
+    .string()
+    .optional()
+    .describe(
+      "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
+        "matching this pattern will be returned."
+    ),
+});
+
+export type DataSourceFilesystemCatInputType = z.infer<
+  typeof DataSourceFilesystemCatInputSchema
+>;
+
+export function isDataSourceFilesystemCatInputType(
+  input: Record<string, unknown>
+): input is DataSourceFilesystemCatInputType {
+  return DataSourceFilesystemCatInputSchema.safeParse(input).success;
 }
 
 export const DataSourceFilesystemListInputSchema = z.object({

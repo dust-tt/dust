@@ -8,19 +8,13 @@ import {
 } from "@app/lib/api/actions/servers/agent_copilot_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA> =
   {
-    get_agent_info: async (_, extra) => {
-      const auth = extra.auth;
-      if (!auth) {
-        return new Err(new MCPError("Authentication required"));
-      }
-
-      const agentConfigurationId = getAgentConfigurationIdFromContext(
-        extra.agentLoopContext
-      );
+    get_agent_info: async (_, { auth, agentLoopContext }) => {
+      const agentConfigurationId =
+        getAgentConfigurationIdFromContext(agentLoopContext);
 
       if (!agentConfigurationId) {
         return new Err(
@@ -31,9 +25,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA> =
         );
       }
 
-      const agentVersion = getAgentConfigurationVersionFromContext(
-        extra.agentLoopContext
-      );
+      const agentVersion =
+        getAgentConfigurationVersionFromContext(agentLoopContext);
 
       // Fetch the agent configuration with full details to get the actions.
       const agentConfiguration = await getAgentConfiguration(auth, {

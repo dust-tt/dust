@@ -1,3 +1,18 @@
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
+
+import {
+  Button,
+  ContentBlockWrapper,
+  type GetContentToDownloadFunction,
+} from "@sparkle/components";
+import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
+import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import {
+  type JsonValueType,
+  PrettyJsonViewer,
+} from "@sparkle/components/markdown/PrettyJsonViewer";
+import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
+import { cn } from "@sparkle/lib/utils";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   amber,
@@ -12,20 +27,6 @@ import {
   violet,
   yellow,
 } from "tailwindcss/colors";
-
-import {
-  Button,
-  ContentBlockWrapper,
-  GetContentToDownloadFunction,
-} from "@sparkle/components";
-import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
-import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import {
-  JsonValueType,
-  PrettyJsonViewer,
-} from "@sparkle/components/markdown/PrettyJsonViewer";
-import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
-import { cn } from "@sparkle/lib/utils";
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
 
@@ -363,7 +364,7 @@ export function CodeBlockWithExtendedSupport({
           await mermaid.parse(validChildrenContent);
           setIsValidMermaid(true);
           setShowMermaid(true);
-        } catch (e) {
+        } catch (_e) {
           setIsValidMermaid(false);
           setShowMermaid(false);
         }
@@ -376,7 +377,7 @@ export function CodeBlockWithExtendedSupport({
         setParsedJson(parsed);
         const prettyJsonPreference = getPrettyJsonPreference();
         setShowPrettyJson(prettyJsonPreference);
-      } catch (e) {
+      } catch (_e) {
         setParsedJson(null);
         setShowPrettyJson(false);
       }

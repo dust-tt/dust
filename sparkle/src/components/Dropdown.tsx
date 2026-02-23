@@ -1,21 +1,28 @@
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
+
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { cva } from "class-variance-authority";
-import * as React from "react";
-import { useRef } from "react";
-
 import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import {
   KeyboardShortcut,
-  KeyboardShortcutProps,
+  type KeyboardShortcutProps,
 } from "@sparkle/components/KeyboardShortcut";
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import {
+  LinkWrapper,
+  type LinkWrapperProps,
+} from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
-import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
+import {
+  SearchInput,
+  type SearchInputProps,
+} from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import * as React from "react";
+import { useRef } from "react";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -827,7 +834,8 @@ const DropdownTooltipTrigger = React.forwardRef<
       <TooltipPrimitive.Provider delayDuration={300}>
         <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
-            {children}
+            {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
+            <span className="s-block s-w-full">{children}</span>
           </TooltipPrimitive.Trigger>
           {mountPortal ? (
             <TooltipPrimitive.Portal container={container}>

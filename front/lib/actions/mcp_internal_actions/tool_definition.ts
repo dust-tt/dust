@@ -1,12 +1,3 @@
-import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import type {
-  CallToolResult,
-  ServerNotification,
-  ServerRequest,
-} from "@modelcontextprotocol/sdk/types.js";
-import type { ZodRawShape } from "zod";
-import type { z } from "zod";
-
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -16,14 +7,21 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type {
+  CallToolResult,
+  ServerNotification,
+  ServerRequest,
+} from "@modelcontextprotocol/sdk/types.js";
+import type { ZodRawShape, z } from "zod";
 
 export type ToolHandlerExtra = RequestHandlerExtra<
   ServerRequest,
   ServerNotification
 > & {
+  auth: Authenticator;
   agentLoopContext?: AgentLoopContextType;
-  auth?: Authenticator;
 };
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;

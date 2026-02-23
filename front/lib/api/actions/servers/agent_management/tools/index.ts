@@ -1,6 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DustAPI } from "@dust-tt/client";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -9,7 +6,9 @@ import { AGENT_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/ag
 import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { DustAPI } from "@dust-tt/client";
 
 // Define the MIME type constant locally to avoid importing from @dust-tt/client
 const AGENT_CREATION_RESULT_MIME_TYPE =
@@ -28,13 +27,8 @@ const handlers: ToolHandlers<typeof AGENT_MANAGEMENT_TOOLS_METADATA> = {
       sub_agent_instructions,
       sub_agent_emoji,
     },
-    extra
+    { auth }
   ) => {
-    const auth = extra.auth;
-    if (!auth) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
     const owner = auth.workspace();
     if (!owner) {
       return new Err(new MCPError("Workspace not found"));
@@ -93,7 +87,7 @@ const handlers: ToolHandlers<typeof AGENT_MANAGEMENT_TOOLS_METADATA> = {
     }
 
     const { agentConfiguration: agent, subAgentConfiguration } = result.value;
-    const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/agents/${agent.sId}`;
+    const agentUrl = `${apiConfig.getClientFacingUrl()}/w/${owner.sId}/builder/agents/${agent.sId}`;
 
     // Prepare the structured output resource
     const agentCreationResource: AgentCreationResultResourceType = {
@@ -113,7 +107,7 @@ const handlers: ToolHandlers<typeof AGENT_MANAGEMENT_TOOLS_METADATA> = {
             name: subAgentConfiguration.name,
             description: subAgentConfiguration.description,
             pictureUrl: subAgentConfiguration.pictureUrl,
-            url: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/agents/${subAgentConfiguration.sId}`,
+            url: `${apiConfig.getClientFacingUrl()}/w/${owner.sId}/builder/agents/${subAgentConfiguration.sId}`,
           }
         : undefined,
     };

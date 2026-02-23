@@ -1,5 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -67,12 +65,14 @@ import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
+import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
 import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
  * Check if we are in advanced search mode,
@@ -237,6 +237,8 @@ export async function getInternalMCPServer(
       return projectConversationServer(auth, agentLoopContext);
     case "ukg_ready":
       return ukgReadyServer(auth, agentLoopContext);
+    case "user_mentions":
+      return userMentionsServer(auth, agentLoopContext);
     case "statuspage":
       return statuspageServer(auth, agentLoopContext);
     case "sandbox":

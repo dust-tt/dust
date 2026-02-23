@@ -1,7 +1,3 @@
-import { TextArea } from "@dust-tt/sparkle";
-import type { ChangeEvent } from "react";
-import { useCallback, useState } from "react";
-
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkillsDisplay";
@@ -9,6 +5,9 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { TextArea } from "@dust-tt/sparkle";
+import type { ChangeEvent } from "react";
+import { useCallback, useState } from "react";
 
 const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;

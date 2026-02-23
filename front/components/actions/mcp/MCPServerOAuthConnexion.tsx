@@ -1,6 +1,27 @@
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import {
+  ProviderAuthNote,
+  ProviderSetupInstructions,
+} from "@app/components/actions/mcp/provider_setup_instructions";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
+import type {
+  MCPOAuthUseCase,
+  OAuthCredentialInputs,
+  OAuthCredentials,
+} from "@app/types/oauth/lib";
+import {
+  getProviderRequiredOAuthCredentialInputs,
+  isSupportedOAuthCredential,
+} from "@app/types/oauth/lib";
+import {
+  Button,
   Card,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   Hoverable,
   Icon,
   Input,
@@ -12,22 +33,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
-import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
-import {
-  ProviderAuthNote,
-  ProviderSetupInstructions,
-} from "@app/components/actions/mcp/provider_setup_instructions";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type {
-  MCPOAuthUseCase,
-  OAuthCredentialInputs,
-  OAuthCredentials,
-} from "@app/types";
-import {
-  getProviderRequiredOAuthCredentialInputs,
-  isSupportedOAuthCredential,
-} from "@app/types";
-
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
   platform_actions: "Shared account",
   personal_actions: "Personal accounts",
@@ -38,6 +43,19 @@ export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
   personal_actions:
     "Each member logs in with their own credentials when they use the tool.",
 };
+
+const TOKEN_ENDPOINT_AUTH_METHOD_KEY = "token_endpoint_auth_method" as const;
+
+const TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS = [
+  {
+    value: "client_secret_post",
+    label: "Request body (recommended)",
+  },
+  {
+    value: "client_secret_basic",
+    label: "Basic auth header",
+  },
+] as const;
 
 // Error key used for credential validation errors.
 // Parent components can check formState.errors[AUTH_CREDENTIALS_ERROR_KEY].
@@ -219,6 +237,10 @@ export function MCPServerOAuthConnexion({
       {inputs && (
         <div className="w-full space-y-4 pt-4">
           {Object.entries(inputs).map(([key, inputData]) => {
+            if (key === TOKEN_ENDPOINT_AUTH_METHOD_KEY) {
+              return null;
+            }
+
             if (inputData.value || !isSupportedOAuthCredential(key)) {
               return null; // Skip pre-filled or unsupported credentials.
             }
@@ -244,6 +266,59 @@ export function MCPServerOAuthConnexion({
               </div>
             );
           })}
+          {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY] && (
+            <div className="w-full space-y-2">
+              <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
+              </Label>
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      isSelect
+                      label={
+                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.find(
+                          (option) =>
+                            option.value ===
+                            (authCredentials?.[
+                              TOKEN_ENDPOINT_AUTH_METHOD_KEY
+                            ] ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value)
+                        )?.label ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].label
+                      }
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuRadioGroup
+                      value={
+                        authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
+                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value
+                      }
+                    >
+                      {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => (
+                        <DropdownMenuRadioItem
+                          key={option.value}
+                          value={option.value}
+                          label={option.label}
+                          onClick={() =>
+                            handleCredentialChange(
+                              TOKEN_ENDPOINT_AUTH_METHOD_KEY,
+                              option.value
+                            )
+                          }
+                        />
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

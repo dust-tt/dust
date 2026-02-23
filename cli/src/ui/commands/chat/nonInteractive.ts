@@ -1,5 +1,6 @@
 import type {
   CreateConversationResponseType,
+  DustAPI,
   GetAgentConfigurationsResponseType,
   MeResponseType,
 } from "@dust-tt/client";
@@ -9,6 +10,79 @@ import { normalizeError } from "../../../utils/errors.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
+
+/**
+ * Validates project flags for interactive mode.
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validateProjectFlags(
+  projectName?: string,
+  projectId?: string,
+  conversationId?: string
+): string | null {
+  if (projectName && projectId) {
+    return "Invalid usage: --projectName and --projectId cannot be used together";
+  }
+
+  if ((projectName || projectId) && conversationId) {
+    return "Invalid usage: --projectName/--projectId cannot be used with --conversationId";
+  }
+
+  return null;
+}
+
+/**
+ * Resolves a projectName or projectId to a spaceId.
+ * - If projectId is provided, validates it exists.
+ * - If projectName is provided, finds a matching space by name (case-insensitive).
+ * - Returns undefined if neither is provided.
+ * - Throws an error if the space is not found or multiple matches exist.
+ */
+export async function resolveSpaceId(
+  dustClient: DustAPI,
+  projectName?: string,
+  projectId?: string
+): Promise<string | undefined> {
+  if (!projectName && !projectId) {
+    return undefined;
+  }
+
+  const spacesRes = await dustClient.getSpaces();
+  if (spacesRes.isErr()) {
+    throw new Error(`Failed to fetch spaces: ${spacesRes.error.message}`);
+  }
+
+  const spaces = spacesRes.value;
+
+  if (projectId) {
+    const space = spaces.find((s) => s.sId === projectId);
+    if (!space) {
+      throw new Error(`Project with ID "${projectId}" not found`);
+    }
+    return space.sId;
+  }
+
+  if (projectName) {
+    const searchLower = projectName.toLowerCase();
+    const matchingSpaces = spaces.filter(
+      (s) => s.name.toLowerCase() === searchLower
+    );
+
+    if (matchingSpaces.length === 0) {
+      throw new Error(`Project with name "${projectName}" not found`);
+    }
+
+    if (matchingSpaces.length > 1) {
+      throw new Error(
+        `Multiple projects match name "${projectName}": ${matchingSpaces.map((s) => s.name).join(", ")}`
+      );
+    }
+
+    return matchingSpaces[0].sId;
+  }
+
+  return undefined;
+}
 
 // Event types we handle in the code
 interface BaseEvent {
@@ -37,6 +111,8 @@ export async function sendNonInteractiveMessage(
   me: MeResponseType["user"],
   existingConversationId?: string,
   showDetails?: boolean,
+  projectName?: string,
+  projectId?: string,
   setError?: (error: string) => void
 ): Promise<void> {
   const dustClientRes = await getDustClient();
@@ -60,6 +136,19 @@ export async function sendNonInteractiveMessage(
   }
 
   try {
+    // Resolve spaceId if projectName or projectId is provided
+    let spaceId: string | undefined;
+    try {
+      spaceId = await resolveSpaceId(dustClient, projectName, projectId);
+    } catch (error) {
+      const errorMsg = normalizeError(error).message;
+      if (setError) {
+        setError(errorMsg);
+        return;
+      }
+      process.exit(1);
+    }
+
     let conversation: CreateConversationResponseType["conversation"];
     let userMessageId: string;
 
@@ -121,6 +210,7 @@ export async function sendNonInteractiveMessage(
           },
         },
         contentFragment: undefined,
+        spaceId,
       });
 
       if (convRes.isErr()) {
@@ -239,66 +329,54 @@ export async function sendNonInteractiveMessage(
   }
 }
 
+/**
+ * Validates non-interactive flag combinations.
+ * Returns an error message string if invalid, or null if valid.
+ */
 export function validateNonInteractiveFlags(
   message?: string,
   agentSearch?: string,
   conversationId?: string,
   messageId?: string,
   details?: boolean,
-  setError?: (error: string) => void
-): void {
+  projectName?: string,
+  projectId?: string
+): string | null {
+  // Check --projectName and --projectId mutual exclusivity
+  if (projectName && projectId) {
+    return "Invalid usage: --projectName and --projectId cannot be used together";
+  }
+
+  // Check --projectName/--projectId exclusivity with --conversationId
+  if ((projectName || projectId) && conversationId) {
+    return "Invalid usage: --projectName/--projectId cannot be used with --conversationId";
+  }
+
   // Check --messageId requirements
   if (messageId && !conversationId) {
-    const errorMsg =
-      "Invalid usage: --messageId requires --conversationId to be specified";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --messageId requires --conversationId to be specified";
   }
 
   // Check --messageId exclusivity with other flags
   if (messageId && (agentSearch || message)) {
-    const errorMsg =
-      "Invalid usage: --messageId cannot be used with --agent or --message";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --messageId cannot be used with --agent or --message";
   }
 
   // Check --details requirements
   if (details && (!agentSearch || !message)) {
-    const errorMsg =
-      "Invalid usage: --details requires both --agent and --message to be specified";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --details requires both --agent and --message to be specified";
   }
 
   // Existing validations
   if (message && !agentSearch) {
-    const errorMsg =
-      "Invalid usage: --message requires --agent to be specified";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --message requires --agent to be specified";
   }
+
   if (conversationId && !messageId && (!agentSearch || !message)) {
-    const errorMsg =
-      "Invalid usage: --conversationId requires both --agent and --message to be specified (or --messageId)";
-    if (setError) {
-      setError(errorMsg);
-      return;
-    }
-    process.exit(1);
+    return "Invalid usage: --conversationId requires both --agent and --message to be specified (or --messageId)";
   }
+
+  return null;
 }
 
 export async function fetchAgentMessageFromConversation(

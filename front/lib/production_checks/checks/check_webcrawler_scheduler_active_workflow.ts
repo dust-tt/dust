@@ -1,8 +1,7 @@
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import type { CheckFunction } from "@app/types/production_checks";
 import type { Client } from "@temporalio/client";
 import { ScheduleNotFoundError } from "@temporalio/client";
-
-import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
-import type { CheckFunction } from "@app/types";
 
 async function isTemporalSchedulerRunning(client: Client, workflowId: string) {
   try {

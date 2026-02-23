@@ -2,14 +2,13 @@ import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
-import type { AdminCommandType } from "@app/types";
+import type { AdminCommandType } from "@app/types/connectors/admin/cli";
 import {
   CONNECTORS_ERROR_TYPES,
   ConnectorsAPI,
-  Err,
-  mapToEnumValues,
-  Ok,
-} from "@app/types";
+} from "@app/types/connectors/connectors_api";
+import { mapToEnumValues } from "@app/types/poke/plugins";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const markConnectorAsErrorPlugin = createPlugin({
   manifest: {

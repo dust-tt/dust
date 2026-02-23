@@ -1,12 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Ok } from "@dust-tt/client";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
-
 import {
   SalesforceConfigurationModel,
   SalesforceSyncedQueryModel,
@@ -15,6 +6,14 @@ import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ModelId } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

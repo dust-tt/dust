@@ -1,3 +1,7 @@
+import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
+import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
+import type * as sync_status from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
 import { assertNever } from "@temporalio/common/lib/type-helpers";
 import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
@@ -10,12 +14,8 @@ import {
   startChild,
   workflowInfo,
 } from "@temporalio/workflow";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import { uniq } from "lodash";
-
-import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
-import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
-import type * as sync_status from "@connectors/lib/sync_status";
-import type { ModelId } from "@connectors/types";
 
 import { concurrentExecutor } from "../../../lib/async_utils";
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
@@ -504,7 +504,9 @@ export async function googleDriveFullSyncV2({
 
     while (!syncCompleted) {
       await sleep("30 seconds");
-      if (syncCompleted) break;
+      if (syncCompleted) {
+        break;
+      }
 
       // Count total files synced so far in this run
       const totalFilesSynced = await getFilesCountForSync(

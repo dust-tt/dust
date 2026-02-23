@@ -1,8 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import uniqBy from "lodash/uniqBy";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -15,17 +10,17 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgentsUsageType,
-  SpaceType,
-  SpaceUserType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES,
-  isString,
-  PatchSpaceRequestBodySchema,
-} from "@app/types";
+import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
+import type { SpaceUserType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+import uniqBy from "lodash/uniqBy";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SpaceCategoryInfo = {
   usage: AgentsUsageType;

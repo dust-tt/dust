@@ -3,6 +3,9 @@ export interface CommandContext {
   attachFile?: () => void;
   clearFiles?: () => void;
   toggleAutoEdits?: () => void;
+  startNewConversation?: () => void;
+  showHelp?: () => void;
+  resumeConversation?: () => void;
 }
 
 export interface Command {
@@ -13,10 +16,12 @@ export interface Command {
 
 export const createCommands = (context: CommandContext): Command[] => [
   {
-    name: "exit",
-    description: "Exit the chat",
+    name: "help",
+    description: "Show commands and keyboard shortcuts",
     execute: () => {
-      process.exit(0);
+      if (context.showHelp) {
+        context.showHelp();
+      }
     },
   },
   {
@@ -25,6 +30,24 @@ export const createCommands = (context: CommandContext): Command[] => [
     execute: () => {
       if (context.triggerAgentSwitch) {
         context.triggerAgentSwitch();
+      }
+    },
+  },
+  {
+    name: "new",
+    description: "Start a new conversation",
+    execute: () => {
+      if (context.startNewConversation) {
+        context.startNewConversation();
+      }
+    },
+  },
+  {
+    name: "resume",
+    description: "Resume a recent conversation",
+    execute: () => {
+      if (context.resumeConversation) {
+        context.resumeConversation();
       }
     },
   },
@@ -53,6 +76,13 @@ export const createCommands = (context: CommandContext): Command[] => [
       if (context.toggleAutoEdits) {
         context.toggleAutoEdits();
       }
+    },
+  },
+  {
+    name: "exit",
+    description: "Exit the chat",
+    execute: () => {
+      process.exit(0);
     },
   },
 ];

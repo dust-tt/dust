@@ -1,6 +1,6 @@
-import { compareAgentsForSort } from "@app/shared/lib/utils";
-import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
 import type { LightAgentConfigurationType } from "@dust-tt/client";
+import { compareAgentsForSort } from "@extension/shared/lib/utils";
+import { usePublicAgentConfigurations } from "@extension/ui/components/agents/usePublicAgentConfigurations";
 import { useMemo } from "react";
 
 function makeEditorSuggestions(

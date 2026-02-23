@@ -19,8 +19,7 @@ import { buildInternalId } from "@connectors/lib/remote_databases/utils";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { INTERNAL_MIME_TYPES } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const isDatabaseReadGranted = ({
   readGrantedInternalIds,

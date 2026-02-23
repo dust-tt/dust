@@ -11,7 +11,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 
 // Function to process a single project space
 async function processProjectSpace(
@@ -128,6 +128,7 @@ async function processProjectSpace(
         );
       }
 
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
       let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
       // Create new metadata
@@ -200,6 +201,7 @@ makeScript(
         },
         // WORKSPACE_ISOLATION_BYPASS: This script operates across all workspaces to ensure project connectors are created
         // @ts-expect-error -- It's a one-off script that operates across all workspaces
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         attributes: ["id", "workspaceId"],
       });

@@ -1,5 +1,12 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import config from "@app/lib/api/config";
+import type { AppType } from "@app/types/app";
+import type { RunConfig, RunType } from "@app/types/run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ClipboardIcon,
@@ -14,11 +21,6 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
-import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const cleanUpConfig = (config: RunConfig) => {
   if (!config) {
@@ -54,7 +56,7 @@ export function ViewAppAPIModal({
   const cURLRequest = (type: "run") => {
     switch (type) {
       case "run":
-        return `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs \\
+        return `curl ${config.getApiBaseUrl()}/api/v1/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs \\
     -H "Authorization: Bearer YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{

@@ -35,7 +35,7 @@ export async function sendUnreadConversationNotificationActivity(
   }
 
   const r = await triggerConversationUnreadNotifications(auth, {
-    conversation,
+    conversationId: conversation.sId,
     messageId: agentLoopArgs.agentMessageId,
   });
 

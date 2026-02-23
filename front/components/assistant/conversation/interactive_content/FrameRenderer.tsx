@@ -1,3 +1,20 @@
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
+import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { useVisualizationRevert } from "@app/hooks/conversations";
+import { useHashParam } from "@app/hooks/useHashParams";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
+import { isUsingConversationFiles } from "@app/lib/files";
+import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowCircleIcon,
@@ -20,25 +37,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
-import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
-import { useHashParam } from "@app/hooks/useHashParams";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
-import { isUsingConversationFiles } from "@app/lib/files";
-import { useVisualizationRevert } from "@app/lib/swr/conversations";
-import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
-import type {
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@app/types";
-import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -135,7 +133,7 @@ function ExportContentDropdown({
 
   const downloadAsCode = () => {
     try {
-      const downloadUrl = `${getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
+      const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
       // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
       // to cloud storage.
       window.open(downloadUrl, "_blank");

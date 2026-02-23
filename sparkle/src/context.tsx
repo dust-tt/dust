@@ -1,4 +1,8 @@
-import React, { ComponentType, MouseEvent, ReactNode } from "react";
+import React, {
+  type ComponentType,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import type { UrlObject } from "url";
 import url from "url";
 
@@ -38,15 +42,27 @@ export type SparkleContextType = {
 export const aLink: SparkleContextLinkType = React.forwardRef<
   HTMLAnchorElement,
   SparkleLinkProps
->(({ href, children, ...props }, ref) => {
-  const hrefAsString = typeof href !== "string" ? url.format(href) : href;
+>(
+  (
+    {
+      href,
+      children,
+      replace: _replace,
+      shallow: _shallow,
+      prefetch: _prefetch,
+      ...rest
+    },
+    ref
+  ) => {
+    const hrefAsString = typeof href !== "string" ? url.format(href) : href;
 
-  return (
-    <a ref={ref} href={hrefAsString} {...props}>
-      {children}
-    </a>
-  );
-});
+    return (
+      <a ref={ref} href={hrefAsString} {...rest}>
+        {children}
+      </a>
+    );
+  }
+);
 
 export const noHrefLink: SparkleContextLinkType = React.forwardRef<
   HTMLAnchorElement,

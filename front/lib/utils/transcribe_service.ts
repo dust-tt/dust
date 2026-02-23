@@ -1,16 +1,17 @@
 import type { ReadStream } from "node:fs";
-
+import { config as regionsConfig } from "@app/lib/api/regions/config";
+import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { SpeechToTextChunkResponseModel } from "@elevenlabs/elevenlabs-js/api/types/SpeechToTextChunkResponseModel";
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import type formidable from "formidable";
 import fs from "fs";
 
-import { config as regionsConfig } from "@app/lib/api/regions/config";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+const TRANSCRIPTION_TIMEOUT_SECONDS = 5 * 60; // 5 minutes.
 
 async function getElevenLabs() {
   const credentials = dustManagedCredentials();
@@ -21,6 +22,7 @@ async function getElevenLabs() {
   return new ElevenLabsClient({
     apiKey: credentials.ELEVENLABS_API_KEY,
     environment: elevenLabsEnvironment,
+    timeoutInSeconds: TRANSCRIPTION_TIMEOUT_SECONDS,
   });
 }
 

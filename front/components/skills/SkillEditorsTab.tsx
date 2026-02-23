@@ -1,17 +1,16 @@
-import { Button, PlusIcon } from "@dust-tt/sparkle";
-
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
 import {
   useSkillEditors,
   useUpdateSkillEditors,
 } from "@app/lib/swr/skill_editors";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type {
   UserType,
   UserTypeWithWorkspace,
   WorkspaceType,
-} from "@app/types";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+} from "@app/types/user";
+import { Button, PlusIcon } from "@dust-tt/sparkle";
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;

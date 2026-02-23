@@ -1,7 +1,4 @@
 // We use the public API to call the Dust Apps, it's okay here.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { ApiAppImportType, ApiAppType } from "@dust-tt/client";
-import _ from "lodash";
 
 import { default as config } from "@app/lib/api/config";
 import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
@@ -11,8 +8,14 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { CoreAPIError, Result } from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import type { CoreAPIError } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import type { ApiAppImportType, ApiAppType } from "@dust-tt/client";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import _ from "lodash";
 
 async function updateOrCreateApp(
   auth: Authenticator,

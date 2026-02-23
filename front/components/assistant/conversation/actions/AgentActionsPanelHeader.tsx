@@ -1,7 +1,6 @@
-import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
-import React from "react";
-
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
+import type React from "react";
 
 interface AgentActionsPanelHeaderProps {
   children?: React.ReactNode;

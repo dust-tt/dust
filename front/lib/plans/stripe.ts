@@ -1,6 +1,3 @@
-import assert from "assert";
-import { Stripe } from "stripe";
-
 import config from "@app/lib/api/config";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
@@ -13,18 +10,21 @@ import {
 } from "@app/lib/plans/usage/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
+import { SUPPORTED_CURRENCIES } from "@app/types/currency";
+import type { BillingPeriod, SubscriptionType } from "@app/types/plan";
+import { isDevelopment } from "@app/types/shared/env";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 import type {
-  BillingPeriod,
   LightWorkspaceType,
-  Result,
-  SubscriptionType,
   UserType,
   WorkspaceType,
-} from "@app/types";
-import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
-import { SUPPORTED_CURRENCIES } from "@app/types/currency";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { StripePricingData } from "@app/types/stripe/pricing";
+} from "@app/types/user";
+import assert from "assert";
+import { Stripe } from "stripe";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
 const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
@@ -338,6 +338,7 @@ export const getStripeSubscription = async (
       return await stripe.subscriptions.retrieve(stripeSubscriptionId);
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (error) {
     return null;
   }

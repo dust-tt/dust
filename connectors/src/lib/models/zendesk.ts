@@ -1,8 +1,7 @@
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 function throwOnUnsafeInteger(value: number | null) {
   if (value !== null && !Number.isSafeInteger(value)) {

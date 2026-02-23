@@ -7,13 +7,13 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-} from "@app/platforms/chrome/messages";
-import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
-import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
-import { DUST_US_URL } from "@app/shared/lib/config";
-import { extractPage } from "@app/shared/lib/extraction";
-import { generatePKCE } from "@app/shared/lib/utils";
-import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
+} from "@extension/platforms/chrome/messages";
+import type { PendingUpdate } from "@extension/platforms/chrome/services/core_platform";
+import { ChromeCorePlatformService } from "@extension/platforms/chrome/services/core_platform";
+import { DUST_US_URL } from "@extension/shared/lib/config";
+import { extractPage } from "@extension/shared/lib/extraction";
+import { generatePKCE } from "@extension/shared/lib/utils";
+import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;

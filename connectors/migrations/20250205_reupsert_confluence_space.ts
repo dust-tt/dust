@@ -1,5 +1,3 @@
-import { makeScript } from "scripts/helpers";
-
 import { makeSpaceInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
 import { getConfluenceClient } from "@connectors/connectors/confluence/lib/utils";
 import { fetchConfluenceConfigurationActivity } from "@connectors/connectors/confluence/temporal/activities";
@@ -8,6 +6,7 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConfluenceSpaceModel } from "@connectors/lib/models/confluence";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
 
 makeScript(
   {

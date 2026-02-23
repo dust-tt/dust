@@ -1,25 +1,21 @@
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { useValidateAction } from "@app/hooks/useValidateAction";
+import type { MCPValidationOutputType } from "@app/lib/actions/constants";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   Checkbox,
   CheckIcon,
-  CodeBlockWithExtendedSupport,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   ContentMessage,
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { getIcon } from "@app/components/resources/resources_icons";
-import { useValidateAction } from "@app/hooks/useValidateAction";
-import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { useUser } from "@app/lib/swr/user";
-import type { LightWorkspaceType, UserType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
@@ -36,7 +32,7 @@ export function MCPToolValidationRequired({
   conversationId,
   messageId,
 }: MCPToolValidationRequiredProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -59,11 +55,8 @@ export function MCPToolValidationRequired({
     ? getIcon(blockedAction.metadata.icon)
     : undefined;
 
-  const hasDetails =
-    blockedAction?.inputs && Object.keys(blockedAction.inputs).length > 0;
-
   const handleValidation = async (approved: MCPValidationOutputType) => {
-    // Stop pulsing immediately when user takes action
+    // Stop pulsing immediately when the user takes an action.
     stopPulsingAction(blockedAction.actionId);
 
     setErrorMessage(null);
@@ -85,7 +78,7 @@ export function MCPToolValidationRequired({
 
   const title = useMemo(() => {
     if (isTriggeredByCurrentUser) {
-      return `Execute "${asDisplayName(blockedAction.metadata.toolName)}" from ${asDisplayName(blockedAction.metadata.mcpServerName)}?`;
+      return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
     } else {
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
     }
@@ -127,20 +120,7 @@ export function MCPToolValidationRequired({
     >
       {isTriggeredByCurrentUser ? (
         <>
-          {hasDetails && (
-            <Collapsible>
-              <CollapsibleTrigger>
-                <span className="my-2 font-medium">Details</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="max-h-80 overflow-auto bg-muted dark:bg-muted-night">
-                  <CodeBlockWithExtendedSupport className="language-json">
-                    {JSON.stringify(blockedAction.inputs, null, 2)}
-                  </CodeBlockWithExtendedSupport>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+          <ToolValidationDetails blockedAction={blockedAction} user={user} />
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
               {errorMessage}

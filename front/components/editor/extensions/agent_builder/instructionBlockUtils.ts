@@ -8,7 +8,7 @@ export const TAG_NAME_PATTERN = "[A-Za-z_][A-Za-z0-9._:-]*";
  */
 export const OPENING_TAG_REGEX = new RegExp(`<(${TAG_NAME_PATTERN})?>$`);
 export const OPENING_TAG_BEGINNING_REGEX = new RegExp(
-  "^" + OPENING_TAG_REGEX.source,
+  `^<(${TAG_NAME_PATTERN})>`,
   "i"
 );
 export const CLOSING_TAG_REGEX = new RegExp(`^</(${TAG_NAME_PATTERN})?>$`);

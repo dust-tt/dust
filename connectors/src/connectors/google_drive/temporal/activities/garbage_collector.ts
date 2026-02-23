@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { fixParentsConsistency } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { FILES_GC_CONCURRENCY } from "@connectors/connectors/google_drive/temporal/activities/common/constants";
@@ -15,6 +13,7 @@ import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { Op } from "sequelize";
 
 /**
  * @param lastSeenTs Garbage collect all files that have not been seen since this timestamp.

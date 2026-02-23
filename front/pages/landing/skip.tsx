@@ -1,5 +1,3 @@
-import type { ReactElement } from "react";
-
 import { AgentBuilderVisual } from "@app/components/home/content/Skip/AgentBuilderVisual";
 import { CareerAdvantageVisual } from "@app/components/home/content/Skip/CareerAdvantageVisual";
 import { skipConfig } from "@app/components/home/content/Skip/config/skipConfig";
@@ -7,11 +5,10 @@ import { FeatureSection } from "@app/components/home/content/SqAgent/FeatureSect
 import { SqAgentHeroSection } from "@app/components/home/content/SqAgent/SqAgentHeroSection";
 import { SqCtaSection } from "@app/components/home/content/SqAgent/SqCtaSection";
 import { SqTestimonialsSection } from "@app/components/home/content/SqAgent/SqTestimonialsSection";
-import { H4 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import TrustedBy from "@app/components/home/TrustedBy";
+import type { ReactElement } from "react";
 
 const SECTION_VISUALS = [<CareerAdvantageVisual />, <AgentBuilderVisual />];
 
@@ -19,10 +16,13 @@ export async function getStaticProps() {
   return {
     props: {
       shape: 0,
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      hideNavigation: true,
     },
   };
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function SkipLandingPage() {
   return (
     <>
@@ -42,14 +42,6 @@ export default function SkipLandingPage() {
         videos={skipConfig.hero.videos}
         usersCount={skipConfig.hero.usersCount}
       />
-
-      {/* Trusted By Section */}
-      <div className="mt-8">
-        <H4 className="mb-6 w-full text-center text-muted-foreground">
-          {skipConfig.trustedByTitle}
-        </H4>
-        <TrustedBy showTitle={false} logoSet="landing" />
-      </div>
 
       {/* Feature Sections */}
       {skipConfig.sections.map((section, index) => (

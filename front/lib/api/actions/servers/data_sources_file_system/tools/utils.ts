@@ -1,4 +1,4 @@
-import { DATA_SOURCE_NODE_ID } from "@app/types";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 
 /**
  * Check if a node ID represents a data source node.

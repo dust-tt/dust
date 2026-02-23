@@ -1,3 +1,8 @@
+import { clientFetch } from "@app/lib/egress/client";
+import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
+import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/internal/spaces";
+import type { DataSourceType } from "@app/types/data_source";
+import type { WorkspaceType } from "@app/types/user";
 import type { DropdownMenu, NotificationType } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
@@ -14,11 +19,6 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import { isLeft } from "fp-ts/lib/Either";
 import { useCallback, useState } from "react";
-
-import { clientFetch } from "@app/lib/egress/client";
-import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
-import type { DataSourceType, WorkspaceType } from "@app/types";
-import { GetPostNotionSyncResponseBodySchema } from "@app/types";
 
 interface TableData {
   url: string;
@@ -219,6 +219,7 @@ export function AdvancedNotionManagement({
         summary: data.summary,
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       sendNotification({
         type: "error",
@@ -290,6 +291,7 @@ export function AdvancedNotionManagement({
         await mutate();
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       sendNotification({
         type: "error",

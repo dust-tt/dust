@@ -1,6 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import {
   generateCSVFileAndSnippet,
   generateSectionFile,
@@ -19,10 +16,12 @@ import type { CSVRecord } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import type { ConnectorProvider } from "@app/types";
-import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { ConnectorProvider } from "@app/types/data_source";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
@@ -32,6 +31,16 @@ type TablesQueryOutputResources =
   | SqlQueryOutputType
   | ToolGeneratedFileType
   | ToolMarkerResourceType;
+
+type TablesQueryContentItem =
+  | {
+      type: "resource";
+      resource: TablesQueryOutputResources;
+    }
+  | {
+      type: "text";
+      text: string;
+    };
 
 /**
  * Get the prefix for a row in a section file.
@@ -119,10 +128,7 @@ export async function executeQuery(
     );
   }
 
-  const content: {
-    type: "resource";
-    resource: TablesQueryOutputResources;
-  }[] = [];
+  const content: TablesQueryContentItem[] = [];
 
   const results: CSVRecord[] = queryResult.value.results
     .map((r) => r.value)
@@ -215,6 +221,11 @@ export async function executeQuery(
         },
       });
     }
+  } else {
+    content.push({
+      type: "text",
+      text: "Query executed successfully but returned no results. No files were generated.",
+    });
   }
 
   return new Ok(content);

@@ -103,6 +103,10 @@ export class TextExtraction {
       },
       body: Readable.toWeb(fileStream),
       duplex: "half",
+      // Client-side timeout matching the Tika server-side timeout
+      // (X-Tika-Timeout-Millis). Acts as a safety net if Tika hangs or is
+      // unreachable.
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_IN_MS),
     } as RequestInitWithDuplex);
 
     if (!response.ok) {

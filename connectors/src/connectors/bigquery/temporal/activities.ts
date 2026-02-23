@@ -43,7 +43,7 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
 
   // BigQuery is read-only as we force the readonly scope when creating the client.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- BigQuery is read-only but leaving the call in case of copy-pasting later.
-  const readonlyConnectionCheck = isConnectionReadonly();
+  const _readonlyConnectionCheck = isConnectionReadonly();
 
   const useMetadataForDBML = connectorConfig.useMetadataForDBML;
 

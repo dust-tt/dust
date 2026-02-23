@@ -1,16 +1,17 @@
-import { cva } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
-import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import {
   noHrefLink,
   SparkleContext,
-  SparkleContextLinkType,
+  type SparkleContextLinkType,
 } from "@sparkle/context";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
 
 export const CARD_VARIANTS = [
   "primary",
@@ -102,6 +103,8 @@ interface CommonProps {
   size?: CardSizeType;
   className?: string;
   selected?: boolean;
+  isPulsing?: boolean;
+  style?: React.CSSProperties;
 }
 
 interface CardLinkProps extends CommonProps, LinkWrapperProps {
@@ -134,6 +137,8 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       replace,
       shallow,
       selected,
+      isPulsing,
+      style,
       ...props
     },
     ref
@@ -150,14 +155,17 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       cardVariants({ variant, size, selected: isSelected }),
       // Apply interactive styles when either href or onClick is present
       isInteractive ? interactiveClasses : "",
+      isPulsing && "s-animate-ring-pulse s-overflow-visible",
       className
     );
 
     if (href) {
-      return (
+      const linkContent = (
         <Link
           href={href}
-          className={cardButtonClassNames}
+          className={
+            isPulsing ? "s-block s-h-full s-w-full" : cardButtonClassNames
+          }
           replace={replace}
           shallow={shallow}
           target={target}
@@ -167,12 +175,21 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
           {children}
         </Link>
       );
+      if (isPulsing) {
+        return (
+          <div className={cardButtonClassNames} style={style}>
+            {linkContent}
+          </div>
+        );
+      }
+      return linkContent;
     }
 
     return (
       <div
         ref={ref}
         className={cardButtonClassNames}
+        style={style}
         onClick={onClick}
         role={isInteractive ? "button" : undefined}
         aria-pressed={

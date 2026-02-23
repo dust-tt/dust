@@ -1,9 +1,8 @@
-import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it, vi } from "vitest";
-
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import type { RequestMethod } from "node-mocks-http";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./suggestions";
 

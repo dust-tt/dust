@@ -55,6 +55,7 @@ type KnownModelLLMId =
   | "claude-sonnet-4-5-20250929"
   | "claude-opus-4-5-20251101"
   | "claude-opus-4-6"
+  | "claude-sonnet-4-6"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-small-latest"
@@ -63,6 +64,7 @@ type KnownModelLLMId =
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
   | "gemini-3-pro-preview"
+  | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
@@ -76,6 +78,9 @@ type KnownModelLLMId =
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
+  | "accounts/fireworks/models/kimi-k2p5" // fireworks
+  | "accounts/fireworks/models/minimax-m2p5" // fireworks
+  | "accounts/fireworks/models/glm-5" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -217,6 +222,7 @@ export const supportedAudioFileFormats = {
   "audio/x-m4a": [".m4a", ".mp4"],
   "audio/ogg": [".ogg"],
   "audio/wav": [".wav"],
+  "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
 } as const;
 
@@ -658,14 +664,17 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_builder_copilot"
+  | "agent_builder_shrink_wrap"
   | "agent_management_tool"
   | "agent_to_yaml"
+  | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
+  | "project_butler"
   | "projects"
   | "databricks_tool"
   | "deepseek_feature"
@@ -675,14 +684,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dust_academy"
-  | "dust_edge_global_agent"
-  | "dust_quick_global_agent"
-  | "dust_oai_global_agent"
-  | "dust_next_global_agent"
+  | "dust_internal_global_agents"
+  | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "front_tool"
-  | "google_drive_write_enabled"
+  | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
@@ -712,8 +719,11 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "snowflake_tool"
   | "statuspage_tool"
+  | "run_agent_child_stream"
+  | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
+  | "conversations_slack_notifications"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -779,6 +789,7 @@ const ActionGeneratedFileSchema = z.object({
   contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
+  isInProjectContext: z.boolean().optional(),
 });
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
@@ -1261,9 +1272,18 @@ const NotificationContentSchema = z.union([
 const ToolNotificationProgressSchema = z.object({
   progress: z.number(),
   total: z.number(),
-  data: z.object({
-    label: z.string(),
-    output: NotificationContentSchema.optional(),
+  // This one is deprecated, use _meta.data instead
+  data: z
+    .object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    })
+    .optional(),
+  _meta: z.object({
+    data: z.object({
+      label: z.string(),
+      output: NotificationContentSchema.optional(),
+    }),
   }),
 });
 
@@ -1599,6 +1619,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_network_error"
   | "unexpected_response_format"
   | "user_not_found"
+  | "unprocessable_entity"
   | "workspace_auth_error"
   | "workspace_not_found"
   | "workspace_user_not_found"
@@ -1897,6 +1918,12 @@ export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
 >;
 
+export const GetAgentConfigurationYAMLExportResponseSchema = z.string();
+
+export type GetAgentConfigurationYAMLExportResponseType = z.infer<
+  typeof GetAgentConfigurationYAMLExportResponseSchema
+>;
+
 export const GetAgentConfigurationsResponseSchema = z.object({
   agentConfigurations: LightAgentConfigurationSchema.array(),
 });
@@ -2141,6 +2168,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),
+    spaceId: z.string().optional(),
     message: z.union([
       z.intersection(
         z.object({
@@ -2958,6 +2986,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTimeIcon"
   | "AsanaLogo"
   | "AshbyLogo"
+  | "AttioLogo"
   | "ToolsIcon"
   | "CanvaLogo"
   | "CommandLineIcon"
@@ -2974,6 +3003,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GranolaLogo"
   | "GuruLogo"
   | "HubspotLogo"
+  | "IntercomLogo"
   | "JiraLogo"
   | "LinearLogo"
   | "MicrosoftExcelLogo"
@@ -3045,7 +3075,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
-  | "ActionFingerprintIcon"
+  | "ActionIdentityIcon"
   | "ActionFireIcon"
   | "ActionFlagIcon"
   | "ActionFlightLandIcon"

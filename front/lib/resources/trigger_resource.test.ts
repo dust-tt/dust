@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -9,7 +7,8 @@ import * as temporalClient from "@app/temporal/triggers/schedule/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Ok } from "@app/types";
+import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
 
 describe("TriggerResource", () => {
   describe("addToSubscribers", () => {

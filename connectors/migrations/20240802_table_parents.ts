@@ -1,7 +1,3 @@
-import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
-
 import { getLocalParents as getGoogleParents } from "@connectors/connectors/google_drive/lib";
 import { getParents as getMicrosoftParents } from "@connectors/connectors/microsoft/temporal/file";
 import { getParents as getNotionParents } from "@connectors/connectors/notion/lib/parents";
@@ -20,6 +16,9 @@ import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types";
 import { getGoogleSheetTableId } from "@connectors/types";
+import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 async function updateParents({
   dataSourceConfig,

@@ -1,7 +1,7 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
-
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
 
 const LinearTeamSchema = z.object({
   id: z.string(),

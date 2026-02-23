@@ -1,10 +1,3 @@
-import type { Client } from "@microsoft/microsoft-graph-client";
-import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import AdmZip from "adm-zip";
-import { XMLParser, XMLValidator } from "fast-xml-parser";
-import { Readable } from "stream";
-
 import config from "@app/lib/api/config";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
@@ -13,6 +6,12 @@ import {
   TextExtraction,
 } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Client } from "@microsoft/microsoft-graph-client";
+import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import AdmZip from "adm-zip";
+import { XMLParser, XMLValidator } from "fast-xml-parser";
+import { Readable } from "stream";
 
 // Microsoft Teams Message Types
 

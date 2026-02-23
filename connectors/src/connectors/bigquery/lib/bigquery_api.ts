@@ -1,7 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok, removeNulls } from "@dust-tt/client";
-import { BigQuery } from "@google-cloud/bigquery";
-
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type {
   RemoteDBDatabase,
@@ -12,6 +8,9 @@ import type {
 import type { Logger } from "@connectors/logger/logger";
 import type { BigQueryCredentialsWithLocation } from "@connectors/types";
 import { isBigqueryPermissionsError } from "@connectors/types/bigquery";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
+import { BigQuery } from "@google-cloud/bigquery";
 
 const MAX_TABLES_PER_SCHEMA = 1500;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";

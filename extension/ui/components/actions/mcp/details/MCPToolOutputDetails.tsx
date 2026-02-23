@@ -1,4 +1,3 @@
-import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import type {
   ReasoningSuccessOutputType,
   ThinkingOutputType,
@@ -8,6 +7,7 @@ import {
   InformationCircleIcon,
   Markdown,
 } from "@dust-tt/sparkle";
+import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;

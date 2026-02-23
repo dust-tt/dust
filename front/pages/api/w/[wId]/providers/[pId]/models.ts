@@ -1,20 +1,19 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import { FIREWORKS_DEEPSEEK_R1_MODEL_ID } from "@app/types/assistant/models/fireworks";
+import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
-  FIREWORKS_DEEPSEEK_R1_MODEL_ID,
-  GEMINI_2_5_PRO_MODEL_ID,
   TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
-} from "@app/types";
+} from "@app/types/assistant/models/togetherai";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetProviderModelsResponseBody = {
   models: Array<{ id: string }>;

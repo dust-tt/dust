@@ -7,8 +7,8 @@ export {
 } from "./lookup";
 export {
   checkOtp,
-  sendOtp,
   type SendOtpResult,
+  sendOtp,
   VerifyOtpError,
   type VerifyOtpErrorCode,
   type VerifyOtpResult,

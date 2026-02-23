@@ -1,8 +1,8 @@
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
-import type { WhitelistableFeature } from "@app/types";
-import { WHITELISTABLE_FEATURES } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
 
 async function enableFeatureFlag(
   workspace: WorkspaceResource,

@@ -1,6 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-import assert from "assert";
-
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -8,9 +5,11 @@ import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+import assert from "assert";
 
 import { QUEUE_NAME } from "./config";
 import { agentLoopWorkflow } from "./workflows";

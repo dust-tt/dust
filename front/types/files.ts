@@ -343,6 +343,8 @@ export const FILE_FORMATS = {
     isSafeToDisplay: true,
   },
   "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
+  // Legacy MIME type for WAV files, still reported by some browsers.
+  "audio/x-wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
   "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
   "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
@@ -578,6 +580,39 @@ export function getSupportedNonImageMimeTypes() {
       )
     )
   );
+}
+
+// Browsers may report incorrect MIME types for certain file extensions.
+// For example, it seems that it's likely that Windows, with Excel installed,
+// reports .csv files as application/vnd.ms-excel, which causes them
+// to be routed to the Tika text extraction pipeline instead of the native CSV parser.
+const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
+  string,
+  SupportedFileContentType
+> = {
+  ".csv": "text/csv",
+  ".tsv": "text/tsv",
+};
+
+export function stripMimeParameters(contentType: string): string {
+  return contentType.split(";")[0];
+}
+
+// This function overrides the browser-reported content type with a more accurate one based on the file extension, if applicable.
+export function resolveFileContentType(
+  browserContentType: string,
+  fileName: string
+): string {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex !== -1) {
+    const extension = fileName.slice(dotIndex).toLowerCase();
+    const override = EXTENSION_CONTENT_TYPE_OVERRIDES[extension];
+    if (override) {
+      return override;
+    }
+  }
+
+  return stripMimeParameters(browserContentType);
 }
 
 export function isPdfContentType(contentType: string): boolean {

@@ -7,6 +7,7 @@
 //   3001 → base + 1 (core)
 //   3002 → base + 2 (connectors)
 //   3006 → base + 6 (oauth)
+//   3007 → base + 7 (viz)
 
 import type { Socket } from "bun";
 import { FORWARDER_MAPPINGS } from "./lib/forwarderConfig";

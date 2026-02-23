@@ -1,16 +1,3 @@
-import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
-import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
-import { InputRule } from "@tiptap/core";
-import { mergeAttributes, Node } from "@tiptap/core";
-import { TextSelection } from "@tiptap/pm/state";
-import type { NodeViewProps } from "@tiptap/react";
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-} from "@tiptap/react";
-import React, { useEffect, useRef, useState } from "react";
-
 import {
   CLOSING_TAG_REGEX,
   INSTRUCTION_BLOCK_REGEX,
@@ -18,7 +5,19 @@ import {
   OPENING_TAG_REGEX,
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
+import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
+import { InputRule, mergeAttributes, Node } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
+import type { NodeViewProps } from "@tiptap/react";
+import {
+  NodeViewContent,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -548,6 +547,7 @@ export const InstructionBlockExtension =
 
     parseMarkdown: (token, helpers) => {
       const tagType = token.attrs?.type ?? "instructions";
+      const content = helpers.parseChildren(token.tokens ?? []);
 
       return {
         type: "instructionBlock",
@@ -555,8 +555,10 @@ export const InstructionBlockExtension =
           type: tagType,
           isCollapsed: false,
         },
-        // The content markdown will be parsed by the markdown parser
-        content: helpers.parseChildren(token.tokens ?? []),
+        // When tags contain only whitespace (e.g. "<foo>\n</foo>"), blockTokens("\n") produces
+        // tokens that parseChildren can't convert to valid blocks, returning an empty array. This
+        // violates the "block+" schema and crashes ProseMirror. Fall back to an empty paragraph.
+        content: content.length > 0 ? content : [{ type: "paragraph" }],
       };
     },
 

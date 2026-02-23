@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+import { initLogger, registerInkCleanup } from "./utils/logger.js";
+
+if (!process.argv.includes("-m") && !process.argv.includes("--message")) {
+  initLogger();
+}
+
 import { render } from "ink";
 import meow from "meow";
 import React from "react";
@@ -9,6 +15,7 @@ import App from "./ui/App.js";
 const cli = meow({
   importMeta: import.meta,
   autoHelp: false,
+  autoVersion: false,
   flags: {
     version: {
       type: "boolean",
@@ -76,7 +83,22 @@ const cli = meow({
       type: "string",
       description: "Workspace ID for headless authentication",
     },
+    resume: {
+      type: "string",
+      shortFlag: "r",
+      description:
+        "Resume a conversation by ID, or pass no value to pick from recent",
+    },
+    projectName: {
+      type: "string",
+      description: "Create conversation in a project by name",
+    },
+    projectId: {
+      type: "string",
+      description: "Create conversation in a project by space ID",
+    },
   },
 });
 
-render(<App cli={cli} />);
+const instance = render(<App cli={cli} />);
+registerInkCleanup(() => instance.unmount());

@@ -1,5 +1,8 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { ModelIdType, ReasoningEffort } from "@app/types";
+import type {
+  ModelIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 
 export interface MockAgentState {
   name: string;

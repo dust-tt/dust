@@ -1,14 +1,14 @@
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
+import type { UserMessageType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import { toMentionType } from "@app/types/assistant/mentions";
 import type {
   ContentFragmentsType,
   ContentFragmentType,
   FileContentFragmentType,
-  RichMention,
   SupportedContentFragmentType,
-  UserMessageType,
-  UserType,
-} from "@app/types";
-import { toMentionType } from "@app/types";
+} from "@app/types/content_fragment";
+import type { UserType } from "@app/types/user";
 
 export function createPlaceholderUserMessage({
   input,
@@ -82,6 +82,7 @@ export function createPlaceholderUserMessage({
             expiredReason: null,
             sourceProvider: null,
             sourceIcon: null,
+            isInProjectContext: false,
           }) satisfies FileContentFragmentType
       ),
       ...(contentFragments?.contentNodes ?? []).map(

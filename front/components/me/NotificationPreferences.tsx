@@ -1,14 +1,35 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useNovuClient } from "@app/hooks/useNovuClient";
+import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { setUserMetadataFromClient } from "@app/lib/user";
+import type {
+  NotificationCondition,
+  NotificationPreferencesDelay,
+  ProjectNewConversationNotificationConditionOptions,
+} from "@app/types/notification_preferences";
+import {
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  CONVERSATION_UNREAD_TRIGGER_ID,
+  DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION,
+  isNotificationCondition,
+  isNotificationPreferencesDelay,
+  isProjectNewConversationNotificationConditionOptions,
+  makeNotificationPreferencesUserMetadata,
+  NOTIFICATION_DELAY_OPTIONS,
+  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
+} from "@app/types/notification_preferences";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  Checkbox,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
-  InformationCircleIcon,
   Label,
   Spinner,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ChannelPreference, Preference } from "@novu/js";
 import cloneDeep from "lodash/cloneDeep";
@@ -20,27 +41,6 @@ import {
   useState,
 } from "react";
 
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useNovuClient } from "@app/hooks/useNovuClient";
-import { useUserMetadata } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { setUserMetadataFromClient } from "@app/lib/user";
-import type { WorkspaceType } from "@app/types";
-import type {
-  NotificationCondition,
-  NotificationPreferencesDelay,
-} from "@app/types/notification_preferences";
-import {
-  CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  CONVERSATION_UNREAD_TRIGGER_ID,
-  isNotificationCondition,
-  isNotificationPreferencesDelay,
-  makeNotificationPreferencesUserMetadata,
-  NOTIFICATION_DELAY_OPTIONS,
-  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
-  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
-} from "@app/types/notification_preferences";
-
 const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   NotificationPreferencesDelay,
   string
@@ -49,13 +49,21 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   "15_minutes": "every 15 minutes",
   "30_minutes": "every 30 minutes",
   "1_hour": "every hour",
-  daily: "once a day",
+  daily: "a day",
 };
 
 const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "for all new messages",
-  only_mentions: "only when I'm mentioned",
-  never: "never",
+  all_messages: "Notify me for all messages",
+  only_mentions: "Notify me only when mentioned",
+  never: "Never notify me",
+};
+
+const PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_LABELS: Record<
+  ProjectNewConversationNotificationConditionOptions,
+  string
+> = {
+  all_projects: "Notify me of new conversations",
+  never: "Never notify me",
 };
 
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
@@ -77,13 +85,23 @@ export const NotificationPreferences = forwardRef<
   NotificationPreferencesProps
 >(({ onChanged, owner }, ref) => {
   const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const hasSlackNotificationsFeature = hasFeature(
+    "conversations_slack_notifications"
+  );
+
+  const { isSlackSetupLoading, canConfigureSlack } = useSlackNotifications(
+    owner.sId,
+    {
+      disabled: !hasSlackNotificationsFeature,
+    }
+  );
+
+  const displaySlackOption = hasSlackNotificationsFeature && canConfigureSlack;
 
   // Novu workflow-specific channel preferences for conversation-unread
   const [conversationPreferences, setConversationPreferences] = useState<
-    Preference | undefined
-  >();
-  // Novu workflow-specific channel preferences for project-added-as-member
-  const [projectPreferences, setProjectPreferences] = useState<
     Preference | undefined
   >();
   // Novu workflow-specific channel preferences for project-new-conversation
@@ -93,53 +111,97 @@ export const NotificationPreferences = forwardRef<
   ] = useState<Preference | undefined>();
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
 
-  // Email digest delay (global for all email notifications)
-  const [emailDelay, setEmailDelay] = useState<NotificationPreferencesDelay>(
-    DEFAULT_NOTIFICATION_DELAY
-  );
+  // Email digest delay (for unread conversation email notifications)
+  const [conversationEmailDelay, setConversationEmailDelay] =
+    useState<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
+
+  // Email digest delay (for project new conversation email notifications)
+  const [
+    projectNewConversationEmailDelay,
+    setProjectNewConversationEmailDelay,
+  ] = useState<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
 
   // Conversation notification condition
   const [notifyCondition, setNotifyCondition] = useState<NotificationCondition>(
     DEFAULT_NOTIFICATION_CONDITION
   );
 
+  const [
+    projectNewConversationNotifyCondition,
+    setProjectNewConversationNotifyCondition,
+  ] = useState<ProjectNewConversationNotificationConditionOptions>(
+    DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION
+  );
+
   const { novuClient } = useNovuClient();
 
   // User metadata hooks
-  const { metadata: emailDelayMetadata, mutateMetadata: mutateEmailDelay } =
-    useUserMetadata(makeNotificationPreferencesUserMetadata("email"));
+  const {
+    metadata: conversationEmailMetadata,
+    mutateMetadata: mutateConversationEmailDelay,
+  } = useUserMetadata(makeNotificationPreferencesUserMetadata("email"));
+
+  const {
+    metadata: projectNewConversationEmailMetadata,
+    mutateMetadata: mutateProjectNewConversationEmailDelay,
+  } = useUserMetadata(
+    makeNotificationPreferencesUserMetadata(
+      "email",
+      PROJECT_NEW_CONVERSATION_TRIGGER_ID
+    )
+  );
+
   const {
     metadata: notifyConditionMetadata,
     mutateMetadata: mutateNotifyCondition,
   } = useUserMetadata(CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition);
 
+  const {
+    metadata: projectNewConversationNotifyConditionMetadata,
+    mutateMetadata: mutateProjectNewConversationNotifyCondition,
+  } = useUserMetadata(
+    CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition
+  );
+
   // Store original values for reset/dirty checking
   const originalConversationPreferencesRef = useRef<Preference | undefined>();
-  const originalProjectPreferencesRef = useRef<Preference | undefined>();
   const originalProjectNewConversationPreferencesRef = useRef<
     Preference | undefined
   >();
-  const originalEmailDelayRef = useRef<NotificationPreferencesDelay>(
-    DEFAULT_NOTIFICATION_DELAY
-  );
+  const originalConversationEmailDelayRef =
+    useRef<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
+  const originalProjectNewConversationEmailDelayRef =
+    useRef<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
   const originalNotifyConditionRef = useRef<NotificationCondition>(
     DEFAULT_NOTIFICATION_CONDITION
   );
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const originalProjectNewConversationNotifyConditionRef =
+    useRef<ProjectNewConversationNotificationConditionOptions>(
+      DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION
+    );
 
   const isProjectsFeatureEnabled = hasFeature("projects");
 
   // Load email delay from user metadata
   useEffect(() => {
-    if (emailDelayMetadata?.value) {
-      const delay = emailDelayMetadata.value as NotificationPreferencesDelay;
+    if (conversationEmailMetadata?.value) {
+      const delay = conversationEmailMetadata.value;
       if (isNotificationPreferencesDelay(delay)) {
-        setEmailDelay(delay);
-        originalEmailDelayRef.current = delay;
+        setConversationEmailDelay(delay);
+        originalConversationEmailDelayRef.current = delay;
       }
     }
-  }, [emailDelayMetadata]);
+  }, [conversationEmailMetadata]);
+
+  useEffect(() => {
+    if (projectNewConversationEmailMetadata?.value) {
+      const delay = projectNewConversationEmailMetadata.value;
+      if (isNotificationPreferencesDelay(delay)) {
+        setProjectNewConversationEmailDelay(delay);
+        originalProjectNewConversationEmailDelayRef.current = delay;
+      }
+    }
+  }, [projectNewConversationEmailMetadata]);
 
   // Load notify condition from user metadata
   useEffect(() => {
@@ -151,6 +213,18 @@ export const NotificationPreferences = forwardRef<
       }
     }
   }, [notifyConditionMetadata]);
+
+  useEffect(() => {
+    if (!projectNewConversationNotifyConditionMetadata?.value) {
+      return;
+    }
+    const condition = projectNewConversationNotifyConditionMetadata.value;
+    if (!isProjectNewConversationNotificationConditionOptions(condition)) {
+      return;
+    }
+    setProjectNewConversationNotifyCondition(condition);
+    originalProjectNewConversationNotifyConditionRef.current = condition;
+  }, [projectNewConversationNotifyConditionMetadata]);
 
   // Load workflow-specific preferences from Novu
   useEffect(() => {
@@ -165,13 +239,6 @@ export const NotificationPreferences = forwardRef<
       );
       setConversationPreferences(conversationPref);
       originalConversationPreferencesRef.current = conversationPref;
-
-      const projectPref = preferences.data?.find(
-        (preference) =>
-          preference.workflow?.identifier === PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
-      );
-      setProjectPreferences(projectPref);
-      originalProjectPreferencesRef.current = projectPref;
 
       const projectNewConvPref = preferences.data?.find(
         (preference) =>
@@ -210,23 +277,6 @@ export const NotificationPreferences = forwardRef<
             return false;
           }
 
-          // Save project workflow preferences in Novu (if available)
-          if (projectPreferences) {
-            const projectResult = await novuClient.preferences.update({
-              preference: projectPreferences,
-              channels: projectPreferences.channels,
-            });
-
-            if (projectResult.error) {
-              sendNotification({
-                type: "error",
-                title: "Error updating notification preferences",
-                description: projectResult.error.message,
-              });
-              return false;
-            }
-          }
-
           // Save project new conversation workflow preferences in Novu (if available)
           if (projectNewConversationPreferences) {
             const projectNewConvResult = await novuClient.preferences.update({
@@ -245,13 +295,33 @@ export const NotificationPreferences = forwardRef<
           }
 
           // Save email delay if changed
-          if (emailDelay !== originalEmailDelayRef.current) {
+          if (
+            conversationEmailDelay !== originalConversationEmailDelayRef.current
+          ) {
             await setUserMetadataFromClient({
               key: makeNotificationPreferencesUserMetadata("email"),
-              value: emailDelay,
+              value: conversationEmailDelay,
             });
-            await mutateEmailDelay((current) =>
-              current ? { ...current, value: emailDelay } : current
+            await mutateConversationEmailDelay((current) =>
+              current ? { ...current, value: conversationEmailDelay } : current
+            );
+          }
+
+          if (
+            projectNewConversationEmailDelay !==
+            originalProjectNewConversationEmailDelayRef.current
+          ) {
+            await setUserMetadataFromClient({
+              key: makeNotificationPreferencesUserMetadata(
+                "email",
+                PROJECT_NEW_CONVERSATION_TRIGGER_ID
+              ),
+              value: projectNewConversationEmailDelay,
+            });
+            await mutateProjectNewConversationEmailDelay((current) =>
+              current
+                ? { ...current, value: projectNewConversationEmailDelay }
+                : current
             );
           }
 
@@ -266,13 +336,31 @@ export const NotificationPreferences = forwardRef<
             );
           }
 
+          if (
+            projectNewConversationNotifyCondition !==
+            originalProjectNewConversationNotifyConditionRef.current
+          ) {
+            await setUserMetadataFromClient({
+              key: CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition,
+              value: projectNewConversationNotifyCondition,
+            });
+            await mutateProjectNewConversationNotifyCondition((current) =>
+              current
+                ? { ...current, value: projectNewConversationNotifyCondition }
+                : current
+            );
+          }
+
           // Update original references on successful save
           originalConversationPreferencesRef.current = conversationPreferences;
-          originalProjectPreferencesRef.current = projectPreferences;
           originalProjectNewConversationPreferencesRef.current =
             projectNewConversationPreferences;
-          originalEmailDelayRef.current = emailDelay;
+          originalConversationEmailDelayRef.current = conversationEmailDelay;
+          originalProjectNewConversationEmailDelayRef.current =
+            projectNewConversationEmailDelay;
           originalNotifyConditionRef.current = notifyCondition;
+          originalProjectNewConversationNotifyConditionRef.current =
+            projectNewConversationNotifyCondition;
           return true;
         } catch (error) {
           sendNotification({
@@ -304,21 +392,6 @@ export const NotificationPreferences = forwardRef<
           }
         }
 
-        // Compare project channel preferences
-        if (originalProjectPreferencesRef.current && projectPreferences) {
-          const originalProj = originalProjectPreferencesRef.current;
-          const currentProj = projectPreferences;
-          for (const channel of Object.keys(originalProj.channels) as Array<
-            keyof typeof originalProj.channels
-          >) {
-            if (
-              originalProj.channels[channel] !== currentProj.channels[channel]
-            ) {
-              return true;
-            }
-          }
-        }
-
         // Compare project new conversation channel preferences
         if (
           originalProjectNewConversationPreferencesRef.current &&
@@ -340,10 +413,24 @@ export const NotificationPreferences = forwardRef<
         }
 
         // Compare other preferences
-        if (emailDelay !== originalEmailDelayRef.current) {
+        if (
+          conversationEmailDelay !== originalConversationEmailDelayRef.current
+        ) {
+          return true;
+        }
+        if (
+          projectNewConversationEmailDelay !==
+          originalProjectNewConversationEmailDelayRef.current
+        ) {
           return true;
         }
         if (notifyCondition !== originalNotifyConditionRef.current) {
+          return true;
+        }
+        if (
+          projectNewConversationNotifyCondition !==
+          originalProjectNewConversationNotifyConditionRef.current
+        ) {
           return true;
         }
 
@@ -355,41 +442,47 @@ export const NotificationPreferences = forwardRef<
             cloneDeep(originalConversationPreferencesRef.current)
           );
         }
-        if (originalProjectPreferencesRef.current) {
-          setProjectPreferences(
-            cloneDeep(originalProjectPreferencesRef.current)
-          );
-        }
         if (originalProjectNewConversationPreferencesRef.current) {
           setProjectNewConversationPreferences(
             cloneDeep(originalProjectNewConversationPreferencesRef.current)
           );
         }
-        setEmailDelay(originalEmailDelayRef.current);
+        setConversationEmailDelay(originalConversationEmailDelayRef.current);
+        setProjectNewConversationEmailDelay(
+          originalProjectNewConversationEmailDelayRef.current
+        );
         setNotifyCondition(originalNotifyConditionRef.current);
+        setProjectNewConversationNotifyCondition(
+          originalProjectNewConversationNotifyConditionRef.current
+        );
       },
     }),
     [
       conversationPreferences,
-      projectPreferences,
       projectNewConversationPreferences,
-      emailDelay,
+      conversationEmailDelay,
+      projectNewConversationEmailDelay,
       notifyCondition,
-      mutateEmailDelay,
+      projectNewConversationNotifyCondition,
+      mutateConversationEmailDelay,
+      mutateProjectNewConversationEmailDelay,
       mutateNotifyCondition,
+      mutateProjectNewConversationNotifyCondition,
       novuClient,
       sendNotification,
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     onChanged();
   }, [
     conversationPreferences,
-    projectPreferences,
     projectNewConversationPreferences,
-    emailDelay,
+    conversationEmailDelay,
+    projectNewConversationEmailDelay,
     notifyCondition,
+    projectNewConversationNotifyCondition,
     onChanged,
   ]);
 
@@ -398,20 +491,6 @@ export const NotificationPreferences = forwardRef<
     enabled: boolean
   ) => {
     setConversationPreferences((prev) => {
-      if (!prev) {
-        return undefined;
-      }
-      const newPreferences = cloneDeep(prev);
-      newPreferences.channels[channel] = enabled;
-      return newPreferences;
-    });
-  };
-
-  const updateProjectChannelPreference = (
-    channel: keyof ChannelPreference,
-    enabled: boolean
-  ) => {
-    setProjectPreferences((prev) => {
       if (!prev) {
         return undefined;
       }
@@ -435,7 +514,24 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
-  if (isLoadingPreferences) {
+  const getSelectedChannelLabel = (
+    preference: Preference,
+    displaySlackOption: boolean
+  ) => {
+    const displayedChannels: string[] = [];
+    if (preference.channels.in_app) {
+      displayedChannels.push("in-app popup");
+    }
+    if (preference.channels.chat && displaySlackOption) {
+      displayedChannels.push("Slack");
+    }
+    if (preference.channels.email) {
+      displayedChannels.push("email");
+    }
+    return displayedChannels.length > 0 ? displayedChannels.join(", ") : "none";
+  };
+
+  if (isLoadingPreferences || isSlackSetupLoading) {
     return <Spinner />;
   }
 
@@ -449,16 +545,16 @@ export const NotificationPreferences = forwardRef<
 
   const isConversationInAppEnabled =
     conversationPreferences.channels.in_app && conversationPreferences.enabled;
+  const isConversationSlackEnabled =
+    conversationPreferences.channels.chat && conversationPreferences.enabled;
   const isConversationEmailEnabled =
     conversationPreferences.channels.email && conversationPreferences.enabled;
 
-  const isProjectInAppEnabled =
-    projectPreferences?.channels.in_app && projectPreferences?.enabled;
-  const isProjectEmailEnabled =
-    projectPreferences?.channels.email && projectPreferences?.enabled;
-
   const isProjectNewConversationInAppEnabled =
     projectNewConversationPreferences?.channels.in_app &&
+    projectNewConversationPreferences?.enabled;
+  const isProjectNewConversationSlackEnabled =
+    projectNewConversationPreferences?.channels.chat &&
     projectNewConversationPreferences?.enabled;
   const isProjectNewConversationEmailEnabled =
     projectNewConversationPreferences?.channels.email &&
@@ -466,247 +562,283 @@ export const NotificationPreferences = forwardRef<
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Conversation notifications */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-2">
         <Label className="text-foreground dark:text-foreground-night">
-          Conversations
+          New messages
         </Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              isSelect
-              label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
-              onClick={() => setNotifyCondition("all_messages")}
-            />
-            <DropdownMenuItem
-              label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
-              onClick={() => setNotifyCondition("only_mentions")}
-            />
-            <DropdownMenuItem
-              label={NOTIFICATION_CONDITION_LABELS["never"]}
-              onClick={() => setNotifyCondition("never")}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {notifyCondition === "only_mentions" && (
-          <Tooltip
-            label="You'll still be notified if you're the only participant in a conversation."
-            trigger={
-              <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
-            }
-          />
-        )}
-      </div>
-
-      {/* Conversation notification channels */}
-      <div className="flex flex-wrap items-center gap-1.5 pl-4">
-        <Label className="text-muted-foreground dark:text-muted-foreground-night">
-          Notify with
-        </Label>
-        <div className="flex items-center gap-4">
-          {conversationPreferences.channels.in_app !== undefined && (
-            <div className="flex items-center gap-1.5">
-              <Checkbox
-                id="conversation-in_app-preference"
-                checked={isConversationInAppEnabled}
-                disabled={notifyCondition === "never"}
-                onCheckedChange={(checked) =>
-                  updateConversationChannelPreference(
-                    "in_app",
-                    checked === true
-                  )
-                }
-              />
-              <Label
-                htmlFor="conversation-in_app-preference"
-                className={
-                  notifyCondition === "never"
-                    ? "text-muted-foreground dark:text-muted-foreground-night"
-                    : "cursor-pointer"
-                }
-              >
-                In-app popup
-              </Label>
-            </div>
-          )}
-          {conversationPreferences.channels.email !== undefined && (
-            <div className="flex items-center gap-1.5">
-              <Checkbox
-                id="conversation-email-preference"
-                checked={isConversationEmailEnabled}
-                disabled={notifyCondition === "never"}
-                onCheckedChange={(checked) =>
-                  updateConversationChannelPreference("email", checked === true)
-                }
-              />
-              <Label
-                htmlFor="conversation-email-preference"
-                className={
-                  notifyCondition === "never"
-                    ? "text-muted-foreground dark:text-muted-foreground-night"
-                    : "cursor-pointer"
-                }
-              >
-                Email
-              </Label>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Unread conversation email frequency setting */}
-      {isConversationEmailEnabled && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-2">
-          <Label className="text-foreground dark:text-foreground-night">
-            Email me at most
-          </Label>
+        {/* Conversation notifications */}
+        <div className="flex flex-wrap items-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
                 isSelect
-                label={NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelay]}
+                label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+            <DropdownMenuPortal>
+              <DropdownMenuContent>
                 <DropdownMenuItem
-                  key={delay}
-                  label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                  onClick={() => setEmailDelay(delay)}
+                  label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
+                  onClick={() => setNotifyCondition("all_messages")}
                 />
-              ))}
-            </DropdownMenuContent>
+                <DropdownMenuItem
+                  label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
+                  onClick={() => setNotifyCondition("only_mentions")}
+                />
+                <DropdownMenuItem
+                  label={NOTIFICATION_CONDITION_LABELS["never"]}
+                  onClick={() => setNotifyCondition("never")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
           </DropdownMenu>
+          {notifyCondition !== "never" && (
+            <>
+              <span className="text-foreground dark:text-foreground-night">
+                , by&nbsp;
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isSelect
+                    label={getSelectedChannelLabel(
+                      conversationPreferences,
+                      displaySlackOption
+                    )}
+                  />
+                </DropdownMenuTrigger>
+
+                <DropdownMenuPortal>
+                  <DropdownMenuContent>
+                    {conversationPreferences.channels.in_app !== undefined && (
+                      <DropdownMenuCheckboxItem
+                        label="in-app popup"
+                        checked={isConversationInAppEnabled}
+                        onCheckedChange={(checked) =>
+                          updateConversationChannelPreference("in_app", checked)
+                        }
+                      />
+                    )}
+                    {conversationPreferences.channels.chat !== undefined &&
+                      displaySlackOption && (
+                        <DropdownMenuCheckboxItem
+                          label="Slack"
+                          checked={isConversationSlackEnabled}
+                          onCheckedChange={(checked) =>
+                            updateConversationChannelPreference("chat", checked)
+                          }
+                        />
+                      )}
+                    {conversationPreferences.channels.email !== undefined && (
+                      <DropdownMenuCheckboxItem
+                        label="email"
+                        checked={isConversationEmailEnabled}
+                        onCheckedChange={(checked) =>
+                          updateConversationChannelPreference("email", checked)
+                        }
+                      />
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenuPortal>
+              </DropdownMenu>
+              {isConversationEmailEnabled && (
+                <>
+                  <span className="text-foreground dark:text-foreground-night">
+                    . Email me max once&nbsp;
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        isSelect
+                        label={
+                          NOTIFICATION_PREFERENCES_DELAY_LABELS[
+                            conversationEmailDelay
+                          ]
+                        }
+                      />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuPortal>
+                      <DropdownMenuContent>
+                        {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                          <DropdownMenuItem
+                            key={delay}
+                            label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                            onClick={() => setConversationEmailDelay(delay)}
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenu>
+                </>
+              )}
+            </>
+          )}
         </div>
-      )}
-
-      {/* Project notifications */}
-      {projectPreferences && isProjectsFeatureEnabled && (
-        <>
-          <div className="flex flex-wrap items-center gap-1.5 pt-2">
-            <Label className="text-foreground dark:text-foreground-night">
-              Projects
-            </Label>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              when added as member
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 pl-4">
-            <Label className="text-muted-foreground dark:text-muted-foreground-night">
-              Notify with
-            </Label>
-            <div className="flex items-center gap-4">
-              {projectPreferences.channels.in_app !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-in_app-preference"
-                    checked={isProjectInAppEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectChannelPreference("in_app", checked === true)
-                    }
-                  />
-                  <Label
-                    htmlFor="project-in_app-preference"
-                    className="cursor-pointer"
-                  >
-                    In-app popup
-                  </Label>
-                </div>
-              )}
-              {projectPreferences.channels.email !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-email-preference"
-                    checked={isProjectEmailEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectChannelPreference("email", checked === true)
-                    }
-                  />
-                  <Label
-                    htmlFor="project-email-preference"
-                    className="cursor-pointer"
-                  >
-                    Email
-                  </Label>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      </div>
 
       {/* Project new conversations notifications */}
       {!!projectNewConversationPreferences && isProjectsFeatureEnabled && (
-        <>
+        <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-1.5 pt-2">
             <Label className="text-foreground dark:text-foreground-night">
-              Projects
+              New conversations
             </Label>
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              when new conversation is created
+              (in projects)
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 pl-4">
-            <Label className="text-muted-foreground dark:text-muted-foreground-night">
-              Notify with
-            </Label>
-            <div className="flex items-center gap-4">
-              {projectNewConversationPreferences.channels.in_app !==
-                undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-new-conversation-in_app-preference"
-                    checked={isProjectNewConversationInAppEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectNewConversationChannelPreference(
-                        "in_app",
-                        checked === true
-                      )
+          <div className="flex flex-wrap items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isSelect
+                  label={
+                    PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_LABELS[
+                      projectNewConversationNotifyCondition
+                    ]
+                  }
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    label={
+                      PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_LABELS[
+                        "all_projects"
+                      ]
+                    }
+                    onClick={() =>
+                      setProjectNewConversationNotifyCondition("all_projects")
                     }
                   />
-                  <Label
-                    htmlFor="project-new-conversation-in_app-preference"
-                    className="cursor-pointer"
-                  >
-                    In-app popup
-                  </Label>
-                </div>
-              )}
-              {projectNewConversationPreferences.channels.email !==
-                undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    id="project-new-conversation-email-preference"
-                    checked={isProjectNewConversationEmailEnabled}
-                    onCheckedChange={(checked) =>
-                      updateProjectNewConversationChannelPreference(
-                        "email",
-                        checked === true
-                      )
+                  <DropdownMenuItem
+                    label={
+                      PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_LABELS[
+                        "never"
+                      ]
+                    }
+                    onClick={() =>
+                      setProjectNewConversationNotifyCondition("never")
                     }
                   />
-                  <Label
-                    htmlFor="project-new-conversation-email-preference"
-                    className="cursor-pointer"
-                  >
-                    Email
-                  </Label>
-                </div>
-              )}
-            </div>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenu>
+
+            {projectNewConversationNotifyCondition !== "never" && (
+              <>
+                <span className="text-foreground dark:text-foreground-night">
+                  , by&nbsp;
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isSelect
+                      label={getSelectedChannelLabel(
+                        projectNewConversationPreferences,
+                        displaySlackOption
+                      )}
+                    />
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuPortal>
+                    <DropdownMenuContent>
+                      {projectNewConversationPreferences.channels.in_app !==
+                        undefined && (
+                        <DropdownMenuCheckboxItem
+                          label="in-app popup"
+                          checked={isProjectNewConversationInAppEnabled}
+                          onCheckedChange={(checked) =>
+                            updateProjectNewConversationChannelPreference(
+                              "in_app",
+                              checked
+                            )
+                          }
+                        />
+                      )}
+                      {projectNewConversationPreferences.channels.chat !==
+                        undefined &&
+                        displaySlackOption && (
+                          <DropdownMenuCheckboxItem
+                            label="Slack"
+                            checked={isProjectNewConversationSlackEnabled}
+                            onCheckedChange={(checked) =>
+                              updateProjectNewConversationChannelPreference(
+                                "chat",
+                                checked
+                              )
+                            }
+                          />
+                        )}
+                      {projectNewConversationPreferences.channels.email !==
+                        undefined && (
+                        <DropdownMenuCheckboxItem
+                          label="email"
+                          checked={isProjectNewConversationEmailEnabled}
+                          onCheckedChange={(checked) =>
+                            updateProjectNewConversationChannelPreference(
+                              "email",
+                              checked
+                            )
+                          }
+                        />
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenuPortal>
+                </DropdownMenu>
+                {isProjectNewConversationEmailEnabled && (
+                  <>
+                    <span className="text-foreground dark:text-foreground-night">
+                      . Email me max once&nbsp;
+                    </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          isSelect
+                          label={
+                            NOTIFICATION_PREFERENCES_DELAY_LABELS[
+                              projectNewConversationEmailDelay
+                            ]
+                          }
+                        />
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuPortal>
+                        <DropdownMenuContent>
+                          {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                            <DropdownMenuItem
+                              key={delay}
+                              label={
+                                NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]
+                              }
+                              onClick={() =>
+                                setProjectNewConversationEmailDelay(delay)
+                              }
+                            />
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenu>
+                  </>
+                )}
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

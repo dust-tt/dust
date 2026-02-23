@@ -43,6 +43,7 @@ export const TRACKING_AREAS = {
   SETTINGS: "settings",
 
   // Features
+  ACADEMY: "academy",
   BUILDER: "builder",
   SPACES: "spaces",
   LABS: "labs",

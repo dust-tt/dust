@@ -4,8 +4,9 @@ import logger from "@app/logger/logger";
 import type {
   IntercomCommandType,
   IntercomGetConversationsSlidingWindowResponseType,
-} from "@app/types";
-import { ConnectorsAPI, Err, Ok } from "@app/types";
+} from "@app/types/connectors/admin/cli";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const intercomSetSlidingWindowPlugin = createPlugin({
   manifest: {

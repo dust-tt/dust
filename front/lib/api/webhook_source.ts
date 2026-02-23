@@ -1,6 +1,3 @@
-import assert from "assert";
-import type { Transaction } from "sequelize";
-
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -8,9 +5,11 @@ import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resou
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import assert from "assert";
+import type { Transaction } from "sequelize";
 
 /**
  * Deletes a webhook source and all related entities (views, triggers, requests).

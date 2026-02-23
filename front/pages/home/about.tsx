@@ -1,3 +1,16 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import {
+  Grid,
+  H1,
+  H2,
+  H3,
+  P,
+  Strong,
+} from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
+import { classNames } from "@app/lib/utils";
 import {
   ArrowRightIcon,
   Button,
@@ -11,19 +24,6 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-
-import {
-  Grid,
-  H1,
-  H2,
-  H3,
-  P,
-  Strong,
-} from "@app/components/home/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
-import { PageMetadata } from "@app/components/home/PageMetadata";
-import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
@@ -596,6 +596,7 @@ const VideoPlayer = () => {
   );
 };
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function About() {
   const router = useRouter();
 

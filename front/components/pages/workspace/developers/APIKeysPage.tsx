@@ -1,14 +1,3 @@
-import {
-  BookOpenIcon,
-  Button,
-  Page,
-  ShapesIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
-import get from "lodash/get";
-import { useMemo, useState } from "react";
-import { useSWRConfig } from "swr";
-
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
@@ -19,7 +8,20 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
 import { useGroups } from "@app/lib/swr/groups";
-import type { GroupType, KeyType, ModelId, WorkspaceType } from "@app/types";
+import type { GroupType } from "@app/types/groups";
+import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  BookOpenIcon,
+  Button,
+  Page,
+  ShapesIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
+import get from "lodash/get";
+import { useMemo, useState } from "react";
+import { useSWRConfig } from "swr";
 
 interface APIKeysProps {
   owner: WorkspaceType;

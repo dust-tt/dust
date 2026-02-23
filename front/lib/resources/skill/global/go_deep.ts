@@ -1,7 +1,7 @@
 import { getDeepDiveInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export const goDeepSkill = {
   sId: "go-deep",

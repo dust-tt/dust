@@ -1,17 +1,14 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import type {
   DataSourceNodeListType,
   RenderedNodeType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type {
-  ConnectorProvider,
-  CoreAPIContentNode,
-  CoreAPISearchNodesResponse,
-  TimeFrame,
-} from "@app/types";
-import { DATA_SOURCE_NODE_ID } from "@app/types";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import type { CoreAPISearchNodesResponse } from "@app/types/core/core_api";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 function formatTimestamp(timestamp: number): string {
   const date = new Date(timestamp);

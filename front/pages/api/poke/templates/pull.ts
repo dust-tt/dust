@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
@@ -9,7 +7,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PullTemplatesResponseBody = {
   success: true;

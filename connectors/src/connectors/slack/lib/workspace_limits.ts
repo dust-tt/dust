@@ -1,8 +1,3 @@
-import type { Result, WorkspaceDomainType } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
-import type {} from "@slack/web-api/dist/types/response/UsersInfoResponse";
-
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
@@ -17,6 +12,10 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { cacheWithRedis } from "@connectors/types";
+import type { Result, WorkspaceDomainType } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WebClient } from "@slack/web-api";
+import type {} from "@slack/web-api/dist/types/response/UsersInfoResponse";
 
 async function getVerifiedDomainsForWorkspace(
   connector: ConnectorResource

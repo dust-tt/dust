@@ -1,10 +1,10 @@
+import config from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
-import { clientFetch, getApiBaseUrl } from "@app/lib/egress/client";
-
 const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
-const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
+const RECONNECT_DELAY_MS = 5_000; // 5 seconds.
 
 /**
  * Browser-specific MCP transport implementation.
@@ -20,17 +20,27 @@ export class BrowserMCPTransport implements Transport {
   private serverId: string | null = null;
   private isClosing = false;
 
+  // Set to true when we receive the "done" event from the server, indicating a normal stream close
+  // (timeout) rather than an actual error.
+  private isServerClosing = false;
+
   // Required by Transport interface.
   public onmessage?: (message: JSONRPCMessage) => void;
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
   public sessionId?: string;
 
+  private readonly handleBeforeUnload = () => {
+    this.isClosing = true;
+  };
+
   constructor(
     private readonly workspaceId: string,
     private readonly serverName: string,
     private readonly onServerIdReceived: (serverId: string) => void
-  ) {}
+  ) {
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
+  }
 
   /**
    * Register the MCP server.
@@ -177,7 +187,7 @@ export class BrowserMCPTransport implements Transport {
     }
 
     // Build URL with query parameters.
-    const base = getApiBaseUrl() || window.location.origin;
+    const base = config.getApiBaseUrl() || window.location.origin;
     const url = new URL(`/api/w/${this.workspaceId}/mcp/requests`, base);
     url.searchParams.set("serverId", this.serverId);
     if (this.lastEventId) {
@@ -192,7 +202,10 @@ export class BrowserMCPTransport implements Transport {
     this.eventSource.onmessage = (event) => {
       try {
         if (event.data === "done") {
-          // Ignore this event.
+          // Server is closing the stream normally (timeout). Flag it so the onerror handler can
+          // reconnect immediately without treating it as a real error.
+          this.isServerClosing = true;
+
           return;
         }
 
@@ -240,25 +253,36 @@ export class BrowserMCPTransport implements Transport {
       // Close the existing connection to prevent automatic reconnects.
       this.eventSource?.close();
 
-      console.error(
-        "[BrowserMCPTransport] Error in MCP EventSource connection"
-      );
-      this.onerror?.(new Error("SSE connection error"));
+      const isNormalClose = this.isServerClosing;
+      this.isServerClosing = false;
 
-      // Attempt to reconnect after a delay.
-      setTimeout(() => {
-        if (!this.isClosing && this.serverId) {
-          console.log(
-            "[BrowserMCPTransport] Attempting to reconnect to SSE..."
+      if (isNormalClose) {
+        // Server closed the stream after its idle timeout. This is expected.
+        // Reconnect immediately, no error to propagate.
+        void this.connectToRequestsStream().catch((reconnectError) => {
+          console.error(
+            "[BrowserMCPTransport] Failed to reconnect:",
+            reconnectError
           );
-          void this.connectToRequestsStream().catch((reconnectError) => {
-            console.error(
-              "[BrowserMCPTransport] Failed to reconnect:",
-              reconnectError
-            );
-          });
-        }
-      }, RECONNECT_DELAY_MS);
+        });
+      } else {
+        // Actual connection error. Propagate and reconnect after a delay.
+        console.error(
+          "[BrowserMCPTransport] Error in MCP EventSource connection"
+        );
+        this.onerror?.(new Error("SSE connection error"));
+
+        setTimeout(() => {
+          if (!this.isClosing && this.serverId) {
+            void this.connectToRequestsStream().catch((reconnectError) => {
+              console.error(
+                "[BrowserMCPTransport] Failed to reconnect after error:",
+                reconnectError
+              );
+            });
+          }
+        }, RECONNECT_DELAY_MS);
+      }
     };
 
     this.eventSource.onopen = () => {
@@ -315,6 +339,8 @@ export class BrowserMCPTransport implements Transport {
    */
   async close(): Promise<void> {
     this.isClosing = true;
+
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
 
     // Clear heartbeat timer.
     if (this.heartbeatTimer) {

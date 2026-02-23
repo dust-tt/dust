@@ -1,10 +1,9 @@
-import type { UseFormReturn } from "react-hook-form";
-
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { UseFormReturn } from "react-hook-form";
 
 /**
  * Creates form reset function for different dialog modes

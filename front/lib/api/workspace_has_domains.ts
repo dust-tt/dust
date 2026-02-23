@@ -1,6 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { isHostUnderDomain, isIpAddress } from "@app/types";
+import {
+  isHostUnderDomain,
+  isIpAddress,
+} from "@app/types/shared/utils/url_utils";
 
 /**
  * Check if a host is under any verified domain for the workspace.

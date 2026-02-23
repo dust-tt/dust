@@ -17,10 +17,11 @@ import {
 import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
-  CoreAPITableBlob,
-  Ok,
-} from "@app/types";
-import { CoreAPI, removeNulls } from "@app/types";
+} from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { CoreAPITableBlob } from "@app/types/core/data_source";
+import type { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export async function getDataSourceTables({
   dataSourceCoreIds,

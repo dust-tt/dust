@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@app/types";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const dbConfig = {
   getRequiredFrontDatabaseURI: (): string => {

@@ -1,14 +1,14 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import { NumberFromString } from "io-ts-types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { UserType } from "@app/types/user";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import { NumberFromString } from "io-ts-types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const MEMBERS_LOOKUP_MAX_IDS = 50;
 

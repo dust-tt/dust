@@ -1,5 +1,6 @@
 import { cn } from "@dust-tt/sparkle";
 import { AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
 interface PluginRunStatusChipProps {

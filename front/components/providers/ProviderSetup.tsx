@@ -1,3 +1,6 @@
+import { clientFetch } from "@app/lib/egress/client";
+import { checkProvider } from "@app/lib/providers";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -8,13 +11,10 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { MouseEvent } from "react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
-
-import { clientFetch } from "@app/lib/egress/client";
-import { checkProvider } from "@app/lib/providers";
-import type { WorkspaceType } from "@app/types";
 
 export type ProviderField = {
   name: string;

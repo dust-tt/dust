@@ -1,8 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useWatch } from "react-hook-form";
-
 import type {
-  AgentBuilderFormData,
   AgentBuilderSkillsType,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -23,47 +19,15 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-
-function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
-  return doesSkillTriggerSelectSpaces(skill.sId);
-}
-
-export const useSkillSpaceSelection = () => {
-  const agentBuilderFormAdditionalSpaces = useWatch<
-    AgentBuilderFormData,
-    "additionalSpaces"
-  >({
-    name: "additionalSpaces",
-  });
-
-  const [localSelectedSpaces, setLocalSelectedSpaces] = useState<string[]>([]);
-
-  const resetLocalState = useCallback(() => {
-    setLocalSelectedSpaces(agentBuilderFormAdditionalSpaces);
-  }, [agentBuilderFormAdditionalSpaces]);
-
-  useEffect(() => {
-    // When agent builder form spaces change, make sure local state is updated
-    resetLocalState();
-  }, [agentBuilderFormAdditionalSpaces, resetLocalState]);
-
-  return {
-    localSelectedSpaces,
-    setLocalSelectedSpaces,
-    resetLocalState,
-  };
-};
+import { useCallback, useMemo, useState } from "react";
 
 type UseSkillSelectionProps = {
-  onStateChange: (state: SheetState) => void;
   alreadyAddedSkillIds: Set<string>;
   searchQuery: string;
 };
 
 export const useSkillSelection = ({
-  onStateChange,
   alreadyAddedSkillIds,
   searchQuery,
 }: UseSkillSelectionProps) => {
@@ -104,6 +68,7 @@ export const useSkillSelection = ({
     );
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleSkillToggle = useCallback(
     (skill: SkillType) => {
       if (selectedSkillIds.has(skill.sId)) {
@@ -113,14 +78,6 @@ export const useSkillSelection = ({
         return;
       }
 
-      if (isGlobalSkillWithSpaceSelection(skill)) {
-        onStateChange({
-          state: "space-selection",
-          capability: skill,
-        });
-        return;
-      }
-
       setLocalSelectedSkills((prev) => [
         ...prev,
         {
@@ -131,24 +88,7 @@ export const useSkillSelection = ({
         },
       ]);
     },
-    [selectedSkillIds, onStateChange, setLocalSelectedSkills]
-  );
-
-  const handleSpaceSelectionSave = useCallback(
-    (skill: SkillType) => {
-      // Add the skill
-      setLocalSelectedSkills((prev) => [
-        ...prev,
-        {
-          sId: skill.sId,
-          name: skill.name,
-          description: skill.userFacingDescription,
-          icon: skill.icon,
-        },
-      ]);
-      onStateChange({ state: "selection" });
-    },
-    [onStateChange, setLocalSelectedSkills]
+    [selectedSkillIds, setLocalSelectedSkills]
   );
 
   return {
@@ -158,7 +98,6 @@ export const useSkillSelection = ({
     filteredSkills,
     isSkillsLoading,
     selectedSkillIds,
-    handleSpaceSelectionSave,
     resetLocalState,
   };
 };

@@ -7,7 +7,7 @@ import { PlanModel } from "@app/lib/models/plan";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const createWorkspacePlugin = createPlugin({
   manifest: {

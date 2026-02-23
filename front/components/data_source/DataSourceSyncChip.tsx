@@ -1,11 +1,10 @@
-import { Chip, Tooltip } from "@dust-tt/sparkle";
-
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { ConnectorType } from "@app/types";
-import { fileSizeToHumanReadable } from "@app/types";
+import type { ConnectorType } from "@app/types/data_source";
+import { fileSizeToHumanReadable } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { Chip, Tooltip } from "@dust-tt/sparkle";
 
 interface ConnectorSyncingChipProps {
   activeSeats: number;

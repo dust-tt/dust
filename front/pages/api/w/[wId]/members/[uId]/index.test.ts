@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 

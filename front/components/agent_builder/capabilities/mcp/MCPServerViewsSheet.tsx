@@ -1,20 +1,3 @@
-import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import {
-  MultiPageSheet,
-  MultiPageSheetContent,
-  SearchInput,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useForm } from "react-hook-form";
-
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
@@ -67,6 +50,22 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MultiPageSheetPage } from "@dust-tt/sparkle";
+import {
+  MultiPageSheet,
+  MultiPageSheetContent,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useForm } from "react-hook-form";
 
 export type SheetMode =
   | { type: "add" }
@@ -590,6 +589,7 @@ export function MCPServerViewsSheet({
         setConfigurationMCPServerView(null);
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
       sendNotification({
         title: "Configuration failed",

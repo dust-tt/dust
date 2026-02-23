@@ -8,7 +8,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
@@ -55,8 +55,9 @@ async function addCreditToWorkspace(
   execute: boolean
 ): Promise<"added" | "skipped"> {
   // Check workspace has an active subscription
-  const subscription =
-    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
   if (!subscription) {
     logger.info(
       { workspaceSId: workspace.sId, workspaceId: workspace.id },

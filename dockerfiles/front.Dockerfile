@@ -1,5 +1,5 @@
 # Base dependencies stage (shared by front-nextjs and workers)
-FROM node:20.19.2 AS base-deps
+FROM node:22.22.0 AS base-deps
 
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
@@ -63,11 +63,14 @@ ARG NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY
 ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
 ARG NEXT_PUBLIC_NOVU_API_URL
 ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+ARG NEXT_PUBLIC_BUILD_DATE
+ARG DATADOG_ADDITIONAL_SERVICES
 ARG CONTENTFUL_SPACE_ID
 ARG CONTENTFUL_ACCESS_TOKEN
 
 # Set environment variables for Next.js build
 ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+ENV NEXT_PUBLIC_BUILD_DATE=$NEXT_PUBLIC_BUILD_DATE
 ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
 ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
@@ -105,6 +108,20 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
+  for svc in $DATADOG_ADDITIONAL_SERVICES; do \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
+  --minified-path-prefix=/_next/static/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=${svc}-browser && \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
+  --minified-path-prefix=/app/front/.next/server/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=${svc} || exit 1; \
+  done && \
   find .next -type f -name "*.map" -print -delete; \
   fi
 
@@ -118,7 +135,7 @@ RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:
 RUN npm run build:workers
 
 # Frontend image (Next.js standalone) for front deployment
-FROM node:20.19.2 AS front
+FROM node:22.22.0 AS front
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
@@ -150,14 +167,16 @@ ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
+ENV DD_VERSION=${COMMIT_HASH}
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
 CMD ["node", "server.js"]
 
 # Workers image (Full Node.js environment) for front-workers deployment
-FROM node:20.19.2 AS workers
+FROM node:22.22.0 AS workers
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
@@ -217,7 +236,9 @@ ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
+ENV DD_VERSION=${COMMIT_HASH}
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 

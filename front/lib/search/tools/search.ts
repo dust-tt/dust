@@ -1,5 +1,3 @@
-import { Readable } from "stream";
-
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -40,8 +38,11 @@ import type {
   ToolSearchResult,
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
-import type { ConnectorProvider, FileType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import type { FileType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { Readable } from "stream";
 
 const SEARCHABLE_TOOLS = {
   github: { search: githubSearch, download: githubDownload },

@@ -8,11 +8,11 @@ import type { AdditionalConfigurationInBuilderType } from "@app/components/share
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
-import { fetcherWithBody } from "@app/lib/swr/swr";
+import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -25,17 +25,18 @@ import type {
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type {
-  AgentConfigurationType,
   DataSourcesConfigurationsCodecType,
-  DataSourceViewSelectionConfigurations,
-  LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "@app/types/api/internal/agent_configuration";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { DataSourceViewSelectionConfigurations } from "@app/types/data_source_view";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 function processDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,
@@ -64,7 +65,8 @@ function processDataSourceConfigurations(
 
 async function processTableSelection(
   tablesConfigurations: DataSourceViewSelectionConfigurations | null,
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  fetcherWithBody: FetcherWithBodyFn
 ): Promise<TableDataSourceConfiguration[] | null> {
   if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {
     return null;
@@ -138,7 +140,8 @@ async function processTableSelection(
         const expandedTables = await expandFoldersToTables(
           owner,
           dataSourceView,
-          folderResources
+          folderResources,
+          fetcherWithBody
         );
         for (const tableNode of expandedTables) {
           allTables.push({
@@ -382,6 +385,7 @@ export async function submitAgentBuilderForm({
   agentConfigurationId = null,
   isDraft = false,
   areSlackChannelsChanged,
+  fetcherWithBody,
 }: {
   user: UserType;
   formData: AgentBuilderFormData;
@@ -389,6 +393,7 @@ export async function submitAgentBuilderForm({
   agentConfigurationId?: string | null;
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
+  fetcherWithBody: FetcherWithBodyFn;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -426,7 +431,8 @@ export async function submitAgentBuilderForm({
             action.configuration.tablesConfigurations !== null
               ? await processTableSelection(
                   action.configuration.tablesConfigurations,
-                  owner
+                  owner,
+                  fetcherWithBody
                 )
               : null,
           childAgentId: action.configuration.childAgentId,

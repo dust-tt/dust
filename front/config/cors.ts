@@ -25,9 +25,8 @@ const STATIC_ALLOWED_ORIGINS = [
 const ALLOWED_ORIGIN_PATTERNS = [
   // Zendesk domains
   new RegExp("^https://.+\\.zendesk\\.com$"),
-  // Staging apps - allow all builds from poke-dust-tt.pages.dev and app-dust-tt.pages.dev.
-  new RegExp("^https://.*\\.poke-dust-tt\\.pages\\.dev$"),
-  new RegExp("^https://.*\\.app-dust-tt\\.pages\\.dev$"),
+  // Staging apps - allow all builds from *.preview.dust.tt .
+  new RegExp("^https://.*\\.preview\\.dust\\.tt$"),
 ] as const;
 
 type StaticAllowedOriginType = (typeof STATIC_ALLOWED_ORIGINS)[number];
@@ -44,8 +43,16 @@ export const ALLOWED_HEADERS = [
   "content-type",
   "x-commit-hash",
   "x-dust-extension-version",
+  "x-build-date",
   "x-hackerone-research",
   "x-request-origin",
+  // Datadog RUM tracing headers (injected automatically by the browser SDK).
+  "traceparent",
+  "tracestate",
+  "x-datadog-origin",
+  "x-datadog-parent-id",
+  "x-datadog-sampling-priority",
+  "x-datadog-trace-id",
 ] as const;
 type AllowedHeaderType = (typeof ALLOWED_HEADERS)[number];
 

@@ -1,5 +1,3 @@
-import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
-
 import {
   downloadAndProcessMicrosoftFile,
   searchMicrosoftDriveItems,
@@ -16,6 +14,7 @@ import type {
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import type { ContentNodeType } from "@app/types/core/content_node";
+import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 
 // Supported MIME types for Microsoft files
 const SUPPORTED_MIMETYPES = [

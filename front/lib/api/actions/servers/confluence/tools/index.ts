@@ -20,7 +20,7 @@ import {
   renderConfluencePageList,
   renderConfluenceSpacesList,
 } from "@app/lib/api/actions/servers/confluence/rendering";
-import { Ok } from "@app/types";
+import { Ok } from "@app/types/shared/result";
 
 export function createConfluenceTools(): ToolDefinition[] {
   const handlers: ToolHandlers<typeof CONFLUENCE_TOOLS_METADATA> = {

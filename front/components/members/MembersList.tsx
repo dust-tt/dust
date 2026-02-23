@@ -1,3 +1,11 @@
+import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { MembershipOriginType } from "@app/types/memberships";
+import type {
+  RoleType,
+  UserType,
+  UserTypeWithWorkspace,
+} from "@app/types/user";
 import {
   Chip,
   DataTable,
@@ -7,18 +15,11 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import assert from "assert";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo } from "react";
 import type { KeyedMutator } from "swr";
-
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type {
-  MembershipOriginType,
-  RoleType,
-  UserType,
-  UserTypeWithWorkspace,
-} from "@app/types";
 
 type RowData = {
   icon: string;

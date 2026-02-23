@@ -1,8 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
-import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { QUEUE_NAME } from "./config";
 import { agentTriggerWorkflow } from "./workflows";

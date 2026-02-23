@@ -1,10 +1,9 @@
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { renderHook } from "@testing-library/react";
 import { Markdown } from "@tiptap/markdown";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
-
-import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 
 describe("EmojiExtension", () => {
   it("renders emoji nodes correctly", () => {

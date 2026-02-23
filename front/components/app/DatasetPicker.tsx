@@ -1,3 +1,6 @@
+import { useDatasets } from "@app/lib/swr/datasets";
+import type { AppType } from "@app/types/app";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -6,9 +9,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-
-import { useDatasets } from "@app/lib/swr/datasets";
-import type { AppType, WorkspaceType } from "@app/types";
 
 export default function DatasetPicker({
   owner,

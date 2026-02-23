@@ -1,9 +1,8 @@
-import * as t from "io-ts";
-import type { NextApiRequest } from "next";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
+  NON_REMOTE_DATABASE_TABLE_MIME_TYPES,
   NON_SEARCHABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
@@ -12,15 +11,18 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import logger from "@app/logger/logger";
-import type {
-  APIError,
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  Result,
-  SearchWarningCode,
-} from "@app/types";
-import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
+import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import type { SearchWarningCode } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import * as t from "io-ts";
+import type { NextApiRequest } from "next";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -79,6 +81,7 @@ const BaseSearchBody = t.refinement(
        * Used to allow admins to useSpaces on global
        */
       allowAdminSearch: t.boolean,
+      excludeNonRemoteDatabaseTables: t.boolean,
       parentId: t.string,
       searchSort: SearchSort,
       /**
@@ -172,6 +175,7 @@ export async function handleSearch(
   {
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
+    excludeNonRemoteDatabaseTables,
     includeDataSources,
     nodeIds,
     parentId,
@@ -240,8 +244,12 @@ export async function handleSearch(
       )
     : allDatasourceViews;
 
-  const excludedNodeMimeTypes =
-    nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
+  const excludedNodeMimeTypes = [
+    ...(nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES),
+    ...(excludeNonRemoteDatabaseTables
+      ? NON_REMOTE_DATABASE_TABLE_MIME_TYPES
+      : []),
+  ];
 
   const searchFilterRes = getSearchFilterFromDataSourceViews(
     filteredDatasourceViews,

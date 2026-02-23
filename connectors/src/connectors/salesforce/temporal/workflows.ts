@@ -1,14 +1,13 @@
+import type * as activities from "@connectors/connectors/salesforce/temporal/activities";
+import { resyncSignal } from "@connectors/connectors/salesforce/temporal/signals";
+import type * as sync_status from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
 import {
   executeChild,
   proxyActivities,
   setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
-
-import type * as activities from "@connectors/connectors/salesforce/temporal/activities";
-import { resyncSignal } from "@connectors/connectors/salesforce/temporal/signals";
-import type * as sync_status from "@connectors/lib/sync_status";
-import type { ModelId } from "@connectors/types";
 
 const {
   upsertSyncedQueryRootNode,

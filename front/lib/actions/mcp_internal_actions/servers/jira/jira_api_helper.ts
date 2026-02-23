@@ -1,8 +1,3 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { markdownToAdf } from "marklassian";
-import { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createJQLFromSearchFilters,
@@ -47,9 +42,14 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { markdownToAdf } from "marklassian";
+import { z } from "zod";
 
 import { sanitizeFilename } from "../../utils/file_utils";
 

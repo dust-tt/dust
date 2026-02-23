@@ -1,6 +1,5 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
-
 import logger from "@connectors/logger/logger";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 export interface BotFrameworkClaims {
   iss: string; // issuer

@@ -1,6 +1,5 @@
-import { Input } from "@dust-tt/sparkle";
-
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { Input } from "@dust-tt/sparkle";
 
 interface NameSectionProps {
   title?: string;

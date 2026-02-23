@@ -1,23 +1,20 @@
-import type { Fetcher } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   emptyArray,
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
 import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  PatchDataSourceTableRequestBody,
-} from "@app/types";
+import type { PatchDataSourceTableRequestBody } from "@app/types/api/public/data_sources";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 export function useDataSourceViewTable({
   dataSourceView,
@@ -30,6 +27,7 @@ export function useDataSourceViewTable({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const dataSourceViewTableFetcher: Fetcher<GetDataSourceViewTableResponseBody> =
     fetcher;
   const url =
@@ -66,6 +64,7 @@ export function useDataSourceViewTables({
   searchQuery?: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const isDisabled = !dataSourceView || disabled;
   const params = new URLSearchParams();
 

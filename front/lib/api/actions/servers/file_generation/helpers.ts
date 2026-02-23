@@ -3,7 +3,7 @@ import {
   BINARY_FORMATS,
   OUTPUT_FORMATS,
 } from "@app/lib/api/actions/servers/file_generation/metadata";
-import type { SupportedFileContentType } from "@app/types";
+import type { SupportedFileContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function isValidOutputType(

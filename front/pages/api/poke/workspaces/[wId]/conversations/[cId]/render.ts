@@ -1,5 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -12,6 +10,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -23,9 +22,11 @@ import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { isString, isUserMessageType } from "@app/types";
+} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostRenderConversationRequestBody = {
   agentId: string;
@@ -102,7 +103,14 @@ async function handler(
         });
       }
 
-      const conversationRes = await getConversation(auth, cId, true);
+      const [conversationRes, agentConfiguration] = await Promise.all([
+        getConversation(auth, cId, true),
+        getAgentConfiguration(auth, {
+          agentId,
+          variant: "full",
+        }),
+      ]);
+
       if (conversationRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
@@ -114,10 +122,6 @@ async function handler(
       }
       const conversation: ConversationType = conversationRes.value;
 
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId,
-        variant: "full",
-      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
@@ -156,8 +160,8 @@ async function handler(
       const userMessage: UserMessageType = lastUserMessage;
 
       // Build tools list and prompt similar to the agent loop.
-      const attachments = listAttachments(conversation);
-      const jitServers = await getJITServers(auth, {
+      const attachments = await listAttachments(auth, { conversation });
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration,
         conversation,
         attachments,
@@ -245,7 +249,7 @@ async function handler(
           })
         : null;
 
-      const prompt = constructPromptMultiActions(auth, {
+      const promptSections = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
         fallbackPrompt,
@@ -258,6 +262,7 @@ async function handler(
         enabledSkills,
         equippedSkills,
       });
+      const prompt = systemPromptToText(promptSections);
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).
       const specifications = availableActions.map((t) =>
@@ -290,6 +295,7 @@ async function handler(
         excludeActions,
         excludeImages,
         onMissingAction,
+        agentConfiguration,
       });
 
       if (convoRes.isErr()) {

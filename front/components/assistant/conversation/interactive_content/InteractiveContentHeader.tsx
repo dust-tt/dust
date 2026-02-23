@@ -1,7 +1,6 @@
-import { Button, XMarkIcon } from "@dust-tt/sparkle";
-import React from "react";
-
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { Button, XMarkIcon } from "@dust-tt/sparkle";
+import type React from "react";
 
 interface InteractiveContentHeaderProps {
   children?: React.ReactNode;

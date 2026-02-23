@@ -1,23 +1,3 @@
-import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
-import {
-  AttachmentIcon,
-  Button,
-  CloudArrowUpIcon,
-  DoubleIcon,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuFilters,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Icon,
-  Input,
-  MagnifyingGlassIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
-
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -41,18 +21,33 @@ import type {
 } from "@app/lib/search/tools/types";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type {
-  ConversationWithoutContentType,
-  DataSourceType,
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import type { DataSourceType } from "@app/types/data_source";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
-  asDisplayToolName,
-  MIN_SEARCH_QUERY_SIZE,
-  removeNulls,
-} from "@app/types";
+  AttachmentIcon,
+  Button,
+  CloudArrowUpIcon,
+  DoubleIcon,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuFilters,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Icon,
+  Input,
+  MagnifyingGlassIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
   if (dataSource.connectorProvider === "webcrawler") {
@@ -260,6 +255,7 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setSelectedDataSourcesAndTools({});

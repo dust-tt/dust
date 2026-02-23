@@ -1,5 +1,4 @@
-import { cva } from "class-variance-authority";
-import React from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Button, type ButtonProps } from "@sparkle/components/Button";
 import {
@@ -16,6 +15,8 @@ import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
 import { LinkMIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import React from "react";
 
 export type ToolbarVariant = "inline" | "overlay";
 

@@ -1,11 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type {
-  CallToolResult,
-  Notification,
-} from "@modelcontextprotocol/sdk/types.js";
-import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -15,8 +7,15 @@ import {
   INTERNAL_ALLOWED_ICONS,
 } from "@app/components/resources/resources_icons";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
-import type { AllSupportedFileContentType } from "@app/types";
-import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
+import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
+import type { AllSupportedFileContentType } from "@app/types/files";
+import { ALL_FILE_FORMATS } from "@app/types/files";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type {
+  CallToolResult,
+  Notification,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -52,6 +51,7 @@ const ToolGeneratedFileSchema = z.object({
   snippet: z.string().nullable(),
   // Optional UI hint to hide file from generic generated files sections.
   hidden: z.boolean().optional(),
+  isInProjectContext: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
@@ -843,9 +843,10 @@ const NotificationRunAgentContentSchema = z.object({
   conversationId: z.string(),
   query: z.string(),
   userMessageId: z.string(),
+  agentMessageId: z.string().nullable(),
 });
 
-type RunAgentQueryProgressOutput = z.infer<
+export type RunAgentQueryProgressOutput = z.infer<
   typeof NotificationRunAgentContentSchema
 >;
 
@@ -948,9 +949,12 @@ export const ProgressNotificationContentSchema = z.object({
   total: z.number(),
   progressToken: z.union([z.string(), z.number()]),
   // Custom data.
-  data: z.object({
-    label: z.string(),
-    output: ProgressNotificationOutputSchema,
+  _meta: z.object({
+    //progressToken: z.union([z.string(), z.number()]),
+    data: z.object({
+      label: z.string(),
+      output: ProgressNotificationOutputSchema,
+    }),
   }),
 });
 
@@ -958,7 +962,7 @@ export type ProgressNotificationContentType = z.infer<
   typeof ProgressNotificationContentSchema
 >;
 
-export const MCPProgressNotificationSchema = NotificationSchema.extend({
+export const MCPProgressNotificationSchema = z.object({
   method: z.literal("notifications/progress"),
   params: ProgressNotificationContentSchema,
 });

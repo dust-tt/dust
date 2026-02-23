@@ -1,3 +1,18 @@
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useAddUserMessageMention } from "@app/hooks/useAddUserMessageMention";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { useAppRouter } from "@app/lib/platform";
+import {
+  useAgentConfigurations,
+  useSuggestedAgentConfigurations,
+} from "@app/lib/swr/assistants";
+import { setQueryParam } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { UserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { WorkspaceType } from "@app/types/user";
 import {
   AssistantCard,
   AssistantCardMore,
@@ -14,23 +29,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useAddUserMessageMention } from "@app/hooks/useAddUserMessageMention";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAppRouter } from "@app/lib/platform";
-import {
-  useAgentConfigurations,
-  useSuggestedAgentConfigurations,
-} from "@app/lib/swr/assistants";
-import { setQueryParam } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  UserMessageTypeWithContentFragments,
-  WorkspaceType,
-} from "@app/types";
-import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
 
 interface AgentSuggestionProps {
   conversationId: string;

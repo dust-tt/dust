@@ -1,8 +1,7 @@
-import type { Fetcher } from "swr";
-
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetAppDetails } from "@app/pages/api/poke/workspaces/[wId]/apps/[aId]/details";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Fetcher } from "swr";
 
 interface UsePokeAppDetailsProps {
   disabled?: boolean;
@@ -17,6 +16,7 @@ export function usePokeAppDetails({
   appId,
   hash,
 }: UsePokeAppDetailsProps) {
+  const { fetcher } = useFetcher();
   const detailsFetcher: Fetcher<PokeGetAppDetails> = fetcher;
   const hashParam = hash ? `?hash=${hash}` : "";
   const { data, error, mutate } = useSWRWithDefaults(

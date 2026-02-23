@@ -1,10 +1,9 @@
-import { NativeConnection } from "@temporalio/worker";
-
 import {
   getConnectionOptions,
   getTemporalClientForNamespace,
   temporalWorkspaceToEnvVar,
 } from "@app/lib/temporal";
+import { NativeConnection } from "@temporalio/worker";
 
 export async function getTemporalRelocationWorkerConnection(): Promise<{
   connection: NativeConnection;

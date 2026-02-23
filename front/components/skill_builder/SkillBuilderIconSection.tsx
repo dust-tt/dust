@@ -1,3 +1,4 @@
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   ActionIcons,
   ActionPlusIcon,
@@ -11,8 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController } from "react-hook-form";
-
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 
 const DEFAULT_ICON = ActionPlusIcon;
 

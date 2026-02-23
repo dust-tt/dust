@@ -3,9 +3,9 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForTriggers } from "@app/components/poke/triggers/columns";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeTriggers } from "@app/poke/swr/triggers";
-import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface TriggerDataTableProps {
   owner: LightWorkspaceType;

@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from "crypto";
-
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -13,6 +11,7 @@ import type {
   WebhookSourceSignatureAlgorithm,
   WebhookSourceWithViewsType,
 } from "@app/types/triggers/webhooks";
+import { createHmac, timingSafeEqual } from "crypto";
 
 export const DEFAULT_WEBHOOK_ICON: InternalAllowedIconType =
   "ActionGlobeAltIcon" as const;
@@ -76,6 +75,7 @@ export const verifySignature = ({
     );
     return isValid;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
   } catch (e) {
     return false;
   }

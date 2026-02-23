@@ -1,12 +1,33 @@
-import { useCallback, useContext, useMemo, useRef } from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
-import { useUser, useUserMetadata } from "@app/lib/swr/user";
-import { setUserMetadataFromClient } from "@app/lib/user";
+import { useUser } from "@app/lib/swr/user";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
-const BROWSER_NOTIFICATION_LAST_ASKED_FOR_KEY =
-  "browser-notification-last-asked-for";
+const LOCAL_STORAGE_KEY = "browser-notification-last-asked-for";
 const DELAY_BEFORE_ASKING_AGAIN = 1000 * 60 * 60 * 24 * 7; // One week
+
+function getLastAskedTimestamp(): number | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      const ts = parseInt(raw, 10);
+      return Number.isNaN(ts) ? null : ts;
+    }
+  } catch {
+    // localStorage unavailable.
+  }
+  return null;
+}
+
+function setLastAskedTimestamp(ts: number): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, `${ts}`);
+  } catch {
+    // localStorage may be full or unavailable — silently ignore.
+  }
+}
 
 export const useEnableBrowserNotification = () => {
   const { user } = useUser();
@@ -15,19 +36,12 @@ export const useEnableBrowserNotification = () => {
   const notificationsEnabled = useMemo(() => !!user?.subscriberHash, [user]);
   const shownRef = useRef<boolean>(false);
   const confirm = useContext(ConfirmContext);
-
-  const { metadata, isMetadataLoading, mutateMetadata } = useUserMetadata(
-    BROWSER_NOTIFICATION_LAST_ASKED_FOR_KEY,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      disabled: !notificationsEnabled,
-    }
+  const [lastAskedMs, setLastAskedMs] = useState<number | null>(
+    getLastAskedTimestamp
   );
 
   const canAsk = useMemo(() => {
     if (
-      isMetadataLoading ||
       typeof Notification === "undefined" ||
       Notification.permission !== "default" ||
       !notificationsEnabled
@@ -35,15 +49,12 @@ export const useEnableBrowserNotification = () => {
       return false;
     }
 
-    if (!metadata) {
+    if (lastAskedMs === null) {
       return true;
     }
 
-    // eslint-disable-next-line react-hooks/purity
-    const delay = Date.now() - parseInt(metadata.value);
-
-    return delay > DELAY_BEFORE_ASKING_AGAIN;
-  }, [isMetadataLoading, metadata, notificationsEnabled]);
+    return Date.now() - lastAskedMs > DELAY_BEFORE_ASKING_AGAIN;
+  }, [notificationsEnabled, lastAskedMs]);
 
   const askForPermission = useCallback(async () => {
     if (!canAsk || shownRef.current) {
@@ -54,19 +65,9 @@ export const useEnableBrowserNotification = () => {
     // Couldn't make it work with a simple useState().
     shownRef.current = true;
 
-    await setUserMetadataFromClient({
-      key: BROWSER_NOTIFICATION_LAST_ASKED_FOR_KEY,
-      value: `${Date.now()}`,
-    });
-    await mutateMetadata((current) => {
-      if (current) {
-        return {
-          ...current,
-          value: Date.now(),
-        };
-      }
-      return current;
-    });
+    const now = Date.now();
+    setLastAskedTimestamp(now);
+    setLastAskedMs(now);
 
     const confirmed = await confirm({
       title: (
@@ -82,7 +83,7 @@ export const useEnableBrowserNotification = () => {
     }
 
     shownRef.current = false;
-  }, [canAsk, confirm, mutateMetadata]);
+  }, [canAsk, confirm]);
 
   return { askForPermission };
 };

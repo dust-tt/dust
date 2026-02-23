@@ -1,3 +1,5 @@
+import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
+import type { ConnectorProvider } from "@app/types/data_source";
 import {
   Button,
   ContentMessage,
@@ -9,9 +11,6 @@ import {
   SheetTitle,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-
-import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
-import type { ConnectorProvider } from "@app/types";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;

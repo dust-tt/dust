@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { ReactNode, useMemo } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
+import React, { type ReactNode, useMemo } from "react";
 
 const getNodeText = (node: ReactNode): string => {
   if (["string", "number"].includes(typeof node)) {

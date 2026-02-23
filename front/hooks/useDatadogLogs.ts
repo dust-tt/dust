@@ -1,16 +1,16 @@
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import { datadogLogs } from "@datadog/browser-logs";
 import { useEffect } from "react";
 
-import { useAppRouter } from "@app/lib/platform";
-import { useUser } from "@app/lib/swr/user";
-
 export function useDatadogLogs() {
-  const { user } = useUser();
+  const { user } = useAuth();
   const userId = user?.sId;
 
   const router = useAppRouter();
   const { wId } = router.query;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (userId) {
       datadogLogs.setUser({

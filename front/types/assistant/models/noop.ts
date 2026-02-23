@@ -1,4 +1,4 @@
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "./types";
 
 export const NOOP_MODEL_ID = "noop" as const;
 export const NOOP_MODEL_CONFIG: ModelConfigurationType = {

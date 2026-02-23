@@ -2,13 +2,15 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
+import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
 import type {
-  BuilderSuggestionInputType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
-  Result,
-} from "@app/types";
-import { Err, GPT_5_MINI_MODEL_ID, isStringArray, Ok } from "@app/types";
+} from "@app/types/assistant/generation";
+import { GPT_5_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { isStringArray } from "@app/types/shared/utils/general";
 
 const FUNCTION_NAME = "send_ranked_suggestions";
 

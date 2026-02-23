@@ -1,5 +1,3 @@
-import { APIError, OpenAI } from "openai";
-
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import {
   FIREWORKS_PROVIDER_ID,
@@ -12,6 +10,7 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import {
   toMessages,
   toOutputFormatParam,
@@ -22,7 +21,8 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import type { Authenticator } from "@app/lib/auth";
-import { dustManagedCredentials } from "@app/types";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { APIError, OpenAI } from "openai";
 
 export class FireworksLLM extends LLM {
   private client: OpenAI;
@@ -60,7 +60,7 @@ export class FireworksLLM extends LLM {
 
       const events = await this.client.chat.completions.create({
         model: this.modelId,
-        messages: toMessages(prompt, conversation),
+        messages: toMessages(systemPromptToText(prompt), conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
         reasoning_effort: toReasoningParam(

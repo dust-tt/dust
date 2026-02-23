@@ -45,6 +45,9 @@ export const formatDurationString = (durationMs: number): string => {
     }
     return `${minutes} min ${seconds} sec`;
   }
+  if (totalSeconds === 0) {
+    return "< 1 sec";
+  }
   return `${seconds} sec`;
 };
 

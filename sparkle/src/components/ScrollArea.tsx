@@ -1,8 +1,7 @@
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 import { useMemo } from "react";
-
-import { cn } from "@sparkle/lib/utils";
 
 interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {

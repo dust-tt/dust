@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -11,22 +12,21 @@ import { Err, Ok } from "../../shared/result";
 import type { LightWorkspaceType } from "../../user";
 
 export async function setupOAuthConnection({
-  dustClientFacingUrl,
   owner,
   provider,
   useCase,
   extraConfig,
 }: {
-  dustClientFacingUrl: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
+    const oauthBaseUrl = config.getApiBaseUrl();
     // Pass opener origin through OAuth flow so finalize page can postMessage back
     const openerOrigin = window.location.origin;
-    let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}&openerOrigin=${encodeURIComponent(openerOrigin)}`;
+    let url = `${oauthBaseUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}&openerOrigin=${encodeURIComponent(openerOrigin)}`;
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
     }
@@ -64,9 +64,9 @@ export async function setupOAuthConnection({
     };
 
     // Method 1: window.postMessage (preferred, direct communication)
-    // Accept messages from dustClientFacingUrl origin (OAuth popup runs on NextJS server)
+    // Accept messages from oauthBaseUrl origin (OAuth popup runs on NextJS server)
     // In dev, bypass origin check as an extra safeguard for cross-port communication
-    const expectedOrigin = new URL(dustClientFacingUrl).origin;
+    const expectedOrigin = new URL(oauthBaseUrl).origin;
     const handleWindowMessage = (event: MessageEvent) => {
       if (!isDevelopment() && event.origin !== expectedOrigin) {
         return;
@@ -84,11 +84,24 @@ export async function setupOAuthConnection({
         handleFinalization(event.data);
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (e) {
       // BroadcastChannel not supported
     }
 
+    // Poll for popup closure — if the user closes the popup without completing
+    // OAuth, the promise would otherwise hang forever.
+    const popupPollIntervalMs = 500;
+    const popupPollInterval = setInterval(() => {
+      if (oauthPopup?.closed && !authComplete) {
+        authComplete = true;
+        cleanup();
+        resolve(new Err(new Error("Authentication window was closed.")));
+      }
+    }, popupPollIntervalMs);
+
     const cleanup = () => {
+      clearInterval(popupPollInterval);
       window.removeEventListener("message", handleWindowMessage);
       if (channel) {
         channel.close();

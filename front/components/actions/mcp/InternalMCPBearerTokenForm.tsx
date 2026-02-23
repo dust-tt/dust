@@ -1,3 +1,5 @@
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import {
   Collapsible,
   CollapsibleContent,
@@ -5,9 +7,6 @@ import {
   Input,
 } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
-
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 
 export function InternalMCPBearerTokenForm() {
   const form = useFormContext<MCPServerFormValues>();

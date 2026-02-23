@@ -12,15 +12,12 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ConnectorProvider, DataSourceType } from "@app/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-} from "@app/types";
+import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
+import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
 
 const PROVIDER = "gong";
 const LABS_STORAGE_FEATURE_FLAG = "labs_transcripts_full_storage";

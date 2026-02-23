@@ -1,16 +1,3 @@
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  cn,
-  ContentMessage,
-  InformationCircleIcon,
-  ScrollArea,
-} from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -28,22 +15,36 @@ import {
 } from "@app/components/skill_builder/skillFormData";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  ContentMessage,
+  cn,
+  InformationCircleIcon,
+  ScrollArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
   extendedSkill?: SkillType;
+  onSaved: () => void;
 }
 
 export default function SkillBuilder({
   skill,
   extendedSkill,
+  onSaved,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useAppRouter();
@@ -96,7 +97,7 @@ export default function SkillBuilder({
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
-      skillId: !isCreatingNew ? skill?.sId : undefined,
+      skillId: skill?.sId,
       currentEditors: editors,
     });
 
@@ -118,6 +119,8 @@ export default function SkillBuilder({
       type: "success",
     });
 
+    onSaved();
+
     if (isCreatingNew && result.value.sId) {
       const newUrl = `/w/${owner.sId}/builder/skills/${result.value.sId}`;
       await router.replace(newUrl, undefined, { shallow: true });
@@ -128,8 +131,12 @@ export default function SkillBuilder({
     setIsSaving(false);
   };
 
-  const handleCancel = async () => {
-    await appLayoutBack(owner, router);
+  const handleCancel = () => {
+    if (window.history.state?.idx > 0) {
+      router.back();
+    } else {
+      void router.replace(getConversationRoute(owner.sId));
+    }
   };
 
   const handleSave = () => {

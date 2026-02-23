@@ -1,12 +1,14 @@
 import crypto from "crypto";
-import type { Request, RequestHandler } from "express";
 import type express from "express";
+import type { Request, RequestHandler } from "express";
 import { error } from "firebase-functions/logger";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
-import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
-import type { Region } from "../webhook-router-config.js";
+import type {
+  Region,
+  WebhookRouterConfigManager,
+} from "../webhook-router-config.js";
 import { ALL_REGIONS } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {

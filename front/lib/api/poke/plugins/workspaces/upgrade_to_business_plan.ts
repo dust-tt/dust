@@ -1,40 +1,49 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { whitelistWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
-import { Err, Ok } from "@app/types";
+import { setWorkspaceBusinessPlanWhitelist } from "@app/lib/api/workspace";
+import { Ok } from "@app/types/shared/result";
 
-export const upgradeToBusinessPlan = createPlugin({
+export const toggleBusinessPlanWhitelist = createPlugin({
   manifest: {
-    id: "upgrade-to-business-plan",
-    name: "Whitelist workspace for Enterprise seat based plan",
+    id: "toggle-business-plan-whitelist",
+    name: "Toggle Enterprise seat based plan whitelist",
     description:
-      "Workspace will be able to subscribe to Enterprise seat based plan (45€/$/£) when doing their Stripe checkout session.",
+      "Toggle workspace whitelisting for Enterprise seat based plan (45€/$/£). The toggle shows the current state.",
     resourceTypes: ["workspaces"],
     args: {
-      confirm: {
+      shouldWhitelist: {
         type: "boolean",
-        label: "Confirm",
-        description: "Confirm whitelisting for Enterprise seat based plan.",
+        label: "Whitelist for Enterprise seat based plan",
+        description: "Check to enable whitelisting, uncheck to disable.",
+        variant: "toggle",
+        async: true,
       },
     },
   },
-  execute: async (auth, _, args) => {
-    if (!args.confirm) {
-      return new Err(
-        new Error(
-          "Please confirm the whitelisting for Enterprise seat based plan."
-        )
-      );
-    }
-
+  populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
-    const res = await whitelistWorkspaceToBusinessPlan(auth, workspace);
+    const isCurrentlyWhitelisted = workspace.metadata?.isBusiness === true;
+
+    return new Ok({
+      shouldWhitelist: isCurrentlyWhitelisted,
+    });
+  },
+  execute: async (auth, _, args) => {
+    const workspace = auth.getNonNullableWorkspace();
+    const shouldBeWhitelisted = args.shouldWhitelist;
+
+    const res = await setWorkspaceBusinessPlanWhitelist(
+      auth,
+      workspace,
+      shouldBeWhitelisted
+    );
+
     if (res.isErr()) {
       return res;
     }
 
     return new Ok({
       display: "text",
-      value: `Workspace ${workspace.name} whitelisted for Enterprise seat based plan.`,
+      value: `Workspace ${workspace.name} ${shouldBeWhitelisted ? "whitelisted for" : "whitelist removed for"} Enterprise seat based plan.`,
     });
   },
 });

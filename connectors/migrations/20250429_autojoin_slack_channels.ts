@@ -1,6 +1,3 @@
-import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
-import { makeScript } from "scripts/helpers";
-
 import {
   getAllChannels,
   joinChannel,
@@ -10,6 +7,8 @@ import { SlackChannelModel } from "@connectors/lib/models/slack";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
+import { makeScript } from "scripts/helpers";
 
 async function setupSlackChannel({
   channel,

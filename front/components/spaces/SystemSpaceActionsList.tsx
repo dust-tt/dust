@@ -1,12 +1,13 @@
-import * as React from "react";
-import { useCallback, useMemo, useState } from "react";
-
 import { AdminActionsList } from "@app/components/actions/mcp/AdminActionsList";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
+import * as React from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface SpaceActionsListProps {
   isAdmin: boolean;

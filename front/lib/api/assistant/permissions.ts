@@ -1,5 +1,3 @@
-import uniq from "lodash/uniq";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -9,12 +7,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type {
-  CombinedResourcePermissions,
-  ContentFragmentInputWithContentNode,
-  ModelId,
-} from "@app/types";
-import { removeNulls } from "@app/types";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { CombinedResourcePermissions } from "@app/types/resource_permissions";
+import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
+import uniq from "lodash/uniq";
 
 export function getDataSourceViewIdsFromActions(
   actions: UnsavedMCPServerConfigurationType[]

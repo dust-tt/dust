@@ -1,0 +1,39 @@
+engine biome(1.0)
+language js
+
+// Matches raw SQL query calls on Sequelize instances.
+// Detects both non-generic and generic variants:
+//   frontSequelize.query(...) and frontSequelize.query<Type>(...)
+// Matched patterns:
+//   - Exact identifiers: frontSequelize, getFrontReplicaDbConnection(),
+//     getConnectorsPrimaryDbConnection()
+//   - Regex: *sequelize*, *Replica*, *Db (frontDb, connectorsDb, etc.)
+pattern raw_sql_obj() {
+    or {
+        `frontSequelize`,
+        `getFrontReplicaDbConnection()`,
+        `getConnectorsPrimaryDbConnection()`,
+        r".*[Ss]equelize.*",
+        r".*[Rr]eplica.*",
+        r".*Db$"
+    }
+}
+
+or {
+    `$obj.query($args)` where {
+        $obj <: raw_sql_obj(),
+        register_diagnostic(
+            span = $obj,
+            message = "Raw SQL queries are not allowed. Use Sequelize models and methods instead.",
+            severity = "error"
+        )
+    },
+    `$obj.query<$_>($args)` where {
+        $obj <: raw_sql_obj(),
+        register_diagnostic(
+            span = $obj,
+            message = "Raw SQL queries are not allowed. Use Sequelize models and methods instead.",
+            severity = "error"
+        )
+    }
+}

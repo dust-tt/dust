@@ -1,29 +1,27 @@
-import uniq from "lodash/uniq";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
-
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { DustError } from "@app/lib/error";
+import type { AgentMCPActionType } from "@app/types/actions";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  ContentFragmentsType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  RichMention,
   UserMessageOrigin,
   UserMessageTypeWithContentFragments,
-  UserType,
-} from "@app/types";
-import { isLightAgentMessageWithActionsType } from "@app/types";
-import type { AgentMCPActionType } from "@app/types/actions";
+} from "@app/types/assistant/conversation";
+import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import type { RichMention } from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import uniq from "lodash/uniq";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export type AgentStateClassification =
   | "placeholder"
@@ -103,8 +101,8 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
       (message.context.origin === "onboarding_conversation" ||
-        message.context.origin === "agent_copilot" ||
-        message.context.origin === "project_kickoff")) ||
+        message.context.origin === "project_kickoff" ||
+        isCopilotBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );
 };
@@ -142,3 +140,9 @@ export const makeInitialMessageStreamState = (
 
 export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
   uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;
+
+export const isCopilotBootstrapMessage = (
+  message: UserMessageTypeWithContentFragments
+): boolean => {
+  return message.context.origin === "agent_copilot" && message.rank === 0;
+};

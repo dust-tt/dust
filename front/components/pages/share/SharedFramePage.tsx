@@ -1,12 +1,11 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { Head, usePathParam } from "@app/lib/platform";
 import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { getFaviconPath } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 export function SharedFramePage() {
   const token = usePathParam("token");

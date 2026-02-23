@@ -1,6 +1,7 @@
 import { getFeatureFlags } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
-import type { WhitelistableFeature, WorkspaceType } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { WorkspaceType } from "@app/types/user";
 
 export class FeatureFlagFactory {
   static async basic(

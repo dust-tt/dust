@@ -1,10 +1,9 @@
-import { Spinner } from "@dust-tt/sparkle";
-
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { Spinner } from "@dust-tt/sparkle";
 
 export function SpaceAppsListPage() {
   const router = useAppRouter();

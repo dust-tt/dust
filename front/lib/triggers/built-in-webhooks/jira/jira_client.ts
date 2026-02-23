@@ -10,8 +10,8 @@ import {
   JiraWebhooksResponseSchema,
   validateJiraApiResponse,
 } from "@app/lib/triggers/built-in-webhooks/jira/types";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // TODO(2025-10-28 aubin): consolidate with the MCP server.
 

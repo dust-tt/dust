@@ -1,19 +1,22 @@
-import type { Fetcher } from "swr";
-
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  fetcher,
   getErrorFromResponse,
+  useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
   FileWithCreatorType,
   GetProjectFilesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { normalizeError } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import { useMemo } from "react";
+import type { Fetcher } from "swr";
 
 export type { FileWithCreatorType };
 
@@ -26,6 +29,7 @@ export function useProjectFiles({
   projectId: string;
   disabled?: boolean;
 }) {
+  const { fetcher } = useFetcher();
   const projectFilesFetcher: Fetcher<GetProjectFilesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -122,5 +126,41 @@ export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
       });
       return new Err(new Error(errorMessage));
     }
+  };
+}
+
+export function useCheckProjectName({
+  owner,
+  initialName = "",
+}: {
+  owner: LightWorkspaceType;
+  initialName?: string;
+}) {
+  const { fetcher } = useFetcher();
+  const {
+    debouncedValue: debouncedName,
+    isDebouncing,
+    setValue,
+  } = useDebounce(initialName, {
+    delay: 300,
+    minLength: 1,
+  });
+
+  const shouldFetch = useMemo(() => {
+    return debouncedName.trim().length > 0;
+  }, [debouncedName]);
+
+  const checkKey = shouldFetch
+    ? `/api/w/${owner.sId}/spaces/check-name?name=${encodeURIComponent(debouncedName)}`
+    : null;
+
+  const checkFetcher: Fetcher<CheckNameResponseBody> = fetcher;
+
+  const { data, isLoading } = useSWRWithDefaults(checkKey, checkFetcher);
+
+  return {
+    isNameAvailable: data?.available ?? true,
+    isChecking: isLoading || isDebouncing,
+    setValue,
   };
 }

@@ -1,6 +1,10 @@
 import logger from "@app/logger/logger";
-import type { ModelProviderIdType, ResponseFormat } from "@app/types";
-import { isString, ResponseFormatSchema } from "@app/types";
+import type {
+  ModelProviderIdType,
+  ResponseFormat,
+} from "@app/types/assistant/models/types";
+import { ResponseFormatSchema } from "@app/types/assistant/models/types";
+import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {

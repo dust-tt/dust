@@ -1,5 +1,3 @@
-import { GlobeAltIcon, Page, Spinner } from "@dust-tt/sparkle";
-
 import { CapabilitiesSection } from "@app/components/workspace/settings/CapabilitiesSection";
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
 import { ModelSelectionSection } from "@app/components/workspace/settings/ModelSelectionSection";
@@ -8,6 +6,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useBotDataSources } from "@app/lib/swr/data_sources";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { GlobeAltIcon, Page, Spinner } from "@dust-tt/sparkle";
 
 export function WorkspaceSettingsPage() {
   const owner = useWorkspace();

@@ -1,5 +1,5 @@
-import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
 import { classNames } from "@dust-tt/sparkle";
+import type { MarkdownCitation } from "@extension/ui/components/markdown/MarkdownCitation";
 import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";

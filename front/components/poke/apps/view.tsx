@@ -7,7 +7,8 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import type { AppType, LightWorkspaceType } from "@app/types";
+import type { AppType } from "@app/types/app";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function ViewAppTable({
   app,

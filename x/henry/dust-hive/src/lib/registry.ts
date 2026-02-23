@@ -121,6 +121,17 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     },
     portKey: "frontSpaApp",
   },
+  viz: {
+    cwd: "viz",
+    needsNvm: true,
+    needsEnvSh: true,
+    buildCommand: (env) => `npm run dev -- -p ${env.ports.viz}`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.viz}/`,
+    },
+    portKey: "viz",
+  },
 };
 
 const registryKeys = Object.keys(SERVICE_REGISTRY) as ServiceName[];
@@ -134,9 +145,9 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle and SDK, which start at spawn)
+// Services to start during warm (all services except sparkle, SDK, and viz which start at spawn/manually)
 export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
-  (service) => service !== "sparkle" && service !== "sdk"
+  (service) => service !== "sparkle" && service !== "sdk" && service !== "viz"
 );
 
 // Build the full shell command for a service

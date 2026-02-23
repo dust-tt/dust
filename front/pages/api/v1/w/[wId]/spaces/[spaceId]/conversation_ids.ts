@@ -1,14 +1,13 @@
-import type { GetSpaceConversationIdsResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { GetSpaceConversationIdsResponseType } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger
@@ -79,6 +78,8 @@ async function handler(
             dangerouslySkipPermissionFiltering: true, // System key has access
             // Don't include deleted - we only want conversations that still exist
             includeDeleted: false,
+            // Don't include test conversations
+            excludeTest: true,
           },
         });
 

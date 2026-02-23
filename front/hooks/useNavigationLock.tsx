@@ -1,8 +1,10 @@
-import { useContext, useEffect } from "react";
-import React from "react";
-
 import { ConfirmContext } from "@app/components/Confirm";
-import { useAppRouter } from "@app/lib/platform";
+import {
+  decrementNavigationLock,
+  incrementNavigationLock,
+} from "@app/lib/navigation-lock";
+import { useAppRouter, useNavigationBlocker } from "@app/lib/platform";
+import React, { useCallback, useContext, useEffect } from "react";
 
 export function useNavigationLock(
   isEnabled = true,
@@ -17,6 +19,26 @@ export function useNavigationLock(
   const confirm = useContext(ConfirmContext);
   const isNavigatingAway = React.useRef<boolean>(false);
 
+  // SPA (React Router): use useBlocker to intercept all navigation
+  // (browser back/forward, link clicks, programmatic navigate()).
+  const onBlock = useCallback(
+    () => confirm(warningData),
+    [confirm, warningData]
+  );
+
+  useNavigationBlocker(isEnabled, onBlock);
+
+  // Prevent programmatic reloads (e.g. from SWR resHandler) while the lock is active.
+  useEffect(() => {
+    if (isEnabled) {
+      incrementNavigationLock();
+      return () => decrementNavigationLock();
+    }
+  }, [isEnabled]);
+
+  // Next.js: use routeChangeStart events to intercept navigation.
+  // This is a noop in the SPA since routeChangeStart is not emitted
+  // for browser-initiated navigation.
   useEffect(() => {
     const handleWindowClose = (e: BeforeUnloadEvent) => {
       if (!isEnabled) {

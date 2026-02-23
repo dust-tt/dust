@@ -28,7 +28,7 @@ import {
   VantaTestsResponseSchema,
   VantaVulnerabilitiesResponseSchema,
 } from "@app/lib/api/actions/servers/vanta/renderers";
-import { Ok } from "@app/types";
+import { Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof VANTA_TOOLS_METADATA> = {
   list_tests: async (params, { authInfo }) => {

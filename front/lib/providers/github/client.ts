@@ -1,5 +1,3 @@
-import { Octokit } from "@octokit/core";
-
 import { PROVIDER_SEARCH_MAX_PAGE_SIZE } from "@app/lib/providers/constants";
 import { GITHUB_NODE_QUERY } from "@app/lib/providers/github/graphql";
 import type {
@@ -9,8 +7,10 @@ import type {
   GitHubSearchIssuesResponse,
 } from "@app/lib/providers/github/types";
 import { GitHubNodeQueryResponseSchema } from "@app/lib/providers/github/types";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Octokit } from "@octokit/core";
 
 function getGitHubClient(accessToken: string) {
   return new Octokit({ auth: accessToken });

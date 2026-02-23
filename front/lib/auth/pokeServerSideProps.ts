@@ -1,10 +1,9 @@
-import type { ReactElement } from "react";
-
 import type {
   AuthContextNoWorkspaceValue,
   AuthContextValue,
 } from "@app/lib/auth/AuthContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { ReactElement } from "react";
 
 export type PageWithLayout<P = object> = React.FC<P> & {
   getLayout?: (page: ReactElement, pageProps: AuthContextValue) => ReactElement;

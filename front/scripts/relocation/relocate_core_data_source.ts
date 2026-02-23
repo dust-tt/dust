@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import {
   config,
   isRegionType,
@@ -8,6 +6,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchCoreDataSourceRelocationWorkflow } from "@app/temporal/relocation/client";
+import assert from "assert";
 
 makeScript(
   {

@@ -1,8 +1,8 @@
+import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { render } from "@react-email/render";
+// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import * as React from "react";
 import { z } from "zod";
-
-import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 
 export const DefaultEmailTemplatePropsSchema = z.object({
   name: z.string(),

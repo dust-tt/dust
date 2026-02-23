@@ -1,6 +1,4 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { MCPProgressNotificationType } from "@dust-tt/client";
-
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { FileResource } from "@app/lib/resources/file_resource";
 
 /**
@@ -17,14 +15,16 @@ export function buildInteractiveContentFileNotification(
       progress: 1,
       total: 1,
       progressToken,
-      data: {
-        label,
-        output: {
-          type: "interactive_content_file",
-          fileId: fileResource.sId,
-          mimeType: fileResource.contentType,
-          title: fileResource.fileName,
-          updatedAt: fileResource.updatedAtMs.toString(),
+      _meta: {
+        data: {
+          label,
+          output: {
+            type: "interactive_content_file",
+            fileId: fileResource.sId,
+            mimeType: fileResource.contentType,
+            title: fileResource.fileName,
+            updatedAt: fileResource.updatedAtMs.toString(),
+          },
         },
       },
     },

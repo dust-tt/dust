@@ -7,7 +7,8 @@ import {
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SPEECH_GENERATOR_TOOLS_METADATA } from "@app/lib/api/actions/servers/speech_generator/metadata";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
   text_to_speech: async ({
@@ -42,7 +43,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
           resource: {
             name: fileName,
             blob: base64,
-            text: "Your audio file was generated successfully.",
+            _meta: { text: "Your audio file was generated successfully." },
             mimeType: "audio/mpeg",
             uri: fileName,
           },
@@ -88,7 +89,9 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
           resource: {
             name: fileName,
             blob: base64,
-            text: "Your dialogue audio file was generated successfully.",
+            _meta: {
+              text: "Your dialogue audio file was generated successfully.",
+            },
             mimeType: "audio/mpeg",
             uri: fileName,
           },

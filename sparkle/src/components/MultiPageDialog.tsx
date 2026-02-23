@@ -1,6 +1,4 @@
-import { cva } from "class-variance-authority";
-import * as React from "react";
-import { useState } from "react";
+/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Avatar, Button, ScrollArea, Separator } from "@sparkle/components";
 import {
@@ -14,6 +12,9 @@ import {
 } from "@sparkle/components/Dialog";
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
+import * as React from "react";
+import { useState } from "react";
 
 const multiPageDialogLayoutVariants = cva(
   cn("s-flex s-flex-col s-h-full s-overflow-hidden")

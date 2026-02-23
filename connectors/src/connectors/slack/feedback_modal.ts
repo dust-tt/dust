@@ -1,8 +1,7 @@
-import type { WebClient } from "@slack/web-api";
-
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import logger from "@connectors/logger/logger";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { WebClient } from "@slack/web-api";
 
 export const FEEDBACK_MODAL_SUBMIT = "feedback_modal_submit";
 

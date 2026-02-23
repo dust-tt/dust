@@ -1,6 +1,4 @@
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import {
   A,
   Grid,
@@ -14,6 +12,8 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 export async function getStaticProps() {
   return {
@@ -23,6 +23,7 @@ export async function getStaticProps() {
   };
 }
 
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function PlatformPrivacy() {
   const router = useRouter();
 

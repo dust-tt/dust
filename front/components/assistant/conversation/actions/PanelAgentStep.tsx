@@ -1,8 +1,8 @@
-import { ContentMessage, Markdown, Separator } from "@dust-tt/sparkle";
-
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import type { LightWorkspaceType, ParsedContentItem } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { ParsedContentItem } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
+import { ContentMessage, Markdown } from "@dust-tt/sparkle";
 
 interface AgentStepProps {
   stepNumber: number;
@@ -25,18 +25,9 @@ export function PanelAgentStep({
   streamActionProgress,
   owner,
   messageStatus,
-  showSeparator = false,
 }: AgentStepProps) {
   return (
     <div className="flex flex-col gap-4 duration-500 animate-in fade-in slide-in-from-left-2">
-      {showSeparator && <Separator className="my-4" />}
-
-      <div className="flex items-center gap-2">
-        <span className="text-size w-fit self-start text-lg font-semibold">
-          Step {stepNumber}
-        </span>
-      </div>
-
       {reasoningContent !== undefined && (
         <div className="transition-all duration-300 animate-in fade-in slide-in-from-bottom-1">
           <ContentMessage variant="primary" size="lg">

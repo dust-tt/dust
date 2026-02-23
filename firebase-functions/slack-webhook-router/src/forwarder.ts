@@ -1,4 +1,4 @@
-import { IncomingHttpHeaders } from "http";
+import type { IncomingHttpHeaders } from "http";
 import { CONFIG } from "./config.js";
 import type { Secrets } from "./secrets.js";
 

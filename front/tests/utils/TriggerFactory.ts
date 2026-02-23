@@ -1,13 +1,12 @@
-import { faker } from "@faker-js/faker";
-
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import type { ModelId } from "@app/types";
 import type {
   ScheduleConfig,
   TriggerStatus,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
+import type { ModelId } from "@app/types/shared/model_id";
+import { faker } from "@faker-js/faker";
 
 interface WebhookTriggerOptions {
   agentConfigurationId: string;

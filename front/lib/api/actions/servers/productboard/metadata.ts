@@ -1,9 +1,8 @@
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const PRODUCTBOARD_TOOL_NAME = "productboard" as const;
 
@@ -526,6 +525,9 @@ export const PRODUCTBOARD_SERVER = {
     },
     icon: "ProductboardLogo",
     documentationUrl: "https://docs.dust.tt/docs/productboard",
+    // Predates the introduction of the rule, would require extensive work to
+    // improve, as it's already widely adopted.
+    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(PRODUCTBOARD_TOOLS_METADATA).map((t) => ({

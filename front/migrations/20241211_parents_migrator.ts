@@ -7,8 +7,11 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ConnectorProvider } from "@app/types";
-import { CoreAPI, isConnectorProvider, Ok, withRetries } from "@app/types";
+import type { ConnectorProvider } from "@app/types/data_source";
+import { CoreAPI } from "@app/types/core/core_api";
+import { isConnectorProvider } from "@app/types/data_source";
+import { Ok } from "@app/types/shared/result";
+import { withRetries } from "@app/types/shared/retries";
 
 type MigratorAction = "transform" | "clean";
 

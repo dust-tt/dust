@@ -1,6 +1,7 @@
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
+import { fileSizeToHumanReadable } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const computeStatsPlugin = createPlugin({
   manifest: {

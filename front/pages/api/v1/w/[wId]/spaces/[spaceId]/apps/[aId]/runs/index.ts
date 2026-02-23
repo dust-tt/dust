@@ -1,7 +1,3 @@
-import type { RunAppResponseType } from "@dust-tt/client";
-import { createParser } from "eventsource-parser";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
@@ -17,21 +13,22 @@ import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  BlockType,
-  CredentialsType,
-  ModelIdType,
-  ModelProviderIdType,
-  RunType,
-  TraceType,
-  WithAPIErrorResponse,
-} from "@app/types";
 import {
-  CoreAPI,
   credentialsFromProviders,
   dustManagedCredentials,
-} from "@app/types";
+} from "@app/types/api/credentials";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import { CoreAPI } from "@app/types/core/core_api";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import type { CredentialsType } from "@app/types/provider";
+import type { BlockType, RunType, TraceType } from "@app/types/run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { RunAppResponseType } from "@dust-tt/client";
+import { createParser } from "eventsource-parser";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {

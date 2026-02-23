@@ -19,6 +19,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FullscreenExitIcon,
+  FullscreenIcon,
   HeartIcon,
   LightbulbIcon,
   ListSelectIcon,
@@ -56,6 +58,7 @@ import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { ProfilePanel } from "../components/Profile";
 import {
   type Agent,
   type Conversation,
@@ -148,6 +151,7 @@ function DustMain() {
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showProfileView, setShowProfileView] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
 
   // Initialize space members with generated members when a space is first selected
@@ -309,18 +313,32 @@ function DustMain() {
     });
   }, [searchText, sortedCollaborators]);
 
+  // Derive count and hasActivity deterministically from space ID.
+  const getSpaceActivity = (space: Space) => {
+    const charCode = space.id.charCodeAt(space.id.length - 1);
+    const count = charCode % 3 === 0 ? (charCode % 9) + 1 : undefined;
+    const hasActivity = count ? true : charCode % 2 !== 0;
+    return { count, hasActivity };
+  };
+
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
-      // Determine if restricted based on space ID
-      const isRestrictedA = a.id.charCodeAt(a.id.length - 1) % 2 === 0;
-      const isRestrictedB = b.id.charCodeAt(b.id.length - 1) % 2 === 0;
+      const actA = getSpaceActivity(a);
+      const actB = getSpaceActivity(b);
 
-      // First sort by type: Open (false) first, Restricted (true) second
-      if (isRestrictedA !== isRestrictedB) {
-        return isRestrictedA ? 1 : -1;
+      // 1. Items with count come first, highest count first
+      const countA = actA.count ?? 0;
+      const countB = actB.count ?? 0;
+      if (countA !== countB) {
+        return countB - countA;
       }
 
-      // Then sort alphabetically by name
+      // 2. Items with hasActivity (but no count) come next
+      if (actA.hasActivity !== actB.hasActivity) {
+        return actA.hasActivity ? -1 : 1;
+      }
+
+      // 3. Alphabetical by name
       return a.name.localeCompare(b.name);
     });
   }, [spaces]);
@@ -539,7 +557,7 @@ function DustMain() {
                     status={status}
                     moreMenu={getConversationMoreMenu(conversation)}
                     onClick={() => {
-                      // Clear previousSpaceId when navigating from sidebar
+                      setShowProfileView(false);
                       setPreviousSpaceId(null);
                       setSelectedConversationId(conversation.id);
                       setSelectedSpaceId(null);
@@ -552,9 +570,10 @@ function DustMain() {
             <NavigationList className="s-px-2">
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Rooms"
+                  label="Projects"
                   type="collapse"
                   defaultOpen={true}
+                  visibleItems={4}
                   action={
                     <>
                       <Button
@@ -608,10 +627,7 @@ function DustMain() {
                     // Deterministically assign open or restricted status based on space ID
                     const isRestricted =
                       space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                    // Deterministically assign count to some spaces based on space ID
-                    const spaceIndex = space.id.charCodeAt(space.id.length - 1);
-                    const count =
-                      spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
+                    const { count, hasActivity } = getSpaceActivity(space);
                     return (
                       <NavigationListItem
                         key={space.id}
@@ -619,6 +635,7 @@ function DustMain() {
                         icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
                         selected={space.id === selectedSpaceId}
                         count={count}
+                        hasActivity={hasActivity}
                         moreMenu={
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -645,6 +662,7 @@ function DustMain() {
                           </DropdownMenu>
                         }
                         onClick={() => {
+                          setShowProfileView(false);
                           setSelectedSpaceId(space.id);
                           setSelectedConversationId(null);
                         }}
@@ -725,7 +743,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -744,7 +762,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -763,7 +781,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -782,7 +800,7 @@ function DustMain() {
                           selected={conversation.id === selectedConversationId}
                           moreMenu={getConversationMoreMenu(conversation)}
                           onClick={() => {
-                            // Clear previousSpaceId when navigating from sidebar
+                            setShowProfileView(false);
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
@@ -848,6 +866,9 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setShowProfileView(true);
+                setSelectedConversationId(null);
+                setSelectedSpaceId(null);
               }}
             />
             <DropdownMenuItem
@@ -947,6 +968,7 @@ function DustMain() {
 
   // Handle back button from conversation view
   const handleConversationBack = () => {
+    setShowProfileView(false);
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
@@ -1035,11 +1057,14 @@ function DustMain() {
 
   // Main content
   const mainContent =
-    // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
+    // Priority 0: Show profile when opened from user menu
+    showProfileView && user ? (
+      <ProfilePanel user={user} />
+    ) : // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
     selectedConversationId &&
-    selectedConversationId !== "new-conversation" &&
-    selectedConversation &&
-    user ? (
+      selectedConversationId !== "new-conversation" &&
+      selectedConversation &&
+      user ? (
       <ConversationView
         conversation={selectedConversation}
         locutor={user}
@@ -1068,10 +1093,9 @@ function DustMain() {
             : []
         }
         onConversationClick={(conversation) => {
-          // Store the current space ID before navigating to conversation
+          setShowProfileView(false);
           setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
-          // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
         onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
         onUpdateSpaceName={handleUpdateSpaceName}

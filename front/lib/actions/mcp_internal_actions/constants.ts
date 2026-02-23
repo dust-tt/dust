@@ -69,6 +69,7 @@ import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_gen
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import {
@@ -82,13 +83,11 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
-import type {
-  ModelId,
-  PlanType,
-  Result,
-  WhitelistableFeature,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -120,6 +119,8 @@ export const SEARCH_SERVER_NAME = "search";
 
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 
+export const ASHBY_SERVER_NAME = "ashby";
+
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
 export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
@@ -134,7 +135,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   "agent_memory",
   "agent_router",
-  "ashby",
+  ASHBY_SERVER_NAME,
   "confluence",
   "conversation_files",
   "databricks",
@@ -181,6 +182,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "statuspage",
   "toolsets",
   "ukg_ready",
+  "user_mentions",
   "val_town",
   "vanta",
   "front",
@@ -528,7 +530,7 @@ export const INTERNAL_MCP_SERVERS = {
       serverInfo: {
         ...SLIDESHOW_SERVER.serverInfo,
         // TBD if turned into a global skill or not.
-        // eslint-disable-next-line dust/no-mcp-server-instructions
+        // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
         instructions: SLIDESHOW_INSTRUCTIONS,
       },
     },
@@ -1052,6 +1054,17 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: PROJECT_CONVERSATION_SERVER,
   },
+  user_mentions: {
+    id: 1026,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: USER_MENTIONS_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
@@ -1112,12 +1125,6 @@ type AutoServerKeys<T> = {
 export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
-
-function isServerWithMetadata(
-  server: InternalMCPServerEntry
-): server is InternalMCPServerEntryWithMetadata<InternalMCPServerNameType> {
-  return server.metadata !== undefined;
-}
 
 export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType
@@ -1227,9 +1234,7 @@ export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
 ): InternalAllowedIconType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    throw new Error(`Server ${name} missing metadata`);
-  }
+
   return server.metadata.serverInfo.icon;
 }
 
@@ -1237,9 +1242,7 @@ export function getInternalMCPServerToolStakes(
   name: InternalMCPServerNameType
 ): Record<string, MCPToolStakeLevelType> {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    throw new Error(`Server ${name} missing metadata`);
-  }
+
   return server.metadata.tools_stakes;
 }
 
@@ -1249,9 +1252,6 @@ export function getInternalMCPServerToolDisplayLabels(
   name: InternalMCPServerNameType
 ): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    return null;
-  }
 
   const entries = server.metadata.tools
     .filter(
@@ -1271,9 +1271,7 @@ export function getInternalMCPServerInfo(
   name: InternalMCPServerNameType
 ): InternalMCPServerDefinitionType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (!isServerWithMetadata(server)) {
-    throw new Error(`Server ${name} missing metadata`);
-  }
+
   return server.metadata.serverInfo;
 }
 
@@ -1315,10 +1313,8 @@ export function matchesInternalMCPServerName(
 
 export function getInternalMCPServerMetadata(
   name: InternalMCPServerNameType
-): ServerMetadata | undefined {
+): ServerMetadata {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  if (isServerWithMetadata(server)) {
-    return server.metadata;
-  }
-  return undefined;
+
+  return server.metadata;
 }

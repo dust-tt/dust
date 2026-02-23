@@ -1,3 +1,10 @@
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { MCPServerType } from "@app/lib/api/mcp";
+import { filterMCPServer } from "@app/lib/mcp";
+import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
+import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -9,13 +16,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import { filterMCPServer } from "@app/lib/mcp";
-import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 type SpaceManagedActionsViewsModelProps = {
   owner: LightWorkspaceType;
