@@ -778,9 +778,9 @@ export const createNote = async ({
     propertiesForApi.hs_timestamp = Date.now().toString();
   } else {
     // Convert ISO 8601 strings to Unix milliseconds.
-    const parsed = Date.parse(propertiesForApi.hs_timestamp);
-    if (!isNaN(parsed)) {
-      propertiesForApi.hs_timestamp = parsed.toString();
+    const parsedMs = Date.parse(propertiesForApi.hs_timestamp);
+    if (!isNaN(parsedMs)) {
+      propertiesForApi.hs_timestamp = parsedMs.toString();
     }
   }
 
