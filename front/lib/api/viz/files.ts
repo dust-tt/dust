@@ -105,8 +105,10 @@ async function isAncestorConversation(
  */
 export async function canAccessFileInProject(
   owner: LightWorkspaceType,
-  file: FileResource,
-  requestedProjectId: string
+  {
+    file,
+    requestedProjectId,
+  }: { file: FileResource; requestedProjectId: string }
 ): Promise<Result<true, Error>> {
   const { useCase, useCaseMetadata } = file;
   const isSupportedUsecase =
@@ -193,8 +195,10 @@ export async function canAccessFileInProject(
  */
 export async function canAccessFileInConversation(
   owner: LightWorkspaceType,
-  file: FileResource,
-  requestedConversationId: string
+  {
+    file,
+    requestedConversationId,
+  }: { file: FileResource; requestedConversationId: string }
 ): Promise<Result<true, Error>> {
   const { useCase, useCaseMetadata } = file;
   const isSupportedUsecase =

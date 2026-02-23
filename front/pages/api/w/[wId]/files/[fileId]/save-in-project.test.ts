@@ -397,6 +397,8 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
     expect(data.file.useCaseMetadata.sourceConversationId).toBe(
       conversation.sId
     );
+    // moveFrameToSpace clears conversationId to avoid confusion when accessing the file in project context.
+    expect(data.file.useCaseMetadata.conversationId).toBeUndefined();
   });
 
   it("should return 405 for unsupported methods", async () => {

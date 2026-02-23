@@ -43,11 +43,10 @@ describe("canAccessFileInConversation", () => {
         messagesCreatedAt: [new Date()],
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -67,11 +66,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: "some-conversation-id" },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        "nonexistent-conversation-id"
-      );
+        requestedConversationId: "nonexistent-conversation-id",
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -96,11 +94,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -123,11 +120,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: null,
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -152,11 +148,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: "nonexistent-conversation-id" },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -184,11 +179,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: conversation2.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation1.sId
-      );
+        requestedConversationId: conversation1.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -264,11 +258,10 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Should allow access from parent conversation
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        parentConversation.sId
-      );
+        requestedConversationId: parentConversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -293,11 +286,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -373,11 +365,10 @@ describe("canAccessFileInConversation", () => {
       });
 
       // Should allow access from parent conversation
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        parentConversation.sId
-      );
+        requestedConversationId: parentConversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -428,11 +419,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: project.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -455,11 +445,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: null,
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -484,11 +473,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: "nonexistent-space-id" },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -513,11 +501,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: regularSpace.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -567,11 +554,10 @@ describe("canAccessFileInConversation", () => {
         useCaseMetadata: { spaceId: project2.sId },
       });
 
-      const result = await canAccessFileInConversation(
-        workspace,
+      const result = await canAccessFileInConversation(workspace, {
         file,
-        conversation.sId
-      );
+        requestedConversationId: conversation.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -605,7 +591,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: null,
       });
 
-      const result = await canAccessFileInProject(workspace, file, project.sId);
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -625,11 +614,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { spaceId: "some-space-id" },
       });
 
-      const result = await canAccessFileInProject(
-        workspace,
+      const result = await canAccessFileInProject(workspace, {
         file,
-        "nonexistent-project-id"
-      );
+        requestedProjectId: "nonexistent-project-id",
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -680,7 +668,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInProject(workspace, file, project.sId);
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -700,7 +691,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: null,
       });
 
-      const result = await canAccessFileInProject(workspace, file, project.sId);
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -722,7 +716,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { conversationId: "nonexistent-conversation-id" },
       });
 
-      const result = await canAccessFileInProject(workspace, file, project.sId);
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -750,11 +747,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInProject(
-        workspace,
+      const result = await canAccessFileInProject(workspace, {
         file,
-        project1.sId
-      );
+        requestedProjectId: project1.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -783,7 +779,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInProject(workspace, file, project.sId);
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -811,11 +810,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      const result = await canAccessFileInProject(
-        workspace,
+      const result = await canAccessFileInProject(workspace, {
         file,
-        project1.sId
-      );
+        requestedProjectId: project1.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -837,7 +835,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { spaceId: project.sId },
       });
 
-      const result = await canAccessFileInProject(workspace, file, project.sId);
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -857,7 +858,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: null,
       });
 
-      const result = await canAccessFileInProject(workspace, file, project.sId);
+      const result = await canAccessFileInProject(workspace, {
+        file,
+        requestedProjectId: project.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -880,11 +884,10 @@ describe("canAccessFileInProject", () => {
         useCaseMetadata: { spaceId: project2.sId },
       });
 
-      const result = await canAccessFileInProject(
-        workspace,
+      const result = await canAccessFileInProject(workspace, {
         file,
-        project1.sId
-      );
+        requestedProjectId: project1.sId,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {

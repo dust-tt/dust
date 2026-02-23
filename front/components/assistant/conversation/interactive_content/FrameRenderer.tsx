@@ -50,7 +50,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSWRConfig } from "swr";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -259,7 +258,6 @@ export function FrameRenderer({
     owner,
   });
 
-  const { mutate: globalMutate } = useSWRConfig();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
   const [isSavingToProject, setIsSavingToProject] = useState(false);
@@ -371,8 +369,8 @@ export function FrameRenderer({
       message: (
         <>
           <div>
-            Subsequent changes to this Frame will be applied at the project
-            level.
+            The Frame will be part of the project knowledge, and be able to be
+            edited by any project member.
           </div>
           <div>This action cannot be undone.</div>
         </>
@@ -409,14 +407,6 @@ export function FrameRenderer({
       });
       // Invalidate file metadata so parent and this component get updated projectId.
       await mutateFileMetadata();
-      const metadataKey = `/api/w/${owner.sId}/files/${fileId}/metadata`;
-      const metadataKeyWithCache = contentHash
-        ? `${metadataKey}?v=${contentHash}`
-        : null;
-      await globalMutate(metadataKey);
-      if (metadataKeyWithCache) {
-        await globalMutate(metadataKeyWithCache);
-      }
     } catch (e) {
       sendNotification({
         type: "error",
@@ -428,10 +418,8 @@ export function FrameRenderer({
     }
   }, [
     confirm,
-    contentHash,
     conversation.spaceId,
     fileId,
-    globalMutate,
     mutateFileMetadata,
     owner.sId,
     projectInfo?.name,

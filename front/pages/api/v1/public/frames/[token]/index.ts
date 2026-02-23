@@ -144,8 +144,7 @@ async function handler(
   const spaceId = file.useCaseMetadata?.spaceId;
   const space =
     spaceId && auth ? await SpaceResource.fetchById(auth, spaceId) : null;
-  const canRead =
-    space && space.isProject() && auth ? space.canRead(auth) : false;
+  const canRead = space && space.isProject() && auth && space.canRead(auth);
 
   // Generate access token for viz rendering.
   const accessToken = generateVizAccessToken({

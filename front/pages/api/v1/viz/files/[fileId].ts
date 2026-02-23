@@ -12,8 +12,9 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
-import { Err, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
@@ -200,19 +201,20 @@ async function handler(
 
   let hasAccessRes: Result<true, Error>;
   if (frameConversationId) {
-    hasAccessRes = await canAccessFileInConversation(
-      owner,
-      targetFile,
-      frameConversationId
-    );
+    hasAccessRes = await canAccessFileInConversation(owner, {
+      file: targetFile,
+      requestedConversationId: frameConversationId,
+    });
   } else if (frameSpaceId) {
-    hasAccessRes = await canAccessFileInProject(
-      owner,
-      targetFile,
-      frameSpaceId
-    );
+    hasAccessRes = await canAccessFileInProject(owner, {
+      file: targetFile,
+      requestedProjectId: frameSpaceId,
+    });
   } else {
-    hasAccessRes = new Err(new Error("Invalid file context"));
+    assert(
+      false,
+      "Invalid file context: both conversationId and spaceId are missing"
+    );
   }
 
   if (hasAccessRes.isErr()) {

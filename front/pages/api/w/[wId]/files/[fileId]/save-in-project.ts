@@ -144,7 +144,7 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      await file.moveToProject(auth, { projectId });
+      await file.moveFrameToSpace(auth, { projectId });
 
       return res.status(200).json({
         file: file.toJSONWithMetadata(auth),
