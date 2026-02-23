@@ -193,7 +193,6 @@ function InteractiveSlideshow({
   return (
     <div
       className={cn("relative h-screen w-full overflow-hidden", className)}
-      role="region"
       aria-label="Slideshow"
     >
       {children[activeIndex]}
