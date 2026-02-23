@@ -218,6 +218,16 @@ function buildBlockDecorations({
             const serializer = DOMSerializer.fromSchema(schema);
             serializer.serializeFragment(insertedSlice, {}, span);
 
+            // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)
+            const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+            span.querySelectorAll("*").forEach((el) => {
+              if (el instanceof HTMLElement) {
+                el.className = el.className
+                  ? `${el.className} ${className}`
+                  : className;
+              }
+            });
+
             return span;
           },
           { side: -1 }
@@ -297,6 +307,16 @@ function buildRootDecorations({
 
             const serializer = DOMSerializer.fromSchema(schema);
             serializer.serializeFragment(Fragment.from(newChild), {}, div);
+
+            // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)
+            const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+            div.querySelectorAll("*").forEach((el) => {
+              if (el instanceof HTMLElement) {
+                el.className = el.className
+                  ? `${el.className} ${className}`
+                  : className;
+              }
+            });
 
             return div;
           },
