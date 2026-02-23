@@ -43,6 +43,7 @@ interface ExportContentDropdownProps {
   owner: LightWorkspaceType;
   fileId: string;
   fileContent: string | null;
+  fileName?: string;
 }
 
 function ExportContentDropdown({
@@ -50,6 +51,7 @@ function ExportContentDropdown({
   owner,
   fileId,
   fileContent,
+  fileName,
 }: ExportContentDropdownProps) {
   const sendNotification = useSendNotification();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -106,10 +108,7 @@ function ExportContentDropdown({
       const link = document.createElement("a");
       link.href = url;
 
-      // Get filename from Content-Disposition header or use default.
-      const contentDisposition = response.headers.get("Content-Disposition");
-      const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/);
-      link.download = filenameMatch?.[1] ?? "frame.pdf";
+      link.download = fileName?.replace(/\.[^.]+$/, ".pdf") ?? "frame.pdf";
 
       link.click();
       URL.revokeObjectURL(url);
@@ -336,6 +335,7 @@ export function FrameRenderer({
               owner={owner}
               fileId={fileId}
               fileContent={fileContent ?? null}
+              fileName={fileMetadata?.fileName}
             />
             <ShareFramePopover
               fileId={fileId}
