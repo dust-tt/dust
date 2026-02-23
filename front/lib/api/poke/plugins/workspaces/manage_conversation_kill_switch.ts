@@ -20,10 +20,10 @@ function isWorkspaceConversationKillSwitchOperation(
   );
 }
 
-export const manageConversationKillSwitchPlugin = createPlugin({
+export const conversationKillSwitchPlugin = createPlugin({
   manifest: {
-    id: "manage-conversation-kill-switch",
-    name: "Manage Conversation Kill Switch",
+    id: "conversation-kill-switch",
+    name: "Conversation Kill Switch",
     description:
       "Block or unblock access to a workspace conversation for emergency maintenance.",
     resourceTypes: ["workspaces"],
