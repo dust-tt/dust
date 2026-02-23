@@ -7,7 +7,8 @@ import config from "@app/lib/api/config";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   frameContentType,
-  isInteractiveContentContentType,
+  frameSlideshowContentType,
+  isInteractiveContentType,
 } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -33,6 +34,7 @@ interface FileGroup {
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
   [frameContentType]: "Frames",
+  [frameSlideshowContentType]: "Presentations",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
@@ -132,9 +134,7 @@ const FileGroupSection = ({
   onFileClick,
   owner,
 }: FileGroupSectionProps) => {
-  const isInteractiveContent = isInteractiveContentContentType(
-    group.contentType
-  );
+  const isInteractiveContent = isInteractiveContentType(group.contentType);
 
   return (
     <div className="space-y-2">

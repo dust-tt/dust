@@ -61,7 +61,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
-  isInteractiveContentFileContentType,
+  isInteractiveContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -1097,7 +1097,7 @@ function AgentMessageContent({
     .filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
-        !isInteractiveContentFileContentType(file.contentType)
+        !isInteractiveContentType(file.contentType)
     );
 
   return (

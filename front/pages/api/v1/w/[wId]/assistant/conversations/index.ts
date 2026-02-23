@@ -43,7 +43,7 @@ import type {
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isInteractiveContentFileContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import type {
   GetConversationsResponseType,
@@ -503,7 +503,7 @@ async function handler(
         message: newMessage ?? undefined,
         contentFragment:
           !newContentFragment ||
-          isInteractiveContentFileContentType(newContentFragment.contentType)
+          isInteractiveContentType(newContentFragment.contentType)
             ? undefined
             : {
                 ...newContentFragment,

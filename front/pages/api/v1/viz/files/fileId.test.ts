@@ -82,6 +82,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token.
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -150,6 +151,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token.
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -218,6 +220,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token.
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       // Generating token with 'public' scope.
@@ -293,6 +296,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token for frame from conversation A
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -361,6 +365,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -423,6 +428,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -692,6 +698,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",
@@ -829,6 +836,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",

@@ -3,7 +3,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { frameContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import type { PublicVizContentResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -110,7 +110,10 @@ async function handler(
   }
 
   // Only allow conversation interactive files.
-  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
+  if (
+    !file.isInteractiveContent ||
+    !isInteractiveContentType(file.contentType)
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -159,7 +162,7 @@ async function handler(
 
   return res.status(200).json({
     content: result.content,
-    contentType: frameContentType,
+    contentType: file.contentType,
     metadata: {
       conversationId: result.file.useCaseMetadata?.conversationId,
     },

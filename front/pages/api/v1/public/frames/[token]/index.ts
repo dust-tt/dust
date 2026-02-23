@@ -7,7 +7,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { frameContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -68,7 +68,10 @@ async function handler(
   const { file, shareScope } = result;
 
   // Only allow conversation Frame files.
-  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
+  if (
+    !file.isInteractiveContent ||
+    !isInteractiveContentType(file.contentType)
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -139,6 +142,7 @@ async function handler(
 
   // Generate access token for viz rendering.
   const accessToken = generateVizAccessToken({
+    contentType: file.contentType,
     fileToken: token,
     userId: user?.sId,
     shareScope,
