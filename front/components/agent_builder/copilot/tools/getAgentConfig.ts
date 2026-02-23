@@ -46,7 +46,6 @@ The response includes:
         model: {
           modelId: formData.generationSettings.modelSettings.modelId,
           providerId: formData.generationSettings.modelSettings.providerId,
-          temperature: formData.generationSettings.temperature,
           reasoningEffort: formData.generationSettings.reasoningEffort,
         },
         tools: formData.actions.map((action) => ({
@@ -63,7 +62,6 @@ The response includes:
           name: skill.name,
           description: skill.description,
         })),
-        maxStepsPerRun: formData.maxStepsPerRun,
         pendingSuggestions: pendingSuggestions
           .filter((s) => s.state === "pending")
           .map((suggestion) =>
