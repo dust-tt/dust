@@ -29,18 +29,51 @@ const EXCLUDED_PATHS = [
 
 interface PostHogTrackerProps {
   children: React.ReactNode;
+  // When true, skip fetching user data and assume cookies are accepted.
+  // Use in authenticated contexts (e.g. SPA) where the user is always logged in.
+  authenticated?: boolean;
 }
 
-export function PostHogTracker({ children }: PostHogTrackerProps) {
+export function PostHogTracker({
+  children,
+  authenticated,
+}: PostHogTrackerProps) {
+  // Always render PostHogProvider to avoid unmounting/remounting the entire
+  // tree when tracking state changes. Tracking is controlled via
+  // posthog.opt_in_capturing() / posthog.opt_out_capturing() instead.
+  return (
+    <PostHogProvider client={posthog}>
+      <PostHogTrackerInner authenticated={authenticated} />
+      {children}
+    </PostHogProvider>
+  );
+}
+
+/**
+ * Inner component that handles all PostHog side-effects (initialization,
+ * identification, opt-in/opt-out, workspace grouping, pageview tracking).
+ * Separated from PostHogTracker so that user/subscription loading never
+ * affects the children tree structure.
+ */
+interface PostHogTrackerInnerProps {
+  authenticated?: boolean;
+}
+
+function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const router = useAppRouter();
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION]);
   const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
 
-  // Only fetch user if session indicator is present to avoid 401 errors on public pages.
-  const { user } = useUser({ disabled: !hasSession });
+  // Skip useUser in authenticated contexts — user is always logged in so
+  // hasCookiesAccepted is always true and we don't need user data for consent.
+  const { user } = useUser({
+    disabled: !!authenticated || !hasSession,
+  });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
-  const hasAcceptedCookies = hasCookiesAccepted(cookieValue, user);
+  const hasAcceptedCookies = authenticated
+    ? true
+    : hasCookiesAccepted(cookieValue, user);
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
@@ -247,9 +280,5 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     };
   }, [router.events, router.pathname, shouldTrack]);
 
-  if (isTrackablePage && hasAcceptedCookies) {
-    return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
-  }
-
-  return <>{children}</>;
+  return null;
 }
