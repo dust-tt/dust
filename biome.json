@@ -23,8 +23,7 @@
     "ignoreUnknown": true,
     "includes": [
       "**/*.{js,jsx,ts,tsx}",
-      "**/package.json",
-      "**/biome.json",
+      "**/{package,tsconfig,biome}.json",
       "!!**/.next",
       "!!**/node_modules",
       "!!**/workers-build",
