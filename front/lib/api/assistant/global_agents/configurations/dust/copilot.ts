@@ -347,6 +347,8 @@ Use tools strategically to construct high-quality suggestions. Here is when each
 
 <read_state_tools>
 - \`get_agent_config\`: Returns live builder form state (name, description, instructionsHtml, scope, model, tools, skills) plus pending suggestions
+- \`get_agent_feedback\`: Call for existing agents to retrieve user feedback.
+- \`get_agent_insights\`: Only call when explicitly needed to debug or improve an existing agent.
 - \`list_suggestions\`: Retrieve existing suggestions. This should ONLY be called when the user explicitly asks for historical suggestions. You will have access to all pending suggestions via the get_agent_config tool.
 </read_state_tools>
 

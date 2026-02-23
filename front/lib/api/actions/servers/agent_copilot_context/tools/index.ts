@@ -16,6 +16,10 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
+import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -452,6 +456,154 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: JSON.stringify(agentDetails, null, 2),
+      },
+    ]);
+  },
+
+  get_agent_feedback: async ({ limit, filter }, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const feedbacksRes = await getAgentFeedbacks({
+      auth,
+      agentConfigurationId,
+      withMetadata: true,
+      paginationParams: {
+        limit: limit ?? 50,
+        orderColumn: "id",
+        orderDirection: "desc",
+      },
+      filter: filter ?? "active",
+    });
+
+    if (feedbacksRes.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to fetch feedback: ${feedbacksRes.error.message}`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    const feedbacks = feedbacksRes.value.filter(
+      (f): f is AgentMessageFeedbackWithMetadataType => true
+    );
+
+    const feedbackList = feedbacks.map((f) => ({
+      sId: f.sId,
+      thumbDirection: f.thumbDirection,
+      content: f.content,
+      createdAt: f.createdAt,
+      agentConfigurationVersion: f.agentConfigurationVersion,
+      userName: f.userName,
+      isConversationShared: f.isConversationShared,
+      conversationId: f.conversationId,
+    }));
+
+    const summary = {
+      total: feedbackList.length,
+      positive: feedbackList.filter((f) => f.thumbDirection === "up").length,
+      negative: feedbackList.filter((f) => f.thumbDirection === "down").length,
+    };
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            agentConfigurationId,
+            summary,
+            feedbacks: feedbackList,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  get_agent_insights: async ({ days }, { auth, agentLoopContext }) => {
+    const agentConfigurationId =
+      getAgentConfigurationIdFromContext(agentLoopContext);
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    // Verify agent configuration exists and is accessible.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const numberOfDays = days ?? 30;
+    const baseQuery = buildAgentAnalyticsBaseQuery({
+      workspaceId: owner.sId,
+      agentId: agentConfigurationId,
+      days: numberOfDays,
+    });
+
+    const overviewResult = await fetchAgentOverview(baseQuery, numberOfDays);
+
+    if (overviewResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to fetch agent insights: ${overviewResult.error.message}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const overview = overviewResult.value;
+
+    const insights = {
+      agentConfigurationId,
+      agentName: agentConfiguration.name,
+      period: {
+        days: numberOfDays,
+      },
+      overview: {
+        activeUsers: overview.activeUsers,
+        conversationCount: overview.conversationCount,
+        messageCount: overview.messageCount,
+        feedback: {
+          positive: overview.positiveFeedbacks,
+          negative: overview.negativeFeedbacks,
+          total: overview.positiveFeedbacks + overview.negativeFeedbacks,
+        },
+      },
+    };
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(insights, null, 2),
       },
     ]);
   },

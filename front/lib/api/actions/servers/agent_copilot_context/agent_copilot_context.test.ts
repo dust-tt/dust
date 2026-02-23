@@ -23,6 +23,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TOOLS } from "./tools";
 
+// Mock analytics dependencies.
+vi.mock("@app/lib/api/assistant/observability/overview", () => ({
+  fetchAgentOverview: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/assistant/feedback", () => ({
+  getAgentFeedbacks: vi.fn(),
+}));
+
 // Mock template suggestion for query-based search.
 vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
   getSuggestedTemplatesForQuery: vi.fn(),
@@ -36,11 +45,16 @@ vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
 // Reset only file-local mocks between tests.
 // Avoid vi.resetAllMocks() as it resets global mocks like the Redis mock from vite.setup.ts.
 beforeEach(async () => {
-  const [templateSuggestion, copilotHelpers] = await Promise.all([
-    import("@app/lib/api/assistant/template_suggestion"),
-    import("@app/lib/api/actions/servers/agent_copilot_helpers"),
-  ]);
+  const [overview, feedback, templateSuggestion, copilotHelpers] =
+    await Promise.all([
+      import("@app/lib/api/assistant/observability/overview"),
+      import("@app/lib/api/assistant/feedback"),
+      import("@app/lib/api/assistant/template_suggestion"),
+      import("@app/lib/api/actions/servers/agent_copilot_helpers"),
+    ]);
 
+  vi.mocked(overview.fetchAgentOverview).mockReset();
+  vi.mocked(feedback.getAgentFeedbacks).mockReset();
   vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
   vi.mocked(copilotHelpers.getAgentConfigurationIdFromContext).mockReset();
 });
@@ -530,6 +544,167 @@ describe("agent_copilot_context tools", () => {
       if (result.isErr()) {
         expect(result.error.message).toContain("not found or not accessible");
       }
+    });
+  });
+
+  describe("get_agent_feedback", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return null (no agent config ID).
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("get_agent_feedback");
+      const result = await tool.handler(
+        { limit: 10, filter: "active" },
+        createTestExtra(authenticator)
+      );
+
+      // Should return an error when no agent config ID is available.
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("returns feedback when agent configuration ID is available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      // Set up the mock to return an empty array of feedbacks.
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      const result = await tool.handler(
+        { limit: 10, filter: "active" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.summary).toBeDefined();
+          expect(parsed.feedbacks).toBeDefined();
+          expect(Array.isArray(parsed.feedbacks)).toBe(true);
+        }
+      }
+    });
+
+    it("accepts limit parameter", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      await tool.handler(
+        { limit: 5, filter: "active" },
+        createTestExtra(authenticator)
+      );
+
+      // The mock should have been called with the limit parameter.
+      expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paginationParams: expect.objectContaining({
+            limit: 5,
+          }),
+        })
+      );
+    });
+
+    it("accepts filter parameter for active feedback", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      await tool.handler({ filter: "active" }, createTestExtra(authenticator));
+
+      expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: "active",
+        })
+      );
+    });
+
+    it("accepts filter parameter for all feedback", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      await tool.handler({ filter: "all" }, createTestExtra(authenticator));
+
+      expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: "all",
+        })
+      );
     });
   });
 

@@ -1,4 +1,4 @@
-import { ONE_HOUR_MS } from "@app/tests/copilot-evals/lib/config";
+import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/tests/copilot-evals/lib/config";
 import type { MockAgentState } from "@app/tests/copilot-evals/lib/types";
 
 export function getMockToolResponse(
@@ -120,6 +120,45 @@ export function getMockToolResponse(
             },
           ],
         },
+      ],
+    }),
+
+    get_agent_feedback: () => ({
+      feedback: [
+        {
+          id: "fb1",
+          thumbDirection: "down",
+          content: "The agent's responses are too formal and robotic",
+          createdAt: Date.now() - ONE_DAY_MS,
+        },
+        {
+          id: "fb2",
+          thumbDirection: "up",
+          content: "Great at finding relevant information quickly",
+          createdAt: Date.now() - ONE_DAY_MS * 2,
+        },
+        {
+          id: "fb3",
+          thumbDirection: "down",
+          content: "Sometimes misses important context from previous messages",
+          createdAt: Date.now() - ONE_DAY_MS * 3,
+        },
+      ],
+      total: 3,
+    }),
+
+    get_agent_insights: () => ({
+      activeUsers: 15,
+      conversations: 48,
+      messages: 320,
+      feedbackStats: {
+        thumbsUp: 12,
+        thumbsDown: 8,
+        thumbsUpRate: 0.6,
+      },
+      topUsers: [
+        { userId: "user1", name: "Alice Smith", conversations: 12 },
+        { userId: "user2", name: "Bob Johnson", conversations: 8 },
       ],
     }),
 
