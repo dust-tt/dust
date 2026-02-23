@@ -34,6 +34,51 @@ import { removeNulls } from "@connectors/types/shared/utils/general";
 
 const GARBAGE_COLLECT_BATCH_SIZE = 100;
 
+type PermissionProfileFilter =
+  | { type: "unrestricted" }
+  | { type: "restricted"; userIds: Set<string> };
+
+async function resolvePermissionProfile(
+  connector: ConnectorResource,
+  configuration: GongConfigurationResource
+): Promise<PermissionProfileFilter> {
+  const { permissionProfileId } = configuration;
+  if (!permissionProfileId) {
+    return { type: "unrestricted" };
+  }
+
+  const gongClient = await getGongClient(connector);
+  const profile = await gongClient.getPermissionProfile({
+    profileId: permissionProfileId,
+  });
+
+  if (profile.callsAccess.permissionLevel === "all") {
+    return { type: "unrestricted" };
+  }
+
+  const { teamLeadIds } = profile.callsAccess;
+  if (!teamLeadIds || teamLeadIds.length === 0) {
+    return { type: "unrestricted" };
+  }
+
+  return { type: "restricted", userIds: new Set(teamLeadIds) };
+}
+
+/**
+ * A call should be synced if any of its participants (host, invitee, attendee)
+ * belongs to the permission profile's user list. When no profile is configured
+ * all calls pass.
+ */
+function shouldSyncTranscript(
+  filter: PermissionProfileFilter,
+  parties: { userId: string | undefined }[]
+): boolean {
+  if (filter.type === "unrestricted") {
+    return true;
+  }
+  return parties.some((p) => p.userId && filter.userIds.has(p.userId));
+}
+
 export async function gongSaveStartSyncActivity({
   connectorId,
 }: {
@@ -201,6 +246,12 @@ export async function gongSyncTranscriptsActivity({
     callsMetadata.map((c) => [c.metaData.id, c])
   );
 
+  // Consider moving this in a dedicated activity that will be shared across pages.
+  const permissionFilter = await resolvePermissionProfile(
+    connector,
+    configuration
+  );
+
   await concurrentExecutor(
     transcriptsToSync,
     async (transcript) => {
@@ -223,6 +274,15 @@ export async function gongSyncTranscriptsActivity({
       }
 
       const { parties = [] } = transcriptMetadata;
+
+      // Filter by permission profile: skip if no party belongs to the profile.
+      if (!shouldSyncTranscript(permissionFilter, parties)) {
+        logger.info(
+          { ...loggerArgs, callId: transcript.callId },
+          "[Gong] Skipping transcript: not allowed by permission profile."
+        );
+        return;
+      }
 
       const participants = await getGongUsers(connector, {
         gongUserIds: parties
