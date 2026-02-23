@@ -118,7 +118,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       if (!remoteServer) {
         throw new DustError(
           "remote_server_not_found",
-          "Remote server not found, it should have been fetched by the base fetch."
+          "Remote server not found after creation."
         );
       }
       resource.remoteMCPServer = remoteServer;
