@@ -4782,6 +4782,7 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 
 const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_skills",
+  "agent_message_feedbacks",
   "conversation_mcp_server_view",
   "conversation_participant",
   "conversation_skills",
