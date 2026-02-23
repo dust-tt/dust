@@ -169,6 +169,57 @@ describe("listBlockedActionsForConversation", () => {
     expect(result[0].metadata.agentName).toBe("Test Agent");
   });
 
+  it("should only return blocked actions, not succeeded ones", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+
+    // Create user message at rank 0.
+    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      content: "Test message",
+    });
+
+    // Create agent message at rank 1.
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: userMessageRow.id,
+      });
+
+    // Create one blocked action and one succeeded action on the same agent message.
+    await createBlockedAction({
+      agentMessageId: agentMessageRow.agentMessageId!,
+    });
+    await createBlockedAction({
+      agentMessageId: agentMessageRow.agentMessageId!,
+      status: "succeeded",
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+
+    const result =
+      await AgentMCPActionResource.listBlockedActionsForConversation(
+        auth,
+        conversationResource!
+      );
+
+    // Only the blocked action should be returned, not the succeeded one.
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe("blocked_validation_required");
+  });
+
   it("should only return blocked actions from the latest agent message version at a given rank", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",

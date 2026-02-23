@@ -16,14 +16,13 @@ import {
 import type { StepContext } from "@app/lib/actions/types";
 import { isFileAuthorizationInfo } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
   MessageModel,
@@ -333,26 +332,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ),
     ];
 
-    const [allAgentConfigurations, mcpServerViews] = await Promise.all([
-      agentConfigVersionPairs.length > 0
-        ? AgentConfigurationModel.findAll({
-            where: {
-              workspaceId: owner.id,
-              [Op.or]: agentConfigVersionPairs.map((pair) => ({
-                sId: pair.agentId,
-                version: pair.agentVersion,
-              })),
-            },
-            attributes: ["sId", "version", "name", "requestedSpaceIds"],
-          })
-        : Promise.resolve([]),
+    const [agentConfigurations, mcpServerViews] = await Promise.all([
+      getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
+        variant: "extra_light",
+      }),
       MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
     ]);
-
-    const agentConfigurations = await filterAgentsByRequestedSpaces(
-      auth,
-      allAgentConfigurations
-    );
 
     const agentConfigurationMap = new Map(
       agentConfigurations.map((a) => [`${a.sId}:${a.version}`, a])
