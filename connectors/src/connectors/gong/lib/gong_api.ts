@@ -223,7 +223,7 @@ export type GongPermissionProfile = t.TypeOf<typeof GongPermissionProfileCodec>;
 const GongPermissionProfileResponseCodec = t.intersection([
   t.type({
     requestId: t.string,
-    permissionProfile: GongPermissionProfileCodec,
+    profile: GongPermissionProfileCodec,
   }),
   CatchAllCodec,
 ]);
@@ -570,6 +570,6 @@ export class GongClient {
       { profileId },
       GongPermissionProfileResponseCodec
     );
-    return response.permissionProfile;
+    return response.profile;
   }
 }
