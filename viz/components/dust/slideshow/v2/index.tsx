@@ -14,7 +14,10 @@ export function Slide({ children, className }: SlideProps) {
   return (
     <div
       className={cn(
-        "w-full h-full min-h-screen flex flex-col items-center justify-center overflow-hidden p-12",
+        // [&>*]:min-h-0 overrides the default flex-item `min-height: auto` so  that LLM-generated
+        // children with tall intrinsic heights (e.g. an SVG with height="2147") shrink to fit the
+        // slide instead of overflowing.
+        "w-full h-full flex flex-col items-center justify-center overflow-hidden p-4 [&>*]:min-h-0",
         className
       )}
     >
@@ -156,6 +159,7 @@ function PdfSlideshow({ children, className }: PdfSlideshowProps) {
       {children.map((slide, i) => (
         <div
           key={i}
+          className="min-h-screen h-screen"
           style={{ breakAfter: i < children.length - 1 ? "page" : "auto" }}
         >
           {slide}
