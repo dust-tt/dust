@@ -1,4 +1,7 @@
-import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
+import {
+  computeTextByteSize,
+  MAX_TEXT_CONTENT_SIZE,
+} from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -147,10 +150,11 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       );
     }
 
-    let text = content.text;
+    const fullText = content.text;
+    const totalLength = fullText.length;
 
     // Returning early with a custom message if the text is empty.
-    if (text.length === 0) {
+    if (totalLength === 0) {
       return new Ok([
         {
           type: "text",
@@ -160,27 +164,35 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     }
 
     // Apply offset and limit.
-    if (offset !== undefined || limit !== undefined) {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const start = offset || 0;
-      const end = limit !== undefined ? start + limit : undefined;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const start = offset || 0;
 
-      if (start > text.length) {
-        return new Err(
-          new MCPError(`Offset ${start} is out of bounds for file ${title}.`, {
+    if (start > totalLength) {
+      return new Err(
+        new MCPError(
+          `Offset ${start} is out of bounds for file ${title} (total length: ${totalLength}).`,
+          {
             tracked: false,
-          })
-        );
-      }
-      if (limit === 0) {
-        return new Err(
-          new MCPError(`Limit cannot be equal to 0.`, {
-            tracked: false,
-          })
-        );
-      }
-      text = text.slice(start, end);
+          }
+        )
+      );
     }
+    if (limit === 0) {
+      return new Err(
+        new MCPError(`Limit cannot be equal to 0.`, {
+          tracked: false,
+        })
+      );
+    }
+
+    // Cap to MAX_TEXT_CONTENT_SIZE to avoid storing oversized content in the DB.
+    // computeTextByteSize uses length * 2, so the character cap is MAX_TEXT_CONTENT_SIZE / 2.
+    const maxCharacters = MAX_TEXT_CONTENT_SIZE / 2;
+    const effectiveLimit =
+      limit !== undefined ? Math.min(limit, maxCharacters) : maxCharacters;
+    const end = start + effectiveLimit;
+
+    let text = fullText.slice(start, end);
 
     // Apply grep filter if provided.
     if (grep) {
@@ -221,10 +233,14 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       }
     }
 
+    const hasMore = end < totalLength;
+
     return new Ok([
       {
         type: "text",
-        text,
+        text: hasMore
+          ? `${text}\n\n[Showing characters ${start}-${end} of ${totalLength} total. Use offset=${end} to read more.]`
+          : text,
       },
     ]);
   },
