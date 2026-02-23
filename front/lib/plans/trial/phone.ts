@@ -1,4 +1,6 @@
-import parsePhoneNumber from "libphonenumber-js";
+import parsePhoneNumber, {
+  parsePhoneNumberFromString,
+} from "libphonenumber-js";
 import { isValidPhoneNumber as libIsValidPhoneNumber } from "react-phone-number-input";
 
 export const CODE_LENGTH = 6;
@@ -16,6 +18,31 @@ export function isValidPhoneNumber(phone: string): boolean {
   }
 
   return libIsValidPhoneNumber(phone);
+}
+
+/**
+ * Try to parse a string as a phone number and return the E.164 format.
+ * Handles: "+33612345678", "+33 6 12 34 56 78", "33612345678" (missing +).
+ * @returns E.164 string (e.g., "+33612345678") or null if not a valid phone number
+ */
+export function tryParsePhoneNumber(input: string): string | null {
+  const cleaned = input.replace(/[\s\-()]/g, "");
+
+  // Try parsing as-is (works for E.164 like "+33612345678").
+  const parsed = parsePhoneNumberFromString(cleaned);
+  if (parsed && isValidPhoneNumber(parsed.number)) {
+    return parsed.number;
+  }
+
+  // If the input is all digits, try adding a "+" prefix (handles "33612345678").
+  if (/^\d{7,15}$/.test(cleaned)) {
+    const withPlus = parsePhoneNumberFromString(`+${cleaned}`);
+    if (withPlus && isValidPhoneNumber(withPlus.number)) {
+      return withPlus.number;
+    }
+  }
+
+  return null;
 }
 
 /**
