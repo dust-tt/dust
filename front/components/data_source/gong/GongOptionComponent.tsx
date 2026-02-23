@@ -30,7 +30,9 @@ interface GongPermissionProfile {
   name: string;
 }
 
-function isGongPermissionProfile(value: unknown): value is GongPermissionProfile {
+function isGongPermissionProfile(
+  value: unknown
+): value is GongPermissionProfile {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -215,10 +217,16 @@ export function GongOptionComponent({
                 <Button
                   variant="outline"
                   size="sm"
-                  label={selectedProfile?.name ?? "All calls"}
+                  label={
+                    selectedProfile
+                      ? selectedProfile.name.length > 20
+                        ? selectedProfile.name.slice(0, 20) + "..."
+                        : selectedProfile.name
+                      : "All calls"
+                  }
                   isSelect
                   disabled={readOnly || !isAdmin || loading}
-                  className="w-48 truncate"
+                  tooltip={selectedProfile?.name}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
