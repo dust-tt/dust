@@ -111,7 +111,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.update(
       {
         providerId,
-        status: "running" as SandboxStatus,
+        status: "running",
         lastActivityAt: new Date(),
       },
       transaction
