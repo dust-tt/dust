@@ -227,7 +227,7 @@ export function GongOptionComponent({
                   isSelect
                   disabled={readOnly || !isAdmin || loading}
                   tooltip={selectedProfile?.name}
-                  className="w-48 overflow-hidden px-4"
+                  className="w-36 overflow-hidden px-4"
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
