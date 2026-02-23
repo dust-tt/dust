@@ -90,6 +90,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       return new Err(new MCPError("User not found", { tracked: false }));
     }
 
+    const requestedGroupIds = auth.groupIds();
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
@@ -100,6 +101,8 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
+          // TODO(x-dust-group-ids): remove groupIds header after transition.
+          ...getHeaderFromGroupIds(requestedGroupIds),
           ...getHeaderFromUserId(user.sId),
           ...getHeaderFromUserEmail(user.email),
         },

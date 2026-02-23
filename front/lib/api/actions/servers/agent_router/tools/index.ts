@@ -18,6 +18,12 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
   list_all_published_agents: async (_, { auth }) => {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
+    if (!user) {
+      logger.warn(
+        { workspaceId: owner },
+        "No user available in auth to call Front API from server 'agent_router/tools'"
+      );
+    }
     const requestedGroupIds = auth.groupIds();
 
     const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -26,9 +32,9 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...(user
-            ? getHeaderFromUserId(user.sId)
-            : getHeaderFromGroupIds(requestedGroupIds)),
+          // TODO(x-dust-group-ids): return only if user is null after transition.
+          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...(user ? getHeaderFromUserId(user.sId) : {}),
         },
       },
       logger

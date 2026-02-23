@@ -143,6 +143,12 @@ export default async function createServer(
         );
 
         const user = auth.user();
+        if (!user) {
+          logger.warn(
+            { workspaceId: owner },
+            "No user available in auth to call Front API from server 'run_dust_app'"
+          );
+        }
         const requestedGroupIds = auth.groupIds();
 
         const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -152,9 +158,9 @@ export default async function createServer(
           {
             ...prodCredentials,
             extraHeaders: {
-              ...(user
-                ? getHeaderFromUserId(user.sId)
-                : getHeaderFromGroupIds(requestedGroupIds)),
+              // TODO(x-dust-group-ids): return only if user is null after transition.
+              ...getHeaderFromGroupIds(requestedGroupIds),
+              ...(user ? getHeaderFromUserId(user.sId) : {}),
               ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
             },
           },

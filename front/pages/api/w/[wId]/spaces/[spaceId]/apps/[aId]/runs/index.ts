@@ -133,6 +133,7 @@ async function handler(
         owner,
         keyWorkspaceFlags,
         auth.groupIds(),
+        auth.user().sId,
         {
           projectId: app.dustAPIProjectId,
           runType: "local",
@@ -145,8 +146,7 @@ async function handler(
           credentials: credentialsFromProviders(providers),
           secrets,
           storeBlocksResults,
-        },
-        auth.user()?.sId
+        }
       );
 
       if (dustRun.isErr()) {

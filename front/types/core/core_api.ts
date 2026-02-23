@@ -503,7 +503,9 @@ export class CoreAPI {
   async createRun(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
+    // TODO(x-dust-group-ids): remove groupIds once all receivers use X-Dust-User-Id.
     groupIds: string[],
+    userId: string,
     {
       projectId,
       runType,
@@ -516,8 +518,7 @@ export class CoreAPI {
       secrets,
       isSystemKey,
       storeBlocksResults = true,
-    }: CoreAPICreateRunParams,
-    userId?: string
+    }: CoreAPICreateRunParams
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}/runs`,
@@ -552,7 +553,9 @@ export class CoreAPI {
   async createRunStream(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
+    // TODO(x-dust-group-ids): remove once all receivers use X-Dust-User-Id.
     groupIds: string[],
+    userId?: string,
     {
       projectId,
       runType,
@@ -565,8 +568,7 @@ export class CoreAPI {
       secrets,
       isSystemKey,
       storeBlocksResults = true,
-    }: CoreAPICreateRunParams,
-    userId?: string
+    }: CoreAPICreateRunParams
   ): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
