@@ -1884,11 +1884,14 @@ describe("createUserMentions", () => {
         { name: "Test Agent" }
       );
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -1925,11 +1928,14 @@ describe("createUserMentions", () => {
         { name: "Test Agent" }
       );
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -2029,11 +2035,14 @@ describe("createUserMentions", () => {
       expect(updatedAgentConfig).not.toBeNull();
       expect(updatedAgentConfig?.instructions).toContain(mentionedUser.sId);
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation: updatedConversation,
-        agentConfig: updatedAgentConfig!,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation: updatedConversation,
+          agentConfig: updatedAgentConfig!,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -2132,11 +2141,14 @@ describe("createUserMentions", () => {
       expect(updatedAgentConfig).not.toBeNull();
       expect(updatedAgentConfig?.instructions).not.toContain(mentionedUser.sId);
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation: updatedConversation,
-        agentConfig: updatedAgentConfig!,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation: updatedConversation,
+          agentConfig: updatedAgentConfig!,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -2235,11 +2247,14 @@ describe("createUserMentions", () => {
       expect(updatedAgentConfig).not.toBeNull();
       expect(updatedAgentConfig?.instructions).toBeNull();
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation: updatedConversation,
-        agentConfig: updatedAgentConfig!,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation: updatedConversation,
+          agentConfig: updatedAgentConfig!,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -2507,11 +2522,14 @@ describe("createUserMentions", () => {
         { name: "Test Agent" }
       );
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation: restrictedConversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation: restrictedConversation,
+          agentConfig,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -2589,11 +2607,14 @@ describe("createUserMentions", () => {
         }
       );
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation: projectConversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation: projectConversation,
+          agentConfig,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -2663,11 +2684,14 @@ describe("createUserMentions", () => {
         }
       );
 
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation: projectConversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation: projectConversation,
+          agentConfig,
+        }
+      );
 
       const mentions: MentionType[] = [
         {
@@ -3066,11 +3090,14 @@ describe("createUserMentions", () => {
       expect(updatedAgentConfig?.instructions).toContain(mentionedUser.sId);
 
       // Create an agent message
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation: updatedConversation,
-        agentConfig: updatedAgentConfig!,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation: updatedConversation,
+          agentConfig: updatedAgentConfig!,
+        }
+      );
 
       const mentionedUserResource = await getUserForWorkspace(auth, {
         userId: mentionedUser.sId,

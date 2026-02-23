@@ -13,7 +13,7 @@ export const MAX_RESOURCE_CONTENT_SIZE = 20 * 1024 * 1024; // 20MB.
 export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 64_000; // Approximately 16K tokens.
 
 export function computeTextByteSize(text: string): number {
-  return text.length * 2; // UTF-8 approximate
+  return Buffer.byteLength(text, "utf-8");
 }
 
 export function computeBase64ByteSize(base64: string): number {
