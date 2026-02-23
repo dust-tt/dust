@@ -1,11 +1,11 @@
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import { useAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useExtensionAuth } from "@extension/shared/lib/AuthProvider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export const useAuthErrorCheck = (error: any, mutate: () => any) => {
   const platform = usePlatform();
-  const { setAuthError, redirectToSSOLogin, workspace } = useAuth();
+  const { setAuthError, redirectToSSOLogin, workspace } = useExtensionAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
