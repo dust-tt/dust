@@ -279,10 +279,14 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
 >();
 
 const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
+const FrameSlideshowContentTypeSchema = z.literal(
+  "application/vnd.dust.frame.slideshow"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
+  FrameSlideshowContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(

@@ -13,13 +13,10 @@ interface SlideProps {
 }
 
 export function Slide({ children, className }: SlideProps) {
-  const { isPdfMode } = useVizContext();
-
   return (
     <div
       className={cn(
-        "w-full h-full min-h-screen flex flex-col items-center justify-center overflow-hidden",
-        isPdfMode ? "p-0" : "p-12",
+        "w-full h-full min-h-screen flex flex-col items-center justify-center overflow-hidden p-12",
         className
       )}
     >
