@@ -43,7 +43,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@modelcontextprotocol/sdk": "^1.27.0",
     "@types/json-schema": "^7.0.15",
     "event-source-polyfill": "^1.0.31",
     "eventsource-parser": "^1.1.1",
