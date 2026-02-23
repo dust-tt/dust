@@ -127,6 +127,14 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     });
   }
 
+  async setPermissionProfileId(
+    permissionProfileId: string | null
+  ): Promise<void> {
+    await this.update({
+      permissionProfileId,
+    });
+  }
+
   async setRetentionPeriodDays(
     retentionPeriodDays: number | null
   ): Promise<void> {
