@@ -460,7 +460,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_feedback: async ({ limit, filter }, { auth, agentLoopContext }) => {
+  get_agent_feedback: async (
+    { limit, filter, latestVersionOnly },
+    { auth, agentLoopContext }
+  ) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -473,6 +476,24 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
+    const latestVersionOnlyWithDefault = latestVersionOnly ?? true;
+
+    // Fetch the agent configuration to get the current version.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const currentVersion = agentConfiguration.version;
+
     const feedbacksRes = await getAgentFeedbacks({
       auth,
       agentConfigurationId,
@@ -483,6 +504,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         orderDirection: "desc",
       },
       filter: filter ?? "active",
+      ...(latestVersionOnlyWithDefault ? { version: currentVersion } : {}),
     });
 
     if (feedbacksRes.isErr()) {
@@ -500,21 +522,27 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       (f): f is AgentMessageFeedbackWithMetadataType => true
     );
 
-    const feedbackList = feedbacks.map((f) => ({
+    const mapFeedback = (f: AgentMessageFeedbackWithMetadataType) => ({
       sId: f.sId,
       thumbDirection: f.thumbDirection,
       content: f.content,
       createdAt: f.createdAt,
       agentConfigurationVersion: f.agentConfigurationVersion,
       userName: f.userName,
-      isConversationShared: f.isConversationShared,
       conversationId: f.conversationId,
-    }));
+    });
+
+    const currentVersionFeedbackList = feedbacks
+      .filter((f) => f.agentConfigurationVersion === currentVersion)
+      .map(mapFeedback);
+    const previousVersionsFeedbackList = feedbacks
+      .filter((f) => f.agentConfigurationVersion !== currentVersion)
+      .map(mapFeedback);
 
     const summary = {
-      total: feedbackList.length,
-      positive: feedbackList.filter((f) => f.thumbDirection === "up").length,
-      negative: feedbackList.filter((f) => f.thumbDirection === "down").length,
+      total: feedbacks.length,
+      positive: feedbacks.filter((f) => f.thumbDirection === "up").length,
+      negative: feedbacks.filter((f) => f.thumbDirection === "down").length,
     };
 
     return new Ok([
@@ -524,7 +552,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           {
             agentConfigurationId,
             summary,
-            feedbacks: feedbackList,
+            current_version_feedback: currentVersionFeedbackList,
+            ...(latestVersionOnlyWithDefault
+              ? {}
+              : { previous_versions_feedback: previousVersionsFeedbackList }),
           },
           null,
           2

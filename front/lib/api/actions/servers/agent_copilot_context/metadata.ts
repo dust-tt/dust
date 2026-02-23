@@ -178,6 +178,13 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Filter type: 'active' for non-dismissed feedback only (default), 'all' for all feedback"
         ),
+      latestVersionOnly: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          "When true (default), only return feedback for the latest version of the agent. When false, return feedback for all versions."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
