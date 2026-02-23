@@ -1,0 +1,7 @@
+{
+  "action": "agent.restored",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "agent" }
+  ]
+}

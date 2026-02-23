@@ -1,0 +1,10 @@
+{
+  "action": "agent.archived",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "agent" }
+  ],
+  "metadata": {
+    "triggersDisabled": { "type": "string" }
+  }
+}

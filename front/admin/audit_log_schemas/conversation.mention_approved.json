@@ -1,0 +1,10 @@
+{
+  "action": "conversation.mention_approved",
+  "targets": [
+    { "type": "conversation" },
+    { "type": "message" }
+  ],
+  "metadata": {
+    "mentionedUserId": { "type": "string" }
+  }
+}

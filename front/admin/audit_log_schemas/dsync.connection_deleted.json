@@ -1,0 +1,9 @@
+{
+  "action": "dsync.connection_deleted",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "directoryType": { "type": "string" }
+  }
+}

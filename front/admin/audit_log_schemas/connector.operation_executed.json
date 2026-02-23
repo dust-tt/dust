@@ -1,0 +1,10 @@
+{
+  "action": "connector.operation_executed",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "data_source" }
+  ],
+  "metadata": {
+    "operation": { "type": "string" }
+  }
+}

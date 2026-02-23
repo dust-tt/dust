@@ -1,0 +1,10 @@
+{
+  "action": "space.created",
+  "targets": [
+    { "type": "space" }
+  ],
+  "metadata": {
+    "kind": { "type": "string" },
+    "isRestricted": { "type": "string" }
+  }
+}

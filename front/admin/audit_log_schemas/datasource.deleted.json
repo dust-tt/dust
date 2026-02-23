@@ -1,0 +1,7 @@
+{
+  "action": "datasource.deleted",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "data_source" }
+  ]
+}

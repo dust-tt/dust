@@ -1,0 +1,6 @@
+{
+  "action": "conversation.deleted",
+  "targets": [
+    { "type": "conversation" }
+  ]
+}

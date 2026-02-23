@@ -1,0 +1,9 @@
+{
+  "action": "workspace.domains_batch_updated",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "updates": { "type": "string" }
+  }
+}

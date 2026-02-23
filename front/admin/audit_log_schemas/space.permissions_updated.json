@@ -1,0 +1,12 @@
+{
+  "action": "space.permissions_updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "space" }
+  ],
+  "metadata": {
+    "isAdminNonMember": { "type": "string" },
+    "managementMode": { "type": "string" },
+    "isRestricted": { "type": "string" }
+  }
+}

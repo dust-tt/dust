@@ -1,0 +1,6 @@
+{
+  "action": "space.deleted",
+  "targets": [
+    { "type": "space" }
+  ]
+}

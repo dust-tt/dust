@@ -1,0 +1,7 @@
+{
+  "action": "agent.deleted",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "agent" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "action": "credits.purchased",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "amountDollars": { "type": "string" },
+    "amountMicroUsd": { "type": "string" },
+    "isEnterprise": { "type": "string" },
+    "discountPercent": { "type": "string" }
+  }
+}

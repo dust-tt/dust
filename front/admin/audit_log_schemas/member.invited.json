@@ -1,0 +1,9 @@
+{
+  "action": "member.invited",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "invitedEmails": { "type": "string" }
+  }
+}

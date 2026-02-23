@@ -1,0 +1,10 @@
+{
+  "action": "conversation.created",
+  "targets": [
+    { "type": "conversation" }
+  ],
+  "metadata": {
+    "visibility": { "type": "string" },
+    "hasInitialMessage": { "type": "string" }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "action": "datasource.created",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "data_source" }
+  ],
+  "metadata": {
+    "provider": { "type": "string" }
+  }
+}

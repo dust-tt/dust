@@ -1,0 +1,10 @@
+{
+  "action": "workspace.file_sharing_changed",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "previousValue": { "type": "string" },
+    "newValue": { "type": "string" }
+  }
+}
