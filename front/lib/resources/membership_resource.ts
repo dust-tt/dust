@@ -575,6 +575,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       const dayEnd = new Date(ts);
       dayEnd.setUTCHours(23, 59, 59, 999);
       const dayStart = new Date(ts);
+      dayStart.setUTCHours(0, 0, 0, 0);
       const activeUserIds = new Set<number>();
       for (const m of memberships) {
         if (m.startAt <= dayEnd && (!m.endAt || m.endAt >= dayStart)) {
