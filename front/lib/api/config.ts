@@ -456,6 +456,18 @@ const config = {
   getGatedAssetsTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
+  // E2B Sandbox.
+  getE2BSandboxConfig: (): {
+    apiKey: string;
+    templateId: string;
+    domain: string | undefined;
+  } => {
+    return {
+      apiKey: EnvironmentConfig.getEnvVariable("E2B_API_KEY"),
+      templateId: EnvironmentConfig.getEnvVariable("E2B_TEMPLATE_ID"),
+      domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
+    };
+  },
 };
 
 export default config;
