@@ -5,8 +5,6 @@ import { cn } from "@viz/lib/utils";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-// -- Slide --
-
 interface SlideProps {
   children: React.ReactNode;
   className?: string;
@@ -25,9 +23,7 @@ export function Slide({ children, className }: SlideProps) {
   );
 }
 
-// -- Navigation --
-
-const NAVIGATION_HIDE_DELAY_MS = 3000;
+const NAVIGATION_HIDE_DELAY_MS = 3_000;
 
 interface NavigationProps {
   activeIndex: number;
@@ -40,6 +36,7 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
   const [isVisible, setIsVisible] = useState(true);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // Resets the hide timer, making navigation controls visible for a few seconds.
   const resetHideTimer = useCallback(() => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
@@ -128,8 +125,6 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
   );
 }
 
-// -- Slideshow --
-
 interface SlideshowProps {
   children: React.ReactNode;
   className?: string;
@@ -148,7 +143,7 @@ export function Slideshow({ children, className }: SlideshowProps) {
   );
 }
 
-// -- PDF mode: all slides stacked with page breaks --
+// PDF mode: all slides stacked with page breaks
 
 interface PdfSlideshowProps {
   children: React.ReactNode[];
@@ -170,7 +165,7 @@ function PdfSlideshow({ children, className }: PdfSlideshowProps) {
   );
 }
 
-// -- Interactive mode: one slide at a time with navigation --
+// Interactive mode: one slide at a time with navigation
 
 interface InteractiveSlideshowProps {
   children: React.ReactNode[];
