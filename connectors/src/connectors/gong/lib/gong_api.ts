@@ -236,14 +236,6 @@ const GongPermissionProfilesResponseCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-const GongPermissionProfileUsersResponseCodec = t.intersection([
-  t.type({
-    requestId: t.string,
-    userIds: t.array(t.string),
-  }),
-  CatchAllCodec,
-]);
-
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
 
