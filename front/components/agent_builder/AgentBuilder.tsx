@@ -39,7 +39,6 @@ import type {
   AdditionalConfigurationInBuilderType,
   BuilderAction,
 } from "@app/components/shared/tools_picker/types";
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";

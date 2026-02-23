@@ -1,5 +1,5 @@
-import { Authenticator } from "@app/lib/auth";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -446,10 +446,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations - instructionsHtml", (
     expect(lightAgent).not.toBeNull();
     // instructionsHtml is not part of LightAgentConfigurationType but we verify
     // the runtime value is null (not leaked from the DB).
-    expect(
-      (lightAgent as unknown as { instructionsHtml: string | null })
-        .instructionsHtml
-    ).toBeNull();
+    expect(lightAgent).toHaveProperty("instructionsHtml", null);
 
     // Full variant (via getAgentConfiguration) should include instructionsHtml.
     const fullAgent = await getAgentConfiguration(authenticator, {
