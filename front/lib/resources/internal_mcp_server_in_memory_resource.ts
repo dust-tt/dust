@@ -255,25 +255,9 @@ export class InternalMCPServerInMemoryResource {
     id: string,
     systemSpace: SpaceResource
   ) {
-    // Fast path: Do not check for default internal MCP servers as they are always available.
-    const availability = getAvailabilityOfInternalMCPServerById(id);
-    if (availability === "manual") {
-      const server = await MCPServerViewModel.findOne({
-        attributes: ["internalMCPServerId"],
-        where: {
-          serverType: "internal",
-          internalMCPServerId: id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: systemSpace.id,
-        },
-      });
+    const results = await this.fetchByIds(auth, [id], systemSpace);
 
-      if (!server?.internalMCPServerId) {
-        return null;
-      }
-    }
-
-    return InternalMCPServerInMemoryResource.init(auth, id);
+    return results[0] ?? null;
   }
 
   static async fetchByIds(
@@ -285,6 +269,7 @@ export class InternalMCPServerInMemoryResource {
       return [];
     }
 
+    // Fast path: Do not check for default internal MCP servers as they are always available.
     const validIds = ids.filter(
       (id) => getAvailabilityOfInternalMCPServerById(id) !== "manual"
     );
