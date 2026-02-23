@@ -80,12 +80,10 @@ async function fetchFeedbackMarkdown(
   );
 
   if (feedbacks.length === 0) {
-    return "<feedback>\nNo feedback available.\n</feedback>";
+    return null;
   }
 
-  const positiveFeedbacks = feedbacks.filter(
-    (f) => f.thumbDirection === "up"
-  );
+  const positiveFeedbacks = feedbacks.filter((f) => f.thumbDirection === "up");
   const negativeFeedbacks = feedbacks.filter(
     (f) => f.thumbDirection === "down"
   );
