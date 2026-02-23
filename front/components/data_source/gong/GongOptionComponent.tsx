@@ -249,11 +249,9 @@ export function GongOptionComponent({
         >
           <ContextItem.Description>
             <div className="text-muted-foreground dark:text-muted-foreground-night">
-              Select a Gong Permission Profile to restrict which calls are
-              synced. Only calls with at least one participant from the
-              profile&apos;s user list will be synced.
-              <br />
-              Changing the profile only affects future syncs.
+              Only calls with at least one participant from the profile&apos;s
+              user list will be synced. Changing the profile only affects future
+              syncs.
             </div>
           </ContextItem.Description>
         </ContextItem>
