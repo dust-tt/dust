@@ -58,8 +58,8 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Anthropic's Claude 4 Opus model, the most powerful model in the Claude 4 family (200k context).",
-  shortDescription: "Anthropic's most powerful model.",
+    "Anthropic's Claude 4 Opus model, a powerful model in the Claude 4 family (200k context).",
+  shortDescription: "A powerful Claude 4 model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 32_000,
