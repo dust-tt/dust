@@ -24,6 +24,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -164,6 +165,18 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       ...options,
     });
     return servers.length > 0 ? servers[0] : null;
+  }
+
+  static async findByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<RemoteMCPServerResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.baseFetch(auth, {
+      where: { id: { [Op.in]: ids } },
+    });
   }
 
   static async listByWorkspace(auth: Authenticator) {
