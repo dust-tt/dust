@@ -363,6 +363,20 @@ export const FILE_FORMATS = {
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
+export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
+
+export type FrameContentType =
+  | typeof frameContentType
+  | typeof frameSlideshowContentType;
+
+export function isFrameContentType(
+  contentType: string
+): contentType is FrameContentType {
+  return (
+    contentType === frameContentType ||
+    contentType === frameSlideshowContentType
+  );
+}
 
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
@@ -370,6 +384,11 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
   [frameContentType]: {
+    cat: "code",
+    exts: [".js", ".jsx", ".ts", ".tsx"],
+    isSafeToDisplay: true,
+  },
+  [frameSlideshowContentType]: {
     cat: "code",
     exts: [".js", ".jsx", ".ts", ".tsx"],
     isSafeToDisplay: true,

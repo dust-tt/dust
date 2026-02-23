@@ -7,8 +7,8 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { FileShareScope } from "@app/types/files";
 import {
   fileShareScopeSchema,
-  frameContentType,
   isConversationFileUseCase,
+  isFrameContentType,
 } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -71,7 +71,7 @@ async function handler(
   }
 
   // Only allow sharing Frame files.
-  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
+  if (!file.isInteractiveContent || !isFrameContentType(file.contentType)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

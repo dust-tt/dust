@@ -1,13 +1,18 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import { fileShareScopeSchema, frameContentType } from "@app/types/files";
+import type { FrameContentType } from "@app/types/files";
+import {
+  fileShareScopeSchema,
+  frameContentType,
+  frameSlideshowContentType,
+} from "@app/types/files";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 // Zod schema for VizAccessTokenPayload.
 const VizAccessTokenPayloadSchema = z.object({
-  contentType: z.literal(frameContentType),
+  contentType: z.enum([frameContentType, frameSlideshowContentType]),
   fileToken: z.string(),
   shareScope: fileShareScopeSchema,
   userId: z.string().optional(),
@@ -17,18 +22,20 @@ const VizAccessTokenPayloadSchema = z.object({
 export type VizAccessTokenPayload = z.infer<typeof VizAccessTokenPayloadSchema>;
 
 export function generateVizAccessToken({
+  contentType,
   fileToken,
   userId,
   shareScope,
   workspaceId,
 }: {
+  contentType: FrameContentType;
   fileToken: string;
   userId?: string;
   shareScope: "public" | "workspace";
   workspaceId: string;
 }): string {
   const payload: VizAccessTokenPayload = {
-    contentType: frameContentType,
+    contentType,
     fileToken,
     shareScope,
     userId,

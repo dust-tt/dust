@@ -5,6 +5,7 @@ import {
   VIZ_MIME_TYPE,
   VIZ_MISCELLANEOUS_GUIDELINES,
   VIZ_REACT_COMPONENT_GUIDELINES,
+  VIZ_SLIDESHOW_MIME_TYPE,
   VIZ_STYLING_GUIDELINES,
   VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
@@ -25,9 +26,10 @@ This toolset is called Frame in the product, users may refer to it as such.
 ### Creating Files
 
 Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files:
-- Use MIME type \`${VIZ_MIME_TYPE}\`
+- Use MIME type \`${VIZ_MIME_TYPE}\` for visualizations/dashboards or \`${VIZ_SLIDESHOW_MIME_TYPE}\` for slideshows
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
+- The MIME type is set at creation and cannot be changed afterward. To switch content type, create a new file.
 
 The tool supports two creation modes via the \`mode\` parameter. The mode determines where the
 React component code comes from:
@@ -167,6 +169,8 @@ ${VIZ_MISCELLANEOUS_GUIDELINES}
 
 When the user asks for a presentation, slideshow, deck, or multi-slide content, create an interactive
 content file using the \`Slideshow\` and \`Slide\` components.
+
+**MIME type:** Always set \`mime_type\` to \`${VIZ_SLIDESHOW_MIME_TYPE}\` when creating a slideshow.
 
 **Import:** \`import { Slideshow, Slide } from "@dust/slideshow/v2";\`
 

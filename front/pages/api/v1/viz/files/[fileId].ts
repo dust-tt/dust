@@ -8,7 +8,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { frameContentType } from "@app/types/files";
+import { isFrameContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -131,7 +131,7 @@ async function handler(
   // Only allow conversation Frame files.
   if (
     !frameFile.isInteractiveContent ||
-    frameFile.contentType !== frameContentType
+    !isFrameContentType(frameFile.contentType)
   ) {
     return apiError(req, res, {
       status_code: 400,

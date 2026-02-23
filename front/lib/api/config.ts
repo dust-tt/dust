@@ -25,7 +25,7 @@ const config = {
 
   getClientFacingVizUrl: (): string | undefined => {
     const baseUrl = getBaseUrlFromResolver();
-    if (baseUrl) {
+    if (baseUrl && baseUrl.includes("dust.tt")) {
       // Derive viz URL from the resolver's base URL (e.g. https://eu.dust.tt -> https://eu.viz.dust.tt).
       return baseUrl.replace("dust.tt", "viz.dust.tt");
     }

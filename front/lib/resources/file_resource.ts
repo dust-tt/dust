@@ -30,7 +30,7 @@ import type {
 } from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
-  frameContentType,
+  isFrameContentType,
   isInteractiveContentFileContentType,
 } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -754,7 +754,7 @@ export class FileResource extends BaseResource<FileModel> {
       "getShareUrlForShareableFile called on non-interactive content file"
     );
 
-    if (this.contentType === frameContentType) {
+    if (isFrameContentType(this.contentType)) {
       return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
     }
 

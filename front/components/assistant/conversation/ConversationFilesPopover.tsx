@@ -7,6 +7,7 @@ import config from "@app/lib/api/config";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   frameContentType,
+  frameSlideshowContentType,
   isInteractiveContentContentType,
 } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -33,6 +34,7 @@ interface FileGroup {
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
   [frameContentType]: "Frames",
+  [frameSlideshowContentType]: "Presentations",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
