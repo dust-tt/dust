@@ -1,9 +1,11 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
+  ArrowCircleIcon,
   ArrowDownOnSquareIcon,
   ArrowUpOnSquareIcon,
   Button,
+  ButtonGroup,
   CommandLineIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +16,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FullscreenIcon,
+  HistoryIcon,
   MoreIcon,
   PlayIcon,
   SpaceOpenIcon,
@@ -21,9 +25,12 @@ import {
   TabsList,
   TabsTrigger,
   XMarkIcon,
+  Separator,
+  useSendNotification,
+  ArrowGoBackIcon,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { mockSpaces } from "../data";
 
@@ -32,6 +39,20 @@ export function FrameView() {
     const randomIndex = Math.floor(Math.random() * mockSpaces.length);
     return mockSpaces[randomIndex]?.name ?? "Project";
   }, []);
+  const [isAddedToProject, setIsAddedToProject] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const handleAddToProject = () => {
+    if (isAddedToProject) {
+      return;
+    }
+
+    setIsAddedToProject(true);
+    sendNotification({
+      type: "success",
+      title: `Frame added to project ${randomProjectName}`,
+    });
+  };
 
   return (
     <div className="s-h-screen s-w-full s-bg-background">
@@ -52,7 +73,7 @@ export function FrameView() {
         <Allotment.Pane minSize={320} preferredSize={50} className="s-h-full">
           <div className="s-flex s-h-full s-flex-col">
             <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-bg-background s-px-3">
-              <div className="s-flex s-h-full s-flex-1 s-items-end">
+              <div className="s-flex s-h-full s-items-end">
                 <Tabs defaultValue="play">
                   <TabsList border={false}>
                     <TabsTrigger value="play" icon={PlayIcon} />
@@ -61,6 +82,17 @@ export function FrameView() {
                 </Tabs>
               </div>
               <div className="s-flex-1" />
+              <Button
+                icon={FullscreenIcon}
+                variant="ghost"
+                tooltip="Full screen"
+              />
+              <Button
+                icon={ArrowGoBackIcon}
+                variant="ghost"
+                tooltip="Back to a previous version"
+              />
+              <Button icon={ArrowCircleIcon} variant="ghost" tooltip="Reload" />
               <div className="s-flex s-h-8 s-items-center s-gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -90,16 +122,24 @@ export function FrameView() {
                     />
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel
-                      label={`Project: ${randomProjectName}`}
+                      label={
+                        isAddedToProject
+                          ? `Saved to project ${randomProjectName}`
+                          : `Project: ${randomProjectName}`
+                      }
                     />
-                    <DropdownMenuItem
-                      label="Save to project"
-                      icon={SpaceOpenIcon}
-                    />
+                    {!isAddedToProject && (
+                      <DropdownMenuItem
+                        label="Add to project"
+                        icon={SpaceOpenIcon}
+                        onClick={handleAddToProject}
+                      />
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button icon={XMarkIcon} variant="ghost" />
               </div>
+              <div className="s-flex-1" />
+              <Button icon={XMarkIcon} variant="ghost" />
             </div>
           </div>
         </Allotment.Pane>
