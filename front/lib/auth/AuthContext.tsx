@@ -12,6 +12,7 @@ export interface AuthContextValue {
   isAdmin: boolean;
   isBuilder: boolean;
   featureFlags: WhitelistableFeature[];
+  vizUrl: string;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

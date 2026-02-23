@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AuthContextNoWorkspaceValue,
@@ -38,6 +39,7 @@ export const pokeGetServerSideProps =
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
         featureFlags,
+        vizUrl: config.getVizPublicUrl(),
       },
     };
   });
