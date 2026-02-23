@@ -2,6 +2,13 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
+  MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
+  MAX_PENDING_SKILLS_SUGGESTIONS,
+  MAX_PENDING_SUB_AGENT_SUGGESTIONS,
+  MAX_PENDING_TOOLS_SUGGESTIONS,
+} from "@app/lib/api/actions/servers/agent_copilot_context/constants";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
@@ -85,13 +92,6 @@ const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> = {
   customer_support: ["SUPPORT"],
   other: [],
 };
-
-// Limits for pending suggestions by kind
-const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
-const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
-const MAX_PENDING_SUB_AGENT_SUGGESTIONS = 2;
-const MAX_PENDING_SKILLS_SUGGESTIONS = 3;
-const MAX_PENDING_KNOWLEDGE_SUGGESTIONS = 3;
 
 type LimitedSuggestionKind =
   | "instructions"
