@@ -460,8 +460,7 @@ const config = {
   getE2BSandboxConfig: ():
     | { apiKey: string; templateId: string; domain: string | undefined }
     | undefined => {
-    const apiKey =
-      EnvironmentConfig.getOptionalEnvVariable("E2B_API_KEY");
+    const apiKey = EnvironmentConfig.getOptionalEnvVariable("E2B_API_KEY");
     const templateId =
       EnvironmentConfig.getOptionalEnvVariable("E2B_TEMPLATE_ID");
     if (!apiKey || !templateId) {
