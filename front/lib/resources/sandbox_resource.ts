@@ -115,20 +115,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.update({ lastActivityAt: new Date() }, transaction);
   }
 
-  async updateForRecreation(
-    providerId: string,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<[affectedCount: number]> {
-    return this.update(
-      {
-        providerId,
-        status: "running",
-        lastActivityAt: new Date(),
-      },
-      transaction
-    );
-  }
-
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -216,7 +202,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       case "deleted": {
         try {
           const handle = await provider.create({});
-          await existing.updateForRecreation(handle.providerId);
+          await existing.update({
+            providerId: handle.providerId,
+            status: "running",
+            lastActivityAt: new Date(),
+          });
 
           logger.info(
             {
