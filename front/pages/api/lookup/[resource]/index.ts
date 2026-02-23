@@ -5,7 +5,6 @@ import {
   hasEmailLocalRegionAffinity,
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
@@ -29,10 +28,6 @@ export type InvitationsLookupResponse = {
   pendingInvitations: PendingInvitationOption[];
 };
 
-export type ShareTokenLookupResponse = {
-  exists: boolean;
-};
-
 const ExternalUserCodec = t.type({
   email: t.string,
   email_verified: t.boolean,
@@ -41,8 +36,7 @@ const ExternalUserCodec = t.type({
 type LookupResponseBody =
   | UserLookupResponse
   | WorkspaceLookupResponse
-  | InvitationsLookupResponse
-  | ShareTokenLookupResponse;
+  | InvitationsLookupResponse;
 
 const UserLookupSchema = t.type({
   user: ExternalUserCodec,
@@ -56,10 +50,6 @@ const InvitationsLookupSchema = t.type({
   email: t.string,
 });
 
-const ShareTokenLookupSchema = t.type({
-  token: t.string,
-});
-
 export type UserLookupRequestBodyType = t.TypeOf<typeof UserLookupSchema>;
 
 export type WorkspaceLookupRequestBodyType = t.TypeOf<
@@ -70,15 +60,10 @@ export type InvitationsLookupRequestBodyType = t.TypeOf<
   typeof InvitationsLookupSchema
 >;
 
-export type ShareTokenLookupRequestBodyType = t.TypeOf<
-  typeof ShareTokenLookupSchema
->;
-
 const ResourceType = t.union([
   t.literal("user"),
   t.literal("workspace"),
   t.literal("invitations"),
-  t.literal("share-token"),
 ]);
 
 async function handler(
@@ -135,7 +120,7 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message:
-          "Invalid resource type. Must be 'user', 'workspace', 'invitations', or 'share-token'",
+          "Invalid resource type. Must be 'user', 'workspace', or 'invitations'",
       },
     });
   }
@@ -198,28 +183,6 @@ async function handler(
           });
         }
         response = await handleLookupInvitations(bodyValidation.right.email);
-      }
-      break;
-
-    case "share-token":
-      {
-        const bodyValidation = ShareTokenLookupSchema.decode(req.body);
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Invalid request body for share-token lookup: ${pathError}`,
-            },
-          });
-        }
-        const result = await FileResource.fetchByShareTokenWithContent(
-          bodyValidation.right.token
-        );
-        response = { exists: !!result };
       }
       break;
 

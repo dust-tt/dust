@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import type {
   AuthContextNoWorkspaceValue,
   AuthContextValue,
@@ -36,7 +35,6 @@ export const pokeGetServerSideProps =
         user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
-        vizUrl: config.getVizPublicUrl(),
       },
     };
   });

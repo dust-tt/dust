@@ -88,7 +88,6 @@ export function SharedFramePage() {
         <PublicInteractiveContentContainer
           shareToken={token}
           workspaceId={shareMetadata.workspaceId}
-          vizUrl={shareMetadata.vizUrl}
         />
       </div>
     </>

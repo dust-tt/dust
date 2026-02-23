@@ -9,7 +9,6 @@ import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
@@ -193,7 +192,6 @@ export function FrameRenderer({
   lastEditedByAgentConfigurationId,
   contentHash,
 }: FrameRendererProps) {
-  const { vizUrl } = useAuth();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
@@ -365,7 +363,6 @@ export function FrameRenderer({
                   .lastEditedByAgentConfigurationId ?? ""
               }
               workspaceId={owner.sId}
-              vizUrl={vizUrl}
               visualization={{
                 code: fileContent ?? "",
                 complete: true,

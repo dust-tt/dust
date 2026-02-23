@@ -15,7 +15,6 @@ interface PublicFrameRendererProps {
   fileName?: string;
   shareToken: string;
   workspaceId: string;
-  vizUrl: string;
 }
 
 export function PublicFrameRenderer({
@@ -23,7 +22,6 @@ export function PublicFrameRenderer({
   fileName,
   shareToken,
   workspaceId,
-  vizUrl,
 }: PublicFrameRendererProps) {
   const { conversationUrl, isFrameLoading, error, accessToken } =
     usePublicFrame({
@@ -71,7 +69,6 @@ export function PublicFrameRenderer({
             agentConfigurationId={null}
             conversationId={null}
             workspaceId={workspaceId}
-            vizUrl={vizUrl}
             visualization={{
               accessToken,
               complete: true,

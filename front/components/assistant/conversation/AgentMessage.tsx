@@ -47,7 +47,6 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -895,7 +894,6 @@ function AgentMessageContent({
     VirtuosoMessageListContext
   >();
 
-  const { vizUrl } = useAuth();
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -970,8 +968,7 @@ function AgentMessageContent({
         owner,
         agentConfiguration.sId,
         conversationId,
-        sId,
-        vizUrl
+        sId
       ),
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
@@ -983,7 +980,6 @@ function AgentMessageContent({
       conversationId,
       sId,
       agentConfiguration.sId,
-      vizUrl,
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
