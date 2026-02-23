@@ -60,6 +60,12 @@ export function BlogTagFilter({ allTags, selectedTag }: BlogTagFilterProps) {
           href={`/blog?tag=${encodeURIComponent(tag)}`}
         />
       ))}
+      <Button
+        label="Customer Stories"
+        variant="outline"
+        size="sm"
+        href="/customers"
+      />
     </div>
   );
 }

@@ -250,7 +250,7 @@ export default function BlogPost({
 
           <div className={classNames(WIDE_CLASSES, "mt-4")}>
             <div className="grid gap-8 lg:grid-cols-12">
-              <div className="lg:col-span-9">
+              <div className="min-w-0 lg:col-span-9">
                 {renderRichTextFromContentful(post.body)}
               </div>
               {tocItems.length > 0 && (
