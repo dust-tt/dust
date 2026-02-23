@@ -421,6 +421,7 @@ export interface WorkspaceMetadata {
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
+  phoneCountry?: string;
 }
 
 function isWorkspaceConversationKillSwitchValue(
