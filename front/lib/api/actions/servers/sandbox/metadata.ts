@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
 
 export const SANDBOX_TOOLS_METADATA = createToolsRecord({
-  execute: {
+  bash: {
     description:
       "Execute a shell command in an isolated sandbox environment. " +
       "The sandbox is a Linux container with common tools pre-installed. " +
@@ -31,67 +31,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
           "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Executing command in sandbox",
       done: "Execute command in sandbox",
-    },
-  },
-  write_file: {
-    description:
-      "Write content to a file in the sandbox. " +
-      "Creates parent directories if they don't exist. " +
-      "Overwrites the file if it already exists.",
-    schema: {
-      path: z
-        .string()
-        .describe(
-          "Absolute path where the file should be written in the sandbox."
-        ),
-      content: z.string().describe("The content to write to the file."),
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Writing file to sandbox",
-      done: "Write file to sandbox",
-    },
-  },
-  read_file: {
-    description:
-      "Read a file from the sandbox and make it available as a Dust file. " +
-      "Use this to retrieve results of computations, generated content, or any file " +
-      "that should be shared with the user in the conversation.",
-    schema: {
-      path: z.string().describe("Absolute path to the file to read."),
-      title: z
-        .string()
-        .optional()
-        .describe("Title for the file in Dust. Defaults to the filename."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Reading file from sandbox",
-      done: "Read file from sandbox",
-    },
-  },
-  list_files: {
-    description:
-      "List files and directories in the sandbox. " +
-      "Returns file names, sizes, and types (file/directory).",
-    schema: {
-      path: z
-        .string()
-        .optional()
-        .describe("Directory path to list. Defaults to /tmp."),
-      recursive: z
-        .boolean()
-        .optional()
-        .describe("Whether to list files recursively. Defaults to false."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing files in sandbox",
-      done: "List files in sandbox",
     },
   },
 });
@@ -111,8 +54,7 @@ export const SANDBOX_SERVER = {
     instructions:
       // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
-      "Use `execute` to run commands, `write_file`/`read_file` for file operations. " +
-      "Use `read_file` to retrieve generated files and make them available in the conversation. " +
+      "Use `bash` to run commands and scripts. " +
       "The sandbox persists for the conversation duration. " +
       "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.",
   },
