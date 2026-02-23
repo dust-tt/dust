@@ -35,6 +35,7 @@ import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import Custom404 from "@dust-tt/front/pages/404";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
+import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { PokePage } from "@spa/poke/layouts/PokePage";
 import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
 import {
@@ -56,73 +57,87 @@ function PokeRedirect() {
 const router = createBrowserRouter(
   [
     {
-      path: "/",
-      element: <PokePage />,
+      element: <RootRouterLayout />,
       children: [
-        { index: true, element: <DashboardPage /> },
-        { path: "kill", element: <KillPage /> },
-        { path: "plans", element: <PlansPage /> },
-        { path: "pokefy", element: <PokefyPage /> },
-        { path: "production-checks", element: <ProductionChecksPage /> },
-        { path: "email-templates", element: <EmailTemplatesPage /> },
-        { path: "templates", element: <TemplatesListPage /> },
-        { path: "templates/:tId", element: <TemplateDetailPage /> },
-        { path: "plugins", element: <PluginsPage /> },
-        { path: "cache", element: <CacheLookupPage /> },
-        { path: "connectors/:connectorId", element: <ConnectorRedirectPage /> },
+        {
+          path: "/",
+          element: <PokePage />,
+          children: [
+            { index: true, element: <DashboardPage /> },
+            { path: "kill", element: <KillPage /> },
+            { path: "plans", element: <PlansPage /> },
+            { path: "pokefy", element: <PokefyPage /> },
+            { path: "production-checks", element: <ProductionChecksPage /> },
+            { path: "email-templates", element: <EmailTemplatesPage /> },
+            { path: "templates", element: <TemplatesListPage /> },
+            { path: "templates/:tId", element: <TemplateDetailPage /> },
+            { path: "plugins", element: <PluginsPage /> },
+            { path: "cache", element: <CacheLookupPage /> },
+            {
+              path: "connectors/:connectorId",
+              element: <ConnectorRedirectPage />,
+            },
+          ],
+        },
+        { path: "/404", element: <Custom404 /> },
+        {
+          path: "/:wId",
+          element: <PokeWorkspacePage />,
+          children: [
+            { index: true, element: <WorkspacePage /> },
+            { path: "memberships", element: <MembershipsPage /> },
+            { path: "llm-traces/:runId", element: <LLMTracePage /> },
+            {
+              path: "assistants/:aId/instructions",
+              element: <AssistantInstructionsPage />,
+            },
+            { path: "assistants/:aId", element: <AssistantDetailsPage /> },
+            {
+              path: "assistants/:aId/triggers/:triggerId",
+              element: <TriggerDetailsPage />,
+            },
+            { path: "conversation/:cId", element: <ConversationPage /> },
+            { path: "data_sources/:dsId", element: <DataSourcePage /> },
+            {
+              path: "data_sources/:dsId/notion-requests",
+              element: <NotionRequestsPage />,
+            },
+            {
+              path: "data_sources/:dsId/query",
+              element: <DataSourceQueryPage />,
+            },
+            {
+              path: "data_sources/:dsId/search",
+              element: <DataSourceSearchPage />,
+            },
+            {
+              path: "data_sources/:dsId/view",
+              element: <DataSourceViewPage />,
+            },
+            { path: "groups/:groupId", element: <GroupPage /> },
+            { path: "files/:sId", element: <FramePage /> },
+            { path: "skills/:sId", element: <SkillDetailsPage /> },
+            { path: "spaces/:spaceId", element: <SpacePage /> },
+            { path: "spaces/:spaceId/apps/:appId", element: <AppPage /> },
+            {
+              path: "spaces/:spaceId/data_source_views/:dsvId",
+              element: <SpaceDataSourceViewPage />,
+            },
+            {
+              path: "spaces/:spaceId/mcp_server_views/:svId",
+              element: <MCPServerViewPage />,
+            },
+            {
+              path: "webhook-sources/:wsId",
+              element: <WebhookSourceDetailsPage />,
+            },
+          ],
+        },
+        // Redirect /poke/* to /* (strip /poke prefix)
+        { path: "poke/*", element: <PokeRedirect /> },
+        { path: "*", element: <Custom404 /> },
       ],
     },
-    { path: "/404", element: <Custom404 /> },
-    {
-      path: "/:wId",
-      element: <PokeWorkspacePage />,
-      children: [
-        { index: true, element: <WorkspacePage /> },
-        { path: "memberships", element: <MembershipsPage /> },
-        { path: "llm-traces/:runId", element: <LLMTracePage /> },
-        {
-          path: "assistants/:aId/instructions",
-          element: <AssistantInstructionsPage />,
-        },
-        { path: "assistants/:aId", element: <AssistantDetailsPage /> },
-        {
-          path: "assistants/:aId/triggers/:triggerId",
-          element: <TriggerDetailsPage />,
-        },
-        { path: "conversation/:cId", element: <ConversationPage /> },
-        { path: "data_sources/:dsId", element: <DataSourcePage /> },
-        {
-          path: "data_sources/:dsId/notion-requests",
-          element: <NotionRequestsPage />,
-        },
-        { path: "data_sources/:dsId/query", element: <DataSourceQueryPage /> },
-        {
-          path: "data_sources/:dsId/search",
-          element: <DataSourceSearchPage />,
-        },
-        { path: "data_sources/:dsId/view", element: <DataSourceViewPage /> },
-        { path: "groups/:groupId", element: <GroupPage /> },
-        { path: "files/:sId", element: <FramePage /> },
-        { path: "skills/:sId", element: <SkillDetailsPage /> },
-        { path: "spaces/:spaceId", element: <SpacePage /> },
-        { path: "spaces/:spaceId/apps/:appId", element: <AppPage /> },
-        {
-          path: "spaces/:spaceId/data_source_views/:dsvId",
-          element: <SpaceDataSourceViewPage />,
-        },
-        {
-          path: "spaces/:spaceId/mcp_server_views/:svId",
-          element: <MCPServerViewPage />,
-        },
-        {
-          path: "webhook-sources/:wsId",
-          element: <WebhookSourceDetailsPage />,
-        },
-      ],
-    },
-    // Redirect /poke/* to /* (strip /poke prefix)
-    { path: "poke/*", element: <PokeRedirect /> },
-    { path: "*", element: <Custom404 /> },
   ],
   {
     basename: import.meta.env.VITE_BASE_PATH ?? "",

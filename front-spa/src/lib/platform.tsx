@@ -126,7 +126,7 @@ function createRouterEvents(): RouterEvents {
 }
 
 // Singleton events object so all useAppRouter calls share the same listeners
-const routerEvents = createRouterEvents();
+export const routerEvents = createRouterEvents();
 
 export function useAppRouter(): AppRouter {
   const navigate = useSafeNavigate();
@@ -143,54 +143,6 @@ export function useAppRouter(): AppRouter {
       return () => window.removeEventListener("popstate", handlePopState);
     }
   }, [location]);
-
-  // Emit router events when location changes
-  // Track previous location to detect hash-only changes and skip initial mount
-  const previousLocationRef = useRef<{
-    pathname: string;
-    search: string;
-    hash: string;
-  } | null>(null);
-
-  // Track location for route change events
-  useEffect(() => {
-    if (location) {
-      const currentLocation = {
-        pathname: location.pathname,
-        search: location.search,
-        hash: window.location.hash,
-      };
-
-      const previousLocation = previousLocationRef.current;
-
-      // Skip initial mount - don't emit event on first render
-      if (previousLocation !== null) {
-        // Only emit if pathname or search changed (not hash - that's handled by hashchange listener)
-        if (
-          previousLocation.pathname !== currentLocation.pathname ||
-          previousLocation.search !== currentLocation.search
-        ) {
-          const fullUrl = `${currentLocation.pathname}${currentLocation.search}${currentLocation.hash}`;
-          queueMicrotask(() => {
-            routerEvents.emit("routeChangeComplete", fullUrl);
-          });
-        }
-      }
-
-      previousLocationRef.current = currentLocation;
-    }
-  }, [location]);
-
-  // Listen for hash changes (React Router doesn't track these)
-  useEffect(() => {
-    const handleHashChange = () => {
-      const fullUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      routerEvents.emit("hashChangeComplete", fullUrl);
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
 
   const push = useCallback(
     async (
