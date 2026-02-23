@@ -6,6 +6,7 @@ import {
   BlogPostGrid,
   BlogTagFilter,
   FeaturedPost,
+  SEO_PAGE_SIZE,
   SeoArticleList,
 } from "@app/components/blog/BlogComponents";
 import { BlogPagination } from "@app/components/blog/BlogPagination";
@@ -120,9 +121,10 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
     [remainingPool, startIndex, endIndex]
   );
 
+  const seoStartIndex = (currentPage - 1) * SEO_PAGE_SIZE;
   const paginatedSeoPosts = useMemo(
-    () => seoPosts.slice(startIndex, endIndex),
-    [seoPosts, startIndex, endIndex]
+    () => seoPosts.slice(seoStartIndex, seoStartIndex + SEO_PAGE_SIZE),
+    [seoPosts, seoStartIndex]
   );
 
   const showFeatured = featuredPost && currentPage === 1;

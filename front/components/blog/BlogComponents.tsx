@@ -7,6 +7,7 @@ import { Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 export const BLOG_PAGE_SIZE = 12;
+export const SEO_PAGE_SIZE = 10;
 
 export function BlogHeader() {
   return (

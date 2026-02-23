@@ -5,6 +5,7 @@ import {
   BlogLayout,
   BlogPostGrid,
   BlogTagFilter,
+  SEO_PAGE_SIZE,
   SeoArticleList,
 } from "@app/components/blog/BlogComponents";
 import { BlogPagination } from "@app/components/blog/BlogPagination";
@@ -98,9 +99,10 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
 
   const startIndex = (page - 1) * BLOG_PAGE_SIZE;
   const posts = remainingPosts.slice(startIndex, startIndex + BLOG_PAGE_SIZE);
+  const seoStartIndex = (page - 1) * SEO_PAGE_SIZE;
   const paginatedSeoPosts = seoPosts.slice(
-    startIndex,
-    startIndex + BLOG_PAGE_SIZE
+    seoStartIndex,
+    seoStartIndex + SEO_PAGE_SIZE
   );
 
   return {
