@@ -325,7 +325,7 @@ const renderOptions: Options = {
           "rounded-lg border border-border"
         )}
       >
-        <table className={cn("w-full border-collapse")}>
+        <table className={cn("w-full min-w-[600px] border-collapse")}>
           <tbody>{children}</tbody>
         </table>
       </div>
