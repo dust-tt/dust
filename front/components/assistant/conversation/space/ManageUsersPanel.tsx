@@ -289,9 +289,6 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const canSave =
     mode === "space-members" ? currentEditors.size > 0 && !isSaving : !isSaving;
 
-  const saveButtonLabel =
-    currentMembers.size > 0 ? `Save (${currentMembers.size})` : "Save";
-
   const sheetTitle =
     mode === "space-members"
       ? `Manage Members of ${props.space.name}`
@@ -339,7 +336,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             onClick: handleClose,
           }}
           rightButtonProps={{
-            label: saveButtonLabel,
+            label: "Save",
             variant: "highlight",
             onClick: handleSave,
             disabled: !canSave,
