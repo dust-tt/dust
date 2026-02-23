@@ -1,16 +1,13 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS,
+  type WorkspaceConversationKillSwitchOperation,
+  WorkspaceResource,
+} from "@app/lib/resources/workspace_resource";
 import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
-const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
-  "block",
-  "unblock",
-] as const;
-type WorkspaceConversationKillSwitchOperation =
-  (typeof WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS)[number];
 
 function isWorkspaceConversationKillSwitchOperation(
   operation: string
