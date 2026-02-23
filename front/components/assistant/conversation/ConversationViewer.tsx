@@ -188,6 +188,7 @@ export const ConversationViewer = ({
     user,
     conversationId,
   });
+  const submitInFlightRef = useRef(false);
 
   const [initialListData, setInitialListData] = useState<
     VirtuosoMessage[] | undefined
@@ -501,126 +502,142 @@ export const ConversationViewer = ({
           message: "No ref",
         });
       }
-      const messageData = {
-        input,
-        mentions: mentions.map(toMentionType),
-        contentFragments,
-        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
-        skipToolsValidation: agentBuilderContext?.skipToolsValidation,
-      };
 
-      const lastMessageRank = Math.max(
-        ...ref.current.data.get().map((m) => m.rank)
-      );
-
-      let rank =
-        lastMessageRank +
-        // Content fragments are prepended as "message" in the conversation, before the user message.
-        // We need to account for their ranks as well.
-        contentFragments.contentNodes.length +
-        contentFragments.uploaded.length +
-        // +1 for the user message
-        1;
-
-      const placeholderUserMsg: VirtuosoMessage = createPlaceholderUserMessage({
-        input,
-        mentions,
-        user,
-        rank,
-        contentFragments,
-      });
-
-      const placeholderAgentMessages: VirtuosoMessage[] = [];
-      for (const mention of mentions) {
-        if (isRichAgentMention(mention)) {
-          // +1 per agent message mentioned
-          rank += 1;
-          placeholderAgentMessages.push(
-            createPlaceholderAgentMessage({
-              userMessage: placeholderUserMsg,
-              mention,
-              rank,
-            })
-          );
-        }
-      }
-
-      // An agent will answer immediately only if it is explicitely mentioned.
-      // In that case, we want to scroll to put the user message at the top.
-      const isMentioningAgent = mentions.some(isRichAgentMention);
-
-      const nbMessages = ref.current.data.get().length;
-      ref.current.data.append(
-        [placeholderUserMsg, ...placeholderAgentMessages],
-        isMentioningAgent
-          ? () => {
-              return {
-                index: nbMessages, // Avoid jumping around when the agent message is generated.
-                align: "start",
-                behavior: customSmoothScroll,
-              };
-            }
-          : (params) => {
-              if (params.scrollLocation.bottomOffset >= 0) {
-                return {
-                  index: "LAST",
-                  align: "end",
-                  behavior: customSmoothScroll,
-                };
-              } else {
-                return false;
-              }
-            }
-      );
-
-      const result = await submitMessage(messageData);
-
-      if (result.isErr()) {
-        if (result.error.type === "plan_limit_reached_error") {
-          setPlanLimitReached?.(true);
-        } else {
-          sendNotification({
-            title: result.error.title,
-            description: result.error.message,
-            type: "error",
-          });
-        }
-
-        // If the API errors, the original data will be rolled back by SWR automatically.
-        console.error("Failed to post message:", result.error);
+      if (submitInFlightRef.current) {
         return new Err({
           code: "internal_error",
-          name: "FailedToPostMessage",
-          message: `Failed to post message ${result.error}`,
+          name: "AlreadySubmitting",
+          message: "Already submitting",
         });
       }
 
-      const {
-        message: messageFromBackend,
-        contentFragments: contentFragmentsFromBackend,
-      } = result.value;
+      submitInFlightRef.current = true;
 
-      // map() is how we update the state of virtuoso messages.
-      ref.current.data.map((m) =>
-        m.rank === placeholderUserMsg.rank
-          ? {
-              ...messageFromBackend,
-              contentFragments: contentFragmentsFromBackend,
-            }
-          : m
-      );
+      try {
+        const messageData = {
+          input,
+          mentions: mentions.map(toMentionType),
+          contentFragments,
+          clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
+          skipToolsValidation: agentBuilderContext?.skipToolsValidation,
+        };
 
-      void mutateConversations(
-        (currentData: ConversationWithoutContentType[] | undefined) =>
-          currentData?.map((c) =>
-            c.sId === conversationId
-              ? { ...c, updated: new Date().getTime() }
-              : c
-          ),
-        { revalidate: false }
-      );
+        const lastMessageRank = Math.max(
+          ...ref.current.data.get().map((m) => m.rank)
+        );
 
-      return new Ok(undefined);
+        let rank =
+          lastMessageRank +
+          // Content fragments are prepended as "message" in the conversation, before the user message.
+          // We need to account for their ranks as well.
+          contentFragments.contentNodes.length +
+          contentFragments.uploaded.length +
+          // +1 for the user message
+          1;
+
+        const placeholderUserMsg: VirtuosoMessage =
+          createPlaceholderUserMessage({
+            input,
+            mentions,
+            user,
+            rank,
+            contentFragments,
+          });
+
+        const placeholderAgentMessages: VirtuosoMessage[] = [];
+        for (const mention of mentions) {
+          if (isRichAgentMention(mention)) {
+            // +1 per agent message mentioned
+            rank += 1;
+            placeholderAgentMessages.push(
+              createPlaceholderAgentMessage({
+                userMessage: placeholderUserMsg,
+                mention,
+                rank,
+              })
+            );
+          }
+        }
+
+        // An agent will answer immediately only if it is explicitely mentioned.
+        // In that case, we want to scroll to put the user message at the top.
+        const isMentioningAgent = mentions.some(isRichAgentMention);
+
+        const nbMessages = ref.current.data.get().length;
+        ref.current.data.append(
+          [placeholderUserMsg, ...placeholderAgentMessages],
+          isMentioningAgent
+            ? () => {
+                return {
+                  index: nbMessages, // Avoid jumping around when the agent message is generated.
+                  align: "start",
+                  behavior: customSmoothScroll,
+                };
+              }
+            : (params) => {
+                if (params.scrollLocation.bottomOffset >= 0) {
+                  return {
+                    index: "LAST",
+                    align: "end",
+                    behavior: customSmoothScroll,
+                  };
+                } else {
+                  return false;
+                }
+              }
+        );
+
+        const result = await submitMessage(messageData);
+
+        if (result.isErr()) {
+          if (result.error.type === "plan_limit_reached_error") {
+            setPlanLimitReached?.(true);
+          } else {
+            sendNotification({
+              title: result.error.title,
+              description: result.error.message,
+              type: "error",
+            });
+          }
+
+          // If the API errors, the original data will be rolled back by SWR automatically.
+          console.error("Failed to post message:", result.error);
+          return new Err({
+            code: "internal_error",
+            name: "FailedToPostMessage",
+            message: `Failed to post message ${result.error}`,
+          });
+        }
+
+        const {
+          message: messageFromBackend,
+          contentFragments: contentFragmentsFromBackend,
+        } = result.value;
+
+        // map() is how we update the state of virtuoso messages.
+        ref.current.data.map((m) =>
+          m.rank === placeholderUserMsg.rank
+            ? {
+                ...messageFromBackend,
+                contentFragments: contentFragmentsFromBackend,
+              }
+            : m
+        );
+
+        void mutateConversations(
+          (currentData: ConversationWithoutContentType[] | undefined) =>
+            currentData?.map((c) =>
+              c.sId === conversationId
+                ? { ...c, updated: new Date().getTime() }
+                : c
+            ),
+          { revalidate: false }
+        );
+
+        return new Ok(undefined);
+      } finally {
+        submitInFlightRef.current = false;
+      }
     },
     [
       agentBuilderContext?.clientSideMCPServerIds,
