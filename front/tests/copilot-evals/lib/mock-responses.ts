@@ -1,4 +1,4 @@
-import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/tests/copilot-evals/lib/config";
+import { ONE_HOUR_MS } from "@app/tests/copilot-evals/lib/config";
 import type { MockAgentState } from "@app/tests/copilot-evals/lib/types";
 
 export function getMockToolResponse(
