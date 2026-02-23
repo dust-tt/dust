@@ -4,6 +4,7 @@ import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  isDustCompanyPlan,
   isEntreprisePlanPrefix,
   isFriendsAndFamilyPlan,
 } from "@app/lib/plans/plan_codes";
@@ -175,7 +176,9 @@ async function handler(
   const plan = auth.plan();
   const shouldHideFooter =
     plan &&
-    (isEntreprisePlanPrefix(plan.code) || isFriendsAndFamilyPlan(plan.code));
+    (isDustCompanyPlan(plan.code) ||
+      isEntreprisePlanPrefix(plan.code) ||
+      isFriendsAndFamilyPlan(plan.code));
   const showFooter = !shouldHideFooter;
 
   const renderer = new DocumentRenderer(documentRendererUrl, logger);
