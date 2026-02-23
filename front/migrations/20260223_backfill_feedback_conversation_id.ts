@@ -5,6 +5,8 @@ import {
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -138,8 +140,22 @@ async function backfillWorkspace(
   workspaceLogger.info({ updatedCount }, "Backfill complete.");
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  await runOnAllWorkspaces(async (workspace) => {
-    await backfillWorkspace(workspace, { execute, logger });
-  });
-});
+makeScript(
+  { workspaceId: { type: "string", required: false } },
+  async ({ workspaceId, execute }, logger) => {
+    if (workspaceId) {
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+      await backfillWorkspace(renderLightWorkspaceType({ workspace }), {
+        execute,
+        logger,
+      });
+    } else {
+      await runOnAllWorkspaces(async (workspace) => {
+        await backfillWorkspace(workspace, { execute, logger });
+      });
+    }
+  }
+);
