@@ -23,16 +23,6 @@ const config = {
     return baseUrlResolver?.() || config.getClientFacingUrl();
   },
 
-  getClientFacingVizUrl: (): string | undefined => {
-    const baseUrl = getBaseUrlFromResolver();
-    if (baseUrl && baseUrl.includes("dust.tt")) {
-      // Derive viz URL from the resolver's base URL (e.g. https://eu.dust.tt -> https://eu.viz.dust.tt).
-      return baseUrl.replace("dust.tt", "viz.dust.tt");
-    }
-
-    return process.env.NEXT_PUBLIC_VIZ_URL;
-  },
-
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our

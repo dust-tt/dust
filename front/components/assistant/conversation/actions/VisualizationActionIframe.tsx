@@ -1,6 +1,5 @@
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -238,6 +237,7 @@ interface VisualizationActionIframeProps {
   conversationId: string | null;
   isInDrawer?: boolean;
   visualization: Visualization;
+  vizUrl: string;
   workspaceId: string;
   isPublic?: boolean;
 }
@@ -347,8 +347,8 @@ export const VisualizationActionIframe = forwardRef<
       params.set("fullHeight", "true");
     }
 
-    return `${config.getClientFacingVizUrl()}/content?${params.toString()}`;
-  }, [visualization, isInDrawer]);
+    return `${props.vizUrl}/content?${params.toString()}`;
+  }, [visualization, isInDrawer, props.vizUrl]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
