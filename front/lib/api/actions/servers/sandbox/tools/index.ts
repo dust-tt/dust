@@ -1,5 +1,3 @@
-import { CommandExitError } from "e2b";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -13,6 +11,7 @@ import { ensureSandboxActive } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
+import { CommandExitError } from "e2b";
 
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;

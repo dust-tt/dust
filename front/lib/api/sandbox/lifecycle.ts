@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
 import type { SandboxProvider } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

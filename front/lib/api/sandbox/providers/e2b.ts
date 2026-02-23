@@ -1,7 +1,3 @@
-import { Sandbox } from "e2b";
-
-import logger from "@app/logger/logger";
-
 import type {
   ExecOptions,
   ExecResult,
@@ -10,6 +6,8 @@ import type {
   SandboxHandle,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
+import logger from "@app/logger/logger";
+import { Sandbox } from "e2b";
 
 interface E2BConfig {
   apiKey: string;
