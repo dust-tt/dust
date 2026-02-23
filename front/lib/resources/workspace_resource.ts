@@ -64,9 +64,13 @@ type CachedWorkspaceData = {
 export interface WorkspaceResource
   extends ReadonlyAttributesType<WorkspaceModel> {}
 
-export type WorkspaceConversationKillSwitchOperation = "block" | "unblock";
+export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
+  "block",
+  "unblock",
+] as const;
+export type WorkspaceConversationKillSwitchOperation =
+  (typeof WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS)[number];
 export type UpdateWorkspaceConversationKillSwitchResult = {
-  wasBlockedBefore: boolean;
   wasUpdated: boolean;
 };
 
@@ -606,7 +610,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       case "block": {
         if (wasBlockedBefore) {
           return new Ok({
-            wasBlockedBefore,
             wasUpdated: false,
           });
         }
@@ -623,7 +626,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       case "unblock": {
         if (!wasBlockedBefore) {
           return new Ok({
-            wasBlockedBefore,
             wasUpdated: false,
           });
         }
@@ -652,7 +654,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     }
 
     return new Ok({
-      wasBlockedBefore,
       wasUpdated: true,
     });
   }

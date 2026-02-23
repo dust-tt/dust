@@ -422,7 +422,6 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         {
           wId: w.sId,
           cId: conversationId,
-          wasAlreadyBlocked: updateResult.value.wasBlockedBefore,
         },
         "Conversation blocked"
       );
@@ -465,7 +464,6 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
         {
           wId: w.sId,
           cId: conversationId,
-          wasBlockedBefore: updateResult.value.wasBlockedBefore,
         },
         "Conversation unblocked"
       );
