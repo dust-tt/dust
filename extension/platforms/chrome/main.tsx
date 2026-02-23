@@ -22,8 +22,8 @@ import {
   PlatformProvider,
   usePlatform,
 } from "@extension/shared/context/PlatformContext";
-import { ExtensionAuthProvider } from "@extension/shared/lib/AuthProvider";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/FetcherProvider";
+import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
 import { compare } from "compare-versions";
 import React from "react";

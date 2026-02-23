@@ -13,8 +13,8 @@ import {
   LightModeIcon,
   LogoutIcon,
 } from "@dust-tt/sparkle";
-import { useExtensionAuth } from "@extension/shared/lib/AuthProvider";
 import type { StoredUser } from "@extension/shared/services/auth";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useTheme } from "@extension/ui/hooks/useTheme";
 
 interface UserDropdownMenuProps {

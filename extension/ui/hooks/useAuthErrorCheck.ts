@@ -1,5 +1,5 @@
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import { useExtensionAuth } from "@extension/shared/lib/AuthProvider";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 

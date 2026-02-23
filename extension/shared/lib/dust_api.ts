@@ -1,6 +1,6 @@
 import { DustAPI } from "@dust-tt/client";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import { useExtensionAuth } from "@extension/shared/lib/AuthProvider";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useMemo } from "react";
 
 export const useDustAPI = () => {

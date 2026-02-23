@@ -1,8 +1,8 @@
 import { setBaseUrlResolver } from "@app/lib/api/config";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
-import { useExtensionAuth } from "@extension/shared/lib/AuthProvider";
 import { resHandler } from "@extension/shared/lib/swr";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 
