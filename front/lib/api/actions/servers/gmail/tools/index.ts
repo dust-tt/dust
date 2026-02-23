@@ -402,7 +402,8 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
           return new Err(
             new MCPError(
               `Failed to fetch attachment via Gmail API (messageId: ${messageId}, ` +
-                `filename: "${filename}"): ${attachmentErrorText}`
+                `filename: "${filename}"): ${attachmentErrorText}`,
+              { tracked: false }
             )
           );
         }
