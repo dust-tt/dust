@@ -1,0 +1,6 @@
+// Limits for pending suggestions by kind
+export const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
+export const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
+export const MAX_PENDING_SUB_AGENT_SUGGESTIONS = 2;
+export const MAX_PENDING_SKILLS_SUGGESTIONS = 3;
+export const MAX_PENDING_KNOWLEDGE_SUGGESTIONS = 3;

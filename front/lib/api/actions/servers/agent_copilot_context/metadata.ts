@@ -1,5 +1,12 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
+  MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
+  MAX_PENDING_SKILLS_SUGGESTIONS,
+  MAX_PENDING_SUB_AGENT_SUGGESTIONS,
+  MAX_PENDING_TOOLS_SUGGESTIONS,
+} from "@app/lib/api/actions/servers/agent_copilot_context/constants";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
@@ -210,6 +217,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       "Each suggestion targets a specific block by its ID and provides the full replacement HTML for that block. " +
       `Each block ID must appear at most once. For full rewrites, use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}'. ` +
       "Word-level diffs will be computed and displayed inline. " +
+      `There can't be more than ${MAX_PENDING_INSTRUCTIONS_SUGGESTIONS} pending prompt edits suggestions. ` +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
       suggestions: z
@@ -229,6 +237,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       "Suggest adding or removing tools from the agent's configuration. " +
       "This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. " +
       "If a pending suggestion for the same tool already exists, it will be automatically marked as outdated. " +
+      `There can't be more than ${MAX_PENDING_TOOLS_SUGGESTIONS} pending tools suggestions. ` +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
       suggestions: z
@@ -254,6 +263,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     description:
       "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. " +
       "If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. " +
+      `There can't be more than ${MAX_PENDING_SUB_AGENT_SUGGESTIONS} pending sub-agents suggestions. ` +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       action: z
@@ -279,6 +289,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     description:
       "Suggest adding or removing skills from the agent's configuration. " +
       "If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. " +
+      `There can't be more than ${MAX_PENDING_SKILLS_SUGGESTIONS} pending skills suggestions. ` +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
       suggestions: z
@@ -351,6 +362,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       "Suggest adding or removing a knowledge source (data source) from the agent's configuration. " +
       "Use `search_knowledge` first to identify relevant data sources, then suggest them here. " +
       "If a pending suggestion for the same data source already exists, it will be automatically marked as outdated. " +
+      `There can't be more than ${MAX_PENDING_KNOWLEDGE_SUGGESTIONS} pending knowledge suggestions. ` +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: KnowledgeSuggestionSchema.describe(
