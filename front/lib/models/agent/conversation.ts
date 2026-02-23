@@ -637,7 +637,7 @@ AgentMessageFeedbackModel.init(
 
 ConversationModel.hasMany(AgentMessageFeedbackModel, {
   foreignKey: { name: "conversationId", allowNull: true },
-  onDelete: "SET NULL",
+  onDelete: "RESTRICT",
 });
 AgentMessageFeedbackModel.belongsTo(ConversationModel, {
   as: "conversation",
