@@ -86,6 +86,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       baseUrl: this.baseUrl,
       retentionPeriodDays: this.retentionPeriodDays,
       lastGarbageCollectionTimestamp: this.lastGarbageCollectionTimestamp,
+      permissionProfileId: this.permissionProfileId,
     };
   }
 
