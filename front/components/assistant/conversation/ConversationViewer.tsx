@@ -30,6 +30,7 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
+import logger from "@app/logger/logger";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
@@ -465,7 +466,7 @@ export const ConversationViewer = ({
             break;
           default:
             ((t: never) => {
-              console.error("Unknown event type", t);
+              logger.error({ event: t }, "Unknown event type");
             })(event);
         }
       }
@@ -601,7 +602,7 @@ export const ConversationViewer = ({
           }
 
           // If the API errors, the original data will be rolled back by SWR automatically.
-          console.error("Failed to post message:", result.error);
+          logger.error({ err: result.error }, "Failed to post message");
           return new Err({
             code: "internal_error",
             name: "FailedToPostMessage",
