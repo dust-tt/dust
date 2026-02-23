@@ -169,7 +169,7 @@ jobs:
           echo "### SPA Deployed :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **App**: ${{ inputs.app }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: ${{ github.ref_name == 'main' && format('https://staging-{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ github.ref_name == 'main' && format('https://staging-{0}--{1}.preview.dust.tt', github.sha, inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
@@ -182,7 +182,7 @@ jobs:
           component: spa-${{ inputs.app }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          preview_url: ${{ github.ref_name == 'main' && format('https://staging-{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}
+          preview_url: ${{ github.ref_name == 'main' && format('https://staging-{0}--{1}.preview.dust.tt', github.sha, inputs.app) || format('https://{0}--{1}.preview.dust.tt', github.ref_name, inputs.app) }}
 
       - name: Notify Failure
         if: failure()
