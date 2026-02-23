@@ -123,14 +123,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
       resource.remoteMCPServer = remoteServer;
     } else if (blob.internalMCPServerId) {
-      const systemSpace =
-        await SpaceResource.fetchWorkspaceSystemSpace(auth);
-      const internalServer =
-        await InternalMCPServerInMemoryResource.fetchById(
-          auth,
-          blob.internalMCPServerId,
-          systemSpace
-        );
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+      const internalServer = await InternalMCPServerInMemoryResource.fetchById(
+        auth,
+        blob.internalMCPServerId,
+        systemSpace
+      );
       if (!internalServer) {
         throw new DustError(
           "internal_server_not_found",
