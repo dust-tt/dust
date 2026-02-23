@@ -1,3 +1,10 @@
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
+import { NoOpConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useConversation } from "@app/hooks/conversations/useConversation";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   BarHeader,
   Button,
@@ -6,12 +13,9 @@ import {
 } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/ui/components/auth/ProtectedRoute";
 import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
-import { ConversationContainer } from "@extension/ui/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@extension/ui/components/conversation/ConversationsListButton";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
-import { usePublicConversation } from "@extension/ui/components/conversation/usePublicConversation";
 import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
-import { InputBarProvider } from "@extension/ui/components/input_bar/InputBarContext";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -21,6 +25,7 @@ export const MainPage = ({
   workspace,
   handleLogout,
 }: ProtectedRouteChildrenProps) => {
+  const { subscription } = useAuth();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
 
@@ -37,8 +42,9 @@ export const MainPage = ({
   }, [params]);
 
   const { conversation, isConversationLoading, conversationError } =
-    usePublicConversation({
-      conversationId: conversationId ?? null,
+    useConversation({
+      conversationId: conversationId,
+      workspaceId: workspace.sId,
     });
 
   const headerTitle = useMemo(() => {
@@ -107,13 +113,23 @@ export const MainPage = ({
             </div>
           )}
           <div className="h-full w-full pt-28">
-            <InputBarProvider>
-              <ConversationContainer
-                owner={workspace}
-                conversationId={conversationId ?? null}
-                user={user}
-              />
-            </InputBarProvider>
+            <BlockedActionsProvider
+              owner={workspace}
+              conversation={conversation}
+            >
+              <NoOpConversationSidePanelProvider>
+                <GenerationContextProvider>
+                  <InputBarProvider>
+                    <ConversationContainerVirtuoso
+                      owner={workspace}
+                      user={user}
+                      subscription={subscription}
+                      conversationId={conversationId}
+                    />
+                  </InputBarProvider>
+                </GenerationContextProvider>
+              </NoOpConversationSidePanelProvider>
+            </BlockedActionsProvider>
           </div>
         </DropzoneContainer>
       </ActionValidationProvider>

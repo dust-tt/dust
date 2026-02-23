@@ -1,4 +1,6 @@
-import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
+import { useConversations } from "@app/hooks/conversations";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   Button,
   ChatBubbleLeftRightIcon,
@@ -15,7 +17,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { removeDiacritics, subFilter } from "@extension/shared/lib/utils";
-import { useConversations } from "@extension/ui/components/conversation/useConversations";
 import moment from "moment";
 import React, { useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
@@ -30,7 +31,7 @@ type GroupLabel =
   | "Older";
 
 interface ConversationListMenuItemProps {
-  conversation: ConversationWithoutContentPublicType;
+  conversation: ConversationWithoutContentType;
   selectedConversationId: string;
   navigate: NavigateFunction;
 }
@@ -65,14 +66,17 @@ function ConversationListMenuItem({
 }
 
 const Content = () => {
-  const { conversations, isConversationsLoading } = useConversations();
+  const owner = useWorkspace();
+  const { conversations, isConversationsLoading } = useConversations({
+    workspaceId: owner.sId,
+  });
   const { conversationId } = useParams();
   const [titleFilter, setTitleFilter] = useState("");
 
   const navigate = useNavigate();
 
   const groupConversationsByDate = (
-    conversations: ConversationWithoutContentPublicType[]
+    conversations: ConversationWithoutContentType[]
   ) => {
     const today = moment().startOf("day");
     const yesterday = moment().subtract(1, "days").startOf("day");
@@ -88,7 +92,7 @@ const Content = () => {
       | "Last 12 Months"
       | "Older";
 
-    const groups: Record<GroupLabel, ConversationWithoutContentPublicType[]> = {
+    const groups: Record<GroupLabel, ConversationWithoutContentType[]> = {
       Today: [],
       Yesterday: [],
       "Last Week": [],
@@ -129,7 +133,7 @@ const Content = () => {
 
   const conversationsByDate = conversations.length
     ? groupConversationsByDate(conversations)
-    : ({} as Record<GroupLabel, ConversationWithoutContentPublicType[]>);
+    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   return (
     <>
