@@ -103,7 +103,7 @@ describe("processToolResults", () => {
 
     // The large text block should be converted to a resource with a truncated snippet.
     expect(stored.type).toBe("resource");
-    if (stored.type === "resource") {
+    if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text.length).toBeLessThanOrEqual(
         MAXED_OUTPUT_FILE_SNIPPET_LENGTH + 50
       );
@@ -135,7 +135,7 @@ describe("processToolResults", () => {
     const stored = outputItems[0].content;
 
     expect(stored.type).toBe("resource");
-    if (stored.type === "resource") {
+    if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text.length).toBeLessThanOrEqual(
         MAXED_OUTPUT_FILE_SNIPPET_LENGTH + 50
       );
@@ -187,7 +187,7 @@ describe("processToolResults", () => {
     const stored = outputItems[0].content;
 
     expect(stored.type).toBe("resource");
-    if (stored.type === "resource") {
+    if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text).toBe(smallText);
     }
   });
