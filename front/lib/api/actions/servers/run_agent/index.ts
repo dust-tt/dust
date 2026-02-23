@@ -43,10 +43,7 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getApiKeyNameHeader,
-  prodAPICredentialsForOwner,
-} from "@app/lib/auth";
+import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
