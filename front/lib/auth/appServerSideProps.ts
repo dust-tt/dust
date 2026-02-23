@@ -56,6 +56,7 @@ export const appGetServerSideProps =
           user: auth.getNonNullableUser().toJSON(),
           isAdmin: auth.isAdmin(),
           isBuilder: auth.isBuilder(),
+          vizUrl: config.getVizPublicUrl(),
         },
       }
     );
@@ -79,6 +80,7 @@ export const appGetServerSidePropsForBuilders =
           user: auth.getNonNullableUser().toJSON(),
           isAdmin: auth.isAdmin(),
           isBuilder: auth.isBuilder(),
+          vizUrl: config.getVizPublicUrl(),
         },
       }
     );
@@ -102,6 +104,7 @@ export const appGetServerSidePropsForAdmin =
           user: auth.getNonNullableUser().toJSON(),
           isAdmin: auth.isAdmin(),
           isBuilder: auth.isBuilder(),
+          vizUrl: config.getVizPublicUrl(),
         },
       }
     );
@@ -126,6 +129,7 @@ export const appGetServerSidePropsPaywallWhitelisted =
             user: auth.getNonNullableUser().toJSON(),
             isAdmin: auth.isAdmin(),
             isBuilder: auth.isBuilder(),
+            vizUrl: config.getVizPublicUrl(),
           },
         }
       );
@@ -151,6 +155,7 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
             user: auth.getNonNullableUser().toJSON(),
             isAdmin: auth.isAdmin(),
             isBuilder: auth.isBuilder(),
+            vizUrl: config.getVizPublicUrl(),
           },
         }
       );

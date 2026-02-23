@@ -10,6 +10,7 @@ export interface AuthContextValue {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isBuilder: boolean;
+  vizUrl: string;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
