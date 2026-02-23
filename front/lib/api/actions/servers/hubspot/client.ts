@@ -752,6 +752,7 @@ export const createNote = async ({
   properties: {
     hs_note_body: string;
     hs_timestamp?: string;
+    hubspot_owner_id?: string;
     [key: string]: any;
   };
   associations?: {
@@ -771,9 +772,16 @@ export const createNote = async ({
     );
   }
 
+  // Use Unix milliseconds for hs_timestamp to ensure proper timeline placement.
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!propertiesForApi.hs_timestamp) {
-    propertiesForApi.hs_timestamp = new Date().toISOString();
+    propertiesForApi.hs_timestamp = Date.now().toString();
+  } else {
+    // Convert ISO 8601 strings to Unix milliseconds.
+    const parsed = Date.parse(propertiesForApi.hs_timestamp);
+    if (!isNaN(parsed)) {
+      propertiesForApi.hs_timestamp = parsed.toString();
+    }
   }
 
   const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
