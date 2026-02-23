@@ -108,12 +108,14 @@ export function useSubmitMessage({
       }
 
       // Create a new user message.
+      const messageIdempotencyKey = crypto.randomUUID();
       const mRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-Idempotency-Key": messageIdempotencyKey,
           },
           body: JSON.stringify({
             content: input,

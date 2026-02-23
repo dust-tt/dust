@@ -1,5 +1,9 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { isCopilotConversation } from "@app/lib/api/actions/servers/helpers";
+import {
+  ensureMessageIdempotency,
+  getMessageIdempotencyKey,
+} from "@app/lib/api/assistant/messages_idempotency";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -125,6 +129,11 @@ async function handler(
       break;
 
     case "POST":
+      const messageIdempotencyKeyRes = getMessageIdempotencyKey(req);
+      if (messageIdempotencyKeyRes.isErr()) {
+        return apiError(req, res, messageIdempotencyKeyRes.error);
+      }
+
       const bodyValidation = InternalPostMessagesRequestBodySchema.decode(
         req.body
       );
@@ -200,6 +209,15 @@ async function handler(
       const origin = isCopilotConversation(conversation.metadata)
         ? "agent_copilot"
         : "web";
+
+      const messageIdempotencyRes = await ensureMessageIdempotency(auth, {
+        conversationId,
+        idempotencyKey: messageIdempotencyKeyRes.value,
+      });
+
+      if (messageIdempotencyRes.isErr()) {
+        return apiError(req, res, messageIdempotencyRes.error);
+      }
 
       const messageRes = await postUserMessage(auth, {
         conversation,
