@@ -457,14 +457,19 @@ const config = {
     return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
   // E2B Sandbox.
-  getE2BSandboxConfig: (): {
-    apiKey: string;
-    templateId: string;
-    domain: string | undefined;
-  } => {
+  getE2BSandboxConfig: ():
+    | { apiKey: string; templateId: string; domain: string | undefined }
+    | undefined => {
+    const apiKey =
+      EnvironmentConfig.getOptionalEnvVariable("E2B_API_KEY");
+    const templateId =
+      EnvironmentConfig.getOptionalEnvVariable("E2B_TEMPLATE_ID");
+    if (!apiKey || !templateId) {
+      return undefined;
+    }
     return {
-      apiKey: EnvironmentConfig.getEnvVariable("E2B_API_KEY"),
-      templateId: EnvironmentConfig.getEnvVariable("E2B_TEMPLATE_ID"),
+      apiKey,
+      templateId,
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
