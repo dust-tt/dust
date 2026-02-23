@@ -6,12 +6,10 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
-import { getSandboxProvider } from "@app/lib/api/sandbox";
-import { ensureSandboxActive } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { Err, Ok } from "@app/types/shared/result";
-import { CommandExitError } from "e2b";
 
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;
@@ -72,46 +70,30 @@ export function createSandboxTools(
       { command, workingDirectory, timeoutMs },
       { auth, agentLoopContext }
     ) => {
-      const provider = getSandboxProvider();
-      if (!provider) {
-        return new Err(new MCPError("Sandbox provider not configured."));
-      }
-
       const conversation = agentLoopContext?.runContext?.conversation;
       if (!conversation) {
         return new Err(new MCPError("No conversation context available."));
       }
 
-      const result = await ensureSandboxActive(auth, conversation.id, provider);
-      if (result.isErr()) {
-        return new Err(new MCPError(result.error.message));
+      const ensureResult = await SandboxResource.ensureActive(
+        auth,
+        conversation.id
+      );
+      if (ensureResult.isErr()) {
+        return new Err(new MCPError(ensureResult.error.message));
       }
 
-      const { sandbox } = result.value;
+      const { sandbox } = ensureResult.value;
 
-      let execResult: ExecResult;
-      try {
-        execResult = await provider.exec(sandbox.providerId, command, {
-          workingDirectory: workingDirectory ?? "/home/user",
-          timeoutMs: timeoutMs ?? 60_000,
-        });
-      } catch (err) {
-        // The E2B SDK throws CommandExitError on non-zero exit codes.
-        // We still want to return stdout/stderr to the model.
-        if (err instanceof CommandExitError) {
-          execResult = {
-            exitCode: err.exitCode,
-            stdout: err.stdout,
-            stderr: err.stderr,
-          };
-        } else {
-          const message =
-            err instanceof Error ? err.message : "Command execution failed.";
-          return new Err(new MCPError(message));
-        }
+      const execResult = await sandbox.exec(auth, command, {
+        workingDirectory: workingDirectory ?? "/home/user",
+        timeoutMs: timeoutMs ?? 60_000,
+      });
+      if (execResult.isErr()) {
+        return new Err(new MCPError(execResult.error.message));
       }
 
-      const output = formatExecOutput(execResult);
+      const output = formatExecOutput(execResult.value);
 
       return new Ok([{ type: "text" as const, text: output }]);
     },

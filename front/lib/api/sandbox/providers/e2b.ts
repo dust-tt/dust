@@ -7,7 +7,7 @@ import type {
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
-import { Sandbox } from "e2b";
+import { CommandExitError, Sandbox } from "e2b";
 
 interface E2BConfig {
   apiKey: string;
@@ -97,17 +97,30 @@ export class E2BSandboxProvider implements SandboxProvider {
   ): Promise<ExecResult> {
     const sandbox = await this.connect(providerId);
 
-    const result = await sandbox.commands.run(command, {
-      cwd: opts?.workingDirectory,
-      envs: opts?.envVars,
-      timeoutMs: opts?.timeoutMs,
-    });
+    try {
+      const result = await sandbox.commands.run(command, {
+        cwd: opts?.workingDirectory,
+        envs: opts?.envVars,
+        timeoutMs: opts?.timeoutMs,
+      });
 
-    return {
-      exitCode: result.exitCode,
-      stdout: result.stdout,
-      stderr: result.stderr,
-    };
+      return {
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+      };
+    } catch (err) {
+      // The E2B SDK throws CommandExitError on non-zero exit codes.
+      // Normalize into a regular ExecResult so callers never see E2B types.
+      if (err instanceof CommandExitError) {
+        return {
+          exitCode: err.exitCode,
+          stdout: err.stdout,
+          stderr: err.stderr,
+        };
+      }
+      throw err;
+    }
   }
 
   async writeFile(
