@@ -72,18 +72,18 @@ async function resolvePermissionProfile(
 function shouldSyncTranscript(
   metadata: GongTranscriptMetadata,
   filter: PermissionProfileFilter
-): { shouldSync: boolean; reason: string } {
+): { shouldSync: false; reason: string } | { shouldSync: true; reason: null } {
   if (metadata.metaData.isPrivate) {
     return { shouldSync: false, reason: "transcript is private" };
   }
 
   if (filter.type === "unrestricted") {
-    return { shouldSync: true, reason: "no permission profile restriction" };
+    return { shouldSync: true, reason: null };
   }
 
   const { parties = [] } = metadata;
   if (parties.some((p) => p.userId && filter.userIds.has(p.userId))) {
-    return { shouldSync: true, reason: "allowed by permission profile" };
+    return { shouldSync: true, reason: null };
   }
 
   return {
