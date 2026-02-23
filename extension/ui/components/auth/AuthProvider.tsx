@@ -153,6 +153,8 @@ export function ExtensionAuthProvider({
       subscription: EXTENSION_SUBSCRIPTION,
       isAdmin: isAdmin(workspace),
       isBuilder: isBuilder(workspace),
+      featureFlags: [],
+      vizUrl: "",
     };
   }, [user, workspace]);
 
