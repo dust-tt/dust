@@ -426,6 +426,62 @@ function createPlugin(getHighlightedId: () => string | null) {
         );
       },
     },
+
+    filterTransaction(tr, state) {
+      // Allow transactions that don't modify the document (e.g., selection changes, metadata)
+      if (!tr.docChanged) {
+        return true;
+      }
+
+      // Allow transactions with our plugin's metadata (accepting/rejecting suggestions)
+      if (tr.getMeta(pluginKey)) {
+        return true;
+      }
+
+      const pluginState = pluginKey.getState(state);
+      if (!pluginState || pluginState.suggestions.size === 0) {
+        return true;
+      }
+
+      // For each suggestion, find the block range and check if the transaction modifies it
+      for (const suggestion of pluginState.suggestions.values()) {
+        for (const op of suggestion.operations) {
+          const found = findBlockByBlockId(state.doc, op.targetBlockId);
+          if (!found) {
+            continue;
+          }
+
+          // Check content range (excluding block boundaries)
+          const contentStart = found.pos + 1;
+          const contentEnd = found.pos + found.node.nodeSize - 1;
+
+          // Check if any step in the transaction affects this block's content
+          for (let i = 0; i < tr.steps.length; i++) {
+            const map = tr.mapping.slice(0, i);
+            const mappedStart = map.map(contentStart);
+            const mappedEnd = map.map(contentEnd);
+
+            let affectsBlock = false;
+            tr.mapping.maps[i].forEach((oldStart, oldEnd) => {
+              // Check if the modification overlaps with the suggestion block content
+              if (
+                (oldStart >= mappedStart && oldStart < mappedEnd) ||
+                (oldEnd > mappedStart && oldEnd <= mappedEnd) ||
+                (oldStart <= mappedStart && oldEnd >= mappedEnd)
+              ) {
+                affectsBlock = true;
+              }
+            });
+
+            if (affectsBlock) {
+              return false;
+            }
+          }
+        }
+      }
+
+      return true;
+    },
   });
 }
 
