@@ -6,6 +6,7 @@ import {
   type ActionCardBlockSize,
   Avatar,
   Button,
+  DiffBlock,
   EyeIcon,
   GmailLogo,
   Markdown,

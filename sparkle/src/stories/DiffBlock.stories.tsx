@@ -76,6 +76,8 @@ export const Default: Story = {
         onClick={() => {}}
       />
     ),
+    expanded: false,
+    onExpandedChange: () => {},
   },
 };
 
@@ -88,5 +90,7 @@ export const CollapsedPreview: Story = {
   },
   args: {
     changes: longDiffExample,
+    expanded: false,
+    onExpandedChange: () => {},
   },
 };
