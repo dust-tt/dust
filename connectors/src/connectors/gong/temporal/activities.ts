@@ -65,24 +65,31 @@ async function resolvePermissionProfile(
 }
 
 /**
- * Returns true if the transcript should be synced.
+ * Determines whether a transcript should be synced.
  * Excludes private calls. When a permission profile is configured, only syncs
  * calls where at least one participant belongs to the profile's user list.
  */
 function shouldSyncTranscript(
   metadata: GongTranscriptMetadata,
   filter: PermissionProfileFilter
-): boolean {
+): { shouldSync: boolean; reason: string } {
   if (metadata.metaData.isPrivate) {
-    return false;
+    return { shouldSync: false, reason: "transcript is private" };
   }
 
   if (filter.type === "unrestricted") {
-    return true;
+    return { shouldSync: true, reason: "no permission profile restriction" };
   }
 
   const { parties = [] } = metadata;
-  return parties.some((p) => p.userId && filter.userIds.has(p.userId));
+  if (parties.some((p) => p.userId && filter.userIds.has(p.userId))) {
+    return { shouldSync: true, reason: "allowed by permission profile" };
+  }
+
+  return {
+    shouldSync: false,
+    reason: "no participant matches the permission profile",
+  };
 }
 
 export async function gongSaveStartSyncActivity({
@@ -270,10 +277,14 @@ export async function gongSyncTranscriptsActivity({
         return;
       }
 
-      if (!shouldSyncTranscript(transcriptMetadata, permissionFilter)) {
+      const { shouldSync, reason } = shouldSyncTranscript(
+        transcriptMetadata,
+        permissionFilter
+      );
+      if (!shouldSync) {
         logger.info(
-          { ...loggerArgs, callId: transcript.callId },
-          "[Gong] Skipping transcript (private or filtered by permission profile)."
+          { ...loggerArgs, callId: transcript.callId, reason },
+          `[Gong] Skipping transcript.`
         );
         return;
       }
