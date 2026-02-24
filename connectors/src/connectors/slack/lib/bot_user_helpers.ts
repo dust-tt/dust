@@ -6,6 +6,7 @@ import {
   getSlackBotInfo,
   getSlackUserInfoMemoized,
   reportSlackUsage,
+  withSlackErrorHandling,
 } from "@connectors/connectors/slack/lib/slack_client";
 import logger from "@connectors/logger/logger";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -26,7 +27,10 @@ async function getBotUserId(
     connectorId,
     method: "auth.test",
   });
-  const authRes = await slackClient.auth.test({});
+
+  const authRes = await withSlackErrorHandling(() =>
+    slackClient.auth.test({})
+  );
   if (authRes.error) {
     throw new Error(`Failed to fetch auth info: ${authRes.error}`);
   }
