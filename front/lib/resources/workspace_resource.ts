@@ -18,6 +18,7 @@ import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types"
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isStringArray } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
@@ -699,6 +700,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         metadata = { ...(this.metadata ?? {}) };
         delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
         break;
+      default:
+        return assertNever(operation);
     }
 
     const updateResult = await WorkspaceResource.updateMetadata(
