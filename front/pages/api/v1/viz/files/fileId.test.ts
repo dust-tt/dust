@@ -385,6 +385,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",
@@ -446,6 +447,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",
@@ -501,6 +503,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",
@@ -565,6 +568,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",

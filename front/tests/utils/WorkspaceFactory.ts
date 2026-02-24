@@ -17,7 +17,7 @@ export class WorkspaceFactory {
     const workspace = await WorkspaceModel.create({
       sId: generateRandomModelSId(),
       name: faker.company.name(),
-      description: `[DEBUG] Created for the test: ${expect.getState().currentTestName}\n\n${faker.company.catchPhrase()}`,
+      description: `[DEBUG] ${expect.getState().currentTestName}\n\n${faker.company.catchPhrase()}`,
       workOSOrganizationId: faker.string.alpha(10),
     });
 
