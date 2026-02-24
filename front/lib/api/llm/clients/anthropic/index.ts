@@ -29,7 +29,9 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { WorkspaceType } from "@app/types/user";
 
 /**
  * Maps prompt sections to Anthropic system blocks.
@@ -66,6 +68,7 @@ function buildSystemBlocks(
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
+  private workspace: WorkspaceType;
 
   constructor(
     auth: Authenticator,
@@ -83,6 +86,8 @@ export class AnthropicLLM extends LLM {
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
+
+    this.workspace = auth.getNonNullableWorkspace();
   }
 
   async *internalStream({
@@ -134,13 +139,22 @@ export class AnthropicLLM extends LLM {
         output_format: toOutputFormatParam(this.responseFormat),
       } as Parameters<typeof this.client.beta.messages.stream>[0]);
 
-      const countTokens =
-        this.reasoningEffort === "none" ||
-        (this.reasoningEffort === "light" &&
-          this.modelConfig.useNativeLightReasoning)
-          ? undefined
-          : (body: MessageCountTokensParams) =>
-              this.client.messages.countTokens(body);
+      const isCountReasoningTokenEnabled =
+        await FeatureFlagResource.isEnabledForWorkspace(
+          this.workspace,
+          "anthropic_reasoning_token_count"
+        );
+
+      const shouldCountReasoningTokens =
+        isCountReasoningTokenEnabled &&
+        this.reasoningEffort !== "none" &&
+        (this.reasoningEffort !== "light" ||
+          !!this.modelConfig.useNativeLightReasoning);
+
+      const countTokens = shouldCountReasoningTokens
+        ? (body: MessageCountTokensParams) =>
+            this.client.messages.countTokens(body)
+        : undefined;
 
       yield* streamLLMEvents(events, this.metadata, countTokens);
     } catch (err) {

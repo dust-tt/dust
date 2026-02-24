@@ -229,6 +229,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable slack notifications",
     stage: "dust_only",
   },
+  anthropic_reasoning_token_count: {
+    description:
+      "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
+    // Not really on_demand but we want to be able to enable it for customers
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
