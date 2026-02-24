@@ -7,7 +7,7 @@ import {
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
-  getBotUserIdMemoized,
+  getBotUserIdResponse,
   getUserName,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -823,7 +823,7 @@ async function answerMessage(
   let textAfterBotMention: string | null = null;
 
   if (matches) {
-    const mySlackUser = await getBotUserIdMemoized(slackClient, connector.id);
+    const mySlackUser = await getBotUserIdResponse(slackClient, connector.id);
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
@@ -1305,7 +1305,7 @@ async function makeContentFragments(
     }
   }
 
-  const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
+  const botUserId = await getBotUserIdResponse(slackClient, connector.id);
   allMessages = allMessages.filter(
     (m) =>
       // If this message is from the bot, we don't send it as a content fragment.

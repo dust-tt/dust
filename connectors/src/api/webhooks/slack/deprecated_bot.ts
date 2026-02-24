@@ -1,5 +1,5 @@
 import { makeMarkdownBlock } from "@connectors/connectors/slack/chat/blocks";
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -40,7 +40,7 @@ async function makeSlackDeprecatedBotErrorMessage(
 ) {
   const slackClient = await getSlackClient(slackBotConnector.id);
 
-  const slackBotUserId = await getBotUserIdMemoized(
+  const slackBotUserId = await getBotUserIdResponse(
     slackClient,
     slackBotConnector.id
   );

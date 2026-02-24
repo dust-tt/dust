@@ -12,7 +12,7 @@ import {
   isSlackWebhookEventReqBody,
   withTrace,
 } from "@connectors/api/webhooks/slack/utils";
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
@@ -153,7 +153,7 @@ const _webhookSlackBotAPIHandler = async (
 
             const slackClient = await getSlackClient(slackConfig.connectorId);
 
-            const botUserIdRes = await getBotUserIdMemoized(
+            const botUserIdRes = await getBotUserIdResponse(
               slackClient,
               slackConfig.connectorId
             );
