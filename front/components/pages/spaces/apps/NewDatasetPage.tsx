@@ -1,9 +1,9 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import DatasetView from "@app/components/app/DatasetView";
+import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
@@ -38,7 +38,7 @@ export function NewDatasetPage() {
   const [editorDirty, setEditorDirty] = useState(false);
   const [isFinishedEditing, setIsFinishedEditing] = useState(false);
 
-  useRegisterUnloadHandlers(editorDirty);
+  useNavigationLock(editorDirty);
 
   // Redirect non-builders
   useEffect(() => {

@@ -476,6 +476,6 @@ function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
   ) {
     res.redirect(sanitizedReturnTo);
   } else {
-    res.redirect(`${config.getAppUrl(true)}${sanitizedReturnTo}`);
+    res.redirect(`${config.getAppUrl()}${sanitizedReturnTo}`);
   }
 }

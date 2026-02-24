@@ -258,7 +258,7 @@ const buildPostLoginUrl = (
     utmParams?: UTMParams;
   }
 ) => {
-  let path = `${config.getAppUrl(true)}/w/${workspaceId}`;
+  let path = `${config.getAppUrl()}/w/${workspaceId}`;
   if (options?.welcome) {
     path += "/welcome";
   }
