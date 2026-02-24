@@ -7,7 +7,7 @@ import { DeleteConversationsDialog } from "@app/components/assistant/conversatio
 import { AcademyBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
-import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
 import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
 import {
   filterTriggeredConversations,
@@ -27,6 +27,7 @@ import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
+import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
@@ -339,6 +340,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const activeConversationId = useActiveConversationId();
   const activeSpaceId = useActiveSpaceId();
   const { hasFeature } = useFeatureFlags();
+  const moveConversationToProject = useMoveConversationToProject(owner);
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -601,6 +603,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         <NavigationListCollapsibleSection
           label={showCount ? `Projects (${projectCountInSummary})` : "Projects"}
           type="collapse"
+          visibleItems={4}
           open={!isProjectsSectionCollapsed}
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
@@ -627,11 +630,12 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               <Spinner size="xs" />
             </div>
           ) : summary.length > 0 ? (
-            <ProjectsList
-              owner={owner}
-              summary={summary}
-              titleFilter={sidebarTitleFilter}
-            />
+            renderProjectsList({
+              owner,
+              summary,
+              titleFilter: sidebarTitleFilter,
+              moveConversationToProject,
+            })
           ) : (
             <NavigationListItem
               label="Create a Project"

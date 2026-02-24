@@ -5,8 +5,6 @@ import {
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
@@ -17,12 +15,6 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
 import { memo, useCallback, useContext, useRef, useState } from "react";
-
-interface ProjectsListProps {
-  owner: WorkspaceType;
-  summary: GetBySpacesSummaryResponseBody["summary"];
-  titleFilter: string;
-}
 
 const ProjectListItem = memo(
   ({
@@ -147,19 +139,20 @@ const ProjectListItem = memo(
 
 ProjectListItem.displayName = "ProjectListItem";
 
-export function ProjectsList({
+export function renderProjectsList({
   owner,
   summary,
   titleFilter,
-}: ProjectsListProps) {
-  const { hasFeature } = useFeatureFlags();
-
-  const moveConversationToProject = useMoveConversationToProject(owner);
-
-  if (!hasFeature("projects")) {
-    return null;
-  }
-
+  moveConversationToProject,
+}: {
+  owner: WorkspaceType;
+  summary: GetBySpacesSummaryResponseBody["summary"];
+  titleFilter: string;
+  moveConversationToProject: (
+    conversation: ConversationWithoutContentType,
+    space: SpaceType
+  ) => Promise<boolean>;
+}) {
   if (!summary || summary.length === 0) {
     return null;
   }
@@ -176,23 +169,19 @@ export function ProjectsList({
     return null;
   }
 
-  return (
-    <>
-      {filteredSummary.map(
-        ({ space, unreadConversations, nonParticipantUnreadConversations }) => (
-          <ProjectListItem
-            key={space.sId}
-            space={space}
-            unreadCount={unreadConversations.length}
-            hasUnread={
-              unreadConversations.length > 0 ||
-              nonParticipantUnreadConversations.length > 0
-            }
-            owner={owner}
-            moveConversationToProject={moveConversationToProject}
-          />
-        )
-      )}
-    </>
+  return filteredSummary.map(
+    ({ space, unreadConversations, nonParticipantUnreadConversations }) => (
+      <ProjectListItem
+        key={space.sId}
+        space={space}
+        unreadCount={unreadConversations.length}
+        hasUnread={
+          unreadConversations.length > 0 ||
+          nonParticipantUnreadConversations.length > 0
+        }
+        owner={owner}
+        moveConversationToProject={moveConversationToProject}
+      />
+    )
   );
 }
