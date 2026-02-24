@@ -34,8 +34,10 @@ import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import Custom404 from "@dust-tt/front/pages/404";
+import { SparkleContext } from "@dust-tt/sparkle";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
+import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import { PokePage } from "@spa/poke/layouts/PokePage";
 import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
 import {
@@ -149,9 +151,13 @@ export default function PokeApp() {
     <AppReadyProvider>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <RegionProvider>
-          <RootLayout>
-            <RouterProvider router={router} />
-          </RootLayout>
+          <SparkleContext.Provider
+            value={{ components: { link: ReactRouterLinkWrapper } }}
+          >
+            <RootLayout>
+              <RouterProvider router={router} />
+            </RootLayout>
+          </SparkleContext.Provider>
         </RegionProvider>
       </FetcherProvider>
     </AppReadyProvider>

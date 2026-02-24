@@ -6,7 +6,7 @@ import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import Custom404 from "@dust-tt/front/pages/404";
-import { Spinner, safeLazy } from "@dust-tt/sparkle";
+import { SparkleContext, Spinner, safeLazy } from "@dust-tt/sparkle";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
@@ -19,6 +19,7 @@ import { SpaceRouterLayout } from "@spa/app/layouts/SpaceRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
+import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import { Suspense } from "react";
 import {
   createBrowserRouter,
@@ -569,11 +570,15 @@ export default function App() {
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <RegionProvider>
           <PostHogTracker authenticated>
-            <RootLayout>
-              <ErrorBoundary fallback={<GlobalErrorFallback />}>
-                <RouterProvider router={router} />
-              </ErrorBoundary>
-            </RootLayout>
+            <SparkleContext.Provider
+              value={{ components: { link: ReactRouterLinkWrapper } }}
+            >
+              <RootLayout>
+                <ErrorBoundary fallback={<GlobalErrorFallback />}>
+                  <RouterProvider router={router} />
+                </ErrorBoundary>
+              </RootLayout>
+            </SparkleContext.Provider>
           </PostHogTracker>
         </RegionProvider>
       </FetcherProvider>
