@@ -85,6 +85,10 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       view: "all",
     });
     if (getAgentsRes.isErr()) {
+      logger.error(
+        { err: getAgentsRes.error },
+        "suggest_agents_for_content: error fetching agent configurations"
+      );
       return new Err(new MCPError("Error fetching agent configurations"));
     }
     const agents = getAgentsRes.value as LightAgentConfigurationType[];
