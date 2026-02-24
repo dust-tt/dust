@@ -175,11 +175,7 @@ function PermissionProfileSelector({
               const item = (
                 <DropdownMenuItem
                   key={profile.id}
-                  label={
-                    profile.supported
-                      ? profile.name
-                      : `${profile.name} (unsupported)`
-                  }
+                  label={profile.name}
                   disabled={!profile.supported}
                   onClick={() => handleSelect(profile.id)}
                 />
