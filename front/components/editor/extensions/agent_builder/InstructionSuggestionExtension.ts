@@ -46,12 +46,12 @@ export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
 const CLASSES = {
   remove:
-    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
+    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 cursor-default",
   removeDimmed:
-    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400",
-  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
+    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400 cursor-default",
+  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 cursor-default",
   addDimmed:
-    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400",
+    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400 cursor-default",
 };
 
 export function diffBlockContent(
@@ -387,6 +387,22 @@ function buildDecorations(
   return DecorationSet.create(state.doc, decorations);
 }
 
+// Check if a transaction step modifies a specific range
+function stepModifiesRange(
+  step: { forEach: (f: (oldStart: number, oldEnd: number) => void) => void },
+  rangeStart: number,
+  rangeEnd: number
+): boolean {
+  let modifies = false;
+  step.forEach((oldStart, oldEnd) => {
+    // Ranges overlap if they don't end before or start after each other
+    if (oldEnd > rangeStart && oldStart < rangeEnd) {
+      modifies = true;
+    }
+  });
+  return modifies;
+}
+
 function createPlugin(getHighlightedId: () => string | null) {
   return new Plugin<PluginState>({
     key: pluginKey,
@@ -445,6 +461,50 @@ function createPlugin(getHighlightedId: () => string | null) {
           pluginKey.getState(editorState)?.decorations ?? DecorationSet.empty
         );
       },
+    },
+
+    filterTransaction(tr, state) {
+      if (!tr.docChanged || tr.getMeta(pluginKey)) {
+        return true;
+      }
+
+      const pluginState = pluginKey.getState(state);
+      if (!pluginState || pluginState.suggestions.size === 0) {
+        return true;
+      }
+
+      // Collect all suggestion block content ranges upfront to avoid redundant lookups.
+      // Typical case: 1-5 suggestions with 1-2 operations each = ~10 ranges max.
+      // Even with 20 suggestions × 5 operations × 5 steps = 500 iterations, this is negligible.
+      const suggestionRanges: Array<{ start: number; end: number }> = [];
+      for (const suggestion of pluginState.suggestions.values()) {
+        for (const op of suggestion.operations) {
+          const found = findBlockByBlockId(state.doc, op.targetBlockId);
+          if (found) {
+            suggestionRanges.push({
+              start: found.pos + 1,
+              end: found.pos + found.node.nodeSize - 1,
+            });
+          }
+        }
+      }
+
+      // Check each transaction step against all suggestion ranges.
+      // This is O(steps × ranges) but typically O(1-5 × 1-10) = ~50 operations max.
+      for (let i = 0; i < tr.steps.length; i++) {
+        const map = tr.mapping.slice(0, i);
+
+        for (const range of suggestionRanges) {
+          const mappedStart = map.map(range.start);
+          const mappedEnd = map.map(range.end);
+
+          if (stepModifiesRange(tr.mapping.maps[i], mappedStart, mappedEnd)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
     },
   });
 }
