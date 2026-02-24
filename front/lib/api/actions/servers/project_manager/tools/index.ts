@@ -80,10 +80,19 @@ export function createProjectManagerTools(
             return sourceFileRes;
           }
 
+          const sourceFile = sourceFileRes.value;
+          const sourceConversationId = sourceFile.useCaseMetadata
+            ?.conversationId
+            ? sourceFile.useCaseMetadata.sourceConversationId
+            : undefined;
+
           const copyResult = await FileResource.copy(auth, {
             sourceId: sourceFileId,
             useCase: "project_context",
-            useCaseMetadata: { spaceId: space.sId },
+            useCaseMetadata: {
+              spaceId: space.sId,
+              sourceConversationId,
+            },
           });
 
           if (copyResult.isErr()) {
@@ -131,7 +140,11 @@ export function createProjectManagerTools(
             fileName,
             fileSize: Buffer.byteLength(content, "utf-8"),
             useCase: "project_context",
-            useCaseMetadata: { spaceId: space.sId },
+            useCaseMetadata: {
+              spaceId: space.sId,
+              sourceConversationId:
+                agentLoopContext?.runContext?.conversation?.sId,
+            },
           });
 
           // Upload content to GCS.
