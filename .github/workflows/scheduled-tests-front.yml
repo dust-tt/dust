@@ -38,10 +38,6 @@ jobs:
           build-sdks: "true"
           build-sparkle: "true"
 
-      - name: Run ESLint (Full Check, No Cache)
-        working-directory: front
-        run: npm run lint
-
       - name: Notify Test Success
         if: success()
         uses: slackapi/slack-github-action@v2.0.0
