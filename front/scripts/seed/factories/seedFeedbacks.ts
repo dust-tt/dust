@@ -82,6 +82,7 @@ export async function seedFeedbacks(
       await AgentMessageFeedbackResource.makeNew({
         agentConfigurationId: agentMessage.agentConfigurationId,
         agentConfigurationVersion: agentMessage.agentConfigurationVersion,
+        conversationId: conversation.id,
         agentMessageId: agentMessage.id,
         userId: user.id,
         workspaceId: workspace.id,
