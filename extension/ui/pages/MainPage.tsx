@@ -92,6 +92,7 @@ export const MainPage = ({
           <BarHeader
             title={headerTitle}
             tooltip={headerTitle}
+            className="justify-between"
             leftActions={
               <Button
                 variant="ghost"
