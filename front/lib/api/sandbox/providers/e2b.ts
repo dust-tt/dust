@@ -6,13 +6,18 @@ import type {
   SandboxHandle,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
+import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { CommandExitError, Sandbox } from "e2b";
+import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
-const SANDBOX_CREATION_TIMEOUT_MS = 30_000;
+/** How long E2B keeps the sandbox alive (renewed on every connect). */
+const SANDBOX_LIFETIME_MS = 3_600_000; // 1 hour
+
+/** Timeout for individual API calls to E2B (create, connect, etc.). */
+const REQUEST_TIMEOUT_MS = 30_000;
 
 interface E2BConfig {
   apiKey: string;
@@ -56,7 +61,8 @@ export class E2BSandboxProvider implements SandboxProvider {
       sandbox = await Sandbox.create(templateId, {
         ...this.connectionOpts(),
         envs: config.envVars,
-        timeoutMs: SANDBOX_CREATION_TIMEOUT_MS,
+        timeoutMs: SANDBOX_LIFETIME_MS,
+        requestTimeoutMs: REQUEST_TIMEOUT_MS,
       });
     } catch (err) {
       return new Err(normalizeError(err));
@@ -75,8 +81,14 @@ export class E2BSandboxProvider implements SandboxProvider {
 
     // Sandbox.connect auto-resumes paused sandboxes.
     try {
-      await Sandbox.connect(providerId, this.connectionOpts());
+      await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
       return new Err(normalizeError(err));
     }
 
@@ -127,8 +139,14 @@ export class E2BSandboxProvider implements SandboxProvider {
   ): Promise<Result<ExecResult, Error>> {
     let sandbox: Sandbox;
     try {
-      sandbox = await Sandbox.connect(providerId, this.connectionOpts());
+      sandbox = await Sandbox.connect(providerId, {
+        ...this.connectionOpts(),
+        timeoutMs: SANDBOX_LIFETIME_MS,
+      });
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
       return new Err(normalizeError(err));
     }
 
