@@ -460,6 +460,56 @@ AgentMessageModel.hasMany(AgentMCPActionModel, {
 }
 ```
 
+### [BACK14] No breaking changes in PRIVATE API endpoints
+
+Breaking changes in PRIVATE API endpoints are prohibited. The PRIVATE API serves multiple clients
+(web app, browser extensions, etc.) that may be running different versions. Breaking
+changes can cause crashes or data corruption for users who haven't updated to the latest version.
+
+All changes to PRIVATE API endpoints must be backward compatible. Follow these steps based on the
+type of change:
+
+**1. Deleting an endpoint:**
+
+- Do NOT delete the endpoint immediately
+- Mark the endpoint as deprecated in code comments with deprecation date
+- Create the replacement endpoint or functionality first
+- Monitor usage metrics to ensure all clients have migrated
+- Only delete after confirmed all clients have stopped using it
+- If deletion is urgent, coordinate a synchronized release across all clients
+
+**2. Adding a mandatory input parameter:**
+
+- Do NOT add required parameters immediately
+- First: Add the parameter as optional with sensible defaults
+- Update all client code to send the parameter
+- Make the parameter required only after a period of time
+- Document the default behavior clearly in code comments
+- Example: Add `userId` as optional defaulting to current authenticated user, then make it required once all clients are updated
+
+**3. Changing a validation schema (stricter validation):**
+
+- Do NOT tighten validation rules on existing fields immediately
+- Add new optional fields with strict validation instead
+- Only enforce stricter validation after all clients are compliant
+
+**4. Removing a response field:**
+
+- Do NOT remove fields from responses immediately
+- First: Update all client code to stop using the field
+- Remove the field from backend response only after a period of time
+- If removal is urgent, create a new endpoint version instead
+
+**5. Adding or removing enum values in responses:**
+
+- **Adding** a new enum value to responses:
+  - Ensure all clients handle unknown enum values gracefully with a fallback
+
+- **Removing** an enum value from responses:
+  - Do NOT remove enum values immediately
+  - First: Update all client code to stop relying on the removed value
+  - Stop returning the enum value from backend only after a period of time
+
 ## MCP
 
 ### [MCP1] Single file internal servers
