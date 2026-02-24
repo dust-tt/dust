@@ -19,14 +19,15 @@ export function initializeOpenTelemetryInstrumentation({
 }: {
   serviceName: "dust-agent-loop" | "dust-front";
 }): void {
+  // Suppress noisy "[Langfuse SDK] [WARN] No active OTEL span in context" warnings.
+  // This must be called even when Langfuse is disabled, otherwise the warnings will appear.
+  configureGlobalLogger({ level: LogLevel.ERROR });
+
   if (!config.isLangfuseEnabled() || sdk) {
     return;
   }
 
   try {
-    // Suppress noisy "[Langfuse SDK] [WARN] No active OTEL span in context" warnings.
-    configureGlobalLogger({ level: LogLevel.ERROR });
-
     resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]: serviceName,
     });
