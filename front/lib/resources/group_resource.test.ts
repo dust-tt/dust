@@ -66,8 +66,9 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -97,10 +98,6 @@ describe("GroupResource", () => {
 
   describe("dangerouslyListUserGroupsForAuth", () => {
     it("returns global group and explicit groups for a workspace member", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Test Group",
         workspaceId: workspace.id,
@@ -121,9 +118,6 @@ describe("GroupResource", () => {
     });
 
     it("returns global group for non-member (no membership check)", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
       const nonMember = await UserFactory.basic();
 
       const groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
@@ -136,13 +130,6 @@ describe("GroupResource", () => {
     });
 
     it("throws when global group is missing", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-      const { GroupModel } = await import(
-        "@app/lib/resources/storage/models/groups"
-      );
-
       await GroupModel.destroy({
         where: { workspaceId: workspace.id, kind: "global" },
       });
@@ -158,10 +145,6 @@ describe("GroupResource", () => {
 
   describe("dangerouslyListUserGroupsForAuth caching", () => {
     it("returns groups for authenticated user", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Auth Test Group",
         workspaceId: workspace.id,
@@ -182,9 +165,6 @@ describe("GroupResource", () => {
     });
 
     it("populates cache on first call", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
@@ -195,9 +175,6 @@ describe("GroupResource", () => {
     });
 
     it("serves from cache on second call", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
 
       const groupIds1 = await GroupResource.dangerouslyListUserGroupsForAuth({
@@ -218,10 +195,6 @@ describe("GroupResource", () => {
 
   describe("suspendMembers", () => {
     it("suspends active members and returns affected user IDs", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Suspend Test Group",
         workspaceId: workspace.id,
@@ -255,10 +228,6 @@ describe("GroupResource", () => {
     });
 
     it("invalidates cache for all affected users", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Cache Invalidation Test",
         workspaceId: workspace.id,
@@ -280,10 +249,6 @@ describe("GroupResource", () => {
 
   describe("restoreMembers", () => {
     it("restores suspended members and returns affected user IDs", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Restore Test Group",
         workspaceId: workspace.id,
@@ -318,10 +283,6 @@ describe("GroupResource", () => {
     });
 
     it("invalidates cache for all affected users", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Restore Cache Test",
         workspaceId: workspace.id,
@@ -345,10 +306,6 @@ describe("GroupResource", () => {
 
   describe("migrateUserMemberships", () => {
     it("migrates memberships from secondary to primary user", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const secondaryUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, secondaryUser, {
         role: "user",
@@ -397,10 +354,6 @@ describe("GroupResource", () => {
     });
 
     it("handles duplicate memberships by removing from secondary user first", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const secondaryUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, secondaryUser, {
         role: "user",
@@ -444,10 +397,6 @@ describe("GroupResource", () => {
     });
 
     it("invalidates cache for both users", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const secondaryUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, secondaryUser, {
         role: "user",
@@ -489,10 +438,6 @@ describe("GroupResource", () => {
 
   describe("cache invalidation on membership changes", () => {
     it("dangerouslyAddMembers invalidates cache for added users", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
@@ -510,10 +455,6 @@ describe("GroupResource", () => {
     });
 
     it("dangerouslyRemoveMembers invalidates cache for removed users", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Remove Member Cache Test",
         workspaceId: workspace.id,
@@ -535,10 +476,6 @@ describe("GroupResource", () => {
     });
 
     it("delete invalidates cache for all members when group is deleted", async () => {
-      const { GroupResource } = await import(
-        "@app/lib/resources/group_resource"
-      );
-
       const regularGroup = await GroupResource.makeNew({
         name: "Delete Group Cache Test",
         workspaceId: workspace.id,
@@ -554,6 +491,26 @@ describe("GroupResource", () => {
 
       await regularGroup.delete(authenticator);
 
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+    });
+
+    it("makeNew with memberIds invalidates cache for initial members", async () => {
+      // Populate cache first
+      await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
+      const cacheKey = getCacheKeyForUser(user.id, workspace.id);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      // Create group with initial member
+      await GroupResource.makeNew(
+        {
+          name: "makeNew Initial Member Cache Test",
+          workspaceId: workspace.id,
+          kind: "regular",
+        },
+        { memberIds: [user.id] }
+      );
+
+      // Cache should be invalidated for the initial member
       expect(inMemoryCache.has(cacheKey)).toBe(false);
     });
   });

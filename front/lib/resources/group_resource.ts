@@ -216,6 +216,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }: { memberIds?: ModelId[]; transaction?: Transaction } = {}
   ) {
     const group = await GroupModel.create(blob, { transaction });
+    const workspaceModelId = group.workspaceId;
 
     // If memberIds are provided, create memberships
     if (memberIds && memberIds.length > 0) {
@@ -223,11 +224,18 @@ export class GroupResource extends BaseResource<GroupModel> {
         memberIds.map((userId) => ({
           groupId: group.id,
           userId,
-          workspaceId: blob.workspaceId,
+          workspaceId: workspaceModelId,
           startAt: new Date(),
           status: "active" as const,
         })),
         { transaction }
+      );
+
+      // Always invalidate cache - safe even if transaction rolls back
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+        memberIds.map((userModelId) => [
+          { user: { id: userModelId }, workspace: { id: workspaceModelId } },
+        ])
       );
     }
 
