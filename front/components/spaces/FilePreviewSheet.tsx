@@ -1,3 +1,4 @@
+import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
 import { clientFetch } from "@app/lib/egress/client";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
@@ -11,6 +12,7 @@ import {
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import {
+  isInteractiveContentType,
   isMarkdownContentType,
   isPdfContentType,
   isSupportedAudioContentType,
@@ -54,6 +56,7 @@ function isViewerCompatible(contentType: string): boolean {
 }
 
 type FilePreviewCategory =
+  | "frame"
   | "pdf"
   | "viewer"
   | "audio"
@@ -69,6 +72,14 @@ interface FilePreviewConfig {
 }
 
 function getFilePreviewConfig(contentType: string): FilePreviewConfig {
+  if (isInteractiveContentType(contentType)) {
+    return {
+      category: "frame",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
   if (isPdfContentType(contentType)) {
     return {
       category: "pdf",
@@ -218,6 +229,17 @@ function FileContentRenderer({
           src={getFileViewUrl(owner, file.sId)}
           alt={file.fileName}
           className="max-h-[80vh] w-full rounded-lg object-contain"
+        />
+      );
+
+    case "frame":
+      return (
+        <FrameRenderer
+          fileId={file.sId}
+          projectId={file.useCaseMetadata?.spaceId ?? null}
+          owner={owner}
+          lastEditedByAgentConfigurationId={undefined}
+          contentHash={undefined}
         />
       );
 
