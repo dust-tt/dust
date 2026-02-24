@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
@@ -11,6 +12,8 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const FEEDBACK_LIMIT = 50;
+const OLDER_FEEDBACK_LIMIT = 10;
+const OLDER_FEEDBACK_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 3 months
 const INSIGHTS_DAYS = 30;
 
 function buildFirstMessage({
@@ -51,10 +54,46 @@ Balance context gathering and minimizing the number of tool calls - the first co
 </dust_system>`;
 }
 
+function formatFeedbackItem(f: AgentMessageFeedbackWithMetadataType): string {
+  const direction = f.thumbDirection === "up" ? "POSITIVE" : "NEGATIVE";
+  const content = f.content ? `: ${f.content}` : "";
+  return `- [${direction}]${content}`;
+}
+
+function appendFeedbackSection(
+  lines: string[],
+  title: string,
+  items: AgentMessageFeedbackWithMetadataType[]
+): void {
+  if (items.length === 0) {
+    return;
+  }
+  const positive = items.filter((f) => f.thumbDirection === "up").length;
+  const negative = items.filter((f) => f.thumbDirection === "down").length;
+  lines.push(
+    "",
+    `${title} (${items.length} total, ${positive} positive, ${negative} negative):`
+  );
+  for (const f of items) {
+    lines.push(formatFeedbackItem(f));
+  }
+}
+
 async function fetchFeedbackMarkdown(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<string | null> {
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+
+  if (!agentConfiguration) {
+    return null;
+  }
+
+  const currentVersion = agentConfiguration.version;
+
   const feedbacksRes = await getAgentFeedbacks({
     auth,
     agentConfigurationId,
@@ -83,34 +122,31 @@ async function fetchFeedbackMarkdown(
     return null;
   }
 
-  const positiveFeedbacks = feedbacks.filter((f) => f.thumbDirection === "up");
-  const negativeFeedbacks = feedbacks.filter(
-    (f) => f.thumbDirection === "down"
+  const latestVersionFeedback = feedbacks.filter(
+    (f) => f.agentConfigurationVersion === currentVersion
   );
 
-  const formatItem = (f: AgentMessageFeedbackWithMetadataType): string => {
-    const content = f.content ? `: ${f.content}` : "";
-    return `- v${f.agentConfigurationVersion} by ${f.userName}${content}`;
-  };
+  const cutoffMs = Date.now() - OLDER_FEEDBACK_MAX_AGE_MS;
+  const olderFeedback = feedbacks
+    .filter(
+      (f) =>
+        f.agentConfigurationVersion !== currentVersion &&
+        new Date(f.createdAt).getTime() >= cutoffMs
+    )
+    .slice(0, OLDER_FEEDBACK_LIMIT);
 
-  const lines = [
-    "<feedback>",
-    `Summary: ${feedbacks.length} total, ${positiveFeedbacks.length} positive, ${negativeFeedbacks.length} negative`,
-  ];
-
-  if (positiveFeedbacks.length > 0) {
-    lines.push("", "Positive:");
-    for (const f of positiveFeedbacks) {
-      lines.push(formatItem(f));
-    }
+  if (latestVersionFeedback.length === 0 && olderFeedback.length === 0) {
+    return null;
   }
 
-  if (negativeFeedbacks.length > 0) {
-    lines.push("", "Negative:");
-    for (const f of negativeFeedbacks) {
-      lines.push(formatItem(f));
-    }
-  }
+  const lines = ["<feedback>"];
+
+  appendFeedbackSection(
+    lines,
+    `Current version (v${currentVersion})`,
+    latestVersionFeedback
+  );
+  appendFeedbackSection(lines, "Previous versions", olderFeedback);
 
   lines.push("</feedback>");
   return lines.join("\n");
