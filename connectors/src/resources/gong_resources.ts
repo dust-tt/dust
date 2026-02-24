@@ -143,6 +143,14 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     });
   }
 
+  async setExcludeTitleKeywords(keywords: string[] | null): Promise<void> {
+    // Normalize to lowercase when storing
+    const normalizedKeywords = keywords?.map((k) => k.toLowerCase()) || null;
+    await this.update({
+      excludeTitleKeywords: normalizedKeywords,
+    });
+  }
+
   /**
    * Returns the timestamp to start syncing from.
    * Offsets the last sync timestamp by an upper bound on the transcript processing time to make sure we do not miss
