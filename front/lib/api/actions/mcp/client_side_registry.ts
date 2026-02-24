@@ -4,8 +4,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
-// TTL for MCP server registrations (5 minutes).
-const MCP_SERVER_REGISTRATION_TTL = 5 * 60;
+// TTL for MCP server registrations (10 minutes).
+// Refreshed on every access via EXPIRE in validateMCPServerAccess, and by the client heartbeat
+// (every 5 minutes) as a fallback.
+const MCP_SERVER_REGISTRATION_TTL_SECONDS = 10 * 60;
 
 const MAX_SERVER_INSTANCES = 256;
 
@@ -138,12 +140,12 @@ export async function registerMCPServer(
 
   await runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     await redis.set(key, JSON.stringify(metadata), {
-      EX: MCP_SERVER_REGISTRATION_TTL,
+      EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
     });
   });
 
   const expiresAt = new Date(
-    now + MCP_SERVER_REGISTRATION_TTL * 1000
+    now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
   ).toISOString();
 
   return new Ok({
@@ -226,7 +228,7 @@ export async function updateMCPServerHeartbeat(
 
       // Update in Redis with refreshed TTL.
       await redis.set(key, JSON.stringify(metadata), {
-        EX: MCP_SERVER_REGISTRATION_TTL,
+        EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
       });
 
       return true;
@@ -238,7 +240,7 @@ export async function updateMCPServerHeartbeat(
   }
 
   const expiresAt = new Date(
-    now + MCP_SERVER_REGISTRATION_TTL * 1000
+    now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
   ).toISOString();
 
   return {
@@ -249,6 +251,7 @@ export async function updateMCPServerHeartbeat(
 
 /**
  * Validate that a server ID belongs to the current user in the given workspace.
+ * Uses a single EXPIRE to atomically check existence and refresh the TTL.
  */
 export async function validateMCPServerAccess(
   auth: Authenticator,
@@ -271,21 +274,7 @@ export async function validateMCPServerAccess(
   });
 
   return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
-    const exists = await redis.exists(key);
-
-    if (exists) {
-      // Update last heartbeat time and extend TTL when accessed.
-      const existing = await redis.get(key);
-      if (existing) {
-        const metadata: MCPServerRegistration = JSON.parse(existing);
-        metadata.lastHeartbeat = Date.now();
-
-        await redis.set(key, JSON.stringify(metadata), {
-          EX: MCP_SERVER_REGISTRATION_TTL,
-        });
-      }
-    }
-
-    return exists === 1;
+    // EXPIRE returns true if the key exists (and refreshes TTL), false otherwise.
+    return redis.expire(key, MCP_SERVER_REGISTRATION_TTL_SECONDS);
   });
 }
