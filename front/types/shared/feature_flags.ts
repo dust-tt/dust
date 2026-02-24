@@ -138,6 +138,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Salesloft MCP tool",
     stage: "dust_only",
   },
+  salesforce_tool_write: {
+    description: "Salesforce MCP tool: write operations (update_object)",
+    stage: "on_demand",
+  },
   show_debug_tools: {
     description: "Display debug tools in the interface",
     stage: "dust_only",
