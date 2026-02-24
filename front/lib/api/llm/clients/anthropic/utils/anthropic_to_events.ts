@@ -100,7 +100,7 @@ export async function* streamLLMEvents(
     tokenUsageAccumulator.outputTokens =
       tokenUsageAccumulator.outputTokens - reasoningTokens;
   } catch (err) {
-    logger.error("✅✅✅✅✅✅ Failed getting token details from Anthropic", {
+    logger.error("Failed getting token details from Anthropic", {
       error: err,
       metadata,
     });
