@@ -85,7 +85,7 @@ export async function ensureConversationTitle(
     return null;
   }
 
-  const title = titleRes.value;
+  const title = (conversation.triggerId ? "Triggered - " : "") + titleRes.value;
   await ConversationResource.updateTitle(auth, conversation.sId, title);
 
   // Enqueue the conversation_title event in Redis.
@@ -135,9 +135,13 @@ async function generateConversationTitle(
     );
   }
 
-  const prompt =
+  let prompt =
     "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
     "The title should capture the main topic or request without being too generic.";
+  if (conversation.triggerId) {
+    prompt +=
+      " The conversation was triggered either on a schedule or programmatically.";
+  }
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
