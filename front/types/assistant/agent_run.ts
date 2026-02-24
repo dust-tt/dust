@@ -22,8 +22,13 @@ import {
 
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
-import { isGlobalAgentId } from "./assistant";
+import { normalizeError } from "../shared/utils/error_utils";
+import { GLOBAL_AGENTS_SID, isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
+
+// Copilot agent config is expensive to fetch (MCP server queries) so we cache it.
+// This can be increased when we have versions for copilot: we can then cache indefinitly.
+const COPILOT_AGENT_CONFIGURATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
@@ -87,6 +92,33 @@ function getCachedGetConversation(ttlMs: number) {
     }
   );
 }
+
+async function getCopilotAgentConfigurationForCache(
+  auth: Authenticator,
+  // Only used for cache key uniqueness.
+  _workspaceId: string,
+  _userId: string
+): Promise<AgentConfigurationType> {
+  const config = await getAgentConfiguration(auth, {
+    agentId: GLOBAL_AGENTS_SID.COPILOT,
+    variant: "full",
+  });
+  if (!config) {
+    // Throws on error because cacheWithRedis expects functions that throw (not nullable returns).
+    throw new Error("Copilot agent configuration not found");
+  }
+  return config;
+}
+
+const getCachedCopilotAgentConfiguration = cacheWithRedis(
+  getCopilotAgentConfigurationForCache,
+  // cache is done per user as the prompt (available tools, skills...) may differ per users.
+  (_auth, workspaceId, userId) => `${workspaceId}:copilot:${userId}`,
+  {
+    ttlMs: COPILOT_AGENT_CONFIGURATION_CACHE_TTL_MS,
+    useDistributedLock: true,
+  }
+);
 
 export type AgentLoopArgs = {
   agentMessageId: string;
@@ -275,17 +307,35 @@ export async function getAgentLoopDataWithAuth(
     return new Err(new AgentLoopDataError("user_message_deleted"));
   }
 
-  // Fetch the agent configuration as we need the full version of the agent configuration.
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentMessage.configuration.sId,
-    // We do define agentMessage.configuration.version for global agent, ignoring this value here.
-    agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
-      ? undefined
-      : agentMessage.configuration.version,
-    variant: "full",
-  });
-  if (!agentConfiguration) {
-    return new Err(new Error("Agent configuration not found"));
+  // Fetch the agent configuration.
+  // Copilot is cached per userId (expensive MCP server queries).
+  // Other agents are fetched directly for now.
+  let agentConfiguration: AgentConfigurationType;
+  const agentId = agentMessage.configuration.sId;
+  const user = auth.user();
+  if (agentId === GLOBAL_AGENTS_SID.COPILOT && user) {
+    try {
+      agentConfiguration = await getCachedCopilotAgentConfiguration(
+        auth,
+        auth.getNonNullableWorkspace().sId,
+        user.sId
+      );
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  } else {
+    const config = await getAgentConfiguration(auth, {
+      agentId,
+      // We do define agentMessage.configuration.version for global agent, ignoring this value here.
+      agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
+        ? undefined
+        : agentMessage.configuration.version,
+      variant: "full" as const,
+    });
+    if (!config) {
+      return new Err(new Error("Agent configuration not found"));
+    }
+    agentConfiguration = config;
   }
 
   return new Ok({
