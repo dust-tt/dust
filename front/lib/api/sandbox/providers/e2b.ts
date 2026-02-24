@@ -7,7 +7,12 @@ import type {
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CommandExitError, Sandbox } from "e2b";
+
+const SANDBOX_CREATION_TIMEOUT_MS = 30_000;
 
 interface E2BConfig {
   apiKey: string;
@@ -39,63 +44,93 @@ export class E2BSandboxProvider implements SandboxProvider {
     };
   }
 
-  private async connect(providerId: string): Promise<Sandbox> {
-    return Sandbox.connect(providerId, this.connectionOpts());
-  }
-
-  async create(config: SandboxCreateConfig): Promise<SandboxHandle> {
+  async create(
+    config: SandboxCreateConfig
+  ): Promise<Result<SandboxHandle, Error>> {
     const templateId = config.templateId ?? this.templateId;
 
     logger.info({ templateId }, "Creating E2B sandbox");
 
-    const sandbox = await Sandbox.create(templateId, {
-      ...this.connectionOpts(),
-      envs: config.envVars,
-      timeoutMs: 300_000,
-    });
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.create(templateId, {
+        ...this.connectionOpts(),
+        envs: config.envVars,
+        timeoutMs: SANDBOX_CREATION_TIMEOUT_MS,
+      });
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
 
     logger.info(
       { sandboxId: sandbox.sandboxId, templateId },
       "E2B sandbox created"
     );
 
-    return { providerId: sandbox.sandboxId };
+    return new Ok({ providerId: sandbox.sandboxId });
   }
 
-  async wake(providerId: string): Promise<SandboxHandle> {
+  async wake(providerId: string): Promise<Result<SandboxHandle, Error>> {
     logger.info({ providerId }, "Waking E2B sandbox");
 
     // Sandbox.connect auto-resumes paused sandboxes.
-    await this.connect(providerId);
+    try {
+      await Sandbox.connect(providerId, this.connectionOpts());
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
 
     logger.info({ providerId }, "E2B sandbox woken");
 
-    return { providerId };
+    return new Ok({ providerId });
   }
 
-  async sleep(providerId: string): Promise<void> {
+  async sleep(providerId: string): Promise<Result<void, Error>> {
     logger.info({ providerId }, "Pausing E2B sandbox");
 
-    const sandbox = await this.connect(providerId);
-    await sandbox.betaPause();
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, this.connectionOpts());
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+
+    try {
+      await sandbox.betaPause();
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
 
     logger.info({ providerId }, "E2B sandbox paused");
+
+    return new Ok(undefined);
   }
 
-  async destroy(providerId: string): Promise<void> {
+  async destroy(providerId: string): Promise<Result<void, Error>> {
     logger.info({ providerId }, "Killing E2B sandbox");
 
-    await Sandbox.kill(providerId, this.connectionOpts());
+    try {
+      await Sandbox.kill(providerId, this.connectionOpts());
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
 
     logger.info({ providerId }, "E2B sandbox killed");
+
+    return new Ok(undefined);
   }
 
   async exec(
     providerId: string,
     command: string,
     opts?: ExecOptions
-  ): Promise<ExecResult> {
-    const sandbox = await this.connect(providerId);
+  ): Promise<Result<ExecResult, Error>> {
+    let sandbox: Sandbox;
+    try {
+      sandbox = await Sandbox.connect(providerId, this.connectionOpts());
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
 
     try {
       const result = await sandbox.commands.run(command, {
@@ -104,22 +139,22 @@ export class E2BSandboxProvider implements SandboxProvider {
         timeoutMs: opts?.timeoutMs,
       });
 
-      return {
+      return new Ok({
         exitCode: result.exitCode,
         stdout: result.stdout,
         stderr: result.stderr,
-      };
+      });
     } catch (err) {
       // The E2B SDK throws CommandExitError on non-zero exit codes.
       // Normalize into a regular ExecResult so callers never see E2B types.
       if (err instanceof CommandExitError) {
-        return {
+        return new Ok({
           exitCode: err.exitCode,
           stdout: err.stdout,
           stderr: err.stderr,
-        };
+        });
       }
-      throw err;
+      return new Err(normalizeError(err));
     }
   }
 

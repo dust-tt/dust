@@ -9,11 +9,11 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
@@ -104,6 +104,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     status: SandboxStatus,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<[affectedCount: number]> {
+    if (this.status === status) {
+      return [0];
+    }
     return this.update({ status }, transaction);
   }
 
@@ -141,12 +144,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async ensureActive(
     auth: Authenticator,
-    conversationId: ModelId
+    conversation: ConversationType
   ): Promise<Result<EnsureSandboxResult, Error>> {
+    assert(
+      auth.getNonNullableWorkspace().id !== undefined,
+      "Cannot ensure sandbox without a workspace"
+    );
+
     const provider = getSandboxProvider();
     if (!provider) {
       return new Err(new Error("Sandbox provider not configured."));
     }
+
+    const conversationId = conversation.id;
 
     const existing = await SandboxResource.fetchByConversationId(
       auth,
@@ -154,106 +164,81 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     if (!existing) {
-      try {
-        const handle = await provider.create({});
-        const sandbox = await SandboxResource.makeNew(auth, {
-          conversationId,
-          providerId: handle.providerId,
-          status: "running",
-        });
-
-        logger.info(
-          { sandbox: sandbox.toLogJSON() },
-          "Created new sandbox for conversation"
-        );
-
-        return new Ok({ sandbox, freshlyCreated: true });
-      } catch (err) {
-        return new Err(normalizeError(err));
+      const createResult = await provider.create({});
+      if (createResult.isErr()) {
+        return createResult;
       }
+
+      const sandbox = await SandboxResource.makeNew(auth, {
+        conversationId,
+        providerId: createResult.value.providerId,
+        status: "running",
+      });
+
+      logger.info(
+        { sandbox: sandbox.toLogJSON() },
+        "Created new sandbox for conversation"
+      );
+
+      return new Ok({ sandbox, freshlyCreated: true });
     }
 
     const { status } = existing;
+    let freshlyCreated = false;
 
     switch (status) {
-      case "running": {
-        await existing.updateLastActivityAt();
-
-        return new Ok({ sandbox: existing, freshlyCreated: false });
-      }
+      case "running":
+        break;
 
       case "sleeping": {
-        try {
-          await provider.wake(existing.providerId);
-          await existing.updateStatus("running");
-          await existing.updateLastActivityAt();
-
-          logger.info(
-            { sandbox: existing.toLogJSON() },
-            "Woke sleeping sandbox"
-          );
-
-          return new Ok({ sandbox: existing, freshlyCreated: false });
-        } catch (err) {
-          return new Err(normalizeError(err));
+        const wakeResult = await provider.wake(existing.providerId);
+        if (wakeResult.isErr()) {
+          return wakeResult;
         }
+        logger.info({ sandbox: existing.toLogJSON() }, "Woke sleeping sandbox");
+        break;
       }
 
       case "deleted": {
-        try {
-          const handle = await provider.create({});
-          await existing.update({
-            providerId: handle.providerId,
-            status: "running",
-            lastActivityAt: new Date(),
-          });
-
-          logger.info(
-            {
-              sandbox: existing.toLogJSON(),
-              newProviderId: handle.providerId,
-            },
-            "Recreated sandbox from deleted state"
-          );
-
-          return new Ok({ sandbox: existing, freshlyCreated: true });
-        } catch (err) {
-          return new Err(normalizeError(err));
+        const createResult = await provider.create({});
+        if (createResult.isErr()) {
+          return createResult;
         }
+        await existing.update({ providerId: createResult.value.providerId });
+        freshlyCreated = true;
+        logger.info(
+          {
+            sandbox: existing.toLogJSON(),
+            newProviderId: createResult.value.providerId,
+          },
+          "Recreated sandbox from deleted state"
+        );
+        break;
       }
 
       default:
         assertNever(status);
     }
+
+    await existing.updateStatus("running");
+    await existing.updateLastActivityAt();
+    return new Ok({ sandbox: existing, freshlyCreated });
   }
 
   /**
    * Execute a command in this sandbox.
-   *
-   * Asserts workspace ownership to prevent cross-workspace usage.
    */
   async exec(
     auth: Authenticator,
     command: string,
     opts?: ExecOptions
   ): Promise<Result<ExecResult, Error>> {
-    assert(
-      auth.getNonNullableWorkspace().id === this.workspaceId,
-      "Cannot exec on a sandbox belonging to a different workspace"
-    );
-
     const provider = getSandboxProvider();
     if (!provider) {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    try {
-      const result = await provider.exec(this.providerId, command, opts);
-
-      return new Ok(result);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    return provider.exec(this.providerId, command, opts);
   }
 
   toLogJSON() {

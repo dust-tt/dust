@@ -7,6 +7,8 @@
  * adapter.
  */
 
+import type { Result } from "@app/types/shared/result";
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -66,19 +68,20 @@ export interface FileEntry {
  * Contract that all sandbox providers must satisfy.
  *
  * Every method receives the provider-assigned `providerId` (from
- * SandboxHandle) to identify the target sandbox. Methods reject on failure.
+ * SandboxHandle) to identify the target sandbox. Methods return `Result` to
+ * signal recoverable failures — callers never need try/catch.
  */
 export interface SandboxProvider {
-  create(config: SandboxCreateConfig): Promise<SandboxHandle>;
-  wake(providerId: string): Promise<SandboxHandle>;
-  sleep(providerId: string): Promise<void>;
-  destroy(providerId: string): Promise<void>;
+  create(config: SandboxCreateConfig): Promise<Result<SandboxHandle, Error>>;
+  wake(providerId: string): Promise<Result<SandboxHandle, Error>>;
+  sleep(providerId: string): Promise<Result<void, Error>>;
+  destroy(providerId: string): Promise<Result<void, Error>>;
 
   exec(
     providerId: string,
     command: string,
     opts?: ExecOptions
-  ): Promise<ExecResult>;
+  ): Promise<Result<ExecResult, Error>>;
 
   writeFile(providerId: string, path: string, content: Buffer): Promise<void>;
 

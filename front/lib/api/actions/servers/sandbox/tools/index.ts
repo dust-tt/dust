@@ -11,6 +11,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
+const DEFAULT_WORKING_DIRECTORY = "/home/user";
+const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;
 
@@ -77,7 +79,7 @@ export function createSandboxTools(
 
       const ensureResult = await SandboxResource.ensureActive(
         auth,
-        conversation.id
+        conversation
       );
       if (ensureResult.isErr()) {
         return new Err(new MCPError(ensureResult.error.message));
@@ -86,8 +88,8 @@ export function createSandboxTools(
       const { sandbox } = ensureResult.value;
 
       const execResult = await sandbox.exec(auth, command, {
-        workingDirectory: workingDirectory ?? "/home/user",
-        timeoutMs: timeoutMs ?? 60_000,
+        workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
+        timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
       });
       if (execResult.isErr()) {
         return new Err(new MCPError(execResult.error.message));
