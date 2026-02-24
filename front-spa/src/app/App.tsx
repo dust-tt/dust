@@ -1,6 +1,7 @@
 import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
+import config from "@dust-tt/front/lib/api/config";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
@@ -43,6 +44,12 @@ function AssistantAgentRedirect() {
       replace
     />
   );
+}
+
+// Redirect /logout to the API server's WorkOS logout endpoint
+function LogoutRedirect() {
+  window.location.replace(`${config.getApiBaseUrl()}/api/workos/logout`);
+  return null;
 }
 
 // Redirect /poke/* to the poke app (poke.dust.tt)
@@ -535,6 +542,8 @@ const router = createBrowserRouter(
             { path: "/sso-enforced", element: <SsoEnforcedPage /> },
           ],
         },
+        // Redirect /logout to the API server's WorkOS logout endpoint
+        { path: "/logout", element: <LogoutRedirect /> },
         // Redirect /poke/* to the poke app (e.g., poke.dust.tt)
         { path: "/poke/*", element: <PokeRedirect /> },
         {
