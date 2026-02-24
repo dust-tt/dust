@@ -133,7 +133,7 @@ async function backfillWorkspace(
 
     workspaceLogger.info(
       {
-        lastModelId: lastFeedbackModelId,
+        lastFeedbackModelId,
         updatedCount,
         batchSize: feedbacks.length,
       },
