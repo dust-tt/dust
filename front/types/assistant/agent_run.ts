@@ -26,9 +26,9 @@ import { normalizeError } from "../shared/utils/error_utils";
 import { GLOBAL_AGENTS_SID, isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
 
-// Copilot agent config is expensive to fetch (MCP server queries) so we cache it.
-// This can be increased when we have versions for copilot: we can then cache indefinitly.
-const COPILOT_AGENT_CONFIGURATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Global agent config is expensive to fetch (MCP server queries) so we cache it.
+// This TTL can be increased when we have versions for global agents: we can then cache indefinitly.
+const GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
@@ -39,6 +39,10 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "agent_message_deleted",
   "user_message_deleted",
 ] as const;
+
+function isCachedGlobalAgent(agentId: string): boolean {
+  return agentId === GLOBAL_AGENTS_SID.COPILOT;
+}
 
 export type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
@@ -93,29 +97,31 @@ function getCachedGetConversation(ttlMs: number) {
   );
 }
 
-async function getCopilotAgentConfigurationForCache(
+async function getGlobalAgentConfigurationForCache(
   auth: Authenticator,
+  agentId: string,
   // Only used for cache key uniqueness.
   _workspaceId: string,
   _userId: string
 ): Promise<AgentConfigurationType> {
   const config = await getAgentConfiguration(auth, {
-    agentId: GLOBAL_AGENTS_SID.COPILOT,
+    agentId: agentId,
     variant: "full",
   });
   if (!config) {
     // Throws on error because cacheWithRedis expects functions that throw (not nullable returns).
-    throw new Error("Copilot agent configuration not found");
+    throw new Error(`Global agent configuration not found for id ${agentId}.`);
   }
   return config;
 }
 
-const getCachedCopilotAgentConfiguration = cacheWithRedis(
-  getCopilotAgentConfigurationForCache,
+const getCachedGlobalAgentConfiguration = cacheWithRedis(
+  getGlobalAgentConfigurationForCache,
   // cache is done per user as the prompt (available tools, skills...) may differ per users.
-  (_auth, workspaceId, userId) => `${workspaceId}:copilot:${userId}`,
+  (_auth, agentId, workspaceId, userId) =>
+    `${workspaceId}:${agentId}:${userId}`,
   {
-    ttlMs: COPILOT_AGENT_CONFIGURATION_CACHE_TTL_MS,
+    ttlMs: GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS,
     useDistributedLock: true,
   }
 );
@@ -307,16 +313,14 @@ export async function getAgentLoopDataWithAuth(
     return new Err(new AgentLoopDataError("user_message_deleted"));
   }
 
-  // Fetch the agent configuration.
-  // Copilot is cached per userId (expensive MCP server queries).
-  // Other agents are fetched directly for now.
   let agentConfiguration: AgentConfigurationType;
   const agentId = agentMessage.configuration.sId;
   const user = auth.user();
-  if (agentId === GLOBAL_AGENTS_SID.COPILOT && user) {
+  if (isCachedGlobalAgent(agentId) && user) {
     try {
-      agentConfiguration = await getCachedCopilotAgentConfiguration(
+      agentConfiguration = await getCachedGlobalAgentConfiguration(
         auth,
+        agentId,
         auth.getNonNullableWorkspace().sId,
         user.sId
       );
