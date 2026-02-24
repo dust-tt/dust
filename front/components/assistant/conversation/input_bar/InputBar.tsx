@@ -225,7 +225,7 @@ export const InputBar = React.memo(function InputBar({
     resetEditorText,
     setLoading
   ) => {
-    if (isLocalSubmitting || isEmpty || fileUploaderService.isProcessingFiles) {
+    if (isEmpty || fileUploaderService.isProcessingFiles) {
       return;
     }
 
@@ -264,42 +264,10 @@ export const InputBar = React.memo(function InputBar({
       setLoading(true);
       setIsLocalSubmitting(true);
 
-      try {
-        const r = await onSubmit(
-          markdown,
-          mentions,
-          {
-            uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-              return {
-                title: cf.filename,
-                fileId: cf.fileId,
-                contentType: cf.contentType,
-                url: cf.sourceUrl,
-              };
-            }),
-            contentNodes: attachedNodes,
-          },
-          // Only send the selectedMCPServerViewIds if we are creating a new conversation.
-          // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
-          // JIT skills for new conversations
-          selectedSkills.map((s) => s.sId)
-        );
-
-        if (r.isOk()) {
-          clearDraft();
-          resetEditorText();
-          fileUploaderService.resetUpload();
-        }
-      } finally {
-        setLoading(false);
-        setIsLocalSubmitting(false);
-      }
-    } else {
-      setIsLocalSubmitting(true);
-
-      try {
-        await onSubmit(markdown, mentions, {
+      const r = await onSubmit(
+        markdown,
+        mentions,
+        {
           uploaded: fileUploaderService.getFileBlobs().map((cf) => {
             return {
               title: cf.filename,
@@ -309,15 +277,38 @@ export const InputBar = React.memo(function InputBar({
             };
           }),
           contentNodes: attachedNodes,
-        });
+        },
+        // Only send the selectedMCPServerViewIds if we are creating a new conversation.
+        // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
+        selectedMCPServerViews.map((sv) => sv.sId),
+        // JIT skills for new conversations
+        selectedSkills.map((s) => s.sId)
+      );
 
-        resetEditorText();
+      setLoading(false);
+      setIsLocalSubmitting(false);
+      if (r.isOk()) {
         clearDraft();
+        resetEditorText();
         fileUploaderService.resetUpload();
-        setAttachedNodes([]);
-      } finally {
-        setIsLocalSubmitting(false);
       }
+    } else {
+      void onSubmit(markdown, mentions, {
+        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+          return {
+            title: cf.filename,
+            fileId: cf.fileId,
+            contentType: cf.contentType,
+            url: cf.sourceUrl,
+          };
+        }),
+        contentNodes: attachedNodes,
+      });
+
+      resetEditorText();
+      clearDraft();
+      fileUploaderService.resetUpload();
+      setAttachedNodes([]);
     }
   };
 
