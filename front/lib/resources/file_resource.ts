@@ -744,6 +744,32 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ useCaseMetadata: metadata });
   }
 
+  /**
+   * Move a conversation frame file to a project (change use case to project_context).
+   * Preserves existing metadata and sets spaceId and sourceConversationId.
+   */
+  async moveFrameToSpace(
+    auth: Authenticator,
+    { projectId }: { projectId: string }
+  ): Promise<void> {
+    const existingMetadata = this.useCaseMetadata ?? {};
+    if (!this.isInteractiveContent || !existingMetadata.conversationId) {
+      throw new Error("File is not a conversation frame");
+    }
+
+    await this.update({
+      useCase: "project_context",
+      useCaseMetadata: {
+        ...existingMetadata,
+        spaceId: projectId,
+        // Remove conversationId to prevent confusion when accessing the file.
+        conversationId: undefined,
+        sourceConversationId: existingMetadata.conversationId,
+      },
+      userId: auth.getNonNullableUser().id ?? null,
+    });
+  }
+
   setSnippet(snippet: string) {
     return this.update({ snippet });
   }

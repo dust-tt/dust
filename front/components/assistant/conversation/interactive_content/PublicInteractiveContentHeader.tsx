@@ -7,12 +7,14 @@ import {
   ChatBubbleBottomCenterTextIcon,
   cn,
   RocketIcon,
+  SpaceClosedIcon,
 } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentHeaderProps {
   title: string;
   user: UserTypeWithWorkspaces | null;
   conversationUrl: string | null;
+  projectUrl: string | null;
 }
 
 const UTM_PARAM = `utm_source=public-frames`;
@@ -25,6 +27,7 @@ export function PublicInteractiveContentHeader({
   title,
   user,
   conversationUrl,
+  projectUrl,
 }: PublicInteractiveContentHeaderProps) {
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
@@ -64,6 +67,16 @@ export function PublicInteractiveContentHeader({
               href={conversationUrl}
               variant="outline"
               icon={ChatBubbleBottomCenterTextIcon}
+              className="hidden sm:flex"
+            />
+          )}
+          {user && projectUrl && (
+            <Button
+              label="Go to project"
+              href={projectUrl}
+              variant="outline"
+              // TODO(projects) this does not show the correct icon for open projects.
+              icon={SpaceClosedIcon}
               className="hidden sm:flex"
             />
           )}

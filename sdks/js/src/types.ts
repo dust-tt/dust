@@ -2826,6 +2826,7 @@ export type FileUploadedRequestResponseType = z.infer<
 export const PublicFrameResponseBodySchema = z.object({
   accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  projectUrl: z.string().nullable(),
   file: FileTypeSchema,
 });
 
