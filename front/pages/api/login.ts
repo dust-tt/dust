@@ -96,6 +96,8 @@ async function handler(
       fullName: user.name,
       lastLoginAt: user.lastLoginAt?.getTime() ?? null,
     },
+    utmParams,
+    userCreated,
   });
 
   const isInviteOnOtherWorkspace =
