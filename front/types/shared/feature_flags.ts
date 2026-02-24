@@ -236,14 +236,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Sandbox MCP tool for executing code in isolated Linux containers",
     stage: "dust_only",
   },
-  dust_no_spa: {
-    description: "Disable redirect to Dust SPA",
-    stage: "on_demand",
-  },
-  dust_spa: {
-    description: "Redirect all pages to Dust SPA",
-    stage: "dust_only",
-  },
   run_agent_child_stream: {
     description:
       "Subscribe directly to child agent EventSource in run_agent action " +
