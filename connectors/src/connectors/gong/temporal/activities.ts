@@ -69,12 +69,36 @@ async function resolvePermissionProfile(
  * Excludes private calls. When a permission profile is configured, only syncs
  * calls where at least one participant belongs to the profile's user list.
  */
+function shouldExcludeByTitle(
+  title: string | undefined,
+  excludeKeywords: string[] | null
+): boolean {
+  if (!excludeKeywords || excludeKeywords.length === 0) {
+    return false;
+  }
+  if (!title) {
+    return false;
+  }
+
+  const lowerTitle = title.toLowerCase();
+  return excludeKeywords.some((kw) => lowerTitle.includes(kw));
+  // Note: keywords are already stored lowercase from the resource setter
+}
+
 function shouldSyncTranscript(
   metadata: GongTranscriptMetadata,
-  filter: PermissionProfileFilter
+  filter: PermissionProfileFilter,
+  excludeKeywords: string[] | null
 ): { shouldSync: false; reason: string } | { shouldSync: true; reason: null } {
   if (metadata.metaData.isPrivate) {
     return { shouldSync: false, reason: "transcript is private" };
+  }
+
+  if (shouldExcludeByTitle(metadata.metaData.title, excludeKeywords)) {
+    return {
+      shouldSync: false,
+      reason: "title contains excluded keyword",
+    };
   }
 
   if (filter.type === "unrestricted") {
@@ -168,6 +192,7 @@ export async function gongSyncTranscriptsActivity({
 }) {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
+  const { excludeTitleKeywords } = configuration;
   const loggerArgs = {
     connectorId: connector.id,
     dataSourceId: connector.dataSourceId,
@@ -279,7 +304,8 @@ export async function gongSyncTranscriptsActivity({
 
       const { shouldSync, reason } = shouldSyncTranscript(
         transcriptMetadata,
-        permissionFilter
+        permissionFilter,
+        excludeTitleKeywords
       );
       if (!shouldSync) {
         logger.info(
