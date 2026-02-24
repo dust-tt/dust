@@ -1,6 +1,7 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import type { ExecOptions, ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
@@ -151,78 +152,85 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       "Cannot ensure sandbox without a workspace"
     );
 
-    const provider = getSandboxProvider();
-    if (!provider) {
-      return new Err(new Error("Sandbox provider not configured."));
-    }
+    const lockName = `sandbox:ensureActive:${conversation.sId}`;
 
-    const conversationId = conversation.id;
-
-    const existing = await SandboxResource.fetchByConversationId(
-      auth,
-      conversationId
-    );
-
-    if (!existing) {
-      const createResult = await provider.create({});
-      if (createResult.isErr()) {
-        return createResult;
+    return executeWithLock(lockName, async () => {
+      const provider = getSandboxProvider();
+      if (!provider) {
+        return new Err(new Error("Sandbox provider not configured."));
       }
 
-      const sandbox = await SandboxResource.makeNew(auth, {
-        conversationId,
-        providerId: createResult.value.providerId,
-        status: "running",
-      });
+      const conversationId = conversation.id;
 
-      logger.info(
-        { sandbox: sandbox.toLogJSON() },
-        "Created new sandbox for conversation"
+      const existing = await SandboxResource.fetchByConversationId(
+        auth,
+        conversationId
       );
 
-      return new Ok({ sandbox, freshlyCreated: true });
-    }
-
-    const { status } = existing;
-    let freshlyCreated = false;
-
-    switch (status) {
-      case "running":
-        break;
-
-      case "sleeping": {
-        const wakeResult = await provider.wake(existing.providerId);
-        if (wakeResult.isErr()) {
-          return wakeResult;
-        }
-        logger.info({ sandbox: existing.toLogJSON() }, "Woke sleeping sandbox");
-        break;
-      }
-
-      case "deleted": {
+      if (!existing) {
         const createResult = await provider.create({});
         if (createResult.isErr()) {
           return createResult;
         }
-        await existing.update({ providerId: createResult.value.providerId });
-        freshlyCreated = true;
+
+        const sandbox = await SandboxResource.makeNew(auth, {
+          conversationId,
+          providerId: createResult.value.providerId,
+          status: "running",
+        });
+
         logger.info(
-          {
-            sandbox: existing.toLogJSON(),
-            newProviderId: createResult.value.providerId,
-          },
-          "Recreated sandbox from deleted state"
+          { sandbox: sandbox.toLogJSON() },
+          "Created new sandbox for conversation"
         );
-        break;
+
+        return new Ok({ sandbox, freshlyCreated: true });
       }
 
-      default:
-        assertNever(status);
-    }
+      const { status } = existing;
+      let freshlyCreated = false;
 
-    await existing.updateStatus("running");
-    await existing.updateLastActivityAt();
-    return new Ok({ sandbox: existing, freshlyCreated });
+      switch (status) {
+        case "running":
+          break;
+
+        case "sleeping": {
+          const wakeResult = await provider.wake(existing.providerId);
+          if (wakeResult.isErr()) {
+            return wakeResult;
+          }
+          logger.info(
+            { sandbox: existing.toLogJSON() },
+            "Woke sleeping sandbox"
+          );
+          break;
+        }
+
+        case "deleted": {
+          const createResult = await provider.create({});
+          if (createResult.isErr()) {
+            return createResult;
+          }
+          await existing.update({ providerId: createResult.value.providerId });
+          freshlyCreated = true;
+          logger.info(
+            {
+              sandbox: existing.toLogJSON(),
+              newProviderId: createResult.value.providerId,
+            },
+            "Recreated sandbox from deleted state"
+          );
+          break;
+        }
+
+        default:
+          assertNever(status);
+      }
+
+      await existing.updateStatus("running");
+      await existing.updateLastActivityAt();
+      return new Ok({ sandbox: existing, freshlyCreated });
+    });
   }
 
   /**
