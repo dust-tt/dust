@@ -3,7 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
-const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes.
 const RECONNECT_DELAY_MS = 5_000; // 5 seconds.
 
 /**
@@ -188,7 +188,7 @@ export class BrowserMCPTransport implements Transport {
 
     // Build URL with query parameters.
     const base = config.getApiBaseUrl() || window.location.origin;
-    const url = new URL(`/api/w/${this.workspaceId}/mcp/requests`, base);
+    const url = new URL(`/api/sse/w/${this.workspaceId}/mcp/requests`, base);
     url.searchParams.set("serverId", this.serverId);
     if (this.lastEventId) {
       url.searchParams.set("lastEventId", this.lastEventId);

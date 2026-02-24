@@ -28,7 +28,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     const queryString = new URLSearchParams(
       context.query as Record<string, string>
     ).toString();
-    const baseUrl = config.getAppUrl(false);
+    const baseUrl = config.getAppUrl();
     const destination = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
     return {

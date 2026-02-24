@@ -12,7 +12,6 @@ import type { PendingUpdate } from "@extension/platforms/chrome/services/core_pl
 import { ChromeCorePlatformService } from "@extension/platforms/chrome/services/core_platform";
 import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
-import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
@@ -480,20 +479,20 @@ const authenticate = async (
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
-  const { codeVerifier, codeChallenge } = await generatePKCE();
+
+  const workspaceId =
+    connection && connection.startsWith("workspace-")
+      ? connection.split("workspace-")[1]
+      : "";
 
   const options: Record<string, string> = {
-    response_type: "code",
     redirect_uri: redirectUrl,
-    code_challenge_method: "S256",
-    code_challenge: codeChallenge,
-    organization_id: connection ?? "",
-    provider: "authkit",
+    workspaceId: workspaceId,
   };
 
   const queryString = new URLSearchParams(options).toString();
 
-  const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
+  const authUrl = `${DUST_US_URL}/api/workos/login?${queryString}`;
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
@@ -531,10 +530,7 @@ const authenticate = async (
       }
 
       if (authorizationCode) {
-        const data = await exchangeCodeForTokens(
-          authorizationCode,
-          codeVerifier
-        );
+        const data = await exchangeCodeForTokens(authorizationCode);
         sendResponse(data);
       } else {
         log(`Missing authorization code: ${redirectUrl}`);
@@ -580,7 +576,7 @@ const refreshToken = async (
       }
 
       const response = await fetch(
-        `${user.dustDomain}/api/v1/auth/authenticate`,
+        `${user.dustDomain}/api/workos/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -602,10 +598,10 @@ const refreshToken = async (
       handlers.forEach((sendResponse) => {
         sendResponse({
           success: true,
-          accessToken: data.access_token,
-          refreshToken: data.refresh_token || refreshToken,
-          expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
-          authentication_method: data.authentication_method,
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken || refreshToken,
+          expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          authentication_method: data.authenticationMethod,
         });
       });
     } catch (error) {
@@ -628,18 +624,14 @@ const refreshToken = async (
  *  Exchange authorization code for tokens
  */
 const exchangeCodeForTokens = async (
-  code: string,
-  codeVerifier: string
+  code: string
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   try {
     const tokenParams: Record<string, string> = {
-      grant_type: "authorization_code",
-      code_verifier: codeVerifier,
       code,
-      redirect_uri: chrome.identity.getRedirectURL(),
     };
 
-    const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
+    const response = await fetch(`${DUST_US_URL}/api/workos/authenticate`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(tokenParams),
@@ -656,11 +648,10 @@ const exchangeCodeForTokens = async (
 
     return {
       success: true,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
-      ...(data.id_token && { idToken: data.id_token }),
-      authentication_method: data.authentication_method,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      authentication_method: data.authenticationMethod,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
@@ -699,7 +690,7 @@ const logout = async (
     return true;
   }
 
-  const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
+  const logoutUrl = `${DUST_US_URL}/api/workos/logout-url?${new URLSearchParams(
     queryParams
   )}`;
 

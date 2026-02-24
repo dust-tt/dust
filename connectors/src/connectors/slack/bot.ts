@@ -7,7 +7,7 @@ import {
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
-  getBotUserIdMemoized,
+  getBotUserIdResponse,
   getUserName,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -823,10 +823,16 @@ async function answerMessage(
   let textAfterBotMention: string | null = null;
 
   if (matches) {
-    const mySlackUser = await getBotUserIdMemoized(slackClient, connector.id);
+    const userIdResponse = await getBotUserIdResponse(
+      slackClient,
+      connector.id
+    );
+    if (userIdResponse.isErr()) {
+      throw userIdResponse.error;
+    }
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
-      if (userId === mySlackUser) {
+      if (userId === userIdResponse.value) {
         const botMentionIndex = message.indexOf(m);
         if (botMentionIndex !== -1 && !textAfterBotMention) {
           textAfterBotMention = message.slice(botMentionIndex + m.length);
@@ -1305,11 +1311,18 @@ async function makeContentFragments(
     }
   }
 
-  const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
+  const botUserIdResponse = await getBotUserIdResponse(
+    slackClient,
+    connector.id
+  );
+  if (botUserIdResponse.isErr()) {
+    throw botUserIdResponse.error;
+  }
+
   allMessages = allMessages.filter(
     (m) =>
       // If this message is from the bot, we don't send it as a content fragment.
-      m.user !== botUserId &&
+      m.user !== botUserIdResponse.value &&
       // If this message is a mention to the bot, we don't send it as a content fragment.
       !slackBotMessages.find((sbm) => sbm.messageTs === m.ts)
   );

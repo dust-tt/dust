@@ -4,11 +4,11 @@ import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 
 const COPILOT_USE_CASES = [
-  "New agent",
-  "Existing agent",
-  "Shrink-wrap",
-  "Template",
-];
+  "new",
+  "existing",
+  "template",
+  "shrink-wrap",
+] as const;
 type CopilotUseCase = (typeof COPILOT_USE_CASES)[number];
 
 function getCopilotScenario({
@@ -16,11 +16,13 @@ function getCopilotScenario({
   isNewAgent,
   templateInfo,
   conversationId,
+  agentConfigurationId,
 }: {
   workspaceSId: string;
   isNewAgent: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
+  agentConfigurationId?: string;
 }): {
   endpoint: string;
   useCase: CopilotUseCase;
@@ -31,10 +33,9 @@ function getCopilotScenario({
       useCase: "template",
     };
   }
-  if (!isNewAgent) {
-    // TODO(copilot): send actual agent id
+  if (!isNewAgent && agentConfigurationId) {
     return {
-      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing`,
+      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing?agentConfigurationId=${agentConfigurationId}`,
       useCase: "existing",
     };
   }
@@ -55,11 +56,13 @@ export function useCopilotFirstMessage({
   isNewAgent,
   templateInfo,
   conversationId,
+  agentConfigurationId,
 }: {
   owner: WorkspaceType;
   isNewAgent: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
+  agentConfigurationId?: string;
 }) {
   const { endpoint, useCase } = useMemo(
     () =>
@@ -68,8 +71,9 @@ export function useCopilotFirstMessage({
         isNewAgent,
         templateInfo,
         conversationId,
+        agentConfigurationId,
       }),
-    [owner.sId, isNewAgent, templateInfo, conversationId]
+    [owner.sId, isNewAgent, templateInfo, conversationId, agentConfigurationId]
   );
 
   const getFirstMessage = useCallback(async (): Promise<string> => {

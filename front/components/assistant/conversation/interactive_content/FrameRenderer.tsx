@@ -190,7 +190,7 @@ function ExportContentDropdown({
 }
 
 interface FrameRendererProps {
-  conversation: ConversationWithoutContentType;
+  conversation?: ConversationWithoutContentType;
   fileId: string;
   projectId: string | null;
   owner: LightWorkspaceType;
@@ -215,7 +215,7 @@ export function FrameRenderer({
 
   const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: conversation.spaceId ?? projectId ?? null,
+    spaceId: conversation?.spaceId ?? projectId ?? null,
   });
 
   const projectSaveState = useMemo(() => {
@@ -223,7 +223,7 @@ export function FrameRenderer({
       return "unknown";
     }
     if (
-      !conversation.spaceId ||
+      !conversation?.spaceId ||
       !projectInfo ||
       projectInfo.kind !== "project"
     ) {
@@ -234,7 +234,7 @@ export function FrameRenderer({
     }
 
     return "saved";
-  }, [conversation.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
+  }, [conversation?.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
 
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -264,7 +264,7 @@ export function FrameRenderer({
 
   const { handleVisualizationRevert } = useVisualizationRevert({
     workspaceId: owner.sId,
-    conversationId: conversation.sId,
+    conversationId: conversation?.sId,
   });
 
   const isFileUsingConversationFiles = React.useMemo(
@@ -355,7 +355,7 @@ export function FrameRenderer({
   }, [isFullScreen, exitFullScreen]);
 
   const handleSaveToProject = useCallback(async () => {
-    const projectIdToSave = conversation.spaceId;
+    const projectIdToSave = conversation?.spaceId;
     if (!projectIdToSave) {
       return;
     }
@@ -418,7 +418,7 @@ export function FrameRenderer({
     }
   }, [
     confirm,
-    conversation.spaceId,
+    conversation?.spaceId,
     fileId,
     mutateFileMetadata,
     owner.sId,
@@ -436,7 +436,9 @@ export function FrameRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <InteractiveContentHeader onClose={onClosePanel}>
+      <InteractiveContentHeader
+        onClose={conversation ? onClosePanel : undefined}
+      >
         <div className="flex w-full items-center justify-between">
           <Button
             icon={showCode ? EyeIcon : CommandLineIcon}
@@ -504,23 +506,24 @@ export function FrameRenderer({
                 identifier: `viz-${fileId}`,
               }}
               key={`viz-${fileId}`}
-              conversationId={conversation.sId}
+              conversationId={conversation?.sId ?? null}
               isInDrawer={true}
               ref={iframeRef}
             />
-            <PreviewActionButtons
-              owner={owner}
-              conversation={conversation}
-              lastEditedByAgentConfigurationId={
-                lastEditedByAgentConfigurationId
-              }
-              hasPreviousVersion={(fileMetadata?.version ?? 0) > 1}
-              onRevert={onRevert}
-              isFullScreen={isFullScreen}
-              exitFullScreen={exitFullScreen}
-              enterFullScreen={enterFullScreen}
-              reloadFile={reloadFile}
-            />
+            {conversation && (
+              <PreviewActionButtons
+                owner={owner}
+                lastEditedByAgentConfigurationId={
+                  lastEditedByAgentConfigurationId
+                }
+                hasPreviousVersion={(fileMetadata?.version ?? 0) > 1}
+                onRevert={onRevert}
+                isFullScreen={isFullScreen}
+                exitFullScreen={exitFullScreen}
+                enterFullScreen={enterFullScreen}
+                reloadFile={reloadFile}
+              />
+            )}
           </div>
         )}
       </div>
@@ -530,7 +533,6 @@ export function FrameRenderer({
 
 interface PreviewActionButtonsProps {
   owner: LightWorkspaceType;
-  conversation: ConversationWithoutContentType;
   lastEditedByAgentConfigurationId?: string;
   hasPreviousVersion: boolean;
   onRevert: () => void;

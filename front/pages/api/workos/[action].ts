@@ -11,6 +11,7 @@ import type { SessionCookie } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -40,8 +41,12 @@ export default async function handler(
       return handleLogin(req, res);
     case "callback":
       return handleCallback(req, res);
+    case "authenticate":
+      return handleAuthenticate(req, res);
     case "logout":
       return handleLogout(req, res);
+    case "logout-url":
+      return handleLogoutUrl(req, res);
     default:
       return res.status(400).json({ error: "Invalid action" });
   }
@@ -49,9 +54,35 @@ export default async function handler(
 
 async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { organizationId, screenHint, loginHint, returnTo } = req.query;
+    const {
+      organizationId,
+      screenHint,
+      loginHint,
+      returnTo,
+      redirect_uri,
+      workspaceId,
+    } = req.query;
+
+    const redirectUri =
+      redirect_uri && isString(redirect_uri)
+        ? redirect_uri
+        : `${config.getAuthRedirectBaseUrl()}/api/workos/callback`;
 
     let organizationIdToUse;
+
+    if (workspaceId && isString(workspaceId)) {
+      const workspace = workspaceId
+        ? await WorkspaceResource.fetchById(workspaceId)
+        : null;
+
+      if (!workspace?.workOSOrganizationId) {
+        res.status(400).json({
+          error: "Workspace does not have a WorkOS organization ID",
+        });
+        return;
+      }
+      organizationIdToUse = workspace.workOSOrganizationId;
+    }
 
     if (organizationId && typeof organizationId === "string") {
       organizationIdToUse = organizationId;
@@ -98,7 +129,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
       // Use auth redirect base URL for WorkOS callbacks
-      redirectUri: `${config.getAuthRedirectBaseUrl()}/api/workos/callback`,
+      redirectUri,
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
       state:
@@ -114,6 +145,42 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     logger.error({ error }, "Error during WorkOS login");
     statsDClient.increment("login.error", 1);
     res.redirect("/login-error?type=workos-login");
+  }
+}
+
+async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
+  const { code, grant_type, refresh_token } = req.body;
+
+  if (grant_type && !isString(grant_type)) {
+    return res.status(400).json({ error: "Invalid grant_type" });
+  }
+
+  if (grant_type === "refresh_token") {
+    if (!refresh_token || !isString(refresh_token)) {
+      return res.status(400).json({ error: "Invalid refresh token" });
+    }
+    try {
+      const result =
+        await getWorkOS().userManagement.authenticateWithRefreshToken({
+          refreshToken: refresh_token,
+          clientId: config.getWorkOSClientId(),
+        });
+      return res.status(200).json(result);
+    } catch (error) {
+      logger.error({ error }, "Error during WorkOS token refresh");
+      return res.status(500).json({ error: "Authentication failed" });
+    }
+  }
+
+  if (!code || !isString(code)) {
+    return res.status(400).json({ error: "Invalid code" });
+  }
+  try {
+    const authResult = await authenticate(code);
+    return res.status(200).json(authResult);
+  } catch (error) {
+    logger.error({ error }, "Error during WorkOS authentication");
+    return res.status(500).json({ error: "Authentication failed" });
   }
 }
 
@@ -387,6 +454,20 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   redirectTo(res, sanitizedReturnTo);
 }
 
+async function handleLogoutUrl(req: NextApiRequest, res: NextApiResponse) {
+  const { session_id, returnTo } = req.query;
+
+  if (!session_id || !isString(session_id)) {
+    return res.status(400).json({ error: "Invalid session_id" });
+  }
+  const logoutUrl = getWorkOS().userManagement.getLogoutUrl({
+    sessionId: session_id,
+    returnTo: isString(returnTo) ? returnTo : undefined,
+  });
+
+  return res.redirect(logoutUrl);
+}
+
 function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
   if (
     sanitizedReturnTo.startsWith("/api") ||
@@ -395,6 +476,6 @@ function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
   ) {
     res.redirect(sanitizedReturnTo);
   } else {
-    res.redirect(`${config.getAppUrl(true)}${sanitizedReturnTo}`);
+    res.redirect(`${config.getAppUrl()}${sanitizedReturnTo}`);
   }
 }

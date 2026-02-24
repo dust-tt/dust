@@ -21,9 +21,10 @@ const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 const CONSOLE_MESSAGE_SHOWN_KEY = "dust_console_message_shown";
 
 import { PostHogTracker } from "@app/components/app/PostHogTracker";
-import RootLayout from "@app/components/app/RootLayout";
+import { NextLinkWrapper } from "@app/lib/platform/NextLinkWrapper";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
+import { SparkleContext } from "@dust-tt/sparkle";
 
 if (DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
@@ -130,9 +131,11 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   return (
     <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
       <PostHogTracker>
-        <RootLayout>
+        <SparkleContext.Provider
+          value={{ components: { link: NextLinkWrapper } }}
+        >
           {getLayout(<Component {...pageProps} />, pageProps)}
-        </RootLayout>
+        </SparkleContext.Provider>
       </PostHogTracker>
     </FetcherProvider>
   );

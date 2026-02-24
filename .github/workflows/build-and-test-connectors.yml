@@ -6,7 +6,7 @@ on:
       - package-lock.json
       - sdks/js/**
       - connectors/**
-      - .github/workflows/build-and-lint-connectors.yml
+      - .github/workflows/build-and-test-connectors.yml
 
 permissions:
   contents: read

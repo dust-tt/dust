@@ -8,7 +8,7 @@ export const getServerSideProps = withPublicAuthRequirements(
     const pathSegments = Array.isArray(path) ? path : path ? [path] : [];
     const pathString = pathSegments.join("/");
 
-    const baseUrl = config.getAppUrl(false);
+    const baseUrl = config.getAppUrl();
     // Forward query params (excluding path segments consumed by Next.js).
     const { path: _path, ...queryParams } = context.query;
     const queryString = new URLSearchParams(

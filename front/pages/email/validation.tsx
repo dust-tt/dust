@@ -111,7 +111,7 @@ const AUTO_CLOSE_DELAY_SECONDS = 5;
 function ResultView({ status, conversationId, workspaceId }: ResultViewProps) {
   const hasConversationLink = conversationId && workspaceId;
   const conversationUrl = hasConversationLink
-    ? `${config.getAppUrl(true)}/w/${workspaceId}/conversation/${conversationId}`
+    ? `${config.getAppUrl()}/w/${workspaceId}/conversation/${conversationId}`
     : null;
 
   const [countdown, setCountdown] = useState<number | null>(

@@ -1,8 +1,8 @@
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
-import { LinkWrapper } from "@app/lib/platform";
-import { Notification, SparkleContext } from "@dust-tt/sparkle";
+import { Notification } from "@dust-tt/sparkle";
 
 /**
  * This layout is used in _app only
@@ -15,12 +15,12 @@ export default function RootLayout({
   useStripUtmParams();
 
   return (
-    <SparkleContext.Provider value={{ components: { link: LinkWrapper } }}>
+    <ThemeProvider>
       <SidebarProvider>
         <ConfirmPopupArea>
           <Notification.Area>{children}</Notification.Area>
         </ConfirmPopupArea>
       </SidebarProvider>
-    </SparkleContext.Provider>
+    </ThemeProvider>
   );
 }

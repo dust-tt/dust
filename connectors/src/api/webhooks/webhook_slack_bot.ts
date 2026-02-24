@@ -12,7 +12,7 @@ import {
   isSlackWebhookEventReqBody,
   withTrace,
 } from "@connectors/api/webhooks/slack/utils";
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
@@ -153,10 +153,28 @@ const _webhookSlackBotAPIHandler = async (
 
             const slackClient = await getSlackClient(slackConfig.connectorId);
 
-            const myUserId = await getBotUserIdMemoized(
+            const botUserIdRes = await getBotUserIdResponse(
               slackClient,
               slackConfig.connectorId
             );
+            if (botUserIdRes.isErr()) {
+              logger.error(
+                {
+                  connectorId: slackConfig.connectorId,
+                  error: botUserIdRes.error,
+                },
+                "Failed to get bot user ID"
+              );
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message: `Failed to authenticate with Slack: ${botUserIdRes.error.message}`,
+                },
+              });
+            }
+
+            const myUserId = botUserIdRes.value;
             if (event.user === myUserId) {
               // Message sent from the bot itself.
               return res.status(200).send();
