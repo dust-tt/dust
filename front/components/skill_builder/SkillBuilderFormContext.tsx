@@ -4,6 +4,8 @@ import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
+const AGENT_FACING_DESCRIPTION_MAX_LENGTH = 750;
+
 export const attachedKnowledgeSchema = z.object({
   dataSourceViewId: z.string(),
   nodeId: z.string(),
@@ -19,7 +21,10 @@ export const skillBuilderFormSchema = z.object({
   agentFacingDescription: z
     .string()
     .min(1, "Description of when to use the skill is required")
-    .max(750, "Description must be 750 characters or less"),
+    .max(
+      AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+      `Description must be ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters or less`
+    ),
   userFacingDescription: z.string().min(1, "Skill description is required"),
   instructions: z.string().min(1, "Skill instructions are required"),
   editors: z.array(editorUserSchema),
