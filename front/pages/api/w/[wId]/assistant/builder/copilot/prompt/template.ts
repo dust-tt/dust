@@ -6,33 +6,38 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-function buildTemplateAgentInitMessage(
-  templateCopilotInstructions: string
-): string {
+function buildTemplateAgentInitMessage({
+  handle,
+  copilotInstructions,
+  agentFacingDescription,
+}: TemplateResource): string {
   return `<dust_system>
-NEW agent from TEMPLATE.
+The user is creating a new agent based on the "${handle}" template.
+Here is a brief description of what the agent should do:
+
+<description>
+${agentFacingDescription}
+</description>
 
 The copilotInstructions below contain domain-specific guidance for this agent type, structured as:
-- <Business_Requirements>: Questions that need answers to build this agent properly
+- <Business_Requirements>: Specific clarifying questions that will help you customize the template to the user's needs.
 - <Capabilities_To_Suggest>: Tools and skills to suggest, ordered by priority
-- <Knowledge_To_Suggest>: Data sources and knowledge to suggest
+- <Knowledge_To_Suggest>: Knowledge to suggest, ordered by priority
 
 ## How to act on copilotInstructions
 
-### 1. Gather workspace context
-Available models, skills, tools already provided in instructions.
-Use \`get_available_knowledge\` and \`search_knowledge\` to discover data sources in the workspace.
+### 1. Business requirements
+First try to answer the questions as best as you can based on your user_context and workspace_context.
+If needed, you can perform multiple targeted searches on the knowledge sources of the workspace to enrich your context.
 
-### 2. Answer business requirements from workspace data
-<Business_Requirements> lists the questions that need answers to properly build this agent. These answers depend on what's available in the workspace. Use the workspace context from step 1 to answer as many as possible. Only ask the user questions you could NOT resolve from workspace data.
+### 2. Make suggestions
+At this stage, the agent configuration will always be empty. Start to fill in instructions and capabilities based on what you know now. Start small, the goal is not to overwhelm the user with too much suggestions, but to iterate with him step by step.
 
-### 3. Create suggestions immediately
-Use \`suggest_*\` tools informed by workspace context. Do NOT wait for user response:
-- \`suggest_prompt_edits\`: Generate agent instructions inferred from gathered workspace context and resolved business requirements. Refer to your agent instructions guidelines.
-- \`suggest_tools\`, \`suggest_skills\`, \`suggest_knowledge\`: Suggest capabilities and data sources following the priority order in copilotInstructions
+### 3. Refinements
+Ask the user the unresolved questions if any and engage with him to further refine the template to his use case.
 
 <copilotInstructions>
-${templateCopilotInstructions}
+${copilotInstructions}
 </copilotInstructions>
 </dust_system>`;
 }
@@ -68,9 +73,7 @@ async function handler(
         });
       }
 
-      return res
-        .status(200)
-        .json(buildTemplateAgentInitMessage(template.copilotInstructions));
+      return res.status(200).json(buildTemplateAgentInitMessage(template));
     default:
       return apiError(req, res, {
         status_code: 405,
