@@ -8,6 +8,7 @@ import type {
   HeadProps,
   ImageProps,
   RouterEvents,
+  RouterEventType,
   ScriptProps,
   TransitionOptions,
   UrlObject,
@@ -16,6 +17,7 @@ import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import {
   Children,
   isValidElement,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -104,23 +106,25 @@ function urlToString(url: string | UrlObject): string {
  * Global event emitter for router events in SPA
  * This mimics Next.js router events to work with NavigationLoadingContext
  */
-type RouterEventCallback = (...args: unknown[]) => void;
+type RouterEventHandler = (url: string) => void;
 
-const routerEventListeners: Map<string, Set<RouterEventCallback>> = new Map();
+const routerEventListeners: Map<string, Set<RouterEventHandler>> = new Map();
 
 function createRouterEvents(): RouterEvents {
   return {
-    on: (event: string, callback: RouterEventCallback) => {
+    on: (event: RouterEventType, handler: RouterEventHandler) => {
       if (!routerEventListeners.has(event)) {
         routerEventListeners.set(event, new Set());
       }
-      routerEventListeners.get(event)!.add(callback);
+      routerEventListeners.get(event)!.add(handler);
     },
-    off: (event: string, callback: RouterEventCallback) => {
-      routerEventListeners.get(event)?.delete(callback);
+    off: (event: RouterEventType, handler: RouterEventHandler) => {
+      routerEventListeners.get(event)?.delete(handler);
     },
-    emit: (event: string, ...args: unknown[]) => {
-      routerEventListeners.get(event)?.forEach((callback) => callback(...args));
+    emit: (event: RouterEventType, ...args: unknown[]) => {
+      routerEventListeners
+        .get(event)
+        ?.forEach((handler) => handler(String(args[0] ?? "")));
     },
   };
 }
@@ -258,7 +262,8 @@ export function Head({ children }: HeadProps) {
 
       if (child.type === "title") {
         const previousTitle = document.title;
-        document.title = Children.toArray(props.children).join("") ?? "";
+        document.title =
+          Children.toArray(props.children as ReactNode).join("") ?? "";
         cleanupFns.push(() => {
           document.title = previousTitle;
         });
