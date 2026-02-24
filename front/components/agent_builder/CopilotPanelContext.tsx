@@ -71,7 +71,7 @@ export const CopilotPanelProvider = ({
   const [creationFailed, setCreationFailed] = useState(false);
   const hasStartedRef = useRef(false);
 
-  const { getFirstMessage } = useCopilotFirstMessage({
+  const { getFirstMessage, useCase } = useCopilotFirstMessage({
     owner,
     isNewAgent,
     templateInfo,
@@ -111,6 +111,7 @@ export const CopilotPanelProvider = ({
       // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.
       // We should rename it.
       visibility: "test",
+      title: `Copilot conversation (useCase: ${useCase}, agentId: ${targetAgentConfigurationId})`,
       metadata: {
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
@@ -134,6 +135,7 @@ export const CopilotPanelProvider = ({
     clientSideMCPServerIds,
     createConversationWithMessage,
     getFirstMessage,
+    useCase,
     sendNotification,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,

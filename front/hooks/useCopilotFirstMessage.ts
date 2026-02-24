@@ -3,7 +3,15 @@ import type { TemplateInfo } from "@app/types/assistant/templates";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 
-function getEndpoint({
+const COPILOT_USE_CASES = [
+  "New agent",
+  "Existing agent",
+  "Shrink-wrap",
+  "Template",
+];
+type CopilotUseCase = (typeof COPILOT_USE_CASES)[number];
+
+function getCopilotScenario({
   workspaceSId,
   isNewAgent,
   templateInfo,
@@ -13,18 +21,33 @@ function getEndpoint({
   isNewAgent: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
-}): string {
+}): {
+  endpoint: string;
+  useCase: CopilotUseCase;
+} {
   if (templateInfo && templateInfo.copilotInstructions) {
-    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/template?templateId=${templateInfo.templateId}`;
+    return {
+      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/template?templateId=${templateInfo.templateId}`,
+      useCase: "template",
+    };
   }
   if (!isNewAgent) {
     // TODO(copilot): send actual agent id
-    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing`;
+    return {
+      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing`,
+      useCase: "existing",
+    };
   }
   if (conversationId) {
-    return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/shrink-wrap?conversationId=${conversationId}`;
+    return {
+      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/shrink-wrap?conversationId=${conversationId}`,
+      useCase: "shrink-wrap",
+    };
   }
-  return `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/new`;
+  return {
+    endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/new`,
+    useCase: "new",
+  };
 }
 
 export function useCopilotFirstMessage({
@@ -38,9 +61,9 @@ export function useCopilotFirstMessage({
   templateInfo?: TemplateInfo;
   conversationId?: string;
 }) {
-  const endpoint = useMemo(
+  const { endpoint, useCase } = useMemo(
     () =>
-      getEndpoint({
+      getCopilotScenario({
         workspaceSId: owner.sId,
         isNewAgent,
         templateInfo,
@@ -64,5 +87,5 @@ export function useCopilotFirstMessage({
     return data;
   }, [endpoint]);
 
-  return { getFirstMessage };
+  return { getFirstMessage, useCase };
 }
