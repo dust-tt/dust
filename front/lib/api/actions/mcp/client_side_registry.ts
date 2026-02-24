@@ -6,7 +6,7 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 
 // TTL for MCP server registrations (10 minutes).
 // Refreshed on every access via EXPIRE in validateMCPServerAccess, and by the client heartbeat
-// (every 15 minutes) as a fallback.
+// (every 5 minutes) as a fallback.
 const MCP_SERVER_REGISTRATION_TTL_SECONDS = 10 * 60;
 
 const MAX_SERVER_INSTANCES = 256;
