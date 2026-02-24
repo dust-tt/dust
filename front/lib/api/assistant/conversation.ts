@@ -16,12 +16,15 @@ import {
 } from "@app/lib/api/assistant/conversation/mentions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
+  MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
   MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspaceActor,
+  makeMessageRateLimitKeyForWorkspaceActorPerHour,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import {
@@ -1861,6 +1864,20 @@ async function isMessagesLimitReached(
   });
 
   if (actorRemainingMessages <= 0) {
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
+  const actorHourlyRemainingMessages = await rateLimiter({
+    key: makeMessageRateLimitKeyForWorkspaceActorPerHour(owner, actor),
+    maxPerTimeframe: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
+    timeframeSeconds: MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
+    logger,
+  });
+
+  if (actorHourlyRemainingMessages <= 0) {
     return {
       isLimitReached: true,
       limitType: "rate_limit_error",
