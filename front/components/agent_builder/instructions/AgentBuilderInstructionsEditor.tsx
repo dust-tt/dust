@@ -128,7 +128,7 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
 
 const editorVariants = cva(
   [
-    "overflow-auto p-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto p-2 resize-y min-h-60 max-h-[2048px]",
     "transition-all duration-200",
   ],
   {
