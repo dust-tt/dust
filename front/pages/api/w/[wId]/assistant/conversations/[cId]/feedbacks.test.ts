@@ -144,7 +144,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/feedbacks", () => {
       workspaceId: workspace.id,
       agentConfigurationId: agentConfig.sId,
       agentConfigurationVersion: 0,
-      conversationId: conversation.id,
+      conversationId: conversation2.id,
       agentMessageId: agentMessage!.id,
       userId: user.id,
       thumbDirection: "up",
