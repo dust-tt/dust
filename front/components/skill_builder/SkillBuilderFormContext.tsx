@@ -19,7 +19,7 @@ export const skillBuilderFormSchema = z.object({
   agentFacingDescription: z
     .string()
     .min(1, "Description of when to use the skill is required")
-    .max(500, "Description must be 500 characters or less"),
+    .max(750, "Description must be 750 characters or less"),
   userFacingDescription: z.string().min(1, "Skill description is required"),
   instructions: z.string().min(1, "Skill instructions are required"),
   editors: z.array(editorUserSchema),
