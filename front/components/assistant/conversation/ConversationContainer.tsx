@@ -159,6 +159,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           conversationId={activeConversationId}
           setPlanLimitReached={setPlanLimitReached}
+          key={activeConversationId}
         />
       ) : (
         <>
