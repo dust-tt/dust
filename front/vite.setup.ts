@@ -66,6 +66,13 @@ vi.mock("@app/lib/utils/cache", () => ({
   batchInvalidateCacheWithRedis: vi.fn().mockImplementation(() => {
     return async () => {};
   }),
+  invalidateCacheAfterCommit: vi
+    .fn()
+    .mockImplementation(
+      (_transaction: unknown, invalidateFn: () => Promise<void>) => {
+        invalidateFn();
+      }
+    ),
 }));
 
 // Mock Temporal - must be at module level

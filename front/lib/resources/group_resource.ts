@@ -17,6 +17,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
+  invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
@@ -231,12 +232,13 @@ export class GroupResource extends BaseResource<GroupModel> {
         { transaction }
       );
 
-      // Always invalidate cache - safe even if transaction rolls back
-      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-        memberIds.map((userModelId) => [
-          { user: { id: userModelId }, workspace: { id: workspaceModelId } },
-        ])
-      );
+      invalidateCacheAfterCommit(transaction, async () => {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          memberIds.map((userModelId) => [
+            { user: { id: userModelId }, workspace: { id: workspaceModelId } },
+          ])
+        );
+      });
     }
 
     return new this(GroupModel, group.get());
@@ -1342,10 +1344,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       { transaction }
     );
 
-    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-      users.map((u) => [{ user: { id: u.id }, workspace: { id: owner.id } }])
-    );
+    const workspaceModelId = owner.id;
+    const userModelIds = users.map((u) => u.id);
+    invalidateCacheAfterCommit(transaction, async () => {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+        userModelIds.map((userModelId) => [
+          { user: { id: userModelId }, workspace: { id: workspaceModelId } },
+        ])
+      );
+    });
 
     return new Ok(undefined);
   }
@@ -1497,10 +1504,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
-    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-      users.map((u) => [{ user: { id: u.id }, workspace: { id: owner.id } }])
-    );
+    const workspaceModelId = owner.id;
+    const userModelIds = users.map((u) => u.id);
+    invalidateCacheAfterCommit(transaction, async () => {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+        userModelIds.map((userModelId) => [
+          { user: { id: userModelId }, workspace: { id: workspaceModelId } },
+        ])
+      );
+    });
 
     return new Ok(undefined);
   }
@@ -1586,10 +1598,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
-    await GroupResource.invalidateGroupIdsCacheForUser({
-      user: { id: user.id },
-      workspace: { id: workspace.id },
+    const userId = user.id;
+    const workspaceId = workspace.id;
+    invalidateCacheAfterCommit(transaction, async () => {
+      await GroupResource.invalidateGroupIdsCacheForUser({
+        user: { id: userId },
+        workspace: { id: workspaceId },
+      });
     });
 
     return new Ok(undefined);
@@ -1695,11 +1710,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     if (affectedUserIds.length > 0) {
-      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-        affectedUserIds.map((userId) => [
-          { user: { id: userId }, workspace: { id: workspaceId } },
-        ])
-      );
+      invalidateCacheAfterCommit(transaction, async () => {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          affectedUserIds.map((userId) => [
+            { user: { id: userId }, workspace: { id: workspaceId } },
+          ])
+        );
+      });
     }
 
     return affectedUserIds;
@@ -1745,11 +1762,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     if (affectedUserIds.length > 0) {
-      await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-        affectedUserIds.map((userId) => [
-          { user: { id: userId }, workspace: { id: workspaceId } },
-        ])
-      );
+      invalidateCacheAfterCommit(transaction, async () => {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          affectedUserIds.map((userId) => [
+            { user: { id: userId }, workspace: { id: workspaceId } },
+          ])
+        );
+      });
     }
 
     return affectedUserIds;
@@ -1831,13 +1850,15 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
-      // Always invalidate cache for all former members - safe even if transaction rolls back (just causes cache miss)
       if (memberUserIds.length > 0) {
-        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-          memberUserIds.map((userId) => [
-            { user: { id: userId }, workspace: { id: owner.id } },
-          ])
-        );
+        const workspaceId = owner.id;
+        invalidateCacheAfterCommit(transaction, async () => {
+          await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+            memberUserIds.map((userId) => [
+              { user: { id: userId }, workspace: { id: workspaceId } },
+            ])
+          );
+        });
       }
 
       return new Ok(undefined);
