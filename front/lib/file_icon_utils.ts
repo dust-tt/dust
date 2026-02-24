@@ -1,4 +1,6 @@
+import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import {
+  ActionFrameIcon,
   ActionVolumeUpIcon,
   BracesIcon,
   DocumentIcon,
@@ -45,8 +47,13 @@ const FILE_TYPE_MAPPINGS: FileTypeMapping[] = [
   },
   {
     icon: BracesIcon,
-    mimeTypes: ["text/markdown"],
-    extensions: ["md", "markdown"],
+    mimeTypes: ["text/markdown", "application/json"],
+    extensions: ["md", "markdown", "json"],
+  },
+  {
+    icon: ActionFrameIcon,
+    mimeTypes: [frameContentType, frameSlideshowContentType],
+    extensions: [".js", ".jsx", ".ts", ".tsx"],
   },
 ];
 
