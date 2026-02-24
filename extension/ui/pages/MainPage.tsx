@@ -79,12 +79,14 @@ export const MainPage = ({
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetContent
               side="left"
-              className="flex w-full max-w-xs flex-1 bg-muted-background dark:bg-muted-background-night"
+              className="flex w-full max-w-72 flex-1 bg-muted-background dark:bg-muted-background-night"
             >
               <SheetHeader className="bg-muted-background p-0" hideButton>
                 <SheetTitle className="hidden" />
               </SheetHeader>
-              <AgentSidebarMenu owner={workspace} hideActions />
+              <div className="flex flex-col grow p-1">
+                <AgentSidebarMenu owner={workspace} hideActions />
+              </div>
             </SheetContent>
           </Sheet>
           <BarHeader
