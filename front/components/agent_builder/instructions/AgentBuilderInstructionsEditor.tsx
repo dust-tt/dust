@@ -40,7 +40,6 @@ import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
 import React, {
@@ -125,48 +124,6 @@ export function buildAgentInstructionsReadOnlyExtensions(): Extensions {
     }),
   ];
 }
-
-const editorVariants = cva(
-  [
-    "overflow-auto p-2 resize-y min-h-60 max-h-[1024px]",
-    "transition-all duration-200",
-  ],
-  {
-    variants: {
-      embedded: {
-        true: [
-          "rounded-b-xl border-0 bg-transparent",
-          "focus:ring-0 focus:outline-none focus:border-0",
-        ],
-        false: [
-          "border rounded-xl",
-          "bg-muted-background dark:bg-muted-background-night",
-          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
-          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
-        ],
-      },
-      error: {
-        true: [
-          "border-warning-500 dark:border-warning-500-night",
-          "focus:ring-warning-500 dark:focus:ring-warning-500-night",
-          "focus:outline-warning-500 dark:focus:outline-warning-500-night",
-          "focus:border-warning-500 dark:focus:border-warning-500-night",
-        ],
-        false: [
-          "border-border dark:border-border-night",
-          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
-          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
-        ],
-      },
-    },
-    defaultVariants: {
-      embedded: false,
-      error: false,
-    },
-  }
-);
 
 function ToolbarSlot({ children }: { children: ReactNode }) {
   return <>{children}</>;
@@ -374,10 +331,7 @@ export function AgentBuilderInstructionsEditor({
     editor.setOptions({
       editorProps: {
         attributes: {
-          class: editorVariants({
-            embedded: true,
-            error: displayError,
-          }),
+          class: "w-full p-2 outline-none",
         },
         // Preserve the transformPastedHTML handler when updating editorProps
         transformPastedHTML(html: string) {
@@ -385,7 +339,7 @@ export function AgentBuilderInstructionsEditor({
         },
       },
     });
-  }, [editor, displayError]);
+  }, [editor]);
 
   useEffect(() => {
     if (
@@ -495,18 +449,16 @@ export function AgentBuilderInstructionsEditor({
       return;
     }
 
-    const formRect = editorWrapperRef.current.getBoundingClientRect();
-    const clampedTop = Math.max(blockRect.top, formRect.top);
-    const clampedBottom = Math.min(blockRect.bottom, formRect.bottom);
+    const wrapper = editorWrapperRef.current;
+    const wrapperRect = wrapper.getBoundingClientRect();
 
-    if (clampedTop >= clampedBottom) {
-      setLineStyle(null);
-      return;
-    }
+    // Account for scroll position - content inside wrapper is offset by scrollTop
+    const scrollOffset = wrapper.scrollTop;
 
+    // Position line for the full extent of the suggestion
     setLineStyle({
-      top: clampedTop - formRect.top,
-      height: clampedBottom - clampedTop,
+      top: blockRect.top - wrapperRect.top + scrollOffset,
+      height: blockRect.bottom - blockRect.top,
     });
   }, [highlightedSuggestionId, editor]);
 
@@ -515,17 +467,17 @@ export function AgentBuilderInstructionsEditor({
   }, [updateLineStyle]);
 
   useEffect(() => {
-    if (!highlightedSuggestionId || !editor) {
+    if (!highlightedSuggestionId || !editorWrapperRef.current) {
       return;
     }
-    const scrollContainer = editor.view.dom.parentElement;
-    scrollContainer?.addEventListener("scroll", updateLineStyle);
+    const scrollContainer = editorWrapperRef.current;
+    scrollContainer.addEventListener("scroll", updateLineStyle);
     window.addEventListener("resize", updateLineStyle);
     return () => {
-      scrollContainer?.removeEventListener("scroll", updateLineStyle);
+      scrollContainer.removeEventListener("scroll", updateLineStyle);
       window.removeEventListener("resize", updateLineStyle);
     };
-  }, [highlightedSuggestionId, editor, updateLineStyle]);
+  }, [highlightedSuggestionId, updateLineStyle]);
 
   const toolbarExtra =
     React.Children.toArray(children).find(
@@ -549,31 +501,47 @@ export function AgentBuilderInstructionsEditor({
   };
 
   const editorContent = (
-    <div
-      ref={editorWrapperRef}
-      className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px"
-    >
-      {hasCopilot && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1 w-0.5 rounded-full bg-highlight-300 transition-all duration-150 dark:bg-highlight-300-night"
-          style={
-            lineStyle
-              ? { top: lineStyle.top, height: lineStyle.height, opacity: 1 }
-              : { top: 0, height: 0, opacity: 0 }
-          }
-        />
-      )}
-      <EditorContent editor={editor} />
-      {editor && hasCopilot && (
-        <SuggestionBubbleMenu editor={editor} containerRef={editorWrapperRef} />
-      )}
-      {!hasCopilot && (
-        // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
-        <div className="absolute bottom-2 right-2">
-          <InstructionTipsPopover owner={owner} />
-        </div>
-      )}
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px">
+      <div
+        ref={editorWrapperRef}
+        className={cn(
+          "relative flex-1 overflow-auto resize-y min-h-60 max-h-[1024px]",
+          "rounded-b-xl border-0 bg-transparent",
+          "focus:ring-0 focus:outline-none focus:border-0",
+          "transition-all duration-200",
+          displayError && [
+            "border-warning-500 dark:border-warning-500-night",
+            "focus:ring-warning-500 dark:focus:ring-warning-500-night",
+            "focus:outline-warning-500 dark:focus:outline-warning-500-night",
+            "focus:border-warning-500 dark:focus:border-warning-500-night",
+          ]
+        )}
+      >
+        {hasCopilot && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1 w-0.5 rounded-full bg-highlight-300 transition-all duration-150 dark:bg-highlight-300-night"
+            style={
+              lineStyle
+                ? { top: lineStyle.top, height: lineStyle.height, opacity: 1 }
+                : { top: 0, height: 0, opacity: 0 }
+            }
+          />
+        )}
+        <EditorContent editor={editor} />
+        {editor && hasCopilot && (
+          <SuggestionBubbleMenu
+            editor={editor}
+            containerRef={editorWrapperRef}
+          />
+        )}
+        {!hasCopilot && (
+          // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
+          <div className="absolute bottom-2 right-2">
+            <InstructionTipsPopover owner={owner} />
+          </div>
+        )}
+      </div>
     </div>
   );
 
