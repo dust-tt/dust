@@ -20,7 +20,8 @@
     "@dust-tt/sparkle": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.0.0"
+    "react-is": "^19.2.4",
+    "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",
