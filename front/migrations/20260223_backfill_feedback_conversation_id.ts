@@ -20,6 +20,7 @@ async function fetchFeedbacksBatch(
   lastModelId: ModelId
 ) {
   return AgentMessageFeedbackModel.findAll({
+    // @ts-ignore: this script predates changes on the data model.
     where: {
       workspaceId: workspace.id,
       conversationId: null,
