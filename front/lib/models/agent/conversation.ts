@@ -552,8 +552,7 @@ export class AgentMessageFeedbackModel extends WorkspaceAwareModel<AgentMessageF
   declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
-  // TODO(2026-02-23 aubin): make it non-nullable once backfill is done
-  declare conversationId: ForeignKey<ConversationModel["id"]> | null;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare isConversationShared: boolean;
   declare dismissed: boolean;
 
@@ -604,7 +603,7 @@ AgentMessageFeedbackModel.init(
     },
     conversationId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
       references: {
         model: "conversations",
         key: "id",
