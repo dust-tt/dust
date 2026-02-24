@@ -17,13 +17,13 @@ const BATCH_SIZE = 512;
 
 async function fetchFeedbacksBatch(
   workspace: LightWorkspaceType,
-  lastId: ModelId
+  lastModelId: ModelId
 ) {
   return AgentMessageFeedbackModel.findAll({
     where: {
       workspaceId: workspace.id,
       conversationId: null,
-      id: { [Op.gt]: lastId },
+      id: { [Op.gt]: lastModelId },
     },
     attributes: ["id", "agentMessageId"],
     include: [
@@ -114,12 +114,12 @@ async function backfillWorkspace(
 ) {
   const workspaceLogger = logger.child({ workspaceId: workspace.id });
 
-  let lastId: ModelId = 0;
+  let lastFeedbackModelId: ModelId = 0;
   let updatedCount = 0;
   let hasMore = false;
 
   do {
-    const feedbacks = await fetchFeedbacksBatch(workspace, lastId);
+    const feedbacks = await fetchFeedbacksBatch(workspace, lastFeedbackModelId);
 
     if (feedbacks.length === 0) {
       break;
@@ -128,11 +128,15 @@ async function backfillWorkspace(
     const grouped = groupFeedbacksByConversation(feedbacks, workspaceLogger);
     updatedCount += await updateBatch(grouped, execute);
 
-    lastId = feedbacks[feedbacks.length - 1].id;
+    lastFeedbackModelId = feedbacks[feedbacks.length - 1].id;
     hasMore = feedbacks.length === BATCH_SIZE;
 
     workspaceLogger.info(
-      { lastId, updatedCount, batchSize: feedbacks.length },
+      {
+        lastModelId: lastFeedbackModelId,
+        updatedCount,
+        batchSize: feedbacks.length,
+      },
       "Backfill progress."
     );
   } while (hasMore);
