@@ -1,4 +1,5 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
+import type { MessageCountTokensParams } from "@anthropic-ai/sdk/resources";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
@@ -133,7 +134,15 @@ export class AnthropicLLM extends LLM {
         output_format: toOutputFormatParam(this.responseFormat),
       } as Parameters<typeof this.client.beta.messages.stream>[0]);
 
-      yield* streamLLMEvents(events, this.metadata);
+      const countTokens =
+        this.reasoningEffort === "none" ||
+        (this.reasoningEffort === "light" &&
+          this.modelConfig.useNativeLightReasoning)
+          ? undefined
+          : (body: MessageCountTokensParams) =>
+              this.client.messages.countTokens(body);
+
+      yield* streamLLMEvents(events, this.metadata, countTokens);
     } catch (err) {
       if (err instanceof APIError) {
         yield handleError(err, this.metadata);
