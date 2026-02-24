@@ -213,8 +213,7 @@ function extractToolsFromServer(
     return null;
   }
 
-  const stakes =
-    server?.tools_stakes ?? server?.metadata?.tools_stakes ?? {};
+  const stakes = server?.tools_stakes ?? server?.metadata?.tools_stakes ?? {};
 
   const tools: IntegrationTool[] = Object.entries(stakes).map(
     ([name, level]) => ({
@@ -231,7 +230,9 @@ function extractToolsFromServer(
   };
 }
 
-function getConnectorIcon(provider: ConnectorProvider): InternalAllowedIconType {
+function getConnectorIcon(
+  provider: ConnectorProvider
+): InternalAllowedIconType {
   // Map connector providers to their Sparkle icon names
   const iconMap: Partial<Record<ConnectorProvider, InternalAllowedIconType>> = {
     confluence: "ConfluenceLogo",

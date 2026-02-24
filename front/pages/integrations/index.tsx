@@ -65,7 +65,9 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   recruiting: "Recruiting & HR",
 };
 
-export const getStaticProps: GetStaticProps<IntegrationsPageProps> = async () => {
+export const getStaticProps: GetStaticProps<
+  IntegrationsPageProps
+> = async () => {
   const integrations = buildIntegrationRegistry();
   const categories = getAllCategories();
 
