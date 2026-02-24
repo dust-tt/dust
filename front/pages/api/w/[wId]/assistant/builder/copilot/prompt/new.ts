@@ -1,30 +1,52 @@
+import {
+  formatTemplatesAsText,
+  getTemplatesForCopilot,
+} from "@app/lib/api/assistant/copilot_templates";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { JobType } from "@app/types/job_type";
+import { isJobType } from "@app/types/job_type";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const firstMessage = `<dust_system>
-NEW agent - no suggestions/feedback/insights.
+const NEW_AGENT_TEMPLATES_LIMIT = 20;
 
-## STEP 1: Gather context
-You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
-This tool must be called at session start to ensure you have the latest state.
+async function getJobTypeFromAuth(
+  auth: Authenticator
+): Promise<JobType | undefined> {
+  const user = auth.user();
+  if (!user) {
+    return undefined;
+  }
+  const meta = await user.getMetadata("job_type");
+  return meta?.value && isJobType(meta.value) ? meta.value : undefined;
+}
 
-The response includes:
-- Agent settings (name, description, scope, model, tools, skills)
-- Instructions: The committed instructions text (without pending suggestions)
-- pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
+async function getTemplatesMarkdown(
+  auth: Authenticator,
+  jobType?: JobType
+): Promise<string> {
+  const res = await getTemplatesForCopilot({
+    auth,
+    jobType,
+    limit: NEW_AGENT_TEMPLATES_LIMIT,
+  });
+  const templates = res.isErr() ? [] : res.value;
+  const body = formatTemplatesAsText(templates);
+  return `<agent_templates>\n${body}\n</agent_templates>`;
+}
 
-## STEP 2: Discover templates & suggest use cases
-Call search_agent_templates with the user's job type from your instructions to discover relevant templates.
+function buildFirstMessage(templatesMarkdown: string): string {
+  return `<dust_system>
+This is a new agent. To start the conversation, you should NOT call tools to acquire insights, feedback, or agent configuration given it is all empty.
 
-Based on:
-- Current form state (get_agent_config result)
-- User's job function and preferred platforms (from your instructions)
-- Matching templates (search_agent_templates result)
+${templatesMarkdown}
 
-Provide 2-3 specific agent use case suggestions. PRIORITIZE templates returned by \`search_agent_templates\` — if templates are available, prioritize them even if job type is not specified (use its userFacingDescription to inspire the suggestion). Templates have copilotInstructions that make the builder experience much better.
+## STEP 1: Discover templates & suggest use cases
+
+Provide 2-3 specific agent use case suggestions. PRIORITIZE templates from the injected <agent_templates> section. Determine priority based on the user's job function, preferred platforms, and userFacingDescription of the templates.
+
 IMPORTANT: Use case suggestions MUST use the \`:quickReply\` directive format so users can click to select. Do NOT use bullet points. Do NOT put any text after the last \`:quickReply\` directive — the buttons are self-explanatory.
 Example:
 "I can help you build agents for your work in [role/team]. Here are a few ideas, or tell me if you have another idea in mind:
@@ -33,31 +55,17 @@ Example:
 :quickReply[Follow-up drafter - generates personalized emails]{message="I want to build a follow-up drafter that generates personalized emails based on call notes"}
 :quickReply[Competitive intel - monitors competitor news]{message="I want to build a competitive intel agent that monitors competitor news and surfaces updates"}"
 
-## STEP 2.5: When user responds
+## STEP 2: Response
+Respond with the use case suggestions. Provide a succinct explanation that the user can also input a free answer if they do not want to select one of the suggested templates. 
 
-**If the user's response matches a template with non-null copilotInstructions:**
-You already have all template data from \`search_agent_templates\` in STEP 2. Do NOT call \`get_agent_template\`.
-The copilotInstructions contain domain-specific rules for this agent type. IMMEDIATELY create suggestions based on copilotInstructions - do NOT wait for user response.
-Use \`suggest_*\` tools right away following the guidance in copilotInstructions.
+Users do not necessarily know they are using a pre-defined template. Avoid using that phrasing in your response.
 
-**If the user's response does NOT match any template from Step 2:**
-Call search_agent_templates with the EXACT user's message as the \`query\` param to find semantically matching templates. If a match with copilotInstructions is found, use it as above.
+## Step 3: Follow-ups
+If the user selects a template, follow <using_templates> section from your instructions.
+From that point, follow the core workflow from main instructions.
 
-**Fallback — no matching template or copilotInstructions is null/empty:**
-Proceed to Step 3.
-
-## STEP 3: Evaluate & create suggestions
-Follow the core workflow from your main instructions.
-Create suggestions in your first response. Do not wait for the user to respond. If you see improvements, suggest them now. Add clarifying questions only after creating suggestions.
-
-Available models, skills, tools already provided in instructions.
-Tool usage:
-- \`search_knowledge\`: When use case involves specific data needs (documents, records, databases).
-
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Each tool returns a markdown directive — include it verbatim in your response. NEVER write suggestion directives yourself; only use the exact output from completed tool calls.
-
-Balance context gathering and minimizing the number of tool calls - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
+}
 
 async function handler(
   req: NextApiRequest,
@@ -65,8 +73,11 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
-    case "GET":
-      return res.status(200).json(firstMessage);
+    case "GET": {
+      const jobType = await getJobTypeFromAuth(auth);
+      const templatesMarkdown = await getTemplatesMarkdown(auth, jobType);
+      return res.status(200).json(buildFirstMessage(templatesMarkdown));
+    }
     default:
       return apiError(req, res, {
         status_code: 405,

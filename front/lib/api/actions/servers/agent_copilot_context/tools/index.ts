@@ -16,11 +16,14 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import {
+  formatTemplatesAsText,
+  getTemplatesForCopilot,
+} from "@app/lib/api/assistant/copilot_templates";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -44,11 +47,9 @@ import {
 } from "@app/types/assistant/conversation";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
-import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -76,22 +77,6 @@ const COPILOT_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
 const COPILOT_KNOWLEDGE_CATEGORIES_SET = new Set<DataSourceViewCategory>(
   COPILOT_KNOWLEDGE_CATEGORIES
 );
-
-const JOB_TYPE_TO_TEMPLATE_TAGS: Record<JobType, TemplateTagCodeType[]> = {
-  engineering: ["ENGINEERING"],
-  design: ["DESIGN", "UX_DESIGN", "UX_RESEARCH"],
-  data: ["DATA"],
-  finance: ["FINANCE"],
-  legal: ["LEGAL"],
-  marketing: ["MARKETING", "CONTENT", "WRITING"],
-  operations: ["OPERATIONS"],
-  product: ["PRODUCT", "PRODUCT_MANAGEMENT"],
-  sales: ["SALES"],
-  people: ["HIRING", "RECRUITING"],
-  customer_success: ["SUPPORT"],
-  customer_support: ["SUPPORT"],
-  other: [],
-};
 
 type LimitedSuggestionKind =
   | "instructions"
@@ -1699,53 +1684,19 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   search_agent_templates: async ({ jobType, query }, { auth }) => {
-    const allTemplates = (
-      await TemplateResource.listAll({
-        visibility: "published",
-      })
-    ).filter((t) => t.copilotInstructions !== null);
-
-    const matchingTags =
-      jobType && isJobType(jobType) ? JOB_TYPE_TO_TEMPLATE_TAGS[jobType] : [];
-    const candidates =
-      matchingTags.length > 0
-        ? allTemplates.filter((t) =>
-            t.tags.some((tag) => matchingTags.includes(tag))
-          )
-        : allTemplates;
-
-    if (query) {
-      const res = await getSuggestedTemplatesForQuery(auth, {
-        query,
-        templates: candidates,
-      });
-      if (res.isErr()) {
-        return new Err(new MCPError(res.error.message, { tracked: false }));
-      }
-      return new Ok([
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            { templates: res.value.map(serializeTemplate) },
-            null,
-            2
-          ),
-        },
-      ]);
+    const res = await getTemplatesForCopilot({
+      auth,
+      jobType: jobType && isJobType(jobType) ? jobType : undefined,
+      query,
+      limit: 10,
+    });
+    if (res.isErr()) {
+      return new Err(new MCPError(res.error.message, { tracked: false }));
     }
-
-    // TODO(copilot 2026-02-11): Define ordering strategy (popularity, recency, etc.)
-    const templates =
-      matchingTags.length > 0 ? candidates : candidates.slice(0, 10);
-
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          { templates: templates.map(serializeTemplate) },
-          null,
-          2
-        ),
+        text: formatTemplatesAsText(res.value),
       },
     ]);
   },
@@ -1764,22 +1715,11 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(serializeTemplate(template), null, 2),
+        text: formatTemplatesAsText([template]),
       },
     ]);
   },
 };
-
-function serializeTemplate(template: TemplateResource) {
-  return {
-    sId: template.sId,
-    handle: template.handle,
-    userFacingDescription: template.userFacingDescription,
-    agentFacingDescription: template.agentFacingDescription,
-    copilotInstructions: template.copilotInstructions,
-    tags: template.tags,
-  };
-}
 
 function getCategoryDisplayName(category: DataSourceViewCategory): string {
   switch (category) {

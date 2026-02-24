@@ -1986,8 +1986,8 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.templates.length).toBe(10);
+          expect(content.text).toMatch(/Found 10 template\(s\):/);
+          expect((content.text.match(/## Template/g) ?? []).length).toBe(10);
         }
       }
     });
@@ -2012,10 +2012,8 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          const sIds = parsed.templates.map((t: { sId: string }) => t.sId);
-          expect(sIds).toContain(salesTemplate.sId);
-          expect(sIds).not.toContain(engineeringTemplate.sId);
+          expect(content.text).toContain(`sId: ${salesTemplate.sId}`);
+          expect(content.text).not.toContain(engineeringTemplate.sId);
         }
       }
     });
@@ -2039,9 +2037,8 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
           // Unknown jobType -> empty matchingTags -> limited to 10.
-          expect(parsed.templates.length).toBe(10);
+          expect(content.text).toMatch(/Found 10 template\(s\):/);
         }
       }
     });
@@ -2066,20 +2063,16 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          const found = parsed.templates.find(
-            (t: { sId: string }) => t.sId === template.sId
+          expect(content.text).toContain(`sId: ${template.sId}`);
+          expect(content.text).toContain(`handle: ${template.handle}`);
+          expect(content.text).toContain(
+            (template.userFacingDescription ?? "").trim()
           );
-          expect(found).toBeDefined();
-          expect(found.handle).toBe(template.handle);
-          expect(found.userFacingDescription).toBe(
-            template.userFacingDescription
+          expect(content.text).toContain(
+            (template.agentFacingDescription ?? "").trim()
           );
-          expect(found.agentFacingDescription).toBe(
-            template.agentFacingDescription
-          );
-          expect(found.copilotInstructions).toBe("Test copilot instructions");
-          expect(found.tags).toEqual(["SALES"]);
+          expect(content.text).toContain("Test copilot instructions");
+          expect(content.text).toContain("tags: SALES");
         }
       }
     });
@@ -2105,9 +2098,8 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.templates).toHaveLength(1);
-          expect(parsed.templates[0].sId).toBe(template1.sId);
+          expect(content.text).toMatch(/Found 1 template\(s\):/);
+          expect(content.text).toContain(`sId: ${template1.sId}`);
         }
       }
 
@@ -2186,16 +2178,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.sId).toBe(template.sId);
-          expect(parsed.handle).toBe(template.handle);
-          expect(parsed.userFacingDescription).toBe(
-            template.userFacingDescription
-          );
-          expect(parsed.agentFacingDescription).toBe(
-            template.agentFacingDescription
-          );
-          expect(parsed.copilotInstructions).toBe(
+          expect(content.text).toContain(`sId: ${template.sId}`);
+          expect(content.text).toContain(`handle: ${template.handle}`);
+          expect(content.text).toContain(
             "Test copilot instructions for this template"
           );
         }
@@ -2220,9 +2205,8 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.sId).toBe(template.sId);
-          expect(parsed.copilotInstructions).toBeNull();
+          expect(content.text).toContain(`sId: ${template.sId}`);
+          expect(content.text).not.toContain("copilotInstructions:");
         }
       }
     });
