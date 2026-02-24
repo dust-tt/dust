@@ -141,6 +141,7 @@ export function ConversationContainerVirtuoso({
       router,
       sendNotification,
       createConversationWithMessage,
+      clientSideMCPServerIds,
     ]
   );
 

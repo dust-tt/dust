@@ -1,3 +1,4 @@
+import { registerGetCurrentPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
 import type { BrowserMessagingService } from "@extension/shared/services/platform";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -10,5 +11,5 @@ export function registerAllTools(
   server: McpServer,
   messaging: BrowserMessagingService | null
 ): void {
-  // Register Chrome-specific tools here.
+  registerGetCurrentPageTool(server, messaging);
 }
