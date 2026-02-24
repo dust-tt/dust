@@ -4,7 +4,9 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 
 const SUPPORTED_PERMISSION_LEVELS: readonly string[] = ["all", "none"];
 
-function isSupportedPermissionLevel(permissionLevel: string): boolean {
+function isSupportedPermissionLevel(
+  permissionLevel: GongPermissionProfile["callsAccess"]["permissionLevel"]
+): boolean {
   return SUPPORTED_PERMISSION_LEVELS.includes(permissionLevel);
 }
 
