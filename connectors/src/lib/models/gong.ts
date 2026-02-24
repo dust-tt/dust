@@ -62,7 +62,6 @@ GongConfigurationModel.init(
     excludeTitleKeywords: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
-      defaultValue: null,
     },
   },
   {
