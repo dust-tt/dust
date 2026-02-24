@@ -517,6 +517,48 @@ describe("agent_copilot_context tools", () => {
     });
   });
 
+  describe("get_available_agents with agentPrefix", () => {
+    it("filters agents by name prefix", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create agents with distinct name prefixes.
+      const alphaAgent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "AlphaBot" }
+      );
+      await AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "BetaBot",
+      });
+
+      const tool = getToolByName("get_available_agents");
+      const result = await tool.handler(
+        { agentPrefix: "Alpha" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // Should find AlphaBot.
+          const foundAlpha = parsed.agents.find(
+            (a: { sId: string }) => a.sId === alphaAgent.sId
+          );
+          expect(foundAlpha).toBeDefined();
+          expect(foundAlpha.name).toBe("AlphaBot");
+
+          // Should not find BetaBot.
+          const foundBeta = parsed.agents.find(
+            (a: { name: string }) => a.name === "BetaBot"
+          );
+          expect(foundBeta).toBeUndefined();
+        }
+      }
+    });
+  });
+
   describe("inspect_available_agent", () => {
     it("returns detailed agent information including tools and skills", async () => {
       const { authenticator, workspace, globalSpace } =

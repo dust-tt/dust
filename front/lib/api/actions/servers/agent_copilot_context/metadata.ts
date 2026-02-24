@@ -151,6 +151,12 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .optional()
         .default(100)
         .describe("Maximum number of agents to return (default: 100)"),
+      agentPrefix: z
+        .string()
+        .optional()
+        .describe(
+          "Optional prefix to filter agents by name (case-insensitive, matches start of name)"
+        ),
     },
     stake: "never_ask",
     displayLabels: {
