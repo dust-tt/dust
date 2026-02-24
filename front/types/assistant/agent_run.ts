@@ -152,8 +152,23 @@ export async function getAgentLoopData(
       new Error(`Failed to deserialize authenticator: ${authResult.error.code}`)
     );
   }
-  const auth = authResult.value;
 
+  return getAgentLoopDataWithAuth(authResult.value, agentLoopArgs);
+}
+
+/**
+ * Same as getAgentLoopData but accepts a pre-built Authenticator, avoiding redundant
+ * Authenticator.fromJSON calls when the caller already has a valid auth.
+ */
+export async function getAgentLoopDataWithAuth(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs
+): Promise<
+  Result<
+    AgentLoopExecutionData & { auth: Authenticator },
+    AgentLoopDataError | Error
+  >
+> {
   const {
     agentMessageId,
     agentMessageVersion,
