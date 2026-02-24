@@ -870,14 +870,11 @@ export async function syncThread(
     threadTs,
   });
 
-  const botUserId = await withSlackErrorHandling(async () => {
-    const botUserIdRes = await getBotUserIdResponse(slackClient, connectorId);
-    if (botUserIdRes.isErr()) {
-      throw botUserIdRes.error;
-    }
-    return botUserIdRes.value;
-  });
-  allMessages = allMessages.filter((m) => m.user !== botUserId);
+  const botUserIdRes = await getBotUserIdResponse(slackClient, connectorId);
+  if (botUserIdRes.isErr()) {
+    throw botUserIdRes.error;
+  }
+  allMessages = allMessages.filter((m) => m.user !== botUserIdRes.value);
 
   if (allMessages.length === 0) {
     // No threaded messages, so we're done.
