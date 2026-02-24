@@ -3,6 +3,7 @@
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import {
   getPrivateUploadBucket,
   getPublicUploadBucket,
@@ -148,8 +149,36 @@ export class FileResource extends BaseResource<FileModel> {
     content: string;
     shareScope: FileShareScope;
   } | null> {
-    if (!validate(token)) {
+    const r = await this.fetchByShareToken(token);
+    if (r.isErr()) {
       return null;
+    }
+
+    const { file, shareScope, workspace } = r.value;
+    const content = await file.getFileContent(workspace, "original");
+    if (!content) {
+      return null;
+    }
+
+    return {
+      file,
+      content,
+      shareScope,
+    };
+  }
+
+  static async fetchByShareToken(token: string): Promise<
+    Result<
+      {
+        file: FileResource;
+        shareScope: FileShareScope;
+        workspace: LightWorkspaceType;
+      },
+      DustError
+    >
+  > {
+    if (!validate(token)) {
+      return new Err(new DustError("invalid_id", "Invalid share token"));
     }
 
     const shareableFile = await this.shareableFileModel.findOne({
@@ -160,14 +189,14 @@ export class FileResource extends BaseResource<FileModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {
-      return null;
+      return new Err(new DustError("file_not_found", "Share not found"));
     }
 
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
     if (!workspace) {
-      return null;
+      return new Err(new DustError("internal_error", "Workspace not found"));
     }
 
     const file = await this.model.findOne({
@@ -179,7 +208,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     const fileRes = file ? new this(this.model, file.get()) : null;
     if (!fileRes) {
-      return null;
+      return new Err(new DustError("file_not_found", "File not found"));
     }
 
     // Check if associated conversation still exist (not soft-deleted).
@@ -203,24 +232,17 @@ export class FileResource extends BaseResource<FileModel> {
         { dangerouslySkipPermissionFiltering: true }
       );
       if (!conversation) {
-        return null;
+        return new Err(
+          new DustError("conversation_not_found", "Conversation not found")
+        );
       }
     }
 
-    const content = await fileRes.getFileContent(
-      renderLightWorkspaceType({ workspace }),
-      "original"
-    );
-
-    if (!content) {
-      return null;
-    }
-
-    return {
+    return new Ok({
       file: fileRes,
-      content,
+      workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
-    };
+    });
   }
 
   static async unsafeFetchByIdInWorkspace(
