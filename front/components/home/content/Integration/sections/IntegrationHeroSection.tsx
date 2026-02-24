@@ -10,7 +10,6 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 import type { IntegrationBase } from "../types";
-import { getIntegrationTypeLabel } from "../types";
 
 interface IntegrationHeroSectionProps {
   integration: IntegrationBase;
@@ -24,7 +23,6 @@ export function IntegrationHeroSection({
   seoSubtitle,
 }: IntegrationHeroSectionProps) {
   const IconComponent = getIcon(integration.icon);
-  const typeLabel = getIntegrationTypeLabel(integration.type);
 
   return (
     <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-white">
@@ -37,12 +35,8 @@ export function IntegrationHeroSection({
               "xl:col-span-8 xl:col-start-3"
             )}
           >
-            {/* Integration icon and type badge */}
-            <div className="mb-6 flex flex-col items-center gap-4">
+            <div className="mb-6">
               <ResourceAvatar icon={IconComponent} size="lg" />
-              <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
-                {typeLabel}
-              </span>
             </div>
 
             <H1

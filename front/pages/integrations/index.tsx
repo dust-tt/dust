@@ -1,4 +1,4 @@
-import { Button, Chip, RocketIcon, SearchInput } from "@dust-tt/sparkle";
+import { Button, RocketIcon, SearchInput } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -10,7 +10,6 @@ import type {
   IntegrationBase,
   IntegrationCategory,
 } from "@app/components/home/content/Integration/types";
-import { getIntegrationTypeLabel } from "@app/components/home/content/Integration/types";
 import {
   buildIntegrationRegistry,
   getAllCategories,
@@ -304,18 +303,13 @@ interface IntegrationCardProps {
 
 function IntegrationCard({ integration }: IntegrationCardProps) {
   const IconComponent = getIcon(integration.icon);
-  const typeLabel = getIntegrationTypeLabel(integration.type, true);
-
   return (
     <Link
       href={`/integrations/${integration.slug}`}
       className="group flex flex-col rounded-2xl border border-border bg-white p-6 transition-all hover:border-green-200 hover:shadow-sm"
     >
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4">
         <ResourceAvatar icon={IconComponent} size="md" />
-        <Chip size="xs" color="white">
-          {typeLabel}
-        </Chip>
       </div>
       <h3 className="text-base font-semibold text-foreground">
         {integration.name}

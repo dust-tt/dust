@@ -27,7 +27,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
     paths: integrations.map((integration) => ({
       params: { slug: integration.slug },
     })),
-    fallback: false, // All pages are pre-generated
+    fallback: false,
   };
 };
 

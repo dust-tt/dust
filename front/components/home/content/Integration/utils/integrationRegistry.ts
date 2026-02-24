@@ -1,5 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import type { ConnectorProvider } from "@app/types";
@@ -104,6 +105,22 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   openai_usage: "ai",
 };
 
+// Category mapping for remote MCP servers (by name, lowercased)
+const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
+  stripe: "crm",
+  linear: "development",
+  asana: "productivity",
+  supabase: "development",
+  guru: "productivity",
+  granola: "transcripts",
+  intercom: "support",
+  attio: "crm",
+  gitlab: "development",
+  datadog: "development",
+  "datadog europe": "development",
+  canva: "productivity",
+};
+
 // Category mapping for connectors
 const CONNECTOR_CATEGORY_MAP: Record<ConnectorProvider, IntegrationCategory> = {
   confluence: "development",
@@ -177,34 +194,40 @@ function formatToolName(name: string): string {
 function extractToolsFromServer(
   serverKey: string
 ): { tools: IntegrationTool[]; icon: InternalAllowedIconType } | null {
-  // Use type assertion since we know the structure of INTERNAL_MCP_SERVERS
   const server = INTERNAL_MCP_SERVERS[
     serverKey as keyof typeof INTERNAL_MCP_SERVERS
   ] as
     | {
+        metadata?: {
+          serverInfo: { icon: string; description: string };
+          tools_stakes: Record<string, string>;
+        };
         tools_stakes?: Record<string, string>;
-        serverInfo: { icon: string; description: string };
+        serverInfo?: { icon: string; description: string };
       }
     | undefined;
 
-  if (!server?.serverInfo) {
+  // serverInfo and tools_stakes can be at top level or inside metadata
+  const serverInfo = server?.metadata?.serverInfo ?? server?.serverInfo;
+  if (!serverInfo) {
     return null;
   }
 
-  const stakes = server.tools_stakes ?? {};
+  const stakes =
+    server?.tools_stakes ?? server?.metadata?.tools_stakes ?? {};
 
   const tools: IntegrationTool[] = Object.entries(stakes).map(
     ([name, level]) => ({
       name,
       displayName: formatToolName(name),
-      description: "", // Tool descriptions are fetched dynamically
+      description: "",
       isWriteAction: level !== "never_ask",
     })
   );
 
   return {
     tools,
-    icon: server.serverInfo.icon as InternalAllowedIconType,
+    icon: serverInfo.icon as InternalAllowedIconType,
   };
 }
 
@@ -217,14 +240,14 @@ function getConnectorIcon(provider: ConnectorProvider): InternalAllowedIconType 
     slack: "SlackLogo",
     slack_bot: "SlackLogo",
     github: "GithubLogo",
-    intercom: "ActionMegaphoneIcon", // No IntercomLogo available
+    intercom: "IntercomLogo",
     microsoft: "MicrosoftLogo",
     microsoft_bot: "MicrosoftLogo",
     snowflake: "SnowflakeLogo",
     zendesk: "ZendeskLogo",
     bigquery: "ActionTableIcon", // No BigQueryLogo available
     salesforce: "SalesforceLogo",
-    gong: "ActionMegaphoneIcon", // No GongLogo available
+    gong: "GongLogo",
     webcrawler: "ActionGlobeAltIcon",
     discord_bot: "ActionMegaphoneIcon",
   };
@@ -239,12 +262,21 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
   // Note: For marketing/SEO pages, we include servers that are behind feature flags
   // (isRestricted) or in preview since they are still valid integrations to advertise.
   for (const [name, serverRaw] of Object.entries(INTERNAL_MCP_SERVERS)) {
-    if (EXCLUDED_MCP_SERVERS.has(name)) {
+    // Only include user-facing (manual) servers, skip auto/internal ones
+    const entry = serverRaw as { availability: string };
+    if (entry.availability !== "manual" || EXCLUDED_MCP_SERVERS.has(name)) {
       continue;
     }
 
-    // Type assertion for serverInfo access
+    // serverInfo can be at top level or inside metadata
     const server = serverRaw as {
+      metadata?: {
+        serverInfo: {
+          description: string;
+          documentationUrl: string | null;
+          authorization: unknown;
+        };
+      };
       serverInfo?: {
         description: string;
         documentationUrl: string | null;
@@ -252,8 +284,8 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
       };
     };
 
-    // Skip servers without serverInfo
-    if (!server.serverInfo) {
+    const serverInfo = server.metadata?.serverInfo ?? server.serverInfo;
+    if (!serverInfo) {
       continue;
     }
 
@@ -269,12 +301,44 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
       slug: name,
       name: displayName,
       type: "mcp_server",
-      description: server.serverInfo.description,
+      description: serverInfo.description,
       icon,
-      documentationUrl: server.serverInfo.documentationUrl,
-      authorizationRequired: !!server.serverInfo.authorization,
+      documentationUrl: serverInfo.documentationUrl,
+      authorizationRequired: !!serverInfo.authorization,
       tools,
       category: MCP_CATEGORY_MAP[name] ?? "productivity",
+    });
+  }
+
+  // Add remote MCP servers
+  for (const remote of DEFAULT_REMOTE_MCP_SERVERS) {
+    const slug = remote.name.toLowerCase().replace(/\s+/g, "_");
+
+    // Skip if already added (e.g., from internal servers)
+    if (integrationMap.has(slug)) {
+      continue;
+    }
+
+    const tools: IntegrationTool[] = Object.entries(
+      remote.toolStakes ?? {}
+    ).map(([name, level]) => ({
+      name,
+      displayName: formatToolName(name),
+      description: "",
+      isWriteAction: level !== "never_ask",
+    }));
+
+    integrationMap.set(slug, {
+      slug,
+      name: remote.name,
+      type: "mcp_server",
+      description: remote.description,
+      icon: remote.icon,
+      documentationUrl: remote.documentationUrl ?? null,
+      authorizationRequired: remote.authMethod !== null,
+      tools,
+      category:
+        REMOTE_MCP_CATEGORY_MAP[remote.name.toLowerCase()] ?? "productivity",
     });
   }
 
