@@ -67,11 +67,21 @@ function useSafeSearchParams() {
 }
 
 /**
- * Convert URL object to string
+ * Translate a web app URL string to an extension route string.
+ * e.g. /w/{workspaceId}/conversation/{conversationId} -> /conversations/{conversationId}
+ * Otherwise, the user is not automatically redirected to the correct conversation after creating it.
+ */
+function toExtensionRoute(urlString: string): string {
+  const match = urlString.match(/\/w\/[^/]+\/conversation\/([^/?#]+)(.*)/);
+  return match ? `/conversations/${match[1]}${match[2]}` : urlString;
+}
+
+/**
+ * Convert URL object to string, translating web app routes to extension routes.
  */
 function urlToString(url: string | UrlObject): string {
   if (typeof url === "string") {
-    return url;
+    return toExtensionRoute(url);
   }
   let result = url.pathname ?? "";
   if (url.query && Object.keys(url.query).length > 0) {

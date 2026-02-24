@@ -155,6 +155,7 @@ export function ConversationContainerVirtuoso({
     >
       {activeConversationId ? (
         <ConversationViewer
+          key={activeConversationId}
           owner={owner}
           user={user}
           conversationId={activeConversationId}
