@@ -84,9 +84,7 @@ export const MainPage = ({
               <SheetHeader className="bg-muted-background p-0" hideButton>
                 <SheetTitle className="hidden" />
               </SheetHeader>
-              <div className="overflow-y-auto">
-                <AgentSidebarMenu owner={workspace} hideActions />
-              </div>
+              <AgentSidebarMenu owner={workspace} hideActions />
             </SheetContent>
           </Sheet>
           <BarHeader
