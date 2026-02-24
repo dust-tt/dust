@@ -85,7 +85,11 @@ export const MainPage = ({
                 <SheetTitle className="hidden" />
               </SheetHeader>
               <div className="flex flex-col grow p-1">
-                <AgentSidebarMenu owner={workspace} hideActions />
+                <AgentSidebarMenu
+                  owner={workspace}
+                  hideActions
+                  hideInAppBanner
+                />
               </div>
             </SheetContent>
           </Sheet>

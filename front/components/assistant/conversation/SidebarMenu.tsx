@@ -102,6 +102,7 @@ import {
 interface AgentSidebarMenuProps {
   owner: WorkspaceType;
   hideActions?: boolean;
+  hideInAppBanner?: boolean;
 }
 
 type GroupLabel =
@@ -339,6 +340,7 @@ function SearchResults({
 export function AgentSidebarMenu({
   owner,
   hideActions,
+  hideInAppBanner,
 }: AgentSidebarMenuProps) {
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
@@ -950,7 +952,7 @@ export function AgentSidebarMenu({
               conversationsList
             )}
 
-            <AcademyBanner />
+            {!hideInAppBanner && <AcademyBanner />}
           </div>
         </div>
       </div>
