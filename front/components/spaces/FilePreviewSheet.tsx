@@ -12,18 +12,17 @@ import {
 } from "@app/lib/swr/files";
 import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import {
+  getFileFormatCategory,
   isInteractiveContentType,
   isMarkdownContentType,
   isPdfContentType,
-  isSupportedAudioContentType,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
 } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   Button,
+  CodeBlock,
   ExternalLinkIcon,
   Markdown,
   Sheet,
@@ -57,11 +56,12 @@ function isViewerCompatible(contentType: string): boolean {
 
 type FilePreviewCategory =
   | "frame"
+  | "code"
   | "pdf"
   | "viewer"
   | "audio"
   | "markdown"
-  | "csv"
+  | "delimited"
   | "text"
   | "image";
 
@@ -72,6 +72,8 @@ interface FilePreviewConfig {
 }
 
 function getFilePreviewConfig(contentType: string): FilePreviewConfig {
+  const category = getFileFormatCategory(contentType);
+
   if (isInteractiveContentType(contentType)) {
     return {
       category: "frame",
@@ -96,14 +98,6 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
-  if (isSupportedAudioContentType(contentType)) {
-    return {
-      category: "audio",
-      needsProcessedVersion: true,
-      supportsExternalViewer: false,
-    };
-  }
-
   if (isMarkdownContentType(contentType)) {
     return {
       category: "markdown",
@@ -112,15 +106,31 @@ function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     };
   }
 
-  if (isSupportedDelimitedTextContentType(contentType)) {
+  if (category === "code" || category === "data") {
     return {
-      category: "csv",
+      category: "code",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
     };
   }
 
-  if (isSupportedImageContentType(contentType)) {
+  if (category === "audio") {
+    return {
+      category: "audio",
+      needsProcessedVersion: true,
+      supportsExternalViewer: false,
+    };
+  }
+
+  if (category === "delimited") {
+    return {
+      category: "delimited",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+    };
+  }
+
+  if (category === "image") {
     return {
       category: "image",
       needsProcessedVersion: false,
@@ -242,9 +252,17 @@ function FileContentRenderer({
           contentHash={undefined}
         />
       );
-
+    case "code":
+      return (
+        <CodeBlock
+          className="language-json max-h-60 overflow-y-auto"
+          wrapLongLines={true}
+        >
+          {rawFileContent}
+        </CodeBlock>
+      );
     case "markdown":
-    case "csv":
+    case "delimited":
     case "text":
       if (processedContent) {
         return <TextContent text={processedContent.text} />;
