@@ -76,6 +76,7 @@ export const CopilotPanelProvider = ({
     isNewAgent,
     templateInfo,
     conversationId,
+    agentConfigurationId: targetAgentConfigurationId ?? undefined,
   });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
