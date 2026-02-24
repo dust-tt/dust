@@ -12,7 +12,6 @@ import { useCallback, useState } from "react";
 const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
-const MAX_DESCRIPTION_LENGTH = 500;
 
 export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();
@@ -77,7 +76,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       title="What will this skill be used for?"
       titleClassName="heading-lg"
       fieldName={AGENT_FACING_DESCRIPTION_FIELD_NAME}
-      triggerValidationOnChange={false}
+      triggerValidationOnChange
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
         <div className="space-y-3">
@@ -86,7 +85,6 @@ export function SkillBuilderAgentFacingDescriptionSection() {
             placeholder="When should this skill be used? What is this skill good for?"
             className="h-40 text-base placeholder:italic placeholder:text-gray-400"
             resize="vertical"
-            maxLength={MAX_DESCRIPTION_LENGTH}
             onChange={(e) => handleDescriptionChange(e, onChange)}
             error={hasError ? errorMessage : undefined}
             showErrorLabel={hasError}
