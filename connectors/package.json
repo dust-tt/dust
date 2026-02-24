@@ -105,10 +105,12 @@
     "@types/tar-stream": "^3.1.4",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
+    "@typescript/native-preview": "7.0.0-dev.20260105.1",
     "danger": "^13.0.4",
     "esbuild": "^0.27.2",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   }
 }
