@@ -1,5 +1,10 @@
+import {
+  FileDropProvider,
+  useFileDrop,
+} from "@app/components/assistant/conversation/FileUploaderContext";
 import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
+import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -25,7 +30,14 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import moment from "moment";
 import type React from "react";
-import { useContext, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;
@@ -51,6 +63,19 @@ function formatDate(timestamp: number): string {
 }
 
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
+  return (
+    <FileDropProvider>
+      <DropzoneContainer
+        description="Drop files here to upload knowledge."
+        title="Upload Knowledge"
+      >
+        <SpaceKnowledgeTabContent owner={owner} space={space} />
+      </DropzoneContainer>
+    </FileDropProvider>
+  );
+}
+
+function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -90,6 +115,27 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
     }
     void mutateProjectFiles();
   };
+
+  const handleDroppedFiles = useCallback(
+    async (files: File[]) => {
+      await projectFileUpload.handleFilesUpload(files);
+      void mutateProjectFiles();
+    },
+    [projectFileUpload, mutateProjectFiles]
+  );
+
+  // Process dropped files from the drag-and-drop context.
+  const { droppedFiles, setDroppedFiles } = useFileDrop();
+  useEffect(() => {
+    const processDroppedFiles = async () => {
+      const files = [...droppedFiles];
+      if (files.length > 0) {
+        setDroppedFiles([]);
+        await handleDroppedFiles(files);
+      }
+    };
+    void processDroppedFiles();
+  }, [droppedFiles, setDroppedFiles, handleDroppedFiles]);
 
   const handleDeleteFile = async (file: FileWithCreatorType) => {
     const confirmed = await confirm({
