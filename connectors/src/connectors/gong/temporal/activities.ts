@@ -34,6 +34,64 @@ import { removeNulls } from "@connectors/types/shared/utils/general";
 
 const GARBAGE_COLLECT_BATCH_SIZE = 100;
 
+type PermissionProfileFilter =
+  | { type: "unrestricted" }
+  | { type: "restricted"; userIds: Set<string> };
+
+async function resolvePermissionProfile(
+  connector: ConnectorResource,
+  configuration: GongConfigurationResource
+): Promise<PermissionProfileFilter> {
+  const { permissionProfileId } = configuration;
+  if (!permissionProfileId) {
+    return { type: "unrestricted" };
+  }
+
+  const gongClient = await getGongClient(connector);
+  const profile = await gongClient.getPermissionProfile({
+    profileId: permissionProfileId,
+  });
+
+  if (profile.callsAccess.permissionLevel === "all") {
+    return { type: "unrestricted" };
+  }
+
+  const { teamLeadIds } = profile.callsAccess;
+  if (!teamLeadIds || teamLeadIds.length === 0) {
+    return { type: "unrestricted" };
+  }
+
+  return { type: "restricted", userIds: new Set(teamLeadIds) };
+}
+
+/**
+ * Determines whether a transcript should be synced.
+ * Excludes private calls. When a permission profile is configured, only syncs
+ * calls where at least one participant belongs to the profile's user list.
+ */
+function shouldSyncTranscript(
+  metadata: GongTranscriptMetadata,
+  filter: PermissionProfileFilter
+): { shouldSync: false; reason: string } | { shouldSync: true; reason: null } {
+  if (metadata.metaData.isPrivate) {
+    return { shouldSync: false, reason: "transcript is private" };
+  }
+
+  if (filter.type === "unrestricted") {
+    return { shouldSync: true, reason: null };
+  }
+
+  const { parties = [] } = metadata;
+  if (parties.some((p) => p.userId && filter.userIds.has(p.userId))) {
+    return { shouldSync: true, reason: null };
+  }
+
+  return {
+    shouldSync: false,
+    reason: "no participant matches the permission profile",
+  };
+}
+
 export async function gongSaveStartSyncActivity({
   connectorId,
 }: {
@@ -201,6 +259,12 @@ export async function gongSyncTranscriptsActivity({
     callsMetadata.map((c) => [c.metaData.id, c])
   );
 
+  // Consider moving this in a dedicated activity that will be shared across pages.
+  const permissionFilter = await resolvePermissionProfile(
+    connector,
+    configuration
+  );
+
   await concurrentExecutor(
     transcriptsToSync,
     async (transcript) => {
@@ -213,11 +277,14 @@ export async function gongSyncTranscriptsActivity({
         return;
       }
 
-      // Always filter out private transcripts.
-      if (transcriptMetadata.metaData.isPrivate === true) {
+      const { shouldSync, reason } = shouldSyncTranscript(
+        transcriptMetadata,
+        permissionFilter
+      );
+      if (!shouldSync) {
         logger.info(
-          { ...loggerArgs, callId: transcript.callId },
-          "[Gong] Skipping private transcript."
+          { ...loggerArgs, callId: transcript.callId, reason },
+          `[Gong] Skipping transcript.`
         );
         return;
       }
