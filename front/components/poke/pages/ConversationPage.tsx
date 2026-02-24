@@ -188,6 +188,17 @@ const AgentMessageView = ({
               ))}
             </>
           )}
+          {message.modelInteractionDurationMs != null && (
+            <>
+              {" • "}LLM:{" "}
+              {(message.modelInteractionDurationMs / 1000).toFixed(1)}s
+            </>
+          )}
+          {message.completionDurationMs != null && (
+            <>
+              {" • "}total: {(message.completionDurationMs / 1000).toFixed(1)}s
+            </>
+          )}
         </div>
         {message.actions.map((a, i) => {
           const isExpanded = expandedActions.has(i);
