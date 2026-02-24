@@ -23,8 +23,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { ConversationType } from "@app/types/assistant/conversation";
-import { ModelId } from "@app/types/shared/model_id";
+import { AgentMessageType, ConversationType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 import { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -89,14 +88,14 @@ async function createFeedback(
     workspace,
     agentConfiguration,
     conversation,
+    agentMessage,
     user,
     thumbDirection,
-    agentMessageId
   }: {
     workspace: LightWorkspaceType,
     agentConfiguration: AgentConfigurationType,
     conversation: ConversationType,
-    agentMessageId: ModelId,
+    agentMessage: AgentMessageType,
     user: UserResource,
     thumbDirection: "up" | "down";
   },
@@ -106,7 +105,7 @@ async function createFeedback(
     agentConfigurationId: agentConfiguration.sId,
     agentConfigurationVersion: agentConfiguration.version,
     conversationId: conversation.id,
-    agentMessageId,
+    agentMessageId: agentMessage.agentMessageId,
     userId: user.id,
     thumbDirection,
     content: thumbDirection === "up" ? "good" : "bad",
@@ -806,7 +805,7 @@ describe("agent_copilot_context tools", () => {
           workspace,
           agentConfiguration: agentV0,
           conversation,
-          agentMessageId: agentMessages[0].agentMessageId,
+          agentMessage: agentMessages[0],
           user,
           thumbDirection: "down",
         },
@@ -816,7 +815,7 @@ describe("agent_copilot_context tools", () => {
           workspace,
           agentConfiguration: agentV1,
           conversation,
-          agentMessageId: agentMessages[1].agentMessageId,
+          agentMessage: agentMessages[1],
           user,
           thumbDirection: "up",
         },
@@ -893,7 +892,7 @@ describe("agent_copilot_context tools", () => {
           workspace,
           agentConfiguration: agentV0,
           conversation,
-          agentMessageId: agentMessages[0].agentMessageId,
+          agentMessage: agentMessages[0],
           user,
           thumbDirection: "down",
         },
@@ -903,7 +902,7 @@ describe("agent_copilot_context tools", () => {
           workspace,
           agentConfiguration: agentV0,
           conversation,
-          agentMessageId: agentMessages[1].agentMessageId,
+          agentMessage: agentMessages[1],
           user,
           thumbDirection: "up",
         },
@@ -915,7 +914,7 @@ describe("agent_copilot_context tools", () => {
           workspace,
           agentConfiguration: agentV1,
           conversation,
-          agentMessageId: agentMessages[2].agentMessageId,
+          agentMessage: agentMessages[2],
           user,
           thumbDirection: "up",
         },
