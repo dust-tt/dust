@@ -28,9 +28,7 @@ async function getBotUserId(
     method: "auth.test",
   });
 
-  const authRes = await withSlackErrorHandling(() =>
-    slackClient.auth.test({})
-  );
+  const authRes = await withSlackErrorHandling(() => slackClient.auth.test({}));
   if (authRes.error) {
     throw new Error(`Failed to fetch auth info: ${authRes.error}`);
   }
