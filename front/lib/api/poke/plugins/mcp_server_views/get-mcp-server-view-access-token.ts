@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const getMcpServerViewAccessTokenPlugin = createPlugin({

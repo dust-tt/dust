@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 
 const getGongAccessToken = async (connectionId: string, logger: Logger) => {
   const tokRes = await getOAuthConnectionAccessToken({
