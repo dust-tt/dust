@@ -1272,7 +1272,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
             >
               <HoveringBar size="xs">
                 <Button
-                  label="Ask Copilot"
+                  label="Ask Sidekick"
                   size="xs"
                   variant="ghost"
                   icon={SparklesIcon}

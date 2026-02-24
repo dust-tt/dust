@@ -31,7 +31,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   agent_builder_copilot: {
-    description: "Enable Copilot in Agent Builder",
+    description: "Enable Sidekick in Agent Builder",
     stage: "dust_only",
   },
   agent_builder_shrink_wrap: {

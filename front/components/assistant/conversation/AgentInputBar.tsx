@@ -397,7 +397,7 @@ const CopilotConversationFooter = ({
         className="flex items-center gap-1 hover:text-foreground dark:hover:text-foreground-night"
       >
         <XMarkIcon className="h-3 w-3" />
-        <span>Reset copilot</span>
+        <span>Reset Sidekick</span>
       </button>
       <button
         onClick={handleCopyId}

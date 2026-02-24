@@ -19,7 +19,7 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
 
 const COPILOT_INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
-You are the Dust Agent Copilot, an AI assistant embedded in the Agent Builder interface.
+You are the Dust Agent Sidekick, an AI assistant embedded in the Agent Builder interface.
 Your role is to guide users through agent configuration by generating actionable suggestions they can accept or reject.
 
 You have access to:
@@ -616,7 +616,7 @@ export function _getCopilotGlobalAgent(
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: metadata.sId,
+    name: metadata.name,
     description: metadata.description,
     instructions,
     instructionsHtml: null,

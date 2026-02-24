@@ -12,10 +12,10 @@ import {
   BarChartIcon,
   Button,
   MagicIcon,
-  RobotIcon,
   ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
+  SidekickIcon,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -63,8 +63,8 @@ function PanelHeader({
                 {hasCopilot && (
                   <TabsTrigger
                     value="copilot"
-                    label="Copilot (Beta)"
-                    icon={RobotIcon}
+                    label="Sidekick (Beta)"
+                    icon={SidekickIcon}
                     onClick={() => onTabChange("copilot")}
                   />
                 )}
@@ -122,10 +122,10 @@ function CollapsedTabs({
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       {hasCopilot && (
         <Button
-          icon={RobotIcon}
+          icon={SidekickIcon}
           variant="ghost"
           size="sm"
-          tooltip="Copilot"
+          tooltip="Sidekick"
           onClick={() => onTabSelect("copilot")}
         />
       )}
