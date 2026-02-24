@@ -6,11 +6,9 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import {
-  AgentMCPServerConfigurationFactory,
-} from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -22,10 +20,13 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { AgentMessageType, ConversationType } from "@app/types/assistant/conversation";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentMessageType,
+  ConversationType,
+} from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
-import { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TOOLS } from "./tools";
@@ -83,23 +84,21 @@ function createTestExtra(auth: Authenticator, agentLoopContext?: unknown) {
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
 }
 
-async function createFeedback(
-  {
-    workspace,
-    agentConfiguration,
-    conversation,
-    agentMessage,
-    user,
-    thumbDirection,
-  }: {
-    workspace: LightWorkspaceType,
-    agentConfiguration: AgentConfigurationType,
-    conversation: ConversationType,
-    agentMessage: AgentMessageType,
-    user: UserResource,
-    thumbDirection: "up" | "down";
-  },
-) {
+async function createFeedback({
+  workspace,
+  agentConfiguration,
+  conversation,
+  agentMessage,
+  user,
+  thumbDirection,
+}: {
+  workspace: LightWorkspaceType;
+  agentConfiguration: AgentConfigurationType;
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
+  user: UserResource;
+  thumbDirection: "up" | "down";
+}) {
   return AgentMessageFeedbackResource.makeNew({
     workspaceId: workspace.id,
     agentConfigurationId: agentConfiguration.sId,
@@ -800,26 +799,22 @@ describe("agent_copilot_context tools", () => {
         .flat()
         .filter((m) => m.type === "agent_message");
 
-      await createFeedback(
-        {
-          workspace,
-          agentConfiguration: agentV0,
-          conversation,
-          agentMessage: agentMessages[0],
-          user,
-          thumbDirection: "down",
-        },
-      );
-      await createFeedback(
-        {
-          workspace,
-          agentConfiguration: agentV1,
-          conversation,
-          agentMessage: agentMessages[1],
-          user,
-          thumbDirection: "up",
-        },
-      );
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV0,
+        conversation,
+        agentMessage: agentMessages[0],
+        user,
+        thumbDirection: "down",
+      });
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV1,
+        conversation,
+        agentMessage: agentMessages[1],
+        user,
+        thumbDirection: "up",
+      });
 
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
@@ -887,38 +882,32 @@ describe("agent_copilot_context tools", () => {
         .filter((m) => m.type === "agent_message");
 
       // Create two feedbacks on v0 (old version).
-      await createFeedback(
-        {
-          workspace,
-          agentConfiguration: agentV0,
-          conversation,
-          agentMessage: agentMessages[0],
-          user,
-          thumbDirection: "down",
-        },
-      );
-      await createFeedback(
-        {
-          workspace,
-          agentConfiguration: agentV0,
-          conversation,
-          agentMessage: agentMessages[1],
-          user,
-          thumbDirection: "up",
-        },
-      );
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV0,
+        conversation,
+        agentMessage: agentMessages[0],
+        user,
+        thumbDirection: "down",
+      });
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV0,
+        conversation,
+        agentMessage: agentMessages[1],
+        user,
+        thumbDirection: "up",
+      });
 
       // Create one feedback on v1 (current version).
-      await createFeedback(
-        {
-          workspace,
-          agentConfiguration: agentV1,
-          conversation,
-          agentMessage: agentMessages[2],
-          user,
-          thumbDirection: "up",
-        },
-      );
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV1,
+        conversation,
+        agentMessage: agentMessages[2],
+        user,
+        thumbDirection: "up",
+      });
 
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
