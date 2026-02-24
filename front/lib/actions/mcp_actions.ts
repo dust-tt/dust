@@ -76,13 +76,14 @@ import {
   getRetryPolicyFromToolConfiguration,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import { invalidateOAuthConnectionAccessTokenCache } from "@app/types/oauth/client/access_token";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -625,16 +626,33 @@ export async function* tryCallMCPTool(
         toolConfiguration.mcpServerViewId
       );
       if (mcpServerView) {
-        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
-          auth,
-          mcpServerView.mcpServerId
-        );
-        if (remoteMCPServer?.authorization) {
+        const authorization = mcpServerView.toJSON().server.authorization;
+        if (authorization) {
+          // Invalidate the cached access token so the next connection attempt
+          // fetches a fresh token after the user re-authenticates.
+          const connectionType =
+            mcpServerView.oAuthUseCase === "personal_actions"
+              ? "personal"
+              : "workspace";
+          const connection = await MCPServerConnectionResource.findByMCPServer(
+            auth,
+            {
+              mcpServerId: mcpServerView.mcpServerId,
+              connectionType,
+            }
+          );
+          if (connection.isOk() && connection.value.connectionId) {
+            invalidateOAuthConnectionAccessTokenCache(
+              connection.value.connectionId
+            );
+          }
+
           return {
+            // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
             isError: false,
             content: makePersonalAuthenticationError(
-              remoteMCPServer.authorization.provider,
-              remoteMCPServer.authorization.scope
+              authorization.provider,
+              authorization.scope
             ).content,
           };
         }
