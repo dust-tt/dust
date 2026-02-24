@@ -22,8 +22,13 @@ import {
 
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
-import { isGlobalAgentId } from "./assistant";
+import { normalizeError } from "../shared/utils/error_utils";
+import { GLOBAL_AGENTS_SID, isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
+
+// Global agent config is expensive to fetch (MCP server queries) so we cache it.
+// This TTL can be increased when we have versions for global agents: we can then cache indefinitly.
+const GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
@@ -34,6 +39,10 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "agent_message_deleted",
   "user_message_deleted",
 ] as const;
+
+function isCachedGlobalAgent(agentId: string): boolean {
+  return agentId === GLOBAL_AGENTS_SID.COPILOT;
+}
 
 export type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
@@ -87,6 +96,35 @@ function getCachedGetConversation(ttlMs: number) {
     }
   );
 }
+
+async function getGlobalAgentConfigurationForCache(
+  auth: Authenticator,
+  agentId: string,
+  // Only used for cache key uniqueness.
+  _workspaceId: string,
+  _userId: string
+): Promise<AgentConfigurationType> {
+  const config = await getAgentConfiguration(auth, {
+    agentId: agentId,
+    variant: "full",
+  });
+  if (!config) {
+    // Throws on error because cacheWithRedis expects functions that throw (not nullable returns).
+    throw new Error(`Global agent configuration not found for id ${agentId}.`);
+  }
+  return config;
+}
+
+const getCachedGlobalAgentConfiguration = cacheWithRedis(
+  getGlobalAgentConfigurationForCache,
+  // cache is done per user as the prompt (available tools, skills...) may differ per users.
+  (_auth, agentId, workspaceId, userId) =>
+    `${workspaceId}:${agentId}:${userId}`,
+  {
+    ttlMs: GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS,
+    useDistributedLock: true,
+  }
+);
 
 export type AgentLoopArgs = {
   agentMessageId: string;
@@ -275,17 +313,33 @@ export async function getAgentLoopDataWithAuth(
     return new Err(new AgentLoopDataError("user_message_deleted"));
   }
 
-  // Fetch the agent configuration as we need the full version of the agent configuration.
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentMessage.configuration.sId,
-    // We do define agentMessage.configuration.version for global agent, ignoring this value here.
-    agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
-      ? undefined
-      : agentMessage.configuration.version,
-    variant: "full",
-  });
-  if (!agentConfiguration) {
-    return new Err(new Error("Agent configuration not found"));
+  let agentConfiguration: AgentConfigurationType;
+  const agentId = agentMessage.configuration.sId;
+  const user = auth.user();
+  if (isCachedGlobalAgent(agentId) && user) {
+    try {
+      agentConfiguration = await getCachedGlobalAgentConfiguration(
+        auth,
+        agentId,
+        auth.getNonNullableWorkspace().sId,
+        user.sId
+      );
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  } else {
+    const config = await getAgentConfiguration(auth, {
+      agentId,
+      // We do define agentMessage.configuration.version for global agent, ignoring this value here.
+      agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
+        ? undefined
+        : agentMessage.configuration.version,
+      variant: "full" as const,
+    });
+    if (!config) {
+      return new Err(new Error("Agent configuration not found"));
+    }
+    agentConfiguration = config;
   }
 
   return new Ok({
