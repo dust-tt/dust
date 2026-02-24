@@ -10,7 +10,9 @@ import {
 import logger from "@connectors/logger/logger";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
-import { cacheWithRedis } from "@connectors/types";
+import { cacheWithRedis, normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 
@@ -35,13 +37,25 @@ async function getBotUserId(
   return authRes.user_id;
 }
 
-export const getBotUserIdMemoized = cacheWithRedis(
+const getBotUserIdMemoized = cacheWithRedis(
   getBotUserId,
   (slackClient, connectorId) => connectorId.toString(),
   {
     ttlMs: 60 * 10 * 1000,
   }
 );
+
+export async function getBotUserIdResponse(
+  slackClient: WebClient,
+  connectorId: ModelId
+): Promise<Result<string, Error>> {
+  try {
+    const userId = await getBotUserIdMemoized(slackClient, connectorId);
+    return new Ok(userId);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
 
 export async function getUserName(
   slackUserId: string,

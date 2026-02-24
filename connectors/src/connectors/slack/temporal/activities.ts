@@ -1,6 +1,6 @@
 import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
 import {
-  getBotUserIdMemoized,
+  getBotUserIdResponse,
   shouldIndexSlackMessage,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -870,9 +870,13 @@ export async function syncThread(
     threadTs,
   });
 
-  const botUserId = await withSlackErrorHandling(() =>
-    getBotUserIdMemoized(slackClient, connectorId)
-  );
+  const botUserId = await withSlackErrorHandling(async () => {
+    const botUserIdRes = await getBotUserIdResponse(slackClient, connectorId);
+    if (botUserIdRes.isErr()) {
+      throw botUserIdRes.error;
+    }
+    return botUserIdRes.value;
+  });
   allMessages = allMessages.filter((m) => m.user !== botUserId);
 
   if (allMessages.length === 0) {

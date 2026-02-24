@@ -1,5 +1,5 @@
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import type { Logger } from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
@@ -129,9 +129,13 @@ export async function isAppMentionMessage(
     }
 
     const slackClient = await getSlackClient(connector.id);
-    const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
+    const botUserIdRes = await getBotUserIdResponse(slackClient, connector.id);
 
-    return message.includes(`<@${botUserId}>`);
+    if (botUserIdRes.isErr()) {
+      return false;
+    }
+
+    return message.includes(`<@${botUserIdRes.value}>`);
   } catch (_error) {
     // If we can't determine, default to false
     return false;
