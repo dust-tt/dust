@@ -19,10 +19,10 @@
   "files": ["dist", "src"],
   "scripts": {
     "build": "npm run build:types && npm run build:bundle",
-    "build:types": "tsc",
+    "build:types": "tsgo",
     "build:bundle": "tsx esbuild.config.ts",
     "watch": "npm-watch",
-    "tsc": "tsc"
+    "tsgo": "tsgo"
   },
   "engines": {
     "node": "22.22.0"
@@ -35,8 +35,7 @@
     "esbuild": "^0.24.2",
     "npm-watch": "^0.11.0",
     "tslib": "^2.6.2",
-    "tsx": "^4.19.1",
-    "typescript": "^5.9.3"
+    "tsx": "^4.19.1"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
