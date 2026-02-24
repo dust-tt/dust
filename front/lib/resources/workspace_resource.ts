@@ -18,6 +18,7 @@ import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types"
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isStringArray } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
@@ -70,6 +71,12 @@ export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
 ] as const;
 export type WorkspaceConversationKillSwitchOperation =
   (typeof WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS)[number];
+export const WORKSPACE_KILL_SWITCH_OPERATIONS = ["block", "unblock"] as const;
+export type WorkspaceKillSwitchOperation =
+  (typeof WORKSPACE_KILL_SWITCH_OPERATIONS)[number];
+export type UpdateWorkspaceKillSwitchResult = {
+  wasUpdated: boolean;
+};
 export type UpdateWorkspaceConversationKillSwitchResult = {
   wasUpdated: boolean;
 };
@@ -643,6 +650,58 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         }
         break;
       }
+    }
+
+    const updateResult = await WorkspaceResource.updateMetadata(
+      this.id,
+      metadata
+    );
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
+
+    return new Ok({
+      wasUpdated: true,
+    });
+  }
+
+  async updateWorkspaceKillSwitch({
+    operation,
+  }: {
+    operation: WorkspaceKillSwitchOperation;
+  }): Promise<Result<UpdateWorkspaceKillSwitchResult, Error>> {
+    const currentKillSwitch =
+      this.metadata?.[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+    const isFullyBlocked =
+      WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(currentKillSwitch);
+    let metadata: Record<string, string | number | boolean | object>;
+
+    switch (operation) {
+      case "block":
+        if (isFullyBlocked) {
+          return new Ok({
+            wasUpdated: false,
+          });
+        }
+
+        metadata = {
+          ...(this.metadata ?? {}),
+          [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
+            WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
+        };
+        break;
+      case "unblock":
+        if (!isFullyBlocked) {
+          return new Ok({
+            wasUpdated: false,
+          });
+        }
+
+        metadata = { ...(this.metadata ?? {}) };
+        delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+        break;
+      default:
+        return assertNever(operation);
     }
 
     const updateResult = await WorkspaceResource.updateMetadata(

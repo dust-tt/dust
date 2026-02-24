@@ -195,18 +195,15 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      const metadata = {
-        ...(w.metadata ?? {}),
-        [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
-          WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
-      };
-
-      const updateResult = await WorkspaceResource.updateMetadata(
-        w.id,
-        metadata
-      );
+      const updateResult = await w.updateWorkspaceKillSwitch({
+        operation: "block",
+      });
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
+      }
+      if (!updateResult.value.wasUpdated) {
+        logger.info({ wId: w.sId }, "Workspace was already blocked");
+        return;
       }
 
       logger.info({ wId: w.sId }, "Workspace blocked");
@@ -223,15 +220,15 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      const metadata = { ...(w.metadata ?? {}) };
-      delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
-
-      const updateResult = await WorkspaceResource.updateMetadata(
-        w.id,
-        metadata
-      );
+      const updateResult = await w.updateWorkspaceKillSwitch({
+        operation: "unblock",
+      });
       if (updateResult.isErr()) {
         throw new Error(updateResult.error.message);
+      }
+      if (!updateResult.value.wasUpdated) {
+        logger.info({ wId: w.sId }, "Workspace was not blocked");
+        return;
       }
 
       logger.info({ wId: w.sId }, "Workspace unblocked");
