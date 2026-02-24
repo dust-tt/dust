@@ -5,29 +5,29 @@ import {
   ArrowDownOnSquareIcon,
   ArrowUpOnSquareIcon,
   Button,
-  ButtonGroup,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   CommandLineIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   FullscreenIcon,
   HistoryIcon,
   MoreIcon,
-  PlayIcon,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SpaceOpenIcon,
-  Tabs,
-  TabsList,
-  TabsTrigger,
+  TextArea,
   XMarkIcon,
-  Separator,
+  useCopyToClipboard,
   useSendNotification,
   ArrowGoBackIcon,
+  LinkIcon,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
 import { useMemo, useState } from "react";
@@ -40,7 +40,24 @@ export function FrameView() {
     return mockSpaces[randomIndex]?.name ?? "Project";
   }, []);
   const [isAddedToProject, setIsAddedToProject] = useState(false);
+  const [isCodeViewOpen, setIsCodeViewOpen] = useState(false);
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
   const sendNotification = useSendNotification();
+  const frameCode = useMemo(
+    () => `export default function FrameTemplate() {
+  return (
+    <main className="frame-root">
+      <h1>Frame preview</h1>
+      <p>Prototype content rendered in conversation panel.</p>
+    </main>
+  );
+}`,
+    []
+  );
+  const frameCodeRows = useMemo(
+    () => Math.max(frameCode.split("\n").length, 1),
+    [frameCode]
+  );
 
   const handleAddToProject = () => {
     if (isAddedToProject) {
@@ -52,6 +69,10 @@ export function FrameView() {
       type: "success",
       title: `Frame added to project ${randomProjectName}`,
     });
+  };
+
+  const handleCopyCode = async () => {
+    await copyToClipboard(frameCode);
   };
 
   return (
@@ -73,52 +94,33 @@ export function FrameView() {
         <Allotment.Pane minSize={320} preferredSize={50} className="s-h-full">
           <div className="s-flex s-h-full s-flex-col">
             <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-bg-background s-px-3">
-              <div className="s-flex s-h-full s-items-end">
-                <Tabs defaultValue="play">
-                  <TabsList border={false}>
-                    <TabsTrigger value="play" icon={PlayIcon} />
-                    <TabsTrigger value="command" icon={CommandLineIcon} />
-                  </TabsList>
-                </Tabs>
-              </div>
-              <div className="s-flex-1" />
+              <Button
+                icon={ArrowCircleIcon}
+                variant="ghost"
+                tooltip="Refresh"
+              />
               <Button
                 icon={FullscreenIcon}
                 variant="ghost"
                 tooltip="Full screen"
               />
               <Button
-                icon={ArrowGoBackIcon}
+                icon={ArrowDownOnSquareIcon}
                 variant="ghost"
-                tooltip="Back to a previous version"
+                tooltip="Export"
               />
-              <Button icon={ArrowCircleIcon} variant="ghost" tooltip="Reload" />
+              <Button icon={LinkIcon} variant="ghost" tooltip="Share" />
               <div className="s-flex s-h-8 s-items-center s-gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button icon={MoreIcon} variant="ghost" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger
-                        label="Export"
-                        icon={ArrowDownOnSquareIcon}
-                      />
-                      <DropdownMenuSubContent>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger label="PDF" />
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem label="Portrait" />
-                            <DropdownMenuItem label="Landscape" />
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuItem label="PNG" />
-                        <DropdownMenuItem label="Template" />
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                    <DropdownMenuItem label="Revert" icon={ArrowGoBackIcon} />
                     <DropdownMenuItem
-                      label="Share"
-                      icon={ArrowUpOnSquareIcon}
+                      label="Code view"
+                      icon={CommandLineIcon}
+                      onClick={() => setIsCodeViewOpen(true)}
                     />
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel
@@ -144,6 +146,25 @@ export function FrameView() {
           </div>
         </Allotment.Pane>
       </Allotment>
+      <Sheet open={isCodeViewOpen} onOpenChange={setIsCodeViewOpen}>
+        <SheetContent size="lg" side="right">
+          <SheetHeader>
+            <SheetTitle>Frame: Code view</SheetTitle>
+          </SheetHeader>
+          <div className="s-flex s-h-full s-flex-col s-gap-3 s-px-4">
+            <div className="s-flex s-justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                label={isCopied ? "Copied" : "Copy to clipboard"}
+                onClick={handleCopyCode}
+              />
+            </div>
+            <TextArea value={frameCode} rows={frameCodeRows} readOnly />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
