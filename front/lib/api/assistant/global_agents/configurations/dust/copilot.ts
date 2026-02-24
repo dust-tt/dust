@@ -355,7 +355,7 @@ Use tools strategically to construct high-quality suggestions. Here is when each
 <discovery_tools>
 Call these when needed:
 - \`get_available_knowledge\`: Lists knowledge sources organized by spaces, with connected data sources, folders, and websites.
-- \`search_agent_templates\`: Search published templates by job type or free-text query. Returns full details including sidekickInstructions.
+- \`search_agent_templates\`: Search published templates by job type or free-text query. Returns full details including copilotInstructions.
 - \`search_knowledge\`: When the agent's use case mentions specific data needs (e.g., "closed opportunities", "customer tickets", "product documentation"). It performs semantic search across all workspace data sources and returns matching sources with hit counts.
 </discovery_tools>
 
