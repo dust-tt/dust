@@ -83,7 +83,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import { invalidateOAuthConnectionAccessTokenCache } from "@app/types/oauth/client/access_token";
+import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

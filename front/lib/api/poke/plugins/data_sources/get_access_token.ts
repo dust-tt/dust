@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const getAccessTokenPlugin = createPlugin({

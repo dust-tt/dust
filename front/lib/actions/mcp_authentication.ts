@@ -4,7 +4,7 @@ import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

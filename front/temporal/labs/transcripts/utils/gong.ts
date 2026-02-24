@@ -5,7 +5,7 @@ import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/la
 import type { Logger } from "@app/logger/logger";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 
 const getGongAccessToken = async (connectionId: string, logger: Logger) => {
   const tokRes = await getOAuthConnectionAccessToken({

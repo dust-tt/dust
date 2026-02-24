@@ -27,7 +27,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { isLeft } from "fp-ts/lib/Either";

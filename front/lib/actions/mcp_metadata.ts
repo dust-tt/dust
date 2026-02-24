@@ -38,7 +38,7 @@ import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import { invalidateOAuthConnectionAccessTokenCache } from "@app/types/oauth/client/access_token";
+import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
