@@ -2,11 +2,11 @@ import type { GongPermissionProfile } from "@connectors/connectors/gong/lib/gong
 import { getGongClient } from "@connectors/connectors/gong/lib/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const SUPPORTED_PERMISSION_LEVELS: readonly string[] = ["all", "none"];
+type PermissionLevel = GongPermissionProfile["callsAccess"]["permissionLevel"];
 
-function isSupportedPermissionLevel(
-  permissionLevel: GongPermissionProfile["callsAccess"]["permissionLevel"]
-): boolean {
+const SUPPORTED_PERMISSION_LEVELS: readonly PermissionLevel[] = ["all", "none"];
+
+function isSupportedPermissionLevel(permissionLevel: PermissionLevel): boolean {
   return SUPPORTED_PERMISSION_LEVELS.includes(permissionLevel);
 }
 
