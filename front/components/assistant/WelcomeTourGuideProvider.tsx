@@ -6,8 +6,14 @@ type WelcomeTourGuideContextType = {
   createAgentButtonRef: React.RefObject<HTMLDivElement>;
 };
 
+const noopContext: WelcomeTourGuideContextType = {
+  startConversationRef: { current: null },
+  spaceMenuButtonRef: { current: null },
+  createAgentButtonRef: { current: null },
+};
+
 const WelcomeTourGuideContext =
-  createContext<WelcomeTourGuideContextType | null>(null);
+  createContext<WelcomeTourGuideContextType>(noopContext);
 
 export function WelcomeTourGuideProvider({
   children,
@@ -35,11 +41,5 @@ export function WelcomeTourGuideProvider({
 }
 
 export function useWelcomeTourGuide() {
-  const context = useContext(WelcomeTourGuideContext);
-  if (!context) {
-    throw new Error(
-      "useWelcomeTourGuide must be used within a WelcomeTourGuideProvider"
-    );
-  }
-  return context;
+  return useContext(WelcomeTourGuideContext);
 }
