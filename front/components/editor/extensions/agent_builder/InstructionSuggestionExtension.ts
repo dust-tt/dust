@@ -453,24 +453,33 @@ function createPlugin(getHighlightedId: () => string | null) {
         return true;
       }
 
-      // Block modifications to any suggestion block content
+      // Collect all suggestion block content ranges upfront to avoid redundant lookups.
+      // Typical case: 1-5 suggestions with 1-2 operations each = ~10 ranges max.
+      // Even with 20 suggestions × 5 operations × 5 steps = 500 iterations, this is negligible.
+      const suggestionRanges: Array<{ start: number; end: number }> = [];
       for (const suggestion of pluginState.suggestions.values()) {
         for (const op of suggestion.operations) {
           const found = findBlockByBlockId(state.doc, op.targetBlockId);
-          if (!found) {
-            continue;
+          if (found) {
+            suggestionRanges.push({
+              start: found.pos + 1,
+              end: found.pos + found.node.nodeSize - 1,
+            });
           }
+        }
+      }
 
-          const contentStart = found.pos + 1;
-          const contentEnd = found.pos + found.node.nodeSize - 1;
+      // Check each transaction step against all suggestion ranges.
+      // This is O(steps × ranges) but typically O(1-5 × 1-10) = ~50 operations max.
+      for (let i = 0; i < tr.steps.length; i++) {
+        const map = tr.mapping.slice(0, i);
 
-          for (let i = 0; i < tr.steps.length; i++) {
-            const mappedStart = tr.mapping.slice(0, i).map(contentStart);
-            const mappedEnd = tr.mapping.slice(0, i).map(contentEnd);
+        for (const range of suggestionRanges) {
+          const mappedStart = map.map(range.start);
+          const mappedEnd = map.map(range.end);
 
-            if (stepModifiesRange(tr.mapping.maps[i], mappedStart, mappedEnd)) {
-              return false;
-            }
+          if (stepModifiesRange(tr.mapping.maps[i], mappedStart, mappedEnd)) {
+            return false;
           }
         }
       }
