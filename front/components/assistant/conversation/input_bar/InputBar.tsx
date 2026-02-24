@@ -299,7 +299,7 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(true);
 
       try {
-        await onSubmit(markdown, mentions, {
+        const submitPromise = onSubmit(markdown, mentions, {
           uploaded: fileUploaderService.getFileBlobs().map((cf) => {
             return {
               title: cf.filename,
@@ -311,10 +311,13 @@ export const InputBar = React.memo(function InputBar({
           contentNodes: attachedNodes,
         });
 
+        // Execute these operations in parallel with the submission.
         resetEditorText();
         clearDraft();
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
+
+        await submitPromise;
       } finally {
         setIsLocalSubmitting(false);
       }
