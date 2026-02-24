@@ -19,22 +19,7 @@ Here is a brief description of what the agent should do:
 ${agentFacingDescription}
 </description>
 
-The copilotInstructions below contain domain-specific guidance for this agent type, structured as:
-- <Business_Requirements>: Specific clarifying questions that will help you customize the template to the user's needs.
-- <Capabilities_To_Suggest>: Tools and skills to suggest, ordered by priority
-- <Knowledge_To_Suggest>: Knowledge to suggest, ordered by priority
-
-## How to act on copilotInstructions
-
-### 1. Business requirements
-First try to answer the questions as best as you can based on your user_context and workspace_context.
-If needed, you can perform multiple targeted searches on the knowledge sources of the workspace to enrich your context.
-
-### 2. Make suggestions
-At this stage, the agent configuration will always be empty. Start to fill in instructions and capabilities based on what you know now. Start small, the goal is not to overwhelm the user with too much suggestions, but to iterate with him step by step.
-
-### 3. Refinements
-Ask the user the unresolved questions if any and engage with him to further refine the template to his use case.
+Follow the <using_templates> section from your instructions to act on the copilotInstructions below.
 
 <copilotInstructions>
 ${copilotInstructions}

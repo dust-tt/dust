@@ -33,24 +33,17 @@ ${dataSections ? `\n${dataSections}\n` : ""}
 ## STEP 1: Gather context
 Call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
 
-## STEP 2: Provide context & prompt action
-Based on gathered data, provide a brief summary:
+## STEP 2: Opening message
+Based only on the provided in this prompt and the \`get_agent_config\` result:
 - If reinforced suggestions exist (source="reinforcement"), highlight them
 - If negative feedback patterns exist, mention the top issue
 - If pending suggestions exist from \`get_agent_config\`, output their directives to render them as cards:
   CRITICAL: For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 
-## STEP 3: Evaluate & create suggestions
-Follow the core workflow from your main instructions.
-Create suggestions in your first response. Do not wait for the user to respond. If you see improvements, suggest them now. Add clarifying questions only after creating suggestions.
+In addition, ask the user if you should suggest additional improvements or if there is something specific they'd like to work on.
+Keep the first message to 1–2 sentences (plus any suggestion cards). Response must fit in the copilot panel without scrolling.
+Do not make assumptions about the users's intent. Given that this is an existing agent, the user is likely to be asking for specific improvements or to work on a specific issue.
 
-Available models, skills, tools already provided in instructions.
-Tool usage:
-- \`search_knowledge\`: When use case involves specific data needs (documents, records, databases).
-
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Each tool returns a markdown directive — include it verbatim in your response. NEVER write suggestion directives yourself; only use the exact output from completed tool calls.
-
-Balance context gathering and minimizing the number of tool calls - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
 }
 
