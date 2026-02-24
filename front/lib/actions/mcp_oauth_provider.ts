@@ -7,6 +7,13 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 
+export class MCPOAuthProviderError extends Error {
+  constructor(method: string) {
+    super(`MCPOAuthProvider: ${method} not implemented`);
+    this.name = "MCPOAuthProviderError";
+  }
+}
+
 export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;
 
@@ -14,9 +21,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     this.token = tokens;
   }
   get redirectUrl(): string {
-    throw new Error(
-      "Method redirectUrl not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("redirectUrl");
   }
 
   get clientMetadata(): OAuthClientMetadata {
@@ -44,26 +49,18 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   }
 
   saveTokens() {
-    throw new Error(
-      "Method saveTokens not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("saveTokens");
   }
 
   redirectToAuthorization() {
-    throw new Error(
-      "Method redirectToAuthorization not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("redirectToAuthorization");
   }
 
   saveCodeVerifier() {
-    throw new Error(
-      "Method saveCodeVerifier not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("saveCodeVerifier");
   }
 
   codeVerifier(): string | Promise<string> {
-    throw new Error(
-      "Method codeVerifier not implemented. We should never reach this point."
-    );
+    throw new MCPOAuthProviderError("codeVerifier");
   }
 }

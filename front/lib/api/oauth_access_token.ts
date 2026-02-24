@@ -1,11 +1,11 @@
-import type { OAuthConnectionType } from "../../oauth/lib";
-import type { OAuthAPIError } from "../../oauth/oauth_api";
-import { OAuthAPI } from "../../oauth/oauth_api";
-import type { LoggerInterface } from "../../shared/logger";
-import type { Result } from "../../shared/result";
-import { Ok } from "../../shared/result";
+import type { OAuthConnectionType } from "@app/types/oauth/lib";
+import type { OAuthAPIError } from "@app/types/oauth/oauth_api";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { LoggerInterface } from "@app/types/shared/logger";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
-const OAUTH_ACCESS_TOKEN_CACHE_TTL = 1000 * 60 * 5;
+const OAUTH_ACCESS_TOKEN_CACHE_TTL_MS = 1000 * 60 * 5;
 
 const CACHE = new Map<
   string,
@@ -14,9 +14,15 @@ const CACHE = new Map<
     access_token: string;
     access_token_expiry: number | null;
     scrubbed_raw_json: unknown;
-    local_expiry: number;
+    localExpiryMs: number;
   }
 >();
+
+export function invalidateOAuthConnectionAccessTokenCache(
+  connectionId: string
+): void {
+  CACHE.delete(connectionId);
+}
 
 export async function getOAuthConnectionAccessToken({
   config,
@@ -39,7 +45,7 @@ export async function getOAuthConnectionAccessToken({
 > {
   const cached = CACHE.get(connectionId);
 
-  if (cached && cached.local_expiry > Date.now()) {
+  if (cached && cached.localExpiryMs > Date.now()) {
     return new Ok(cached);
   }
 
@@ -52,7 +58,7 @@ export async function getOAuthConnectionAccessToken({
   }
 
   CACHE.set(connectionId, {
-    local_expiry: Date.now() + OAUTH_ACCESS_TOKEN_CACHE_TTL,
+    localExpiryMs: Date.now() + OAUTH_ACCESS_TOKEN_CACHE_TTL_MS,
     ...res.value,
   });
 
