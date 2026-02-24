@@ -49,7 +49,7 @@ on:
         required: false
 
 concurrency:
-  group: deploy-spa-${{ inputs.app }}
+  group: deploy-spa-${{ inputs.app }}-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
