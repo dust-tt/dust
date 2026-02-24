@@ -13,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
   GongLogo,
   Input,
   SliderToggle,
@@ -170,19 +171,31 @@ function PermissionProfileSelector({
               label="All calls"
               onClick={() => handleSelect("")}
             />
-            {permissionProfiles.map((profile) => (
-              <DropdownMenuItem
-                key={profile.id}
-                label={
-                  profile.supported
-                    ? profile.name
-                    : `${profile.name} (unsupported)`
-                }
-                disabled={!profile.supported}
-                description={profile.reason ?? undefined}
-                onClick={() => handleSelect(profile.id)}
-              />
-            ))}
+            {permissionProfiles.map((profile) => {
+              const item = (
+                <DropdownMenuItem
+                  key={profile.id}
+                  label={
+                    profile.supported
+                      ? profile.name
+                      : `${profile.name} (unsupported)`
+                  }
+                  disabled={!profile.supported}
+                  onClick={() => handleSelect(profile.id)}
+                />
+              );
+              if (profile.reason) {
+                return (
+                  <DropdownTooltipTrigger
+                    key={profile.id}
+                    description={profile.reason}
+                  >
+                    {item}
+                  </DropdownTooltipTrigger>
+                );
+              }
+              return item;
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       }
