@@ -33,7 +33,10 @@ function setStoredRegionInfo({ name, url }: RegionInfo): void {
 
 export interface RegionContextValue {
   regionInfo: RegionInfo | null;
-  setRegionInfo: (regionInfo: RegionInfo) => void;
+  setRegionInfo: (
+    regionInfo: RegionInfo,
+    options?: { keepInStorage?: boolean }
+  ) => void;
   isReady: boolean;
 }
 
@@ -72,12 +75,14 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
 
   // Manual region switch.
   const setRegionInfo = useCallback(
-    (regionInfo: RegionInfo) => {
+    (regionInfo: RegionInfo, options?: { keepInStorage?: boolean }) => {
       // Update ref synchronously before anything else.
       currentUrlRef.current = regionInfo.url;
 
       // Update state and storage.
-      setStoredRegionInfo(regionInfo);
+      if (options?.keepInStorage) {
+        setStoredRegionInfo(regionInfo);
+      }
       setCurrentRegionInfo(regionInfo);
 
       // Invalidate all SWR cache to refetch with new region.

@@ -216,10 +216,10 @@ async function handler(
             },
           });
         }
-        const result = await FileResource.fetchByShareTokenWithContent(
+        const result = await FileResource.fetchByShareToken(
           bodyValidation.right.token
         );
-        response = { exists: !!result };
+        response = { exists: result.isOk() };
       }
       break;
 
