@@ -14,6 +14,7 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare trackersEnabled: boolean;
   declare accountsEnabled: boolean;
   declare permissionProfileId: string | null;
+  declare excludeTitleKeywords: string[] | null;
 }
 
 GongConfigurationModel.init(
@@ -57,6 +58,11 @@ GongConfigurationModel.init(
     permissionProfileId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    excludeTitleKeywords: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
