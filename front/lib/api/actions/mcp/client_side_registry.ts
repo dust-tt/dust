@@ -7,7 +7,7 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 // TTL for MCP server registrations (10 minutes).
 // Refreshed on every access via EXPIRE in validateMCPServerAccess, and by the client heartbeat
 // (every 15 minutes) as a fallback.
-const MCP_SERVER_REGISTRATION_TTL_SEC = 10 * 60;
+const MCP_SERVER_REGISTRATION_TTL_SECONDS = 10 * 60;
 
 const MAX_SERVER_INSTANCES = 256;
 
@@ -140,12 +140,12 @@ export async function registerMCPServer(
 
   await runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     await redis.set(key, JSON.stringify(metadata), {
-      EX: MCP_SERVER_REGISTRATION_TTL_SEC,
+      EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
     });
   });
 
   const expiresAt = new Date(
-    now + MCP_SERVER_REGISTRATION_TTL_SEC * 1000
+    now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
   ).toISOString();
 
   return new Ok({
@@ -228,7 +228,7 @@ export async function updateMCPServerHeartbeat(
 
       // Update in Redis with refreshed TTL.
       await redis.set(key, JSON.stringify(metadata), {
-        EX: MCP_SERVER_REGISTRATION_TTL_SEC,
+        EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
       });
 
       return true;
@@ -240,7 +240,7 @@ export async function updateMCPServerHeartbeat(
   }
 
   const expiresAt = new Date(
-    now + MCP_SERVER_REGISTRATION_TTL_SEC * 1000
+    now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
   ).toISOString();
 
   return {
@@ -275,6 +275,6 @@ export async function validateMCPServerAccess(
 
   return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     // EXPIRE returns true if the key exists (and refreshes TTL), false otherwise.
-    return redis.expire(key, MCP_SERVER_REGISTRATION_TTL_SEC);
+    return redis.expire(key, MCP_SERVER_REGISTRATION_TTL_SECONDS);
   });
 }
