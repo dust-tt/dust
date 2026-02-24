@@ -22,6 +22,7 @@ import {
   Button,
   Chip,
   ConfluenceLogo,
+  cn,
   GithubLogo,
   GlobeAltIcon,
   GoogleLogo,
@@ -41,7 +42,12 @@ import {
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 
-type SubscriptionStatus = "paymentFailed" | "trialing" | "ended" | "active";
+type SubscriptionStatus =
+  | "paymentFailed"
+  | "trialing"
+  | "ended"
+  | "active"
+  | "inconsistent";
 
 function getSubscriptionDisplayStatus(
   subscription: SubscriptionType
@@ -52,19 +58,23 @@ function getSubscriptionDisplayStatus(
   if (subscription.trialing) {
     return "trialing";
   }
+
+  if (subscription.status === "active") {
+    return "active";
+  }
   if (
     subscription.plan.code === FREE_NO_PLAN_CODE ||
-    (subscription.endDate !== null && subscription.endDate <= Date.now())
+    subscription.status === "ended"
   ) {
     return "ended";
   }
-  return "active";
+  return "inconsistent";
 }
 
 const STATUS_CONFIG: Record<
   SubscriptionStatus,
   {
-    chipColor: "info" | "blue" | "warning" | "success";
+    chipColor: "info" | "blue" | "warning" | "success" | "rose";
     chipLabel: string;
     cardClass: string;
   }
@@ -92,6 +102,12 @@ const STATUS_CONFIG: Record<
     chipLabel: "Active",
     cardClass:
       "border-success-200 bg-success-50 dark:border-success-200-night dark:bg-success-50-night",
+  },
+  inconsistent: {
+    chipColor: "rose",
+    chipLabel: "Inconsistent",
+    cardClass:
+      "border-rose-200 bg-rose-50 dark:border-rose-200-night dark:bg-rose-50-night",
   },
 };
 
@@ -225,9 +241,19 @@ export function ActiveSubscriptionTable({
               <PokeTableRow>
                 <PokeTableCell>End Date</PokeTableCell>
                 <PokeTableCell>
-                  {subscription.endDate
-                    ? format(subscription.endDate, "yyyy-MM-dd")
-                    : "/"}
+                  {subscription.endDate ? (
+                    <span
+                      className={cn(
+                        subscription.status === "active" &&
+                          subscription.endDate <= Date.now() &&
+                          "font-semibold text-red-500"
+                      )}
+                    >
+                      {format(subscription.endDate, "yyyy-MM-dd")}
+                    </span>
+                  ) : (
+                    "/"
+                  )}
                 </PokeTableCell>
               </PokeTableRow>
             </PokeTableBody>
