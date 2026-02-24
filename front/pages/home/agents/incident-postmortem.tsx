@@ -3,8 +3,9 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+import { AgentDemoChat } from "@app/components/home/content/Agents/AgentDemoChat";
 import { AGENTS } from "@app/components/home/content/Agents/agentsConfig";
-import { Grid, H1, H3, P } from "@app/components/home/ContentComponents";
+import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -113,16 +114,8 @@ export default function IncidentPostmortemPage() {
               </div>
             </div>
 
-            {/* Placeholder content — to be designed */}
-            <div className="flex flex-col gap-6 rounded-2xl bg-muted-background p-8">
-              <H3 className="text-muted-foreground">
-                Page content coming soon
-              </H3>
-              <P size="sm" className="text-muted-foreground">
-                This page is being designed. Check back soon for a full
-                walkthrough of this agent.
-              </P>
-            </div>
+            {/* Demo chat */}
+            <AgentDemoChat agent={agent} />
           </div>
         </Grid>
       </div>

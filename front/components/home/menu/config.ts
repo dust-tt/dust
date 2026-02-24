@@ -263,11 +263,14 @@ const ConnectMenuConfig: MenuConfig = {
   title: "Connect",
   items: [
     {
+      title: "Integrations & Tools",
+      href: "/home/tools",
+    },
+    {
       title: "Slack Community",
       href: "https://dust-community.tightknit.community/join",
       isExternal: true,
     },
-
     {
       title: "Support",
       href: "/home/support",
@@ -303,10 +306,11 @@ const ResourcesMenuConfig: MenuConfig = {
     },
     ConnectMenuConfig.items[0],
     ConnectMenuConfig.items[1],
+    ConnectMenuConfig.items[2],
     {
       title: "",
     },
-    ConnectMenuConfig.items[2],
+    ConnectMenuConfig.items[3],
   ],
 };
 
@@ -392,6 +396,10 @@ export const menuConfig: DocsConfig = {
           href: "/home/product",
         },
         {
+          title: "Integrations & Tools",
+          href: "/home/tools",
+        },
+        {
           title: "Chrome Extension",
           href: "/home/chrome-extension",
         },
@@ -457,6 +465,23 @@ export const menuConfig: DocsConfig = {
           title: "YouTube",
           href: "https://www.youtube.com/@dust-tt",
           isExternal: true,
+        },
+      ],
+    },
+    {
+      title: "Resources",
+      items: [
+        {
+          title: "Integrations & Tools",
+          href: "/home/tools",
+        },
+        {
+          title: "AI Agents Gallery",
+          href: "/home/agents/gallery",
+        },
+        {
+          title: "AI Agents Ready to Test",
+          href: "/home/agents",
         },
       ],
     },

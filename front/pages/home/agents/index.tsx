@@ -33,9 +33,9 @@ export async function getStaticProps() {
 const GRID_SECTION_CLASSES = classNames(
   "flex flex-col gap-8",
   "col-span-12",
-  "lg:col-span-12 lg:col-start-1",
-  "xl:col-span-12 xl:col-start-1",
-  "2xl:col-start-1"
+  "lg:col-span-11 lg:col-start-2",
+  "xl:col-span-11 xl:col-start-2",
+  "2xl:col-start-3 2xl:col-span-10"
 );
 
 const BENEFIT_ICONS = [SparklesIcon, RocketIcon, CheckCircleIcon] as const;
