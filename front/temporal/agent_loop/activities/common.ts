@@ -384,14 +384,20 @@ export async function updateResourceAndPublishEvent(
 const DEFAULT_WORKFLOW_ERROR_MESSAGE =
   "An unexpected error occurred while generating the agent response. Please try again.";
 
-function toUserFriendlyMessage(message: string | undefined | null): string {
-  if (!message) {
+function toUserFriendlyMessage(error: {
+  message: string;
+  name: string;
+}): string {
+  if (!error.message) {
     return DEFAULT_WORKFLOW_ERROR_MESSAGE;
   }
-  if (message === "Activity task timed out") {
+  if (
+    error.message === "Activity task timed out" &&
+    error.name === "ActivityFailure"
+  ) {
     return "The agent took too long to respond. Please try again.";
   }
-  return message;
+  return error.message;
 }
 
 export async function notifyWorkflowError(
@@ -460,7 +466,7 @@ export async function notifyWorkflowError(
     messageId: agentMessageId,
     error: {
       code: "workflow_error",
-      message: toUserFriendlyMessage(error.message),
+      message: toUserFriendlyMessage(error),
       metadata: {
         category: "critical_failure",
         errorTitle: "Agent response generation failed",
