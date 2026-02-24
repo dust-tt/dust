@@ -7,11 +7,7 @@ import { Notification } from "@dust-tt/sparkle";
 /**
  * This layout is used in _app only
  */
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function RootLayout({ children }: { children: React.ReactNode }) {
   useStripUtmParams();
 
   return (

@@ -1,5 +1,5 @@
 import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
-import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { RootLayout } from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import config from "@dust-tt/front/lib/api/config";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
