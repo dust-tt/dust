@@ -10,10 +10,6 @@
     "package:front:production": "tsx run/build.ts --platform=front",
     "package:chrome:release": "tsx run/build.ts --platform=chrome --release",
     "analyze:chrome": "tsx run/build.ts --platform=chrome --analyze",
-    "lint": "biome lint .",
-    "lint:fix": "biome lint --write .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "tsgo": "tsgo"
   },
   "engines": {

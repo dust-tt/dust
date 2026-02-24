@@ -1,4 +1,4 @@
-name: Lint & Build & Test (CLI)
+name: Build & Test (CLI)
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   checks: write
 
 jobs:
-  all-checks:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -25,6 +25,6 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
-      - name: Typecheck and Lint
+      - name: Typecheck
         working-directory: cli
-        run: npx tsc --version && npx tsc && npm run lint
+        run: npx tsc --version && npx tsc

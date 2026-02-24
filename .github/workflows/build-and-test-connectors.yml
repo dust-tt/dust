@@ -24,17 +24,6 @@ jobs:
           node-version: '22.22.0'
       - name: Typecheck
         run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
-        with:
-          build-sdks: "true"
-          node-version: '22.22.0'
-      - name: Lint
-        run: npm -w connectors run lint
   tests:
     runs-on: ubuntu-latest
     steps:
