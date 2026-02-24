@@ -92,7 +92,7 @@
         "rules": {
           "correctness": {
             "useHookAtTopLevel": "error",
-            "useExhaustiveDependencies": "warn"
+            "useExhaustiveDependencies": "error"
           }
         }
       }

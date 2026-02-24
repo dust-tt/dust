@@ -9,8 +9,6 @@
     "dev": "next dev -p 3007",
     "build": "next build",
     "start": "next start",
-    "lint": "biome lint .",
-    "lint:fix": "biome lint --write .",
     "format": "biome format --write .",
     "format:check": "biome format ."
   },

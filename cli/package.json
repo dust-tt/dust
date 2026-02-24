@@ -13,9 +13,6 @@
     "build:dev": "NODE_ENV=development tsup",
     "build": "NODE_ENV=development tsup",
     "dev": "NODE_ENV=development tsup --watch",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "start": "node dist/index.js"
   },
   "keywords": ["dust", "cli", "terminal", "command-line"],

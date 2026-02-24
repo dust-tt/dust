@@ -21,10 +21,6 @@
     "build": "npm run build:types && npm run build:bundle",
     "build:types": "tsc",
     "build:bundle": "tsx esbuild.config.ts",
-    "lint": "biome lint .",
-    "lint:fix": "biome lint --write .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "watch": "npm-watch",
     "tsc": "tsc"
   },

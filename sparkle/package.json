@@ -9,9 +9,6 @@
     "build:cjs": "node scripts/build-cjs.mjs",
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
-    "format:check": "biome format .",
-    "format": "biome format --write .",
-    "lint": "biome check .",
     "watch": "npm-watch"
   },
   "watch": {
