@@ -3,7 +3,8 @@
  * This should be called early in the app initialization
  */
 export function initDatadogRUM() {
-  const clientToken = import.meta.env.VITE_DATADOG_CLIENT_TOKEN;
+  const env = import.meta.env as Record<string, string | undefined>;
+  const clientToken = env.VITE_DATADOG_CLIENT_TOKEN;
 
   // Only initialize if we have a client token
   if (!clientToken || !window.DD_RUM) {
@@ -11,13 +12,13 @@ export function initDatadogRUM() {
   }
 
   window.DD_RUM.onReady(() => {
-    window.DD_RUM?.init({
+    (window.DD_RUM as any)?.init({
       clientToken,
       applicationId: "5e9735e7-87c8-4093-b09f-49d708816bfd",
       site: "datadoghq.eu",
-      service: `${import.meta.env.VITE_DATADOG_SERVICE || "front"}-browser`,
-      env: import.meta.env.MODE === "production" ? "prod" : "dev",
-      version: import.meta.env.VITE_COMMIT_HASH || "",
+      service: `${env.VITE_DATADOG_SERVICE || "front"}-browser`,
+      env: env.MODE === "production" ? "prod" : "dev",
+      version: env.VITE_COMMIT_HASH || "",
       allowedTracingUrls: [
         "https://dust.tt",
         "https://eu.dust.tt",
@@ -29,7 +30,7 @@ export function initDatadogRUM() {
       sessionSampleRate: 20,
       sessionReplaySampleRate: 5,
       defaultPrivacyLevel: "mask-user-input",
-      beforeSend: (event) => {
+      beforeSend: (event: any) => {
         // This error is benign, happens often in the wild but has 0 effect on the user.
         // See: https://github.com/DataDog/browser-sdk/issues/1616.
         if (

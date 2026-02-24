@@ -12,7 +12,8 @@
     "build:app": "VITE_APP_NAME=app vite build && cp public-app/_redirects dist/app/_redirects",
     "build": "npm run build:poke && npm run build:app",
     "preview:poke": "VITE_APP_NAME=poke vite preview",
-    "preview:app": "VITE_APP_NAME=app vite preview"
+    "preview:app": "VITE_APP_NAME=app vite preview",
+    "tsgo": "tsgo"
   },
   "dependencies": {
     "@dust-tt/front": "*",

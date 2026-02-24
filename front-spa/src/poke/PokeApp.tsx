@@ -140,7 +140,7 @@ const router = createBrowserRouter(
     },
   ],
   {
-    basename: import.meta.env.VITE_BASE_PATH ?? "",
+    basename: import.meta.env?.VITE_BASE_PATH ?? "",
   }
 );
 
