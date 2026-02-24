@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
@@ -30,6 +31,7 @@ import { useParams } from "react-router-dom";
 
 export const MainPage = () => {
   const { user, workspace, subscription } = useAuth();
+  const { serverId } = useMcpServer();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
 
@@ -156,6 +158,7 @@ export const MainPage = () => {
                       user={user}
                       subscription={subscription}
                       conversationId={conversationId}
+                      clientSideMCPServerIds={serverId ? [serverId] : undefined}
                     />
                   </InputBarProvider>
                 </GenerationContextProvider>
