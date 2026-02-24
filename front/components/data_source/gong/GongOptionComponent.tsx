@@ -132,7 +132,7 @@ function PermissionProfileSelector({
       sendNotification({
         type: "success",
         title: "Gong configuration updated",
-        description: "Permission profile successfully updated.",
+        description: "Participant filter successfully updated.",
       });
     } else {
       const err = await res.json();
@@ -147,7 +147,7 @@ function PermissionProfileSelector({
 
   return (
     <ContextItem
-      title="Permission Profile"
+      title="Participant Filter"
       visual={<ContextItem.Visual visual={GongLogo} />}
       action={
         <DropdownMenu>
@@ -161,7 +161,7 @@ function PermissionProfileSelector({
                     ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) +
                       "..."
                     : selectedProfile.name
-                  : "All calls"
+                  : "All participants"
               }
               isSelect
               disabled={disabled || loading}
@@ -171,7 +171,7 @@ function PermissionProfileSelector({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem
-              label="All calls"
+              label="All participants"
               onClick={() => handleSelect("")}
             />
             {permissionProfiles.map((profile) => {
@@ -201,8 +201,9 @@ function PermissionProfileSelector({
     >
       <ContextItem.Description>
         <div className="text-muted-foreground dark:text-muted-foreground-night">
-          Only calls with at least one participant from the profile&apos;s user
-          list will be synced. Changing the profile only affects future syncs.
+          Filter calls by participant group. Only calls where at least one
+          participant is assigned to the selected profile will be synced.
+          Changing the filter only affects future syncs.
         </div>
       </ContextItem.Description>
     </ContextItem>
