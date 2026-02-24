@@ -158,7 +158,8 @@ function PermissionProfileSelector({
               label={
                 selectedProfile
                   ? selectedProfile.name.length > PROFILE_NAME_MAX_LENGTH
-                    ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) + "..."
+                    ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) +
+                      "..."
                     : selectedProfile.name
                   : "All calls"
               }
