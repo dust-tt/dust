@@ -70,7 +70,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
 
     let organizationIdToUse;
 
-    if (workspaceId && typeof workspaceId === "string") {
+    if (workspaceId && isString(workspaceId)) {
       const workspace = workspaceId
         ? await WorkspaceResource.fetchById(workspaceId)
         : null;
@@ -150,6 +150,10 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   const { code, grant_type, refresh_token } = req.body;
+
+  if (grant_type && !isString(grant_type)) {
+    return res.status(400).json({ error: "Invalid grant_type" });
+  }
 
   if (grant_type === "refresh_token") {
     if (!refresh_token || !isString(refresh_token)) {
