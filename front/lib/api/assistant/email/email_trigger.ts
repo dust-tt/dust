@@ -28,6 +28,7 @@ import type { SupportedFileContentType } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString, isStringArray } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import fs from "fs";
 import sanitizeHtml from "sanitize-html";
@@ -61,14 +62,8 @@ export type EmailReplyContext = {
   conversationId: string;
 };
 
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((entry) => typeof entry === "string")
-  );
-}
-
 function isNullableString(value: unknown): value is string | null {
-  return value === null || typeof value === "string";
+  return value === null || isString(value);
 }
 
 function isEmailReplyContext(value: unknown): value is EmailReplyContext {
@@ -77,13 +72,13 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
   }
   return (
     "subject" in value &&
-    typeof value.subject === "string" &&
+    isString(value.subject) &&
     "originalText" in value &&
-    typeof value.originalText === "string" &&
+    isString(value.originalText) &&
     "fromEmail" in value &&
-    typeof value.fromEmail === "string" &&
+    isString(value.fromEmail) &&
     "fromFull" in value &&
-    typeof value.fromFull === "string" &&
+    isString(value.fromFull) &&
     "replyTo" in value &&
     isStringArray(value.replyTo) &&
     "replyCc" in value &&
@@ -95,11 +90,11 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
     "threadingReferences" in value &&
     isNullableString(value.threadingReferences) &&
     "agentConfigurationId" in value &&
-    typeof value.agentConfigurationId === "string" &&
+    isString(value.agentConfigurationId) &&
     "workspaceId" in value &&
-    typeof value.workspaceId === "string" &&
+    isString(value.workspaceId) &&
     "conversationId" in value &&
-    typeof value.conversationId === "string"
+    isString(value.conversationId)
   );
 }
 
@@ -296,6 +291,20 @@ export function buildReplyThreadingHeaders(email: InboundEmail): {
   });
 
   return { inReplyTo, references };
+}
+
+function buildSendgridThreadingHeaders(
+  email: InboundEmail
+): Record<string, string> {
+  const threadingHeaders = buildReplyThreadingHeaders(email);
+  return {
+    ...(threadingHeaders.inReplyTo
+      ? { "In-Reply-To": threadingHeaders.inReplyTo }
+      : {}),
+    ...(threadingHeaders.references
+      ? { References: threadingHeaders.references }
+      : {}),
+  };
 }
 
 export function buildSuccessReplyRecipients(email: InboundEmail): {
@@ -871,15 +880,7 @@ export async function sendToolValidationEmail({
     `</blockquote>\n` +
     "<div>\n";
 
-  const threadingHeaders = buildReplyThreadingHeaders(email);
-  const headers = {
-    ...(threadingHeaders.inReplyTo
-      ? { "In-Reply-To": threadingHeaders.inReplyTo }
-      : {}),
-    ...(threadingHeaders.references
-      ? { References: threadingHeaders.references }
-      : {}),
-  };
+  const headers = buildSendgridThreadingHeaders(email);
 
   const msg = {
     from: {
@@ -951,15 +952,7 @@ export async function replyToEmail({
     `</blockquote>\n` +
     "<div>\n";
 
-  const threadingHeaders = buildReplyThreadingHeaders(email);
-  const headers = {
-    ...(threadingHeaders.inReplyTo
-      ? { "In-Reply-To": threadingHeaders.inReplyTo }
-      : {}),
-    ...(threadingHeaders.references
-      ? { References: threadingHeaders.references }
-      : {}),
-  };
+  const headers = buildSendgridThreadingHeaders(email);
 
   const msg = {
     from: {

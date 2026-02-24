@@ -19,7 +19,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -35,8 +35,10 @@ function parseHeaderValue(
   headerName: string
 ): string | null {
   const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Match the header name at line start, capture the first line value then any
+  // RFC 5322 folded continuation lines (lines starting with whitespace).
   const headerPattern = new RegExp(
-    `^${escapedHeaderName}:\\s*([\\s\\S]*?)(?=\\r?\\n[^\\s][^\\r\\n]*:|$)`,
+    `^${escapedHeaderName}:\\s*((?:.*(?:\\r?\\n[ \\t]+.*)*))`,
     "im"
   );
   const match = rawHeaders.match(headerPattern);
@@ -44,6 +46,7 @@ function parseHeaderValue(
     return null;
   }
 
+  // Unfold RFC 5322 continuation lines (CRLF/LF followed by spaces/tabs).
   const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
 
   return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
@@ -122,7 +125,7 @@ const parseSendgridWebhookContent = async (
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: { SPF: SPF || "", dkim: dkim || "" },
       threadingHeaders: parseThreadingHeaders(
-        typeof rawHeaders === "string" ? rawHeaders : null
+        isString(rawHeaders) ? rawHeaders : null
       ),
       envelope: {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
