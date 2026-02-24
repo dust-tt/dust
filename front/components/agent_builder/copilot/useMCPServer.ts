@@ -8,8 +8,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 // Server name used for MCP registration. This is a client-side MCP server
-// exclusively used by the Agent Builder Copilot to access live form state.
-const SERVER_NAME = "agent-builder-copilot-client";
+// exclusively used by the Agent Builder Sidekick to access live form state.
+const SERVER_NAME = "agent-builder-sidekick-client";
 
 export interface UseCopilotMCPServerResult {
   serverId: string | undefined;
@@ -23,8 +23,8 @@ interface UseCopilotMCPServerOptions {
 }
 
 /**
- * React hook that manages a client-side MCP server for the Agent Builder Copilot.
- * Exposes tools that allow the copilot to access the live (unsaved) agent builder form state.
+ * React hook that manages a client-side MCP server for the Agent Builder Sidekick.
+ * Exposes tools that allow the sidekick to access the live (unsaved) agent builder form state.
  */
 export function useCopilotMCPServer({
   enabled,

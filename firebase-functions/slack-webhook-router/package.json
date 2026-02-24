@@ -8,9 +8,6 @@
     "build": "tsc",
     "start": "npm run build && firebase emulators:start --only functions",
     "dev": "npm run start",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "deploy": "./deploy.sh"
   },
   "author": "Dust",

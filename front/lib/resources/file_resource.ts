@@ -3,6 +3,7 @@
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import {
   getPrivateUploadBucket,
   getPublicUploadBucket,
@@ -28,11 +29,7 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
-import {
-  ALL_FILE_FORMATS,
-  frameContentType,
-  isInteractiveContentFileContentType,
-} from "@app/types/files";
+import { ALL_FILE_FORMATS, isInteractiveContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -152,8 +149,36 @@ export class FileResource extends BaseResource<FileModel> {
     content: string;
     shareScope: FileShareScope;
   } | null> {
-    if (!validate(token)) {
+    const r = await this.fetchByShareToken(token);
+    if (r.isErr()) {
       return null;
+    }
+
+    const { file, shareScope, workspace } = r.value;
+    const content = await file.getFileContent(workspace, "original");
+    if (!content) {
+      return null;
+    }
+
+    return {
+      file,
+      content,
+      shareScope,
+    };
+  }
+
+  static async fetchByShareToken(token: string): Promise<
+    Result<
+      {
+        file: FileResource;
+        shareScope: FileShareScope;
+        workspace: LightWorkspaceType;
+      },
+      DustError
+    >
+  > {
+    if (!validate(token)) {
+      return new Err(new DustError("invalid_id", "Invalid share token"));
     }
 
     const shareableFile = await this.shareableFileModel.findOne({
@@ -164,14 +189,14 @@ export class FileResource extends BaseResource<FileModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {
-      return null;
+      return new Err(new DustError("file_not_found", "Share not found"));
     }
 
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
     if (!workspace) {
-      return null;
+      return new Err(new DustError("internal_error", "Workspace not found"));
     }
 
     const file = await this.model.findOne({
@@ -183,7 +208,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     const fileRes = file ? new this(this.model, file.get()) : null;
     if (!fileRes) {
-      return null;
+      return new Err(new DustError("file_not_found", "File not found"));
     }
 
     // Check if associated conversation still exist (not soft-deleted).
@@ -207,24 +232,17 @@ export class FileResource extends BaseResource<FileModel> {
         { dangerouslySkipPermissionFiltering: true }
       );
       if (!conversation) {
-        return null;
+        return new Err(
+          new DustError("conversation_not_found", "Conversation not found")
+        );
       }
     }
 
-    const content = await fileRes.getFileContent(
-      renderLightWorkspaceType({ workspace }),
-      "original"
-    );
-
-    if (!content) {
-      return null;
-    }
-
-    return {
+    return new Ok({
       file: fileRes,
-      content,
+      workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
-    };
+    });
   }
 
   static async unsafeFetchByIdInWorkspace(
@@ -419,7 +437,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   get isInteractiveContent(): boolean {
-    return isInteractiveContentFileContentType(this.contentType);
+    return isInteractiveContentType(this.contentType);
   }
 
   // Cloud storage logic.
@@ -726,6 +744,32 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ useCaseMetadata: metadata });
   }
 
+  /**
+   * Move a conversation frame file to a project (change use case to project_context).
+   * Preserves existing metadata and sets spaceId and sourceConversationId.
+   */
+  async moveFrameToSpace(
+    auth: Authenticator,
+    { projectId }: { projectId: string }
+  ): Promise<void> {
+    const existingMetadata = this.useCaseMetadata ?? {};
+    if (!this.isInteractiveContent || !existingMetadata.conversationId) {
+      throw new Error("File is not a conversation frame");
+    }
+
+    await this.update({
+      useCase: "project_context",
+      useCaseMetadata: {
+        ...existingMetadata,
+        spaceId: projectId,
+        // Remove conversationId to prevent confusion when accessing the file.
+        conversationId: undefined,
+        sourceConversationId: existingMetadata.conversationId,
+      },
+      userId: auth.getNonNullableUser().id ?? null,
+    });
+  }
+
   setSnippet(snippet: string) {
     return this.update({ snippet });
   }
@@ -754,7 +798,7 @@ export class FileResource extends BaseResource<FileModel> {
       "getShareUrlForShareableFile called on non-interactive content file"
     );
 
-    if (this.contentType === frameContentType) {
+    if (isInteractiveContentType(this.contentType)) {
       return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
     }
 

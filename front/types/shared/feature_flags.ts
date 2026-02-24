@@ -31,7 +31,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   agent_builder_copilot: {
-    description: "Enable Copilot in Agent Builder",
+    description: "Enable Sidekick in Agent Builder",
     stage: "dust_only",
   },
   agent_builder_shrink_wrap: {
@@ -234,14 +234,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   sandbox_tools: {
     description:
       "Sandbox MCP tool for executing code in isolated Linux containers",
-    stage: "dust_only",
-  },
-  dust_no_spa: {
-    description: "Disable redirect to Dust SPA",
-    stage: "on_demand",
-  },
-  dust_spa: {
-    description: "Redirect all pages to Dust SPA",
     stage: "dust_only",
   },
   run_agent_child_stream: {

@@ -58,8 +58,8 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Anthropic's Claude 4 Opus model, the most powerful model in the Claude 4 family (200k context).",
-  shortDescription: "Anthropic's most powerful model.",
+    "Anthropic's Claude 4 Opus model, a powerful model in the Claude 4 family (200k context).",
+  shortDescription: "A powerful Claude 4 model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 32_000,
@@ -230,8 +230,8 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customAssistantFeatureFlag: "claude_4_5_opus_feature",
   customThinkingType: "auto",
+  enterpriseOnly: true,
   customBetas: [
     "auto-thinking-2026-01-12",
     "effort-2025-11-24",
@@ -243,7 +243,9 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_SONNET_4_6_MODEL_ID,
   displayName: "Claude Sonnet 4.6",
-  contextSize: 200_000,
+  // 200k, reducing it temporarily to avoid "prompt too long" errors on dust agent
+  // due to reasoning tokens not being counted when estimating prompt size in countTokensForMessages
+  contextSize: 190_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 64,
   largeModel: true,

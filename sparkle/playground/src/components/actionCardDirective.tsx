@@ -303,6 +303,18 @@ export function actionCardDirective() {
           state: resolveCardState(attributes),
           applyOnClick: hasAttribute(attributes, "applyOnClick"),
           rejectOnClick: hasAttribute(attributes, "rejectOnClick"),
+          actionsPosition: getStringAttribute(
+            getAttributeValue(attributes, [
+              "actionsPosition",
+              "actions-position",
+              "actions_position",
+              "actionsposition",
+            ])
+          ) as "header" | "footer" | undefined,
+          size: getStringAttribute(getAttributeValue(attributes, ["size"])) as
+            | "compact"
+            | "default"
+            | undefined,
         };
       }
     });

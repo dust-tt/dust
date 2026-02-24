@@ -291,6 +291,10 @@ function PokeSearchCommandUI({
                     a1b2c3d4-e5f6-7890-abcd-ef1234567890
                   </span>
                 </div>
+                <div>
+                  <span className="font-medium">Phone number:</span>{" "}
+                  <span className="font-mono">+33612345678</span>
+                </div>
               </div>
             </div>
           )}

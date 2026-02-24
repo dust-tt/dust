@@ -6,6 +6,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -82,6 +83,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token.
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -150,6 +152,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token.
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -218,6 +221,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token.
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       // Generating token with 'public' scope.
@@ -293,6 +297,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token for frame from conversation A
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -323,6 +328,273 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         type: "file_not_found",
         message: "File not found.",
       },
+    });
+  });
+
+  describe("project context access tests", () => {
+    async function addUserToProject(
+      project: Awaited<ReturnType<typeof SpaceFactory.project>>
+    ) {
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const user = auth.getNonNullableUser();
+      const projectSpaceGroup = project.groups.find(
+        (g) => g.kind === "regular"
+      );
+      if (projectSpaceGroup) {
+        const addRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: user.toJSON() }
+        );
+        if (addRes.isErr()) {
+          throw new Error(
+            `Failed to add user to project: ${addRes.error.message}`
+          );
+        }
+      }
+      await auth.refresh();
+    }
+
+    it("should allow access when frame is in project and target file is project_context in same project", async () => {
+      const project = await SpaceFactory.project(workspace);
+      await addUserToProject(project);
+
+      const frameFile = await FileFactory.create(workspace, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project.sId },
+      });
+
+      const targetFile = await FileFactory.create(workspace, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from(["File content"])
+      );
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    it("should allow access when frame is in project and target file is in conversation belonging to project", async () => {
+      const project = await SpaceFactory.project(workspace);
+      await addUserToProject(project);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project.id,
+      });
+
+      const frameFile = await FileFactory.create(workspace, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project.sId },
+      });
+
+      const targetFile = await FileFactory.create(workspace, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "tool_output",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from(["File content"])
+      );
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    it("should reject access when frame is in project and target file is in different project", async () => {
+      const project1 = await SpaceFactory.project(workspace);
+      const project2 = await SpaceFactory.project(workspace);
+
+      const frameFile = await FileFactory.create(workspace, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project1.sId },
+      });
+
+      const targetFile = await FileFactory.create(workspace, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project2.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    });
+
+    it("should reject access when frame is in project and target file is in conversation belonging to different project", async () => {
+      const project1 = await SpaceFactory.project(workspace);
+      const project2 = await SpaceFactory.project(workspace);
+      await addUserToProject(project2);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: project2.id,
+      });
+
+      const frameFile = await FileFactory.create(workspace, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: project1.sId },
+      });
+
+      const targetFile = await FileFactory.create(workspace, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "tool_output",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
     });
   });
 
@@ -361,6 +633,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -423,6 +696,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     // Generate JWT access token
     const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
       shareScope: "public",
@@ -451,7 +725,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Frame missing conversation context.",
+        message: "Frame missing conversation context or project context.",
       },
     });
   });
@@ -692,6 +966,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",
@@ -829,6 +1104,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       }
 
       const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
         fileToken,
         workspaceId: workspace.sId,
         shareScope: "public",

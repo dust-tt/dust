@@ -3,7 +3,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { frameContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import type { PublicVizContentResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -110,7 +110,10 @@ async function handler(
   }
 
   // Only allow conversation interactive files.
-  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
+  if (
+    !file.isInteractiveContent ||
+    !isInteractiveContentType(file.contentType)
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -145,23 +148,25 @@ async function handler(
     });
   }
 
-  // Frame must have a conversation context.
+  // Frame must have a conversation context or a project context
   const frameConversationId = file.useCaseMetadata?.conversationId;
-  if (!frameConversationId) {
+  const frameSpaceId = file.useCaseMetadata?.spaceId;
+  if (!frameConversationId && !frameSpaceId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Frame missing conversation context.",
+        message: "Frame missing conversation context or project context.",
       },
     });
   }
 
   return res.status(200).json({
     content: result.content,
-    contentType: frameContentType,
+    contentType: file.contentType,
     metadata: {
       conversationId: result.file.useCaseMetadata?.conversationId,
+      spaceId: result.file.useCaseMetadata?.spaceId,
     },
   });
 }

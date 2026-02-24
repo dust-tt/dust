@@ -279,10 +279,14 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
 >();
 
 const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
+const FrameSlideshowContentTypeSchema = z.literal(
+  "application/vnd.dust.frame.slideshow"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
+  FrameSlideshowContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -1226,6 +1230,8 @@ const NotificationRunAgentContentSchema = z.object({
   childAgentId: z.string(),
   conversationId: z.string(),
   query: z.string(),
+  childConversationUrl: z.string().nullable().optional(),
+  childConversationEventsUrl: z.string().nullable().optional(),
 });
 
 const NotificationRunAgentChainOfThoughtSchema = z.object({
@@ -2820,6 +2826,7 @@ export type FileUploadedRequestResponseType = z.infer<
 export const PublicFrameResponseBodySchema = z.object({
   accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  projectUrl: z.string().nullable(),
   file: FileTypeSchema,
 });
 

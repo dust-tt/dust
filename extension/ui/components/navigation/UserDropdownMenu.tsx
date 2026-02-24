@@ -14,7 +14,7 @@ import {
   LogoutIcon,
 } from "@dust-tt/sparkle";
 import type { StoredUser } from "@extension/shared/services/auth";
-import { useAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useTheme } from "@extension/ui/hooks/useTheme";
 
 interface UserDropdownMenuProps {
@@ -27,7 +27,7 @@ export const UserDropdownMenu = ({
   handleLogout,
 }: UserDropdownMenuProps) => {
   const { theme, updateTheme } = useTheme();
-  const { workspace, handleSelectWorkspace } = useAuth();
+  const { workspace, handleSelectWorkspace } = useExtensionAuth();
 
   return (
     <DropdownMenu>

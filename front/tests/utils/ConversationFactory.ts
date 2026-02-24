@@ -1,3 +1,4 @@
+import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -6,6 +7,8 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -217,16 +220,22 @@ export class ConversationFactory {
     conversationId,
     rank,
     agentConfigurationId,
+    agentConfigurationVersion = 0,
+    parentId = null,
+    version = 0,
   }: {
     workspace: WorkspaceType;
     conversationId: ModelId;
     rank: number;
     agentConfigurationId: string;
+    agentConfigurationVersion?: number;
+    parentId?: ModelId | null;
+    version?: number;
   }): Promise<MessageModel> {
     const agentMessageRow = await AgentMessageModel.create({
       status: "created",
       agentConfigurationId,
-      agentConfigurationVersion: 0,
+      agentConfigurationVersion,
       workspaceId: workspace.id,
       skipToolsValidation: false,
     });
@@ -234,27 +243,37 @@ export class ConversationFactory {
     return MessageModel.create({
       sId: generateRandomModelSId(),
       rank,
+      version,
       conversationId,
-      parentId: null,
+      parentId,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });
   }
 
   /**
-   * Creates a test agent message with full type information
+   * Creates a test agent message with full type information.
+   * Optionally creates an MCP action (with its step content) when `mcpAction` is provided.
    */
-  static async createAgentMessage({
-    workspace,
-    conversation,
-    agentConfig,
-  }: {
-    workspace: WorkspaceType;
-    conversation: ConversationType | ConversationWithoutContentType;
-    agentConfig: LightAgentConfigurationType;
-  }): Promise<{
+  static async createAgentMessage(
+    auth: Authenticator,
+    {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction,
+    }: {
+      workspace: WorkspaceType;
+      conversation: ConversationType | ConversationWithoutContentType;
+      agentConfig: LightAgentConfigurationType;
+      mcpAction?: {
+        toolConfiguration: LightServerSideMCPToolConfigurationType;
+      };
+    }
+  ): Promise<{
     messageRow: MessageModel;
     agentMessage: AgentMessageType;
+    action?: AgentMCPActionResource;
   }> {
     const agentMessageRow = await AgentMessageModel.create({
       status: "created",
@@ -299,7 +318,47 @@ export class ConversationFactory {
       richMentions: [],
     };
 
-    return { messageRow, agentMessage };
+    if (!mcpAction) {
+      return { messageRow, agentMessage };
+    }
+
+    const { toolConfiguration } = mcpAction;
+
+    const stepContent = await AgentStepContentResource.createNewVersion({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessage.agentMessageId,
+      step: 0,
+      index: 0,
+      type: "function_call",
+      value: {
+        type: "function_call",
+        value: {
+          name: toolConfiguration.name,
+          arguments: "{}",
+          id: generateRandomModelSId(),
+        },
+      },
+    });
+
+    const action = await AgentMCPActionResource.makeNew(auth, {
+      agentMessageId: agentMessage.agentMessageId,
+      augmentedInputs: {},
+      citationsAllocated: 0,
+      mcpServerConfigurationId: toolConfiguration.sId,
+      status: "running",
+      stepContentId: stepContent.id,
+      stepContext: {
+        citationsCount: 0,
+        citationsOffset: 0,
+        resumeState: null,
+        retrievalTopK: 0,
+        websearchResultCount: 0,
+      },
+      toolConfiguration,
+      version: 0,
+    });
+
+    return { messageRow, agentMessage, action };
   }
 
   /**

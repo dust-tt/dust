@@ -380,7 +380,7 @@
 
 /* Print styles for PDF export */
 @page {
-  margin: 2rem;
+  margin: 0;
 }
 
 @media print {

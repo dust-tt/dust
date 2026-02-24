@@ -57,7 +57,7 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -105,11 +105,11 @@ export async function createPendingAgentConfiguration(
         name: PENDING_AGENT_PLACEHOLDER_NAME,
         description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
         instructions: null,
-        providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
         temperature: 0.7,
         reasoningEffort:
-          CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+          CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
         maxStepsPerRun: 8,
         pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
         workspaceId: owner.id,
@@ -1218,19 +1218,7 @@ export async function archiveAgentConfiguration(
       agentConfig
     );
     if (editorGroupRes.isOk()) {
-      const editorGroup = editorGroupRes.value;
-      await GroupMembershipModel.update(
-        { status: "suspended" },
-        {
-          where: {
-            groupId: editorGroup.id,
-            workspaceId: owner.id,
-            status: "active",
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-        }
-      );
+      await editorGroupRes.value.suspendMembers(auth);
     }
   }
 
@@ -1276,19 +1264,7 @@ export async function restoreAgentConfiguration(
       id: latestConfig.id,
     } as LightAgentConfigurationType);
     if (editorGroupRes.isOk()) {
-      const editorGroup = editorGroupRes.value;
-      await GroupMembershipModel.update(
-        { status: "active" },
-        {
-          where: {
-            groupId: editorGroup.id,
-            workspaceId: owner.id,
-            status: "suspended",
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-        }
-      );
+      await editorGroupRes.value.restoreMembers(auth);
     }
 
     const triggers = await TriggerResource.listByAgentConfigurationId(

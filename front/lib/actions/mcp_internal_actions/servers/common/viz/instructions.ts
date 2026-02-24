@@ -1,4 +1,4 @@
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
@@ -357,3 +357,4 @@ const CHART_COLORS = [
 `;
 
 export const VIZ_MIME_TYPE = frameContentType;
+export const VIZ_SLIDESHOW_MIME_TYPE = frameSlideshowContentType;

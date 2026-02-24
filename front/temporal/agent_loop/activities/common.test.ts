@@ -44,11 +44,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Verify initial state
       const initialMessage = await AgentMessageModel.findOne({
@@ -99,11 +102,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Set initial duration
       await AgentMessageModel.update(
@@ -151,11 +157,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Act: Process event with non-integer duration
       const event: AgentMessageSuccessEvent = {
@@ -197,11 +206,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Set initial duration
       await AgentMessageModel.update(
@@ -250,11 +262,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Verify initial state
       const initialMessage = await AgentMessageModel.findOne({
@@ -305,11 +320,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Set initial runIds
       await AgentMessageModel.update(
@@ -360,11 +378,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Set initial runIds
       await AgentMessageModel.update(
@@ -411,11 +432,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Set initial runIds
       await AgentMessageModel.update(
@@ -465,11 +489,14 @@ describe("processEventForDatabase", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Act: Process event with both modelInteractionDurationMs and runIds
       const baseEvent: AgentMessageSuccessEvent = {
@@ -526,11 +553,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Verify initial state
       expect(agentMessage.status).toBe("created");
@@ -585,11 +615,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Verify initial state
       expect(agentMessage.status).toBe("created");
@@ -631,11 +664,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Act: Update status to cancelled
       await updateAgentMessageDBAndMemory(auth, {
@@ -675,11 +711,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Verify initial state
       expect(agentMessage.modelInteractionDurationMs).toBeNull();
@@ -718,11 +757,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Set initial duration in DB and memory
       await AgentMessageModel.update(
@@ -765,11 +807,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Act: Update with non-integer duration
       await updateAgentMessageDBAndMemory(auth, {
@@ -807,11 +852,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Verify initial state
       const initialMessage = await AgentMessageModel.findOne({
@@ -856,11 +904,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Set initial runIds
       await AgentMessageModel.update(
@@ -904,11 +955,14 @@ describe("updateAgentMessageDBAndMemory", () => {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],
       });
-      const { agentMessage } = await ConversationFactory.createAgentMessage({
-        workspace,
-        conversation,
-        agentConfig,
-      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
 
       // Verify initial state
       expect(agentMessage.prunedContext).toBeUndefined();

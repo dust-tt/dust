@@ -146,7 +146,7 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "Onboarding",
     color: buildColorClass("rose", 300),
   },
-  agent_copilot: { label: "Copilot", color: buildColorClass("emerald", 300) },
+  agent_copilot: { label: "Sidekick", color: buildColorClass("emerald", 300) },
   project_butler: {
     label: "Project Butler",
     color: buildColorClass("gray", 300),

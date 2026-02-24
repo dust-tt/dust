@@ -595,10 +595,13 @@ export function useAuthContext(
   // Handle region redirect.
   useEffect(() => {
     if (regionRedirect && regionContext) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+      regionContext.setRegionInfo(
+        {
+          name: regionRedirect.region,
+          url: regionRedirect.url,
+        },
+        { keepInStorage: true }
+      );
       void mutate();
     }
   }, [regionRedirect, mutate, regionContext]);
@@ -702,10 +705,13 @@ export function useJoinData({
   // Handle region redirect.
   useEffect(() => {
     if (regionRedirect && regionContext) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+      regionContext.setRegionInfo(
+        {
+          name: regionRedirect.region,
+          url: regionRedirect.url,
+        },
+        { keepInStorage: true }
+      );
       void mutate();
     }
   }, [regionRedirect, mutate, regionContext]);

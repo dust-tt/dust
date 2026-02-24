@@ -11,7 +11,7 @@ import { Notification } from "@dust-tt/sparkle";
 import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
 import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/FetcherProvider";
-import { AuthProvider } from "@extension/ui/components/auth/AuthProvider";
+import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
@@ -53,13 +53,13 @@ const AppWrapper = () => {
   return (
     <FrontContextProvider>
       <FrontPlatformProvider>
-        <AuthProvider>
+        <ExtensionAuthProvider>
           <ExtensionFetcherProvider>
             <Notification.Area>
               <RouterProvider router={router} key="front-router" />
             </Notification.Area>
           </ExtensionFetcherProvider>
-        </AuthProvider>
+        </ExtensionAuthProvider>
       </FrontPlatformProvider>
     </FrontContextProvider>
   );

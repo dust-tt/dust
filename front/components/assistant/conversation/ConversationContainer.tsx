@@ -33,14 +33,20 @@ interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
+  conversationId?: string | null;
 }
 
 export function ConversationContainerVirtuoso({
   owner,
   subscription,
   user,
+  conversationId: conversationIdProp,
 }: ConversationContainerProps) {
-  const activeConversationId = useActiveConversationId();
+  const conversationIdFromRouter = useActiveConversationId();
+  const activeConversationId =
+    conversationIdProp !== undefined
+      ? conversationIdProp
+      : conversationIdFromRouter;
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
 
@@ -153,6 +159,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           conversationId={activeConversationId}
           setPlanLimitReached={setPlanLimitReached}
+          key={activeConversationId}
         />
       ) : (
         <>

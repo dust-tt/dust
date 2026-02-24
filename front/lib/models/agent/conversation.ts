@@ -552,6 +552,7 @@ export class AgentMessageFeedbackModel extends WorkspaceAwareModel<AgentMessageF
   declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare isConversationShared: boolean;
   declare dismissed: boolean;
 
@@ -600,6 +601,14 @@ AgentMessageFeedbackModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: "conversations",
+        key: "id",
+      },
+    },
   },
   {
     modelName: "agent_message_feedback",
@@ -620,9 +629,19 @@ AgentMessageFeedbackModel.init(
         name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
       },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
 );
+
+ConversationModel.hasMany(AgentMessageFeedbackModel, {
+  foreignKey: { name: "conversationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentMessageFeedbackModel.belongsTo(ConversationModel, {
+  as: "conversation",
+  foreignKey: { name: "conversationId", allowNull: true },
+});
 
 AgentMessageModel.hasMany(AgentMessageFeedbackModel, {
   as: "feedbacks",

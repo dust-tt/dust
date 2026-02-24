@@ -86,6 +86,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       baseUrl: this.baseUrl,
       retentionPeriodDays: this.retentionPeriodDays,
       lastGarbageCollectionTimestamp: this.lastGarbageCollectionTimestamp,
+      permissionProfileId: this.permissionProfileId,
     };
   }
 
@@ -123,6 +124,14 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
   async setLastSyncTimestamp(timestamp: number): Promise<void> {
     await this.update({
       lastSyncTimestamp: timestamp,
+    });
+  }
+
+  async setPermissionProfileId(
+    permissionProfileId: string | null
+  ): Promise<void> {
+    await this.update({
+      permissionProfileId,
     });
   }
 

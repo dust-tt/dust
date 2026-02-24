@@ -76,7 +76,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       title="What will this skill be used for?"
       titleClassName="heading-lg"
       fieldName={AGENT_FACING_DESCRIPTION_FIELD_NAME}
-      triggerValidationOnChange={false}
+      triggerValidationOnChange
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
         <div className="space-y-3">

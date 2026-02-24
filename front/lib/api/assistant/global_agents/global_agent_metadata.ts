@@ -453,8 +453,8 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
     case GLOBAL_AGENTS_SID.COPILOT:
       return {
         sId: GLOBAL_AGENTS_SID.COPILOT,
-        name: "copilot",
-        description: "An agent that suggest improvements for another agent.",
+        name: "Sidekick",
+        description: "An agent that suggests improvements for another agent.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.NOOP:

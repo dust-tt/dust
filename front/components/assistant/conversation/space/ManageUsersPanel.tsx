@@ -21,7 +21,7 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface UserRowData {
   sId: string;
@@ -128,20 +128,23 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
     }
   }, [members, mode]);
 
-  const toggleEditor = (userId: string) => {
-    if (!currentMembers.has(userId)) {
-      return;
-    }
-    setCurrentEditors((prev) => {
-      const next = new Set(prev);
-      if (next.has(userId)) {
-        next.delete(userId);
-      } else {
-        next.add(userId);
+  const toggleEditor = useCallback(
+    (userId: string) => {
+      if (!currentMembers.has(userId)) {
+        return;
       }
-      return next;
-    });
-  };
+      setCurrentEditors((prev) => {
+        const next = new Set(prev);
+        if (next.has(userId)) {
+          next.delete(userId);
+        } else {
+          next.add(userId);
+        }
+        return next;
+      });
+    },
+    [currentMembers]
+  );
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -289,9 +292,6 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const canSave =
     mode === "space-members" ? currentEditors.size > 0 && !isSaving : !isSaving;
 
-  const saveButtonLabel =
-    currentMembers.size > 0 ? `Save (${currentMembers.size})` : "Save";
-
   const sheetTitle =
     mode === "space-members"
       ? `Manage Members of ${props.space.name}`
@@ -339,7 +339,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             onClick: handleClose,
           }}
           rightButtonProps={{
-            label: saveButtonLabel,
+            label: "Save",
             variant: "highlight",
             onClick: handleSave,
             disabled: !canSave,

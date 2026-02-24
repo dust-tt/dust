@@ -1,15 +1,20 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
 import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
-import { canAccessFileInConversation } from "@app/lib/api/viz/files";
+import {
+  canAccessFileInConversation,
+  canAccessFileInProject,
+} from "@app/lib/api/viz/files";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { frameContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
@@ -131,7 +136,7 @@ async function handler(
   // Only allow conversation Frame files.
   if (
     !frameFile.isInteractiveContent ||
-    frameFile.contentType !== frameContentType
+    !isInteractiveContentType(frameFile.contentType)
   ) {
     return apiError(req, res, {
       status_code: 400,
@@ -167,14 +172,15 @@ async function handler(
     });
   }
 
-  // Frame must have a conversation context.
+  // Frame must have a conversation context or a project context
   const frameConversationId = frameFile.useCaseMetadata?.conversationId;
-  if (!frameConversationId) {
+  const frameSpaceId = frameFile.useCaseMetadata?.spaceId;
+  if (!frameConversationId && !frameSpaceId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Frame missing conversation context.",
+        message: "Frame missing conversation context or project context.",
       },
     });
   }
@@ -193,11 +199,23 @@ async function handler(
     });
   }
 
-  const hasAccessRes = await canAccessFileInConversation(
-    owner,
-    targetFile,
-    frameConversationId
-  );
+  let hasAccessRes: Result<true, Error>;
+  if (frameConversationId) {
+    hasAccessRes = await canAccessFileInConversation(owner, {
+      file: targetFile,
+      requestedConversationId: frameConversationId,
+    });
+  } else if (frameSpaceId) {
+    hasAccessRes = await canAccessFileInProject(owner, {
+      file: targetFile,
+      requestedProjectId: frameSpaceId,
+    });
+  } else {
+    assert(
+      false,
+      "Invalid file context: both conversationId and spaceId are missing"
+    );
+  }
 
   if (hasAccessRes.isErr()) {
     logger.error(

@@ -1,5 +1,7 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
+import logger from "@app/logger/logger";
+import type { Transaction } from "sequelize";
 
 const SPIN_WAIT_INTERVAL_MS = 100;
 
@@ -223,4 +225,36 @@ function unlock(key: string) {
     throw new Error("Unreachable: unlock called without lock");
   }
   unlockFn();
+}
+
+/**
+ * Defers cache invalidation until after a transaction commits.
+ * This prevents a race condition where:
+ * 1. Cache is invalidated inside the transaction
+ * 2. Another request reads the DB (can't see uncommitted data)
+ * 3. Cache repopulated with stale data
+ * 4. Transaction commits
+ * 5. Cache now has stale data for TTL duration
+ */
+export function invalidateCacheAfterCommit(
+  transaction: Transaction | undefined,
+  invalidateFn: () => Promise<void>
+): void {
+  if (transaction) {
+    transaction.afterCommit(() =>
+      invalidateFn().catch((err) => {
+        logger.error(
+          { panic: true, err },
+          "Failed to invalidate cache after transaction commit"
+        );
+      })
+    );
+  } else {
+    invalidateFn().catch((err) => {
+      logger.error(
+        { panic: true, err },
+        "Failed to invalidate cache after transaction commit"
+      );
+    });
+  }
 }

@@ -1,7 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isInteractiveContentFileContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import React from "react";
 
@@ -60,7 +60,7 @@ export function useAutoOpenInteractiveContent({
   const completedInteractiveFiles = React.useMemo(
     () =>
       agentMessage.generatedFiles.filter((file) =>
-        isInteractiveContentFileContentType(file.contentType)
+        isInteractiveContentType(file.contentType)
       ),
     [agentMessage.generatedFiles]
   );

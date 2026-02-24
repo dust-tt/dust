@@ -5,6 +5,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -18,6 +19,7 @@ export type ResourceTypeMap = {
   workspaces: LightWorkspaceType;
   data_sources: DataSourceResource;
   mcp_server_views: MCPServerViewResource;
+  skills: SkillResource;
   spaces: SpaceResource;
   data_source_views: DataSourceViewResource;
   triggers: TriggerResource;
@@ -52,6 +54,9 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       break;
     case "mcp_server_views":
       result = await MCPServerViewResource.fetchById(auth, resourceId);
+      break;
+    case "skills":
+      result = await SkillResource.fetchById(auth, resourceId);
       break;
     case "spaces":
       result = await SpaceResource.fetchById(auth, resourceId);

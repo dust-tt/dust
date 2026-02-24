@@ -5,11 +5,6 @@
     "node": "22.22.0"
   },
   "scripts": {
-    "format": "npm run format:lefthook -- .",
-    "format:lefthook": "biome format --write",
-    "format:check": "biome format .",
-    "lint": "npm run lint:lefthook -- .",
-    "lint:lefthook": "biome lint",
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",

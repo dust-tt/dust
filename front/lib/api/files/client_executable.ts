@@ -15,7 +15,7 @@ import logger from "@app/logger/logger";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
   INTERACTIVE_CONTENT_FILE_FORMATS,
-  isInteractiveContentFileContentType,
+  isInteractiveContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -96,7 +96,7 @@ export async function createClientExecutableFile(
     const workspace = auth.getNonNullableWorkspace();
 
     // Validate that the MIME type is supported.
-    if (!isInteractiveContentFileContentType(mimeType)) {
+    if (!isInteractiveContentType(mimeType)) {
       const supportedTypes = Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS).join(
         ", "
       );
@@ -272,7 +272,7 @@ export async function renameClientExecutableFile(
     return new Err({ message: `File not found: ${fileId}`, tracked: false });
   }
 
-  if (!isInteractiveContentFileContentType(fileResource.contentType)) {
+  if (!isInteractiveContentType(fileResource.contentType)) {
     return new Err({
       message: `File '${fileId}' is not an interactive content file (content type: ${fileResource.contentType})`,
       tracked: false,
@@ -336,7 +336,7 @@ export async function getClientExecutableFileContent(
     }
 
     // Check if it's an Interactive Content file.
-    if (!isInteractiveContentFileContentType(fileResource.contentType)) {
+    if (!isInteractiveContentType(fileResource.contentType)) {
       return new Err({
         message:
           `File '${fileId}' is not an Interactive Content file ` +

@@ -40,7 +40,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
         .number()
         .optional()
         .describe(
-          "The maximum number of characters to read. If not provided, reads all characters."
+          "The maximum number of characters to read. Capped to ~200K characters per call. " +
+            "If the file is larger, use offset to paginate."
         ),
       grep: z
         .string()

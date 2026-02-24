@@ -198,17 +198,16 @@ export class Authenticator {
         user,
         workspace: lightWorkspace,
       }),
-      GroupResource.listUserGroupModelIdsInWorkspace({
+      GroupResource.dangerouslyListUserGroupsForAuth({
         user,
         workspace: lightWorkspace,
-        dangerouslySkipMembershipCheck: true,
       }),
       SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
     ]);
 
     return {
       role,
-      groupModelIds: role === "none" ? [] : groupModelIds,
+      groupModelIds: Authenticator.isMember(role) ? groupModelIds : [],
       subscription,
     };
   }
@@ -256,16 +255,22 @@ export class Authenticator {
     });
   }
 
+  /**
+   * Checks if a role indicates workspace membership (role is not "none").
+   */
+  static isMember(role: RoleType): boolean {
+    return role !== "none";
+  }
+
   async refresh({ transaction }: { transaction?: Transaction } = {}) {
     if (this._user && this._workspace) {
-      this._groupModelIds =
-        await GroupResource.listUserGroupModelIdsInWorkspace({
-          user: this._user,
-          workspace: renderLightWorkspaceType({ workspace: this._workspace }),
-          transaction,
-        });
-    } else {
-      return;
+      this._groupModelIds = Authenticator.isMember(this._role)
+        ? await GroupResource.dangerouslyListUserGroupsForAuth({
+            user: this._user,
+            workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+            transaction,
+          })
+        : [];
     }
   }
 
@@ -679,11 +684,10 @@ export class Authenticator {
       return null;
     }
 
-    const groupModelIds = await GroupResource.listUserGroupModelIdsInWorkspace({
+    // Membership already verified above (activeMembership found).
+    const groupModelIds = await GroupResource.dangerouslyListUserGroupsForAuth({
       user,
-      workspace: renderLightWorkspaceType({ workspace: owner }),
-      // Membership already verified above (activeMembership found).
-      dangerouslySkipMembershipCheck: true,
+      workspace: owner,
     });
 
     return new Authenticator({

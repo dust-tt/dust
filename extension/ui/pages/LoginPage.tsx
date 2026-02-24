@@ -11,7 +11,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -26,7 +26,7 @@ export const LoginPage = () => {
     handleSelectWorkspace,
     isLoading,
     handleLogout,
-  } = useAuth();
+  } = useExtensionAuth();
 
   useEffect(() => {
     if (isAuthenticated && isUserSetup) {

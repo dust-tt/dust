@@ -864,6 +864,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       workspaceModelId: workspace.id,
     });
 
+    // We do not invalidate GroupMembership here
+    // because WorkspaceMembership is tested before GroupMembership
+    // in  lib/auth
+
     return new Ok({
       role: membership.role,
       startAt: membership.startAt,

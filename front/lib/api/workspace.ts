@@ -12,7 +12,10 @@ import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  type WorkspaceConversationKillSwitchValue,
+  WorkspaceResource,
+} from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -191,7 +194,7 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
-    groupKind?: Omit<GroupKind, "system">;
+    groupKind?: Exclude<GroupKind, "system">;
     buildersOnly?: boolean;
   },
   paginationParams: SearchMembersPaginationParams
@@ -405,13 +408,8 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
-export const KILL_SWITCH_METADATA_KEY = "killSwitched";
-export const FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
-export type WorkspaceConversationKillSwitchValue = {
-  conversationIds: string[];
-};
-export type WorkspaceKillSwitchValue =
-  | typeof FULL_WORKSPACE_KILL_SWITCH_VALUE
+type WorkspaceKillSwitchValue =
+  | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
 
 export interface WorkspaceMetadata {
@@ -421,42 +419,7 @@ export interface WorkspaceMetadata {
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
-}
-
-function isWorkspaceConversationKillSwitchValue(
-  killSwitched: unknown
-): killSwitched is WorkspaceConversationKillSwitchValue {
-  if (typeof killSwitched !== "object" || killSwitched === null) {
-    return false;
-  }
-
-  if (!("conversationIds" in killSwitched)) {
-    return false;
-  }
-
-  return (
-    Array.isArray(killSwitched.conversationIds) &&
-    killSwitched.conversationIds.every(
-      (conversationId) => typeof conversationId === "string"
-    )
-  );
-}
-
-export function isWorkspaceKillSwitchedForAllAPIs(
-  killSwitched: unknown
-): boolean {
-  return killSwitched === FULL_WORKSPACE_KILL_SWITCH_VALUE;
-}
-
-export function isWorkspaceConversationKillSwitched(
-  killSwitched: unknown,
-  conversationId: string
-): boolean {
-  if (!isWorkspaceConversationKillSwitchValue(killSwitched)) {
-    return false;
-  }
-
-  return killSwitched.conversationIds.includes(conversationId);
+  phoneCountry?: string;
 }
 
 export async function updateWorkspaceMetadata(

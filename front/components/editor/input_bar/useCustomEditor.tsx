@@ -26,9 +26,10 @@ import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
+const SUBMIT_COOLDOWN_MS = 750;
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -354,6 +355,7 @@ const useCustomEditor = ({
   );
 
   const editorService = useEditorService(editor);
+  const lastSubmitTimestampMsRef = useRef(0);
 
   // Set keydown handler after editor is initialized to avoid synchronous updates during render.
   useEffect(() => {
@@ -396,6 +398,18 @@ const useCustomEditor = ({
             if (isMobile(navigator)) {
               return false;
             }
+
+            if (event.repeat) {
+              event.preventDefault();
+              return true;
+            }
+
+            const nowMs = Date.now();
+            if (nowMs - lastSubmitTimestampMsRef.current < SUBMIT_COOLDOWN_MS) {
+              event.preventDefault();
+              return true;
+            }
+            lastSubmitTimestampMsRef.current = nowMs;
 
             // Prevent the default Enter key behavior
             event.preventDefault();

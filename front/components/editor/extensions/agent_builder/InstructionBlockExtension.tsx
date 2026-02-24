@@ -9,7 +9,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
 import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
-import { TextSelection } from "@tiptap/pm/state";
+import { Slice } from "@tiptap/pm/model";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
@@ -277,6 +278,73 @@ export const InstructionBlockExtension =
 
     addNodeView() {
       return ReactNodeViewRenderer(InstructionBlockComponent);
+    },
+
+    addProseMirrorPlugins() {
+      const instructionBlockName = this.name;
+
+      return [
+        new Plugin({
+          key: new PluginKey("instructionBlockCopyContext"),
+          props: {
+            // When copying text from inside an instruction block, ProseMirror
+            // builds a Slice that includes the surrounding nodes as context
+            // (stored in data-pm-slice). On paste, this context causes a new
+            // instruction block to be re-created, duplicating the XML tags.
+            //
+            // Copying just "test" from inside <example>test</example> produces:
+            //
+            //   instructionsRoot        (context — childCount: 1)
+            //     └── instructionBlock  (context — childCount: 1)
+            //           └── paragraph("test")  ← actual selection
+            //
+            // We strip the single-child instructionsRoot/instructionBlock
+            // wrappers so the clipboard only contains: paragraph("test").
+            //
+            // Copying the whole block (including the XML tag) produces:
+            //
+            //   instructionsRoot                (childCount: 3)
+            //     ├── paragraph()               ← before the block
+            //     ├── instructionBlock
+            //     │     └── paragraph("test")
+            //     └── paragraph()               ← after the block
+            //
+            // Here instructionsRoot has 3 children, so childCount !== 1 and
+            // the slice is left unchanged — the full block is preserved.
+            transformCopied(slice) {
+              let { content, openStart, openEnd } = slice;
+
+              // Peel off wrapper nodes that are instructionsRoot or
+              // instructionBlock when they are part of the open (context) portion
+              // of the slice — i.e. not explicitly selected.
+              while (openStart > 0 && openEnd > 0 && content.childCount === 1) {
+                if (!content.firstChild) {
+                  break;
+                }
+                const firstChild = content.firstChild;
+                const name = firstChild.type.name;
+
+                if (
+                  name !== instructionBlockName &&
+                  name !== "instructionsRoot"
+                ) {
+                  break;
+                }
+
+                content = firstChild.content;
+                openStart--;
+                openEnd--;
+              }
+
+              if (content !== slice.content) {
+                return new Slice(content, openStart, openEnd);
+              }
+
+              return slice;
+            },
+          },
+        }),
+      ];
     },
 
     addInputRules() {

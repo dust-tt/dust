@@ -13,9 +13,6 @@
     "build:dev": "NODE_ENV=development tsup",
     "build": "NODE_ENV=development tsup",
     "dev": "NODE_ENV=development tsup --watch",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "start": "node dist/index.js"
   },
   "keywords": ["dust", "cli", "terminal", "command-line"],
@@ -28,7 +25,7 @@
   },
   "dependencies": {
     "@dust-tt/client": "^1.2.6",
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@modelcontextprotocol/sdk": "^1.27.0",
     "chalk": "^5.4.1",
     "clipboardy": "^4.0.0",
     "diff": "^8.0.2",
@@ -52,13 +49,13 @@
     "zod": "^3.25.76"
   },
   "engines": {
-    "node": "20.19.2"
+    "node": "22.22.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/lodash": "^4.17.16",
     "@types/mime-types": "^3.0.1",
-    "@types/node": "^20.19.2",
+    "@types/node": "^22.19.11",
     "@types/react": "^18.3.18",
     "@types/update-notifier": "^6.0.8",
     "diff": "^8.0.2",

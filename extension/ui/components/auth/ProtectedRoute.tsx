@@ -1,9 +1,9 @@
-import type { ExtensionWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@app/types/user";
 import { classNames, Spinner } from "@dust-tt/sparkle";
 import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { StoredUser } from "@extension/shared/services/auth";
-import { useAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -27,7 +27,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     user,
     workspace,
     handleLogout,
-  } = useAuth();
+  } = useExtensionAuth();
 
   const navigate = useNavigate();
 

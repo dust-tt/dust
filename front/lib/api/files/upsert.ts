@@ -25,7 +25,7 @@ import type {
   FileUseCase,
 } from "@app/types/files";
 import {
-  isInteractiveContentFileContentType,
+  isInteractiveContentType,
   isSupportedAudioContentType,
   isSupportedImageContentType,
   TABLE_PREFIX,
@@ -428,7 +428,7 @@ const getProcessingFunction = ({
   }
 
   // Interactive Content files should not be processed.
-  if (isInteractiveContentFileContentType(contentType)) {
+  if (isInteractiveContentType(contentType)) {
     return undefined;
   }
 

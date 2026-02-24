@@ -4,7 +4,7 @@ import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]"
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import { CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -60,7 +60,7 @@ export function getDefaultAgentFormData({
   user: UserType;
   owner: WorkspaceType;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
+  const preferredModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
   const fallbackModel = getLargeWhitelistedModel(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.

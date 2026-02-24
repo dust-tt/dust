@@ -1,0 +1,24 @@
+name: Lint & Build (sparkle)
+
+on:
+  push:
+    paths:
+      - package-lock.json
+      - sparkle/**
+      - .github/workflows/build-and-lint-sparkle.yml
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: '22.22.0'
+      - name: Build
+        run: npm -w sparkle run build

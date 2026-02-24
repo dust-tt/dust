@@ -1,7 +1,10 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
-import { frameContentType } from "@app/types/files";
+import {
+  frameSlideshowContentType,
+  isInteractiveContentType,
+} from "@app/types/files";
 import { getTime } from "@app/types/shared/utils/date_utils";
 import {
   ActionFrameIcon,
@@ -15,7 +18,11 @@ import {
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
 ) {
-  if (file.contentType === frameContentType) {
+  if (file.contentType === frameSlideshowContentType) {
+    return "Presentation";
+  }
+
+  if (isInteractiveContentType(file.contentType)) {
     return "Frames";
   }
 

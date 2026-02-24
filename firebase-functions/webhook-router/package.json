@@ -9,9 +9,6 @@
     "build:watch": "tsc --watch",
     "start": "npm run build && firebase emulators:start --only functions,storage,database",
     "dev": "npm run start",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "deploy": "./deploy.sh"
   },
   "author": "Dust",

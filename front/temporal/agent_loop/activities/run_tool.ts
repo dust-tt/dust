@@ -13,7 +13,7 @@ import type {
   AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopData,
+  getAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -50,16 +50,23 @@ export async function runToolActivity(
   const auth = authResult.value;
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
-  // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
-  // during the same step. Each tool would otherwise fetch the same conversation independently.
-  const runAgentDataRes = await getAgentLoopData(authType, {
-    ...runAgentArgs,
-    caching: {
-      useCachedGetConversation: true,
-      unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
-      ttlMs: CONVERSATION_CACHE_TTL_MS,
-    },
-  });
+  const [runAgentDataRes, action] = await startActiveObservation(
+    "get-agent-loop-data",
+    () =>
+      Promise.all([
+        // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
+        // during the same step. Each tool would otherwise fetch the same conversation independently.
+        getAgentLoopDataWithAuth(auth, {
+          ...runAgentArgs,
+          caching: {
+            useCachedGetConversation: true,
+            unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
+            ttlMs: CONVERSATION_CACHE_TTL_MS,
+          },
+        }),
+        AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
+      ])
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
@@ -73,6 +80,7 @@ export async function runToolActivity(
     }
     throw runAgentDataRes.error;
   }
+  assert(action, "Action not found");
 
   // Heartbeating here as retrieving the agent loop data takes some time.
   heartbeat();
@@ -95,12 +103,6 @@ export async function runToolActivity(
       // sliceConversationForAgentMessage)
       step: step + 1,
     });
-
-  const action = await AgentMCPActionResource.fetchByModelIdWithAuth(
-    auth,
-    actionId
-  );
-  assert(action, "Action not found");
 
   return startActiveObservation(
     `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,

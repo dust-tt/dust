@@ -5,16 +5,16 @@ import { useEffect, useState } from "react";
 // @ts-expect-error - import.meta.glob is a Vite feature
 const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
-// Extract story names and components
-const stories = Object.entries(storyModules).map(
-  ([path, module]: [string, any]) => {
+// Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Projects)
+const stories = Object.entries(storyModules)
+  .map(([path, module]: [string, any]) => {
     const name = path.split("/").pop()?.replace(".tsx", "") || "";
     return {
       name,
       component: (module as { default: React.ComponentType }).default,
     };
-  }
-);
+  })
+  .filter((s) => s.name !== "TemplateSelection");
 
 function StoryList({
   onSelectStory,

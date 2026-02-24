@@ -4,6 +4,7 @@ import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  isDustCompanyPlan,
   isEntreprisePlanPrefix,
   isFriendsAndFamilyPlan,
 } from "@app/lib/plans/plan_codes";
@@ -12,7 +13,10 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { frameContentType } from "@app/types/files";
+import {
+  frameSlideshowContentType,
+  isInteractiveContentType,
+} from "@app/types/files";
 import type { PdfOptions } from "@app/types/shared/document_renderer";
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import { isString } from "@app/types/shared/utils/general";
@@ -20,7 +24,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const PostPdfExportBodySchema = z.object({
-  orientation: z.enum(["portrait", "landscape"]).optional().default("portrait"),
+  orientation: z.enum(["portrait", "landscape"]).optional(),
 });
 
 async function handler(
@@ -84,7 +88,10 @@ async function handler(
   }
 
   // Only allow Frame files.
-  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
+  if (
+    !file.isInteractiveContent ||
+    !isInteractiveContentType(file.contentType)
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -131,6 +138,7 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
   const user = auth.user();
   const accessToken = generateVizAccessToken({
+    contentType: file.contentType,
     fileToken: shareToken,
     userId: user?.sId,
     shareScope: shareInfo.scope,
@@ -157,21 +165,29 @@ async function handler(
   });
   const targetUrl = `${vizUrl}/content?${params.toString()}`;
 
-  const { orientation } = bodyResult.data;
+  // Default to landscape for slideshow content, portrait for regular frames.
+  const orientation =
+    bodyResult.data.orientation ??
+    (file.contentType === frameSlideshowContentType ? "landscape" : "portrait");
+
+  const isSlideshow = file.contentType === frameSlideshowContentType;
 
   // Only show footer for non-Enterprise plans and non-FriendsAndFamily plans.
   const plan = auth.plan();
   const shouldHideFooter =
     plan &&
-    (isEntreprisePlanPrefix(plan.code) || isFriendsAndFamilyPlan(plan.code));
+    (isDustCompanyPlan(plan.code) ||
+      isEntreprisePlanPrefix(plan.code) ||
+      isFriendsAndFamilyPlan(plan.code));
   const showFooter = !shouldHideFooter;
 
   const renderer = new DocumentRenderer(documentRendererUrl, logger);
 
+  // Slideshows use zero margins (full-bleed slides).
   const options: PdfOptions = showFooter
     ? {
         footerHtml: PDF_FOOTER_HTML,
-        marginBottom: "1cm", // Space for footer.
+        marginBottom: isSlideshow ? "0" : "1cm",
       }
     : {};
 

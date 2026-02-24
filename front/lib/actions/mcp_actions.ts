@@ -52,6 +52,7 @@ import {
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
+import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
@@ -74,7 +75,9 @@ import {
   DEFAULT_MCP_TOOL_RETRY_POLICY,
   getRetryPolicyFromToolConfiguration,
 } from "@app/lib/api/mcp";
+import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -606,6 +609,52 @@ export async function* tryCallMCPTool(
             `The tool execution timed out, error: ${error.message}`,
             { cause: error }
           );
+        }
+      }
+    }
+
+    // When the MCP SDK receives a 401/403 from the remote server during a
+    // tool call (e.g., StreamableHTTP where each call is a separate HTTP
+    // request), it calls unimplemented methods on MCPOAuthProvider which
+    // throw MCPOAuthProviderError. Trigger re-authentication.
+    if (
+      error instanceof MCPOAuthProviderError &&
+      isServerSideMCPToolConfiguration(toolConfiguration)
+    ) {
+      const mcpServerView = await MCPServerViewResource.fetchById(
+        auth,
+        toolConfiguration.mcpServerViewId
+      );
+      if (mcpServerView) {
+        const authorization = mcpServerView.toJSON().server.authorization;
+        if (authorization) {
+          // Invalidate the cached access token so the next connection attempt
+          // fetches a fresh token after the user re-authenticates.
+          const connectionType =
+            mcpServerView.oAuthUseCase === "personal_actions"
+              ? "personal"
+              : "workspace";
+          const connection = await MCPServerConnectionResource.findByMCPServer(
+            auth,
+            {
+              mcpServerId: mcpServerView.mcpServerId,
+              connectionType,
+            }
+          );
+          if (connection.isOk() && connection.value.connectionId) {
+            invalidateOAuthConnectionAccessTokenCache(
+              connection.value.connectionId
+            );
+          }
+
+          return {
+            // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
+            isError: false,
+            content: makePersonalAuthenticationError(
+              authorization.provider,
+              authorization.scope
+            ).content,
+          };
         }
       }
     }

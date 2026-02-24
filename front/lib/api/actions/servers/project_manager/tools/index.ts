@@ -80,10 +80,19 @@ export function createProjectManagerTools(
             return sourceFileRes;
           }
 
+          const sourceFile = sourceFileRes.value;
+          const sourceConversationId = sourceFile.useCaseMetadata
+            ?.conversationId
+            ? sourceFile.useCaseMetadata.sourceConversationId
+            : undefined;
+
           const copyResult = await FileResource.copy(auth, {
             sourceId: sourceFileId,
             useCase: "project_context",
-            useCaseMetadata: { spaceId: space.sId },
+            useCaseMetadata: {
+              spaceId: space.sId,
+              sourceConversationId,
+            },
           });
 
           if (copyResult.isErr()) {
@@ -131,7 +140,11 @@ export function createProjectManagerTools(
             fileName,
             fileSize: Buffer.byteLength(content, "utf-8"),
             useCase: "project_context",
-            useCaseMetadata: { spaceId: space.sId },
+            useCaseMetadata: {
+              spaceId: space.sId,
+              sourceConversationId:
+                agentLoopContext?.runContext?.conversation?.sId,
+            },
           });
 
           // Upload content to GCS.
@@ -158,13 +171,15 @@ export function createProjectManagerTools(
           // Don't fail - file is uploaded, just not indexed yet.
         }
 
+        // Adapt the message based on the input
+        let message: string;
+        if (sourceFileId) {
+          message = `File "${fileName}" (${file.sId}) created in project context successfully by copying from the source file (${sourceFileId}). These 2 files are NOT the same, you must use the appropriate file ID depending if you want to work on the original file or the new one.`;
+        } else {
+          message = `File "${fileName}" (${file.sId}) created in project context successfully from provided content.`;
+        }
+
         return new Ok([
-          ...makeSuccessResponse({
-            success: true,
-            fileId: file.sId,
-            fileName: file.fileName,
-            message: `File "${fileName}" added to project context successfully.`,
-          }),
           {
             type: "resource" as const,
             resource: {
@@ -174,7 +189,7 @@ export function createProjectManagerTools(
               title: file.fileName,
               contentType: file.contentType,
               snippet: null,
-              text: `File "${file.fileName}" added to project context.`,
+              text: message,
             },
           },
         ]);
@@ -267,12 +282,6 @@ export function createProjectManagerTools(
         }
 
         return new Ok([
-          ...makeSuccessResponse({
-            success: true,
-            fileId: file.sId,
-            fileName: file.fileName,
-            message: `File "${file.fileName}" updated successfully.`,
-          }),
           {
             type: "resource" as const,
             resource: {
@@ -282,7 +291,7 @@ export function createProjectManagerTools(
               title: file.fileName,
               contentType: file.contentType,
               snippet: null,
-              text: `File "${file.fileName}" updated in project context.`,
+              text: `File "${file.fileName}" (${file.sId}) updated in project context successfully.`,
             },
           },
         ]);

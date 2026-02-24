@@ -30,6 +30,7 @@ export type FileUseCase =
 export type FileUseCaseMetadata = {
   conversationId?: string;
   spaceId?: string;
+  sourceConversationId?: string;
   generatedTables?: string[];
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
@@ -363,6 +364,7 @@ export const FILE_FORMATS = {
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
+export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
 
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
@@ -374,11 +376,12 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
     exts: [".js", ".jsx", ".ts", ".tsx"],
     isSafeToDisplay: true,
   },
+  [frameSlideshowContentType]: {
+    cat: "code",
+    exts: [".js", ".jsx", ".ts", ".tsx"],
+    isSafeToDisplay: true,
+  },
 } as const satisfies Record<string, FileFormat>;
-
-export function isInteractiveContentContentType(contentType: string): boolean {
-  return Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS).includes(contentType);
-}
 
 // Define a type for Interactive Content file content types.
 export type InteractiveContentFileContentType =
@@ -443,7 +446,7 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isInteractiveContentFileContentType(
+export function isInteractiveContentType(
   contentType: string
 ): contentType is InteractiveContentFileContentType {
   return !!INTERACTIVE_CONTENT_FILE_FORMATS[
@@ -455,7 +458,7 @@ export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isInteractiveContentFileContentType(contentType) ||
+    isInteractiveContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }

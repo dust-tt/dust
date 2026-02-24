@@ -5,6 +5,8 @@ import {
   BlogLayout,
   BlogPostGrid,
   BlogTagFilter,
+  SEO_PAGE_SIZE,
+  SeoArticleList,
 } from "@app/components/blog/BlogComponents";
 import { BlogPagination } from "@app/components/blog/BlogPagination";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -22,6 +24,7 @@ import type { ReactElement } from "react";
 
 interface BlogPageProps {
   posts: BlogPostSummary[];
+  seoPosts: BlogPostSummary[];
   currentPage: number;
   totalPages: number;
   totalPosts: number;
@@ -71,39 +74,41 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
 
   const allPosts = result.value;
 
-  // Extract all tags
+  // Split into regular and SEO articles.
+  const regularPosts = allPosts.filter((post) => !post.isSeoArticle);
+  const seoPosts = allPosts.filter((post) => post.isSeoArticle);
+
+  // Extract all tags.
   const tagSet = new Set<string>();
   allPosts.forEach((post) => post.tags.forEach((tag) => tagSet.add(tag)));
   const allTags = Array.from(tagSet).sort();
 
-  // Featured post is the first non-SEO post (shown on page 1 at /blog).
-  const featuredPost = allPosts.find((post) => !post.isSeoArticle);
+  // Featured post is the first regular post (shown on page 1 at /blog).
+  const featuredPost = regularPosts[0];
 
-  // Remaining posts exclude the featured post.
+  // Remaining regular posts exclude the featured post.
   const remainingPosts = featuredPost
-    ? allPosts.filter((post) => post.id !== featuredPost.id)
-    : allPosts;
+    ? regularPosts.filter((post) => post.id !== featuredPost.id)
+    : regularPosts;
   const totalPages = Math.ceil(remainingPosts.length / BLOG_PAGE_SIZE);
 
-  // If page is beyond available pages, 404
+  // If page is beyond available pages, 404.
   if (page > totalPages) {
     return { notFound: true };
   }
 
   const startIndex = (page - 1) * BLOG_PAGE_SIZE;
-  // Sort within each page: regular articles first, SEO articles at the bottom.
-  const posts = remainingPosts
-    .slice(startIndex, startIndex + BLOG_PAGE_SIZE)
-    .sort((a, b) => {
-      if (a.isSeoArticle !== b.isSeoArticle) {
-        return a.isSeoArticle ? 1 : -1;
-      }
-      return 0;
-    });
+  const posts = remainingPosts.slice(startIndex, startIndex + BLOG_PAGE_SIZE);
+  const seoStartIndex = (page - 1) * SEO_PAGE_SIZE;
+  const paginatedSeoPosts = seoPosts.slice(
+    seoStartIndex,
+    seoStartIndex + SEO_PAGE_SIZE
+  );
 
   return {
     props: {
       posts,
+      seoPosts: paginatedSeoPosts,
       currentPage: page,
       totalPages,
       totalPosts: remainingPosts.length,
@@ -117,6 +122,7 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogPage({
   posts,
+  seoPosts,
   currentPage,
   totalPages,
   totalPosts,
@@ -185,6 +191,8 @@ export default function BlogPage({
             />
           </div>
         )}
+
+        <SeoArticleList posts={seoPosts} />
       </BlogLayout>
     </>
   );

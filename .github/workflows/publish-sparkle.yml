@@ -48,11 +48,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: '22.22.0'
           registry-url: "https://registry.npmjs.org"
-
-      - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest
 
       - name: Configure git
         run: |
@@ -86,11 +83,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: '22.22.0'
           registry-url: "https://registry.npmjs.org"
-
-      - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest
 
       - name: Generate RC version
         working-directory: sparkle

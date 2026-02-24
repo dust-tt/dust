@@ -13,9 +13,7 @@
     "build": "npm run build:poke && npm run build:app",
     "preview:poke": "VITE_APP_NAME=poke vite preview",
     "preview:app": "VITE_APP_NAME=app vite preview",
-    "lint": "biome lint .",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
+    "tsgo": "tsgo"
   },
   "dependencies": {
     "@dust-tt/front": "*",

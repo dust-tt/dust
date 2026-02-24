@@ -8,6 +8,7 @@
 const SSE_REDIRECT_PATTERNS = [
   /^\/api\/(v1\/)?w\/[^/]+\/assistant\/conversations\/[^/]+\/events$/,
   /^\/api\/(v1\/)?w\/[^/]+\/assistant\/conversations\/[^/]+\/messages\/[^/]+\/events$/,
+  /^\/api\/(v1\/)?w\/[^/]+\/mcp\/requests$/,
 ];
 
 /**

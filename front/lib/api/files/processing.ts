@@ -13,7 +13,7 @@ import type {
 } from "@app/types/files";
 import {
   extensionsForContentType,
-  isInteractiveContentFileContentType,
+  isInteractiveContentType,
   isSupportedAudioContentType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
@@ -427,7 +427,7 @@ const getProcessingFunction = ({
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
   // Interactive Content file types are not processed.
-  if (isInteractiveContentFileContentType(contentType)) {
+  if (isInteractiveContentType(contentType)) {
     return undefined;
   }
 

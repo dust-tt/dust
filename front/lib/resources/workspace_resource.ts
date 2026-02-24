@@ -18,7 +18,9 @@ import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types"
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isStringArray } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
@@ -30,6 +32,14 @@ import type {
 import { Op } from "sequelize";
 
 const WORKSPACE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE =
+  "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks.";
+const INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX =
+  "Invalid workspace kill switch metadata:";
+
+export type WorkspaceConversationKillSwitchValue = {
+  conversationIds: string[];
+};
 
 // We use this to avoid accidentaly inflating the cache footprint
 // Add new attributes with caution
@@ -55,11 +65,29 @@ type CachedWorkspaceData = {
 export interface WorkspaceResource
   extends ReadonlyAttributesType<WorkspaceModel> {}
 
+export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
+  "block",
+  "unblock",
+] as const;
+export type WorkspaceConversationKillSwitchOperation =
+  (typeof WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS)[number];
+export const WORKSPACE_KILL_SWITCH_OPERATIONS = ["block", "unblock"] as const;
+export type WorkspaceKillSwitchOperation =
+  (typeof WORKSPACE_KILL_SWITCH_OPERATIONS)[number];
+export type UpdateWorkspaceKillSwitchResult = {
+  wasUpdated: boolean;
+};
+export type UpdateWorkspaceConversationKillSwitchResult = {
+  wasUpdated: boolean;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static model: ModelStatic<WorkspaceModel> = WorkspaceModel;
   private static workspaceDomainModel: ModelStaticWorkspaceAware<WorkspaceHasDomainModel> =
     WorkspaceHasDomainModel;
+  static readonly KILL_SWITCH_METADATA_KEY = "killSwitched";
+  static readonly FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
 
   readonly blob: Attributes<WorkspaceModel>;
 
@@ -73,6 +101,37 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   private static readonly workspaceCacheKeyResolver = (wId: string) =>
     `workspace:sid:${wId}`;
+
+  static isWorkspaceConversationKillSwitchValue(
+    killSwitched: unknown
+  ): killSwitched is WorkspaceConversationKillSwitchValue {
+    if (typeof killSwitched !== "object" || killSwitched === null) {
+      return false;
+    }
+
+    if (!("conversationIds" in killSwitched)) {
+      return false;
+    }
+
+    return isStringArray(killSwitched.conversationIds);
+  }
+
+  static isWorkspaceKillSwitchedForAllAPIs(killSwitched: unknown): boolean {
+    return killSwitched === WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE;
+  }
+
+  static isWorkspaceConversationKillSwitched(
+    killSwitched: unknown,
+    conversationId: string
+  ): boolean {
+    if (
+      !WorkspaceResource.isWorkspaceConversationKillSwitchValue(killSwitched)
+    ) {
+      return false;
+    }
+
+    return killSwitched.conversationIds.includes(conversationId);
+  }
 
   private static async _fetchByIdUncached(
     wId: string
@@ -520,6 +579,142 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
+  }
+
+  async updateConversationKillSwitch({
+    conversationId,
+    operation,
+  }: {
+    conversationId: string;
+    operation: WorkspaceConversationKillSwitchOperation;
+  }): Promise<Result<UpdateWorkspaceConversationKillSwitchResult, Error>> {
+    const currentKillSwitch =
+      this.metadata?.[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+    if (
+      WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(currentKillSwitch)
+    ) {
+      return new Err(new Error(WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE));
+    }
+    if (
+      currentKillSwitch !== undefined &&
+      !WorkspaceResource.isWorkspaceConversationKillSwitchValue(
+        currentKillSwitch
+      )
+    ) {
+      return new Err(
+        new Error(
+          `${INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX} ${JSON.stringify(currentKillSwitch)}`
+        )
+      );
+    }
+
+    const conversationIds = currentKillSwitch?.conversationIds ?? [];
+    const wasBlockedBefore = conversationIds.includes(conversationId);
+
+    let metadata: Record<string, string | number | boolean | object>;
+
+    switch (operation) {
+      case "block": {
+        if (wasBlockedBefore) {
+          return new Ok({
+            wasUpdated: false,
+          });
+        }
+
+        metadata = {
+          ...(this.metadata ?? {}),
+          [WorkspaceResource.KILL_SWITCH_METADATA_KEY]: {
+            conversationIds: [...conversationIds, conversationId],
+          },
+        };
+        break;
+      }
+
+      case "unblock": {
+        if (!wasBlockedBefore) {
+          return new Ok({
+            wasUpdated: false,
+          });
+        }
+
+        const updatedConversationIds = conversationIds.filter(
+          (cId) => cId !== conversationId
+        );
+        metadata = { ...(this.metadata ?? {}) };
+        if (updatedConversationIds.length === 0) {
+          delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+        } else {
+          metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY] = {
+            conversationIds: updatedConversationIds,
+          };
+        }
+        break;
+      }
+    }
+
+    const updateResult = await WorkspaceResource.updateMetadata(
+      this.id,
+      metadata
+    );
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
+
+    return new Ok({
+      wasUpdated: true,
+    });
+  }
+
+  async updateWorkspaceKillSwitch({
+    operation,
+  }: {
+    operation: WorkspaceKillSwitchOperation;
+  }): Promise<Result<UpdateWorkspaceKillSwitchResult, Error>> {
+    const currentKillSwitch =
+      this.metadata?.[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+    const isFullyBlocked =
+      WorkspaceResource.isWorkspaceKillSwitchedForAllAPIs(currentKillSwitch);
+    let metadata: Record<string, string | number | boolean | object>;
+
+    switch (operation) {
+      case "block":
+        if (isFullyBlocked) {
+          return new Ok({
+            wasUpdated: false,
+          });
+        }
+
+        metadata = {
+          ...(this.metadata ?? {}),
+          [WorkspaceResource.KILL_SWITCH_METADATA_KEY]:
+            WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE,
+        };
+        break;
+      case "unblock":
+        if (!isFullyBlocked) {
+          return new Ok({
+            wasUpdated: false,
+          });
+        }
+
+        metadata = { ...(this.metadata ?? {}) };
+        delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
+        break;
+      default:
+        return assertNever(operation);
+    }
+
+    const updateResult = await WorkspaceResource.updateMetadata(
+      this.id,
+      metadata
+    );
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
+
+    return new Ok({
+      wasUpdated: true,
+    });
   }
 
   static async updateWorkOSOrganizationId(

@@ -2,9 +2,11 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -18,7 +20,13 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentMessageType,
+  ConversationType,
+} from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TOOLS } from "./tools";
@@ -74,6 +82,44 @@ function createTestExtra(auth: Authenticator, agentLoopContext?: unknown) {
     auth,
     agentLoopContext,
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+}
+
+async function createFeedback({
+  workspace,
+  agentConfiguration,
+  conversation,
+  agentMessage,
+  user,
+  thumbDirection,
+}: {
+  workspace: LightWorkspaceType;
+  agentConfiguration: AgentConfigurationType;
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
+  user: UserResource;
+  thumbDirection: "up" | "down";
+}) {
+  return AgentMessageFeedbackResource.makeNew({
+    workspaceId: workspace.id,
+    agentConfigurationId: agentConfiguration.sId,
+    agentConfigurationVersion: agentConfiguration.version,
+    conversationId: conversation.id,
+    agentMessageId: agentMessage.agentMessageId,
+    userId: user.id,
+    thumbDirection,
+    content: thumbDirection === "up" ? "good" : "bad",
+    isConversationShared: true,
+    dismissed: false,
+  });
+}
+
+// Restore the real getAgentFeedbacks implementation (globally mocked above).
+async function useRealGetAgentFeedbacks() {
+  const { getAgentFeedbacks: realGetAgentFeedbacks } = await vi.importActual<
+    typeof import("@app/lib/api/assistant/feedback")
+  >("@app/lib/api/assistant/feedback");
+  const { getAgentFeedbacks } = await import("@app/lib/api/assistant/feedback");
+  vi.mocked(getAgentFeedbacks).mockImplementation(realGetAgentFeedbacks);
 }
 
 describe("agent_copilot_context tools", () => {
@@ -570,12 +616,15 @@ describe("agent_copilot_context tools", () => {
     it("returns feedback when agent configuration ID is available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
-        "test-agent-id"
+        agentConfiguration.sId
       );
 
       // Set up the mock to return an empty array of feedbacks.
@@ -602,8 +651,8 @@ describe("agent_copilot_context tools", () => {
         if (content.type === "text") {
           const parsed = JSON.parse(content.text);
           expect(parsed.summary).toBeDefined();
-          expect(parsed.feedbacks).toBeDefined();
-          expect(Array.isArray(parsed.feedbacks)).toBe(true);
+          expect(parsed.current_version_feedback).toBeDefined();
+          expect(Array.isArray(parsed.current_version_feedback)).toBe(true);
         }
       }
     });
@@ -611,12 +660,15 @@ describe("agent_copilot_context tools", () => {
     it("accepts limit parameter", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
-        "test-agent-id"
+        agentConfiguration.sId
       );
 
       const { getAgentFeedbacks } = await import(
@@ -648,12 +700,15 @@ describe("agent_copilot_context tools", () => {
     it("accepts filter parameter for active feedback", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
-        "test-agent-id"
+        agentConfiguration.sId
       );
 
       const { getAgentFeedbacks } = await import(
@@ -679,12 +734,15 @@ describe("agent_copilot_context tools", () => {
     it("accepts filter parameter for all feedback", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
-        "test-agent-id"
+        agentConfiguration.sId
       );
 
       const { getAgentFeedbacks } = await import(
@@ -705,6 +763,185 @@ describe("agent_copilot_context tools", () => {
           filter: "all",
         })
       );
+    });
+
+    it("only returns current version feedback when latestVersionOnly=true (default)", async () => {
+      await useRealGetAgentFeedbacks();
+
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const user = authenticator.getNonNullableUser();
+
+      const agentV0 =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const agentV1 = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agentV0.sId,
+        { instructions: "Updated instructions" }
+      );
+
+      // Create a conversation with two exchanges to get two agent messages.
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agentV1.sId,
+        messagesCreatedAt: [new Date(), new Date()],
+      });
+
+      const conversationRes = await getConversation(
+        authenticator,
+        conversation.sId
+      );
+      expect(conversationRes.isOk()).toBe(true);
+      if (!conversationRes.isOk()) {
+        return;
+      }
+      const agentMessages = conversationRes.value.content
+        .flat()
+        .filter((m) => m.type === "agent_message");
+
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV0,
+        conversation,
+        agentMessage: agentMessages[0],
+        user,
+        thumbDirection: "down",
+      });
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV1,
+        conversation,
+        agentMessage: agentMessages[1],
+        user,
+        thumbDirection: "up",
+      });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentV1.sId
+      );
+
+      const tool = getToolByName("get_agent_feedback");
+      const result = await tool.handler(
+        { latestVersionOnly: true },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+
+          // Only current version feedback.
+          expect(parsed.current_version_feedback).toHaveLength(1);
+          expect(parsed.current_version_feedback[0].thumbDirection).toBe("up");
+          expect(parsed.previous_versions_feedback).toBeUndefined();
+
+          expect(parsed.summary.total).toBe(1);
+          expect(parsed.summary.positive).toBe(1);
+          expect(parsed.summary.negative).toBe(0);
+        }
+      }
+    });
+
+    it("returns all versions feedback when latestVersionOnly=false", async () => {
+      await useRealGetAgentFeedbacks();
+
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const user = authenticator.getNonNullableUser();
+
+      const agentV0 =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const agentV1 = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agentV0.sId,
+        { instructions: "Updated instructions" }
+      );
+
+      // Create a conversation with three exchanges to get three agent messages.
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agentV1.sId,
+        messagesCreatedAt: [new Date(), new Date(), new Date()],
+      });
+      const conversationRes = await getConversation(
+        authenticator,
+        conversation.sId
+      );
+      expect(conversationRes.isOk()).toBe(true);
+      if (!conversationRes.isOk()) {
+        return;
+      }
+      const agentMessages = conversationRes.value.content
+        .flat()
+        .filter((m) => m.type === "agent_message");
+
+      // Create two feedbacks on v0 (old version).
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV0,
+        conversation,
+        agentMessage: agentMessages[0],
+        user,
+        thumbDirection: "down",
+      });
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV0,
+        conversation,
+        agentMessage: agentMessages[1],
+        user,
+        thumbDirection: "up",
+      });
+
+      // Create one feedback on v1 (current version).
+      await createFeedback({
+        workspace,
+        agentConfiguration: agentV1,
+        conversation,
+        agentMessage: agentMessages[2],
+        user,
+        thumbDirection: "up",
+      });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentV1.sId
+      );
+
+      const tool = getToolByName("get_agent_feedback");
+      const result = await tool.handler(
+        { latestVersionOnly: false },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+
+          // Current version feedback.
+          expect(parsed.current_version_feedback).toHaveLength(1);
+          expect(parsed.current_version_feedback[0].thumbDirection).toBe("up");
+
+          // Previous versions feedback should include old version items.
+          expect(parsed.previous_versions_feedback).toHaveLength(2);
+
+          // Summary should count all feedback.
+          expect(parsed.summary.total).toBe(3);
+          expect(parsed.summary.positive).toBe(2);
+          expect(parsed.summary.negative).toBe(1);
+        }
+      }
     });
   });
 
@@ -1556,7 +1793,8 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(null);
 
       const tool = getToolByName("list_suggestions");
       const result = await tool.handler({}, createTestExtra(authenticator));
@@ -1570,7 +1808,8 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(
         "test-agent-id"
       );
 
@@ -1596,7 +1835,8 @@ describe("agent_copilot_context tools", () => {
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
-      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+      // Reset and set return value to ensure isolation from other tests.
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(
         "test-agent-id"
       );
 

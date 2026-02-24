@@ -485,6 +485,10 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
             .describe(
               "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."
             ),
+          hubspot_owner_id: z
+            .string()
+            .optional()
+            .describe("The ID of the note's owner/creator."),
         })
         .describe("Properties for the note."),
       associations: noteAssociationsSchema

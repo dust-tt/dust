@@ -229,8 +229,14 @@ function renderNode(
       ? INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
       : node.mime_type;
 
+  const tableId =
+    node.node_type === "table" && dataSourceId
+      ? `table-${dataSourceId}-${node.node_id}`
+      : null;
+
   return {
     nodeId,
+    tableId,
     title: node.title,
     parentTitle: node.parent_title,
     mimeType,

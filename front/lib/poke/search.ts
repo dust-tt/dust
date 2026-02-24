@@ -5,6 +5,7 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import {
   dataSourceToPokeJSON,
   dataSourceViewToPokeJSON,
@@ -15,6 +16,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
@@ -185,6 +187,38 @@ async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
   ];
 }
 
+async function searchByPhoneNumber(
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  const e164 = tryParsePhoneNumber(searchTerm);
+  if (!e164) {
+    return [];
+  }
+
+  const workspaceModelId =
+    await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
+      e164
+    );
+  if (!workspaceModelId) {
+    return [];
+  }
+
+  const workspaces = await unsafeGetWorkspacesByModelId([workspaceModelId]);
+  if (workspaces.length === 0) {
+    return [];
+  }
+
+  const workspace = workspaces[0];
+  return [
+    {
+      id: workspace.id,
+      name: `${workspace.name} (phone trial)`,
+      link: `${config.getPokeAppUrl()}/${workspace.sId}`,
+      type: "Workspace",
+    },
+  ];
+}
+
 export async function searchPokeResources(
   auth: Authenticator,
   searchTerm: string
@@ -200,6 +234,7 @@ export async function searchPokeResources(
       searchPokeConnectors(searchTerm),
       searchPokeFrames(searchTerm),
       searchByStripeSubscriptionId(searchTerm),
+      searchByPhoneNumber(searchTerm),
     ])
   ).flat();
 }

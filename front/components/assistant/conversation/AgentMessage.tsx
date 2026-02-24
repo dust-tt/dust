@@ -47,6 +47,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -61,7 +62,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
-  isInteractiveContentFileContentType,
+  isInteractiveContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -894,6 +895,7 @@ function AgentMessageContent({
     VirtuosoMessageListContext
   >();
 
+  const { vizUrl } = useAuth();
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -968,7 +970,8 @@ function AgentMessageContent({
         owner,
         agentConfiguration.sId,
         conversationId,
-        sId
+        sId,
+        vizUrl
       ),
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
@@ -980,6 +983,7 @@ function AgentMessageContent({
       conversationId,
       sId,
       agentConfiguration.sId,
+      vizUrl,
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
@@ -1097,7 +1101,7 @@ function AgentMessageContent({
     .filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
-        !isInteractiveContentFileContentType(file.contentType)
+        !isInteractiveContentType(file.contentType)
     );
 
   return (

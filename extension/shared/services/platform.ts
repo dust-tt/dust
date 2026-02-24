@@ -1,7 +1,5 @@
-import type {
-  ContentFragmentType,
-  ExtensionWorkspaceType,
-} from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@app/types/user";
+import type { ContentFragmentType } from "@dust-tt/client";
 import type { UploadedContentFragmentTypeWithKind } from "@extension/shared/lib/types";
 import type { AuthService, StoredUser } from "@extension/shared/services/auth";
 import type { CaptureService } from "@extension/shared/services/capture";

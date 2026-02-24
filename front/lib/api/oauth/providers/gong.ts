@@ -19,6 +19,8 @@ export class GongOAuthProvider implements BaseOAuthStrategyProvider {
     useCase: OAuthUseCase;
   }) {
     const scopes = [
+      "api:workspaces:read",
+      "api:permission-profile:read",
       "api:calls:read:transcript",
       "api:calls:read:extensive",
       "api:calls:read:basic",

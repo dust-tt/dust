@@ -24,7 +24,7 @@ const CONTENT_SECURITY_POLICIES = [
   `object-src 'none';`,
   `form-action 'self' *.hsforms.com;`,
   `base-uri 'self';`,
-  `frame-ancestors 'self' https://dust.tt https://*.dust.tt https://app.contentful.com;`,
+  `frame-ancestors 'self' https://dust.tt https://*.dust.tt https://app.contentful.com${isDev ? " http://localhost:3000 http://localhost:3007" : ""};`,
   `manifest-src 'self';`,
   `worker-src 'self' blob:;`,
   // Only upgrade insecure requests in production - in development we use HTTP

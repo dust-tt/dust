@@ -7,6 +7,7 @@ import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
 
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Button,
@@ -22,7 +23,7 @@ import {
   usePlatform,
 } from "@extension/shared/context/PlatformContext";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/FetcherProvider";
-import { AuthProvider } from "@extension/ui/components/auth/AuthProvider";
+import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
 import { compare } from "compare-versions";
 import React from "react";
@@ -112,13 +113,15 @@ const App = () => {
   return (
     <PlatformProvider platformService={platformService}>
       <PortProvider>
-        <AuthProvider>
+        <ExtensionAuthProvider>
           <ExtensionFetcherProvider>
             <Notification.Area>
-              <ChromeExtensionWrapper />
+              <ThemeProvider>
+                <ChromeExtensionWrapper />
+              </ThemeProvider>
             </Notification.Area>
           </ExtensionFetcherProvider>
-        </AuthProvider>
+        </ExtensionAuthProvider>
       </PortProvider>
     </PlatformProvider>
   );

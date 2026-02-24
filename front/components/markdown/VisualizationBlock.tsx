@@ -54,13 +54,15 @@ export function getVisualizationPlugin(
   owner: LightWorkspaceType,
   agentConfigurationId: string,
   conversationId: string,
-  messageId: string
+  messageId: string,
+  vizUrl: string
 ) {
   const customRenderer = {
     visualization: (code: string, complete: boolean, lineStart: number) => {
       return (
         <VisualizationActionIframe
           workspaceId={owner.sId}
+          vizUrl={vizUrl}
           visualization={{
             code,
             complete,

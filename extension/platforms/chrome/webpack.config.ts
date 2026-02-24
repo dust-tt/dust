@@ -93,6 +93,7 @@ export const getConfig = async ({
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
         "@extension": path.resolve(__dirname, "../../"),
+        "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
         "@app": path.resolve(__dirname, "../../../front"),
         redis: false,
       },
@@ -106,6 +107,8 @@ export const getConfig = async ({
         events: false,
         net: false,
         redis: false,
+        zlib: false,
+        assert: false,
         http: require.resolve("stream-http"),
         https: require.resolve("https-browserify"),
       },
@@ -153,6 +156,8 @@ export const getConfig = async ({
         COMMIT_HASH: getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
+        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
+          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],

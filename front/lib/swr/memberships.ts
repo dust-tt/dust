@@ -103,7 +103,7 @@ export function useSearchMembers({
   searchTerm: string;
   pageIndex: number;
   pageSize: number;
-  groupKind?: Omit<GroupKind, "system">;
+  groupKind?: Exclude<GroupKind, "system">;
   buildersOnly?: boolean;
   disabled?: boolean;
 }) {

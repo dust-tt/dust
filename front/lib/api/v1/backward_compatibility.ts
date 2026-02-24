@@ -16,7 +16,7 @@ import {
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import { isInteractiveContentFileContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
@@ -89,7 +89,7 @@ export function filterOutInteractiveContentFileContentTypes(
 ): ContentFragmentPublicType[] {
   const result: ContentFragmentPublicType[] = [];
   for (const m of c) {
-    if (isInteractiveContentFileContentType(m.contentType)) {
+    if (isInteractiveContentType(m.contentType)) {
       continue;
     }
     result.push({

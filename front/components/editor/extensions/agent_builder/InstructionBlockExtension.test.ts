@@ -1,6 +1,10 @@
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import type { Editor } from "@tiptap/core";
+import type { Slice } from "@tiptap/pm/model";
+import { TextSelection } from "@tiptap/pm/state";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("InstructionBlockExtension", () => {
@@ -407,5 +411,123 @@ Toto:
 </prompt>
 
 &nbsp;`);
+  });
+});
+
+describe("InstructionBlockExtension transformCopied", () => {
+  let editor: Editor;
+
+  // Helper: creates an editor with the instructionsRoot wrapper (like the
+  // real agent-builder editor) so that the document structure is:
+  // doc > instructionsRoot > block+
+  const createInstructionsEditor = () =>
+    EditorFactory(
+      [
+        InstructionsDocumentExtension,
+        InstructionsRootExtension,
+        InstructionBlockExtension,
+      ],
+      { starterKit: { document: false } }
+    );
+
+  afterEach(() => {
+    editor?.destroy();
+  });
+
+  /**
+   * Extract the transformCopied prop from the instructionBlockCopyContext
+   * plugin registered by InstructionBlockExtension.
+   */
+  function getTransformCopied(ed: Editor) {
+    const plugins = ed.state.plugins;
+    const plugin = plugins.find((p) =>
+      (p as any).key?.includes("instructionBlockCopyContext")
+    );
+    expect(plugin).toBeDefined();
+    return (plugin as any).props.transformCopied as (slice: Slice) => Slice;
+  }
+
+  it("should strip instructionBlock/instructionsRoot context when copying inner text", () => {
+    editor = createInstructionsEditor();
+    editor.commands.setContent("<example>test</example>", {
+      contentType: "markdown",
+    });
+
+    // Select the text "test" inside the instruction block.
+    // doc structure: doc > instructionsRoot > instructionBlock > paragraph("test")
+    // We need to find the text position inside the paragraph.
+    const doc = editor.state.doc;
+    let textFrom = -1;
+    let textTo = -1;
+    doc.descendants((node, pos) => {
+      if (node.isText && node.text === "test") {
+        textFrom = pos;
+        textTo = pos + node.nodeSize;
+      }
+    });
+    expect(textFrom).toBeGreaterThan(0);
+
+    // Create a text selection and get the slice (simulates what ProseMirror
+    // does on Cmd+C).
+    const selection = TextSelection.create(doc, textFrom, textTo);
+    const slice = selection.content();
+
+    // Before transformCopied: the slice should contain instructionsRoot and
+    // instructionBlock wrappers in its open context.
+    expect(slice.openStart).toBeGreaterThanOrEqual(2);
+
+    // Apply transformCopied.
+    const transformCopied = getTransformCopied(editor);
+    const result = transformCopied(slice);
+
+    // After: instructionsRoot and instructionBlock should be stripped.
+    // The result should just be paragraph-level content.
+    expect(result.openStart).toBeLessThan(slice.openStart);
+
+    // Verify no instructionBlock or instructionsRoot in the result's content tree.
+    let hasBlockWrapper = false;
+    result.content.descendants((node) => {
+      if (
+        node.type.name === "instructionBlock" ||
+        node.type.name === "instructionsRoot"
+      ) {
+        hasBlockWrapper = true;
+      }
+    });
+    expect(hasBlockWrapper).toBe(false);
+  });
+
+  it("should preserve full block when copying the whole instruction block", () => {
+    editor = createInstructionsEditor();
+    editor.commands.setContent("before\n\n<example>test</example>\n\nafter", {
+      contentType: "markdown",
+    });
+
+    // Select everything — this includes the instruction block and surrounding
+    // paragraphs, so the instructionsRoot will have multiple children.
+    editor.commands.selectAll();
+    const slice = editor.state.selection.content();
+
+    const transformCopied = getTransformCopied(editor);
+    const result = transformCopied(slice);
+
+    // The slice should be unchanged — the full block structure is preserved.
+    expect(result).toBe(slice);
+  });
+
+  it("should not modify slices that don't contain instruction blocks", () => {
+    editor = createInstructionsEditor();
+    editor.commands.setContent("just plain text", {
+      contentType: "markdown",
+    });
+
+    editor.commands.selectAll();
+    const slice = editor.state.selection.content();
+
+    const transformCopied = getTransformCopied(editor);
+    const result = transformCopied(slice);
+
+    // No instruction block in the content — slice should be unchanged.
+    expect(result).toBe(slice);
   });
 });

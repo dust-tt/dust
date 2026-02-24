@@ -182,6 +182,60 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
     } as Record<F, t.ArrayC<C>>),
   ]);
 
+const GongWorkspaceCodec = t.intersection([
+  t.type({
+    id: t.string,
+    name: t.string,
+  }),
+  CatchAllCodec,
+]);
+
+const GongWorkspacesResponseCodec = t.intersection([
+  t.type({
+    requestId: t.string,
+    workspaces: t.array(GongWorkspaceCodec),
+  }),
+  CatchAllCodec,
+]);
+
+const GongPermissionProfileCodec = t.intersection([
+  t.type({
+    id: t.string,
+    name: t.string,
+    callsAccess: t.type({
+      permissionLevel: t.union([
+        t.literal("all"),
+        t.literal("managers-team"),
+        t.literal("report-to-them"),
+        t.literal("own"),
+        t.literal("none"), // "none" is "SPECIFIC TEAMS" in the UI.
+      ]),
+      // The teamLeadIds are only present if the permission level is "none".
+      // The values match the "userId" we put in "gong_users" ("gongId").
+      teamLeadIds: t.union([t.array(t.string), t.null]),
+    }),
+  }),
+  CatchAllCodec,
+]);
+
+export type GongPermissionProfile = t.TypeOf<typeof GongPermissionProfileCodec>;
+
+const GongPermissionProfileResponseCodec = t.intersection([
+  t.type({
+    requestId: t.string,
+    profile: GongPermissionProfileCodec,
+  }),
+  CatchAllCodec,
+]);
+
+const GongPermissionProfilesResponseCodec = t.intersection([
+  t.type({
+    requestId: t.string,
+    profiles: t.array(GongPermissionProfileCodec),
+  }),
+  CatchAllCodec,
+]);
+
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
 
@@ -479,5 +533,43 @@ export class GongClient {
       }
       throw err;
     }
+  }
+
+  // https://gong.app.gong.io/settings/api/documentation#get-/v2/workspaces
+  async getWorkspaces(): Promise<{ id: string; name: string }[]> {
+    const response = await this.getRequest(
+      "/workspaces",
+      {},
+      GongWorkspacesResponseCodec
+    );
+    return response.workspaces;
+  }
+
+  // https://gong.app.gong.io/settings/api/documentation#get-/v2/all-permission-profiles
+  async getPermissionProfiles({
+    workspaceId,
+  }: {
+    workspaceId: string;
+  }): Promise<GongPermissionProfile[]> {
+    const response = await this.getRequest(
+      "/all-permission-profiles",
+      { workspaceId },
+      GongPermissionProfilesResponseCodec
+    );
+    return response.profiles;
+  }
+
+  // https://gong.app.gong.io/settings/api/documentation#get-/v2/permission-profile
+  async getPermissionProfile({
+    profileId,
+  }: {
+    profileId: string;
+  }): Promise<GongPermissionProfile> {
+    const response = await this.getRequest(
+      "/permission-profile",
+      { profileId },
+      GongPermissionProfileResponseCodec
+    );
+    return response.profile;
   }
 }

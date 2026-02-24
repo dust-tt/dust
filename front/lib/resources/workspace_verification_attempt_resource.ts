@@ -55,6 +55,19 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
     return existing !== null;
   }
 
+  static async findWorkspaceModelIdFromPhoneNumber(
+    phoneNumber: string
+  ): Promise<number | null> {
+    const phoneNumberHash = this.hashPhoneNumber(phoneNumber);
+    const existing = await this.model.findOne({
+      where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
+      // WORKSPACE_ISOLATION_BYPASS: Poke search needs to find workspace across all workspaces by phone hash.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    return existing?.workspaceId ?? null;
+  }
+
   static async makeNew(
     auth: Authenticator,
     {

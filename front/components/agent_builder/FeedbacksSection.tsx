@@ -296,7 +296,7 @@ function FeedbackCard({
             icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
             onClick={() => toggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
-            tooltip={`Mark feedback as ${feedback.dismissed ? "seen" : "unseen"}`}
+            tooltip={`Mark feedback as ${feedback.dismissed ? "unseen" : "seen"}`}
           />
           {conversationUrl && (
             <CardActionButton

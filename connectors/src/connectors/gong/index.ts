@@ -1,5 +1,6 @@
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
+import { fetchPermissionProfileViews } from "@connectors/connectors/gong/lib/permission_profiles";
 import {
   fetchGongConfiguration,
   fetchGongConnector,
@@ -46,6 +47,10 @@ const TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
 
 const ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 
+const PERMISSION_PROFILE_ID_CONFIG_KEY = "gongPermissionProfileId";
+
+const PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
@@ -86,6 +91,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         baseUrl: baseUrlRes.value,
         trackersEnabled: false,
         accountsEnabled: false,
+        permissionProfileId: null,
       }
     );
 
@@ -333,6 +339,12 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Ok(configuration.trackersEnabled.toString());
       case ACCOUNTS_CONFIG_KEY:
         return new Ok(configuration.accountsEnabled.toString());
+      case PERMISSION_PROFILE_ID_CONFIG_KEY:
+        return new Ok(configuration.permissionProfileId ?? null);
+      case PERMISSION_PROFILES_CONFIG_KEY: {
+        const views = await fetchPermissionProfileViews(connector);
+        return new Ok(JSON.stringify(views));
+      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -389,6 +401,19 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       }
       case ACCOUNTS_CONFIG_KEY: {
         await configuration.setAccountsEnabled(configValue === "true");
+
+        return new Ok(undefined);
+      }
+      case PERMISSION_PROFILE_ID_CONFIG_KEY: {
+        const profileId = configValue || null;
+        logger.info(
+          {
+            connectorId: connector.id,
+            permissionProfileId: profileId,
+          },
+          "[Gong] Update permission profile."
+        );
+        await configuration.setPermissionProfileId(profileId);
 
         return new Ok(undefined);
       }

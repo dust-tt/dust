@@ -1,6 +1,7 @@
 import { startVerification } from "@app/lib/api/workspace_verification/start_verification";
 import { validateVerification } from "@app/lib/api/workspace_verification/validate_verification";
 import type { Authenticator } from "@app/lib/auth";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
@@ -348,6 +349,26 @@ describe("workspace_verification", () => {
         );
       expect(attempt?.status).toBe("verified");
       expect(attempt?.verifiedAt).not.toBeNull();
+    });
+
+    it("should store phoneCountry in workspace metadata on success", async () => {
+      const phoneNumberHash =
+        WorkspaceVerificationAttemptResource.hashPhoneNumber(validPhoneNumber);
+      await WorkspaceVerificationAttemptFactory.create(authW1, {
+        phoneNumberHash,
+      });
+
+      const result = await validateVerification(
+        authW1,
+        validPhoneNumber,
+        validCode
+      );
+
+      expect(result.isOk()).toBe(true);
+
+      const workspace = authW1.getNonNullableWorkspace();
+      const updatedWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+      expect(updatedWorkspace?.metadata).toMatchObject({ phoneCountry: "FR" });
     });
 
     it("should return error if no pending verification found", async () => {

@@ -93,6 +93,8 @@ async function handler(
       "gongRetentionPeriodDays",
       "gongTrackersEnabled",
       "gongAccountsEnabled",
+      "gongPermissionProfileId",
+      "gongPermissionProfiles",
       "privateIntegrationCredentialId",
     ].includes(configKey)
   ) {
