@@ -13,7 +13,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
-/** How long E2B keeps the sandbox alive (renewed on every connect). */
+// TODO(SANDBOX-S1): Replace fixed lifetime with reaper-based cleanup.
+// https://github.com/dust-tt/tasks/issues/6720
 const SANDBOX_LIFETIME_MS = 3_600_000; // 1 hour
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
