@@ -190,7 +190,8 @@ const AgentMessageView = ({
           )}
           {message.modelInteractionDurationMs != null && (
             <>
-              {" • "}LLM: {(message.modelInteractionDurationMs / 1000).toFixed(1)}s
+              {" • "}LLM:{" "}
+              {(message.modelInteractionDurationMs / 1000).toFixed(1)}s
             </>
           )}
           {message.completionDurationMs != null && (
