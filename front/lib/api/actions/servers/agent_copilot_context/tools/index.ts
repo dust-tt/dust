@@ -977,7 +977,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `\n:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
+          text: [
+            "",
+            `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
+          ].join("\n\n"),
         },
       ]);
     } catch (error) {
@@ -1166,7 +1169,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `\n:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+          text: [
+            "",
+            `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+          ].join("\n\n"),
         },
       ]);
     } catch (error) {
@@ -1345,7 +1351,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `\n:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
+          text: [
+            "",
+            `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
+          ].join("\n\n"),
         },
       ]);
     } catch (error) {
