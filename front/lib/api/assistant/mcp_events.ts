@@ -16,7 +16,7 @@ interface GetMCPEventsForServerOptions {
   lastEventId?: string;
 }
 
-const MCP_EVENTS_TIMEOUT = 1 * 60 * 1000; // 1 minute.
+const MCP_EVENTS_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes.
 
 export async function* getMCPEventsForServer(
   auth: Authenticator,
@@ -52,7 +52,7 @@ export async function* getMCPEventsForServer(
       }
       const rawEvent = await Promise.race([
         callbackReader.next(),
-        setTimeoutAsync(MCP_EVENTS_TIMEOUT),
+        setTimeoutAsync(MCP_EVENTS_TIMEOUT_MS),
       ]);
 
       // Determine if we timeouted.
