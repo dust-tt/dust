@@ -5,7 +5,6 @@ import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 interface PostJoinProjectResponseBody {
@@ -67,10 +66,16 @@ async function handler(
         filterOnManagementMode: true,
       });
 
-      assert(
-        memberGroupSpaces.length === 1,
-        "There should be exactly one member group for the project"
-      );
+      if (memberGroupSpaces.length !== 1) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message:
+              "There should be exactly one member group for the project.",
+          },
+        });
+      }
 
       const memberGroupSpace = memberGroupSpaces[0];
       const user = auth.getNonNullableUser();
