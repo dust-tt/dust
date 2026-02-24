@@ -16,7 +16,7 @@ interface GetMCPEventsForServerOptions {
   lastEventId?: string;
 }
 
-const MCP_EVENTS_TIMEOUT = 1 * 60 * 1000; // 1 minute.
+const MCP_EVENTS_TIMEOUT = 5 * 60 * 1000; // 5 minutes.
 
 export async function* getMCPEventsForServer(
   auth: Authenticator,
