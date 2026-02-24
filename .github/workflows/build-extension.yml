@@ -6,7 +6,7 @@ on:
       - package-lock.json
       - sdks/js/**
       - extension/**
-      - .github/workflows/build-and-lint-extension.yml
+      - .github/workflows/build-extension.yml
 
 permissions:
   contents: read

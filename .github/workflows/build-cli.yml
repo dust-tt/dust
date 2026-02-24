@@ -5,7 +5,7 @@ on:
     paths:
       - package-lock.json
       - cli/**
-      - .github/workflows/build-and-lint-cli.yml
+      - .github/workflows/build-cli.yml
 
 permissions:
   contents: read
