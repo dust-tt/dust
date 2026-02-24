@@ -1,9 +1,9 @@
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
+import { fetchPermissionProfileViews } from "@connectors/connectors/gong/lib/permission_profiles";
 import {
   fetchGongConfiguration,
   fetchGongConnector,
-  getGongClient,
 } from "@connectors/connectors/gong/lib/utils";
 import {
   QUEUE_NAME,
@@ -342,17 +342,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       case PERMISSION_PROFILE_ID_CONFIG_KEY:
         return new Ok(configuration.permissionProfileId ?? null);
       case PERMISSION_PROFILES_CONFIG_KEY: {
-        // Consider adding caching here.
-        const gongClient = await getGongClient(connector);
-        const workspaces = await gongClient.getWorkspaces();
-        const firstWorkspace = workspaces[0];
-        if (!firstWorkspace) {
-          return new Ok(JSON.stringify([]));
-        }
-        const profiles = await gongClient.getPermissionProfiles({
-          workspaceId: firstWorkspace.id,
-        });
-        return new Ok(JSON.stringify(profiles));
+        const views = await fetchPermissionProfileViews(connector);
+        return new Ok(JSON.stringify(views));
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

@@ -3,6 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -12,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
   GongLogo,
   Input,
   SliderToggle,
@@ -25,9 +27,14 @@ const GONG_ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 const GONG_PERMISSION_PROFILE_ID_CONFIG_KEY = "gongPermissionProfileId";
 const GONG_PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
 
+const PROFILE_NAME_MAX_LENGTH = 15;
+
 interface GongPermissionProfile {
   id: string;
   name: string;
+  permissionLevel: string;
+  supported: boolean;
+  reason: string | null;
 }
 
 function isGongPermissionProfile(
@@ -36,12 +43,170 @@ function isGongPermissionProfile(
   if (typeof value !== "object" || value === null) {
     return false;
   }
-  const obj = value as Record<string, unknown>;
-  return typeof obj.id === "string" && typeof obj.name === "string";
+  return (
+    "id" in value &&
+    isString(value.id) &&
+    "name" in value &&
+    isString(value.name) &&
+    "permissionLevel" in value &&
+    isString(value.permissionLevel) &&
+    "supported" in value &&
+    typeof value.supported === "boolean" &&
+    "reason" in value &&
+    (value.reason === null || isString(value.reason))
+  );
 }
 
 function checkIsNonNegativeInteger(value: string) {
   return /^[0-9]+$/.test(value);
+}
+
+interface PermissionProfileSelectorProps {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  disabled: boolean;
+}
+
+function PermissionProfileSelector({
+  owner,
+  dataSource,
+  disabled,
+}: PermissionProfileSelectorProps) {
+  const sendNotification = useSendNotification();
+  const [loading, setLoading] = useState(false);
+
+  const {
+    configValue: permissionProfileIdConfigValue,
+    mutateConfig: mutatePermissionProfileIdConfig,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: GONG_PERMISSION_PROFILE_ID_CONFIG_KEY,
+  });
+
+  const { configValue: permissionProfilesConfigValue } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: GONG_PERMISSION_PROFILES_CONFIG_KEY,
+  });
+
+  const permissionProfiles = useMemo<GongPermissionProfile[]>(() => {
+    if (!permissionProfilesConfigValue) {
+      return [];
+    }
+    try {
+      const parsed: unknown = JSON.parse(permissionProfilesConfigValue);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.filter(isGongPermissionProfile);
+    } catch {
+      return [];
+    }
+  }, [permissionProfilesConfigValue]);
+
+  const selectedProfile = useMemo(() => {
+    if (!permissionProfileIdConfigValue) {
+      return null;
+    }
+    return (
+      permissionProfiles.find((p) => p.id === permissionProfileIdConfigValue) ??
+      null
+    );
+  }, [permissionProfileIdConfigValue, permissionProfiles]);
+
+  const handleSelect = async (profileId: string) => {
+    setLoading(true);
+    // The config API only accepts strings, so "" means "no filter" (normalized
+    // to null on the connector side).
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${GONG_PERMISSION_PROFILE_ID_CONFIG_KEY}`,
+      {
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        body: JSON.stringify({ configValue: profileId }),
+      }
+    );
+    if (res.ok) {
+      await mutatePermissionProfileIdConfig();
+      sendNotification({
+        type: "success",
+        title: "Gong configuration updated",
+        description: "Permission profile successfully updated.",
+      });
+    } else {
+      const err = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Failed to update Gong configuration",
+        description: normalizeError(err).message || "An unknown error occurred",
+      });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <ContextItem
+      title="Permission Profile"
+      visual={<ContextItem.Visual visual={GongLogo} />}
+      action={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              label={
+                selectedProfile
+                  ? selectedProfile.name.length > PROFILE_NAME_MAX_LENGTH
+                    ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) +
+                      "..."
+                    : selectedProfile.name
+                  : "All calls"
+              }
+              isSelect
+              disabled={disabled || loading}
+              tooltip={selectedProfile?.name}
+              className="w-40 overflow-hidden px-4"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              label="All calls"
+              onClick={() => handleSelect("")}
+            />
+            {permissionProfiles.map((profile) => {
+              const item = (
+                <DropdownMenuItem
+                  key={profile.id}
+                  label={profile.name}
+                  disabled={!profile.supported}
+                  onClick={() => handleSelect(profile.id)}
+                />
+              );
+              if (profile.reason) {
+                return (
+                  <DropdownTooltipTrigger
+                    key={profile.id}
+                    description={profile.reason}
+                  >
+                    {item}
+                  </DropdownTooltipTrigger>
+                );
+              }
+              return item;
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    >
+      <ContextItem.Description>
+        <div className="text-muted-foreground dark:text-muted-foreground-night">
+          Only calls with at least one participant from the profile&apos;s user
+          list will be synced. Changing the profile only affects future syncs.
+        </div>
+      </ContextItem.Description>
+    </ContextItem>
+  );
 }
 
 interface GongOptionComponentProps {
@@ -85,46 +250,6 @@ export function GongOptionComponent({
     configKey: GONG_ACCOUNTS_CONFIG_KEY,
   });
   const accountsEnabled = accountsConfigValue === "true";
-
-  const {
-    configValue: permissionProfileIdConfigValue,
-    mutateConfig: mutatePermissionProfileIdConfig,
-  } = useConnectorConfig({
-    owner,
-    dataSource,
-    configKey: GONG_PERMISSION_PROFILE_ID_CONFIG_KEY,
-  });
-
-  const { configValue: permissionProfilesConfigValue } = useConnectorConfig({
-    owner,
-    dataSource,
-    configKey: GONG_PERMISSION_PROFILES_CONFIG_KEY,
-  });
-
-  const permissionProfiles = useMemo<GongPermissionProfile[]>(() => {
-    if (!permissionProfilesConfigValue) {
-      return [];
-    }
-    try {
-      const parsed: unknown = JSON.parse(permissionProfilesConfigValue);
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-      return parsed.filter(isGongPermissionProfile);
-    } catch {
-      return [];
-    }
-  }, [permissionProfilesConfigValue]);
-
-  const selectedProfile = useMemo(() => {
-    if (!permissionProfileIdConfigValue) {
-      return null;
-    }
-    return (
-      permissionProfiles.find((p) => p.id === permissionProfileIdConfigValue) ??
-      null
-    );
-  }, [permissionProfileIdConfigValue, permissionProfiles]);
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -175,10 +300,6 @@ export function GongOptionComponent({
           await mutateAccountsConfig();
           description = "Accounts synchronization successfully updated.";
           break;
-        case GONG_PERMISSION_PROFILE_ID_CONFIG_KEY:
-          await mutatePermissionProfileIdConfig();
-          description = "Permission profile successfully updated.";
-          break;
         default:
           description = "Configuration successfully updated.";
       }
@@ -208,62 +329,11 @@ export function GongOptionComponent({
       </ContentMessage>
 
       <ContextItem.List>
-        <ContextItem
-          title="Permission Profile"
-          visual={<ContextItem.Visual visual={GongLogo} />}
-          action={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label={
-                    selectedProfile
-                      ? selectedProfile.name.length > 15
-                        ? selectedProfile.name.slice(0, 15) + "..."
-                        : selectedProfile.name
-                      : "All calls"
-                  }
-                  isSelect
-                  disabled={readOnly || !isAdmin || loading}
-                  tooltip={selectedProfile?.name}
-                  className="w-40 overflow-hidden px-4"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  label="All calls"
-                  onClick={() =>
-                    handleConfigUpdate(
-                      GONG_PERMISSION_PROFILE_ID_CONFIG_KEY,
-                      ""
-                    )
-                  }
-                />
-                {permissionProfiles.map((profile) => (
-                  <DropdownMenuItem
-                    key={profile.id}
-                    label={profile.name}
-                    onClick={() =>
-                      handleConfigUpdate(
-                        GONG_PERMISSION_PROFILE_ID_CONFIG_KEY,
-                        profile.id
-                      )
-                    }
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        >
-          <ContextItem.Description>
-            <div className="text-muted-foreground dark:text-muted-foreground-night">
-              Only calls with at least one participant from the profile&apos;s
-              user list will be synced. Changing the profile only affects future
-              syncs.
-            </div>
-          </ContextItem.Description>
-        </ContextItem>
+        <PermissionProfileSelector
+          owner={owner}
+          dataSource={dataSource}
+          disabled={readOnly || !isAdmin || loading}
+        />
 
         <ContextItem
           title="Retention Period"
