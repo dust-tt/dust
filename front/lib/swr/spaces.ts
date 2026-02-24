@@ -987,6 +987,16 @@ export function useUpdateProjectMetadata({
     spaceId,
     disabled: true, // Needed just to mutate
   });
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
+
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: spaceId,
+    disabled: true,
+  });
 
   return async (
     updates: PatchProjectMetadataBodyType
@@ -1010,10 +1020,19 @@ export function useUpdateProjectMetadata({
     }
 
     void mutateProjectMetadata();
+    void mutateSpaceSummary();
+    void mutateSpaceInfoRegardlessOfQueryParams();
+
+    const title =
+      updates.archive !== undefined
+        ? updates.archive
+          ? "Project archived"
+          : "Project unarchived"
+        : "Project updated";
+
     sendNotification({
       type: "success",
-      title: "Project metadata updated",
-      description: "Project metadata was successfully updated.",
+      title,
     });
 
     const response: PatchProjectMetadataResponseBody = await res.json();

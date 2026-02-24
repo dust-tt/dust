@@ -15,7 +15,16 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EmptyCTA,
+  EmptyCTAButton,
+  EyeIcon,
+  EyeSlashIcon,
   Input,
+  MoreIcon,
   ScrollArea,
   SearchInput,
   SliderToggle,
@@ -23,7 +32,7 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 interface SpaceAboutTabProps {
@@ -138,7 +147,25 @@ export function SpaceAboutTab({
     setIsEditingDescription(false);
   };
 
-  const handleVisibilityToggle = async () => {
+  const handleArchiveToggle = useCallback(async () => {
+    if (projectMetadata?.archivedAt) {
+      await doUpdateMetadata({ archive: false });
+    } else {
+      const confirmed = await confirm({
+        title: "Archive project?",
+        message:
+          "You'll no longer be able to create new conversations in this project and it will be hidden from the sidebar. However, existing content can still be used by agents. Unarchive it to get back access to it",
+        validateVariant: "warning",
+      });
+
+      if (!confirmed) {
+        return;
+      }
+      await doUpdateMetadata({ archive: true });
+    }
+  }, [confirm, doUpdateMetadata, projectMetadata?.archivedAt]);
+
+  const handleVisibilityToggle = useCallback(async () => {
     const newIsPublic = !isPublic;
     const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
     const message = newIsPublic
@@ -173,12 +200,58 @@ export function SpaceAboutTab({
     if (updated) {
       await mutateSpaceInfoRegardlessOfQueryParams();
     }
-  };
+  }, [
+    confirm,
+    doUpdate,
+    isPublic,
+    projectMembers,
+    space,
+    mutateSpaceInfoRegardlessOfQueryParams,
+  ]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
-        <div className="heading-2xl">Settings</div>
+        <div className="flex gap-2">
+          <h2 className="heading-2xl flex-1 text-foreground dark:text-foreground-night">
+            Settings
+          </h2>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" icon={MoreIcon} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                icon={projectMetadata?.archivedAt ? EyeIcon : EyeSlashIcon}
+                label={
+                  projectMetadata?.archivedAt
+                    ? "Unarchive project"
+                    : "Archive project"
+                }
+                variant="warning"
+                onClick={handleArchiveToggle}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {space.archivedAt && (
+          <EmptyCTA
+            action={
+              <EmptyCTAButton
+                icon={EyeIcon}
+                label="Unarchive"
+                onClick={handleArchiveToggle}
+                disabled={!isProjectEditor}
+                tooltip={
+                  !isProjectEditor
+                    ? "You need to be an editor to unarchive this project."
+                    : undefined
+                }
+              />
+            }
+            message="This project has been archived. Unarchive it to continue creating new conversations."
+          />
+        )}
         <div className="flex w-full flex-col gap-2">
           <div className="heading-lg">Name</div>
           <div className="flex w-full min-w-0 gap-2">
@@ -308,7 +381,7 @@ export function SpaceAboutTab({
               className="flex w-full"
             >
               <div className="flex flex-col gap-y-4">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground dark:text-foreground-night">
                   Deleting this project will permanently remove all its content,
                   including conversations, folders, websites, and data sources.
                   This action cannot be undone. All assistants using tools that

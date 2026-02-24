@@ -40,6 +40,7 @@ export type GetPostNotionSyncResponseBody = t.TypeOf<
 
 export const PatchProjectMetadataBodySchema = z.object({
   description: z.string().optional(),
+  archive: z.boolean().optional(),
 });
 
 export type PatchProjectMetadataBodyType = z.infer<

@@ -324,15 +324,7 @@ export function createProjectManagerTools(
           });
         } else {
           // Update existing metadata.
-          const updateRes = await metadata.updateMetadata({ description });
-          if (updateRes.isErr()) {
-            return new Err(
-              new MCPError(
-                `Failed to update project description: ${updateRes.error.message}`,
-                { tracked: false }
-              )
-            );
-          }
+          await metadata.updateDescription(description);
         }
 
         return new Ok(
