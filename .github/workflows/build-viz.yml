@@ -5,7 +5,7 @@ on:
     paths:
       - package-lock.json
       - viz/**
-      - .github/workflows/build-and-lint-viz.yml
+      - .github/workflows/build-viz.yml
 
 permissions:
   contents: read

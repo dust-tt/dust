@@ -5,7 +5,7 @@ on:
     paths:
       - package-lock.json
       - sparkle/**
-      - .github/workflows/build-and-lint-sparkle.yml
+      - .github/workflows/build-sparkle.yml
 
 permissions:
   contents: read
