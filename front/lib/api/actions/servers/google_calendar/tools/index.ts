@@ -65,6 +65,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         maxResults: maxResults ? Math.min(maxResults, 2500) : undefined,
         pageToken,
         singleEvents: true,
+        orderBy: "startTime",
       });
 
       const userTimezone = getUserTimezone(agentLoopContext);
