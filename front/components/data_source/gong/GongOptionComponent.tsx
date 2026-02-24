@@ -27,6 +27,8 @@ const GONG_ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 const GONG_PERMISSION_PROFILE_ID_CONFIG_KEY = "gongPermissionProfileId";
 const GONG_PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
 
+const PROFILE_NAME_MAX_LENGTH = 15;
+
 interface GongPermissionProfile {
   id: string;
   name: string;
@@ -155,8 +157,8 @@ function PermissionProfileSelector({
               size="sm"
               label={
                 selectedProfile
-                  ? selectedProfile.name.length > 15
-                    ? selectedProfile.name.slice(0, 15) + "..."
+                  ? selectedProfile.name.length > PROFILE_NAME_MAX_LENGTH
+                    ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) + "..."
                     : selectedProfile.name
                   : "All calls"
               }
