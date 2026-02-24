@@ -1,6 +1,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -91,6 +92,13 @@ async function handler(
           },
         });
       }
+
+      // Always invalidate cache - safe even if transaction rolls back (just causes cache miss)
+      const workspace = auth.getNonNullableWorkspace();
+      await GroupResource.invalidateGroupIdsCacheForUser({
+        user: { id: user.id },
+        workspace: { id: workspace.id },
+      });
 
       return res.status(200).json({ success: true });
     }
