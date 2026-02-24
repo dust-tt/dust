@@ -350,7 +350,9 @@ export const INTERNAL_MCP_SERVERS = {
       return !isAvailable;
     },
     isPreview: false,
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      update_object: ["objectName"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SALESFORCE_SERVER,

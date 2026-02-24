@@ -710,7 +710,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "restrict_agents_publishing"
   | "salesforce_synced_queries"
-  | "salesforce_tool_write"
   | "salesforce_tool"
   | "salesloft_tool"
   | "sandbox_tools"
