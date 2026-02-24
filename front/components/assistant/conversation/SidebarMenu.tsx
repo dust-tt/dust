@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
+import { AcademyBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
 import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
@@ -708,7 +708,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         onClose={() => setIsCreateProjectModalOpen(false)}
         owner={owner}
       />
-      <div className="relative flex grow flex-col">
+      <div className="flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
@@ -937,7 +937,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               conversationsList
             )}
 
-            <StackedInAppBanners owner={owner} />
+            <AcademyBanner />
           </div>
         </div>
       </div>
