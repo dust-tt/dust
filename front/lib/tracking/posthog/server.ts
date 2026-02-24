@@ -50,7 +50,6 @@ export class PostHogServerSideTracking {
       client.identify({
         distinctId: user.sId,
         properties: {
-          email: user.email,
           first_name: user.firstName,
           last_name: user.lastName,
           name: user.fullName,
