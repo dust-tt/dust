@@ -306,10 +306,13 @@ describe("POST /api/w/[wId]/mcp/", () => {
     expect(credential).toBeDefined();
     // sharedSecret is encrypted at rest via the hash column.
     expect(credential?.hash).toBeTruthy();
-    expect(decrypt({
-      encrypted: credential?.hash, key: workspace.sId,
-      useCase: "mcp_server_credentials",
-    })).toBe("test-secret-123");
+    expect(
+      decrypt({
+        encrypted: credential?.hash,
+        key: workspace.sId,
+        useCase: "mcp_server_credentials",
+      })
+    ).toBe("test-secret-123");
     expect(credential?.customHeaders).toEqual({
       Authorization: "Bearer should-be-kept",
       "X-Custom-Header": "custom-value",
