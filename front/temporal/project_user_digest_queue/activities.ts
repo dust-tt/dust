@@ -6,11 +6,10 @@ import { UserProjectDigestResource } from "@app/lib/resources/user_project_diges
 import logger from "@app/logger/logger";
 
 /**
- * Activity to generate a user project digest using the Dust agent.
+ * Activity to generate a user project digest using a direct LLM call.
  *
- * This creates a "test" conversation (invisible to users), invokes the Dxust agent
- * with project context, waits for completion, and saves the journal entry with
- * a reference to the conversation for debugging purposes.
+ * This fetches unread conversations for the project space, calls the LLM
+ * to generate a digest, and saves the result.
  */
 export async function generateUserProjectDigestActivity(
   authType: AuthenticatorType,
@@ -28,51 +27,26 @@ export async function generateUserProjectDigestActivity(
   }
   const auth = authResult.value;
 
-  const workspace = auth.getNonNullableWorkspace();
-
-  // Fetch the space
+  // Fetch the space.
   const space = await SpaceResource.fetchById(auth, spaceId);
   if (!space) {
     logger.warn({ spaceId }, "Space not found");
     throw new Error(`Space with id ${spaceId} not found`);
   }
 
-  // Create a system conversation (invisible to users, no participants)
-  const {
-    conversation,
-    agentMessages: [agentMessage],
-  } = await generateUserProjectDigest(auth, {
-    space,
-  });
+  const digest = await generateUserProjectDigest(auth, { space });
 
-  const userProjectDigest = agentMessage.content;
-
-  if (!userProjectDigest || userProjectDigest.trim().length === 0) {
-    logger.error(
-      {
-        spaceId: space.sId,
-        conversationId: conversation.sId,
-        agentMessageId: agentMessage.sId,
-      },
-      "Agent message has no content"
-    );
-    throw new Error("Agent returned an empty response");
-  }
-
-  // Create and save the digest with conversation reference.
+  // Create and save the digest.
   await UserProjectDigestResource.create(auth, {
     spaceId: space.id,
-    digest: userProjectDigest,
-    sourceConversationId: conversation.id,
+    digest,
   });
 
   logger.info(
     {
       spaceId: space.sId,
-      conversationId: conversation.sId,
-      conversationUrl: `https://dust.tt/w/${workspace.sId}/assistant/${conversation.sId}`,
-      digestLength: userProjectDigest.length,
+      digestLength: digest.length,
     },
-    "User project digest created successfully via Dust agent"
+    "User project digest created successfully"
   );
 }

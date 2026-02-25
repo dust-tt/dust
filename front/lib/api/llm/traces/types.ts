@@ -30,6 +30,7 @@ interface LLMTraceContextBase {
     | "skills_similarity_checker"
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
+    | "user_project_digest"
     | "voice_agent_finder"
     | "web_content_summarization"
     | "workspace_tags_suggestion";

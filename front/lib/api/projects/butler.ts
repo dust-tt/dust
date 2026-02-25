@@ -1,17 +1,19 @@
-import { createConversation } from "@app/lib/api/assistant/conversation";
-import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
+import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type {
-  AgentMessageType,
-  ConversationType,
-} from "@app/types/assistant/conversation";
+import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
+
+const DAYS_BACK = 30;
+const UNREAD_LIMIT = 20;
 
 const PROMPT_FOR_PROJECT_SUMMARY = `Your goal is to generate an actionable intelligence digest for a user catching up on a project since their last visit.
 
-Use the function that allows you to get what's unread for the current user.
+The unread conversations for the current user are provided below.
 
 ## Instructions
 
@@ -61,82 +63,111 @@ Nothing to catch up! Enjoy and Relax!
 - 8 conversations updated, 47 messages from 5 contributors over the last 3 days.
 </example3>`;
 
-export const generateUserProjectDigest = async (
+export async function generateUserProjectDigest(
   auth: Authenticator,
   { space }: { space: SpaceResource }
-): Promise<{
-  conversation: ConversationType;
-  agentMessages: AgentMessageType[];
-}> => {
-  const conversation = await createConversation(auth, {
-    title: `[System] User Digest Generation - ${space.name}`,
-    visibility: "test",
-    spaceId: space.id,
-    metadata: {
-      systemConversation: true,
-      purpose: "user_project_digest",
-      triggeredBy: auth.user()?.sId ?? "system",
+): Promise<string> {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Fetch unread conversations (same logic as list_unread tool).
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - DAYS_BACK);
+
+  const spaceConversations =
+    await ConversationResource.listConversationsInSpace(auth, {
       spaceId: space.sId,
+      options: {
+        updatedSince: cutoffDate.getTime(),
+      },
+    });
+
+  const conversationResults = await concurrentExecutor(
+    spaceConversations,
+    async (c) => getConversation(auth, c.sId, false),
+    { concurrency: 10 }
+  );
+
+  const conversationsFull = conversationResults
+    .filter((r) => r.isOk())
+    .map((r) => r.value);
+
+  const unreadConversations = conversationsFull.filter((c) => c.unread);
+  const limitedConversations = unreadConversations.slice(0, UNREAD_LIMIT);
+
+  // Format conversations for display.
+  const formattedConversations =
+    limitedConversations.length > 0
+      ? JSON.stringify(
+          formatConversationsForDisplay(limitedConversations, owner.sId)
+        )
+      : `No unread conversations found in project "${space.name}" from the last ${DAYS_BACK} days.`;
+
+  // Call the LLM directly.
+  const model = getLargeWhitelistedModel(owner);
+  if (!model) {
+    throw new Error("No whitelisted model available for project digest.");
+  }
+
+  const res = await runMultiActionsAgent(
+    auth,
+    {
+      modelId: model.modelId,
+      providerId: model.providerId,
+      temperature: 0.4,
     },
-  });
+    {
+      conversation: {
+        messages: [
+          {
+            role: "user" as const,
+            content: [{ type: "text" as const, text: formattedConversations }],
+            name: "",
+          },
+        ],
+      },
+      prompt: PROMPT_FOR_PROJECT_SUMMARY,
+      specifications: [],
+    },
+    {
+      context: {
+        operationType: "user_project_digest",
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
+    }
+  );
+
+  if (res.isErr()) {
+    logger.error(
+      {
+        spaceId: space.sId,
+        error: res.error.message,
+      },
+      "Failed to generate user project digest via LLM"
+    );
+    throw new Error(
+      `Failed to generate user project digest: ${res.error.message}`
+    );
+  }
+
+  const digest = res.value.generation?.trim() ?? "";
+  if (!digest) {
+    logger.error(
+      { spaceId: space.sId },
+      "LLM returned empty generation for project digest"
+    );
+    throw new Error("LLM did not return any content for project digest.");
+  }
 
   logger.info(
     {
-      conversationId: conversation.sId,
       spaceId: space.sId,
       spaceName: space.name,
+      unreadCount: limitedConversations.length,
+      digestLength: digest.length,
     },
-    "Created system conversation for user project digest generation"
+    "Generated user project digest via direct LLM call"
   );
 
-  const messageResult = await postUserMessageAndWaitForCompletion(auth, {
-    content: PROMPT_FOR_PROJECT_SUMMARY,
-    context: {
-      username: "system",
-      fullName: "System",
-      email: null,
-      profilePictureUrl: null,
-      timezone: "UTC",
-      origin: "project_butler",
-    },
-    conversation,
-    mentions: [
-      {
-        configurationId: GLOBAL_AGENTS_SID.DUST,
-      },
-    ],
-    skipToolsValidation: false,
-  });
-
-  if (messageResult.isErr()) {
-    const errorMessage =
-      messageResult.error.api_error?.message ||
-      JSON.stringify(messageResult.error);
-    logger.error(
-      {
-        spaceId: space.sId,
-        conversationId: conversation.sId,
-        error: messageResult.error,
-      },
-      "Failed to post message or wait for agent completion"
-    );
-    throw new Error(
-      `Failed to generate user project digest via agent: ${errorMessage}`
-    );
-  }
-
-  const { agentMessages } = messageResult.value;
-
-  if (agentMessages.length === 0) {
-    logger.error(
-      {
-        spaceId: space.sId,
-        conversationId: conversation.sId,
-      },
-      "No agent messages received"
-    );
-    throw new Error("Agent did not respond with a message");
-  }
-
-  return { conversation, agentMessages };
-};
+  return digest;
+}
