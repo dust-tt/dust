@@ -405,7 +405,7 @@ export class InternalMCPServerInMemoryResource {
         customHeaders: Record<string, string> | null;
       }> = {};
 
-      if (encryptedKey) {
+      if (sharedSecret !== undefined) {
         updatePayload.encryptedKey = encryptedKey;
       }
       if (customHeaders !== undefined) {
