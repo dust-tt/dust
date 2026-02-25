@@ -44,7 +44,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { decrypt } from "@app/types/shared/utils/hashing";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { SSEClientTransportOptions } from "@modelcontextprotocol/sdk/client/sse.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
@@ -190,17 +189,8 @@ export async function connectToMCPServer(
             const serverInfo = getInternalMCPServerInfo(serverName);
 
             if (bearerTokenCredentials) {
-              const encryptionKey = auth.getNonNullableWorkspace().sId;
-              const decryptedSecret = bearerTokenCredentials.hash
-                ? decrypt({
-                    encrypted: bearerTokenCredentials.hash,
-                    key: encryptionKey,
-                    useCase: "mcp_server_credentials",
-                  })
-                : "";
-
               const authInfo: AuthInfo = {
-                token: decryptedSecret,
+                token: bearerTokenCredentials.sharedSecret ?? "",
                 expiresAt: undefined,
                 clientId: "",
                 scopes: [],
