@@ -11,6 +11,16 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
 }
 
+function formatFieldValue(value: NonNullable<unknown>): string {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+  if (value instanceof Object) {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 export function renderTicket(
   ticket: ZendeskTicket,
   includeFields: string[] = []
@@ -38,13 +48,11 @@ export function renderTicket(
   lines.push(`- Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
   const extraFields = includeFields.filter((f) => f !== "custom_fields");
+  const ticketRecord = Object.fromEntries(Object.entries(ticket));
   for (const field of extraFields) {
-    const ticketRecord = ticket as Record<string, unknown>;
     const value = ticketRecord[field];
     if (value !== null && value !== undefined) {
-      const valueStr =
-        typeof value === "object" ? JSON.stringify(value) : String(value);
-      lines.push(`- ${field}: ${valueStr}`);
+      lines.push(`- ${field}: ${formatFieldValue(value)}`);
     }
   }
 
