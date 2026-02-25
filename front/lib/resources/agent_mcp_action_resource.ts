@@ -28,6 +28,11 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import {
+  batchFetchContentsFromGcs,
+  batchWriteContentsToGcs,
+  deleteContentsFromGcs,
+} from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -52,6 +57,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
@@ -67,6 +73,8 @@ import { Op } from "sequelize";
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
+
+const CONCURRENCY_UPDATE_OUTPUT_ITEMS = 16;
 
 function getDefaultRemoteDisplayLabels(
   mcpServerName: string,
@@ -621,6 +629,62 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
+  /**
+   * Creates output items in DB and writes their content to GCS.
+   * Content is also written to DB to ease rollback during the migration period.
+   */
+  async createOutputItems(
+    auth: Authenticator,
+    contents: Array<{
+      content: CallToolResult["content"][number];
+      fileId?: ModelId;
+    }>
+  ): Promise<AgentMCPActionOutputItemModel[]> {
+    const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
+      contents.map((c) => ({
+        agentMCPActionId: this.id,
+        // Write content to DB (kept during migration period to ease rollback).
+        content: c.content,
+        fileId: c.fileId,
+        workspaceId: this.workspaceId,
+      }))
+    );
+
+    const gcsResult = await batchWriteContentsToGcs(
+      auth,
+      this,
+      outputItems.map((item) => ({
+        itemId: item.id,
+        content: item.content,
+      }))
+    );
+
+    // On GCS failure during migration period, items remain as legacy rows (content read from DB).
+    // Once content column is dropped, this must become a hard error.
+    if (gcsResult.isErr()) {
+      return outputItems;
+    }
+
+    // Update DB rows with their GCS paths.
+    // TODO(2026-02-25 PERF): Optimize by writing items only once.
+    await concurrentExecutor(
+      outputItems,
+      async (item) => {
+        const gcsPath = gcsResult.value.get(item.id);
+        if (gcsPath) {
+          await AgentMCPActionOutputItemModel.update(
+            { contentGcsPath: gcsPath },
+            { where: { id: item.id, workspaceId: this.workspaceId } }
+          );
+          item.contentGcsPath = gcsPath;
+        }
+      },
+      { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
+    );
+
+    return outputItems;
+  }
+
   static async fetchOutputItemsByActionIds(
     auth: Authenticator,
     actionIds: ModelId[]
@@ -631,15 +695,77 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
     const batchResults = await concurrentExecutor(
       batches,
-      async (batchActionIds) =>
-        AgentMCPActionOutputItemModel.findAll({
-          where: {
-            workspaceId,
-            agentMCPActionId: {
-              [Op.in]: batchActionIds,
+      async (batchActionIds) => {
+        // Split into two parallel queries:
+        // 1. GCS-backed rows: EXCLUDE content column (avoids TOAST decompression)
+        // 2. Legacy rows: INCLUDE content (old rows without GCS path)
+        const [gcsItems, legacyItems] = await Promise.all([
+          AgentMCPActionOutputItemModel.findAll({
+            attributes: { exclude: ["content"] },
+            where: {
+              workspaceId,
+              agentMCPActionId: { [Op.in]: batchActionIds },
+              contentGcsPath: { [Op.ne]: null },
             },
-          },
-        }),
+          }),
+          AgentMCPActionOutputItemModel.findAll({
+            where: {
+              workspaceId,
+              agentMCPActionId: { [Op.in]: batchActionIds },
+              contentGcsPath: null,
+            },
+          }),
+        ]);
+
+        // Hydrate GCS-backed items from cache/GCS.
+        if (gcsItems.length > 0) {
+          const contentResult = await batchFetchContentsFromGcs(
+            auth,
+            gcsItems.map((item) => ({
+              itemId: item.id,
+              gcsPath: item.contentGcsPath!,
+            }))
+          );
+
+          if (contentResult.isOk()) {
+            for (const item of gcsItems) {
+              const content = contentResult.value.get(item.id);
+              if (content) {
+                item.content = content;
+              }
+            }
+          } else {
+            // TODO(2026-02-25 PERF): Remove this post-migration.
+            // GCS read failed. We re-fetch from DB with content included.
+            // This is a temporary fallback during the migration period while content is still in
+            // DB. Once content column is dropped, this will become a hard error.
+            logger.error(
+              {
+                action: "mcp_output_items",
+                err: contentResult.error,
+                itemCount: gcsItems.length,
+                workspaceId,
+              },
+              "GCS read failed for MCP output items — falling back to DB"
+            );
+            const dbItems = await AgentMCPActionOutputItemModel.findAll({
+              where: {
+                workspaceId,
+                id: { [Op.in]: gcsItems.map((item) => item.id) },
+              },
+            });
+            const dbMap = new Map(dbItems.map((item) => [item.id, item]));
+            for (const item of gcsItems) {
+              const dbItem = dbMap.get(item.id);
+              if (dbItem) {
+                item.content = dbItem.content;
+              }
+            }
+          }
+        }
+
+        return [...gcsItems, ...legacyItems];
+      },
       { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
     );
 
@@ -657,6 +783,45 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     return outputItemsByActionId;
+  }
+
+  /**
+   * Destroys output items by action IDs, cleaning up GCS files first.
+   * GCS deletion failures are logged but do not block DB cleanup — orphaned
+   * GCS files can be cleaned up later and don't cause data issues.
+   */
+  static async destroyOutputItemsByActionIds(
+    auth: Authenticator,
+    actionIds: ModelId[]
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Fetch items with GCS paths (only need id + contentGcsPath — no TOAST hit).
+    const gcsItems = await AgentMCPActionOutputItemModel.findAll({
+      attributes: ["id", "contentGcsPath"],
+      where: {
+        workspaceId,
+        agentMCPActionId: { [Op.in]: actionIds },
+        contentGcsPath: { [Op.ne]: null },
+      },
+    });
+
+    // TODO(2026-02-25 PERF): Remove this post-migration.
+    // Delete GCS files. Failures are logged inside deleteContentsFromGcs but do not block DB
+    // cleanup.
+    if (gcsItems.length > 0) {
+      await deleteContentsFromGcs(
+        removeNulls(gcsItems.map((item) => item.contentGcsPath))
+      );
+    }
+
+    // Delete all output items from DB.
+    await AgentMCPActionOutputItemModel.destroy({
+      where: {
+        workspaceId,
+        agentMCPActionId: { [Op.in]: actionIds },
+      },
+    });
   }
 
   static async enrichActionsWithOutputItems(

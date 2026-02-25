@@ -100,7 +100,7 @@ export async function* runToolWithStreaming(
     {
       progressToken: action.id,
       makeToolNotificationEvent: (notification) =>
-        processToolNotification(notification, {
+        processToolNotification(auth, notification, {
           action,
           agentConfiguration,
           conversation,
@@ -117,7 +117,7 @@ export async function* runToolWithStreaming(
     statsDClient.increment("mcp_actions_error.count", 1, tags);
 
     const endDate = performance.now();
-    yield await handleMCPActionError({
+    yield await handleMCPActionError(auth, {
       action,
       agentConfiguration,
       agentMessage,
