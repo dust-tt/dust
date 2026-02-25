@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
+import { _getCopilotHaikuGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_haiku";
 import {
   _getBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
@@ -207,6 +208,10 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsToolsets: false,
   },
   [GLOBAL_AGENTS_SID.COPILOT]: { injectsMemory: false, injectsToolsets: false },
+  [GLOBAL_AGENTS_SID.COPILOT_HAIKU]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+  },
   [GLOBAL_AGENTS_SID.SLACK]: { injectsMemory: false, injectsToolsets: false },
   [GLOBAL_AGENTS_SID.GOOGLE_DRIVE]: {
     injectsMemory: false,
@@ -775,6 +780,9 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.COPILOT:
       agentConfiguration = _getCopilotGlobalAgent(auth, copilotContext);
       break;
+    case GLOBAL_AGENTS_SID.COPILOT_HAIKU:
+      agentConfiguration = _getCopilotHaikuGlobalAgent(auth, copilotContext);
+      break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
       if (isDevelopment()) {
@@ -858,8 +866,12 @@ export async function getGlobalAgents(
     agentIds ??
     Object.values(GLOBAL_AGENTS_SID)
       .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
-      // We only want to fetch copilot global agent if explicitely requested.
-      .filter((sId) => sId !== GLOBAL_AGENTS_SID.COPILOT);
+      // We only want to fetch copilot global agents if explicitly requested.
+      .filter(
+        (sId) =>
+          sId !== GLOBAL_AGENTS_SID.COPILOT &&
+          sId !== GLOBAL_AGENTS_SID.COPILOT_HAIKU
+      );
 
   const flags = await getFeatureFlags(owner);
 
@@ -921,14 +933,17 @@ export async function getGlobalAgents(
   }
   if (!flags.includes("agent_builder_copilot")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.COPILOT
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.COPILOT &&
+        sId !== GLOBAL_AGENTS_SID.COPILOT_HAIKU
     );
   }
 
   let copilotContext: CopilotContext | null = null;
   if (
     variant === "full" &&
-    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT)
+    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_HAIKU))
   ) {
     const [context, userMetadata, models, skills, tools] = await Promise.all([
       MCPServerViewResource.getMCPServerViewForAutoInternalTool(
