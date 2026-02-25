@@ -10,7 +10,7 @@ const InternalMCPServerCredentialModelWithBypass: ModelStaticWorkspaceAware<Inte
 makeScript({}, async ({ execute }, logger) => {
   const credentials = await InternalMCPServerCredentialModelWithBypass.findAll({
     where: {
-      hash: null,
+      encryptedKey: null,
     },
     include: [{ model: WorkspaceModel, required: true }],
     // WORKSPACE_ISOLATION_BYPASS: Migration runs across all workspaces.
@@ -37,13 +37,13 @@ makeScript({}, async ({ execute }, logger) => {
         continue;
       }
 
-      const hash = encrypt({
+      const encryptedKey = encrypt({
         text: credential.sharedSecret,
         key: credential.workspace.sId,
         useCase: "mcp_server_credentials",
       });
 
-      await credential.update({ hash });
+      await credential.update({ encryptedKey });
     }
   }
 
