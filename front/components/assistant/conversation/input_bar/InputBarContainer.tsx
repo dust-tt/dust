@@ -71,6 +71,7 @@ export const INPUT_BAR_ACTIONS = [
   "attachment",
   "agents-list",
   "agents-list-with-actions",
+  "turn-into-agent",
   "voice",
   "fullscreen",
 ] as const;
@@ -136,6 +137,7 @@ const InputBarContainer = ({
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
   const canTurnIntoAgent =
+    actions.includes("turn-into-agent") &&
     hasFeature("agent_builder_shrink_wrap") &&
     conversation !== undefined &&
     isBuilder(owner);

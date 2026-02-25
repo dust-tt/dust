@@ -6,6 +6,7 @@ import ConversationSidePanelContent from "@app/components/assistant/conversation
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import {
   copilotSuggestionDirective,
   getCopilotSuggestionPlugin,
@@ -79,7 +80,7 @@ function CopilotContent({
     () => ({
       isSubmitting: false,
       resetConversation,
-      actionsToShow: [],
+      actionsToShow: ["attachment"] satisfies InputBarAction[],
       clientSideMCPServerIds,
       skipToolsValidation: true,
     }),
