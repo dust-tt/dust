@@ -38,10 +38,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable 'Turn into agent' button on agent messages",
     stage: "dust_only",
   },
-  ashby_tool: {
-    description: "Ashby tool for ATS integration",
-    stage: "on_demand",
-  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
@@ -116,10 +112,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to OpenAI o1 high reasoning model",
     stage: "on_demand",
   },
-  openai_usage_mcp: {
-    description: "OpenAI tool for tracking API consumption and costs",
-    stage: "on_demand",
-  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
@@ -133,10 +125,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
-  },
-  salesloft_tool: {
-    description: "Salesloft MCP tool",
-    stage: "dust_only",
   },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
@@ -161,11 +149,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   monday_tool: {
     description: "Monday MCP tool",
-    stage: "rolling_out",
-  },
-  front_tool: {
-    description:
-      "Front MCP tool for managing support conversations, messages, and customer interactions.",
     stage: "rolling_out",
   },
   gemini_3_1_pro_feature: {
@@ -202,10 +185,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
   },
-  slab_mcp: {
-    description: "Slab MCP server",
-    stage: "on_demand",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
@@ -225,10 +204,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   databricks_tool: {
     description: "Databricks MCP tool",
-    stage: "on_demand",
-  },
-  statuspage_tool: {
-    description: "Statuspage MCP tool for incident management",
     stage: "on_demand",
   },
   sandbox_tools: {
