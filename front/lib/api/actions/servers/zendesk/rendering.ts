@@ -64,16 +64,29 @@ export function renderTicket(
       const fieldMap = new Map(
         ticketFieldsResult.value.map((f) => [f.id, f.title])
       );
+      const MAX_CUSTOM_FIELDS = 50;
+      let customFieldCount = 0;
       for (const field of ticket.custom_fields) {
-        if (field.value !== null && field.value !== "") {
-          const fieldName = fieldMap.get(field.id);
-          if (fieldName) {
-            const valueStr = Array.isArray(field.value)
-              ? field.value.join(", ")
-              : String(field.value);
-            lines.push(`- Custom Fields — ${fieldName}: ${valueStr}`);
-          }
+        if (
+          field.value === null ||
+          field.value === "" ||
+          !fieldMap.has(field.id)
+        ) {
+          continue;
         }
+        if (customFieldCount >= MAX_CUSTOM_FIELDS) {
+          lines.push(
+            `- Custom Fields: display limit reached (${MAX_CUSTOM_FIELDS} shown). ` +
+              `There may be more custom fields available. If needed, use list_ticket_fields to discover all fields ` +
+              `and search_tickets with the required custom fields.`
+          );
+          break;
+        }
+        const valueStr = Array.isArray(field.value)
+          ? field.value.join(", ")
+          : String(field.value);
+        lines.push(`- Custom Fields — ${fieldMap.get(field.id)}: ${valueStr}`);
+        customFieldCount++;
       }
     }
   }

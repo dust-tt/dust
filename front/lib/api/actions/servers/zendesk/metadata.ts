@@ -22,13 +22,13 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .describe("The ID of the Zendesk ticket to retrieve."),
       includeMetrics: z
         .boolean()
-        .default(false)
+        .optional()
         .describe(
           "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
         ),
       includeConversation: z
         .boolean()
-        .default(false)
+        .optional()
         .describe(
           "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
         ),
