@@ -489,7 +489,7 @@ function formatAvailableTools(tools: AvailableTool[]): string {
   return `## AVAILABLE TOOLS\n${tools.length} tools available.\n\n${toolLines}`;
 }
 
-function buildCopilotInstructions(
+export function buildCopilotInstructions(
   copilotContext: CopilotContext | null
 ): string {
   const parts: string[] = [
