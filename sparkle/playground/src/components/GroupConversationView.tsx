@@ -45,11 +45,11 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
   ToolsIcon,
   TrashIcon,
   UserGroupIcon,
@@ -57,7 +57,7 @@ import {
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { getAgentById } from "../data/agents";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
@@ -326,6 +326,52 @@ interface OngoingSummary {
   updatedAt: Date;
 }
 
+const SUMMARY_PEOPLE_NAMES = [
+  "Raphael",
+  "Seb",
+  "Nina",
+  "Alex",
+  "Maya",
+  "Tom",
+  "Lea",
+  "Jordan",
+  "Priya",
+  "Sam",
+];
+
+function renderSummaryItemWithEmphasizedNames(item: string): ReactNode {
+  const namePattern = SUMMARY_PEOPLE_NAMES.join("|");
+  const regex = new RegExp(`\\b(${namePattern})\\b`, "g");
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let match = regex.exec(item);
+
+  while (match) {
+    const matchedName = match[0];
+    const matchIndex = match.index;
+
+    if (matchIndex > cursor) {
+      nodes.push(item.slice(cursor, matchIndex));
+    }
+
+    nodes.push(
+      <span key={`${matchedName}-${matchIndex}`} className="s-font-semibold">
+        {matchedName}
+      </span>
+    );
+
+    cursor = matchIndex + matchedName.length;
+    match = regex.exec(item);
+  }
+
+  if (cursor < item.length) {
+    nodes.push(item.slice(cursor));
+  }
+
+  return <>{nodes.length > 0 ? nodes : item}</>;
+}
+
 function getSummaryTimestamp(spaceId: string): Date {
   const minutesAgo =
     Math.floor(seededRandom(`${spaceId}-summary-ts`, 0) * 120) + 15;
@@ -379,36 +425,36 @@ function getSummaryCategoryPool(
 
   if (category === "needAttention") {
     return [
-      `Action required: owner confirmation needed on "${topHighlight}" before end of day.`,
-      `Escalation pending: legal/security review requested for "${secondHighlight}".`,
-      `Direct mention detected: finance input needed for budget impact on "${thirdHighlight}".`,
-      `Open blocker: dependency owner has not acknowledged handoff in ${spaceName}.`,
-      `Approval queue: external communication draft still waiting for sign-off.`,
-      `Customer-sensitive update requires named DRI response in the next sync.`,
-      `Compliance request: evidence artifact is missing for current milestone.`,
+      `Raphael is asking for your sign-off on "${topHighlight}" before end of day.`,
+      `Seb asked you to confirm who owns the legal and security follow-up on "${secondHighlight}".`,
+      `Nina mentioned you directly to validate the budget impact linked to "${thirdHighlight}".`,
+      `Alex needs your call on a blocked handoff that is slowing execution in ${spaceName}.`,
+      `Maya is waiting for your approval before sharing the customer-facing update.`,
+      `Tom flagged that your response is needed to close an enterprise escalation thread.`,
+      `Lea asked you to provide missing compliance evidence for the current milestone.`,
     ];
   }
 
   if (category === "keyDecisions") {
     return [
-      `Decision: keep "${topHighlight}" on the current milestone with no scope increase.`,
-      `Decision: route "${secondHighlight}" through the enterprise rollout checklist.`,
-      `Decision: assign a single DRI for "${thirdHighlight}" to reduce handoff latency.`,
-      `Decision: prioritize reliability fixes over net-new work for this cycle.`,
-      `Decision: maintain current vendor path pending procurement checkpoint.`,
-      `Decision: defer non-critical backlog items to protect committed timeline.`,
-      `Decision: use existing governance policy instead of creating a custom exception.`,
+      `Raphael and Priya aligned on keeping "${topHighlight}" in the current milestone without scope increase.`,
+      `Seb and Jordan agreed to pass "${secondHighlight}" through the enterprise rollout checklist.`,
+      `Maya confirmed a single DRI will own "${thirdHighlight}" to reduce coordination delays.`,
+      `Alex and Tom agreed to prioritize reliability work over net-new scope this cycle.`,
+      `Lea and Sam decided to stay on the current vendor path until procurement review is complete.`,
+      `Nina aligned with leadership to defer non-critical backlog items and protect the committed timeline.`,
+      `Priya and Seb chose to apply the existing governance policy rather than request an exception.`,
     ];
   }
 
   return [
-    `Pulse: collaboration remains steady across product, engineering, and operations.`,
-    `Pulse: discussion volume increased around "${topHighlight}" since this morning.`,
-    `Pulse: most updates are status-oriented, with limited unresolved disagreement.`,
-    `Pulse: stakeholder sentiment is constructive and execution-focused this cycle.`,
-    `Pulse: risk discussions are trending toward mitigation, not escalation.`,
-    `Pulse: shared context quality improved after the latest recap thread.`,
-    `Pulse: teams are converging on execution details for "${secondHighlight}".`,
+    `Raphael noted that collaboration is steady across product, engineering, and operations.`,
+    `Seb observed an increase in discussion volume around "${topHighlight}" since this morning.`,
+    `Nina reported that updates are mostly status-oriented with limited unresolved disagreement.`,
+    `Maya shared that stakeholder sentiment remains constructive and execution-focused this week.`,
+    `Alex mentioned that risk conversations are trending toward mitigation rather than escalation.`,
+    `Tom highlighted that shared context improved after the latest recap thread.`,
+    `Lea reported that teams are converging on execution details for "${secondHighlight}".`,
   ];
 }
 
@@ -805,14 +851,25 @@ export function GroupConversationView({
   const hasHistory = expandedConversations.length > 0;
   const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 180;
 
-  const formatSummaryUpdatedAt = (date: Date): string =>
-    date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+  const formatSummaryUpdatedAt = (date: Date): string => {
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.max(0, Math.floor(diffMs / (60 * 1000)));
+
+    if (diffMinutes < 1) {
+      return "just now";
+    }
+    if (diffMinutes < 60) {
+      return `${diffMinutes} min ago`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
 
   // Handle room name save confirmation
   const handleNameSaveConfirm = () => {
@@ -862,6 +919,8 @@ export function GroupConversationView({
     setIsSummaryUpdating(true);
     setIsOngoingSummaryExpanded(false);
 
+    const generationDelayMs = (8 + Math.floor(Math.random() * 13)) * 1000;
+
     const summaryTimeoutId = window.setTimeout(() => {
       setOngoingSummary((previous) =>
         buildDeltaOngoingSummary(
@@ -872,7 +931,7 @@ export function GroupConversationView({
         )
       );
       setIsSummaryUpdating(false);
-    }, 30_000);
+    }, generationDelayMs);
 
     return () => {
       window.clearTimeout(summaryTimeoutId);
@@ -1278,22 +1337,21 @@ export function GroupConversationView({
                 />
                 {hasHistory && ongoingSummary && (
                   <div className="s-flex s-flex-col s-gap-4 s-py-6 s-px-4">
-                    <div className="s-flex s-flex-col s-gap-1">
-                      <h3 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
-                        Ongoing summary
+                    <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
+                      <h3 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                        What's new?
                       </h3>
-                      <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                        {isSummaryUpdating && (
-                          <>
-                            <Spinner size="xs" />
-                            <span>Updating</span>
-                          </>
-                        )}
-                        <span className="s-italic">
-                          (Last updated{" "}
-                          {formatSummaryUpdatedAt(ongoingSummary.updatedAt)})
-                        </span>
-                      </div>
+                      <Tooltip
+                        label={`Last updated ${formatSummaryUpdatedAt(ongoingSummary.updatedAt)}`}
+                        trigger={
+                          <Chip
+                            size="xs"
+                            color={isSummaryUpdating ? "info" : "primary"}
+                            label={isSummaryUpdating ? "Updating" : "Just now"}
+                            isBusy={isSummaryUpdating}
+                          />
+                        }
+                      />
                     </div>
 
                     <div className="s-relative">
@@ -1328,18 +1386,20 @@ export function GroupConversationView({
                             key={section.label}
                             className="s-flex s-flex-col s-gap-2"
                           >
-                            <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                            <h4 className="s-heading-lg s-pt-2 s-text-foreground dark:s-text-foreground-night">
                               <span className="s-mr-2">{section.emoji}</span>
                               {section.label}
                             </h4>
-                            <div className="s-flex s-flex-col s-gap-1.5">
+                            <div className="s-flex s-flex-col s-gap-1.5 s-pl-2">
                               {section.items.map((item) => (
                                 <div
                                   key={item}
-                                  className="s-flex s-items-start s-gap-2 s-text-sm s-text-foreground dark:s-text-foreground-night"
+                                  className="s-flex s-items-start s-gap-2 s-text-base s-text-foreground dark:s-text-foreground-night"
                                 >
                                   <span className="s-mt-1.5 s-h-1.5 s-w-1.5 s-shrink-0 s-rounded-full s-bg-foreground dark:s-bg-foreground-night" />
-                                  <span>{item}</span>
+                                  <span>
+                                    {renderSummaryItemWithEmphasizedNames(item)}
+                                  </span>
                                 </div>
                               ))}
                             </div>
