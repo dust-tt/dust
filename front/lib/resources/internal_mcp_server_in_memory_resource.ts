@@ -37,8 +37,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { decrypt, encrypt } from "@app/types/shared/utils/hashing";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { Op } from "sequelize";
 
@@ -395,12 +395,12 @@ export class InternalMCPServerInMemoryResource {
 
     if (existing) {
       const updatePayload: Partial<{
-        hash: string | null;
+        encryptedKey: string | null;
         customHeaders: Record<string, string> | null;
       }> = {};
 
       if (sharedSecret !== undefined) {
-        updatePayload.hash = sharedSecret
+        updatePayload.encryptedKey = sharedSecret
           ? encrypt({
               text: sharedSecret,
               key: encryptionKey,
@@ -419,7 +419,7 @@ export class InternalMCPServerInMemoryResource {
       await InternalMCPServerCredentialModel.create({
         workspaceId: workspace.id,
         internalMCPServerId: this.id,
-        hash: sharedSecret
+        encryptedKey: sharedSecret
           ? encrypt({
               text: sharedSecret,
               key: encryptionKey,
@@ -492,17 +492,17 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    const encryptionKey = auth.getNonNullableWorkspace().sId;
+    const { encryptedKey, customHeaders } = credential;
 
     return {
-      sharedSecret: credential.hash
+      sharedSecret: encryptedKey
         ? decrypt({
-            encrypted: credential.hash,
-            key: encryptionKey,
+            encrypted: encryptedKey,
+            key: auth.getNonNullableWorkspace().sId,
             useCase: "mcp_server_credentials",
           })
         : null,
-      customHeaders: credential.customHeaders ?? null,
+      customHeaders,
     };
   }
 
