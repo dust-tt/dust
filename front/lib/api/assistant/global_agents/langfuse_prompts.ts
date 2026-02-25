@@ -1,5 +1,4 @@
 import { getLangfuseClient } from "@app/lib/api/langfuse_client";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -15,13 +14,10 @@ export async function fetchAndCompileLangfusePrompt(
 
   try {
     const prompt = await client.prompt.get(promptName);
+    const compiledPrompt = prompt.compile(variables);
 
-    return new Ok(prompt.compile(variables));
+    return new Ok(compiledPrompt);
   } catch (error) {
-    logger.error(
-      { promptName, error: normalizeError(error) },
-      "[Langfuse] Failed to fetch prompt"
-    );
     return new Err(normalizeError(error));
   }
 }

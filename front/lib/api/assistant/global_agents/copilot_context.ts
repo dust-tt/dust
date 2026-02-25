@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
@@ -170,14 +171,20 @@ export async function buildCopilotContext(
 
   let langfuseInstructions: string | null = null;
   if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_HAIKU)) {
-    const result = await fetchAndCompileLangfusePrompt(
-      GLOBAL_AGENTS_SID.COPILOT_HAIKU,
-      {
-        userContext: formattedUserContext ?? "",
-        workspaceContext: formattedWorkspaceContext,
-      }
-    );
-    if (result.isOk()) {
+    const promptName = GLOBAL_AGENTS_SID.COPILOT_HAIKU;
+    const result = await fetchAndCompileLangfusePrompt(promptName, {
+      userContext: formattedUserContext ?? "",
+      workspaceContext: formattedWorkspaceContext,
+    });
+    if (result.isErr()) {
+      logger.error(
+        {
+          promptName,
+          error: result.error,
+        },
+        "[Langfuse] Failed to fetch prompt"
+      );
+    } else {
       langfuseInstructions = result.value;
     }
   }
