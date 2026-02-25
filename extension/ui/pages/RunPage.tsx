@@ -4,7 +4,7 @@ import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export const RunPage = () => {
   const platform = usePlatform();
