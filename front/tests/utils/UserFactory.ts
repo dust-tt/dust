@@ -19,6 +19,13 @@ export class UserFactory {
     return UserResource.makeNew(this.defaultParams(false, new Date(), null));
   }
 
+  static async withWorkOSId(workOSUserId: string) {
+    return UserResource.makeNew({
+      ...this.defaultParams(false),
+      workOSUserId,
+    });
+  }
+
   private static defaultParams = (
     superUser: boolean = false,
     createdAt: Date = new Date(),

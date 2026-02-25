@@ -38,7 +38,11 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import {
   getWorkspaceFirstAdmin,
@@ -118,8 +122,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       { ...blob },
       { transaction }
     );
-    await SubscriptionResource.invalidateSubscriptionCache(
-      subscription.workspaceId
+    const workspaceId = subscription.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
     );
     return new SubscriptionResource(
       SubscriptionModel,
@@ -1032,7 +1037,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   // Payment status.
@@ -1044,7 +1052,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   async setPaymentFailingStatus(
@@ -1057,7 +1068,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   async markAsCanceled(
@@ -1073,7 +1087,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       transaction
     );
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   async markAsActive(
@@ -1081,7 +1098,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     transaction?: Transaction
   ): Promise<void> {
     await this.update({ status: "active", trialing }, transaction);
-    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
+    const workspaceId = this.workspaceId;
+    invalidateCacheAfterCommit(transaction, () =>
+      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+    );
   }
 
   /**

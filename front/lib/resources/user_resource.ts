@@ -9,7 +9,11 @@ import {
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
-import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
@@ -84,8 +88,11 @@ export class UserResource extends BaseResource<UserModel> {
   ): Promise<[affectedCount: number]> {
     const result = await super.update(blob, transaction);
 
-    if (this.workOSUserId) {
-      await UserResource.invalidateUserByWorkOSIdCache(this.workOSUserId);
+    const workOSUserId = this.workOSUserId;
+    if (workOSUserId) {
+      invalidateCacheAfterCommit(transaction, () =>
+        UserResource.invalidateUserByWorkOSIdCache(workOSUserId)
+      );
     }
 
     return result;

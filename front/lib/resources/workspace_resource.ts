@@ -11,7 +11,11 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import {
+  cacheWithRedis,
+  invalidateCacheAfterCommit,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
@@ -194,7 +198,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
     const result = await super.update(blob, transaction);
-    await WorkspaceResource.invalidateWorkspaceCache(this.sId);
+    const sId = this.sId;
+    invalidateCacheAfterCommit(transaction, () =>
+      WorkspaceResource.invalidateWorkspaceCache(sId)
+    );
     return result;
   }
 
@@ -758,7 +765,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         where: { id: this.blob.id },
         transaction,
       });
-      await WorkspaceResource.invalidateWorkspaceCache(this.sId);
+      const sId = this.sId;
+      invalidateCacheAfterCommit(transaction, () =>
+        WorkspaceResource.invalidateWorkspaceCache(sId)
+      );
       return new Ok(deletedCount);
     } catch (error) {
       return new Err(normalizeError(error));
