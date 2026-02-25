@@ -430,18 +430,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           .map((k) => k.trim())
           .filter((k) => k.length > 0);
 
-        // Validation
-        if (keywords.some((k) => k.length > 100)) {
-          return new Err(new Error("Keywords must be 100 characters or less"));
+        // Validation and storage handled by resource
+        const result = await configuration.setExcludeTitleKeywords(keywords);
+        if (result.isErr()) {
+          return result;
         }
-        if (keywords.length > 50) {
-          return new Err(new Error("Maximum 50 keywords allowed"));
-        }
-
-        // Store (setter will normalize to lowercase)
-        await configuration.setExcludeTitleKeywords(
-          keywords.length > 0 ? keywords : null
-        );
 
         logger.info(
           { connectorId: connector.id, keywords },

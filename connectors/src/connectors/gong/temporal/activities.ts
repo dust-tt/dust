@@ -65,9 +65,7 @@ async function resolvePermissionProfile(
 }
 
 /**
- * Determines whether a transcript should be synced.
- * Excludes private calls. When a permission profile is configured, only syncs
- * calls where at least one participant belongs to the profile's user list.
+ * Checks if a transcript title contains any excluded keywords.
  */
 function shouldExcludeByTitle(
   title: string | undefined,
@@ -85,16 +83,23 @@ function shouldExcludeByTitle(
   // Note: keywords are already stored lowercase from the resource setter
 }
 
+/**
+ * Determines whether a transcript should be synced.
+ * Excludes private calls. When a permission profile is configured, only syncs
+ * calls where at least one participant belongs to the profile's user list.
+ */
 function shouldSyncTranscript(
   metadata: GongTranscriptMetadata,
   filter: PermissionProfileFilter,
-  excludeKeywords: string[] | null
+  configuration: GongConfigurationResource
 ): { shouldSync: false; reason: string } | { shouldSync: true; reason: null } {
+  const { excludeTitleKeywords } = configuration;
+
   if (metadata.metaData.isPrivate) {
     return { shouldSync: false, reason: "transcript is private" };
   }
 
-  if (shouldExcludeByTitle(metadata.metaData.title, excludeKeywords)) {
+  if (shouldExcludeByTitle(metadata.metaData.title, excludeTitleKeywords)) {
     return {
       shouldSync: false,
       reason: "title contains excluded keyword",
@@ -192,7 +197,6 @@ export async function gongSyncTranscriptsActivity({
 }) {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
-  const { excludeTitleKeywords } = configuration;
   const loggerArgs = {
     connectorId: connector.id,
     dataSourceId: connector.dataSourceId,
@@ -305,7 +309,7 @@ export async function gongSyncTranscriptsActivity({
       const { shouldSync, reason } = shouldSyncTranscript(
         transcriptMetadata,
         permissionFilter,
-        excludeTitleKeywords
+        configuration
       );
       if (!shouldSync) {
         logger.info(
