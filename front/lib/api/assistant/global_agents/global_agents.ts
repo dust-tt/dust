@@ -1,4 +1,3 @@
-import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   _getClaude3_7GlobalAgent,
@@ -71,6 +70,10 @@ import {
   _getNotionGlobalAgent,
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
+import {
+  buildCopilotContext,
+  type CopilotContext,
+} from "@app/lib/api/assistant/global_agents/copilot_context";
 import type {
   MCPServerViewsForGlobalAgentsMap,
   PrefetchedDataSourcesType,
@@ -79,19 +82,9 @@ import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
   getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
-import type {
-  AvailableSkill,
-  AvailableTool,
-} from "@app/lib/api/assistant/workspace_capabilities";
-import {
-  getAvailableModelsForWorkspace,
-  listAvailableSkills,
-  listAvailableTools,
-} from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -103,14 +96,7 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import type { FavoritePlatform } from "@app/types/favorite_platforms";
-import { isFavoritePlatform } from "@app/types/favorite_platforms";
-import type { JobType } from "@app/types/job_type";
-import { isJobType } from "@app/types/job_type";
 import { isDevelopment } from "@app/types/shared/env";
-import { isStringArray } from "@app/types/shared/utils/general";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
 // per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
@@ -314,56 +300,6 @@ export function isDustLikeAgent(sId: string): boolean {
     GLOBAL_AGENT_FLAGS[sId].injectsMemory &&
     GLOBAL_AGENT_FLAGS[sId].injectsToolsets
   );
-}
-
-export interface CopilotUserMetadata {
-  jobType: JobType | null;
-  favoritePlatforms: FavoritePlatform[];
-}
-
-export interface CopilotContext {
-  mcpServerViews: {
-    context: MCPServerViewResource;
-  } | null;
-  userMetadata: CopilotUserMetadata | null;
-  workspaceCapabilities: {
-    models: ModelConfigurationType[];
-    skills: AvailableSkill[];
-    tools: AvailableTool[];
-  } | null;
-}
-
-async function fetchCopilotUserMetadata(
-  auth: Authenticator
-): Promise<CopilotUserMetadata | null> {
-  const user = auth.user();
-  if (!user) {
-    return null;
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-
-  const [jobTypeMeta, platformsMeta] = await Promise.all([
-    // Job type is user-scoped (not workspace-specific).
-    user.getMetadata("job_type"),
-    user.getMetadata("favorite_platforms", owner.id),
-  ]);
-
-  let favoritePlatforms: FavoritePlatform[] = [];
-  if (platformsMeta?.value) {
-    const parsed = safeParseJSON(platformsMeta.value);
-    if (
-      parsed.isOk() &&
-      isStringArray(parsed.value) &&
-      parsed.value.every(isFavoritePlatform)
-    ) {
-      favoritePlatforms = parsed.value;
-    }
-  }
-
-  const jobType = isJobType(jobTypeMeta?.value) ? jobTypeMeta.value : null;
-
-  return { jobType, favoritePlatforms };
 }
 
 function getGlobalAgent({
@@ -939,28 +875,10 @@ export async function getGlobalAgents(
     );
   }
 
-  let copilotContext: CopilotContext | null = null;
-  if (
-    variant === "full" &&
-    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_HAIKU))
-  ) {
-    const [context, userMetadata, models, skills, tools] = await Promise.all([
-      MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        AGENT_COPILOT_CONTEXT_TOOL_NAME
-      ),
-      fetchCopilotUserMetadata(auth),
-      getAvailableModelsForWorkspace(auth),
-      listAvailableSkills(auth),
-      listAvailableTools(auth),
-    ]);
-    copilotContext = {
-      mcpServerViews: context ? { context } : null,
-      userMetadata,
-      workspaceCapabilities: { models, skills, tools },
-    };
-  }
+  const copilotContext =
+    variant === "full"
+      ? await buildCopilotContext(auth, agentsIdsToFetch)
+      : null;
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
