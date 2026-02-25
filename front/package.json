@@ -27,7 +27,7 @@
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
-    "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
+    "debug:profiler": "node ./scripts/debug/run_profiler.ts",
     "sitemap": "next-sitemap",
     "analyze": "NODE_OPTIONS=--max-old-space-size=16384 ANALYZE=true npm run build",
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
