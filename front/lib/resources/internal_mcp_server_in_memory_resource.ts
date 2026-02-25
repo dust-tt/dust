@@ -473,18 +473,28 @@ export class InternalMCPServerInMemoryResource {
     };
   }
 
-  private async fetchInternalServerCredential(auth: Authenticator): Promise<{
+  private async fetchInternalServerCredential(auth: Authenticator) {
+    return InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+      auth,
+      this.id
+    );
+  }
+
+  static async fetchDecryptedCredentials(
+    auth: Authenticator,
+    internalMCPServerId: string
+  ): Promise<{
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
   } | null> {
-    if (!doesInternalMCPServerRequireBearerToken(this.id)) {
+    if (!doesInternalMCPServerRequireBearerToken(internalMCPServerId)) {
       return null;
     }
 
     const credential = await InternalMCPServerCredentialModel.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: this.id,
+        internalMCPServerId,
       },
     });
 
