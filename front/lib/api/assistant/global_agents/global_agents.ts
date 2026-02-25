@@ -12,7 +12,7 @@ import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import { _getCopilotHaikuGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_haiku";
 import {
-  _getBrowserSummaryAgent,
+  _getArchivedBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
@@ -704,9 +704,7 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
-      agentConfiguration = _getBrowserSummaryAgent(auth, {
-        settings,
-      });
+      agentConfiguration = _getArchivedBrowserSummaryAgent();
       break;
     case GLOBAL_AGENTS_SID.DUST_PLANNING:
       agentConfiguration = _getPlanningAgent(auth, {

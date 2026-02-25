@@ -295,13 +295,6 @@ Your output will be consumed by another AI agent, not a human. As a result, do n
 Make sure to include all information and details that are relevant to the request, without any noise or redundancy.
 </output_format>`;
 
-const browserSummaryAgentInstructions = `<primary_goal>
-You are a web page summary agent. Your primary role is to summarize web page content.
-You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
-Your goal is to remove the noise without altering meaning or removing important information. You may use a bullet-points-heavy format.
-Provide URLs for sub-pages that that are relevant to the summary.
-</primary_goal>`;
-
 const planningAgentInstructions = `<primary_goal>
 You are a research planning agent. Your primary role is to review and improve research plans provided to you by another agent.
 The plans you propose should be high-level, short and straight to the point.
@@ -402,23 +395,22 @@ function getModelConfig(
   };
 }
 
-export function getFastModelConfig(owner: WorkspaceType): {
-  modelConfiguration: ModelConfigurationType;
-  reasoningEffort: AgentReasoningEffort;
-} | null {
+export function getFastModelConfig(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return {
-      modelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-      reasoningEffort: "none",
-    };
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    return {
-      modelConfiguration: GEMINI_2_5_FLASH_MODEL_CONFIG,
-      reasoningEffort: "none",
-    };
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
-  return getModelConfig(owner, "anthropic", false);
+
+  // Otherwise we use whatever the default large model is, using the default reasoning effort.
+  const modelConfig = getModelConfig(owner, "anthropic", false);
+  if (!modelConfig) {
+    return null;
+  }
+  return modelConfig.modelConfiguration;
 }
 
 function getMaxReasoningModelConfig(owner: WorkspaceType): {
@@ -780,22 +772,14 @@ export function _getPlanningAgent(
   };
 }
 
-export function _getBrowserSummaryAgent(
-  auth: Authenticator,
-  { settings }: { settings: GlobalAgentSettingsModel | null }
-): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-
+export function _getArchivedBrowserSummaryAgent(): AgentConfigurationType {
   const name = "dust-browser-summary";
   const description = "A agent that summarizes web page content.";
 
   const pictureUrl =
     "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";
 
-  const browserSummaryAgent: Omit<
-    AgentConfigurationType,
-    "status" | "maxStepsPerRun" | "actions"
-  > = {
+  return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
     version: 0,
@@ -803,7 +787,7 @@ export function _getBrowserSummaryAgent(
     versionAuthorId: null,
     name,
     description,
-    instructions: browserSummaryAgentInstructions,
+    instructions: null,
     instructionsHtml: null,
     pictureUrl,
     scope: "global" as const,
@@ -815,31 +799,7 @@ export function _getBrowserSummaryAgent(
     tags: [],
     canRead: true,
     canEdit: false,
-  };
-
-  const modelConfig = getFastModelConfig(owner);
-
-  if (!modelConfig || settings?.status === "disabled_by_admin") {
-    return {
-      ...browserSummaryAgent,
-      status: "disabled_by_admin",
-      actions: [],
-      maxStepsPerRun: 0,
-    };
-  }
-
-  const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
-    temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
-  };
-
-  browserSummaryAgent.model = model;
-
-  return {
-    ...browserSummaryAgent,
-    status: "active",
+    status: "archived",
     actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
