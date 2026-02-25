@@ -20,8 +20,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { decrypt } from "@app/types/shared/utils/encryption";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function getBearerToken(
   auth: Authenticator,

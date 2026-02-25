@@ -14,8 +14,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { decrypt } from "@app/types/shared/utils/encryption";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const MAX_RESPONSE_SIZE = 1_000_000; // 1MB
 
