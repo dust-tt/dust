@@ -3,6 +3,7 @@ import type { ExecOptions, ExecResult } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
@@ -18,6 +19,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 interface EnsureSandboxResult {
   sandbox: SandboxResource;
@@ -89,6 +91,66 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     });
 
     return rows.map((r) => new this(this.model, r.get()));
+  }
+
+  /**
+   * Return conversation sIds that have a sandbox with the given `status` and
+   * whose `lastActivityAt` is older than `olderThanMs`. Used by the reaper
+   * workflow to identify candidates for sleep/destroy.
+   *
+   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslyGetStaleConversationIds(opts: {
+    status: SandboxStatus;
+    olderThanMs: number;
+    limit: number;
+  }): Promise<string[]> {
+    // WORKSPACE_ISOLATION_BYPASS: Reaper operates across all workspaces.
+    const rows = await this.model.findAll({
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        status: opts.status,
+        lastActivityAt: {
+          [Op.lt]: new Date(Date.now() - opts.olderThanMs),
+        },
+      },
+      include: [
+        {
+          model: ConversationModel,
+          attributes: ["sId"],
+          required: true,
+        },
+      ],
+      order: [["lastActivityAt", "ASC"]],
+      limit: opts.limit,
+    });
+
+    return rows.map((r) => r.conversation.sId);
+  }
+
+  /**
+   * Fetch the sandbox for a conversation across all workspaces (no auth).
+   * Only used by the reaper inside the lifecycle lock.
+   *
+   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  private static async dangerouslyFetchByConversationId(
+    conversationId: string
+  ): Promise<SandboxResource | null> {
+    // WORKSPACE_ISOLATION_BYPASS: Reaper operates across all workspaces.
+    const row = await this.model.findOne({
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      include: [
+        {
+          model: ConversationModel,
+          attributes: ["id"],
+          required: true,
+          where: { sId: conversationId },
+        },
+      ],
+    });
+
+    return row ? new this(this.model, row.get()) : null;
   }
 
   static async fetchByConversationId(
@@ -165,7 +227,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       "Cannot ensure sandbox without a workspace"
     );
 
-    const lockName = `sandbox:ensureActive:${conversation.sId}`;
+    const lockName = `sandbox:lifecycle:${conversation.sId}`;
 
     return executeWithLock(lockName, async () => {
       const provider = getSandboxProvider();
@@ -254,6 +316,89 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       await existing.updateStatus("running");
       await existing.updateLastActivityAt();
       return new Ok({ sandbox: existing, freshlyCreated });
+    });
+  }
+
+  /**
+   * Sleep a running sandbox for the given conversation. Acquires the lifecycle
+   * lock, re-fetches the sandbox inside it, and only sleeps if still running.
+   * If the provider reports the sandbox as gone, marks it deleted instead.
+   *
+   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslySleepIfRunning(
+    conversationId: string
+  ): Promise<Result<void, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    return executeWithLock(`sandbox:lifecycle:${conversationId}`, async () => {
+      const sandbox =
+        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+      if (!sandbox || sandbox.status !== "running") {
+        return new Ok(undefined);
+      }
+
+      const result = await provider.sleep(sandbox.providerId);
+      if (result.isErr()) {
+        if (result.error instanceof SandboxNotFoundError) {
+          logger.info(
+            { sandbox: sandbox.toLogJSON() },
+            "Sandbox not found at provider during sleep — marking deleted."
+          );
+          await sandbox.updateStatus("deleted");
+          return new Ok(undefined);
+        }
+        return result;
+      }
+
+      await sandbox.updateStatus("sleeping");
+      logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox put to sleep.");
+      return new Ok(undefined);
+    });
+  }
+
+  /**
+   * Destroy a sleeping sandbox for the given conversation. Acquires the
+   * lifecycle lock, re-fetches the sandbox inside it, and only destroys if
+   * still sleeping. If the provider reports the sandbox as gone, marks it
+   * deleted anyway.
+   *
+   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslyDestroyIfSleeping(
+    conversationId: string
+  ): Promise<Result<void, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    return executeWithLock(`sandbox:lifecycle:${conversationId}`, async () => {
+      const sandbox =
+        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+      if (!sandbox || sandbox.status !== "sleeping") {
+        return new Ok(undefined);
+      }
+
+      const result = await provider.destroy(sandbox.providerId);
+      if (result.isErr()) {
+        if (result.error instanceof SandboxNotFoundError) {
+          logger.info(
+            { sandbox: sandbox.toLogJSON() },
+            "Sandbox not found at provider during destroy — marking deleted."
+          );
+          await sandbox.updateStatus("deleted");
+          return new Ok(undefined);
+        }
+        return result;
+      }
+
+      await sandbox.updateStatus("deleted");
+      logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox destroyed.");
+      return new Ok(undefined);
     });
   }
 

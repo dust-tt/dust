@@ -13,9 +13,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
-// TODO(SANDBOX-S1): Replace fixed lifetime with reaper-based cleanup.
-// https://github.com/dust-tt/tasks/issues/6720
-const SANDBOX_LIFETIME_MS = 3_600_000; // 1 hour
+const SANDBOX_LIFETIME_MS = 86_400_000; // 24 hours (E2B Pro max; reaper manages lifecycle)
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -105,12 +103,18 @@ export class E2BSandboxProvider implements SandboxProvider {
     try {
       sandbox = await Sandbox.connect(providerId, this.connectionOpts());
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
       return new Err(normalizeError(err));
     }
 
     try {
       await sandbox.betaPause();
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
       return new Err(normalizeError(err));
     }
 
@@ -125,6 +129,9 @@ export class E2BSandboxProvider implements SandboxProvider {
     try {
       await Sandbox.kill(providerId, this.connectionOpts());
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        return new Err(new SandboxNotFoundError(providerId));
+      }
       return new Err(normalizeError(err));
     }
 
