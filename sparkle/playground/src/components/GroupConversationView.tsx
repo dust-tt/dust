@@ -11,6 +11,8 @@ import {
   ChatBubbleLeftRightIcon,
   CheckDoubleIcon,
   CheckIcon,
+  Checkbox,
+  CircleIcon,
   Chip,
   Cog6ToothIcon,
   ConversationListItem,
@@ -45,6 +47,7 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
+  SquareIcon,
   Tabs,
   TabsContent,
   TabsList,
@@ -52,12 +55,14 @@ import {
   Tooltip,
   ToolsIcon,
   TrashIcon,
+  TriangleIcon,
   UserGroupIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { cn } from "@sparkle/lib/utils";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { getAgentById } from "../data/agents";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
@@ -319,12 +324,29 @@ function getBaseConversationId(
 
 type OngoingSummaryCategory = "needAttention" | "keyDecisions" | "projectPulse";
 
+type ProjectPulseSegment =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "link";
+      text: string;
+    };
+
+interface ProjectPulseItem {
+  id: string;
+  segments: ProjectPulseSegment[];
+}
+
 interface OngoingSummary {
   needAttention: string[];
   keyDecisions: string[];
-  projectPulse: string[];
+  projectPulse: ProjectPulseItem[];
   updatedAt: Date;
 }
+
+type SummaryRelatedConversations = Record<string, string[]>;
 
 const SUMMARY_PEOPLE_NAMES = [
   "Raphael",
@@ -372,6 +394,85 @@ function renderSummaryItemWithEmphasizedNames(item: string): ReactNode {
   return <>{nodes.length > 0 ? nodes : item}</>;
 }
 
+function getSummaryItemIdentity(item: string | ProjectPulseItem): string {
+  if (typeof item === "string") {
+    return item;
+  }
+  return item.id;
+}
+
+function getSummaryItemKey(
+  category: OngoingSummaryCategory,
+  item: string | ProjectPulseItem
+): string {
+  return `${category}::${getSummaryItemIdentity(item)}`;
+}
+
+function getSummaryItemKeys(summary: OngoingSummary): string[] {
+  return [
+    ...summary.needAttention.map((item) =>
+      getSummaryItemKey("needAttention", item)
+    ),
+    ...summary.keyDecisions.map((item) =>
+      getSummaryItemKey("keyDecisions", item)
+    ),
+    ...summary.projectPulse.map((item) =>
+      getSummaryItemKey("projectPulse", item)
+    ),
+  ];
+}
+
+function getConversationRowDomId(conversationId: string): string {
+  return `conversation-row-${conversationId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
+function buildRandomSummaryRelatedConversations(
+  summary: OngoingSummary,
+  conversations: Conversation[]
+): SummaryRelatedConversations {
+  const availableConversationIds = conversations.map(
+    (conversation) => conversation.id
+  );
+  const links: SummaryRelatedConversations = {};
+
+  if (availableConversationIds.length === 0) {
+    return links;
+  }
+
+  const summarySections: Array<{
+    category: OngoingSummaryCategory;
+    items: Array<string | ProjectPulseItem>;
+  }> = [
+    { category: "needAttention", items: summary.needAttention },
+    { category: "keyDecisions", items: summary.keyDecisions },
+    { category: "projectPulse", items: summary.projectPulse },
+  ];
+
+  summarySections.forEach(({ category, items }) => {
+    items.forEach((item) => {
+      const linkSegmentCount =
+        category === "projectPulse" && typeof item !== "string"
+          ? item.segments.filter((segment) => segment.type === "link").length
+          : 0;
+      const desiredCount =
+        category === "projectPulse"
+          ? Math.max(1, linkSegmentCount)
+          : availableConversationIds.length > 1 && Math.random() < 0.5
+            ? 2
+            : 1;
+      const shuffledIds = [...availableConversationIds].sort(
+        () => Math.random() - 0.5
+      );
+      links[getSummaryItemKey(category, item)] = shuffledIds.slice(
+        0,
+        Math.min(desiredCount, shuffledIds.length)
+      );
+    });
+  });
+
+  return links;
+}
+
 function getSummaryTimestamp(spaceId: string): Date {
   const minutesAgo =
     Math.floor(seededRandom(`${spaceId}-summary-ts`, 0) * 120) + 15;
@@ -397,12 +498,12 @@ function getConversationHighlights(conversations: Conversation[]): string[] {
   return Array.from(uniqueTitles);
 }
 
-function pickDeterministicItems(
-  pool: string[],
+function pickDeterministicItems<T>(
+  pool: T[],
   count: number,
   seed: string,
   offset: number
-): string[] {
+): T[] {
   const ranked = pool
     .map((item, index) => ({
       item,
@@ -447,14 +548,92 @@ function getSummaryCategoryPool(
     ];
   }
 
+  return [];
+}
+
+function getProjectPulseCategoryPool(
+  spaceName: string,
+  highlights: string[]
+): ProjectPulseItem[] {
+  const topHighlight = highlights[0] ?? "current project threads";
+  const secondHighlight = highlights[1] ?? "cross-team follow-up";
+  const thirdHighlight = highlights[2] ?? "delivery planning";
+
   return [
-    `Raphael noted that collaboration is steady across product, engineering, and operations.`,
-    `Seb observed an increase in discussion volume around "${topHighlight}" since this morning.`,
-    `Nina reported that updates are mostly status-oriented with limited unresolved disagreement.`,
-    `Maya shared that stakeholder sentiment remains constructive and execution-focused this week.`,
-    `Alex mentioned that risk conversations are trending toward mitigation rather than escalation.`,
-    `Tom highlighted that shared context improved after the latest recap thread.`,
-    `Lea reported that teams are converging on execution details for "${secondHighlight}".`,
+    {
+      id: "pulse-weekly-recap",
+      segments: [
+        { type: "text", text: `The team used ` },
+        { type: "link", text: "the weekly recap thread" },
+        {
+          type: "text",
+          text: ` to align priorities in ${spaceName} and reduce duplicate updates.`,
+        },
+      ],
+    },
+    {
+      id: "pulse-risk-alignment",
+      segments: [
+        { type: "text", text: "Risk mitigation details from " },
+        { type: "link", text: `"${topHighlight}"` },
+        { type: "text", text: " are now referenced in " },
+        { type: "link", text: "the rollout checklist discussion" },
+        { type: "text", text: "." },
+      ],
+    },
+    {
+      id: "pulse-stakeholder-sync",
+      segments: [
+        { type: "text", text: "Stakeholder feedback in " },
+        { type: "link", text: `"${secondHighlight}"` },
+        {
+          type: "text",
+          text: " shows stronger confidence after the latest sync update.",
+        },
+      ],
+    },
+    {
+      id: "pulse-delivery-readiness",
+      segments: [
+        { type: "text", text: "Delivery readiness signals from " },
+        { type: "link", text: `"${thirdHighlight}"` },
+        {
+          type: "text",
+          text: " indicate fewer unresolved blockers this cycle.",
+        },
+      ],
+    },
+    {
+      id: "pulse-exec-summary",
+      segments: [
+        { type: "text", text: "The executive summary and " },
+        { type: "link", text: "the product-engineering sync notes" },
+        {
+          type: "text",
+          text: " now present a consistent timeline for current milestones.",
+        },
+      ],
+    },
+    {
+      id: "pulse-customer-context",
+      segments: [
+        { type: "text", text: "Customer-facing context from " },
+        { type: "link", text: "the escalation follow-up" },
+        { type: "text", text: " was incorporated into " },
+        { type: "link", text: "the communication draft" },
+        { type: "text", text: "." },
+      ],
+    },
+    {
+      id: "pulse-ownership-clarity",
+      segments: [
+        { type: "text", text: "Ownership became clearer after " },
+        { type: "link", text: "the DRI handoff discussion" },
+        { type: "text", text: ", with explicit next steps captured in " },
+        { type: "link", text: "the action-items thread" },
+        { type: "text", text: "." },
+      ],
+    },
   ];
 }
 
@@ -478,7 +657,7 @@ function buildInitialOngoingSummary(
       20
     ),
     projectPulse: pickDeterministicItems(
-      getSummaryCategoryPool("projectPulse", spaceName, highlights),
+      getProjectPulseCategoryPool(spaceName, highlights),
       3,
       `${spaceId}-project-pulse-initial`,
       40
@@ -487,13 +666,14 @@ function buildInitialOngoingSummary(
   };
 }
 
-function updateSummaryCategoryWithDelta(
-  previousItems: string[],
-  pool: string[],
+function updateSummaryCategoryWithDelta<T>(
+  previousItems: T[],
+  pool: T[],
   targetCount: number,
   seed: string,
-  offset: number
-): string[] {
+  offset: number,
+  getItemId: (item: T) => string
+): T[] {
   if (previousItems.length === 0) {
     return pickDeterministicItems(pool, targetCount, seed, offset);
   }
@@ -502,8 +682,9 @@ function updateSummaryCategoryWithDelta(
     seededRandom(`${seed}-keep`, offset) * previousItems.length
   );
   const keptItems = [previousItems[keepIndex]];
+  const keptItemIds = new Set(keptItems.map((item) => getItemId(item)));
   const freshItems = pickDeterministicItems(
-    pool.filter((item) => !keptItems.includes(item)),
+    pool.filter((item) => !keptItemIds.has(getItemId(item))),
     targetCount - keptItems.length,
     seed,
     offset + 100
@@ -525,21 +706,24 @@ function buildDeltaOngoingSummary(
       getSummaryCategoryPool("needAttention", spaceName, highlights),
       3,
       `${spaceId}-need-attention-delta`,
-      0
+      0,
+      (item) => item
     ),
     keyDecisions: updateSummaryCategoryWithDelta(
       previousSummary.keyDecisions,
       getSummaryCategoryPool("keyDecisions", spaceName, highlights),
       3,
       `${spaceId}-key-decisions-delta`,
-      20
+      20,
+      (item) => item
     ),
     projectPulse: updateSummaryCategoryWithDelta(
       previousSummary.projectPulse,
-      getSummaryCategoryPool("projectPulse", spaceName, highlights),
+      getProjectPulseCategoryPool(spaceName, highlights),
       3,
       `${spaceId}-project-pulse-delta`,
-      40
+      40,
+      (item) => item.id
     ),
     updatedAt: new Date(),
   };
@@ -570,6 +754,11 @@ export function GroupConversationView({
   const [isSummaryUpdating, setIsSummaryUpdating] = useState(false);
   const [isOngoingSummaryExpanded, setIsOngoingSummaryExpanded] =
     useState(false);
+  const [checkedSummaryItems, setCheckedSummaryItems] = useState<
+    Record<string, boolean>
+  >({});
+  const [summaryRelatedConversations, setSummaryRelatedConversations] =
+    useState<SummaryRelatedConversations>({});
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
@@ -615,6 +804,10 @@ export function GroupConversationView({
   const [selectedMemberIdToRemove, setSelectedMemberIdToRemove] = useState<
     string | null
   >(null);
+  const [conversationIdToShowFocus, setConversationIdToShowFocus] = useState<
+    string | null
+  >(null);
+  const showFocusTimeoutRef = useRef<number | null>(null);
 
   // Generate more conversations with varied dates
   const expandedConversations = useMemo(() => {
@@ -851,6 +1044,14 @@ export function GroupConversationView({
   const hasHistory = expandedConversations.length > 0;
   const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 180;
 
+  const conversationTitleById = useMemo(() => {
+    const titleMap = new Map<string, string>();
+    expandedConversations.forEach((conversation) => {
+      titleMap.set(conversation.id, conversation.title);
+    });
+    return titleMap;
+  }, [expandedConversations]);
+
   const formatSummaryUpdatedAt = (date: Date): string => {
     const diffMs = Date.now() - date.getTime();
     const diffMinutes = Math.max(0, Math.floor(diffMs / (60 * 1000)));
@@ -870,6 +1071,79 @@ export function GroupConversationView({
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
   };
+
+  const scrollToConversationRow = (conversationId: string) => {
+    const element = document.getElementById(
+      getConversationRowDomId(conversationId)
+    );
+    if (!element) {
+      return;
+    }
+
+    if (showFocusTimeoutRef.current !== null) {
+      window.clearTimeout(showFocusTimeoutRef.current);
+      showFocusTimeoutRef.current = null;
+    }
+
+    setConversationIdToShowFocus(null);
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    showFocusTimeoutRef.current = window.setTimeout(() => {
+      setConversationIdToShowFocus(conversationId);
+      showFocusTimeoutRef.current = null;
+    }, 500);
+  };
+
+  const renderProjectPulseItemWithInlineLinks = (
+    item: ProjectPulseItem,
+    relatedConversationIds: string[],
+    isChecked: boolean
+  ): ReactNode => {
+    let linkedSegmentIndex = 0;
+
+    return item.segments.map((segment, index) => {
+      if (segment.type === "text") {
+        return (
+          <span key={`${item.id}-text-${index}`}>
+            {renderSummaryItemWithEmphasizedNames(segment.text)}
+          </span>
+        );
+      }
+
+      const conversationId = relatedConversationIds[linkedSegmentIndex];
+      linkedSegmentIndex += 1;
+
+      if (!conversationId || isChecked) {
+        return (
+          <span key={`${item.id}-link-${index}`} className="s-underline">
+            {segment.text}
+          </span>
+        );
+      }
+
+      return (
+        <button
+          key={`${item.id}-link-${index}`}
+          type="button"
+          className="s-underline hover:s-no-underline"
+          onClick={(event) => {
+            event.stopPropagation();
+            scrollToConversationRow(conversationId);
+          }}
+        >
+          {segment.text}
+        </button>
+      );
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (showFocusTimeoutRef.current !== null) {
+        window.clearTimeout(showFocusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle room name save confirmation
   const handleNameSaveConfirm = () => {
@@ -907,6 +1181,7 @@ export function GroupConversationView({
       setOngoingSummary(null);
       setIsSummaryUpdating(false);
       setIsOngoingSummaryExpanded(false);
+      setSummaryRelatedConversations({});
       return;
     }
 
@@ -918,18 +1193,47 @@ export function GroupConversationView({
     setOngoingSummary(initialSummary);
     setIsSummaryUpdating(true);
     setIsOngoingSummaryExpanded(false);
+    setSummaryRelatedConversations(
+      buildRandomSummaryRelatedConversations(
+        initialSummary,
+        expandedConversations
+      )
+    );
+    setCheckedSummaryItems((previous) => {
+      const validKeys = new Set(getSummaryItemKeys(initialSummary));
+      return Object.fromEntries(
+        Object.entries(previous).filter(
+          ([key, checked]) => checked && validKeys.has(key)
+        )
+      );
+    });
 
     const generationDelayMs = (8 + Math.floor(Math.random() * 13)) * 1000;
 
     const summaryTimeoutId = window.setTimeout(() => {
-      setOngoingSummary((previous) =>
-        buildDeltaOngoingSummary(
+      setOngoingSummary((previous) => {
+        const updatedSummary = buildDeltaOngoingSummary(
           previous ?? initialSummary,
           space.id,
           space.name,
           expandedConversations
-        )
-      );
+        );
+        setCheckedSummaryItems((previousChecked) => {
+          const validKeys = new Set(getSummaryItemKeys(updatedSummary));
+          return Object.fromEntries(
+            Object.entries(previousChecked).filter(
+              ([key, checked]) => checked && validKeys.has(key)
+            )
+          );
+        });
+        setSummaryRelatedConversations(
+          buildRandomSummaryRelatedConversations(
+            updatedSummary,
+            expandedConversations
+          )
+        );
+        return updatedSummary;
+      });
       setIsSummaryUpdating(false);
     }, generationDelayMs);
 
@@ -1335,101 +1639,7 @@ export function GroupConversationView({
                 <InputBar
                   placeholder={`Start a conversation in ${space.name}`}
                 />
-                {hasHistory && ongoingSummary && (
-                  <div className="s-flex s-flex-col s-gap-4 s-py-6 s-px-4">
-                    <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
-                      <h3 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                        What's new?
-                      </h3>
-                      <Tooltip
-                        label={`Last updated ${formatSummaryUpdatedAt(ongoingSummary.updatedAt)}`}
-                        trigger={
-                          <Chip
-                            size="xs"
-                            color={isSummaryUpdating ? "info" : "primary"}
-                            label={isSummaryUpdating ? "Updating" : "Just now"}
-                            isBusy={isSummaryUpdating}
-                          />
-                        }
-                      />
-                    </div>
 
-                    <div className="s-relative">
-                      <div
-                        className="s-flex s-flex-col s-gap-4"
-                        style={{
-                          maxHeight: isOngoingSummaryExpanded
-                            ? 2000
-                            : SUMMARY_COLLAPSED_MAX_HEIGHT_PX,
-                          overflow: "hidden",
-                          transition: "max-height 200ms ease",
-                        }}
-                      >
-                        {[
-                          {
-                            emoji: "🚨",
-                            label: "Need attention",
-                            items: ongoingSummary.needAttention,
-                          },
-                          {
-                            emoji: "🧭",
-                            label: "Key decisions",
-                            items: ongoingSummary.keyDecisions,
-                          },
-                          {
-                            emoji: "🌤️",
-                            label: "Project pulse",
-                            items: ongoingSummary.projectPulse,
-                          },
-                        ].map((section) => (
-                          <div
-                            key={section.label}
-                            className="s-flex s-flex-col s-gap-2"
-                          >
-                            <h4 className="s-heading-lg s-pt-2 s-text-foreground dark:s-text-foreground-night">
-                              <span className="s-mr-2">{section.emoji}</span>
-                              {section.label}
-                            </h4>
-                            <div className="s-flex s-flex-col s-gap-1.5 s-pl-2">
-                              {section.items.map((item) => (
-                                <div
-                                  key={item}
-                                  className="s-flex s-items-start s-gap-2 s-text-base s-text-foreground dark:s-text-foreground-night"
-                                >
-                                  <span className="s-mt-1.5 s-h-1.5 s-w-1.5 s-shrink-0 s-rounded-full s-bg-foreground dark:s-bg-foreground-night" />
-                                  <span>
-                                    {renderSummaryItemWithEmphasizedNames(item)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      {!isOngoingSummaryExpanded && (
-                        <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
-                      )}
-                    </div>
-                    {ongoingSummary.needAttention.length +
-                      ongoingSummary.keyDecisions.length +
-                      ongoingSummary.projectPulse.length >
-                      0 && (
-                      <div>
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          label={
-                            isOngoingSummaryExpanded ? "Show less" : "Show more"
-                          }
-                          onClick={() =>
-                            setIsOngoingSummaryExpanded((previous) => !previous)
-                          }
-                          aria-expanded={isOngoingSummaryExpanded}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
                 {!hasHistory && (
                   <div className="s-flex s-flex-col s-gap-3">
                     <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
@@ -1498,7 +1708,343 @@ export function GroupConversationView({
                   </div>
                 )}
               </div>
+              {hasHistory && ongoingSummary && (
+                <div className="s-flex s-flex-col s-gap-3">
+                  <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
+                    <h3 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                      What's new?
+                    </h3>
+                    <Tooltip
+                      label={`Last updated ${formatSummaryUpdatedAt(ongoingSummary.updatedAt)}`}
+                      trigger={
+                        <Chip
+                          size="xs"
+                          color={isSummaryUpdating ? "highlight" : "primary"}
+                          label={isSummaryUpdating ? "Updating" : "Just now"}
+                          isBusy={isSummaryUpdating}
+                        />
+                      }
+                    />
+                    <div className="s-flex-1" />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={CheckDoubleIcon}
+                      label="Clear"
+                      onClick={() => {
+                        const checkedKeys = new Set(
+                          Object.entries(checkedSummaryItems)
+                            .filter(([, checked]) => checked)
+                            .map(([key]) => key)
+                        );
 
+                        if (checkedKeys.size === 0) {
+                          return;
+                        }
+
+                        setOngoingSummary((previousSummary) => {
+                          if (!previousSummary) {
+                            return previousSummary;
+                          }
+                          const updatedSummary = {
+                            ...previousSummary,
+                            needAttention: previousSummary.needAttention.filter(
+                              (item) =>
+                                !checkedKeys.has(
+                                  getSummaryItemKey("needAttention", item)
+                                )
+                            ),
+                            keyDecisions: previousSummary.keyDecisions.filter(
+                              (item) =>
+                                !checkedKeys.has(
+                                  getSummaryItemKey("keyDecisions", item)
+                                )
+                            ),
+                            projectPulse: previousSummary.projectPulse.filter(
+                              (item) =>
+                                !checkedKeys.has(
+                                  getSummaryItemKey("projectPulse", item)
+                                )
+                            ),
+                          };
+                          setSummaryRelatedConversations((previousLinks) => {
+                            const validKeys = new Set(
+                              getSummaryItemKeys(updatedSummary)
+                            );
+                            return Object.fromEntries(
+                              Object.entries(previousLinks).filter(([key]) =>
+                                validKeys.has(key)
+                              )
+                            );
+                          });
+                          return updatedSummary;
+                        });
+
+                        setCheckedSummaryItems((previousChecked) =>
+                          Object.fromEntries(
+                            Object.entries(previousChecked).filter(
+                              ([, checked]) => !checked
+                            )
+                          )
+                        );
+                      }}
+                    />
+                  </div>
+
+                  <div className="s-relative">
+                    <div
+                      className="s-flex s-flex-col s-gap-4"
+                      style={{
+                        maxHeight: isOngoingSummaryExpanded
+                          ? 2000
+                          : SUMMARY_COLLAPSED_MAX_HEIGHT_PX,
+                        overflow: "hidden",
+                        transition: "max-height 200ms ease",
+                      }}
+                    >
+                      {[
+                        {
+                          key: "needAttention",
+                          summaryCategory: "needAttention" as const,
+                          icon: TriangleIcon,
+                          iconClassName:
+                            "s-text-warning-300 dark:s-text-warning-300-night",
+                          label: "Need to do",
+                          items: ongoingSummary.needAttention,
+                        },
+                        {
+                          key: "needKnow",
+                          summaryCategory: "keyDecisions" as const,
+                          icon: SquareIcon,
+                          iconClassName:
+                            "s-text-golden-300 dark:s-text-golden-300-night",
+                          label: "Need to know",
+                          items: ongoingSummary.keyDecisions,
+                        },
+                        {
+                          key: "projectPulse",
+                          summaryCategory: "projectPulse" as const,
+                          icon: CircleIcon,
+                          iconClassName:
+                            "s-text-green-300 dark:s-text-green-300-night",
+                          label: "Good to know",
+                          items: ongoingSummary.projectPulse,
+                        },
+                      ].map((section) => (
+                        <div
+                          key={section.label}
+                          className="s-flex s-flex-col s-gap-2"
+                        >
+                          <div className="s-group/summary-title s-flex s-items-center s-gap-3 s-pt-2">
+                            <div className="s-flex s-items-center s-h-4 s-w-4">
+                              {section.summaryCategory === "projectPulse" ? (
+                                <Icon
+                                  visual={section.icon}
+                                  size="xs"
+                                  className={section.iconClassName}
+                                />
+                              ) : (
+                                (() => {
+                                  const sectionItemKeys = section.items
+                                    .filter(
+                                      (item): item is string =>
+                                        typeof item === "string"
+                                    )
+                                    .map((item) =>
+                                      getSummaryItemKey(
+                                        section.summaryCategory,
+                                        item
+                                      )
+                                    );
+                                  const areAllSectionItemsChecked =
+                                    sectionItemKeys.length > 0 &&
+                                    sectionItemKeys.every(
+                                      (itemKey) => checkedSummaryItems[itemKey]
+                                    );
+
+                                  return (
+                                    <>
+                                      <Icon
+                                        visual={section.icon}
+                                        size="xs"
+                                        className={cn(
+                                          "group-hover/summary-title:s-hidden",
+                                          section.iconClassName
+                                        )}
+                                      />
+                                      <Checkbox
+                                        size="xs"
+                                        className="s-hidden group-hover/summary-title:s-inline-block"
+                                        checked={areAllSectionItemsChecked}
+                                        onCheckedChange={(checked) => {
+                                          if (checked !== true) {
+                                            return;
+                                          }
+
+                                          setCheckedSummaryItems(
+                                            (previous) => ({
+                                              ...previous,
+                                              ...Object.fromEntries(
+                                                sectionItemKeys.map((key) => [
+                                                  key,
+                                                  true,
+                                                ])
+                                              ),
+                                            })
+                                          );
+                                        }}
+                                      />
+                                    </>
+                                  );
+                                })()
+                              )}
+                            </div>
+                            <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                              {section.label}
+                            </h4>
+                          </div>
+                          <div className="s-flex s-flex-col s-gap-2 s-pl-4">
+                            {section.summaryCategory === "projectPulse" ? (
+                              <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night s-pl-1">
+                                {section.items.map((item, index) => {
+                                  if (typeof item === "string") {
+                                    return null;
+                                  }
+
+                                  const itemKey = getSummaryItemKey(
+                                    section.summaryCategory,
+                                    item
+                                  );
+                                  const relatedConversationIds =
+                                    summaryRelatedConversations[itemKey] ?? [];
+
+                                  return (
+                                    <span key={itemKey}>
+                                      {renderProjectPulseItemWithInlineLinks(
+                                        item,
+                                        relatedConversationIds,
+                                        false
+                                      )}
+                                      {index < section.items.length - 1
+                                        ? " "
+                                        : null}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              section.items.map((item) => {
+                                const itemKey = getSummaryItemKey(
+                                  section.summaryCategory,
+                                  item
+                                );
+                                const isChecked =
+                                  checkedSummaryItems[itemKey] ?? false;
+                                const relatedConversationIds =
+                                  summaryRelatedConversations[itemKey] ?? [];
+
+                                return (
+                                  <div
+                                    key={itemKey}
+                                    className="s-flex s-items-start s-gap-3"
+                                  >
+                                    <Checkbox
+                                      size="xs"
+                                      className="s-mt-1"
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) => {
+                                        const nextChecked = checked === true;
+                                        setCheckedSummaryItems((previous) => ({
+                                          ...previous,
+                                          [itemKey]: nextChecked,
+                                        }));
+                                      }}
+                                    />
+                                    <div className="s-flex s-flex-col">
+                                      <span
+                                        className={`s-text-base ${
+                                          isChecked
+                                            ? "s-text-faint s-line-through dark:s-text-faint-night"
+                                            : "s-text-foreground dark:s-text-foreground-night"
+                                        }`}
+                                      >
+                                        {renderSummaryItemWithEmphasizedNames(
+                                          item as string
+                                        )}
+                                      </span>
+                                      {(() => {
+                                        if (isChecked) {
+                                          return null;
+                                        }
+
+                                        if (
+                                          relatedConversationIds.length === 0
+                                        ) {
+                                          return null;
+                                        }
+
+                                        return (
+                                          <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                            <span>In </span>
+                                            {relatedConversationIds.map(
+                                              (conversationId, index) => (
+                                                <span key={conversationId}>
+                                                  <button
+                                                    type="button"
+                                                    className="s-underline hover:s-no-underline"
+                                                    onClick={(event) => {
+                                                      event.stopPropagation();
+                                                      scrollToConversationRow(
+                                                        conversationId
+                                                      );
+                                                    }}
+                                                  >
+                                                    {conversationTitleById.get(
+                                                      conversationId
+                                                    ) ?? conversationId}
+                                                  </button>
+                                                  {index <
+                                                    relatedConversationIds.length -
+                                                      1 && ", "}
+                                                </span>
+                                              )
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {!isOngoingSummaryExpanded && (
+                      <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
+                    )}
+                  </div>
+                  {ongoingSummary.needAttention.length +
+                    ongoingSummary.keyDecisions.length +
+                    ongoingSummary.projectPulse.length >
+                    0 && (
+                    <div>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        label={
+                          isOngoingSummaryExpanded ? "Show less" : "Show more"
+                        }
+                        onClick={() =>
+                          setIsOngoingSummaryExpanded((previous) => !previous)
+                        }
+                        aria-expanded={isOngoingSummaryExpanded}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Conversations list */}
               <div className="s-flex s-flex-col s-gap-3">
                 {expandedConversations.length > 0 && (
@@ -1597,36 +2143,46 @@ export function GroupConversationView({
                                 };
 
                                 return (
-                                  <ConversationListItem
+                                  <div
+                                    id={getConversationRowDomId(
+                                      conversation.id
+                                    )}
                                     key={conversation.id}
-                                    conversation={conversation}
-                                    creator={creator || undefined}
-                                    time={time}
-                                    replySection={
-                                      <ReplySection
-                                        replyCount={replyCount}
-                                        unreadCount={
-                                          bucketKey === "Today"
-                                            ? messageCount
-                                            : 0
-                                        }
-                                        mentionCount={
-                                          bucketKey === "Today"
-                                            ? mentionCount
-                                            : 0
-                                        }
-                                        avatars={avatarProps}
-                                        lastMessageBy={
-                                          avatarProps[0]?.name || "Unknown"
-                                        }
-                                      />
-                                    }
-                                    onClick={() => {
-                                      onConversationClick?.(
-                                        conversationForLookup
-                                      );
-                                    }}
-                                  />
+                                  >
+                                    <ConversationListItem
+                                      conversation={conversation}
+                                      creator={creator || undefined}
+                                      time={time}
+                                      showFocus={
+                                        conversationIdToShowFocus ===
+                                        conversation.id
+                                      }
+                                      replySection={
+                                        <ReplySection
+                                          replyCount={replyCount}
+                                          unreadCount={
+                                            bucketKey === "Today"
+                                              ? messageCount
+                                              : 0
+                                          }
+                                          mentionCount={
+                                            bucketKey === "Today"
+                                              ? mentionCount
+                                              : 0
+                                          }
+                                          avatars={avatarProps}
+                                          lastMessageBy={
+                                            avatarProps[0]?.name || "Unknown"
+                                          }
+                                        />
+                                      }
+                                      onClick={() => {
+                                        onConversationClick?.(
+                                          conversationForLookup
+                                        );
+                                      }}
+                                    />
+                                  </div>
                                 );
                               })}
                             </ListGroup>
