@@ -1,4 +1,4 @@
-import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { RootLayout } from "@dust-tt/front/components/app/RootLayout";
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/AssistantInstructionsPage";

@@ -6,29 +6,11 @@ import "@dust-tt/sparkle/dist/sparkle.css";
 import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
-
-import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { datadogLogs } from "@datadog/browser-logs";
-import {
-  Button,
-  classNames,
-  DustLogo,
-  Notification,
-  Page,
-} from "@dust-tt/sparkle";
-import { PortProvider } from "@extension/platforms/chrome/context/PortContext";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
-import {
-  PlatformProvider,
-  usePlatform,
-} from "@extension/shared/context/PlatformContext";
-import { ExtensionFetcherProvider } from "@extension/shared/lib/FetcherProvider";
-import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
-import { routes } from "@extension/ui/pages/routes";
-import { compare } from "compare-versions";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { ChromeApp } from "./ChromeApp";
 
 if (process.env.DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
@@ -46,90 +28,16 @@ if (process.env.DATADOG_CLIENT_TOKEN) {
 const logger = datadogLogs.logger;
 logger.info("Dust extension loaded");
 
-const router = createBrowserRouter(routes);
-
-const ChromeExtensionWrapper = () => {
-  const platform = usePlatform() as ChromePlatformService;
-  const [isLatestVersion, setIsLatestVersion] = React.useState(true);
-
-  const checkIsLatestVersion = async () => {
-    const pendingUpdate = await platform.getPendingUpdate();
-    if (!pendingUpdate) {
-      return null;
-    }
-    const currentVersion = chrome.runtime.getManifest().version;
-    if (compare(pendingUpdate.version, currentVersion, ">")) {
-      setIsLatestVersion(false);
-    }
-  };
-
-  React.useEffect(() => {
-    void checkIsLatestVersion();
-
-    const unsub = platform.storage.onChanged((changes) => {
-      if (changes.pendingUpdate) {
-        void checkIsLatestVersion();
-      }
-    });
-
-    return () => unsub();
-  }, []);
-
-  if (!isLatestVersion) {
-    return (
-      <div
-        className={classNames(
-          "flex h-screen flex-col gap-2 p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
-        )}
-      >
-        <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <DustLogo width={256} height={64} />
-            <Page.Header title="New version ready" />
-            <Page.P>
-              Install the latest version to keep using Dust. <br />
-              Relaunch from toolbar.
-            </Page.P>
-            <Button
-              label="Update now"
-              onClick={async () => {
-                chrome.runtime.reload();
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return <RouterProvider router={router} />;
-};
-
 const platformService = new ChromePlatformService();
 
-const App = () => {
-  return (
-    <PlatformProvider platformService={platformService}>
-      <PortProvider>
-        <ExtensionAuthProvider>
-          <ExtensionFetcherProvider>
-            <Notification.Area>
-              <ThemeProvider>
-                <ChromeExtensionWrapper />
-              </ThemeProvider>
-            </Notification.Area>
-          </ExtensionFetcherProvider>
-        </ExtensionAuthProvider>
-      </PortProvider>
-    </PlatformProvider>
-  );
-};
 const rootElement = document.getElementById("root");
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
-  root.render(<App />);
+  root.render(
+    <React.StrictMode>
+      <ChromeApp />
+    </React.StrictMode>
+  );
 }
 
 const updateTheme = (isDark: boolean) => {
