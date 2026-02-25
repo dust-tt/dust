@@ -9,7 +9,6 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import assert from "assert";
 import { z } from "zod";
 
 const LangfuseModelConfigSchema = z.object({
@@ -54,10 +53,12 @@ export async function fetchLangfusePromptConfig(
   promptName: string,
   variables: Record<string, string>
 ): Promise<Result<LangfusePromptConfig, Error>> {
-  try {
-    const client = getLangfuseClient();
-    assert(client, "Langfuse is not enabled");
+  const client = getLangfuseClient();
+  if (!client) {
+    return new Err(new Error("Langfuse is not enabled"));
+  }
 
+  try {
     const prompt = await client.prompt.get(promptName);
     const instructions = prompt.compile(variables);
     const resolved = resolveModelConfig(prompt.config);
