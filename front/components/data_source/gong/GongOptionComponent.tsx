@@ -29,6 +29,8 @@ const GONG_PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
 const GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
 
 const PROFILE_NAME_MAX_LENGTH = 15;
+const MAX_EXCLUDE_KEYWORDS = 50;
+const MAX_EXCLUDE_KEYWORD_LENGTH = 100;
 
 interface GongPermissionProfile {
   id: string;
@@ -322,6 +324,10 @@ export function GongOptionComponent({
           await mutateAccountsConfig();
           description = "Accounts synchronization successfully updated.";
           break;
+        case GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY:
+          await mutateExcludeKeywords();
+          description = "Exclude keywords successfully updated.";
+          break;
         default:
           description = "Configuration successfully updated.";
       }
@@ -378,7 +384,6 @@ export function GongOptionComponent({
                     GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY,
                     excludeKeywords
                   );
-                  await mutateExcludeKeywords();
                 }}
                 disabled={readOnly || !isAdmin || loading}
                 label="Save"
@@ -388,10 +393,12 @@ export function GongOptionComponent({
         >
           <ContextItem.Description>
             <div className="text-muted-foreground dark:text-muted-foreground-night">
-              Comma-separated keywords. Calls whose title contains any of these
-              terms (case-insensitive) will be excluded from sync.
+              Exclude calls whose title contains these keywords
+              (case-insensitive, comma-separated).
               <br />
-              Only applies to newly synced transcripts.
+              Max {MAX_EXCLUDE_KEYWORDS} keywords of{" "}
+              {MAX_EXCLUDE_KEYWORD_LENGTH} characters each. Applies to new syncs
+              only.
             </div>
           </ContextItem.Description>
         </ContextItem>
