@@ -9,10 +9,7 @@ import {
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import {
-  doesInternalMCPServerRequireBearerToken,
-  getServerTypeAndIdFromSId,
-} from "@app/lib/actions/mcp_helper";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
@@ -35,7 +32,7 @@ import {
   getUntrustedEgressAgent,
 } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
@@ -169,14 +166,10 @@ export async function connectToMCPServer(
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
           if (agentLoopContext?.runContext) {
             const bearerTokenCredentials =
-              doesInternalMCPServerRequireBearerToken(params.mcpServerId)
-                ? await InternalMCPServerCredentialModel.findOne({
-                    where: {
-                      workspaceId: auth.getNonNullableWorkspace().id,
-                      internalMCPServerId: params.mcpServerId,
-                    },
-                  })
-                : null;
+              await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+                auth,
+                params.mcpServerId
+              );
 
             const serverName = getInternalMCPServerNameFromSId(
               params.mcpServerId

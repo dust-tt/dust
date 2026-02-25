@@ -1,5 +1,6 @@
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
@@ -58,6 +59,7 @@ export function BotToggle({
 
   const [isChangingBot, setIsChangingBot] = useState(false);
   const sendNotification = useSendNotification();
+  const regionContext = useRegionContextSafe();
 
   const createBotConnectionAndDataSource = async () => {
     // OAuth flow
@@ -66,6 +68,7 @@ export function BotToggle({
       provider: oauth.provider,
       useCase: oauth.useCase ?? "connection",
       extraConfig: oauth.extraConfig,
+      regionInfo: regionContext?.regionInfo ?? null,
     });
     if (!cRes.isOk()) {
       return cRes;
@@ -153,6 +156,7 @@ export function BotToggle({
                   provider: oauth.provider,
                   useCase: oauth.useCase ?? "connection",
                   extraConfig: oauth.extraConfig,
+                  regionInfo: regionContext?.regionInfo ?? null,
                 });
                 if (!cRes.isOk()) {
                   sendNotification({

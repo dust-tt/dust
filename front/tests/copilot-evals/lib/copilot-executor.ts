@@ -1,19 +1,26 @@
 import { getLLM } from "@app/lib/api/llm";
 import type { Authenticator } from "@app/lib/auth";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { MAX_TOOL_CALL_ROUNDS } from "@app/tests/copilot-evals/lib/config";
 import { getMockToolResponse } from "@app/tests/copilot-evals/lib/mock-responses";
-import type {
-  CopilotConfig,
-  CopilotExecutionResult,
-  MockAgentState,
-  ToolCall,
+import {
+  type CopilotConfig,
+  type CopilotExecutionResult,
+  isTestCaseWithConversation,
+  type MockAgentState,
+  type TestCase,
+  type ToolCall,
 } from "@app/tests/copilot-evals/lib/types";
+import type {
+  AgentContentItemType,
+  AgentErrorContentType,
+} from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 
 export async function executeCopilot(
   auth: Authenticator,
   config: CopilotConfig,
-  userMessage: string,
+  testCase: TestCase,
   agentState: MockAgentState
 ): Promise<CopilotExecutionResult> {
   const llm = await getLLM(auth, {
@@ -27,13 +34,33 @@ export async function executeCopilot(
     throw new Error("Failed to initialize LLM for copilot execution");
   }
 
-  const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
-    {
+  // Build initial messages from either a single user message or a conversation history.
+  const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [];
+
+  if (isTestCaseWithConversation(testCase)) {
+    for (const msg of testCase.conversation) {
+      if (msg.role === "user") {
+        messages.push({
+          role: "user",
+          name: "User",
+          content: [{ type: "text", text: msg.content }],
+        });
+      } else {
+        messages.push({
+          role: "assistant",
+          name: "assistant",
+          content: msg.content,
+          contents: [{ type: "text_content", value: msg.content }],
+        });
+      }
+    }
+  } else {
+    messages.push({
       role: "user",
       name: "User",
-      content: [{ type: "text", text: userMessage }],
-    },
-  ];
+      content: [{ type: "text", text: testCase.userMessage }],
+    });
+  }
 
   const allToolCalls: ToolCall[] = [];
   let responseText = "";
@@ -47,7 +74,15 @@ export async function executeCopilot(
   });
 
   for (let round = 0; round < MAX_TOOL_CALL_ROUNDS; round++) {
-    const currentRoundToolCalls: ToolCall[] = [];
+    const currentRoundToolCalls: Array<{
+      toolCall: ToolCall;
+      id: string;
+      thoughtSignature?: string;
+    }> = [];
+    const reasoningContents: Exclude<
+      AgentContentItemType,
+      AgentErrorContentType
+    >[] = [];
     responseText = "";
 
     for await (const event of events) {
@@ -58,10 +93,27 @@ export async function executeCopilot(
         case "text_generated":
           responseText = event.content.text;
           break;
+        case "reasoning_generated":
+          reasoningContents.push({
+            type: "reasoning",
+            value: {
+              reasoning: event.content.text,
+              metadata: JSON.stringify(event.metadata),
+              tokens: 0,
+              provider:
+                getModelConfigByModelId(config.model.modelId)?.providerId ??
+                "noop",
+            },
+          });
+          break;
         case "tool_call":
           currentRoundToolCalls.push({
-            name: event.content.name,
-            arguments: event.content.arguments,
+            toolCall: {
+              name: event.content.name,
+              arguments: event.content.arguments,
+            },
+            id: event.content.id,
+            thoughtSignature: event.metadata.thoughtSignature,
           });
           break;
         case "error":
@@ -76,37 +128,39 @@ export async function executeCopilot(
       break;
     }
 
-    allToolCalls.push(...currentRoundToolCalls);
+    allToolCalls.push(...currentRoundToolCalls.map((tc) => tc.toolCall));
 
-    // Build messages with tool calls and simulated responses
-    for (let idx = 0; idx < currentRoundToolCalls.length; idx++) {
-      const tc = currentRoundToolCalls[idx];
-      const callId = (
-        allToolCalls.length -
-        currentRoundToolCalls.length +
-        idx +
-        1
-      )
-        .toString()
-        .padStart(9, "0");
+    // Build a single assistant message with reasoning + all function calls
+    const functionCalls = currentRoundToolCalls.map((tc) => ({
+      id: tc.id,
+      name: tc.toolCall.name,
+      arguments: JSON.stringify(tc.toolCall.arguments),
+      metadata: tc.thoughtSignature
+        ? { thoughtSignature: tc.thoughtSignature }
+        : undefined,
+    }));
 
-      const functionCall = {
-        id: callId,
-        name: tc.name,
-        arguments: JSON.stringify(tc.arguments),
-      };
+    const contents: Exclude<AgentContentItemType, AgentErrorContentType>[] = [
+      ...reasoningContents,
+      ...functionCalls.map((fc) => ({
+        type: "function_call" as const,
+        value: fc,
+      })),
+    ];
 
-      messages.push({
-        role: "assistant" as const,
-        function_calls: [functionCall],
-        contents: [{ type: "function_call" as const, value: functionCall }],
-      });
+    messages.push({
+      role: "assistant" as const,
+      function_calls: functionCalls,
+      contents,
+    });
 
+    // Add function response messages
+    for (const tc of currentRoundToolCalls) {
       messages.push({
         role: "function" as const,
-        name: tc.name,
-        function_call_id: callId,
-        content: getMockToolResponse(tc.name, agentState),
+        name: tc.toolCall.name,
+        function_call_id: tc.id,
+        content: getMockToolResponse(tc.toolCall.name, agentState),
       });
     }
 

@@ -1,3 +1,4 @@
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { DustAPI } from "@dust-tt/client";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
@@ -5,12 +6,18 @@ import { useMemo } from "react";
 
 export const useDustAPI = () => {
   const platform = usePlatform();
-  const { token, isAuthenticated, isUserSetup, user, workspace } =
-    useExtensionAuth();
+  const { token, isAuthenticated, isUserSetup, workspace } = useExtensionAuth();
+  const { regionInfo } = useRegionContext();
 
   const commitHash = process.env.COMMIT_HASH;
   const extensionVersion = process.env.VERSION;
-  if (!isAuthenticated || !isUserSetup || !user || !workspace || !token) {
+  if (
+    !isAuthenticated ||
+    !isUserSetup ||
+    !regionInfo?.url ||
+    !workspace ||
+    !token
+  ) {
     throw new Error("Not authenticated");
   }
 
@@ -21,7 +28,7 @@ export const useDustAPI = () => {
   return useMemo(() => {
     return new DustAPI(
       {
-        url: user.dustDomain,
+        url: regionInfo.url,
       },
       {
         apiKey: () => platform.auth.getAccessToken(),
@@ -33,5 +40,5 @@ export const useDustAPI = () => {
       },
       console
     );
-  }, [user.dustDomain, workspace.sId, platform]);
+  }, [regionInfo.url, workspace.sId, platform]);
 };

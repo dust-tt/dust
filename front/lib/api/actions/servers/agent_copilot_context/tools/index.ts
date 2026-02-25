@@ -14,8 +14,8 @@ import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import {
   formatTemplatesAsText,
   getTemplatesForCopilot,

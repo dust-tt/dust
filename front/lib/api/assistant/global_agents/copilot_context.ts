@@ -1,5 +1,8 @@
 import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
-import { fetchAndCompileLangfusePrompt } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
+import {
+  fetchLangfusePromptConfig,
+  type LangfusePromptConfig,
+} from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import type {
   AvailableSkill,
   AvailableTool,
@@ -32,7 +35,7 @@ export interface CopilotContext {
   } | null;
   formattedUserContext: string | null;
   formattedWorkspaceContext: string | null;
-  langfuseInstructions: string | null;
+  langfuseConfig: LangfusePromptConfig | null;
 }
 
 export function formatAvailableModels(
@@ -146,7 +149,7 @@ export async function buildCopilotContext(
 ): Promise<CopilotContext | null> {
   if (
     !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT) &&
-    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_HAIKU)
+    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_EDGE)
   ) {
     return null;
   }
@@ -169,23 +172,26 @@ export async function buildCopilotContext(
     tools
   );
 
-  let langfuseInstructions: string | null = null;
-  if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_HAIKU)) {
-    const promptName = GLOBAL_AGENTS_SID.COPILOT_HAIKU;
-    const result = await fetchAndCompileLangfusePrompt(promptName, {
-      userContext: formattedUserContext ?? "",
-      workspaceContext: formattedWorkspaceContext,
-    });
+  let langfuseConfig: LangfusePromptConfig | null = null;
+
+  if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_EDGE)) {
+    const result = await fetchLangfusePromptConfig(
+      GLOBAL_AGENTS_SID.COPILOT_EDGE,
+      {
+        userContext: formattedUserContext ?? "",
+        workspaceContext: formattedWorkspaceContext,
+      }
+    );
     if (result.isErr()) {
       logger.error(
         {
-          promptName,
+          promptName: GLOBAL_AGENTS_SID.COPILOT_EDGE,
           error: result.error,
         },
         "[Langfuse] Failed to fetch prompt"
       );
     } else {
-      langfuseInstructions = result.value;
+      langfuseConfig = result.value;
     }
   }
 
@@ -193,6 +199,6 @@ export async function buildCopilotContext(
     mcpServerViews: context ? { context } : null,
     formattedUserContext,
     formattedWorkspaceContext,
-    langfuseInstructions,
+    langfuseConfig,
   };
 }

@@ -282,15 +282,7 @@ export const FRONT_SERVER = {
     documentationUrl: "https://dev.frontapp.com/reference/introduction",
     // Predates the introduction of the rule, would require extensive work to
     // improve, already widely adopted.
-    instructions:
-      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
-      "When handling support tickets:\n" +
-      "- Always check customer history before replying using get_customer_history\n" +
-      "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
-      "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
-      "- Use LLM-friendly timeline format for conversation data\n" +
-      "- Include full context (metadata, custom fields) in responses",
-    developerSecretSelection: "required",
+    instructions: null,
   },
   tools: Object.values(FRONT_TOOLS_METADATA).map((t) => ({
     name: t.name,

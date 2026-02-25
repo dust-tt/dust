@@ -23,6 +23,7 @@ import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import {
   useCreateInternalMCPServer,
   useCreateRemoteMCPServer,
@@ -79,6 +80,7 @@ export function CreateMCPServerDialog({
   defaultServerConfig,
 }: CreateMCPServerDialogProps) {
   const sendNotification = useSendNotification();
+  const regionContext = useRegionContextSafe();
 
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
     return getCreateMCPServerDialogDefaultValues(defaultServerConfig);
@@ -154,6 +156,7 @@ export function CreateMCPServerDialog({
       createWithURL,
       createInternalMCPServer,
       onBeforeCreateServer: () => setExternalIsLoading(true),
+      regionInfo: regionContext?.regionInfo ?? null,
     });
 
     if (submitRes.isErr()) {
@@ -262,7 +265,9 @@ export function CreateMCPServerDialog({
 
               {internalMCPServer &&
                 requiresBearerTokenConfiguration(internalMCPServer) && (
-                  <InternalBearerTokenSection />
+                  <InternalBearerTokenSection
+                    serverName={internalMCPServer.name}
+                  />
                 )}
 
               <CustomHeadersConfigurationSection

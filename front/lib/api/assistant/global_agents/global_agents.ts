@@ -10,9 +10,9 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
-import { _getCopilotHaikuGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_haiku";
+import { _getCopilotEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_edge";
 import {
-  _getBrowserSummaryAgent,
+  _getArchivedBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
@@ -194,7 +194,7 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsToolsets: false,
   },
   [GLOBAL_AGENTS_SID.COPILOT]: { injectsMemory: false, injectsToolsets: false },
-  [GLOBAL_AGENTS_SID.COPILOT_HAIKU]: {
+  [GLOBAL_AGENTS_SID.COPILOT_EDGE]: {
     injectsMemory: false,
     injectsToolsets: false,
   },
@@ -704,9 +704,7 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
-      agentConfiguration = _getBrowserSummaryAgent(auth, {
-        settings,
-      });
+      agentConfiguration = _getArchivedBrowserSummaryAgent();
       break;
     case GLOBAL_AGENTS_SID.DUST_PLANNING:
       agentConfiguration = _getPlanningAgent(auth, {
@@ -714,10 +712,18 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(auth, copilotContext);
+      agentConfiguration = _getCopilotGlobalAgent(auth, {
+        copilotContext,
+        preFetchedDataSources,
+        mcpServerViews,
+      });
       break;
-    case GLOBAL_AGENTS_SID.COPILOT_HAIKU:
-      agentConfiguration = _getCopilotHaikuGlobalAgent(auth, copilotContext);
+    case GLOBAL_AGENTS_SID.COPILOT_EDGE:
+      agentConfiguration = _getCopilotEdgeGlobalAgent(auth, {
+        copilotContext,
+        preFetchedDataSources,
+        mcpServerViews,
+      });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
@@ -806,7 +812,7 @@ export async function getGlobalAgents(
       .filter(
         (sId) =>
           sId !== GLOBAL_AGENTS_SID.COPILOT &&
-          sId !== GLOBAL_AGENTS_SID.COPILOT_HAIKU
+          sId !== GLOBAL_AGENTS_SID.COPILOT_EDGE
       );
 
   const flags = await getFeatureFlags(owner);
@@ -871,7 +877,7 @@ export async function getGlobalAgents(
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) =>
         sId !== GLOBAL_AGENTS_SID.COPILOT &&
-        sId !== GLOBAL_AGENTS_SID.COPILOT_HAIKU
+        sId !== GLOBAL_AGENTS_SID.COPILOT_EDGE
     );
   }
 

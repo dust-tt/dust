@@ -334,7 +334,7 @@ export function AgentDetailsDropdownMenu({
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>
       ) : showTrigger ? (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button icon={MoreIcon} size="sm" variant="ghost" />
           </DropdownMenuTrigger>

@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   useLabsTranscriptsDefaultConfiguration,
@@ -36,6 +37,7 @@ export function ProviderSelection({
   owner,
 }: ProviderSelectionProps) {
   const sendNotification = useSendNotification();
+  const regionContext = useRegionContextSafe();
   const [apiKey, setApiKey] = useState("");
   const [selectedProvider, setSelectedProvider] =
     useState<LabsTranscriptsProviderType | null>(
@@ -113,6 +115,7 @@ export function ProviderSelection({
       provider: "google_drive",
       useCase: "labs_transcripts",
       extraConfig: {},
+      regionInfo: regionContext?.regionInfo ?? null,
     });
 
     if (cRes.isErr()) {
@@ -125,7 +128,7 @@ export function ProviderSelection({
     }
 
     await saveOAuthConnection(cRes.value.connection_id, "google_drive");
-  }, [owner, sendNotification, saveOAuthConnection]);
+  }, [owner, sendNotification, saveOAuthConnection, regionContext?.regionInfo]);
 
   const saveApiConnection = useCallback(
     async (apiKey: string, provider: string) => {

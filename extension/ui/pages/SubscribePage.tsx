@@ -1,3 +1,5 @@
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   BarHeader,
   Button,
@@ -6,12 +8,12 @@ import {
   Page,
   RocketIcon,
 } from "@dust-tt/sparkle";
-import { useProtectedRouteContext } from "@extension/ui/components/auth/ProtectedRoute";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
 
 export const SubscribePage = () => {
-  const { user, workspace, handleLogout } = useProtectedRouteContext();
+  const { workspace } = useAuth();
+  const { regionInfo } = useRegionContext();
   return (
     <div>
       <BarHeader
@@ -19,7 +21,7 @@ export const SubscribePage = () => {
         tooltip=""
         rightActions={
           <div className="items-right flex flex-row space-x-1">
-            <UserDropdownMenu user={user} handleLogout={handleLogout} />
+            <UserDropdownMenu />
           </div>
         }
       />
@@ -43,22 +45,24 @@ export const SubscribePage = () => {
             Subscribe to start using Dust agent from anywhere in your browser.
           </div>
 
-          <div className="m-1 flex text-center">
-            <Link to={`${user.dustDomain}/w/${workspace.sId}/subscribe`}>
-              <Button
-                icon={RocketIcon}
-                variant="primary"
-                label="Get started"
-                onClick={() => {
-                  window.open(
-                    `${user.dustDomain}/w/${workspace.sId}/subscribe`,
-                    "_blank"
-                  );
-                }}
-                size="sm"
-              />
-            </Link>
-          </div>
+          {regionInfo && (
+            <div className="m-1 flex text-center">
+              <Link to={`${regionInfo.url}/w/${workspace.sId}/subscribe`}>
+                <Button
+                  icon={RocketIcon}
+                  variant="primary"
+                  label="Get started"
+                  onClick={() => {
+                    window.open(
+                      `${regionInfo.url}/w/${workspace.sId}/subscribe`,
+                      "_blank"
+                    );
+                  }}
+                  size="sm"
+                />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

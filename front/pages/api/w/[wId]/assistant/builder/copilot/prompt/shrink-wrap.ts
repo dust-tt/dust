@@ -1,5 +1,5 @@
-import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -9,7 +9,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-function buildFirstMessage(shrinkWrappedConversation: string): string {
+export function buildFirstMessage(shrinkWrappedConversation: string): string {
   return `<dust_system>
 Build an agent that replicates the workflow shown in the conversation below.
 

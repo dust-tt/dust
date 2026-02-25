@@ -51,7 +51,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
-    ttlMs: number;
+    ttlMs?: number;
     redisUri?: string;
     useDistributedLock?: boolean;
     skipIfLocked?: false;
@@ -63,7 +63,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
-    ttlMs: number;
+    ttlMs?: number;
     redisUri?: string;
     useDistributedLock: true;
     // When true and the distributed lock is taken, return null immediately.
@@ -83,7 +83,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     skipIfLocked = false,
     cacheNullValues = true,
   }: {
-    ttlMs: number;
+    ttlMs?: number;
     // Kept for backwards compatibility, no longer used.
     redisUri?: string;
     useDistributedLock?: boolean;
@@ -93,7 +93,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     cacheNullValues?: boolean;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null> {
-  if (ttlMs > 60 * 60 * 24 * 1000) {
+  if (ttlMs !== undefined && ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 
@@ -142,9 +142,13 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
       const result = await fn(...args);
       if (cacheNullValues || result != null) {
-        await redisCli.set(key, JSON.stringify(result), {
-          PX: ttlMs,
-        });
+        if (ttlMs !== undefined) {
+          await redisCli.set(key, JSON.stringify(result), {
+            PX: ttlMs,
+          });
+        } else {
+          await redisCli.set(key, JSON.stringify(result));
+        }
       }
       return result;
     } finally {

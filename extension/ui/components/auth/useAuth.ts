@@ -1,7 +1,11 @@
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 import type { WorkspaceType } from "@dust-tt/client";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import type { StoredTokens, StoredUser } from "@extension/shared/services/auth";
+import type {
+  ConnectionDetails,
+  StoredTokens,
+} from "@extension/shared/services/auth";
 import {
   AuthError,
   isValidEnterpriseConnection,
@@ -12,11 +16,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute
 const log = console.error;
 
-export const useAuthHook = () => {
+export const useAuthHook = ({
+  dustDomain,
+  setDustDomain,
+}: {
+  dustDomain: string | null;
+  setDustDomain: (url: string) => void;
+}) => {
   const platform = usePlatform();
 
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
-  const [user, setUser] = useState<StoredUser | null>(null);
+  const [connectionDetails, setConnectionDetails] =
+    useState<ConnectionDetails | null>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string | null>(
+    null
+  );
+  const [user, setUser] = useState<UserTypeWithWorkspaces | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const [forcedConnection, setForcedConnection] = useState<
     string | undefined
@@ -25,28 +40,33 @@ export const useAuthHook = () => {
 
   const isAuthenticated = useMemo(
     () =>
-      !!(
-        tokens?.accessToken &&
-        tokens.expiresAt > Date.now() &&
-        user?.dustDomain
-      ),
-    [tokens, user]
+      !!(tokens?.accessToken && tokens.expiresAt > Date.now() && dustDomain),
+    [tokens, dustDomain]
   );
 
-  const isUserSetup = !!(user && user.sId && user.selectedWorkspace);
+  const isUserSetup = !!(user && user.sId && selectedWorkspace);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
 
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Derive workspace from user workspaces + selectedWorkspace
+  const workspace = useMemo(
+    () => user?.workspaces.find((w) => w.sId === selectedWorkspace),
+    [user, selectedWorkspace]
+  );
 
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
     const success = await platform.auth.logout();
     if (!success) {
-      // TODO(EXT): User facing error message if logout failed.
       setIsLoading(false);
       return;
     }
     setTokens(null);
+    setConnectionDetails(null);
+    setSelectedWorkspace(null);
+    setUser(null);
     setAuthError(null);
     setForcedConnection(undefined);
     if (refreshTimerRef.current) {
@@ -56,7 +76,6 @@ export const useAuthHook = () => {
   }, []);
 
   const handleRefreshToken = useCallback(async () => {
-    // Call getAccessToken, it will refresh the token if needed.
     const newAccessToken = await platform.auth.getAccessToken(true);
     if (!newAccessToken) {
       setAuthError(
@@ -80,7 +99,7 @@ export const useAuthHook = () => {
     setAuthError(null);
   }, []);
 
-  // Listen for changes in storage to make sure we always have the latest user and tokens.
+  // Listen for changes in storage to make sure we always have the latest tokens.
   useEffect(() => {
     const unsub = platform.storage.onChanged((changes) => {
       if ("accessToken" in changes && !changes.accessToken) {
@@ -93,21 +112,59 @@ export const useAuthHook = () => {
     return () => unsub();
   }, []);
 
+  // Fetch user data from /api/v1/me when authenticated.
+  useEffect(() => {
+    if (!isAuthenticated || !tokens?.accessToken || !dustDomain) {
+      return;
+    }
+
+    setIsUserLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch(`${dustDomain}/api/v1/me`, {
+          headers: { Authorization: `Bearer ${tokens.accessToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const fetchedUser = data.user as UserTypeWithWorkspaces;
+          setUser(fetchedUser);
+
+          // If user has a selectedWorkspace from the server (org-scoped login),
+          // and we don't have one stored, use it.
+          if (!selectedWorkspace && fetchedUser.selectedWorkspace) {
+            setSelectedWorkspace(fetchedUser.selectedWorkspace);
+            await platform.storage.set(
+              "selectedWorkspace",
+              fetchedUser.selectedWorkspace
+            );
+          }
+        }
+      } finally {
+        setIsUserLoading(false);
+      }
+    })();
+  }, [isAuthenticated, tokens?.accessToken, dustDomain]);
+
+  // Initialize from storage on mount.
   useEffect(() => {
     void (async () => {
       setIsLoading(true);
 
-      // Fetch tokens & user from storage.
       const storedTokens = await platform.auth.getStoredTokens();
-      const savedUser = await platform.auth.getStoredUser();
+      const storedRegionInfo = await platform.auth.getRegionInfoFromStorage();
+      const storedConnectionDetails =
+        await platform.auth.getConnectionDetailsFromStorage();
+      const storedSelectedWorkspace =
+        await platform.auth.getSelectedWorkspace();
 
-      if (!storedTokens || !savedUser) {
-        // TODO(EXT): User facing error message if no tokens found.
+      if (!storedTokens || !storedRegionInfo) {
         setIsLoading(false);
         return;
       }
       setTokens(storedTokens);
-      setUser(savedUser);
+      setDustDomain(storedRegionInfo.url);
+      setConnectionDetails(storedConnectionDetails);
+      setSelectedWorkspace(storedSelectedWorkspace);
 
       // Token refresh.
       if (storedTokens.expiresAt < Date.now() + PROACTIVE_REFRESH_WINDOW_MS) {
@@ -124,27 +181,16 @@ export const useAuthHook = () => {
     };
   }, []);
 
-  const workspace = useMemo(
-    () => user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
-    [user]
-  );
-
-  // Note that we do not use useSWRWithDefaults from extension/shared/lib/swr.ts
-  // because it depends on the auth context being initialized.
+  // Fetch feature flags when workspace is ready.
   useEffect(() => {
-    if (
-      !isAuthenticated ||
-      !workspace ||
-      !tokens?.accessToken ||
-      !user?.dustDomain
-    ) {
+    if (!isAuthenticated || !workspace || !tokens?.accessToken || !dustDomain) {
       setFeatureFlags([]);
       return;
     }
 
     void (async () => {
       const res = await fetch(
-        `${user.dustDomain}/api/w/${workspace.sId}/feature-flags`,
+        `${dustDomain}/api/w/${workspace.sId}/feature-flags`,
         { headers: { Authorization: `Bearer ${tokens.accessToken}` } }
       );
       if (res.ok) {
@@ -154,7 +200,7 @@ export const useAuthHook = () => {
         setFeatureFlags([]);
       }
     })();
-  }, [workspace, tokens?.accessToken, user, isAuthenticated]);
+  }, [workspace, tokens?.accessToken, dustDomain, isAuthenticated]);
 
   const redirectToSSOLogin = useCallback(
     async (workspace: WorkspaceType) => {
@@ -172,14 +218,15 @@ export const useAuthHook = () => {
   );
 
   const handleSelectWorkspace = async (workspace: WorkspaceType) => {
-    const updatedUser = await platform.saveSelectedWorkspace({
-      workspaceId: workspace.sId,
-    });
-    if (!isValidEnterpriseConnection(updatedUser, workspace)) {
-      return;
-    }
+    await platform.storage.set("selectedWorkspace", workspace.sId);
+    setSelectedWorkspace(workspace.sId);
 
-    setUser(updatedUser);
+    if (
+      connectionDetails &&
+      !isValidEnterpriseConnection(connectionDetails, workspace)
+    ) {
+      await redirectToSSOLogin(workspace);
+    }
   };
 
   const handleLogin = useCallback(async () => {
@@ -194,27 +241,35 @@ export const useAuthHook = () => {
       return;
     }
 
-    const { tokens, user } = response.value;
+    const {
+      tokens: newTokens,
+      regionInfo: newRegionInfo,
+      connectionDetails: newConnectionDetails,
+    } = response.value;
 
-    if (user.selectedWorkspace) {
-      const selectedWorkspace = user.workspaces.find(
-        (w) => w.sId === user.selectedWorkspace
+    // Restore selectedWorkspace from storage if available.
+    const storedSelectedWorkspace = await platform.auth.getSelectedWorkspace();
+
+    if (storedSelectedWorkspace && user) {
+      const selectedWs = user.workspaces.find(
+        (w) => w.sId === storedSelectedWorkspace
       );
       if (
-        selectedWorkspace &&
-        !isValidEnterpriseConnection(user, selectedWorkspace)
+        selectedWs &&
+        !isValidEnterpriseConnection(newConnectionDetails, selectedWs)
       ) {
-        await redirectToSSOLogin(selectedWorkspace);
+        await redirectToSSOLogin(selectedWs);
         setIsLoading(false);
         return;
       }
     }
 
-    setTokens(tokens);
+    setTokens(newTokens);
+    setDustDomain(newRegionInfo.url);
+    setConnectionDetails(newConnectionDetails);
     setAuthError(null);
-    setUser(user);
     setIsLoading(false);
-  }, [forcedConnection]);
+  }, [forcedConnection, user]);
 
   return {
     token: tokens?.accessToken ?? null,
@@ -225,7 +280,7 @@ export const useAuthHook = () => {
     user,
     workspace,
     isUserSetup,
-    isLoading,
+    isLoading: isLoading || isUserLoading,
     handleLogin,
     handleLogout,
     handleSelectWorkspace,

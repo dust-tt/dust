@@ -2,6 +2,7 @@ import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mc
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
@@ -82,6 +83,7 @@ interface SubmitCreateMCPServerDialogFormParams {
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
   onBeforeCreateServer: () => void;
+  regionInfo: RegionInfo | null;
 }
 
 export async function submitCreateMCPServerDialogForm({
@@ -94,6 +96,7 @@ export async function submitCreateMCPServerDialogForm({
   createWithURL,
   createInternalMCPServer,
   onBeforeCreateServer,
+  regionInfo,
 }: SubmitCreateMCPServerDialogFormParams): Promise<
   Result<CreateMCPServerDialogSubmitResult, Error>
 > {
@@ -167,6 +170,7 @@ export async function submitCreateMCPServerDialogForm({
         ...(values.authCredentials ?? {}),
         ...(scope ? { scope } : {}),
       },
+      regionInfo,
     });
 
     if (cRes.isErr()) {

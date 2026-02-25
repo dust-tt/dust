@@ -18,7 +18,7 @@ import {
   Input,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
@@ -26,8 +26,11 @@ const GONG_TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
 const GONG_ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 const GONG_PERMISSION_PROFILE_ID_CONFIG_KEY = "gongPermissionProfileId";
 const GONG_PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
+const GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
 
 const PROFILE_NAME_MAX_LENGTH = 15;
+const MAX_EXCLUDE_KEYWORDS = 50;
+const MAX_EXCLUDE_KEYWORD_LENGTH = 100;
 
 interface GongPermissionProfile {
   id: string;
@@ -252,10 +255,30 @@ export function GongOptionComponent({
   });
   const accountsEnabled = accountsConfigValue === "true";
 
+  const {
+    configValue: excludeKeywordsConfigValue,
+    mutateConfig: mutateExcludeKeywords,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY,
+  });
+
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     retentionPeriodConfigValue || ""
   );
+
+  const [excludeKeywords, setExcludeKeywords] = useState<string>(
+    excludeKeywordsConfigValue ?? ""
+  );
+
+  // Sync state when config value loads/changes
+  useEffect(() => {
+    if (excludeKeywordsConfigValue !== undefined) {
+      setExcludeKeywords(excludeKeywordsConfigValue ?? "");
+    }
+  }, [excludeKeywordsConfigValue]);
 
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
@@ -301,6 +324,10 @@ export function GongOptionComponent({
           await mutateAccountsConfig();
           description = "Accounts synchronization successfully updated.";
           break;
+        case GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY:
+          await mutateExcludeKeywords();
+          description = "Exclude keywords successfully updated.";
+          break;
         default:
           description = "Configuration successfully updated.";
       }
@@ -335,6 +362,47 @@ export function GongOptionComponent({
           dataSource={dataSource}
           disabled={readOnly || !isAdmin || loading}
         />
+
+        <ContextItem
+          title="Exclude calls by title keywords"
+          visual={<ContextItem.Visual visual={GongLogo} />}
+          action={
+            <div className="flex flex-row space-x-3 pt-6">
+              <Input
+                name="excludeTitleKeywords"
+                placeholder="e.g. internal, test, demo"
+                value={excludeKeywords}
+                onChange={(e) => setExcludeKeywords(e.target.value)}
+                disabled={readOnly || !isAdmin || loading}
+                className="w-64"
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={async () => {
+                  await handleConfigUpdate(
+                    GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY,
+                    excludeKeywords
+                  );
+                }}
+                disabled={readOnly || !isAdmin || loading}
+                label="Save"
+              />
+            </div>
+          }
+        >
+          <ContextItem.Description>
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
+              Exclude calls whose title contains these keywords
+              (case-insensitive, comma-separated).
+              <br />
+              Max {MAX_EXCLUDE_KEYWORDS} keywords of{" "}
+              {MAX_EXCLUDE_KEYWORD_LENGTH} characters each.
+              <br />
+              Only applies to newly synced transcripts.
+            </div>
+          </ContextItem.Description>
+        </ContextItem>
 
         <ContextItem
           title="Retention Period"

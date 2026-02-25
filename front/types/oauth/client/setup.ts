@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -16,19 +17,25 @@ export async function setupOAuthConnection({
   provider,
   useCase,
   extraConfig,
+  regionInfo,
 }: {
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig: OAuthCredentials;
+  regionInfo: RegionInfo | null;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
-    const oauthBaseUrl = config.getApiBaseUrl();
+    const oauthBaseUrl = config.getAppUrl();
     // Pass opener origin through OAuth flow so finalize page can postMessage back
     const openerOrigin = window.location.origin;
     let url = `${oauthBaseUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}&openerOrigin=${encodeURIComponent(openerOrigin)}`;
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
+    }
+    // Pass region info so the OAuth popup's RegionContext initializes with the correct region.
+    if (regionInfo) {
+      url += `&region=${encodeURIComponent(regionInfo.name)}&regionUrl=${encodeURIComponent(regionInfo.url)}`;
     }
     const oauthPopup = window.open(url);
     let authComplete = false;
@@ -64,8 +71,8 @@ export async function setupOAuthConnection({
     };
 
     // Method 1: window.postMessage (preferred, direct communication)
-    // Accept messages from oauthBaseUrl origin (OAuth popup runs on NextJS server)
-    // In dev, bypass origin check as an extra safeguard for cross-port communication
+    // The finalize page runs on the app (SPA), same origin as the opener.
+    // In dev, bypass origin check as an extra safeguard for cross-port communication.
     const expectedOrigin = new URL(oauthBaseUrl).origin;
     const handleWindowMessage = (event: MessageEvent) => {
       if (!isDevelopment() && event.origin !== expectedOrigin) {
@@ -89,19 +96,7 @@ export async function setupOAuthConnection({
       // BroadcastChannel not supported
     }
 
-    // Poll for popup closure — if the user closes the popup without completing
-    // OAuth, the promise would otherwise hang forever.
-    const popupPollIntervalMs = 500;
-    const popupPollInterval = setInterval(() => {
-      if (oauthPopup?.closed && !authComplete) {
-        authComplete = true;
-        cleanup();
-        resolve(new Err(new Error("Authentication window was closed.")));
-      }
-    }, popupPollIntervalMs);
-
     const cleanup = () => {
-      clearInterval(popupPollInterval);
       window.removeEventListener("message", handleWindowMessage);
       if (channel) {
         channel.close();

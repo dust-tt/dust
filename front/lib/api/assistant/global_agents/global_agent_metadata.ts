@@ -457,10 +457,10 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent that suggests improvements for another agent.",
         pictureUrl: DUST_AVATAR_URL,
       };
-    case GLOBAL_AGENTS_SID.COPILOT_HAIKU:
+    case GLOBAL_AGENTS_SID.COPILOT_EDGE:
       return {
-        sId: GLOBAL_AGENTS_SID.COPILOT_HAIKU,
-        name: "Sidekick (Haiku)",
+        sId: GLOBAL_AGENTS_SID.COPILOT_EDGE,
+        name: "Sidekick (Edge)",
         description: "An agent that suggests improvements for another agent.",
         pictureUrl: DUST_AVATAR_URL,
       };

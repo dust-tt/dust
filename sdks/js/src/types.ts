@@ -674,7 +674,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "ashby_tool"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
@@ -692,7 +691,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
-  | "front_tool"
   | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "hootl_subscriptions"
@@ -712,17 +710,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
-  | "salesloft_tool"
   | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
-  | "statuspage_tool"
   | "run_agent_child_stream"
   | "run_tools_from_prompt"
   | "usage_data_api"
@@ -749,12 +744,14 @@ const LightWorkspaceSchema = z.object({
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
 export type WorkspaceType = z.infer<typeof WorkspaceSchema>;
+/** @deprecated Use WorkspaceType + separate extension config endpoint instead. */
 export type ExtensionWorkspaceType = z.infer<typeof ExtensionWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
+/** @deprecated Use WorkspaceSchema + separate extension config endpoint instead. */
 const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
   blacklistedDomains: z.array(z.string()).nullable(),
 });
@@ -3023,6 +3020,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ProductboardLogo"
   | "PuzzleIcon"
   | "SalesforceLogo"
+  | "SalesloftLogo"
+  | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
   | "StatuspageLogo"

@@ -1,6 +1,5 @@
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -43,13 +42,11 @@ async function destroyActionsRelatedResources(
     agentMessageIds
   );
 
-  // Destroy MCP action output items.
-  await AgentMCPActionOutputItemModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      agentMCPActionId: mcpActions.map((a) => a.id),
-    },
-  });
+  // Destroy MCP action output items (including GCS cleanup).
+  await AgentMCPActionResource.destroyOutputItemsByActionIds(
+    auth,
+    mcpActions.map((a) => a.id)
+  );
 
   // Destroy the actions.
   await AgentMCPActionResource.deleteByAgentMessageId(auth, {
@@ -266,7 +263,7 @@ export async function destroyConversation(
     },
   });
 
-  await SandboxResource.deleteByConversationModelId(auth, conversation.id);
+  await SandboxResource.deleteByConversationId(auth, conversation.sId);
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,

@@ -59,6 +59,7 @@ export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
 };
 
+/** @deprecated Use WorkspaceType + separate extension config endpoint instead. */
 export type ExtensionWorkspaceType = WorkspaceType & {
   blacklistedDomains: string[] | null;
 };
@@ -98,6 +99,7 @@ export type UserTypeWithWorkspaces = UserType & {
   selectedWorkspace?: string;
 };
 
+/** @deprecated Use UserTypeWithWorkspaces + separate extension config endpoint instead. */
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
   organizations: WorkOSOrganizationType[];

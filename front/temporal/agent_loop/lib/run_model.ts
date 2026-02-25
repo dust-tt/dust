@@ -70,6 +70,24 @@ import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
+// Concatenate two content strings, ensuring at least one whitespace character
+// between them when both are non-empty. This prevents words from being glued
+// together across successive LLM calls.
+function concatWithNewlineBoundary(
+  previous: string | null,
+  current: string | null
+): string {
+  if (!previous?.length || !current?.length) {
+    return (previous ?? "") + (current ?? "");
+  }
+  const prevEndsWs = /\s$/.test(previous);
+  const currStartsWs = /^\s/.test(current);
+  if (!prevEndsWs && !currStartsWs) {
+    return previous + "\n" + current;
+  }
+  return previous + current;
+}
+
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 export async function runModel(
@@ -650,7 +668,10 @@ export async function runModel(
     const updatedAgentMessage = {
       ...agentMessage,
       chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
-      content: (agentMessage.content ?? "") + processedContent,
+      content: concatWithNewlineBoundary(
+        agentMessage.content,
+        processedContent
+      ),
       completedTs,
       status: "succeeded",
       completionDurationMs: getCompletionDuration(
@@ -821,8 +842,10 @@ export async function runModel(
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
-  agentMessage.content =
-    (agentMessage.content ?? "") + (contentParser.getContent() ?? "");
+  agentMessage.content = concatWithNewlineBoundary(
+    agentMessage.content,
+    contentParser.getContent()
+  );
 
   if (chainOfThought.length) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

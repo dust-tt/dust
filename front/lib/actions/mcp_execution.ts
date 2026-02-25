@@ -26,7 +26,7 @@ import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -77,6 +77,7 @@ function sanitizeStringsDeep<T>(input: T): T {
 }
 
 export async function processToolNotification(
+  auth: Authenticator,
   notification: MCPProgressNotificationType,
   {
     action,
@@ -92,12 +93,11 @@ export async function processToolNotification(
 ): Promise<ToolNotificationEvent> {
   const output = notification.params._meta.data.output;
 
-  // Handle store_resource notifications by creating output items immediately
+  // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    await AgentMCPActionOutputItemModel.bulkCreate(
+    await action.createOutputItems(
+      auth,
       output.contents.map((content) => ({
-        workspaceId: action.workspaceId,
-        agentMCPActionId: action.id,
         content: sanitizeStringsDeep(content),
       }))
     );
@@ -365,10 +365,9 @@ export async function processToolResults(
     }
   );
 
-  const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
+  const outputItems = await action.createOutputItems(
+    auth,
     cleanContent.map((c) => ({
-      workspaceId: action.workspaceId,
-      agentMCPActionId: action.id,
       content: sanitizeStringsDeep(c.content),
       fileId: c.file?.id,
     }))

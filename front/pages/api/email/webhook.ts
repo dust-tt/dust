@@ -6,10 +6,9 @@ import type {
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAssistantMatcher,
-  getTargetEmailsForWorkspace,
   replyToEmail,
   triggerFromEmail,
-  userAndWorkspacesFromEmail,
+  userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -225,7 +224,6 @@ async function handler(
       // WARNING: DO NOT UNGATE. Todo before ungating:
       // - ! check security, including but not limited to SPF dkim approach thorough review
       // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
-      // - also, need to ungate the workspace check in email/email_trigger/userAndWorkspacesFromEmail
       if (!email.envelope.from.endsWith("@dust.tt")) {
         return apiError(req, res, {
           status_code: 401,
@@ -253,7 +251,7 @@ async function handler(
         return;
       }
 
-      const userRes = await userAndWorkspacesFromEmail({
+      const userRes = await userAndWorkspaceFromEmail({
         email: email.envelope.from,
       });
       if (userRes.isErr()) {
@@ -261,86 +259,72 @@ async function handler(
         return;
       }
 
-      const { user, workspaces, defaultWorkspace } = userRes.value;
+      const { user, workspace } = userRes.value;
 
-      // find target email in [...to, ...cc, ...bcc], that is email whose domain is
+      // Find target emails in [...to, ...cc, ...bcc] whose domain is
       // ASSISTANT_EMAIL_SUBDOMAIN.
-      const allTargetEmails = [
+      const targetEmails = [
         ...(email.envelope.to ?? []),
         ...(email.envelope.cc ?? []),
         ...(email.envelope.bcc ?? []),
-      ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
+      ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
 
-      const workspacesAndEmails = workspaces
-        .map((workspace) => {
-          return {
-            workspace,
-            targetEmails: getTargetEmailsForWorkspace({
-              allTargetEmails,
-              workspace,
-              isDefault: workspace.sId === defaultWorkspace.sId,
-            }),
-          };
-        })
-        .filter(({ targetEmails }) => (targetEmails as string[]).length > 0);
-
-      if (workspacesAndEmails.length === 0) {
+      if (targetEmails.length === 0) {
         await replyToError(email, {
           type: "invalid_email_error",
           message:
             `Failed to match any valid agent email. ` +
             `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
         });
+        return;
       }
 
-      for (const { workspace, targetEmails } of workspacesAndEmails) {
-        const auth = await Authenticator.fromUserIdAndWorkspaceId(
-          user.sId,
-          workspace.sId
-        );
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
 
-        const agentConfigurations = removeNulls(
-          await Promise.all(
-            targetEmails.map(async (targetEmail) => {
-              const matchRes = await emailAssistantMatcher({
-                auth,
-                targetEmail,
-              });
-              if (matchRes.isErr()) {
-                await replyToError(email, matchRes.error);
-                return null;
-              }
+      const agentConfigurations = removeNulls(
+        await Promise.all(
+          targetEmails.map(async (targetEmail) => {
+            const matchRes = await emailAssistantMatcher({
+              auth,
+              targetEmail,
+            });
+            if (matchRes.isErr()) {
+              await replyToError(email, matchRes.error);
+              return null;
+            }
 
-              return matchRes.value.agentConfiguration;
-            })
-          )
-        );
+            return matchRes.value.agentConfiguration;
+          })
+        )
+      );
 
-        if (agentConfigurations.length === 0) {
-          return;
-        }
-
-        // Trigger async processing - reply will be sent by finalization activity.
-        const triggerRes = await triggerFromEmail({
-          auth,
-          agentConfigurations,
-          email,
-        });
-
-        if (triggerRes.isErr()) {
-          await replyToError(email, triggerRes.error);
-          return;
-        }
-
-        logger.info(
-          {
-            conversationId: triggerRes.value.conversation.sId,
-            workspaceId: workspace.sId,
-            agentCount: agentConfigurations.length,
-          },
-          "[email] Triggered async email processing"
-        );
+      if (agentConfigurations.length === 0) {
+        return;
       }
+
+      // Trigger async processing - reply will be sent by finalization activity.
+      const triggerRes = await triggerFromEmail({
+        auth,
+        agentConfigurations,
+        email,
+      });
+
+      if (triggerRes.isErr()) {
+        await replyToError(email, triggerRes.error);
+        return;
+      }
+
+      logger.info(
+        {
+          conversationId: triggerRes.value.conversation.sId,
+          workspaceId: workspace.sId,
+          agentCount: agentConfigurations.length,
+        },
+        "[email] Triggered async email processing"
+      );
       return;
 
     default:
