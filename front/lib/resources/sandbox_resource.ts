@@ -1,5 +1,6 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import type { ExecOptions, ExecResult } from "@app/lib/api/sandbox/provider";
+import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -197,14 +198,25 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         case "sleeping": {
           const wakeResult = await provider.wake(existing.providerId);
           if (wakeResult.isErr()) {
-            return wakeResult;
+            // The sandbox may have been killed by the provider (e.g. lifetime
+            // expired). Fall through to recreation instead of propagating the
+            // error.
+            logger.error(
+              {
+                sandbox: existing.toLogJSON(),
+                error: wakeResult.error.message,
+              },
+              "Failed to wake sandbox — will recreate"
+            );
+          } else {
+            logger.info(
+              { sandbox: existing.toLogJSON() },
+              "Woke sleeping sandbox"
+            );
+            break;
           }
-          logger.info(
-            { sandbox: existing.toLogJSON() },
-            "Woke sleeping sandbox"
-          );
-          break;
         }
+        // Falls through to recreation when wake fails.
 
         case "deleted": {
           const createResult = await provider.create({});
@@ -246,7 +258,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    return provider.exec(this.providerId, command, opts);
+    const result = await provider.exec(this.providerId, command, opts);
+
+    if (result.isErr() && result.error instanceof SandboxNotFoundError) {
+      logger.error(
+        { sandbox: this.toLogJSON() },
+        "Sandbox not found at provider during exec — marking as deleted"
+      );
+      await this.updateStatus("deleted");
+    }
+
+    return result;
   }
 
   toLogJSON() {

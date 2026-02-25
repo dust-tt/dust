@@ -61,6 +61,21 @@ export interface FileEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
+/**
+ * Thrown (or returned) when the provider no longer knows about a sandbox.
+ * E.g. E2B killed it after its lifetime expired.
+ */
+export class SandboxNotFoundError extends Error {
+  constructor(providerId: string) {
+    super(`Sandbox ${providerId} not found at provider.`);
+    this.name = "SandboxNotFoundError";
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Provider interface
 // ---------------------------------------------------------------------------
 
