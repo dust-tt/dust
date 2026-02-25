@@ -397,8 +397,9 @@ export function GongOptionComponent({
               (case-insensitive, comma-separated).
               <br />
               Max {MAX_EXCLUDE_KEYWORDS} keywords of{" "}
-              {MAX_EXCLUDE_KEYWORD_LENGTH} characters each. Applies to new syncs
-              only.
+              {MAX_EXCLUDE_KEYWORD_LENGTH} characters each.
+              <br />
+              Only applies to newly synced transcripts.
             </div>
           </ContextItem.Description>
         </ContextItem>
