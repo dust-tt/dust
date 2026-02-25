@@ -7,10 +7,8 @@ import { useSearchParam } from "@app/lib/platform";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TemplateInfo } from "@app/types/assistant/templates";
-import { isString } from "@app/types/shared/utils/general";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -65,11 +63,10 @@ export const CopilotPanelProvider = ({
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
   const sendNotification = useSendNotification();
-  const model = useSearchParam("model");
-  const copilotAgentId =
-    isString(model) && model === "haiku"
-      ? GLOBAL_AGENTS_SID.COPILOT_HAIKU
-      : GLOBAL_AGENTS_SID.COPILOT;
+  const copilotEdge = useSearchParam("copilotEdge");
+  const copilotAgentId = copilotEdge
+    ? GLOBAL_AGENTS_SID.COPILOT_EDGE
+    : GLOBAL_AGENTS_SID.COPILOT;
 
   const [conversation, setConversation] = useState<ConversationType | null>(
     null

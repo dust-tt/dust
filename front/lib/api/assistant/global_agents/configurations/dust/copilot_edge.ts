@@ -1,16 +1,14 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
-// Re-use the same instruction builder from the main copilot module.
 import { buildCopilotInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
-export function _getCopilotHaikuGlobalAgent(
+export function _getCopilotEdgeGlobalAgent(
   auth: Authenticator,
   copilotContext: CopilotContext | null
 ): AgentConfigurationType {
@@ -22,21 +20,23 @@ export function _getCopilotHaikuGlobalAgent(
       ]
     : [];
 
-  const modelConfiguration = CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
-  const model = modelConfiguration
-    ? {
-        providerId: modelConfiguration.providerId,
-        modelId: modelConfiguration.modelId,
-        temperature: 0.7,
-        reasoningEffort: modelConfiguration.maximumReasoningEffort,
-      }
-    : dummyModelConfiguration;
+  const langfuseConfig = copilotContext?.langfuseConfig;
+  const modelConfiguration =
+    langfuseConfig?.modelConfig ?? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
 
-  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT_HAIKU);
+  const model = {
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
+    temperature: 0.7,
+    reasoningEffort:
+      langfuseConfig?.reasoningEffort ??
+      modelConfiguration.maximumReasoningEffort,
+  };
+
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT_EDGE);
 
   const instructions =
-    copilotContext?.langfuseInstructions ??
-    buildCopilotInstructions(copilotContext);
+    langfuseConfig?.instructions ?? buildCopilotInstructions(copilotContext);
 
   return {
     id: -1,
