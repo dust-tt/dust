@@ -1,3 +1,4 @@
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   BarHeader,
   Button,
@@ -12,6 +13,7 @@ import { Link } from "react-router-dom";
 
 export const SubscribePage = () => {
   const { user, workspace, handleLogout } = useProtectedRouteContext();
+  const { regionInfo } = useRegionContext();
   return (
     <div>
       <BarHeader
@@ -43,22 +45,24 @@ export const SubscribePage = () => {
             Subscribe to start using Dust agent from anywhere in your browser.
           </div>
 
-          <div className="m-1 flex text-center">
-            <Link to={`${user.dustDomain}/w/${workspace.sId}/subscribe`}>
-              <Button
-                icon={RocketIcon}
-                variant="primary"
-                label="Get started"
-                onClick={() => {
-                  window.open(
-                    `${user.dustDomain}/w/${workspace.sId}/subscribe`,
-                    "_blank"
-                  );
-                }}
-                size="sm"
-              />
-            </Link>
-          </div>
+          {regionInfo && (
+            <div className="m-1 flex text-center">
+              <Link to={`${regionInfo.url}/w/${workspace.sId}/subscribe`}>
+                <Button
+                  icon={RocketIcon}
+                  variant="primary"
+                  label="Get started"
+                  onClick={() => {
+                    window.open(
+                      `${regionInfo.url}/w/${workspace.sId}/subscribe`,
+                      "_blank"
+                    );
+                  }}
+                  size="sm"
+                />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

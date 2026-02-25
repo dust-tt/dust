@@ -7,6 +7,7 @@ import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
 
+import { RegionProvider } from "@app/lib/auth/RegionContext";
 import { Notification } from "@dust-tt/sparkle";
 import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
 import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
@@ -53,13 +54,15 @@ const AppWrapper = () => {
   return (
     <FrontContextProvider>
       <FrontPlatformProvider>
-        <ExtensionAuthProvider>
-          <ExtensionFetcherProvider>
-            <Notification.Area>
-              <RouterProvider router={router} key="front-router" />
-            </Notification.Area>
-          </ExtensionFetcherProvider>
-        </ExtensionAuthProvider>
+        <RegionProvider>
+          <ExtensionAuthProvider>
+            <ExtensionFetcherProvider>
+              <Notification.Area>
+                <RouterProvider router={router} key="front-router" />
+              </Notification.Area>
+            </ExtensionFetcherProvider>
+          </ExtensionAuthProvider>
+        </RegionProvider>
       </FrontPlatformProvider>
     </FrontContextProvider>
   );

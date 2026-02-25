@@ -1,7 +1,7 @@
-import type { ExtensionWorkspaceType } from "@app/types/user";
+import type { WorkspaceType } from "@app/types/user";
 import type { ContentFragmentType } from "@dust-tt/client";
 import type { UploadedContentFragmentTypeWithKind } from "@extension/shared/lib/types";
-import type { AuthService, StoredUser } from "@extension/shared/services/auth";
+import type { AuthService } from "@extension/shared/services/auth";
 import type { CaptureService } from "@extension/shared/services/capture";
 import { createMockCaptureService } from "@extension/shared/services/capture";
 import type { McpService } from "@extension/shared/services/mcp";
@@ -20,7 +20,7 @@ export type Theme = "light" | "dark" | "system";
 export const DEFAULT_THEME: Theme = "system";
 
 export interface CaptureActionsProps {
-  owner: ExtensionWorkspaceType;
+  owner: WorkspaceType;
   isBlinking: boolean;
   isLoading: boolean;
   fileUploaderService: FileUploaderService;
@@ -105,14 +105,8 @@ export abstract class CorePlatformService {
     workspaceId,
   }: {
     workspaceId: string;
-  }): Promise<StoredUser> {
-    const storedUser = await this.auth.getStoredUser();
-    if (!storedUser) {
-      throw new Error("No user found.");
-    }
-    storedUser.selectedWorkspace = workspaceId;
-    await this.storage.set("user", storedUser);
-    return storedUser;
+  }): Promise<void> {
+    await this.storage.set("selectedWorkspace", workspaceId);
   }
 
   async clearStoredData(): Promise<void> {
@@ -120,7 +114,9 @@ export abstract class CorePlatformService {
       this.storage.delete("accessToken"),
       this.storage.delete("expiresAt"),
       this.storage.delete("refreshToken"),
-      this.storage.delete("user"),
+      this.storage.delete("regionInfo"),
+      this.storage.delete("connectionDetails"),
+      this.storage.delete("selectedWorkspace"),
     ]);
   }
 

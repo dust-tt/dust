@@ -1,6 +1,5 @@
-import type { ExtensionWorkspaceType, UserType } from "@app/types/user";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import type { Result, WorkspaceType } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import {
   DEFAULT_DUST_API_DOMAIN,
   DUST_EU_URL,
@@ -9,26 +8,13 @@ import {
 } from "@extension/shared/lib/config";
 import type { StorageService } from "@extension/shared/services/storage";
 
-export type Organization = {
-  id: string;
-  name: string;
-};
-
-export type UserTypeWithExtensionWorkspaces = UserType & {
-  workspaces: ExtensionWorkspaceType[];
-  organizations: Organization[];
-  selectedWorkspace: string | null;
-};
-
 export type StoredTokens = {
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
 };
 
-export type StoredUser = UserTypeWithExtensionWorkspaces & {
-  selectedWorkspace: string | null;
-  dustDomain: string;
+export type ConnectionDetails = {
   connectionStrategy: SupportedEnterpriseConnectionStrategy | undefined;
   connection?: string;
 };
@@ -58,6 +44,12 @@ export class AuthError extends Error {
   }
 }
 
+export type LoginResult = {
+  tokens: StoredTokens;
+  regionInfo: RegionInfo;
+  connectionDetails: ConnectionDetails;
+};
+
 export abstract class AuthService {
   protected storage: StorageService;
 
@@ -80,11 +72,6 @@ export abstract class AuthService {
     return tokens;
   }
 
-  async saveUser(user: StoredUser): Promise<StoredUser> {
-    await this.storage.set("user", user);
-    return user;
-  }
-
   async getStoredTokens(): Promise<StoredTokens | null> {
     const accessToken = await this.storage.get<string>("accessToken");
     const refreshToken = await this.storage.get<string>("refreshToken");
@@ -101,15 +88,24 @@ export abstract class AuthService {
     };
   }
 
-  async getStoredUser(): Promise<StoredUser | null> {
-    const result = await this.storage.get<StoredUser>("user");
-    return result ?? null;
+  async getRegionInfoFromStorage(): Promise<RegionInfo | null> {
+    return (await this.storage.get<RegionInfo>("regionInfo")) ?? null;
+  }
+
+  async getConnectionDetailsFromStorage(): Promise<ConnectionDetails | null> {
+    return (
+      (await this.storage.get<ConnectionDetails>("connectionDetails")) ?? null
+    );
+  }
+
+  async getSelectedWorkspace(): Promise<string | null> {
+    return (await this.storage.get<string>("selectedWorkspace")) ?? null;
   }
 
   // Abstract methods that must be implemented by platform-specific services
   abstract login(args: {
     forcedConnection?: string;
-  }): Promise<Result<{ tokens: StoredTokens; user: StoredUser }, AuthError>>;
+  }): Promise<Result<LoginResult, AuthError>>;
 
   abstract logout(): Promise<boolean>;
 
@@ -118,48 +114,32 @@ export abstract class AuthService {
   abstract refreshToken(
     tokens: StoredTokens | null
   ): Promise<Result<StoredTokens, AuthError>>;
-
-  protected async fetchMe({
-    accessToken,
-    dustDomain,
-  }: {
-    accessToken: string;
-    dustDomain: string;
-  }): Promise<Result<{ user: UserTypeWithExtensionWorkspaces }, AuthError>> {
-    const response = await fetch(`${dustDomain}/api/v1/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "X-Request-Origin": "extension",
-      },
-    });
-    const me = await response.json();
-
-    if (!response.ok) {
-      return new Err(new AuthError(me.error.type, me.error.message));
-    }
-
-    return new Ok(me);
-  }
 }
 
 const REGION_CLAIM = `${WORKOS_CLAIM_NAMESPACE}region`;
 const CONNECTION_STRATEGY_CLAIM = `${WORKOS_CLAIM_NAMESPACE}connection.strategy`;
 const WORKSPACE_ID_CLAIM = `${WORKOS_CLAIM_NAMESPACE}workspaceId`;
 
-export function getDustDomain(claims: Record<string, string>) {
+export function getRegionInfoFromClaims(
+  claims: Record<string, string>
+): RegionInfo {
   const region = claims[REGION_CLAIM];
-
-  return (
-    (isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
-    DEFAULT_DUST_API_DOMAIN
-  );
+  const regionName: RegionType = isRegionType(region) ? region : "us-central1";
+  return {
+    name: regionName,
+    url:
+      (isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
+      DEFAULT_DUST_API_DOMAIN,
+  };
 }
 
 export function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
 }
 
-export function getConnectionDetails(claims: Record<string, string>) {
+export function getConnectionDetails(
+  claims: Record<string, string>
+): ConnectionDetails {
   const connectionStrategy = claims[CONNECTION_STRATEGY_CLAIM];
   const ws = claims[WORKSPACE_ID_CLAIM];
   return {
@@ -185,7 +165,7 @@ function isSupportedEnterpriseConnectionStrategy(
 }
 
 export function isValidEnterpriseConnection(
-  user: StoredUser,
+  connectionDetails: ConnectionDetails,
   workspace: WorkspaceType
 ) {
   if (!workspace.ssoEnforced) {
@@ -193,9 +173,11 @@ export function isValidEnterpriseConnection(
   }
 
   return (
-    user.connectionStrategy &&
-    isSupportedEnterpriseConnectionStrategy(user.connectionStrategy) &&
-    makeEnterpriseConnectionName(workspace.sId) === user.connection
+    connectionDetails.connectionStrategy &&
+    isSupportedEnterpriseConnectionStrategy(
+      connectionDetails.connectionStrategy
+    ) &&
+    makeEnterpriseConnectionName(workspace.sId) === connectionDetails.connection
   );
 }
 

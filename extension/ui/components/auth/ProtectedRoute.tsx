@@ -1,15 +1,14 @@
-import type { ExtensionWorkspaceType } from "@app/types/user";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { classNames, Spinner } from "@dust-tt/sparkle";
 import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import type { StoredUser } from "@extension/shared/services/auth";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
 
 export interface ProtectedRouteOutletContext {
-  user: StoredUser;
-  workspace: ExtensionWorkspaceType;
+  user: UserTypeWithWorkspaces;
+  workspace: WorkspaceType;
   handleLogout: () => void;
 }
 
