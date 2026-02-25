@@ -37,7 +37,9 @@ export async function executeCopilot(
 
   const allToolCalls: ToolCall[] = [];
   let responseText = "";
+  let totalModelTimeMs = 0;
 
+  let streamStart = Date.now();
   let events = llm.stream({
     conversation: { messages },
     prompt: config.instructions,
@@ -66,6 +68,8 @@ export async function executeCopilot(
           throw new Error(`Copilot LLM error: ${event.content.message}`);
       }
     }
+
+    totalModelTimeMs += Date.now() - streamStart;
 
     // No more tool calls - we have the final response
     if (currentRoundToolCalls.length === 0) {
@@ -107,6 +111,7 @@ export async function executeCopilot(
     }
 
     // Continue conversation with tool results
+    streamStart = Date.now();
     events = llm.stream({
       conversation: { messages },
       prompt: config.instructions,
@@ -114,5 +119,5 @@ export async function executeCopilot(
     });
   }
 
-  return { responseText, toolCalls: allToolCalls };
+  return { responseText, toolCalls: allToolCalls, modelTimeMs: totalModelTimeMs };
 }

@@ -2,6 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
+import { _getCopilotHaikuGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_haiku";
 import {
   type CopilotContext,
   formatAvailableModels,
@@ -23,6 +24,7 @@ export const PASS_THRESHOLD = parseInt(process.env.PASS_THRESHOLD ?? "2", 10);
 export const FILTER_CATEGORY = process.env.FILTER_CATEGORY;
 export const FILTER_SCENARIO = process.env.FILTER_SCENARIO;
 export const COPILOT_ON_COPILOT = process.env.COPILOT_ON_COPILOT === "true";
+export const COPILOT_AGENT = process.env.COPILOT_AGENT ?? "default";
 
 export const TIMEOUT_MS = 300_000;
 export const COPILOT_ON_COPILOT_TIMEOUT_MS = 600_000;
@@ -117,7 +119,19 @@ export async function getCopilotConfig(): Promise<CopilotConfig> {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const mockCopilotContext = getMockCopilotContext();
-  const copilotConfig = _getCopilotGlobalAgent(auth, mockCopilotContext);
+  let copilotConfig;
+  switch (COPILOT_AGENT) {
+    case "default":
+      copilotConfig = _getCopilotGlobalAgent(auth, mockCopilotContext);
+      break;
+    case "haiku":
+      copilotConfig = _getCopilotHaikuGlobalAgent(auth, mockCopilotContext);
+      break;
+    default:
+      throw new Error(
+        `Unknown COPILOT_AGENT: "${COPILOT_AGENT}". Must be "default" or "haiku".`
+      );
+  }
 
   const tools: AgentActionSpecification[] = [GET_AGENT_CONFIG_SPEC];
 

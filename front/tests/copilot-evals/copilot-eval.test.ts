@@ -1,4 +1,5 @@
 import {
+  COPILOT_AGENT,
   COPILOT_ON_COPILOT,
   COPILOT_ON_COPILOT_TIMEOUT_MS,
   createMockAuthenticator,
@@ -78,7 +79,7 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
           async () => {
             const auth = createMockAuthenticator();
 
-            const { responseText, toolCalls } = await executeCopilot(
+            const { responseText, toolCalls, modelTimeMs } = await executeCopilot(
               auth,
               copilotConfig,
               testCase.userMessage,
@@ -108,6 +109,7 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
               toolCalls,
               judgeResult,
               passed,
+              copilotModelTimeMs: modelTimeMs,
             });
 
             const actualToolNames = toolCalls.map((t) => t.name);
@@ -128,6 +130,40 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
       }
     });
   }
+
+  afterAll(() => {
+    if (evalResults.length === 0) {
+      return;
+    }
+
+    const totalCopilotTimeMs = evalResults.reduce(
+      (sum, r) => sum + r.copilotModelTimeMs,
+      0
+    );
+
+    console.log("\n" + "=".repeat(60));
+    console.log(`COPILOT EVAL TIMING SUMMARY (agent: ${COPILOT_AGENT})`);
+    console.log("=".repeat(60));
+    const passedCount = evalResults.filter((r) => r.passed).length;
+    const passRate = ((passedCount / evalResults.length) * 100).toFixed(0);
+
+    console.log(`Total scenarios: ${evalResults.length}`);
+    console.log(`Passed: ${passedCount}/${evalResults.length} (${passRate}%)`);
+    console.log(
+      `Total copilot model time: ${(totalCopilotTimeMs / 1000).toFixed(1)}s`
+    );
+    console.log(
+      `Average copilot model time per scenario: ${(totalCopilotTimeMs / evalResults.length / 1000).toFixed(1)}s`
+    );
+    console.log("-".repeat(60));
+    for (const r of evalResults) {
+      const status = r.passed ? "PASS" : "FAIL";
+      console.log(
+        `  [${status}] ${r.testCase.category}/${r.testCase.scenarioId}: ${(r.copilotModelTimeMs / 1000).toFixed(1)}s`
+      );
+    }
+    console.log("=".repeat(60) + "\n");
+  });
 
   if (COPILOT_ON_COPILOT) {
     afterAll(async () => {

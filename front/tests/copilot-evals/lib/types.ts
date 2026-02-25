@@ -70,6 +70,7 @@ export interface JudgeResult {
 export interface CopilotExecutionResult {
   responseText: string;
   toolCalls: ToolCall[];
+  modelTimeMs: number;
 }
 
 export interface EvalResult {
@@ -78,4 +79,5 @@ export interface EvalResult {
   toolCalls: ToolCall[];
   judgeResult: JudgeResult;
   passed: boolean;
+  copilotModelTimeMs: number;
 }
