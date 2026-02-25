@@ -1,5 +1,6 @@
 import { setBaseUrlResolver } from "@app/lib/api/config";
 import type { RegionInfo } from "@app/lib/api/regions/config";
+import { isRegionType } from "@app/lib/api/regions/config";
 import {
   createContext,
   useCallback,
@@ -52,13 +53,33 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
   // Store the current URL to use in the resolver.
   const currentUrlRef = useRef<string>(DEFAULT_URL);
 
-  // On mount, restore region and URLs from localStorage.
+  // On mount, restore region from URL params (post-login) or localStorage.
   useEffect(() => {
-    const storedRegionInfo = getStoredRegionInfo();
+    let regionInfo: RegionInfo | null = null;
 
-    if (storedRegionInfo) {
-      setCurrentRegionInfo(storedRegionInfo);
-      currentUrlRef.current = storedRegionInfo.url;
+    // Check URL params first (set by /api/login after authentication).
+    const params = new URLSearchParams(window.location.search);
+    const region = params.get("region");
+    const regionUrl = params.get("regionUrl");
+
+    if (region && regionUrl && isRegionType(region)) {
+      regionInfo = { name: region, url: regionUrl };
+      setStoredRegionInfo(regionInfo);
+
+      // Clean region params from URL.
+      params.delete("region");
+      params.delete("regionUrl");
+      const qs = params.toString();
+      const newUrl =
+        window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
+      window.history.replaceState(null, "", newUrl);
+    } else {
+      regionInfo = getStoredRegionInfo();
+    }
+
+    if (regionInfo) {
+      setCurrentRegionInfo(regionInfo);
+      currentUrlRef.current = regionInfo.url;
     }
 
     // Set up resolver that reads from ref (so it always gets latest value).
