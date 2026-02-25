@@ -3,7 +3,7 @@ import {
   type ShrinkWrapAgentMessage,
   type ShrinkWrapConversationData,
   type ShrinkWrapUserMessage,
-} from "@app/lib/api/assistant/conversation";
+} from "@app/lib/api/assistant/conversation/shrink_wrap";
 import { buildFirstMessage } from "@app/pages/api/w/[wId]/assistant/builder/copilot/prompt/shrink-wrap";
 
 import type { ConversationMessage, TestSuite } from "../lib/types";
