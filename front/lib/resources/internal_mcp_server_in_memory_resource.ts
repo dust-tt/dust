@@ -37,6 +37,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { Op } from "sequelize";
@@ -54,8 +55,10 @@ export class InternalMCPServerInMemoryResource {
     documentationUrl: null,
     tools: [],
   };
-  private internalServerCredential: InternalMCPServerCredentialModel | null =
-    null;
+  private internalServerCredential: {
+    sharedSecret: string | null;
+    customHeaders: Record<string, string> | null;
+  } | null = null;
 
   constructor(
     readonly id: string,
@@ -380,25 +383,30 @@ export class InternalMCPServerInMemoryResource {
       );
     }
 
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspace = auth.getNonNullableWorkspace();
+    const encryptionKey = workspace.sId;
 
     const existing = await InternalMCPServerCredentialModel.findOne({
       where: {
-        workspaceId: workspaceId,
+        workspaceId: workspace.id,
         internalMCPServerId: this.id,
       },
     });
 
-    let record: InternalMCPServerCredentialModel;
-
     if (existing) {
       const updatePayload: Partial<{
-        sharedSecret: string | null;
+        encryptedKey: string | null;
         customHeaders: Record<string, string> | null;
       }> = {};
 
       if (sharedSecret !== undefined) {
-        updatePayload.sharedSecret = sharedSecret || null;
+        updatePayload.encryptedKey = sharedSecret
+          ? encrypt({
+              text: sharedSecret,
+              key: encryptionKey,
+              useCase: "mcp_server_credentials",
+            })
+          : null;
       }
       if (customHeaders !== undefined) {
         updatePayload.customHeaders = customHeaders ?? null;
@@ -407,18 +415,25 @@ export class InternalMCPServerInMemoryResource {
       if (Object.keys(updatePayload).length > 0) {
         await existing.update(updatePayload);
       }
-
-      record = existing;
     } else {
-      record = await InternalMCPServerCredentialModel.create({
-        workspaceId: workspaceId,
+      await InternalMCPServerCredentialModel.create({
+        workspaceId: workspace.id,
         internalMCPServerId: this.id,
-        sharedSecret: sharedSecret ?? null,
+        encryptedKey: sharedSecret
+          ? encrypt({
+              text: sharedSecret,
+              key: encryptionKey,
+              useCase: "mcp_server_credentials",
+            })
+          : null,
         customHeaders: customHeaders ?? null,
       });
     }
 
-    this.internalServerCredential = record;
+    this.internalServerCredential = {
+      sharedSecret: sharedSecret ?? null,
+      customHeaders: customHeaders ?? null,
+    };
 
     return new Ok(undefined);
   }
@@ -459,16 +474,46 @@ export class InternalMCPServerInMemoryResource {
   }
 
   private async fetchInternalServerCredential(auth: Authenticator) {
-    if (!doesInternalMCPServerRequireBearerToken(this.id)) {
+    return InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+      auth,
+      this.id
+    );
+  }
+
+  static async fetchDecryptedCredentials(
+    auth: Authenticator,
+    internalMCPServerId: string
+  ): Promise<{
+    sharedSecret: string | null;
+    customHeaders: Record<string, string> | null;
+  } | null> {
+    if (!doesInternalMCPServerRequireBearerToken(internalMCPServerId)) {
       return null;
     }
 
-    return InternalMCPServerCredentialModel.findOne({
+    const credential = await InternalMCPServerCredentialModel.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: this.id,
+        internalMCPServerId,
       },
     });
+
+    if (!credential) {
+      return null;
+    }
+
+    const { encryptedKey, customHeaders } = credential;
+
+    return {
+      sharedSecret: encryptedKey
+        ? decrypt({
+            encrypted: encryptedKey,
+            key: auth.getNonNullableWorkspace().sId,
+            useCase: "mcp_server_credentials",
+          })
+        : null,
+      customHeaders,
+    };
   }
 
   // Serialization.
