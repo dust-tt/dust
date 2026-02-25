@@ -42,7 +42,6 @@ export const SALESLOFT_SERVER = {
     icon: "SalesloftLogo",
     documentationUrl: null,
     instructions: null,
-    developerSecretSelection: "required",
   },
   tools: Object.values(SALESLOFT_TOOLS_METADATA).map((t) => ({
     name: t.name,
