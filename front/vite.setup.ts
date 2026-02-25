@@ -75,6 +75,11 @@ vi.mock("@app/lib/utils/cache", () => ({
     ),
 }));
 
+// Mock sandbox provider - must be at module level
+vi.mock("@app/lib/api/sandbox", () => ({
+  getSandboxProvider: vi.fn().mockReturnValue(undefined),
+}));
+
 // Mock Temporal - must be at module level
 vi.mock("@app/lib/temporal", () => ({
   getTemporalClientForAgentNamespace: vi.fn().mockResolvedValue({
