@@ -415,7 +415,8 @@ export function AgentSidebarMenu({
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { hideTriggeredConversations } = useHideTriggeredConversations();
+  const { hideTriggeredConversations, setHideTriggeredConversations } =
+    useHideTriggeredConversations();
 
   const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
     useProjectsSectionCollapsed();
@@ -676,6 +677,8 @@ export function AgentSidebarMenu({
         owner={owner}
         projectsSection={projectsSection}
         hasTriggeredConversations={hasTriggeredConversations}
+        hideTriggeredConversations={hideTriggeredConversations}
+        setHideTriggeredConversations={setHideTriggeredConversations}
         handleNewClick={handleNewClick}
         toggleMultiSelect={toggleMultiSelect}
         setShowDeleteDialog={setShowDeleteDialog}
@@ -694,6 +697,8 @@ export function AgentSidebarMenu({
     owner,
     projectsSection,
     hasTriggeredConversations,
+    hideTriggeredConversations,
+    setHideTriggeredConversations,
     handleNewClick,
     toggleMultiSelect,
     setShowDeleteDialog,
@@ -1208,6 +1213,8 @@ interface NavigationListWithInboxProps {
   owner: WorkspaceType;
   projectsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
+  hideTriggeredConversations: boolean;
+  setHideTriggeredConversations: (hide: boolean) => void;
   handleNewClick: () => void;
   toggleMultiSelect: () => void;
   setShowDeleteDialog: (value: "all" | "selection" | null) => void;
@@ -1226,6 +1233,8 @@ function NavigationListWithInbox({
   owner,
   projectsSection,
   hasTriggeredConversations,
+  hideTriggeredConversations,
+  setHideTriggeredConversations,
   handleNewClick,
   toggleMultiSelect,
   setShowDeleteDialog,
@@ -1233,8 +1242,6 @@ function NavigationListWithInbox({
   loadMore,
   isLoadingMore,
 }: NavigationListWithInboxProps) {
-  const { hideTriggeredConversations, setHideTriggeredConversations } =
-    useHideTriggeredConversations();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { readConversations, inboxConversations } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(
