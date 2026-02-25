@@ -103,6 +103,11 @@ ConversationModel.init(
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",
       },
+      {
+        fields: ["workspaceId", "updatedAt"],
+        name: "conversations_workspace_id_updated_at_idx",
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
   }
