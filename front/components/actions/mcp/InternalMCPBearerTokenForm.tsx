@@ -1,5 +1,6 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import {
   Collapsible,
   CollapsibleContent,
@@ -8,7 +9,13 @@ import {
 } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-export function InternalMCPBearerTokenForm() {
+interface InternalMCPBearerTokenFormProps {
+  serverName?: string;
+}
+
+export function InternalMCPBearerTokenForm({
+  serverName,
+}: InternalMCPBearerTokenFormProps) {
   const form = useFormContext<MCPServerFormValues>();
   const { fields, replace } = useFieldArray<
     MCPServerFormValues,
@@ -16,6 +23,8 @@ export function InternalMCPBearerTokenForm() {
   >({
     name: "customHeaders",
   });
+
+  const { label, placeholder, tooltip } = getTokenFieldLabel(serverName);
 
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">
@@ -27,14 +36,13 @@ export function InternalMCPBearerTokenForm() {
           <div className="space-y-2">
             <Input
               {...form.register("sharedSecret")}
-              label="Bearer Token"
+              label={label}
               isError={!!form.formState.errors.sharedSecret}
               message={form.formState.errors.sharedSecret?.message}
-              placeholder="Paste the Bearer Token here"
+              placeholder={placeholder}
             />
             <p className="text-xs text-gray-500 dark:text-gray-500-night">
-              This will be sent alongside the request as a Bearer token in the
-              Authorization header.
+              {tooltip}
             </p>
           </div>
         </CollapsibleContent>
