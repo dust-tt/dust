@@ -216,7 +216,7 @@ function PermissionProfileSelector({
             size="sm"
             onClick={handleSave}
             disabled={disabled || loading || !hasUnsavedChanges}
-            label="Save"
+            label={loading ? "Saving..." : "Save"}
           />
         </div>
       }
