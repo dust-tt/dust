@@ -40,7 +40,7 @@ async function buildTarget(target: BuildTarget) {
       entryPoints: [entryPoint],
       bundle: true,
       platform: "node",
-      target: "node20",
+      target: "node22",
       format: target.format,
       outfile: target.outfile,
       minify: target.production ?? false,
