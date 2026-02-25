@@ -105,8 +105,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     olderThanMs: number;
     limit: number;
   }): Promise<string[]> {
-    // WORKSPACE_ISOLATION_BYPASS: Reaper operates across all workspaces.
     const rows = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         status: opts.status,
@@ -137,8 +137,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   private static async dangerouslyFetchByConversationId(
     conversationId: string
   ): Promise<SandboxResource | null> {
-    // WORKSPACE_ISOLATION_BYPASS: Reaper operates across all workspaces.
     const row = await this.model.findOne({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
