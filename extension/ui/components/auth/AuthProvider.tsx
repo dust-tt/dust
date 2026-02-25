@@ -110,6 +110,7 @@ export function ExtensionAuthProvider({
     handleLogin,
     handleLogout,
     handleSelectWorkspace,
+    featureFlags,
   } = useAuthHook();
 
   const extensionAuthValue = useMemo(
@@ -153,10 +154,10 @@ export function ExtensionAuthProvider({
       subscription: EXTENSION_SUBSCRIPTION,
       isAdmin: isAdmin(workspace),
       isBuilder: isBuilder(workspace),
-      featureFlags: [],
+      featureFlags,
       vizUrl: "",
     };
-  }, [user, workspace]);
+  }, [user, workspace, featureFlags]);
 
   return (
     <ExtensionAuthContext.Provider value={extensionAuthValue}>
