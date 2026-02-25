@@ -147,7 +147,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       include: [
         {
           model: ConversationModel,
-          attributes: ["id"],
+          attributes: [],
           required: true,
           where: { sId: conversationId },
         },
@@ -159,13 +159,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
   static async fetchByConversationId(
     auth: Authenticator,
-    conversationId: number
+    conversationId: string
   ): Promise<SandboxResource | null> {
-    const [row] = await this.baseFetch(auth, {
-      where: { conversationId },
+    const row = await this.model.findOne({
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+      include: [
+        {
+          model: ConversationModel,
+          attributes: [],
+          required: true,
+          where: { sId: conversationId },
+        },
+      ],
     });
 
-    return row ?? null;
+    return row ? new this(this.model, row.get()) : null;
   }
 
   async updateStatus(
@@ -201,15 +209,41 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return new Ok(deletedCount);
   }
 
-  static async deleteByConversationModelId(
+  /**
+   * Full cleanup under the lifecycle lock: best-effort destroy at the provider,
+   * then delete the DB row.
+   */
+  static async deleteByConversationId(
     auth: Authenticator,
-    conversationModelId: ModelId
-  ): Promise<number> {
-    return SandboxModel.destroy({
-      where: {
-        conversationId: conversationModelId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+    conversationId: string
+  ): Promise<Result<void, Error>> {
+    return this.withLifecycleLock(conversationId, async (provider) => {
+      const sandbox = await SandboxResource.fetchByConversationId(
+        auth,
+        conversationId
+      );
+      if (!sandbox) {
+        return new Ok(undefined);
+      }
+
+      if (sandbox.status !== "deleted") {
+        const result = await provider.destroy(sandbox.providerId);
+        if (result.isErr() && !(result.error instanceof SandboxNotFoundError)) {
+          logger.error(
+            { sandbox: sandbox.toLogJSON(), error: result.error.message },
+            "Failed to destroy sandbox at provider — proceeding with DB cleanup."
+          );
+        }
+      }
+
+      await SandboxModel.destroy({
+        where: {
+          id: sandbox.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      });
+
+      return new Ok(undefined);
     });
   }
 
@@ -246,11 +280,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     return this.withLifecycleLock(conversation.sId, async (provider) => {
-      const conversationId = conversation.id;
-
       const existing = await SandboxResource.fetchByConversationId(
         auth,
-        conversationId
+        conversation.sId
       );
 
       if (!existing) {
@@ -260,7 +292,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         const sandbox = await SandboxResource.makeNew(auth, {
-          conversationId,
+          conversationId: conversation.id,
           providerId: createResult.value.providerId,
           status: "running",
         });
