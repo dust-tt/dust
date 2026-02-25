@@ -51,6 +51,8 @@ const PERMISSION_PROFILE_ID_CONFIG_KEY = "gongPermissionProfileId";
 
 const PERMISSION_PROFILES_CONFIG_KEY = "gongPermissionProfiles";
 
+const EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
@@ -345,6 +347,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         const views = await fetchPermissionProfileViews(connector);
         return new Ok(JSON.stringify(views));
       }
+      case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
+        const keywords = configuration.excludeTitleKeywords;
+        return new Ok(keywords ? keywords.join(",") : null);
+      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -414,6 +420,26 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           "[Gong] Update permission profile."
         );
         await configuration.setPermissionProfileId(profileId);
+
+        return new Ok(undefined);
+      }
+      case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
+        // Parse comma-separated string
+        const keywords = configValue
+          .split(",")
+          .map((k) => k.trim())
+          .filter((k) => k.length > 0);
+
+        // Validation and storage handled by resource
+        const result = await configuration.setExcludeTitleKeywords(keywords);
+        if (result.isErr()) {
+          return result;
+        }
+
+        logger.info(
+          { connectorId: connector.id, keywords },
+          "[Gong] Updated exclude title keywords"
+        );
 
         return new Ok(undefined);
       }
