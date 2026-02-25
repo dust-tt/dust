@@ -616,6 +616,11 @@ function AgentBuilderContent({
     enabled: isCopilotEnabled,
   });
 
+  const clientSideMCPServerIds = useMemo(
+    () => (clientSideMCPServerId ? [clientSideMCPServerId] : []),
+    [clientSideMCPServerId]
+  );
+
   const handleSaveWithValidation = useCallback(async () => {
     const pendingInstructionSuggestions = suggestionsContext
       .getPendingSuggestions()
@@ -699,9 +704,7 @@ function AgentBuilderContent({
               agentConfiguration?.sId ?? pendingAgentId ?? null
             }
             targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
-            clientSideMCPServerIds={
-              clientSideMCPServerId ? [clientSideMCPServerId] : []
-            }
+            clientSideMCPServerIds={clientSideMCPServerIds}
             isNewAgent={isNewAgent}
             templateInfo={templateInfo}
             conversationId={conversationId}

@@ -75,6 +75,17 @@ function CopilotContent({
   isAdmin,
   clientSideMCPServerIds,
 }: CopilotContentProps) {
+  const agentBuilderContext = useMemo(
+    () => ({
+      isSubmitting: false,
+      resetConversation,
+      actionsToShow: [],
+      clientSideMCPServerIds,
+      skipToolsValidation: true,
+    }),
+    [resetConversation, clientSideMCPServerIds]
+  );
+
   const additionalMarkdownComponents: Components = useMemo(
     () =>
       ({
@@ -101,13 +112,7 @@ function CopilotContent({
               owner={owner}
               user={user}
               conversationId={conversation.sId}
-              agentBuilderContext={{
-                isSubmitting: false,
-                resetConversation,
-                actionsToShow: [],
-                clientSideMCPServerIds,
-                skipToolsValidation: true,
-              }}
+              agentBuilderContext={agentBuilderContext}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
               key={conversation.sId}
