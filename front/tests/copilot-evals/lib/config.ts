@@ -2,7 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
-import { _getCopilotHaikuGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_haiku";
+import { _getCopilotEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_edge";
 import {
   type CopilotContext,
   formatAvailableModels,
@@ -21,6 +21,7 @@ import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { CopilotConfig } from "@app/tests/copilot-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export const RUN_COPILOT_EVAL = process.env.RUN_COPILOT_EVAL === "true";
 export const JUDGE_RUNS = parseInt(process.env.JUDGE_RUNS ?? "3", 10);
@@ -115,7 +116,7 @@ function getMockCopilotContext(): CopilotContext {
       formatAvailableSkills(MOCK_WORKSPACE_SKILLS),
       formatAvailableTools(MOCK_WORKSPACE_TOOLS),
     ].join("\n\n"),
-    langfuseInstructions: null,
+    langfuseConfig: null,
   };
 }
 
@@ -138,8 +139,14 @@ export async function getCopilotConfig(): Promise<CopilotConfig> {
       });
       break;
     case "haiku":
-      copilotConfig = _getCopilotHaikuGlobalAgent(auth, {
-        copilotContext: mockCopilotContext,
+      copilotConfig = _getCopilotEdgeGlobalAgent(auth, {
+        copilotContext: {
+          ...mockCopilotContext,
+          langfuseConfig: {
+            instructions: "",
+            modelConfig: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+          },
+        },
         preFetchedDataSources: null,
         mcpServerViews: MOCK_MCP_SERVER_VIEWS,
       });
