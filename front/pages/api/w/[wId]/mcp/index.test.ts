@@ -6,6 +6,7 @@ import {
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -262,14 +263,20 @@ describe("POST /api/w/[wId]/mcp/", () => {
   });
 
   it("should create an internal MCP server with bearer token credentials", async () => {
-    const { req, res, workspace } = await setupTest("admin", "POST");
+    const { req, res, workspace, authenticator } = await setupTest(
+      "admin",
+      "POST"
+    );
+
+    const sharedSecret = "test-secret-123";
 
     await FeatureFlagFactory.basic("slab_mcp", workspace);
+
     req.body = {
-      name: "slab" as InternalMCPServerNameType,
+      name: "slab" satisfies InternalMCPServerNameType,
       serverType: "internal",
       includeGlobal: true,
-      sharedSecret: "test-secret-123",
+      sharedSecret,
       customHeaders: [
         { key: "X-Custom-Header", value: "custom-value" },
         { key: "Authorization", value: "Bearer should-be-kept" },
@@ -293,24 +300,16 @@ describe("POST /api/w/[wId]/mcp/", () => {
     expect(responseData.server.customHeaders["X-Custom-Header"]).toContain("•");
 
     const server = responseData.server;
-    const credential = await InternalMCPServerCredentialModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        internalMCPServerId: server.sId,
-      },
-    });
+    const credentials =
+      await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+        authenticator,
+        server.sId
+      );
 
-    expect(credential).toBeDefined();
-    // sharedSecret is encrypted at rest via the encryptedKey column.
-    expect(credential?.encryptedKey).toBeTruthy();
-    expect(
-      decrypt({
-        encrypted: credential?.encryptedKey ?? "",
-        key: workspace.sId,
-        useCase: "mcp_server_credentials",
-      })
-    ).toBe("test-secret-123");
-    expect(credential?.customHeaders).toEqual({
+    expect(credentials).toBeDefined();
+    expect(credentials?.sharedSecret).toBeTruthy();
+    expect(credentials?.sharedSecret).toBe(sharedSecret);
+    expect(credentials?.customHeaders).toEqual({
       Authorization: "Bearer should-be-kept",
       "X-Custom-Header": "custom-value",
     });
