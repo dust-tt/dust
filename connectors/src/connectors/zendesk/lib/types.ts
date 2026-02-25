@@ -30,30 +30,32 @@ export const ZendeskTicketSchema = z
   .object({
     id: z.number(),
     url: z.string(),
-    subject: z.string().nullable(),
-    description: z.string().nullable(),
-    priority: z.string().nullable(),
-    status: z.string(),
-    type: z.string().nullable(),
-    requester_id: z.number(),
-    assignee_id: z.number().nullable(),
+    subject: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    priority: z.string().nullable().optional(),
+    status: z.string().optional(),
+    type: z.string().nullable().optional(),
+    requester_id: z.number().optional(),
+    assignee_id: z.number().nullable().optional(),
     group_id: z.number().nullable(),
-    organization_id: z.number().nullable(),
+    organization_id: z.number().nullable().optional(),
     created_at: z.string(),
     updated_at: z.string(),
     tags: z.array(z.string()),
-    custom_fields: z.array(
-      z.object({
-        id: z.number(),
-        value: z.union([
-          z.string(),
-          z.number(),
-          z.boolean(),
-          z.null(),
-          z.array(z.string()),
-        ]),
-      })
-    ),
+    custom_fields: z
+      .array(
+        z.object({
+          id: z.number(),
+          value: z.union([
+            z.string(),
+            z.number(),
+            z.boolean(),
+            z.null(),
+            z.array(z.string()),
+          ]),
+        })
+      )
+      .optional(),
     via: z
       .object({
         channel: z.string(),
@@ -65,8 +67,8 @@ export const ZendeskTicketSchema = z
     collaborator_ids: z.array(z.number()).optional(),
     follower_ids: z.array(z.number()).optional(),
     email_cc_ids: z.array(z.number()).optional(),
-    due_at: z.string().nullable(),
-    has_incidents: z.boolean(),
+    due_at: z.string().nullable().optional(),
+    has_incidents: z.boolean().optional(),
     satisfaction_rating: z
       .object({
         comment: z.string().optional().nullable(),
@@ -74,7 +76,7 @@ export const ZendeskTicketSchema = z
         score: z.string(),
       })
       .optional(),
-    submitter_id: z.number(),
+    submitter_id: z.number().optional(),
   })
   .passthrough();
 
