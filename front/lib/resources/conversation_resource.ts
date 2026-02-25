@@ -67,7 +67,9 @@ interface UserParticipation {
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationResource
-  extends ReadonlyAttributesType<ConversationModel> {}
+  extends ReadonlyAttributesType<ConversationModel> {
+  conversation_participants?: ConversationParticipantModel[];
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {
@@ -803,7 +805,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const pageConversationIds = resultConversations.map((c) => c.id);
     const readMap = await this.fetchReadMapForUser(auth, pageConversationIds);
 
-    // Build participation data from included result + reads
+    // Build participation data from included result + reads.
     resultConversations.forEach((c) => {
       const participation = c.conversation_participants?.[0];
       if (participation) {
