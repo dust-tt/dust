@@ -6,7 +6,7 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeScript } from "@app/scripts/helpers";
-import { decrypt } from "@app/types/shared/utils/hashing";
+import { decrypt } from "@app/types/shared/utils/encryption";
 import type { Attributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 import type { FindOptions } from "sequelize";
