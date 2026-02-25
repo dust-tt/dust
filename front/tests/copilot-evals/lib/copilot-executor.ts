@@ -119,5 +119,9 @@ export async function executeCopilot(
     });
   }
 
-  return { responseText, toolCalls: allToolCalls, modelTimeMs: totalModelTimeMs };
+  return {
+    responseText,
+    toolCalls: allToolCalls,
+    modelTimeMs: totalModelTimeMs,
+  };
 }
