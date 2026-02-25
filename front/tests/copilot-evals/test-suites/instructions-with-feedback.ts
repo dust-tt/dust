@@ -10,58 +10,50 @@ export const instructionsWithFeedbackSuite: TestSuite = {
       userMessage: "How's my agent doing?",
       mockState: PRODUCTION_AGENT,
       expectedToolCalls: [
-        "get_agent_info",
+        "get_agent_config",
         "get_agent_insights",
         "get_agent_feedback",
       ],
-      judgeCriteria: `Should provide concise summary: usage stats, feedback ratio, key themes from feedback.
-Should highlight both strengths and areas for improvement.
-Score 0-1 if copilot skips insights or feedback tools.`,
+      judgeCriteria: `Intent is clear: performance summary. Must call get_agent_insights and get_agent_feedback to answer. Should summarize usage, feedback ratio, themes. Score 0-1 if skips insights or feedback.`,
     },
     {
       scenarioId: "performance-detailed",
       userMessage: "Give me an overview of how this agent is performing",
       mockState: PRODUCTION_AGENT,
       expectedToolCalls: [
-        "get_agent_info",
+        "get_agent_config",
         "get_agent_insights",
         "get_agent_feedback",
       ],
-      judgeCriteria: `Should present balanced report: engagement metrics, satisfaction, feedback themes.
-Should identify patterns ("Users appreciate X but struggle with Y").
-Should suggest next steps based on data.`,
+      judgeCriteria: `Intent is clear: performance report. Must use insights and feedback. Present metrics, patterns, next steps. Score 0-1 if missing data or no actionable summary.`,
     },
     {
       scenarioId: "diagnose-unhappy-users",
       userMessage: "Why are users unhappy with this agent? Fix it.",
       mockState: PRODUCTION_AGENT,
       expectedToolCalls: [
-        "get_agent_info",
+        "get_agent_config",
         "get_agent_feedback",
         "suggest_prompt_edits",
       ],
-      judgeCriteria: `Should analyze feedback and IMMEDIATELY suggest fixes - not ask permission first.
-Must cite specific feedback patterns and propose targeted instruction changes.
-Score 0-1 if copilot only diagnoses without suggesting fixes, or asks "want me to...".`,
+      judgeCriteria: `Intent is clear: diagnose and fix. Must call get_agent_feedback then suggest_prompt_edits (cite feedback). Score 0-1 if only diagnoses without suggesting fixes.`,
     },
     {
       scenarioId: "fix-complaints",
       userMessage: "Users keep complaining. What's wrong and how do we fix it?",
       mockState: PRODUCTION_AGENT,
       expectedToolCalls: [
-        "get_agent_info",
+        "get_agent_config",
         "get_agent_feedback",
         "suggest_prompt_edits",
       ],
-      judgeCriteria: `Should identify specific issues from feedback (tone, context missing).
-For each issue, should suggest a targeted fix.
-Should NOT suggest unrelated improvements.`,
+      judgeCriteria: `Intent is clear: what's wrong + fix. Must call get_agent_feedback then suggest_prompt_edits. Should NOT suggest unrelated improvements. Score 0-1 if no fixes suggested.`,
     },
     {
       scenarioId: "session-start-proactive",
       userMessage: "I'm back to work on my agent. What should I focus on?",
       mockState: PRODUCTION_AGENT,
-      expectedToolCalls: ["get_agent_info"],
+      expectedToolCalls: ["get_agent_config"],
       judgeCriteria: `Should check for pending suggestions and surface them.
 If none, should offer to analyze feedback or review performance.
 Should provide clear starting point for the session.`,

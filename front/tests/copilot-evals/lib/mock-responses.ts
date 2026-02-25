@@ -1,5 +1,17 @@
 import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/tests/copilot-evals/lib/config";
 import type { MockAgentState } from "@app/tests/copilot-evals/lib/types";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+
+function instructionsToHtml(instructions: string): string {
+  if (!instructions.trim()) {
+    return `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"><p></p></div>`;
+  }
+  const paragraphs = instructions.split("\n").map((line) => line.trim());
+  const blocks = paragraphs
+    .map((p, i) => `<p data-block-id="mock-${i}">${p}</p>`)
+    .join("");
+  return `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">${blocks}</div>`;
+}
 
 export function getMockToolResponse(
   toolName: string,
@@ -7,6 +19,23 @@ export function getMockToolResponse(
 ): string {
   const mockResponses: Record<string, () => object> = {
     get_agent_info: () => agentState,
+
+    get_agent_config: () => ({
+      name: agentState.name,
+      description: agentState.description,
+      instructionsHtml: instructionsToHtml(agentState.instructions),
+      scope: agentState.scope ?? "private",
+      model: {
+        modelId: agentState.model.modelId,
+        providerId: "anthropic",
+        temperature: agentState.model.temperature ?? 0.7,
+        reasoningEffort: agentState.model.reasoningEffort ?? null,
+      },
+      tools: agentState.tools,
+      skills: agentState.skills,
+      maxStepsPerRun: agentState.maxStepsPerRun ?? 8,
+      pendingSuggestions: [],
+    }),
 
     get_available_models: () => ({
       models: [
@@ -184,6 +213,86 @@ export function getMockToolResponse(
       status: "success",
       suggestionsCreated: 1,
       message: "Model suggestion created successfully",
+    }),
+
+    suggest_knowledge: () => ({
+      status: "success",
+      suggestionsCreated: 1,
+      message: "Knowledge suggestion created successfully",
+    }),
+
+    suggest_sub_agent: () => ({
+      status: "success",
+      suggestionsCreated: 1,
+      message: "Sub-agent suggestion created successfully",
+    }),
+
+    search_knowledge: () => ({
+      results: [
+        {
+          dataSourceViewId: "ds_notion_1",
+          dataSourceName: "Engineering Wiki",
+          hitCount: 5,
+          documents: [
+            { title: "Product FAQ", score: 0.92 },
+            { title: "Troubleshooting Guide", score: 0.88 },
+          ],
+        },
+      ],
+    }),
+
+    search_agent_templates: () => ({
+      templates: [
+        {
+          sId: "template_support",
+          handle: "customer-support",
+          description: "A customer support agent template",
+          tags: ["support"],
+          copilotInstructions: "Help users set up a customer support agent.",
+        },
+      ],
+    }),
+
+    get_agent_template: () => ({
+      sId: "template_support",
+      handle: "customer-support",
+      description: "A customer support agent template",
+      copilotInstructions: "Help users set up a customer support agent.",
+    }),
+
+    get_available_agents: () => ({
+      agents: [
+        {
+          sId: "agent_1",
+          name: "Research Assistant",
+          description: "Helps with research tasks",
+        },
+      ],
+    }),
+
+    inspect_available_agent: () => ({
+      sId: "agent_1",
+      name: "Research Assistant",
+      description: "Helps with research tasks",
+      instructions: "You are a research assistant.",
+      tools: [],
+      skills: [],
+    }),
+
+    update_suggestions_state: () => ({
+      status: "success",
+      message: "Suggestions updated successfully",
+    }),
+
+    inspect_conversation: () => ({
+      title: "Mock conversation",
+      messages: [],
+    }),
+
+    inspect_message: () => ({
+      id: "msg_1",
+      role: "user",
+      content: "Mock message content",
     }),
 
     list_suggestions: () => ({
