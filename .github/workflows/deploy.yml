@@ -45,12 +45,12 @@ on:
           - "us"
           - "eu"
       deploy_spa_app:
-        description: "Deploy SPA for app (front only)"
+        description: "Deploy SPA for app (front/front-edge)"
         required: false
         default: true
         type: boolean
       deploy_spa_poke:
-        description: "Deploy SPA for poke (front only)"
+        description: "Deploy SPA for poke (front/front-edge)"
         required: false
         default: true
         type: boolean
@@ -246,7 +246,7 @@ jobs:
               playwright_sha: process.env.PLAYWRIGHT_SHA,
             };
 
-            // When deploying front/front-edge with SPA enabled, tell dust-infra to dispatch back
+            // When deploying front (production) with SPA enabled, tell dust-infra to dispatch back
             // after a successful rollout so the SPA is deployed to production only once the API
             // is live.
             if (isFront && (deploySpaApp || deploySpaAppPoke)) {
