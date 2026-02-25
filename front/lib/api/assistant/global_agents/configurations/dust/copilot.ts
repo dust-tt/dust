@@ -1,11 +1,7 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
+import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import type { CopilotContext } from "@app/lib/api/assistant/global_agents/global_agents";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
-import type {
-  AvailableSkill,
-  AvailableTool,
-} from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
@@ -13,8 +9,6 @@ import {
   GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
 } from "@app/types/assistant/assistant";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 const COPILOT_INSTRUCTION_SECTIONS = {
@@ -422,72 +416,19 @@ You CANNOT configure triggers or schedules for the agent. When users ask about s
 Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
 </triggers_and_schedules>`,
 
-  workspaceContext: ({
-    models,
-    skills,
-    tools,
-  }: {
-    models: string;
-    skills: string;
-    tools: string;
-  }) => `<workspace_context>
+  workspaceContext: (formatted: string) => `<workspace_context>
 The following capabilities are available in this workspace and can be suggested when building agents:
 
-${models}
-
-${skills}
-
-${tools}
+${formatted}
 </workspace_context>`,
 
-  userContext: (jobTypeLabel: string, platforms: string) => `<user_context>
+  userContext: (formatted: string) => `<user_context>
 The user building this agent has the following profile:
-- Job function: ${jobTypeLabel}
-- Preferred platforms: ${platforms}
+${formatted}
 
 Consider their role and platform preferences when suggesting tools and improvements.
 </user_context>`,
 };
-
-function formatAvailableModels(models: ModelConfigurationType[]): string {
-  const byProvider = new Map<string, ModelConfigurationType[]>();
-  for (const m of models) {
-    const list = byProvider.get(m.providerId) ?? [];
-    list.push(m);
-    byProvider.set(m.providerId, list);
-  }
-
-  const sections = Array.from(byProvider.entries()).map(
-    ([provider, models]) => {
-      const modelLines = models
-        .map(
-          (m) =>
-            `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}`
-        )
-        .join("\n");
-      return `### ${provider}\n${modelLines}`;
-    }
-  );
-
-  return `## AVAILABLE MODELS\n${models.length} models available.\n\n${sections.join("\n\n")}`;
-}
-
-function formatAvailableSkills(skills: AvailableSkill[]): string {
-  const skillLines = skills
-    .map(
-      (s) =>
-        `- **${s.name}** (ID: ${s.sId}): ${s.agentFacingDescription ?? "No description"}`
-    )
-    .join("\n");
-  return `## AVAILABLE SKILLS\n${skills.length} skills available.\n\n${skillLines}`;
-}
-
-function formatAvailableTools(tools: AvailableTool[]): string {
-  const toolLines = tools
-    .map((t) => `- **${t.name}** (ID: ${t.sId}): ${t.description}`)
-    .join("\n");
-  return `## AVAILABLE TOOLS\n${tools.length} tools available.\n\n${toolLines}`;
-}
 
 export function buildCopilotInstructions(
   copilotContext: CopilotContext | null
@@ -512,31 +453,19 @@ export function buildCopilotInstructions(
     return parts.join("\n\n");
   }
 
-  const { userMetadata, workspaceCapabilities } = copilotContext;
-
-  if (
-    userMetadata &&
-    (userMetadata.jobType || userMetadata.favoritePlatforms.length > 0)
-  ) {
-    const jobTypeLabel = userMetadata.jobType
-      ? JOB_TYPE_LABELS[userMetadata.jobType]
-      : "Not specified";
-    const platforms =
-      userMetadata.favoritePlatforms.join(", ") || "None specified";
-
+  if (copilotContext.formattedUserContext) {
     parts.push(
-      COPILOT_INSTRUCTION_SECTIONS.userContext(jobTypeLabel, platforms)
+      COPILOT_INSTRUCTION_SECTIONS.userContext(
+        copilotContext.formattedUserContext
+      )
     );
   }
 
-  if (workspaceCapabilities) {
-    const { models, skills, tools } = workspaceCapabilities;
+  if (copilotContext.formattedWorkspaceContext) {
     parts.push(
-      COPILOT_INSTRUCTION_SECTIONS.workspaceContext({
-        models: formatAvailableModels(models),
-        skills: formatAvailableSkills(skills),
-        tools: formatAvailableTools(tools),
-      })
+      COPILOT_INSTRUCTION_SECTIONS.workspaceContext(
+        copilotContext.formattedWorkspaceContext
+      )
     );
   }
 

@@ -1,8 +1,8 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 // Re-use the same instruction builder from the main copilot module.
 import { buildCopilotInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
+import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import type { CopilotContext } from "@app/lib/api/assistant/global_agents/global_agents";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -34,7 +34,9 @@ export function _getCopilotHaikuGlobalAgent(
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT_HAIKU);
 
-  const instructions = buildCopilotInstructions(copilotContext);
+  const instructions =
+    copilotContext?.langfuseInstructions ??
+    buildCopilotInstructions(copilotContext);
 
   return {
     id: -1,
