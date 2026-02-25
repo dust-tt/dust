@@ -4,6 +4,7 @@ import { instructionsWithFeedbackSuite } from "./instructions-with-feedback";
 import { instructionsWithToolsSuite } from "./instructions-with-tools";
 import { minimalInstructionsSuite } from "./minimal-instructions";
 import { newAgentSuite } from "./new-agent";
+import { shrinkWrapSuite } from "./shrink-wrap";
 import { wellStructuredInstructionsSuite } from "./well-structured-instructions";
 
 export const allTestSuites: TestSuite[] = [
@@ -13,4 +14,5 @@ export const allTestSuites: TestSuite[] = [
   instructionsWithToolsSuite,
   instructionsWithContextSuite,
   instructionsWithFeedbackSuite,
+  shrinkWrapSuite,
 ];

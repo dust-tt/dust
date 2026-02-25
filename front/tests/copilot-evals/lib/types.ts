@@ -27,18 +27,46 @@ export interface MockAgentState {
   maxStepsPerRun?: number;
 }
 
-export interface TestCase {
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface BaseTestCase {
   scenarioId: string;
-  userMessage: string;
   mockState: MockAgentState;
   expectedToolCalls?: string[];
   judgeCriteria: string;
 }
 
-/** TestCase with category assigned by suite loader */
-export interface CategorizedTestCase extends TestCase {
-  category: string;
+export interface SimpleTestCase extends BaseTestCase {
+  userMessage: string;
 }
+
+export interface TestCaseWithConversation extends BaseTestCase {
+  conversation: ConversationMessage[];
+}
+
+export type TestCase = SimpleTestCase | TestCaseWithConversation;
+
+export function isTestCaseWithConversation(
+  testCase: TestCase
+): testCase is TestCaseWithConversation {
+  return "conversation" in testCase;
+}
+
+/** Returns the user message(s) as a single string for display/logging. */
+export function getTestCaseUserMessageForDisplay(testCase: TestCase): string {
+  if (isTestCaseWithConversation(testCase)) {
+    return testCase.conversation
+      .map((m) => `[${m.role}]: ${m.content}`)
+      .join("\n\n");
+  }
+  return testCase.userMessage;
+}
+
+/** TestCase with category assigned by suite loader */
+export type CategorizedTestCase = TestCase & { category: string };
 
 export interface TestSuite {
   name: string;

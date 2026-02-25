@@ -86,46 +86,54 @@ export function getMockToolResponse(
           name: "GitHub",
           description: "Access GitHub repositories",
         },
+        {
+          sId: "mcp_datadog",
+          name: "Datadog",
+          description: "Search and query Datadog logs and metrics",
+        },
+        {
+          sId: "mcp_jira",
+          name: "JIRA",
+          description: "Search and manage JIRA issues and projects",
+        },
       ],
     }),
 
     get_available_knowledge: () => ({
       count: {
-        spaces: 2,
-        dataSources: 4,
+        spaces: 3,
+        dataSources: 6,
       },
       spaces: [
         {
           sId: "space_1",
           name: "Engineering",
-          kind: "team",
+          kind: "regular",
           categories: [
             {
-              displayName: "Connected Data Sources",
+              category: "managed",
+              displayName: "Connected data",
               dataSources: [
                 {
-                  sId: "ds_notion_1",
-                  name: "Engineering Wiki",
-                  description: "Notion workspace for engineering documentation",
-                  type: "notion",
+                  sId: "dsv_notion_1",
+                  name: "Notion",
+                  connectorProvider: "notion",
                 },
                 {
-                  sId: "ds_slack_1",
-                  name: "Engineering Slack",
-                  description: "Slack workspace for engineering team",
-                  type: "slack",
+                  sId: "dsv_slack_1",
+                  name: "Slack",
+                  connectorProvider: "slack",
                 },
               ],
             },
             {
+              category: "folder",
               displayName: "Folders",
               dataSources: [
                 {
-                  sId: "ds_folder_1",
+                  sId: "dsv_folder_1",
                   name: "Product Requirements",
-                  description:
-                    "Folder containing product requirement documents",
-                  type: "folder",
+                  connectorProvider: null,
                 },
               ],
             },
@@ -134,16 +142,39 @@ export function getMockToolResponse(
         {
           sId: "space_2",
           name: "Marketing",
-          kind: "team",
+          kind: "regular",
           categories: [
             {
+              category: "website",
               displayName: "Websites",
               dataSources: [
                 {
-                  sId: "ds_website_1",
+                  sId: "dsv_website_1",
                   name: "Company Blog",
-                  description: "Crawled website: company blog",
-                  type: "website",
+                  connectorProvider: "webcrawler",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          sId: "space_3",
+          name: "Company Data",
+          kind: "global",
+          categories: [
+            {
+              category: "managed",
+              displayName: "Connected data",
+              dataSources: [
+                {
+                  sId: "dsv_snowflake_1",
+                  name: "Snowflake",
+                  connectorProvider: "snowflake",
+                },
+                {
+                  sId: "dsv_github_1",
+                  name: "GitHub",
+                  connectorProvider: "github",
                 },
               ],
             },

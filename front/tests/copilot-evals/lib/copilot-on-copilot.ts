@@ -1,10 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { executeCopilot } from "@app/tests/copilot-evals/lib/copilot-executor";
-import type {
-  CopilotConfig,
-  EvalResult,
-  MockAgentState,
+import {
+  type CopilotConfig,
+  type EvalResult,
+  getTestCaseUserMessageForDisplay,
+  type MockAgentState,
 } from "@app/tests/copilot-evals/lib/types";
 
 const MAX_SCENARIOS = 10;
@@ -89,7 +90,7 @@ export async function generateCopilotImprovementSuggestions(
 
   const failedScenarios = failedResults.map((r) => ({
     scenarioId: r.testCase.scenarioId,
-    userMessage: r.testCase.userMessage,
+    userMessage: getTestCaseUserMessageForDisplay(r.testCase),
     copilotResponse: r.responseText,
     judgeReasoning: r.judgeResult.reasoning,
     score: r.judgeResult.finalScore,
@@ -117,11 +118,17 @@ export async function generateCopilotImprovementSuggestions(
   ).replace("{{FAILED_SCENARIOS}}", scenariosText);
 
   try {
+    const selfState = createCopilotSelfState(copilotConfig);
     const { responseText } = await executeCopilot(
       auth,
       copilotConfig,
-      userMessage,
-      createCopilotSelfState(copilotConfig)
+      {
+        scenarioId: "copilot-on-copilot",
+        userMessage,
+        mockState: selfState,
+        judgeCriteria: "",
+      },
+      selfState
     );
 
     logger.info({}, "[copilot-on-copilot] Analysis complete");

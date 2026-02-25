@@ -1,10 +1,11 @@
 import { getLLM } from "@app/lib/api/llm";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  JudgeResult,
-  MockAgentState,
-  TestCase,
-  ToolCall,
+import {
+  getTestCaseUserMessageForDisplay,
+  type JudgeResult,
+  type MockAgentState,
+  type TestCase,
+  type ToolCall,
 } from "@app/tests/copilot-evals/lib/types";
 
 const JUDGE_PROMPT = `You are evaluating the quality of an Agent Builder Copilot's response.
@@ -83,7 +84,10 @@ export async function evaluateWithJudge(
   copilotResponse: string,
   numRuns: number = 1
 ): Promise<JudgeResult> {
-  const prompt = JUDGE_PROMPT.replace("{{USER_MESSAGE}}", testCase.userMessage)
+  const prompt = JUDGE_PROMPT.replace(
+    "{{USER_MESSAGE}}",
+    getTestCaseUserMessageForDisplay(testCase)
+  )
     .replace("{{AGENT_STATE}}", JSON.stringify(agentState, null, 2))
     .replace(
       "{{TOOL_CALLS}}",

@@ -83,7 +83,7 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
               await executeCopilot(
                 auth,
                 copilotConfig,
-                testCase.userMessage,
+                testCase,
                 testCase.mockState
               );
 
