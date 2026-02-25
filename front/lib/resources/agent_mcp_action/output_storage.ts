@@ -77,7 +77,12 @@ export async function batchWriteContentsToGcs(
 /**
  * Fetches raw JSON content from GCS. Throws on failure (cacheWithRedis propagates the error).
  */
-async function _fetchGcsContent(gcsPath: string): Promise<string> {
+// itemId is unused in the fetch logic but passed to populate the cache key.
+async function fetchGcsContent(
+  auth: Authenticator,
+  gcsPath: string,
+  _itemId: ModelId
+): Promise<string> {
   const bucket = getPrivateUploadBucket();
   const file = bucket.file(gcsPath);
 
@@ -87,8 +92,9 @@ async function _fetchGcsContent(gcsPath: string): Promise<string> {
 }
 
 const fetchGcsContentCached = cacheWithRedis(
-  _fetchGcsContent,
-  (gcsPath) => gcsPath,
+  fetchGcsContent,
+  (auth, _gcsPath, itemId) =>
+    `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}`,
   { ttlMs: CACHE_TTL_MS, cacheNullValues: false }
 );
 
@@ -98,10 +104,12 @@ const fetchGcsContentCached = cacheWithRedis(
  * TODO(2026-03-15 PERF): Add retry with exponential backoff to handle transient GCS failures.
  */
 async function fetchContentFromGcs(
-  gcsPath: string
+  auth: Authenticator,
+  gcsPath: string,
+  itemId: ModelId
 ): Promise<Result<OutputContent, Error>> {
   try {
-    const raw = await fetchGcsContentCached(gcsPath);
+    const raw = await fetchGcsContentCached(auth, gcsPath, itemId);
     return new Ok(JSON.parse(raw) as OutputContent);
   } catch (err) {
     logger.error(
@@ -117,6 +125,7 @@ async function fetchContentFromGcs(
  * Batch-fetches content for multiple items from cache/GCS.
  */
 export async function batchFetchContentsFromGcs(
+  auth: Authenticator,
   items: Array<{
     itemId: ModelId;
     gcsPath: string;
@@ -128,7 +137,7 @@ export async function batchFetchContentsFromGcs(
   await concurrentExecutor(
     items,
     async ({ itemId, gcsPath }) => {
-      const result = await fetchContentFromGcs(gcsPath);
+      const result = await fetchContentFromGcs(auth, gcsPath, itemId);
       if (result.isOk()) {
         results.set(itemId, result.value);
       } else if (!firstError) {

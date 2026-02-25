@@ -7,11 +7,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import {
-  batchFetchContentsFromGcs,
-  batchWriteContentsToGcs,
-  deleteContentsFromGcs,
-} from "@app/lib/resources/agent_mcp_action/output_storage";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
@@ -33,6 +28,11 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import {
+  batchFetchContentsFromGcs,
+  batchWriteContentsToGcs,
+  deleteContentsFromGcs,
+} from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -719,6 +719,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         // Hydrate GCS-backed items from cache/GCS.
         if (gcsItems.length > 0) {
           const contentResult = await batchFetchContentsFromGcs(
+            auth,
             gcsItems.map((item) => ({
               itemId: item.id,
               gcsPath: item.contentGcsPath!,
