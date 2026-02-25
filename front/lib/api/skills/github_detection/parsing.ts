@@ -1,11 +1,10 @@
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-
 import type {
   GitHubTreeEntry,
   SkillDetectionError,
   SkillDirectory,
 } from "@app/lib/api/skills/github_detection/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const SKILL_MD_FILENAMES = ["skill.md", "SKILL.md"];
 

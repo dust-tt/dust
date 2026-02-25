@@ -1,9 +1,3 @@
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { Octokit } from "@octokit/core";
 import {
   extractDescription,
   findSkillDirectories,
@@ -21,6 +15,12 @@ import {
   GitHubBlobResponseSchema,
   GitHubTreeResponseSchema,
 } from "@app/lib/api/skills/github_detection/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Octokit } from "@octokit/core";
 
 export type { DetectedSkill, DetectedSkillAttachment, SkillDetectionError };
 export { parseGitHubRepoUrl };
@@ -115,9 +115,7 @@ async function fetchBlobContent(
     });
   }
 
-  return new Ok(
-    Buffer.from(parsed.data.content, "base64").toString("utf-8")
-  );
+  return new Ok(Buffer.from(parsed.data.content, "base64").toString("utf-8"));
 }
 
 /**
