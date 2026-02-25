@@ -142,6 +142,16 @@ async function handler(
         case "remote": {
           const { url, sharedSecret } = body;
 
+          if (!url) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "URL is required",
+              },
+            });
+          }
+
           if (url.length > MAX_URL_LENGTH) {
             return apiError(req, res, {
               status_code: 400,
