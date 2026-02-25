@@ -46,6 +46,8 @@ export type CreateMCPServerResponseBody = {
 
 const MAX_URL_LENGTH = 2048;
 
+const MAX_NAME_LENGTH = 2048;
+
 const PostQueryParamsSchema = t.union([
   t.type({
     serverType: t.literal("remote"),
@@ -221,12 +223,12 @@ async function handler(
           );
 
           const name = defaultConfig?.name ?? metadata.name;
-          if (name.length > MAX_URL_LENGTH) {
+          if (name.length > MAX_NAME_LENGTH) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: `MCP server name exceeds maximum length (${MAX_URL_LENGTH} characters).`,
+                message: `MCP server name exceeds maximum length (${MAX_NAME_LENGTH} characters).`,
               },
             });
           }
