@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const ZENDESK_TOOL_NAME = "zendesk" as const;
 
 export const ZENDESK_TOOLS_METADATA = createToolsRecord({
-  get_ticket_details: {
+  get_ticket: {
     description:
       "Retrieve a Zendesk ticket by its ID. " +
       "Returns by default: id, url, subject, status, priority, description, created_at, updated_at. " +

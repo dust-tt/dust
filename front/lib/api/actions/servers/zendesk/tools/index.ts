@@ -27,7 +27,7 @@ function isTrackedError(error: Error): boolean {
 }
 
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
-  get_ticket_details: async (
+  get_ticket: async (
     { ticketId, includeMetrics, includeConversation, includeFields },
     { authInfo }
   ) => {

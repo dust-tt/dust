@@ -568,7 +568,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "zendesk": {
     "draft_reply": "low",
-    "get_ticket_details": "never_ask",
+    "get_ticket": "never_ask",
     "list_ticket_fields": "never_ask",
     "search_tickets": "never_ask",
   },
