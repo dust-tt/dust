@@ -298,21 +298,21 @@ export function SpaceConversationsPage() {
       >
         <div className="flex items-start justify-between border-b border-separator px-6 dark:border-separator-night">
           <TabsList border={false}>
-            <TabsTrigger
-              value="conversations"
-              label="Conversations"
-              icon={ChatBubbleLeftRightIcon}
-            />
-            <TabsTrigger
-              value="knowledge"
-              label="Knowledge"
-              icon={BookOpenIcon}
-            />
-            <TabsTrigger
-              value="settings"
-              label="Settings"
-              icon={Cog6ToothIcon}
-            />
+            {!spaceInfo.archivedAt && (
+              <>
+                <TabsTrigger
+                  value="conversations"
+                  label="Conversations"
+                  icon={ChatBubbleLeftRightIcon}
+                />
+                <TabsTrigger
+                  value="knowledge"
+                  label="Knowledge"
+                  icon={BookOpenIcon}
+                />
+              </>
+            )}
+            <TabsTrigger value="settings" icon={Cog6ToothIcon} />
             <TabsTrigger
               value="alpha"
               label="Alpha"

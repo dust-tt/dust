@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -21,19 +21,19 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   constructor(
     model: typeof ProjectMetadataModel,
     blob: Attributes<ProjectMetadataModel>,
-    private readonly spaceSId: string
+    readonly spaceId: number
   ) {
     super(ProjectMetadataModel, blob);
   }
 
   static fromModel(
     model: ProjectMetadataModel,
-    spaceSId: string
+    spaceId: number
   ): ProjectMetadataResource {
     return new ProjectMetadataResource(
       ProjectMetadataModel,
       model.get(),
-      spaceSId
+      spaceId
     );
   }
 
@@ -65,18 +65,24 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       return null;
     }
 
-    const model = await ProjectMetadataModel.findOne({
+    const resources = await this.fetchBySpaceIds(auth, [space.id]);
+    return resources.length > 0 ? resources[0] : null;
+  }
+
+  static async fetchBySpaceIds(
+    auth: Authenticator,
+    spaceIds: number[]
+  ): Promise<ProjectMetadataResource[]> {
+    const models = await ProjectMetadataModel.findAll({
       where: {
-        spaceId: space.id,
+        spaceId: spaceIds,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
-    if (!model) {
-      return null;
-    }
-
-    return ProjectMetadataResource.fromModel(model, space.sId);
+    return models.map((model) =>
+      ProjectMetadataResource.fromModel(model, model.spaceId)
+    );
   }
 
   static async makeNew(
@@ -97,17 +103,22 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       { transaction }
     );
 
-    return ProjectMetadataResource.fromModel(model, space.sId);
+    return ProjectMetadataResource.fromModel(model, space.id);
   }
 
-  async updateMetadata(
-    blob: Partial<{
-      description: string | null;
-    }>,
+  async archive(transaction?: Transaction) {
+    await this.update({ archivedAt: new Date() }, transaction);
+  }
+
+  async unarchive(transaction?: Transaction) {
+    await this.update({ archivedAt: null }, transaction);
+  }
+
+  async updateDescription(
+    description: string | null,
     transaction?: Transaction
-  ): Promise<Result<void, Error>> {
-    await this.update(blob, transaction);
-    return new Ok(undefined);
+  ) {
+    await this.update({ description }, transaction);
   }
 
   async delete(
@@ -129,8 +140,12 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
-      spaceId: this.spaceSId,
+      spaceId: SpaceResource.modelIdToSId({
+        id: this.spaceId,
+        workspaceId: this.workspaceId,
+      }),
       description: this.description,
+      archivedAt: this.archivedAt?.getTime() ?? null,
     };
   }
 }

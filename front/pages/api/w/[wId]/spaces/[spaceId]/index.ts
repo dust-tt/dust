@@ -7,6 +7,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
@@ -34,6 +35,9 @@ export type RichSpaceType = SpaceType & {
   isMember: boolean;
   members: SpaceUserType[];
   isEditor: boolean;
+  // Useful in case of projects
+  description: string | null;
+  archivedAt: number | null;
 };
 export type GetSpaceResponseBody = {
   space: RichSpaceType;
@@ -145,6 +149,10 @@ async function handler(
         "sId"
       );
 
+      const projectMetadata = space.isProject()
+        ? await ProjectMetadataResource.fetchBySpace(auth, space)
+        : undefined;
+
       return res.status(200).json({
         space: {
           ...space.toJSON(),
@@ -154,6 +162,8 @@ async function handler(
           isMember: space.isMember(auth),
           isEditor: space.canAdministrate(auth),
           members: currentMembers,
+          description: projectMetadata?.description ?? null,
+          archivedAt: projectMetadata?.archivedAt?.getTime() ?? null,
         },
       });
     }
