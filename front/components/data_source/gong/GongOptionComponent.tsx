@@ -18,7 +18,7 @@ import {
   Input,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
@@ -268,9 +268,15 @@ export function GongOptionComponent({
   );
 
   const [excludeKeywords, setExcludeKeywords] = useState<string>(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    excludeKeywordsConfigValue || ""
+    excludeKeywordsConfigValue ?? ""
   );
+
+  // Sync state when config value loads/changes
+  useEffect(() => {
+    if (excludeKeywordsConfigValue !== undefined) {
+      setExcludeKeywords(excludeKeywordsConfigValue ?? "");
+    }
+  }, [excludeKeywordsConfigValue]);
 
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
