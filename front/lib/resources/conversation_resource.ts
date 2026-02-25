@@ -783,7 +783,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
               userId: user.id,
               workspaceId: workspace.id,
             },
-            required: true, // INNER JOIN
+            required: true,
           },
         ],
         order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
@@ -805,7 +805,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Build participation data from included result + reads
     resultConversations.forEach((c) => {
-      const participation = (c as any).conversation_participants?.[0];
+      const participation = c.conversation_participants?.[0];
       if (participation) {
         c.userParticipation = {
           actionRequired: participation.actionRequired,
