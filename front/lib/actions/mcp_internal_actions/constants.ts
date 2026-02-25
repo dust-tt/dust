@@ -1,14 +1,14 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
-  AGENT_ROUTER_SERVER,
-  AGENT_ROUTER_SERVER_NAME,
+    AGENT_ROUTER_SERVER,
+    AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
@@ -47,8 +47,8 @@ import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/m
 import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
 import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
 import {
-  QUERY_TABLES_V2_SERVER,
-  TABLE_QUERY_V2_SERVER_NAME,
+    QUERY_TABLES_V2_SERVER,
+    TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
@@ -73,21 +73,21 @@ import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import {
-  WEB_SEARCH_BROWSE_SERVER,
-  WEB_SEARCH_BROWSE_SERVER_NAME,
+    WEB_SEARCH_BROWSE_SERVER,
+    WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
-  InternalMCPServerDefinitionType,
-  MCPToolRetryPolicyType,
-  ToolDisplayLabels,
+    InternalMCPServerDefinitionType,
+    MCPToolRetryPolicyType,
+    ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -706,7 +706,7 @@ export const INTERNAL_MCP_SERVERS = {
   ashby: {
     id: 40,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("ashby_tool");
     },
@@ -720,7 +720,7 @@ export const INTERNAL_MCP_SERVERS = {
   salesloft: {
     id: 41,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("salesloft_tool");
     },
@@ -818,7 +818,7 @@ export const INTERNAL_MCP_SERVERS = {
   statuspage: {
     id: 49,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("statuspage_tool");
     },
@@ -962,7 +962,7 @@ export const INTERNAL_MCP_SERVERS = {
   front: {
     id: 1018,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("front_tool");
     },
