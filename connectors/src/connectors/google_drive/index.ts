@@ -65,6 +65,7 @@ import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
@@ -529,6 +530,14 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
             `Google Drive authorization error, please re-authorize. Error: ${e.message}`
+          )
+        );
+      }
+      if (e instanceof GaxiosError && e.response?.status === 429) {
+        return new Err(
+          new ConnectorManagerError(
+            "RATE_LIMIT_ERROR",
+            `Google Drive rate limit error when retrieving content nodes.`
           )
         );
       }
