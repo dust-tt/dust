@@ -45,6 +45,7 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -316,6 +317,188 @@ function getBaseConversationId(
   return conversation.id;
 }
 
+type OngoingSummaryCategory = "needAttention" | "keyDecisions" | "projectPulse";
+
+interface OngoingSummary {
+  needAttention: string[];
+  keyDecisions: string[];
+  projectPulse: string[];
+  updatedAt: Date;
+}
+
+function getSummaryTimestamp(spaceId: string): Date {
+  const minutesAgo =
+    Math.floor(seededRandom(`${spaceId}-summary-ts`, 0) * 120) + 15;
+  return new Date(Date.now() - minutesAgo * 60 * 1000);
+}
+
+function getConversationHighlights(conversations: Conversation[]): string[] {
+  const uniqueTitles = new Set<string>();
+  const sorted = [...conversations].sort(
+    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+  );
+
+  for (const conversation of sorted) {
+    const title = conversation.title.trim();
+    if (title) {
+      uniqueTitles.add(title);
+    }
+    if (uniqueTitles.size >= 6) {
+      break;
+    }
+  }
+
+  return Array.from(uniqueTitles);
+}
+
+function pickDeterministicItems(
+  pool: string[],
+  count: number,
+  seed: string,
+  offset: number
+): string[] {
+  const ranked = pool
+    .map((item, index) => ({
+      item,
+      score: seededRandom(seed, index + offset),
+    }))
+    .sort((a, b) => a.score - b.score)
+    .map(({ item }) => item);
+
+  return ranked.slice(0, Math.min(count, ranked.length));
+}
+
+function getSummaryCategoryPool(
+  category: OngoingSummaryCategory,
+  spaceName: string,
+  highlights: string[]
+): string[] {
+  const topHighlight = highlights[0] ?? "current project threads";
+  const secondHighlight = highlights[1] ?? "cross-team follow-up";
+  const thirdHighlight = highlights[2] ?? "delivery planning";
+
+  if (category === "needAttention") {
+    return [
+      `Action required: owner confirmation needed on "${topHighlight}" before end of day.`,
+      `Escalation pending: legal/security review requested for "${secondHighlight}".`,
+      `Direct mention detected: finance input needed for budget impact on "${thirdHighlight}".`,
+      `Open blocker: dependency owner has not acknowledged handoff in ${spaceName}.`,
+      `Approval queue: external communication draft still waiting for sign-off.`,
+      `Customer-sensitive update requires named DRI response in the next sync.`,
+      `Compliance request: evidence artifact is missing for current milestone.`,
+    ];
+  }
+
+  if (category === "keyDecisions") {
+    return [
+      `Decision: keep "${topHighlight}" on the current milestone with no scope increase.`,
+      `Decision: route "${secondHighlight}" through the enterprise rollout checklist.`,
+      `Decision: assign a single DRI for "${thirdHighlight}" to reduce handoff latency.`,
+      `Decision: prioritize reliability fixes over net-new work for this cycle.`,
+      `Decision: maintain current vendor path pending procurement checkpoint.`,
+      `Decision: defer non-critical backlog items to protect committed timeline.`,
+      `Decision: use existing governance policy instead of creating a custom exception.`,
+    ];
+  }
+
+  return [
+    `Pulse: collaboration remains steady across product, engineering, and operations.`,
+    `Pulse: discussion volume increased around "${topHighlight}" since this morning.`,
+    `Pulse: most updates are status-oriented, with limited unresolved disagreement.`,
+    `Pulse: stakeholder sentiment is constructive and execution-focused this cycle.`,
+    `Pulse: risk discussions are trending toward mitigation, not escalation.`,
+    `Pulse: shared context quality improved after the latest recap thread.`,
+    `Pulse: teams are converging on execution details for "${secondHighlight}".`,
+  ];
+}
+
+function buildInitialOngoingSummary(
+  spaceId: string,
+  spaceName: string,
+  conversations: Conversation[]
+): OngoingSummary {
+  const highlights = getConversationHighlights(conversations);
+  return {
+    needAttention: pickDeterministicItems(
+      getSummaryCategoryPool("needAttention", spaceName, highlights),
+      3,
+      `${spaceId}-need-attention-initial`,
+      0
+    ),
+    keyDecisions: pickDeterministicItems(
+      getSummaryCategoryPool("keyDecisions", spaceName, highlights),
+      3,
+      `${spaceId}-key-decisions-initial`,
+      20
+    ),
+    projectPulse: pickDeterministicItems(
+      getSummaryCategoryPool("projectPulse", spaceName, highlights),
+      3,
+      `${spaceId}-project-pulse-initial`,
+      40
+    ),
+    updatedAt: getSummaryTimestamp(spaceId),
+  };
+}
+
+function updateSummaryCategoryWithDelta(
+  previousItems: string[],
+  pool: string[],
+  targetCount: number,
+  seed: string,
+  offset: number
+): string[] {
+  if (previousItems.length === 0) {
+    return pickDeterministicItems(pool, targetCount, seed, offset);
+  }
+
+  const keepIndex = Math.floor(
+    seededRandom(`${seed}-keep`, offset) * previousItems.length
+  );
+  const keptItems = [previousItems[keepIndex]];
+  const freshItems = pickDeterministicItems(
+    pool.filter((item) => !keptItems.includes(item)),
+    targetCount - keptItems.length,
+    seed,
+    offset + 100
+  );
+
+  return [...keptItems, ...freshItems];
+}
+
+function buildDeltaOngoingSummary(
+  previousSummary: OngoingSummary,
+  spaceId: string,
+  spaceName: string,
+  conversations: Conversation[]
+): OngoingSummary {
+  const highlights = getConversationHighlights(conversations);
+  return {
+    needAttention: updateSummaryCategoryWithDelta(
+      previousSummary.needAttention,
+      getSummaryCategoryPool("needAttention", spaceName, highlights),
+      3,
+      `${spaceId}-need-attention-delta`,
+      0
+    ),
+    keyDecisions: updateSummaryCategoryWithDelta(
+      previousSummary.keyDecisions,
+      getSummaryCategoryPool("keyDecisions", spaceName, highlights),
+      3,
+      `${spaceId}-key-decisions-delta`,
+      20
+    ),
+    projectPulse: updateSummaryCategoryWithDelta(
+      previousSummary.projectPulse,
+      getSummaryCategoryPool("projectPulse", spaceName, highlights),
+      3,
+      `${spaceId}-project-pulse-delta`,
+      40
+    ),
+    updatedAt: new Date(),
+  };
+}
+
 export function GroupConversationView({
   space,
   conversations,
@@ -335,6 +518,12 @@ export function GroupConversationView({
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [ongoingSummary, setOngoingSummary] = useState<OngoingSummary | null>(
+    null
+  );
+  const [isSummaryUpdating, setIsSummaryUpdating] = useState(false);
+  const [isOngoingSummaryExpanded, setIsOngoingSummaryExpanded] =
+    useState(false);
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
@@ -614,6 +803,16 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
+  const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 180;
+
+  const formatSummaryUpdatedAt = (date: Date): string =>
+    date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
 
   // Handle room name save confirmation
   const handleNameSaveConfirm = () => {
@@ -645,6 +844,40 @@ export function GroupConversationView({
   useEffect(() => {
     setEditorIds(editorUserIds);
   }, [editorUserIds]);
+
+  useEffect(() => {
+    if (!hasHistory) {
+      setOngoingSummary(null);
+      setIsSummaryUpdating(false);
+      setIsOngoingSummaryExpanded(false);
+      return;
+    }
+
+    const initialSummary = buildInitialOngoingSummary(
+      space.id,
+      space.name,
+      expandedConversations
+    );
+    setOngoingSummary(initialSummary);
+    setIsSummaryUpdating(true);
+    setIsOngoingSummaryExpanded(false);
+
+    const summaryTimeoutId = window.setTimeout(() => {
+      setOngoingSummary((previous) =>
+        buildDeltaOngoingSummary(
+          previous ?? initialSummary,
+          space.id,
+          space.name,
+          expandedConversations
+        )
+      );
+      setIsSummaryUpdating(false);
+    }, 30_000);
+
+    return () => {
+      window.clearTimeout(summaryTimeoutId);
+    };
+  }, [expandedConversations, hasHistory, space.id, space.name]);
 
   // Reset data sources when space changes
   useEffect(() => {
@@ -1043,6 +1276,100 @@ export function GroupConversationView({
                 <InputBar
                   placeholder={`Start a conversation in ${space.name}`}
                 />
+                {hasHistory && ongoingSummary && (
+                  <div className="s-flex s-flex-col s-gap-4 s-py-6 s-px-4">
+                    <div className="s-flex s-flex-col s-gap-1">
+                      <h3 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
+                        Ongoing summary
+                      </h3>
+                      <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {isSummaryUpdating && (
+                          <>
+                            <Spinner size="xs" />
+                            <span>Updating</span>
+                          </>
+                        )}
+                        <span className="s-italic">
+                          (Last updated{" "}
+                          {formatSummaryUpdatedAt(ongoingSummary.updatedAt)})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="s-relative">
+                      <div
+                        className="s-flex s-flex-col s-gap-4"
+                        style={{
+                          maxHeight: isOngoingSummaryExpanded
+                            ? 2000
+                            : SUMMARY_COLLAPSED_MAX_HEIGHT_PX,
+                          overflow: "hidden",
+                          transition: "max-height 200ms ease",
+                        }}
+                      >
+                        {[
+                          {
+                            emoji: "🚨",
+                            label: "Need attention",
+                            items: ongoingSummary.needAttention,
+                          },
+                          {
+                            emoji: "🧭",
+                            label: "Key decisions",
+                            items: ongoingSummary.keyDecisions,
+                          },
+                          {
+                            emoji: "🌤️",
+                            label: "Project pulse",
+                            items: ongoingSummary.projectPulse,
+                          },
+                        ].map((section) => (
+                          <div
+                            key={section.label}
+                            className="s-flex s-flex-col s-gap-2"
+                          >
+                            <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                              <span className="s-mr-2">{section.emoji}</span>
+                              {section.label}
+                            </h4>
+                            <div className="s-flex s-flex-col s-gap-1.5">
+                              {section.items.map((item) => (
+                                <div
+                                  key={item}
+                                  className="s-flex s-items-start s-gap-2 s-text-sm s-text-foreground dark:s-text-foreground-night"
+                                >
+                                  <span className="s-mt-1.5 s-h-1.5 s-w-1.5 s-shrink-0 s-rounded-full s-bg-foreground dark:s-bg-foreground-night" />
+                                  <span>{item}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {!isOngoingSummaryExpanded && (
+                        <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
+                      )}
+                    </div>
+                    {ongoingSummary.needAttention.length +
+                      ongoingSummary.keyDecisions.length +
+                      ongoingSummary.projectPulse.length >
+                      0 && (
+                      <div>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          label={
+                            isOngoingSummaryExpanded ? "Show less" : "Show more"
+                          }
+                          onClick={() =>
+                            setIsOngoingSummaryExpanded((previous) => !previous)
+                          }
+                          aria-expanded={isOngoingSummaryExpanded}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 {!hasHistory && (
                   <div className="s-flex s-flex-col s-gap-3">
                     <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
