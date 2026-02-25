@@ -7,44 +7,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const ZENDESK_TOOL_NAME = "zendesk" as const;
 
 export const ZENDESK_TOOLS_METADATA = createToolsRecord({
-  search_tickets: {
-    description:
-      "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets. " +
-      "Each ticket includes by default: id, url, subject, status, priority, description, created_at, updated_at. " +
-      "Use includeFields to include additional fields. " +
-      'Supports filtering by status, priority, type, assignee, tags, and custom fields (syntax: custom_field_{id}:"value"). ' +
-      "Use list_ticket_fields to discover available custom field IDs.",
-    schema: {
-      query: z
-        .string()
-        .describe(
-          "Search query using Zendesk query syntax. Supports field:value pairs for status, priority, type, assignee, tags, " +
-            'and custom_field_{id}:"value" for custom fields. Multiple conditions are combined with AND logic. ' +
-            "Do not include 'type:ticket' as it is automatically added."
-        ),
-      sortBy: z
-        .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
-        .optional()
-        .describe(
-          "Field to sort results by. Defaults to relevance if not specified."
-        ),
-      sortOrder: z
-        .enum(["asc", "desc"])
-        .optional()
-        .describe("Sort order. Defaults to 'desc' if not specified."),
-      includeFields: z
-        .array(z.string())
-        .default([])
-        .describe(
-          "Additional ticket fields to include in the response. Supported values: 'requester_id', 'assignee_id', 'tags', 'custom_fields', 'satisfaction_rating', 'due_at', 'type', 'organization_id', 'group_id', 'via'. Only set if explicitly requested by the user."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Searching Zendesk tickets",
-      done: "Search Zendesk tickets",
-    },
-  },
   get_ticket_details: {
     description:
       "Retrieve a Zendesk ticket by its ID. " +
@@ -81,6 +43,44 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving Zendesk ticket",
       done: "Retrieve Zendesk ticket",
+    },
+  },
+  search_tickets: {
+    description:
+      "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets. " +
+      "Each ticket includes by default: id, url, subject, status, priority, description, created_at, updated_at. " +
+      "Use includeFields to include additional fields. " +
+      'Supports filtering by status, priority, type, assignee, tags, and custom fields (syntax: custom_field_{id}:"value"). ' +
+      "Use list_ticket_fields to discover available custom field IDs.",
+    schema: {
+      query: z
+        .string()
+        .describe(
+          "Search query using Zendesk query syntax. Supports field:value pairs for status, priority, type, assignee, tags, " +
+            'and custom_field_{id}:"value" for custom fields. Multiple conditions are combined with AND logic. ' +
+            "Do not include 'type:ticket' as it is automatically added."
+        ),
+      sortBy: z
+        .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
+        .optional()
+        .describe(
+          "Field to sort results by. Defaults to relevance if not specified."
+        ),
+      sortOrder: z
+        .enum(["asc", "desc"])
+        .optional()
+        .describe("Sort order. Defaults to 'desc' if not specified."),
+      includeFields: z
+        .array(z.string())
+        .default([])
+        .describe(
+          "Additional ticket fields to include in the response. Supported values: 'requester_id', 'assignee_id', 'tags', 'custom_fields', 'satisfaction_rating', 'due_at', 'type', 'organization_id', 'group_id', 'via'. Only set if explicitly requested by the user."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching Zendesk tickets",
+      done: "Search Zendesk tickets",
     },
   },
   list_ticket_fields: {
