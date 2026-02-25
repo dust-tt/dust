@@ -16,7 +16,7 @@ export function renderTicket(
   includeFields: string[] = []
 ): string {
   const lines = [
-    `**Ticket ID: ${ticket.id}**`,
+    `## Ticket ID: ${ticket.id}`,
     `- URL: ${apiUrlToDocumentUrl(ticket.url)}`,
     `- Subject: ${ticket.subject ?? "No subject"}`,
     `- Status: ${ticket.status}`,
@@ -105,58 +105,58 @@ function formatMinutes(minutes: number | null): string {
 export function renderTicketMetrics(metrics: ZendeskTicketMetrics): string {
   const lines = ["\n## Metrics"];
 
-  lines.push(`Reopens: ${metrics.reopens}`);
-  lines.push(`Replies: ${metrics.replies}`);
-  lines.push(`Assignee Stations: ${metrics.assignee_stations}`);
-  lines.push(`Group Stations: ${metrics.group_stations}`);
+  lines.push(`- Reopens: ${metrics.reopens}`);
+  lines.push(`- Replies: ${metrics.replies}`);
+  lines.push(`- Assignee Stations: ${metrics.assignee_stations}`);
+  lines.push(`- Group Stations: ${metrics.group_stations}`);
 
   if (metrics.reply_time_in_minutes) {
     lines.push(
-      `\nReply Time: ${formatMinutes(metrics.reply_time_in_minutes.calendar)}`
+      `- Reply Time: ${formatMinutes(metrics.reply_time_in_minutes.calendar)}`
     );
   }
 
   if (metrics.first_resolution_time_in_minutes?.calendar) {
     lines.push(
-      `\nFirst Resolution Time: ${formatMinutes(metrics.first_resolution_time_in_minutes.calendar)}`
+      `- First Resolution Time: ${formatMinutes(metrics.first_resolution_time_in_minutes.calendar)}`
     );
   }
 
   if (metrics.full_resolution_time_in_minutes?.calendar) {
     lines.push(
-      `\nFull Resolution Time: ${formatMinutes(metrics.full_resolution_time_in_minutes.calendar)}`
+      `- Full Resolution Time: ${formatMinutes(metrics.full_resolution_time_in_minutes.calendar)}`
     );
   }
 
   if (metrics.agent_wait_time_in_minutes?.calendar) {
     lines.push(
-      `\nAgent Wait Time: ${formatMinutes(metrics.agent_wait_time_in_minutes.calendar)}`
+      `- Agent Wait Time: ${formatMinutes(metrics.agent_wait_time_in_minutes.calendar)}`
     );
   }
 
   if (metrics.requester_wait_time_in_minutes?.calendar) {
     lines.push(
-      `\nRequester Wait Time: ${formatMinutes(metrics.requester_wait_time_in_minutes.calendar)}`
+      `- Requester Wait Time: ${formatMinutes(metrics.requester_wait_time_in_minutes.calendar)}`
     );
   }
 
   if (metrics.on_hold_time_in_minutes?.calendar) {
     lines.push(
-      `\nOn Hold Time: ${formatMinutes(metrics.on_hold_time_in_minutes.calendar)}`
+      `- On Hold Time: ${formatMinutes(metrics.on_hold_time_in_minutes.calendar)}`
     );
   }
 
   if (metrics.assigned_at) {
-    lines.push(`\nAssigned At: ${new Date(metrics.assigned_at).toISOString()}`);
+    lines.push(`- Assigned At: ${new Date(metrics.assigned_at).toISOString()}`);
   }
 
   if (metrics.solved_at) {
-    lines.push(`Solved At: ${new Date(metrics.solved_at).toISOString()}`);
+    lines.push(`- Solved At: ${new Date(metrics.solved_at).toISOString()}`);
   }
 
   if (metrics.initially_assigned_at) {
     lines.push(
-      `Initially Assigned At: ${new Date(metrics.initially_assigned_at).toISOString()}`
+      `- Initially Assigned At: ${new Date(metrics.initially_assigned_at).toISOString()}`
     );
   }
 
