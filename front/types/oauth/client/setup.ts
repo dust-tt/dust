@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -16,11 +17,13 @@ export async function setupOAuthConnection({
   provider,
   useCase,
   extraConfig,
+  regionInfo,
 }: {
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig: OAuthCredentials;
+  regionInfo: RegionInfo | null;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
     const oauthBaseUrl = config.getAppUrl();
@@ -29,6 +32,10 @@ export async function setupOAuthConnection({
     let url = `${oauthBaseUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}&openerOrigin=${encodeURIComponent(openerOrigin)}`;
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
+    }
+    // Pass region info so the OAuth popup's RegionContext initializes with the correct region.
+    if (regionInfo) {
+      url += `&region=${encodeURIComponent(regionInfo.name)}&regionUrl=${encodeURIComponent(regionInfo.url)}`;
     }
     const oauthPopup = window.open(url);
     let authComplete = false;
