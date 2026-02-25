@@ -1,3 +1,4 @@
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@dust-tt/client";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { StoredTokens, StoredUser } from "@extension/shared/services/auth";
@@ -20,6 +21,7 @@ export const useAuthHook = () => {
   const [forcedConnection, setForcedConnection] = useState<
     string | undefined
   >();
+  const [featureFlags, setFeatureFlags] = useState<WhitelistableFeature[]>([]);
 
   const isAuthenticated = useMemo(
     () =>
@@ -127,6 +129,33 @@ export const useAuthHook = () => {
     [user]
   );
 
+  // Note that we do not use useSWRWithDefaults from extension/shared/lib/swr.ts
+  // because it depends on the auth context being initialized.
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      !workspace ||
+      !tokens?.accessToken ||
+      !user?.dustDomain
+    ) {
+      setFeatureFlags([]);
+      return;
+    }
+
+    void (async () => {
+      const res = await fetch(
+        `${user.dustDomain}/api/w/${workspace.sId}/feature-flags`,
+        { headers: { Authorization: `Bearer ${tokens.accessToken}` } }
+      );
+      if (res.ok) {
+        const { feature_flags } = await res.json();
+        setFeatureFlags(feature_flags ?? []);
+      } else {
+        setFeatureFlags([]);
+      }
+    })();
+  }, [workspace, tokens?.accessToken, user, isAuthenticated]);
+
   const redirectToSSOLogin = useCallback(
     async (workspace: WorkspaceType) => {
       log("Enforcing SSO for", workspace);
@@ -200,5 +229,6 @@ export const useAuthHook = () => {
     handleLogin,
     handleLogout,
     handleSelectWorkspace,
+    featureFlags,
   };
 };
