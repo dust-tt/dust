@@ -384,7 +384,13 @@ export class InternalMCPServerInMemoryResource {
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const encryptionKey = workspace.sId;
+    const encryptedKey = sharedSecret
+      ? encrypt({
+        text: sharedSecret,
+        key: workspace.sId,
+        useCase: "mcp_server_credentials",
+      })
+      : null
 
     const existing = await InternalMCPServerCredentialModel.findOne({
       where: {
@@ -399,14 +405,8 @@ export class InternalMCPServerInMemoryResource {
         customHeaders: Record<string, string> | null;
       }> = {};
 
-      if (sharedSecret !== undefined) {
-        updatePayload.encryptedKey = sharedSecret
-          ? encrypt({
-              text: sharedSecret,
-              key: encryptionKey,
-              useCase: "mcp_server_credentials",
-            })
-          : null;
+      if (encryptedKey) {
+        updatePayload.encryptedKey = encryptedKey;
       }
       if (customHeaders !== undefined) {
         updatePayload.customHeaders = customHeaders ?? null;
@@ -419,13 +419,7 @@ export class InternalMCPServerInMemoryResource {
       await InternalMCPServerCredentialModel.create({
         workspaceId: workspace.id,
         internalMCPServerId: this.id,
-        encryptedKey: sharedSecret
-          ? encrypt({
-              text: sharedSecret,
-              key: encryptionKey,
-              useCase: "mcp_server_credentials",
-            })
-          : null,
+        encryptedKey,
         customHeaders: customHeaders ?? null,
       });
     }
