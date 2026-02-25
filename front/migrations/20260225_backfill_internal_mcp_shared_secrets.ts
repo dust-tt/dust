@@ -178,10 +178,14 @@ makeScript({}, async ({ execute }, logger) => {
     }
 
     // Decrypt the secret using workspace sId as key.
-    const decryptedValue = decrypt(dustAppSecret.hash, workspace.sId);
+    const decryptedValue = decrypt({
+      encrypted: dustAppSecret.hash,
+      key: workspace.sId,
+      useCase: "developer_secret",
+    });
 
     if (execute) {
-      await InternalMCPServerCredentialModel.upsert({
+      await InternalMCPServerCredentialModel.create({
         workspaceId,
         internalMCPServerId,
         sharedSecret: decryptedValue,
