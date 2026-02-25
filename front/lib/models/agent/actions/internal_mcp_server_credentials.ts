@@ -10,6 +10,7 @@ export class InternalMCPServerCredentialModel extends WorkspaceAwareModel<Intern
   declare internalMCPServerId: string;
   declare sharedSecret: string | null;
   declare customHeaders: Record<string, string> | null;
+  declare hash: string | null;
 }
 
 InternalMCPServerCredentialModel.init(
@@ -34,6 +35,11 @@ InternalMCPServerCredentialModel.init(
     },
     customHeaders: {
       type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    hash: {
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,
     },
