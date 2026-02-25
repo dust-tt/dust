@@ -12,7 +12,9 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const GCS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 16;
-const CACHE_TTL_MS = 3_600_000; // 1 hour.
+
+// TODO(2026-02-25 PERF): Remove this once optional `ttlMs` on `cacheWithRedis` has been merged.
+const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours.
 
 type OutputContent = CallToolResult["content"][number];
 
