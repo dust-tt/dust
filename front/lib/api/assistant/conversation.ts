@@ -1986,58 +1986,64 @@ function truncateContent(content: string | null): {
   };
 }
 
-export async function getShrinkWrapedConversation(
-  auth: Authenticator,
-  {
-    conversationId,
-    fromMessageIndex,
-    toMessageIndex,
-  }: {
-    conversationId: string;
-    fromMessageIndex?: number;
-    toMessageIndex?: number;
-  }
-): Promise<
-  Result<
-    {
-      type: "text";
-      text: string;
-    },
-    Error
-  >
-> {
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return new Err(
-      new Error(`Conversation not found or not accessible: ${conversationId}`)
-    );
-  }
+/**
+ * Minimal types for the shrink-wrap conversation formatter.
+ * These capture only the fields used during formatting, making it easy
+ * to construct test data without building full message objects.
+ */
+export interface ShrinkWrapUserMessage {
+  type: "user_message";
+  sId: string;
+  created: number;
+  content: string;
+  context: { username: string };
+  mentions: Array<{ configurationId: string } | Record<string, unknown>>;
+}
 
-  const conversation = conversationRes.value;
+export interface ShrinkWrapAction {
+  functionCallName: string;
+  status: string;
+  internalMCPServerName: string | null;
+  params: Record<string, unknown>;
+}
 
-  // Flatten the 2D content array into a flat list of messages (last version of each).
-  const flatMessages: (UserMessageType | AgentMessageType)[] = [];
-  for (const messageVersions of conversation.content) {
-    if (messageVersions.length === 0) {
-      continue;
-    }
-    const lastVersion = messageVersions[messageVersions.length - 1];
-    if (isUserMessageType(lastVersion) || isAgentMessageType(lastVersion)) {
-      flatMessages.push(lastVersion);
-    }
-  }
+export interface ShrinkWrapAgentMessage {
+  type: "agent_message";
+  sId: string;
+  created: number;
+  content: string | null;
+  status: string;
+  configuration: { sId: string; name: string };
+  actions: ShrinkWrapAction[];
+  parentAgentMessageId: string | null;
+}
 
-  // Apply message index range.
-  const from = fromMessageIndex ?? 0;
-  const to = toMessageIndex ?? flatMessages.length;
-  const isConversationTruncated = from > 0 || to < flatMessages.length;
-  const slicedMessages = flatMessages.slice(from, to);
+export type ShrinkWrapMessage = ShrinkWrapUserMessage | ShrinkWrapAgentMessage;
+
+export interface ShrinkWrapConversationData {
+  sId: string;
+  title: string | null;
+  messages: ShrinkWrapMessage[];
+}
+
+/**
+ * Pure formatting function that renders a conversation as text for shrink-wrap.
+ * Separated from the DB-fetching logic so it can be reused in tests.
+ */
+export function formatConversationForShrinkWrap(
+  conversation: ShrinkWrapConversationData,
+  options?: { fromMessageIndex?: number; toMessageIndex?: number }
+): string {
+  const messages = conversation.messages;
+  const from = options?.fromMessageIndex ?? 0;
+  const to = options?.toMessageIndex ?? messages.length;
+  const isConversationTruncated = from > 0 || to < messages.length;
+  const slicedMessages = messages.slice(from, to);
 
   // Build a map of agent message sId → list of agents it handed off to.
-  // An agent message B with parentAgentMessageId === A.sId means A handed off to B.
   const handoffMap = new Map<string, { agentId: string }[]>();
-  for (const msg of flatMessages) {
-    if (isAgentMessageType(msg) && msg.parentAgentMessageId) {
+  for (const msg of messages) {
+    if (msg.type === "agent_message" && msg.parentAgentMessageId) {
       const targets = handoffMap.get(msg.parentAgentMessageId) ?? [];
       targets.push({ agentId: msg.configuration.sId });
       handoffMap.set(msg.parentAgentMessageId, targets);
@@ -2061,17 +2067,20 @@ export async function getShrinkWrapedConversation(
     const msg = slicedMessages[i];
     const index = from + i;
 
-    if (isUserMessageType(msg)) {
+    if (msg.type === "user_message") {
       const { content, contentTruncated } = truncateContent(msg.content);
       currentTotalChars += content ? content.length : 0;
 
       lines.push(`## Message ${index}: ${msg.sId}`);
       lines.push(`at ${msg.created}`);
       lines.push(`from user ${msg.context.username}`);
-      const mentions = msg.mentions.filter(isAgentMention);
-      if (mentions.length > 0) {
+      const agentMentions = msg.mentions.filter(
+        (m): m is { configurationId: string } =>
+          "configurationId" in m && typeof m.configurationId === "string"
+      );
+      if (agentMentions.length > 0) {
         lines.push(
-          `mentions: ${mentions.map((m) => m.configurationId).join(", ")}`
+          `mentions: ${agentMentions.map((m) => m.configurationId).join(", ")}`
         );
       }
       lines.push("");
@@ -2082,7 +2091,7 @@ export async function getShrinkWrapedConversation(
     }
 
     // Agent message.
-    const agentMsg = msg as AgentMessageType;
+    const agentMsg = msg;
     const { content, contentTruncated } = truncateContent(agentMsg.content);
     currentTotalChars += content ? content.length : 0;
 
@@ -2125,8 +2134,61 @@ export async function getShrinkWrapedConversation(
     lines.push("");
   }
 
+  return lines.join("\n");
+}
+
+export async function getShrinkWrapedConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+    fromMessageIndex,
+    toMessageIndex,
+  }: {
+    conversationId: string;
+    fromMessageIndex?: number;
+    toMessageIndex?: number;
+  }
+): Promise<
+  Result<
+    {
+      type: "text";
+      text: string;
+    },
+    Error
+  >
+> {
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return new Err(
+      new Error(`Conversation not found or not accessible: ${conversationId}`)
+    );
+  }
+
+  const conversation = conversationRes.value;
+
+  // Flatten the 2D content array into a flat list of messages (last version of each).
+  const flatMessages: ShrinkWrapMessage[] = [];
+  for (const messageVersions of conversation.content) {
+    if (messageVersions.length === 0) {
+      continue;
+    }
+    const lastVersion = messageVersions[messageVersions.length - 1];
+    if (isUserMessageType(lastVersion) || isAgentMessageType(lastVersion)) {
+      flatMessages.push(lastVersion);
+    }
+  }
+
+  const text = formatConversationForShrinkWrap(
+    {
+      sId: conversation.sId,
+      title: conversation.title,
+      messages: flatMessages,
+    },
+    { fromMessageIndex, toMessageIndex }
+  );
+
   return new Ok({
     type: "text" as const,
-    text: lines.join("\n"),
+    text,
   });
 }

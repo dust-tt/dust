@@ -3,11 +3,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { MAX_TOOL_CALL_ROUNDS } from "@app/tests/copilot-evals/lib/config";
 import { getMockToolResponse } from "@app/tests/copilot-evals/lib/mock-responses";
-import type {
-  CopilotConfig,
-  CopilotExecutionResult,
-  MockAgentState,
-  ToolCall,
+import {
+  type CopilotConfig,
+  type CopilotExecutionResult,
+  isTestCaseWithConversation,
+  type MockAgentState,
+  type TestCase,
+  type ToolCall,
 } from "@app/tests/copilot-evals/lib/types";
 import type {
   AgentContentItemType,
@@ -18,7 +20,7 @@ import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/ty
 export async function executeCopilot(
   auth: Authenticator,
   config: CopilotConfig,
-  userMessage: string,
+  testCase: TestCase,
   agentState: MockAgentState
 ): Promise<CopilotExecutionResult> {
   const llm = await getLLM(auth, {
@@ -32,13 +34,33 @@ export async function executeCopilot(
     throw new Error("Failed to initialize LLM for copilot execution");
   }
 
-  const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
-    {
+  // Build initial messages from either a single user message or a conversation history.
+  const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [];
+
+  if (isTestCaseWithConversation(testCase)) {
+    for (const msg of testCase.conversation) {
+      if (msg.role === "user") {
+        messages.push({
+          role: "user",
+          name: "User",
+          content: [{ type: "text", text: msg.content }],
+        });
+      } else {
+        messages.push({
+          role: "assistant",
+          name: "assistant",
+          content: msg.content,
+          contents: [{ type: "text_content", value: msg.content }],
+        });
+      }
+    }
+  } else {
+    messages.push({
       role: "user",
       name: "User",
-      content: [{ type: "text", text: userMessage }],
-    },
-  ];
+      content: [{ type: "text", text: testCase.userMessage }],
+    });
+  }
 
   const allToolCalls: ToolCall[] = [];
   let responseText = "";

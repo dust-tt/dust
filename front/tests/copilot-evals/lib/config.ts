@@ -103,6 +103,20 @@ const MOCK_WORKSPACE_TOOLS: AvailableTool[] = [
     serverType: "internal",
     availability: "manual",
   },
+  {
+    sId: "mcp_datadog",
+    name: "Datadog",
+    description: "Search and query Datadog logs and metrics",
+    serverType: "internal",
+    availability: "manual",
+  },
+  {
+    sId: "mcp_jira",
+    name: "JIRA",
+    description: "Search and manage JIRA issues and projects",
+    serverType: "internal",
+    availability: "manual",
+  },
 ];
 
 function getMockCopilotContext(): CopilotContext {

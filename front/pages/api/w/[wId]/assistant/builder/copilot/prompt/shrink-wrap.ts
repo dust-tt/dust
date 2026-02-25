@@ -9,7 +9,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-function buildFirstMessage(shrinkWrappedConversation: string): string {
+export function buildFirstMessage(shrinkWrappedConversation: string): string {
   return `<dust_system>
 Build an agent that replicates the workflow shown in the conversation below.
 
