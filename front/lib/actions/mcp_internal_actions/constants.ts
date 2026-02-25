@@ -552,8 +552,10 @@ export const INTERNAL_MCP_SERVERS = {
     id: 32,
     availability: "manual",
     allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: undefined,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("openai_usage_mcp");
+    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
