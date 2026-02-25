@@ -1,5 +1,9 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { NoOpConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -10,8 +14,8 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   BarHeader,
   Button,
-  ExternalLinkIcon,
   MenuIcon,
+  MoreIcon,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -55,6 +59,9 @@ export const MainPage = ({
       conversationId: conversationId,
       workspaceId: workspace.sId,
     });
+
+  const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
+    useConversationMenu();
 
   const headerTitle = useMemo(() => {
     if (!conversationId) {
@@ -106,16 +113,25 @@ export const MainPage = ({
             }
             rightActions={
               conversationId ? (
-                <div className="items-right flex flex-row">
-                  <Button
-                    icon={ExternalLinkIcon}
-                    variant="ghost"
-                    href={`${user.dustDomain}/w/${workspace.sId}/agent/${conversationId}`}
-                    target="_blank"
-                    size="sm"
-                    tooltip="Open in Dust"
-                  />
-                </div>
+                <ConversationMenu
+                  activeConversationId={conversationId}
+                  conversation={conversation}
+                  owner={workspace}
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={MoreIcon}
+                      aria-label="Conversation menu"
+                    />
+                  }
+                  isConversationDisplayed={true}
+                  isOpen={isMenuOpen}
+                  onOpenChange={handleMenuOpenChange}
+                  triggerPosition={menuTriggerPosition}
+                  displayOpenInBrowser
+                  openDetailsInNewTab
+                />
               ) : (
                 <div className="items-right flex flex-row space-x-1">
                   <UserDropdownMenu user={user} handleLogout={handleLogout} />
