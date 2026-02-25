@@ -2,7 +2,12 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
-import type { CopilotContext } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  type CopilotContext,
+  formatAvailableModels,
+  formatAvailableSkills,
+  formatAvailableTools,
+} from "@app/lib/api/assistant/global_agents/copilot_context";
 import type {
   AvailableSkill,
   AvailableTool,
@@ -98,12 +103,13 @@ function getMockCopilotContext(): CopilotContext {
   );
   return {
     mcpServerViews: null,
-    userMetadata: null,
-    workspaceCapabilities: {
-      models,
-      skills: MOCK_WORKSPACE_SKILLS,
-      tools: MOCK_WORKSPACE_TOOLS,
-    },
+    formattedUserContext: null,
+    formattedWorkspaceContext: [
+      formatAvailableModels(models),
+      formatAvailableSkills(MOCK_WORKSPACE_SKILLS),
+      formatAvailableTools(MOCK_WORKSPACE_TOOLS),
+    ].join("\n\n"),
+    langfuseInstructions: null,
   };
 }
 
