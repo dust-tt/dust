@@ -42,6 +42,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getManageTriggersRoute,
   getProjectRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
@@ -955,6 +956,12 @@ export function AgentSidebarMenu({
                             />
                           </>
                         )}
+                        <DropdownMenuLabel>Triggers</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          href={getManageTriggersRoute(owner.sId)}
+                          icon={BoltIcon}
+                          label="Manage triggers"
+                        />
                         <DropdownMenuLabel>Conversations</DropdownMenuLabel>
                         <DropdownMenuItem
                           label="Edit conversations"

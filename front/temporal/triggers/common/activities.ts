@@ -13,6 +13,7 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { TriggerRunResource } from "@app/lib/resources/trigger_run_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -205,8 +206,35 @@ export async function runTriggeredAgentsActivity({
     return;
   }
 
+  // Create a trigger run record to track this execution.
+  const triggerRunResult = await TriggerRunResource.makeNew(auth, {
+    triggerId: triggerResource.id,
+    userId: auth.getNonNullableUser().id,
+    status: "running",
+    startedAt: new Date(),
+  });
+
+  if (triggerRunResult.isErr()) {
+    logger.error(
+      {
+        triggerId: trigger.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: triggerRunResult.error,
+      },
+      "Failed to create trigger run record, continuing execution."
+    );
+  }
+
+  const triggerRun = triggerRunResult.isOk() ? triggerRunResult.value : null;
+
   const subscribers = await triggerResource.getSubscribers(auth);
   if (subscribers.isErr()) {
+    if (triggerRun) {
+      await triggerRun.complete(auth, {
+        status: "failure",
+        errorMessage: "Error getting trigger subscribers.",
+      });
+    }
     throw new TriggerNonRetryableError("Error getting trigger subscribers.");
   }
 
@@ -256,6 +284,7 @@ export async function runTriggeredAgentsActivity({
 
   if (useIndividualConversations) {
     // Create conversations for the editor and all the subscribers
+    let hasError = false;
     for (const tempAuth of [auth, ...subscribersAuths]) {
       try {
         await createConversationForAgentConfiguration({
@@ -266,6 +295,7 @@ export async function runTriggeredAgentsActivity({
           contentFragment,
         });
       } catch (error) {
+        hasError = true;
         // Might happen if a subscriber do not have the right permissions to use the agent
         logger.error(
           {
@@ -277,6 +307,18 @@ export async function runTriggeredAgentsActivity({
           "Error creating conversation for agent configuration."
         );
       }
+    }
+
+    if (triggerRun) {
+      await triggerRun.complete(auth, {
+        status: hasError ? "failure" : "success",
+        ...(hasError
+          ? {
+              errorMessage:
+                "One or more individual conversations failed to create.",
+            }
+          : {}),
+      });
     }
   } else {
     // Create a single conversation for the editor
@@ -309,12 +351,35 @@ export async function runTriggeredAgentsActivity({
             });
           }
         }
+
+        if (triggerRun) {
+          await triggerRun.complete(auth, {
+            status: "failure",
+            errorMessage,
+          });
+        }
+
         // Return without throwing, this is normal behaviour so we don't want an error
         return;
       }
 
+      if (triggerRun) {
+        await triggerRun.complete(auth, {
+          status: "failure",
+          errorMessage,
+        });
+      }
+
       throw new Error(`Error creating conversation: ${errorMessage}`, {
         cause: conversationResult.error,
+      });
+    }
+
+    // Mark the trigger run as successful with the conversation ID.
+    if (triggerRun) {
+      await triggerRun.complete(auth, {
+        status: "success",
+        conversationId: conversationResult.value.id,
       });
     }
 

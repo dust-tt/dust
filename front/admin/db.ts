@@ -36,6 +36,7 @@ import {
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { TriggerRunModel } from "@app/lib/models/agent/triggers/trigger_run";
 import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
@@ -141,6 +142,7 @@ export function loadAllModels() {
     WebhookSourceModel,
     WebhookSourcesViewModel,
     TriggerModel,
+    TriggerRunModel,
     TriggerSubscriberModel,
     WebhookRequestModel,
     WebhookRequestTriggerModel,

@@ -379,6 +379,176 @@ export function useRemoveTriggerSubscriber({
   return removeSubscriber;
 }
 
+export function useWorkspaceTriggers({
+  workspaceId,
+  tab,
+  disabled,
+}: {
+  workspaceId: string;
+  tab?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const workspaceTriggersFetcher: Fetcher<
+    import("@app/pages/api/w/[wId]/triggers").GetWorkspaceTriggersResponseBody
+  > = fetcher;
+
+  const url = tab
+    ? `/api/w/${workspaceId}/triggers?tab=${tab}`
+    : `/api/w/${workspaceId}/triggers`;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    url,
+    workspaceTriggersFetcher,
+    { disabled }
+  );
+
+  return {
+    triggers: data?.triggers ?? emptyArray(),
+    isTriggersLoading: !error && !data && !disabled,
+    isTriggersError: error,
+    isTriggersValidating: isValidating,
+    mutateTriggers: mutate,
+  };
+}
+
+export function useTriggerDetail({
+  workspaceId,
+  triggerId,
+  disabled,
+}: {
+  workspaceId: string;
+  triggerId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const triggerDetailFetcher: Fetcher<
+    import("@app/pages/api/w/[wId]/triggers/[tId]").GetTriggerDetailResponseBody
+  > = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    triggerId ? `/api/w/${workspaceId}/triggers/${triggerId}` : null,
+    triggerDetailFetcher,
+    { disabled }
+  );
+
+  return {
+    trigger: data?.trigger ?? null,
+    isTriggerLoading: !!triggerId && !error && !data && !disabled,
+    isTriggerError: error,
+    isTriggerValidating: isValidating,
+    mutateTrigger: mutate,
+  };
+}
+
+export function useTriggerRuns({
+  workspaceId,
+  triggerId,
+  limit,
+  offset,
+  disabled,
+}: {
+  workspaceId: string;
+  triggerId: string | null;
+  limit?: number;
+  offset?: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+
+  const params = new URLSearchParams();
+  if (limit !== undefined) {
+    params.append("limit", limit.toString());
+  }
+  if (offset !== undefined) {
+    params.append("offset", offset.toString());
+  }
+  const queryString = params.toString();
+  const url = triggerId
+    ? `/api/w/${workspaceId}/triggers/${triggerId}/runs${queryString ? `?${queryString}` : ""}`
+    : null;
+
+  const triggerRunsFetcher: Fetcher<
+    import("@app/pages/api/w/[wId]/triggers/[tId]/runs").GetTriggerRunsResponseBody
+  > = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    url,
+    triggerRunsFetcher,
+    { disabled }
+  );
+
+  return {
+    runs: data?.runs ?? emptyArray(),
+    totalCount: data?.totalCount ?? 0,
+    isRunsLoading: !!triggerId && !error && !data && !disabled,
+    isRunsError: error,
+    isRunsValidating: isValidating,
+    mutateRuns: mutate,
+  };
+}
+
+export function useCreateTriggerFromManage({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useWorkspaceTriggers({
+    workspaceId,
+    disabled: true,
+  });
+
+  const createTrigger = useCallback(
+    async (
+      agentConfigurationId: string,
+      triggerData: Record<string, unknown>
+    ): Promise<boolean> => {
+      try {
+        const response = await clientFetch(`/api/w/${workspaceId}/triggers`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentConfigurationId,
+            trigger: triggerData,
+          }),
+        });
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Trigger created",
+            description: "The trigger has been created successfully.",
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to create trigger",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to create trigger",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, sendNotification, mutateTriggers]
+  );
+
+  return createTrigger;
+}
+
 export function useTriggerEstimation({
   workspaceId,
   webhookSourceId,

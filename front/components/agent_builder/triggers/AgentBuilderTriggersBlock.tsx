@@ -8,7 +8,9 @@ import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard"
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
+import { getManageTriggersRoute } from "@app/lib/utils/router";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -16,7 +18,9 @@ import {
   Button,
   CardGrid,
   EmptyCTA,
+  ExternalLinkIcon,
   Hoverable,
+  Icon,
   Spinner,
 } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
@@ -37,6 +41,7 @@ export function AgentBuilderTriggersBlock({
   isTriggersLoading,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
+  const { user } = useAuth();
   const { getValues, setValue, control } =
     useFormContext<AgentBuilderFormData>();
 
@@ -53,7 +58,7 @@ export function AgentBuilderTriggersBlock({
   });
 
   const {
-    fields: triggersToUpdate,
+    fields: allTriggersToUpdate,
     remove: removeTriggerToUpdate,
     append: appendTriggerToUpdate,
     update: updateTriggerToUpdate,
@@ -61,6 +66,17 @@ export function AgentBuilderTriggersBlock({
     control,
     name: "triggersToUpdate",
   });
+
+  // Filter triggersToUpdate to only show current user's triggers.
+  const triggersToUpdate = useMemo(
+    () => allTriggersToUpdate.filter((t) => t.editor === user?.id),
+    [allTriggersToUpdate, user?.id]
+  );
+
+  const hasOtherEditorTriggers = useMemo(
+    () => allTriggersToUpdate.some((t) => t.editor !== user?.id),
+    [allTriggersToUpdate, user?.id]
+  );
 
   const sendNotification = useSendNotification();
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
@@ -242,6 +258,16 @@ export function AgentBuilderTriggersBlock({
           </CardGrid>
         )}
       </div>
+
+      {hasOtherEditorTriggers && (
+        <div className="mt-2 text-sm text-muted-foreground">
+          Other users have triggers on this agent.{" "}
+          <Hoverable variant="primary" href={getManageTriggersRoute(owner.sId)}>
+            View all triggers
+            <Icon visual={ExternalLinkIcon} size="xs" className="ml-1 inline" />
+          </Hoverable>
+        </div>
+      )}
 
       <TriggerViewsSheet
         owner={owner}

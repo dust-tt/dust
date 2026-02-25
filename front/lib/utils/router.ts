@@ -72,6 +72,14 @@ export const getManageSkillsRoute = (workspaceId: string, skillId?: string) => {
   );
 };
 
+export const getManageTriggersRoute = (workspaceId: string) =>
+  `/w/${workspaceId}/builder/triggers`;
+
+export const getTriggerDetailRoute = (
+  workspaceId: string,
+  triggerSId: string
+) => `/w/${workspaceId}/builder/triggers/${triggerSId}`;
+
 export const getConversationRoute = (
   workspaceId: string,
   conversationIdOrNew: string | null = "new",

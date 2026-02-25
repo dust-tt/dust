@@ -1,6 +1,6 @@
 import { withSuspense } from "@spa/app/routes/withSuspense";
-import type { RouteObject } from "react-router-dom";
 import { Navigate, useLocation, useParams } from "react-router-dom";
+import type { RouteObject } from "react-router-dom";
 
 // Redirect component that preserves query params and hash
 function RedirectWithSearchParams({ to }: { to: string }) {
@@ -52,12 +52,18 @@ const ManageSkillsPage = withSuspense(
     import("@dust-tt/front/components/pages/builder/skills/ManageSkillsPage"),
   "ManageSkillsPage"
 );
+const ManageTriggersPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/triggers/ManageTriggersPage"),
+  "ManageTriggersPage"
+);
 
 // Builder routes inside AppContentLayout (with sidebar)
 export const builderContentRoutes: RouteObject[] = [
   { path: "builder/agents", element: <ManageAgentsPage /> },
   { path: "builder/agents/create", element: <CreateAgentPage /> },
   { path: "builder/skills", element: <ManageSkillsPage /> },
+  { path: "builder/triggers", element: <ManageTriggersPage /> },
 ];
 
 // Builder routes outside AppContentLayout (full-page editors without sidebar)

@@ -42,6 +42,7 @@ export const RESOURCES_PREFIX = {
 
   // Resource relative to triggers.
   trigger: "trg",
+  trigger_run: "trr",
   webhook_source: "whs",
   webhook_sources_view: "wsv",
 

@@ -80,6 +80,28 @@ export function isValidTriggerOrigin(origin: string): origin is TriggerOrigin {
   return ["user", "agent"].includes(origin);
 }
 
+// Trigger run types.
+
+export const TRIGGER_RUN_STATUSES = ["success", "failure", "running"] as const;
+export type TriggerRunStatus = (typeof TRIGGER_RUN_STATUSES)[number];
+
+export function isValidTriggerRunStatus(
+  status: string
+): status is TriggerRunStatus {
+  return (TRIGGER_RUN_STATUSES as readonly string[]).includes(status);
+}
+
+export type TriggerRunType = {
+  sId: string;
+  triggerId: string;
+  conversationSId: string | null;
+  userId: number | null;
+  status: TriggerRunStatus;
+  errorMessage: string | null;
+  startedAt: number;
+  completedAt: number | null;
+};
+
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
   webhookSourceViewSId: string;
