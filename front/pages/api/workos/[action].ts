@@ -11,6 +11,7 @@ import type { SessionCookie } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
@@ -267,6 +268,20 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       password: config.getWorkOSCookiePassword(),
       ttl: 0,
     });
+
+    // Record login activity at authentication time (covers SCIM/provisioned users
+    // who may bypass /api/login via returnTo redirects).
+    try {
+      const dustUser = await UserResource.fetchByWorkOSUserId(user.id);
+      if (dustUser) {
+        await dustUser.recordLoginActivity();
+      }
+    } catch (loginTrackingError) {
+      logger.error(
+        { error: loginTrackingError, workOSUserId: user.id },
+        "Failed to record login activity at authentication"
+      );
+    }
 
     const currentRegion = multiRegionsConfig.getCurrentRegion();
     let targetRegion: RegionType | null = "us-central1";
