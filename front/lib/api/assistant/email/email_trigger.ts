@@ -364,6 +364,7 @@ export async function userAndWorkspaceFromEmail({
         },
       },
     ],
+    order: [["id", "DESC"]],
   });
 
   if (workspaceModels.length === 0) {
@@ -392,8 +393,8 @@ export async function userAndWorkspaceFromEmail({
     return sub && isUpgraded(sub.getPlan());
   });
 
-  // Workspaces are returned by findAll in id ASC order; last = most recent.
-  const mostRecentWorkspace = workspaceModels[workspaceModels.length - 1];
+  // Ordered by id DESC, so first = most recently created.
+  const mostRecentWorkspace = workspaceModels[0];
 
   const selectedWorkspace =
     payingWorkspace ?? upgradedWorkspace ?? mostRecentWorkspace;
