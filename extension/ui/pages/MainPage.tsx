@@ -23,6 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { useSetupNotifications } from "@extension/shared/lib/setupNotifications";
+import { useProtectedRouteContext } from "@extension/ui/components/auth/ProtectedRoute";
 import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
