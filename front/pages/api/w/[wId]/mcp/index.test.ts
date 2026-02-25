@@ -304,11 +304,11 @@ describe("POST /api/w/[wId]/mcp/", () => {
     });
 
     expect(credential).toBeDefined();
-    // sharedSecret is encrypted at rest via the hash column.
-    expect(credential?.hash).toBeTruthy();
+    // sharedSecret is encrypted at rest via the encryptedKey column.
+    expect(credential?.encryptedKey).toBeTruthy();
     expect(
       decrypt({
-        encrypted: credential?.hash,
+        encrypted: credential?.encryptedKey,
         key: workspace.sId,
         useCase: "mcp_server_credentials",
       })

@@ -190,11 +190,11 @@ export async function connectToMCPServer(
             const serverInfo = getInternalMCPServerInfo(serverName);
 
             if (bearerTokenCredentials) {
-              const encryptionKey = auth.getNonNullableWorkspace().sId;
-              const decryptedSecret = bearerTokenCredentials.hash
+              const { encryptedKey } = bearerTokenCredentials;
+              const decryptedSecret = encryptedKey
                 ? decrypt({
-                    encrypted: bearerTokenCredentials.hash,
-                    key: encryptionKey,
+                    encrypted: encryptedKey,
+                    key: auth.getNonNullableWorkspace().sId,
                     useCase: "mcp_server_credentials",
                   })
                 : "";
