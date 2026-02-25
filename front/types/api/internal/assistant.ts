@@ -14,6 +14,7 @@ const UserMessageOriginSchema = t.union([
   t.literal("web"),
   t.literal("agent_copilot"),
   t.literal("project_kickoff"),
+  t.literal("extension"),
 ]);
 
 export const MessageBaseSchema = t.type({
