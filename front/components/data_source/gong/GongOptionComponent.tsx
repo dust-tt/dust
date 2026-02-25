@@ -275,14 +275,12 @@ export function GongOptionComponent({
   const accountsEnabled = accountsConfigValue === "true";
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    retentionPeriodConfigValue || ""
+    retentionPeriodConfigValue ?? ""
   );
 
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
 
-  // TODO: fix the auto-save pattern here and replace with an actual save on the sheet.
   const handleConfigUpdate = async (configKey: string, newValue: string) => {
     // Validate that the value is either empty or a positive integer
     if (
