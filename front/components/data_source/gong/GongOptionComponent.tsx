@@ -110,7 +110,8 @@ function PermissionProfileSelector({
   const savedProfileId = permissionProfileIdConfigValue ?? "";
   // The currently displayed profile ID (local override or saved value).
   const displayedProfileId = localProfileId ?? savedProfileId;
-  const hasUnsavedChanges = localProfileId !== null;
+  const hasUnsavedChanges =
+    localProfileId !== null && localProfileId !== savedProfileId;
 
   const displayedProfile = useMemo(() => {
     if (!displayedProfileId) {
