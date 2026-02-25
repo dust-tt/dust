@@ -17,7 +17,7 @@ function getSecretForUseCase(useCase: EncryptionUseCase): string {
     case "developer_secret":
       return config.getDeveloperSecretsSecret();
     case "mcp_server_credentials":
-      return config.getMcpServerCredentialsSecret();
+      return config.getMCPServerCredentialsSecret();
     default:
       assertNever(useCase);
   }

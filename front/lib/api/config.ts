@@ -449,7 +449,7 @@ const config = {
   getDeveloperSecretsSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_DEVELOPERS_SECRETS_SECRET");
   },
-  getMcpServerCredentialsSecret: (): string => {
+  getMCPServerCredentialsSecret: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "DUST_MCP_SERVER_CREDENTIALS_SECRET"
     );
