@@ -24,9 +24,6 @@
     "watch": "npm-watch",
     "tsgo": "tsgo"
   },
-  "engines": {
-    "node": "22.22.0"
-  },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
     "@typescript/native-preview": "^7.0.0-dev.20260224.1",

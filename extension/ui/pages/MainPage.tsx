@@ -1,5 +1,9 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { NoOpConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -10,14 +14,14 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   BarHeader,
   Button,
-  ExternalLinkIcon,
   MenuIcon,
+  MoreIcon,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type { ProtectedRouteChildrenProps } from "@extension/ui/components/auth/ProtectedRoute";
+import { useProtectedRouteContext } from "@extension/ui/components/auth/ProtectedRoute";
 import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
@@ -25,11 +29,8 @@ import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdo
 import { useContext, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
-export const MainPage = ({
-  user,
-  workspace,
-  handleLogout,
-}: ProtectedRouteChildrenProps) => {
+export const MainPage = () => {
+  const { user, workspace, handleLogout } = useProtectedRouteContext();
   const { subscription } = useAuth();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
@@ -55,6 +56,9 @@ export const MainPage = ({
       conversationId: conversationId,
       workspaceId: workspace.sId,
     });
+
+  const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
+    useConversationMenu();
 
   const headerTitle = useMemo(() => {
     if (!conversationId) {
@@ -106,16 +110,25 @@ export const MainPage = ({
             }
             rightActions={
               conversationId ? (
-                <div className="items-right flex flex-row">
-                  <Button
-                    icon={ExternalLinkIcon}
-                    variant="ghost"
-                    href={`${user.dustDomain}/w/${workspace.sId}/agent/${conversationId}`}
-                    target="_blank"
-                    size="sm"
-                    tooltip="Open in Dust"
-                  />
-                </div>
+                <ConversationMenu
+                  activeConversationId={conversationId}
+                  conversation={conversation}
+                  owner={workspace}
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={MoreIcon}
+                      aria-label="Conversation menu"
+                    />
+                  }
+                  isConversationDisplayed={true}
+                  isOpen={isMenuOpen}
+                  onOpenChange={handleMenuOpenChange}
+                  triggerPosition={menuTriggerPosition}
+                  displayOpenInBrowser
+                  openDetailsInNewTab
+                />
               ) : (
                 <div className="items-right flex flex-row space-x-1">
                   <UserDropdownMenu user={user} handleLogout={handleLogout} />

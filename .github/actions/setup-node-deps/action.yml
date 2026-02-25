@@ -12,7 +12,7 @@ inputs:
   node-version:
     description: "Node.js version to use"
     required: false
-    default: "20.13.0"
+    default: "22.22.0"
 outputs:
   cache-hit-node-modules:
     description: "Whether node_modules cache was hit"

@@ -16,8 +16,8 @@ import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/clien
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { md5 } from "@app/types/shared/utils/encryption";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   LightWorkspaceType,
   UserProviderType,

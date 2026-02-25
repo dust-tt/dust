@@ -35,6 +35,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  ExternalLinkIcon,
   LinkIcon,
   PencilSquareIcon,
   PlusCircleIcon,
@@ -113,6 +114,19 @@ export function useConversationMenu() {
   };
 }
 
+interface ConversationMenuProps {
+  activeConversationId: string | null;
+  conversation?: ConversationWithoutContentType;
+  owner: WorkspaceType;
+  trigger: ReactElement;
+  isConversationDisplayed: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  triggerPosition?: { x: number; y: number };
+  displayOpenInBrowser?: boolean;
+  openDetailsInNewTab?: boolean;
+}
+
 export function ConversationMenu({
   activeConversationId,
   conversation,
@@ -122,16 +136,9 @@ export function ConversationMenu({
   isOpen,
   onOpenChange,
   triggerPosition,
-}: {
-  activeConversationId: string | null;
-  conversation?: ConversationWithoutContentType;
-  owner: WorkspaceType;
-  trigger: ReactElement;
-  isConversationDisplayed: boolean;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  triggerPosition?: { x: number; y: number };
-}) {
+  displayOpenInBrowser,
+  openDetailsInNewTab,
+}: ConversationMenuProps) {
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
 
@@ -142,11 +149,31 @@ export function ConversationMenu({
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
 
   const handleSeeAgentDetails = (agentId: string) => {
+    if (openDetailsInNewTab) {
+      const agentDetailsUrl = getConversationRoute(
+        owner.sId,
+        activeConversationId,
+        `agentDetails=${agentId}`,
+        config.getApiBaseUrl()
+      );
+      window.open(agentDetailsUrl, "_blank");
+      return;
+    }
     onOpenChangeAgentModal(true);
     setQueryParam(router, "agentDetails", agentId);
   };
 
   const handleSeeUserDetails = (userId: string) => {
+    if (openDetailsInNewTab) {
+      const userDetailsUrl = getConversationRoute(
+        owner.sId,
+        activeConversationId,
+        `userDetails=${userId}`,
+        config.getApiBaseUrl()
+      );
+      window.open(userDetailsUrl, "_blank");
+      return;
+    }
     onOpenChangeUserModal(true);
     setQueryParam(router, "userDetails", userId);
   };
@@ -182,7 +209,7 @@ export function ConversationMenu({
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const shareLink = getConversationRoute(
+  const conversationLink = getConversationRoute(
     owner.sId,
     activeConversationId,
     undefined,
@@ -205,9 +232,13 @@ export function ConversationMenu({
   );
 
   const copyConversationLink = useCallback(async () => {
-    await navigator.clipboard.writeText(shareLink ?? "");
+    await navigator.clipboard.writeText(conversationLink ?? "");
     sendNotification({ type: "success", title: "Link copied !" });
-  }, [shareLink, sendNotification]);
+  }, [conversationLink, sendNotification]);
+
+  const openConversationInBrowser = () => {
+    window.open(conversationLink, "_blank");
+  };
 
   if (!activeConversationId) {
     return null;
@@ -345,7 +376,14 @@ export function ConversationMenu({
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-          {shareLink && (
+          {displayOpenInBrowser && conversationLink && (
+            <DropdownMenuItem
+              label="Open in a browser tab"
+              onClick={openConversationInBrowser}
+              icon={ExternalLinkIcon}
+            />
+          )}
+          {conversationLink && (
             <DropdownMenuItem
               label="Copy the link"
               onClick={copyConversationLink}

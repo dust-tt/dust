@@ -4,21 +4,20 @@ import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { StoredUser } from "@extension/shared/services/auth";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
-import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
 
-interface ProtectedRouteProps {
-  children: ReactNode | ((props: ProtectedRouteChildrenProps) => ReactNode);
-}
-
-export interface ProtectedRouteChildrenProps {
+export interface ProtectedRouteOutletContext {
   user: StoredUser;
   workspace: ExtensionWorkspaceType;
   handleLogout: () => void;
 }
 
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+export function useProtectedRouteContext() {
+  return useOutletContext<ProtectedRouteOutletContext>();
+}
+
+export const ProtectedRoute = () => {
   const platform = usePlatform();
   const {
     isLoading,
@@ -77,9 +76,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         "dark:bg-background-night dark:text-foreground-night"
       )}
     >
-      {typeof children === "function"
-        ? children({ user, workspace, handleLogout })
-        : children}
+      <Outlet context={{ user, workspace, handleLogout }} />
     </div>
   );
 };
