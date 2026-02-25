@@ -162,6 +162,8 @@ interface SearchResultsProps {
   onCreateProject: () => void;
   activeConversationId: string | null;
   activeSpaceId: string | null;
+  hideTriggeredConversations: boolean;
+  setHideTriggeredConversations: (hide: boolean) => void;
 }
 
 function SearchResults({
@@ -181,6 +183,8 @@ function SearchResults({
   onCreateProject,
   activeConversationId,
   activeSpaceId,
+  hideTriggeredConversations,
+  setHideTriggeredConversations,
 }: SearchResultsProps) {
   const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
 
@@ -206,8 +210,24 @@ function SearchResults({
       }
     }
 
+    // Filter triggered conversations after merging
+    if (hideTriggeredConversations) {
+      return merged.filter((c) => c.triggerId === null);
+    }
+
     return merged;
-  }, [privateConversations, projectConversationResults]);
+  }, [
+    privateConversations,
+    projectConversationResults,
+    hideTriggeredConversations,
+  ]);
+
+  const hasTriggeredConversations = useMemo(
+    () =>
+      privateConversations.some((c) => c.triggerId !== null) ||
+      projectConversationResults.some((c) => c.triggerId !== null),
+    [privateConversations, projectConversationResults]
+  );
 
   const handleShowMoreProjects = useCallback(() => {
     loadMoreProjects();
@@ -287,13 +307,44 @@ function SearchResults({
           label="Conversations"
           defaultOpen
           action={
-            <Button
-              size="xmini"
-              icon={ChatBubbleLeftRightIcon}
-              variant="ghost"
-              tooltip="New Conversation"
-              href={getConversationRoute(owner.sId)}
-            />
+            <>
+              <Button
+                size="xmini"
+                icon={ChatBubbleLeftRightIcon}
+                variant="ghost"
+                tooltip="New Conversation"
+                href={getConversationRoute(owner.sId)}
+              />
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="xmini"
+                    icon={MoreIcon}
+                    variant="ghost"
+                    aria-label="Conversations options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuItem
+                    label={
+                      hideTriggeredConversations
+                        ? "Show triggered"
+                        : "Hide triggered"
+                    }
+                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    disabled={!hasTriggeredConversations}
+                    onClick={() =>
+                      setHideTriggeredConversations(!hideTriggeredConversations)
+                    }
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           }
         >
           {allConversations.length === 0 && !showConversationsLoading ? (
@@ -415,7 +466,8 @@ export function AgentSidebarMenu({
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { hideTriggeredConversations } = useHideTriggeredConversations();
+  const { hideTriggeredConversations, setHideTriggeredConversations } =
+    useHideTriggeredConversations();
 
   const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
     useProjectsSectionCollapsed();
@@ -682,6 +734,8 @@ export function AgentSidebarMenu({
         hasMore={hasMore}
         loadMore={loadMore}
         isLoadingMore={isLoadingMore}
+        hideTriggeredConversations={hideTriggeredConversations}
+        setHideTriggeredConversations={setHideTriggeredConversations}
       />
     );
   }, [
@@ -947,6 +1001,8 @@ export function AgentSidebarMenu({
                 onCreateProject={() => setIsCreateProjectModalOpen(true)}
                 activeConversationId={activeConversationId}
                 activeSpaceId={activeSpaceId}
+                hideTriggeredConversations={hideTriggeredConversations}
+                setHideTriggeredConversations={setHideTriggeredConversations}
               />
             ) : (
               conversationsList
@@ -1214,6 +1270,8 @@ interface NavigationListWithInboxProps {
   hasMore: boolean;
   loadMore: () => void;
   isLoadingMore: boolean;
+  hideTriggeredConversations: boolean;
+  setHideTriggeredConversations: (hide: boolean) => void;
 }
 
 function NavigationListWithInbox({
@@ -1232,9 +1290,9 @@ function NavigationListWithInbox({
   hasMore,
   loadMore,
   isLoadingMore,
+  hideTriggeredConversations,
+  setHideTriggeredConversations,
 }: NavigationListWithInboxProps) {
-  const { hideTriggeredConversations, setHideTriggeredConversations } =
-    useHideTriggeredConversations();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { readConversations, inboxConversations } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(
