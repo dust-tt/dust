@@ -2,23 +2,44 @@ import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configur
 import { buildCopilotInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
+import type {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { getCompanyDataAction } from "./shared";
 
 export function _getCopilotEdgeGlobalAgent(
   auth: Authenticator,
-  copilotContext: CopilotContext | null
+  {
+    copilotContext,
+    preFetchedDataSources,
+    mcpServerViews,
+  }: {
+    copilotContext: CopilotContext | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  }
 ): AgentConfigurationType {
-  const actions = copilotContext?.mcpServerViews?.context
-    ? [
-        buildServerSideMCPServerConfiguration({
-          mcpServerView: copilotContext.mcpServerViews.context,
-        }),
-      ]
-    : [];
+  const companyDataAction = getCompanyDataAction(
+    preFetchedDataSources,
+    mcpServerViews
+  );
+
+  const contextAction = copilotContext?.mcpServerViews?.context
+    ? buildServerSideMCPServerConfiguration({
+        mcpServerView: copilotContext.mcpServerViews.context,
+      })
+    : null;
+
+  const actions = [
+    ...(contextAction ? [contextAction] : []),
+    ...(companyDataAction ? [companyDataAction] : []),
+  ];
 
   const langfuseConfig = copilotContext?.langfuseConfig;
   const modelConfiguration =

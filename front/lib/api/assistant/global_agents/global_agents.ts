@@ -714,10 +714,18 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(auth, copilotContext);
+      agentConfiguration = _getCopilotGlobalAgent(auth, {
+        copilotContext,
+        preFetchedDataSources,
+        mcpServerViews,
+      });
       break;
     case GLOBAL_AGENTS_SID.COPILOT_EDGE:
-      agentConfiguration = _getCopilotEdgeGlobalAgent(auth, copilotContext);
+      agentConfiguration = _getCopilotEdgeGlobalAgent(auth, {
+        copilotContext,
+        preFetchedDataSources,
+        mcpServerViews,
+      });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
