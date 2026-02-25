@@ -14,9 +14,11 @@ import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -36,8 +38,6 @@ import { Op } from "sequelize";
 import { Readable } from "stream";
 
 import { toFileContentFragment } from "../conversation/content_fragment";
-
-const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
 
 // Redis configuration for email reply context storage.
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
@@ -329,33 +329,15 @@ export function buildSuccessReplyRecipients(email: InboundEmail): {
 
   return { to, cc };
 }
-export function getTargetEmailsForWorkspace({
-  allTargetEmails,
-  workspace,
-  isDefault,
-}: {
-  allTargetEmails: string[];
-  workspace: LightWorkspaceType;
-  isDefault: boolean;
-}): string[] {
-  return allTargetEmails.filter(
-    (email) =>
-      email.split("@")[0].endsWith(`[${workspace.sId}]`) ||
-      // calls with no brackets go to default workspace
-      (!email.split("@")[0].endsWith("]") && isDefault)
-  );
-}
-
-export async function userAndWorkspacesFromEmail({
+export async function userAndWorkspaceFromEmail({
   email,
 }: {
   email: string;
 }): Promise<
   Result<
     {
-      workspaces: LightWorkspaceType[];
+      workspace: LightWorkspaceType;
       user: UserResource;
-      defaultWorkspace: LightWorkspaceType;
     },
     EmailTriggerError
   >
@@ -370,7 +352,7 @@ export async function userAndWorkspacesFromEmail({
         `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
     });
   }
-  const workspaces = await WorkspaceModel.findAll({
+  const workspaceModels = await WorkspaceModel.findAll({
     include: [
       {
         model: MembershipModel,
@@ -384,7 +366,7 @@ export async function userAndWorkspacesFromEmail({
     ],
   });
 
-  if (!workspaces) {
+  if (workspaceModels.length === 0) {
     return new Err({
       type: "workspace_not_found",
       message:
@@ -393,48 +375,32 @@ export async function userAndWorkspacesFromEmail({
     });
   }
 
-  /* get latest conversation participation from user
-    uncomment when ungating
-  const latestParticipation = await ConversationParticipant.findOne({
-    where: {
-      userId: user.id,
-    },
-    include: [
-      {
-        model: Conversation,
-      },
-    ],
-    order: [["createdAt", "DESC"]],
-  });*/
+  // Pick the best workspace: prefer paying plans, then upgraded free plans,
+  // then fall back to the most recently created workspace.
+  const subscriptionsByWorkspaceId =
+    await SubscriptionResource.fetchActiveByWorkspacesModelId(
+      workspaceModels.map((w) => w.id)
+    );
 
-  // TODO: when ungating, implement good default logic to pick workspace
-  // a. most members?
-  // b. latest participation as above using the above (latestParticipation?.conversation?.workspaceId)
-  // c. most frequent-recent activity? (return 10 results with participants and pick the workspace with most convos)
-  // (will work fine since most users likely use only one workspace with a given email)
-  const workspace = isDevelopment()
-    ? workspaces[0] // In dev, use the first available workspace.
-    : workspaces.find(
-        (w) => w.sId === PRODUCTION_DUST_WORKSPACE_ID // Gating to dust workspace
-      );
-  if (!workspace) {
-    return new Err({
-      type: "unexpected_error",
-      message: "Failed to find a valid default workspace for user.",
-    });
-  }
-
-  const defaultWorkspace = renderLightWorkspaceType({
-    workspace,
+  const payingWorkspace = workspaceModels.find((w) => {
+    const sub = subscriptionsByWorkspaceId[w.id];
+    return sub && !isFreePlan(sub.getPlan().code);
   });
 
-  // TODO: when ungating, replace [workspace] with workspaces here
+  const upgradedWorkspace = workspaceModels.find((w) => {
+    const sub = subscriptionsByWorkspaceId[w.id];
+    return sub && isUpgraded(sub.getPlan());
+  });
+
+  // Workspaces are returned by findAll in id ASC order; last = most recent.
+  const mostRecentWorkspace = workspaceModels[workspaceModels.length - 1];
+
+  const selectedWorkspace =
+    payingWorkspace ?? upgradedWorkspace ?? mostRecentWorkspace;
+
   return new Ok({
-    workspaces: [workspace].map((workspace) =>
-      renderLightWorkspaceType({ workspace })
-    ),
+    workspace: renderLightWorkspaceType({ workspace: selectedWorkspace }),
     user,
-    defaultWorkspace,
   });
 }
 
