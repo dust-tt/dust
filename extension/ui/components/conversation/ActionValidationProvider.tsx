@@ -1,3 +1,4 @@
+import { useValidateAction } from "@app/hooks/useValidateAction";
 import type {
   BlockedActionExecutionType,
   MCPToolStakeLevelPublicType,
@@ -16,8 +17,8 @@ import {
   MultiPageDialog,
   MultiPageDialogContent,
 } from "@dust-tt/sparkle";
-import { useDustAPI } from "@extension/shared/lib/dust_api";
 import { asDisplayName } from "@extension/shared/lib/utils";
+import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { createContext, useCallback, useMemo, useState } from "react";
 
 type ActionValidationContextType = {
@@ -91,7 +92,12 @@ export function ActionValidationProvider({
     useState<MCPValidationOutputPublicType | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
-  const dustAPI = useDustAPI();
+  const { workspace } = useExtensionAuth();
+  const { validateAction } = useValidateAction({
+    owner: workspace!,
+    conversationId: null,
+    onError: setErrorMessage,
+  });
 
   const pendingValidations = useMemo(() => {
     return blockedActionsQueue.filter(
@@ -184,15 +190,13 @@ export function ActionValidationProvider({
       const approved =
         status === "approved" && neverAskAgain ? "always_approved" : status;
 
-      const res = await dustAPI.validateAction({
-        conversationId: currentBlockedAction.conversationId,
+      const res = await validateAction({
+        validationRequest: currentBlockedAction,
         messageId: currentBlockedAction.messageId,
-        actionId: currentBlockedAction.actionId,
         approved,
       });
 
-      if (res.isErr()) {
-        setErrorMessage("Failed to assess action approval. Please try again.");
+      if (!res.success) {
         setSubmitStatus(null);
         return;
       }
@@ -212,7 +216,7 @@ export function ActionValidationProvider({
       }
     },
     [
-      dustAPI,
+      validateAction,
       neverAskAgain,
       pendingValidations,
       currentPageIndex,

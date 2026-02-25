@@ -1,6 +1,7 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { MCPActionValidationRequest } from "@app/types/assistant/conversation";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -15,6 +16,7 @@ export function useValidateAction({
   conversationId,
   onError,
 }: UseValidateActionParams) {
+  const { fetcher } = useFetcher();
   const [isValidating, setIsValidating] = useState(false);
 
   const validateAction = useCallback(
@@ -31,7 +33,7 @@ export function useValidateAction({
 
       try {
         // Validate the action.
-        const response = await clientFetch(
+        await fetcher(
           `/api/w/${owner.sId}/assistant/conversations/${validationRequest.conversationId}/messages/${validationRequest.messageId}/validate-action`,
           {
             method: "POST",
@@ -45,54 +47,42 @@ export function useValidateAction({
           }
         );
 
-        if (!response.ok) {
-          try {
-            const errData = await response.json();
-            if (errData?.error.type === "action_not_blocked") {
-              // If the action is not blocked anymore, we consider the validation already
-              // successful.  This can happen if multiple clients validate the same action. We
-              // directly return a success in that case.
-              return { success: true };
-            }
-          } catch {
-            // ignore JSON parsing errors and fall through to generic error
-          }
-          onError("Failed to assess action approval. Please try again.");
-          return { success: false };
-        }
-
         // Retry on blocked tools on the main conversation if there is one that is != from the event's.
         if (
           conversationId &&
           messageId &&
           conversationId !== validationRequest.conversationId
         ) {
-          const response = await clientFetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=true`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) {
+          try {
+            await fetcher(
+              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=true`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+          } catch {
             onError("Failed to resume conversation. Please try again.");
             return { success: false };
           }
         }
+
         return { success: true };
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch (e) {
+        if (isAPIErrorResponse(e) && e.error.type === "action_not_blocked") {
+          // If the action is not blocked anymore, we consider the validation already
+          // successful. This can happen if multiple clients validate the same action.
+          return { success: true };
+        }
         onError("Failed to assess action approval. Please try again.");
         return { success: false };
       } finally {
         setIsValidating(false);
       }
     },
-    [owner.sId, conversationId, onError]
+    [owner.sId, conversationId, onError, fetcher]
   );
 
   return { validateAction, isValidating };

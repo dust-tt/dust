@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   InternalPostConversationsRequestBodySchema,
@@ -13,6 +13,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -26,6 +27,8 @@ export function useCreateConversationWithMessage({
   owner: WorkspaceType;
   user: UserType | null;
 }) {
+  const { fetcher } = useFetcher();
+
   return useCallback(
     async ({
       messageData,
@@ -42,7 +45,7 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
         selectedSkillIds?: string[];
-        origin?: "web" | "agent_copilot" | "project_kickoff";
+        origin?: "web" | "agent_copilot" | "project_kickoff" | "extension";
       };
       visibility?: ConversationVisibility;
       title?: string;
@@ -122,35 +125,34 @@ export function useCreateConversationWithMessage({
         };
 
       // Create new conversation and post the initial message at the same time.
-      const cRes = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      try {
+        const conversationData = (await fetcher(
+          `/api/w/${owner.sId}/assistant/conversations`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          }
+        )) as PostConversationsResponseBody;
 
-      if (!cRes.ok) {
-        const data = await cRes.json();
+        return new Ok(conversationData.conversation);
+      } catch (e) {
+        const isApiError = isAPIErrorResponse(e);
         return new Err({
           type:
-            data.error.type === "plan_message_limit_exceeded"
+            isApiError && e.error.type === "plan_message_limit_exceeded"
               ? "plan_limit_reached_error"
               : "message_send_error",
           title: "Your message could not be sent.",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          message: data.error.message || "Please try again or contact us.",
+          message: isApiError
+            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              e.error.message || "Please try again or contact us."
+            : "Please try again or contact us.",
         });
       }
-
-      const conversationData =
-        (await cRes.json()) as PostConversationsResponseBody;
-
-      return new Ok(conversationData.conversation);
     },
-    [owner, user]
+    [owner, user, fetcher]
   );
 }
