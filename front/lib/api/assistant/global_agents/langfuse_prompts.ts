@@ -12,41 +12,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 const LangfuseModelConfigSchema = z.object({
-  modelId: z.string().optional(),
+  modelId: z.string(),
   reasoningEffort: AgentReasoningEffortSchema.optional(),
 });
 
 export interface LangfusePromptConfig {
   instructions: string;
-  modelConfig: ModelConfigurationType | null;
-  reasoningEffort?: AgentReasoningEffort;
-}
-
-// Best-effort: returns null if config is missing, malformed, or references an unknown model.
-function resolveModelConfig(rawConfig: unknown): {
   modelConfig: ModelConfigurationType;
   reasoningEffort?: AgentReasoningEffort;
-} | null {
-  const parsed = LangfuseModelConfigSchema.safeParse(rawConfig);
-  if (!parsed.success || !parsed.data.modelId) {
-    return null;
-  }
-
-  const modelConfig = getModelConfigByModelId(parsed.data.modelId);
-  if (!modelConfig) {
-    return null;
-  }
-
-  return {
-    modelConfig,
-    reasoningEffort: parsed.data.reasoningEffort
-      ? clampReasoningEffort(
-          parsed.data.reasoningEffort,
-          modelConfig.minimumReasoningEffort,
-          modelConfig.maximumReasoningEffort
-        )
-      : undefined,
-  };
 }
 
 export async function fetchLangfusePromptConfig(
@@ -61,12 +34,27 @@ export async function fetchLangfusePromptConfig(
   try {
     const prompt = await client.prompt.get(promptName);
     const instructions = prompt.compile(variables);
-    const resolved = resolveModelConfig(prompt.config);
+    const parsedConfig = LangfuseModelConfigSchema.parse(prompt.config);
+
+    const modelConfig = getModelConfigByModelId(parsedConfig.modelId);
+    if (!modelConfig) {
+      return new Err(
+        new Error(
+          `Unknown modelId in Langfuse config: "${parsedConfig.modelId}"`
+        )
+      );
+    }
 
     return new Ok({
       instructions,
-      modelConfig: resolved?.modelConfig ?? null,
-      reasoningEffort: resolved?.reasoningEffort,
+      modelConfig,
+      reasoningEffort: parsedConfig.reasoningEffort
+        ? clampReasoningEffort(
+            parsedConfig.reasoningEffort,
+            modelConfig.minimumReasoningEffort,
+            modelConfig.maximumReasoningEffort
+          )
+        : undefined,
     });
   } catch (error) {
     return new Err(normalizeError(error));
