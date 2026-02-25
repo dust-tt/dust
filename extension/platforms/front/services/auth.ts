@@ -7,7 +7,7 @@ import {
   AuthError,
   AuthService,
   getConnectionDetails,
-  getDustDomain,
+  getRegionInfoFromClaims,
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
@@ -167,7 +167,7 @@ export class FrontAuthService extends AuthService {
 
       const claims = jwtDecode<Record<string, string>>(data.access_token);
 
-      const dustDomain = getDustDomain(claims);
+      const regionInfo = getRegionInfoFromClaims(claims);
       const connectionDetails = getConnectionDetails(claims);
 
       if (
@@ -177,29 +177,11 @@ export class FrontAuthService extends AuthService {
         connectionDetails.connectionStrategy = data.authentication_method;
       }
 
-      // Get user details and workspaces
-      const res = await this.fetchMe({
-        accessToken: data.access_token,
-        dustDomain,
-      });
+      // Store regionInfo and connectionDetails separately.
+      await this.storage.set("regionInfo", regionInfo);
+      await this.storage.set("connectionDetails", connectionDetails);
 
-      if (res.isErr()) {
-        return res;
-      }
-
-      const workspaces = res.value.user.workspaces;
-
-      const selectedWorkspace =
-        workspaces.find((w) => w.sId === res.value.user.selectedWorkspace) ||
-        workspaces[0];
-
-      const storedUser = await this.saveUser({
-        ...res.value.user,
-        ...connectionDetails,
-        dustDomain,
-        selectedWorkspace: selectedWorkspace?.sId ?? null,
-      });
-      return new Ok({ tokens, user: storedUser });
+      return new Ok({ tokens, regionInfo, connectionDetails });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
@@ -218,12 +200,12 @@ export class FrontAuthService extends AuthService {
       }
     }
 
-    const user = await this.getStoredUser();
-    if (!user) {
+    const regionInfo = await this.getRegionInfoFromStorage();
+    if (!regionInfo) {
       return true;
     }
 
-    const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
+    const logoutUrl = `${regionInfo.url}/api/v1/auth/logout?${new URLSearchParams(
       queryParams
     )}`;
 
@@ -277,15 +259,15 @@ export class FrontAuthService extends AuthService {
         );
       }
 
-      const user = await this.getStoredUser();
-      if (!user) {
+      const regionInfo = await this.getRegionInfoFromStorage();
+      if (!regionInfo) {
         return new Err(
-          new AuthError("invalid_oauth_token_error", "No user found")
+          new AuthError("invalid_oauth_token_error", "No region info found")
         );
       }
 
       const response = await fetch(
-        `${user.dustDomain}/api/v1/auth/authenticate`,
+        `${regionInfo.url}/api/v1/auth/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },

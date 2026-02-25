@@ -1,3 +1,4 @@
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
   Avatar,
   DropdownMenu,
@@ -13,13 +14,12 @@ import {
   LightModeIcon,
   LogoutIcon,
 } from "@dust-tt/sparkle";
-import type { StoredUser } from "@extension/shared/services/auth";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useTheme } from "@extension/ui/hooks/useTheme";
 
 interface UserDropdownMenuProps {
   handleLogout: () => void;
-  user: StoredUser;
+  user: UserTypeWithWorkspaces;
 }
 
 export const UserDropdownMenu = ({

@@ -79,16 +79,28 @@ const shouldDisableContextMenuForDomain = async (
     return true;
   }
 
-  const user = await platform.auth.getStoredUser();
-  if (!user || !user.selectedWorkspace) {
+  const token = await platform.auth.getAccessToken();
+  const regionInfo = await platform.auth.getRegionInfoFromStorage();
+  const selectedWorkspace = await platform.auth.getSelectedWorkspace();
+
+  if (!token || !regionInfo || !selectedWorkspace) {
     return false;
   }
 
-  const blacklistedDomains =
-    user.workspaces.find((w) => w.sId === user.selectedWorkspace)
-      ?.blacklistedDomains || [];
-
-  return blacklistedDomains.some((d) => url.includes(d));
+  try {
+    const res = await fetch(
+      `${regionInfo.url}/api/w/${selectedWorkspace}/extension/config`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) {
+      return false;
+    }
+    const data = await res.json();
+    const blacklistedDomains: string[] = data.blacklistedDomains ?? [];
+    return blacklistedDomains.some((d) => url.includes(d));
+  } catch {
+    return false;
+  }
 };
 
 const toggleContextMenus = (isDisabled: boolean) => {
@@ -401,9 +413,9 @@ chrome.runtime.onMessageExternal.addListener((request) => {
         })
         .then(() => {
           chrome.storage.local.get(
-            ["extensionReady", "user"],
-            ({ extensionReady, user }) => {
-              if (request.workspaceId != user?.selectedWorkspace) {
+            ["extensionReady", "selectedWorkspace"],
+            ({ extensionReady, selectedWorkspace }) => {
+              if (request.workspaceId != selectedWorkspace) {
                 log("[onMessageExternal] User selected another workspace.");
                 return;
               }
@@ -561,22 +573,22 @@ const refreshToken = async (
         refresh_token: refreshToken,
       };
 
-      const user = await platform.auth.getStoredUser();
-      if (!user) {
-        log("No user found for token refresh.");
+      const regionInfo = await platform.auth.getRegionInfoFromStorage();
+      if (!regionInfo) {
+        log("No region info found for token refresh.");
         const handlers = state.refreshRequests;
         state.refreshRequests = [];
         handlers.forEach((sendResponse) => {
           sendResponse({
             success: false,
-            error: "No user found for token refresh.",
+            error: "No region info found for token refresh.",
           });
         });
         return;
       }
 
       const response = await fetch(
-        `${user.dustDomain}/api/workos/authenticate`,
+        `${regionInfo.url}/api/workos/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -683,11 +695,6 @@ const logout = async (
     log("No access token found for WorkOS logout.");
     sendResponse({ success: false, error: "No access token found." });
     return;
-  }
-
-  const user = await platform.auth.getStoredUser();
-  if (!user) {
-    return true;
   }
 
   const logoutUrl = `${DUST_US_URL}/api/workos/logout-url?${new URLSearchParams(

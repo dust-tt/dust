@@ -1,10 +1,10 @@
-import { setBaseUrlResolver } from "@app/lib/api/config";
+import { getBaseUrlFromResolver } from "@app/lib/api/config";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { resHandler } from "@extension/shared/lib/swr";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 interface ExtensionFetcherProviderProps {
   children: ReactNode;
@@ -13,20 +13,16 @@ interface ExtensionFetcherProviderProps {
 export function ExtensionFetcherProvider({
   children,
 }: ExtensionFetcherProviderProps) {
-  const { token, user } = useExtensionAuth();
-
-  useEffect(() => {
-    if (user?.dustDomain) {
-      setBaseUrlResolver(() => user.dustDomain);
-    }
-    return () => setBaseUrlResolver(null);
-  }, [user?.dustDomain]);
+  const { token } = useExtensionAuth();
 
   const { fetcher, fetcherWithBody } = useMemo(() => {
-    const dustDomain = user?.dustDomain ?? "";
-
-    const resolveUrl = (url: string) =>
-      url.startsWith("/") ? `${dustDomain}${url}` : url;
+    const resolveUrl = (url: string) => {
+      if (url.startsWith("/")) {
+        const baseUrl = getBaseUrlFromResolver();
+        return `${baseUrl}${url}`;
+      }
+      return url;
+    };
 
     const addAuthHeaders = (headers: HeadersInit = {}): HeadersInit => ({
       ...headers,
@@ -58,7 +54,7 @@ export function ExtensionFetcherProvider({
     };
 
     return { fetcher, fetcherWithBody };
-  }, [token, user?.dustDomain]);
+  }, [token]);
 
   return (
     <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>

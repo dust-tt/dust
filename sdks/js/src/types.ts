@@ -744,12 +744,14 @@ const LightWorkspaceSchema = z.object({
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
 export type WorkspaceType = z.infer<typeof WorkspaceSchema>;
+/** @deprecated Use WorkspaceType + separate extension config endpoint instead. */
 export type ExtensionWorkspaceType = z.infer<typeof ExtensionWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
+/** @deprecated Use WorkspaceSchema + separate extension config endpoint instead. */
 const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
   blacklistedDomains: z.array(z.string()).nullable(),
 });

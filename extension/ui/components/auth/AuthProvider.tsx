@@ -1,11 +1,12 @@
 import { AuthContext } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import type { SubscriptionType } from "@app/types/plan";
-import type { ExtensionWorkspaceType, WorkspaceType } from "@app/types/user";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
-import type { AuthError, StoredUser } from "@extension/shared/services/auth";
+import type { AuthError } from "@extension/shared/services/auth";
 import { useAuthHook } from "@extension/ui/components/auth/useAuth";
 import type { ReactNode } from "react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 
 // Extension-specific auth context (bearer token, login/logout, etc.)
 type ExtensionAuthContextType = {
@@ -14,8 +15,8 @@ type ExtensionAuthContextType = {
   authError: AuthError | null;
   setAuthError: (error: AuthError | null) => void;
   redirectToSSOLogin: (workspace: WorkspaceType) => void;
-  user: StoredUser | null;
-  workspace: ExtensionWorkspaceType | undefined;
+  user: UserTypeWithWorkspaces | null;
+  workspace: WorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
   handleLogin: () => void;
@@ -91,12 +92,24 @@ interface ExtensionAuthProviderProps {
  *   ExtensionAuthContext — consumed with useExtensionAuth().
  * - Bridges to the front's AuthContext so that shared front components (e.g.
  *   ConversationViewer sub-components) can call useAuth() without error.
+ * - Uses RegionContext for URL resolution (dustDomain).
  *
  * Mirrors the ExtensionFetcherProvider / FetcherProvider pattern.
  */
 export function ExtensionAuthProvider({
   children,
 }: ExtensionAuthProviderProps) {
+  const { regionInfo, setRegionInfo } = useRegionContext();
+
+  const dustDomain = regionInfo?.url ?? null;
+
+  const setDustDomain = useCallback(
+    (url: string) => {
+      setRegionInfo({ name: regionInfo?.name ?? "us-central1", url });
+    },
+    [setRegionInfo, regionInfo?.name]
+  );
+
   const {
     token,
     isAuthenticated,
@@ -111,7 +124,7 @@ export function ExtensionAuthProvider({
     handleLogout,
     handleSelectWorkspace,
     featureFlags,
-  } = useAuthHook();
+  } = useAuthHook({ dustDomain, setDustDomain });
 
   const extensionAuthValue = useMemo(
     () => ({
