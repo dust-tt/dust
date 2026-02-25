@@ -5,7 +5,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectionIdRequiredForProvider,
@@ -135,7 +135,7 @@ export const AddConnectionMenu = ({
   const { isDark } = useTheme();
   const { featureFlags } = useFeatureFlags();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
 
   const handleOnClose = useCallback(
     () =>
@@ -245,7 +245,7 @@ export const AddConnectionMenu = ({
         owner,
         provider,
         extraConfig,
-        regionInfo: regionContext?.regionInfo ?? null,
+        regionInfo: regionContext.regionInfo,
       });
       if (connectionRes.isErr()) {
         throw connectionRes.error;

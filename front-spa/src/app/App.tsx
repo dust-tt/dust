@@ -18,8 +18,8 @@ const router = createBrowserRouter(routes, {
 export default function App() {
   return (
     <AppReadyProvider>
-      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-        <RegionProvider>
+      <RegionProvider>
+        <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
           <PostHogTracker authenticated>
             <SparkleContext.Provider
               value={{ components: { link: ReactRouterLinkWrapper } }}
@@ -31,8 +31,8 @@ export default function App() {
               </RootLayout>
             </SparkleContext.Provider>
           </PostHogTracker>
-        </RegionProvider>
-      </FetcherProvider>
+        </FetcherProvider>
+      </RegionProvider>
     </AppReadyProvider>
   );
 }

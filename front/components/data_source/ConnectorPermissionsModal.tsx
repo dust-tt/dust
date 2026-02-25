@@ -13,7 +13,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   CONNECTOR_UI_CONFIGURATIONS,
@@ -702,7 +702,7 @@ export function ConnectorPermissionsModal({
   readOnly,
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
 
   const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
@@ -1131,7 +1131,7 @@ export function ConnectorPermissionsModal({
                     owner,
                     extraConfig,
                     sendNotification,
-                    regionContext?.regionInfo ?? null
+                    regionContext.regionInfo
                   );
                   closeModal(false);
                 }}
