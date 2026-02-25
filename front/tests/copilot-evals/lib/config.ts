@@ -9,6 +9,10 @@ import {
   formatAvailableSkills,
   formatAvailableTools,
 } from "@app/lib/api/assistant/global_agents/copilot_context";
+import {
+  MCP_SERVERS_FOR_GLOBAL_AGENTS,
+  type MCPServerViewsForGlobalAgentsMap,
+} from "@app/lib/api/assistant/global_agents/tools";
 import type {
   AvailableSkill,
   AvailableTool,
@@ -115,6 +119,11 @@ function getMockCopilotContext(): CopilotContext {
   };
 }
 
+const MOCK_MCP_SERVER_VIEWS: MCPServerViewsForGlobalAgentsMap =
+  Object.fromEntries(
+    MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [name, null])
+  ) as MCPServerViewsForGlobalAgentsMap;
+
 export async function getCopilotConfig(): Promise<CopilotConfig> {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -122,10 +131,18 @@ export async function getCopilotConfig(): Promise<CopilotConfig> {
   let copilotConfig;
   switch (COPILOT_AGENT) {
     case "default":
-      copilotConfig = _getCopilotGlobalAgent(auth, mockCopilotContext);
+      copilotConfig = _getCopilotGlobalAgent(auth, {
+        copilotContext: mockCopilotContext,
+        preFetchedDataSources: null,
+        mcpServerViews: MOCK_MCP_SERVER_VIEWS,
+      });
       break;
     case "haiku":
-      copilotConfig = _getCopilotHaikuGlobalAgent(auth, mockCopilotContext);
+      copilotConfig = _getCopilotHaikuGlobalAgent(auth, {
+        copilotContext: mockCopilotContext,
+        preFetchedDataSources: null,
+        mcpServerViews: MOCK_MCP_SERVER_VIEWS,
+      });
       break;
     default:
       throw new Error(

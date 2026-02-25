@@ -1,6 +1,10 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
+import type {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -10,6 +14,7 @@ import {
   getLargeWhitelistedModel,
 } from "@app/types/assistant/assistant";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { getCompanyDataAction } from "./shared";
 
 const COPILOT_INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
@@ -20,6 +25,7 @@ You have access to:
 - Live agent form state and pending suggestions (via get_agent_config)
 - Available models, skills, tools, and knowledge in this workspace
 - Agent feedback and usage insights from production
+- The company space data (search, list, find, read) to look up internal documentation. See <company_data_guidance> for when and how to use it.
 
 Your users are building agents for their teams - mix of technical and non-technical, some prompting experts, most learning.
 </primary_goal>`,
@@ -262,6 +268,17 @@ Use to suggest adding or removing knowledge sources. Always call \`search_knowle
 
 </knowledge_guidance>`,
 
+  companyDataGuidance: `<company_data_guidance>
+You have access to company space data (semantic_search, list, find, cat tools). Use it only as required to answer business requirement questions — for example: company terminology, existing processes, or documentation the user wants the agent to align with.
+
+Rules:
+- Use company data only when it is needed to answer a concrete business requirement question. Do not browse or search proactively.
+- This is unlikely to be needed for existing agents. It is more useful for new agents, when the user is still defining what the agent should do and may need to reference existing docs or terminology.
+- Before searching or reading company data, get the user's approval. For example: "I can look up your internal docs for [X]. Should I search company data for that?" Only proceed after they confirm.
+- Do not use company data for general prompting advice, formatting, or when the user has already provided the needed context.
+- If you need to find data sources to configure as knowledge, prefer the \`search_knowledge\` tool to find relevant data sources.
+</company_data_guidance>`,
+
   modelGuidance: `<model_guidance>
 Call \`suggest_model\` to suggest a model change. Use sparingly. Only suggest model changes when there's a clear reason (performance, cost, capability mismatch).
 </model_guidance>`,
@@ -439,6 +456,7 @@ export function buildCopilotInstructions(
     COPILOT_INSTRUCTION_SECTIONS.instructionsGuidance,
     COPILOT_INSTRUCTION_SECTIONS.skillsToolsGuidance,
     COPILOT_INSTRUCTION_SECTIONS.knowledgeGuidance,
+    COPILOT_INSTRUCTION_SECTIONS.companyDataGuidance,
     COPILOT_INSTRUCTION_SECTIONS.modelGuidance,
     COPILOT_INSTRUCTION_SECTIONS.suggestionContext,
     COPILOT_INSTRUCTION_SECTIONS.responseStyle,
@@ -474,17 +492,33 @@ export function buildCopilotInstructions(
 
 export function _getCopilotGlobalAgent(
   auth: Authenticator,
-  copilotContext: CopilotContext | null
+  {
+    copilotContext,
+    preFetchedDataSources,
+    mcpServerViews,
+  }: {
+    copilotContext: CopilotContext | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  }
 ): AgentConfigurationType {
   const owner = auth.getNonNullableWorkspace();
 
-  const actions = copilotContext?.mcpServerViews?.context
-    ? [
-        buildServerSideMCPServerConfiguration({
-          mcpServerView: copilotContext.mcpServerViews.context,
-        }),
-      ]
-    : [];
+  const companyDataAction = getCompanyDataAction(
+    preFetchedDataSources,
+    mcpServerViews
+  );
+
+  const contextAction = copilotContext?.mcpServerViews?.context
+    ? buildServerSideMCPServerConfiguration({
+        mcpServerView: copilotContext.mcpServerViews.context,
+      })
+    : null;
+
+  const actions = [
+    ...(contextAction ? [contextAction] : []),
+    ...(companyDataAction ? [companyDataAction] : []),
+  ];
 
   const modelConfiguration = getLargeWhitelistedModel(owner);
   const model = modelConfiguration
