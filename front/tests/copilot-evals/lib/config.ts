@@ -22,6 +22,7 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { CopilotConfig } from "@app/tests/copilot-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export const RUN_COPILOT_EVAL = process.env.RUN_COPILOT_EVAL === "true";
 export const JUDGE_RUNS = parseInt(process.env.JUDGE_RUNS ?? "3", 10);
@@ -152,15 +153,29 @@ export async function getCopilotConfig(): Promise<CopilotConfig> {
       });
       break;
     case "gemini-3-light":
-      copilotConfig = _getCopilotGlobalAgent(auth, {
-        copilotContext: mockCopilotContext,
+      copilotConfig = _getCopilotEdgeGlobalAgent(auth, {
+        copilotContext: {
+          ...mockCopilotContext,
+          langfuseConfig: {
+            instructions: "",
+            modelConfig: GEMINI_3_FLASH_MODEL_CONFIG,
+            reasoningEffort: "light",
+          },
+        },
         preFetchedDataSources: null,
         mcpServerViews: MOCK_MCP_SERVER_VIEWS,
       });
       break;
     case "gemini-3-medium":
-      copilotConfig = _getCopilotGlobalAgent(auth, {
-        copilotContext: mockCopilotContext,
+      copilotConfig = _getCopilotEdgeGlobalAgent(auth, {
+        copilotContext: {
+          ...mockCopilotContext,
+          langfuseConfig: {
+            instructions: "",
+            modelConfig: GEMINI_3_FLASH_MODEL_CONFIG,
+            reasoningEffort: "medium",
+          },
+        },
         preFetchedDataSources: null,
         mcpServerViews: MOCK_MCP_SERVER_VIEWS,
       });
@@ -185,21 +200,9 @@ export async function getCopilotConfig(): Promise<CopilotConfig> {
     }
   }
 
-  const model = {
-    ...copilotConfig.model,
-    ...(COPILOT_AGENT === "gemini-3-light" && {
-      modelId: GEMINI_3_FLASH_MODEL_ID,
-      reasoningEffort: "light" as const,
-    }),
-    ...(COPILOT_AGENT === "gemini-3-medium" && {
-      modelId: GEMINI_3_FLASH_MODEL_ID,
-      reasoningEffort: "medium" as const,
-    }),
-  };
-
   return {
     instructions: copilotConfig.instructions ?? "",
-    model,
+    model: copilotConfig.model,
     tools,
   };
 }
