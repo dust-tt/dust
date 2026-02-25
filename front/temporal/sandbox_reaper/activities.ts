@@ -8,12 +8,10 @@ import { BATCH_SIZE, DESTROY_THRESHOLD_MS, SLEEP_THRESHOLD_MS } from "./config";
 const REAPER_CONCURRENCY = 16;
 
 /**
- * Process one batch of stale sandboxes. Returns `true` if any work was done
- * (i.e. at least one sandbox was found), signalling the workflow to loop.
+ * Process one batch of stale sandboxes. Returns `true` when either query
+ * returned a full batch, signalling the workflow to loop for more.
  */
 export async function reapStaleSandboxesActivity(): Promise<boolean> {
-  let didWork = false;
-
   // Phase 1: Sleep running sandboxes that have been idle > SLEEP_THRESHOLD_MS.
   const runningConversationIds =
     await SandboxResource.dangerouslyGetStaleConversationIds({
@@ -23,7 +21,6 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     });
 
   if (runningConversationIds.length > 0) {
-    didWork = true;
     logger.info(
       { count: runningConversationIds.length },
       "Reaper: stale running sandboxes found."
@@ -55,7 +52,6 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     });
 
   if (sleepingConversationIds.length > 0) {
-    didWork = true;
     logger.info(
       { count: sleepingConversationIds.length },
       "Reaper: stale sleeping sandboxes found."
@@ -78,5 +74,8 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     );
   }
 
-  return didWork;
+  return (
+    runningConversationIds.length >= BATCH_SIZE ||
+    sleepingConversationIds.length >= BATCH_SIZE
+  );
 }
