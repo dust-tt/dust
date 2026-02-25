@@ -18,6 +18,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type {
   ConversationError,
@@ -264,6 +265,8 @@ export async function destroyConversation(
       conversationId: conversation.id,
     },
   });
+
+  await SandboxResource.deleteByConversationModelId(auth, conversation.id);
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,

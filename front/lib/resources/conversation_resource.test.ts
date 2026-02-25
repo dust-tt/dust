@@ -4788,6 +4788,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "conversation_skills",
   "data_source",
   "message",
+  "sandbox",
   "user_conversation_reads",
   "user_project_digest",
 ];
