@@ -386,11 +386,11 @@ export class InternalMCPServerInMemoryResource {
     const workspace = auth.getNonNullableWorkspace();
     const encryptedKey = sharedSecret
       ? encrypt({
-        text: sharedSecret,
-        key: workspace.sId,
-        useCase: "mcp_server_credentials",
-      })
-      : null
+          text: sharedSecret,
+          key: workspace.sId,
+          useCase: "mcp_server_credentials",
+        })
+      : null;
 
     const existing = await InternalMCPServerCredentialModel.findOne({
       where: {
