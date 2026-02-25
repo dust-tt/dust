@@ -102,7 +102,12 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
               JUDGE_RUNS
             );
 
-            const passed = judgeResult.finalScore >= PASS_THRESHOLD;
+            const actualToolNames = toolCalls.map((t) => t.name);
+            const missingTools = (testCase.expectedToolCalls ?? []).filter(
+              (expected) => !actualToolNames.includes(expected)
+            );
+            const passedJudge = judgeResult.finalScore >= PASS_THRESHOLD;
+            const passed = passedJudge && missingTools.length === 0;
 
             evalResults.push({
               testCase,
@@ -113,16 +118,15 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
               copilotModelTimeMs: modelTimeMs,
             });
 
-            const actualToolNames = toolCalls.map((t) => t.name);
-            for (const expected of testCase.expectedToolCalls ?? []) {
+            for (const missing of missingTools) {
               expect(
                 actualToolNames,
-                `Expected tool "${expected}" not called. Tools called: [${actualToolNames.join(", ")}]\n\nCopilot response:\n${responseText}`
-              ).toContain(expected);
+                `Expected tool "${missing}" not called. Tools called: [${actualToolNames.join(", ")}]\n\nCopilot response:\n${responseText}`
+              ).toContain(missing);
             }
 
             expect(
-              passed,
+              passedJudge,
               `Judge score ${judgeResult.finalScore} < threshold ${PASS_THRESHOLD}\nReasoning: ${judgeResult.reasoning}\n\nCopilot response:\n${responseText}`
             ).toBe(true);
           },
