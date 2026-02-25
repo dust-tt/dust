@@ -33,7 +33,7 @@
     "tailwind-scrollbar-hide": "^1.1.7",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.9.3",
+    "@typescript/native-preview": "^7.0.0-dev.20260224.1",
     "vite": "^5.4.0"
   }
 }
