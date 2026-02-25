@@ -13,31 +13,27 @@ export const instructionsWithContextSuite: TestSuite = {
       userMessage:
         "Help me connect this agent to our company data so it can answer policy questions accurately",
       mockState: AGENT_NEEDING_KNOWLEDGE,
-      expectedToolCalls: [
-        "get_agent_info",
-        "get_available_knowledge",
-        "suggest_prompt_edits",
-      ],
-      judgeCriteria: `Should identify relevant knowledge sources for policy questions.
-Must suggest instruction edits that reference SPECIFIC data sources, not just "use the data".
-Should guide which sources to check for which topics.`,
+      expectedToolCalls: ["get_agent_config"],
+      judgeCriteria: `Intent is clear: connect to company data for policy questions. Should identify knowledge needs; call suggest_knowledge and/or suggest_prompt_edits when possible. If no policy sources exist, guiding user to connect and offering to wire up once connected is acceptable. Per new workflow may ask where policies live first. Score 0-1 if no actionable guidance.`,
     },
     {
       scenarioId: "recommend-knowledge",
       userMessage: "What company knowledge should I connect to this agent?",
       mockState: AGENT_NEEDING_KNOWLEDGE,
-      expectedToolCalls: ["get_agent_info", "get_available_knowledge"],
+      expectedToolCalls: ["get_agent_config"],
       judgeCriteria: `Should map knowledge sources to agent's needs (HR policies, security, expenses).
 Should make specific recommendations with rationale.
+May use get_available_knowledge or search_knowledge to discover sources.
 May offer to update instructions once knowledge is connected.`,
     },
     {
       scenarioId: "recommend-skills",
       userMessage: "What skills would help this agent?",
       mockState: AGENT_NEEDING_KNOWLEDGE,
-      expectedToolCalls: ["get_agent_info", "get_available_skills"],
+      expectedToolCalls: ["get_agent_config"],
       judgeCriteria: `Should match skills to agent's use case (policy expert).
 Should recommend only skills that complement the purpose.
+May use injected workspace context (no get_available_skills call) or call get_available_skills.
 Should NOT recommend skills that don't fit.`,
     },
     {
@@ -45,38 +41,24 @@ Should NOT recommend skills that don't fit.`,
       userMessage:
         "Are there any skills I should add to make this code reviewer better?",
       mockState: AGENT_WITH_SKILL_OVERLAP,
-      expectedToolCalls: [
-        "get_agent_info",
-        "get_available_skills",
-        "suggest_skills",
-      ],
-      judgeCriteria: `Should identify relevant skills for code review.
-Should note that Web Search skill exists and could simplify instructions.
-Should explain value add of each suggested skill.`,
+      expectedToolCalls: ["get_agent_config"],
+      judgeCriteria: `Intent is clear: skills for code review. Should recommend relevant skills (e.g. Web Search) and call suggest_skills. Per new workflow may ask one question first. Score 0-1 if no skill suggestion.`,
     },
     {
       scenarioId: "identify-skill-overlap",
       userMessage:
         "I wrote custom web search instructions in my agent, but I see there's a Web Search skill. Should I use the skill instead?",
       mockState: AGENT_WITH_SKILL_OVERLAP,
-      expectedToolCalls: ["get_agent_info", "get_available_skills"],
-      judgeCriteria: `Should confirm the overlap between custom <web_search_capability> section and the Web Search skill.
-Should recommend using the skill (cleaner, maintained by platform).
-Should offer to remove the redundant custom section.`,
+      expectedToolCalls: ["get_agent_config"],
+      judgeCriteria: `Intent is clear: use skill instead of custom. Should recommend Web Search skill and call suggest_skills; offer to clean up redundant section (suggest_prompt_edits or next turn). Score 0-1 if only describes without suggest_skills.`,
     },
     {
       scenarioId: "simplify-with-skill",
       userMessage:
         "These instructions feel bloated. Can you help me clean them up using skills where possible?",
       mockState: AGENT_WITH_SKILL_OVERLAP,
-      expectedToolCalls: [
-        "get_agent_info",
-        "get_available_skills",
-        "suggest_prompt_edits",
-      ],
-      judgeCriteria: `Should identify web_search_capability section as candidate for replacement with skill.
-Should suggest: add Web Search skill + remove redundant custom section.
-Result should be shorter but equally capable.`,
+      expectedToolCalls: ["get_agent_config"],
+      judgeCriteria: `Intent is clear: simplify with skills. Should add Web Search skill and remove redundant web_search_capability (suggest_skills + suggest_prompt_edits). Per new workflow may ask one question. Score 0-1 if neither suggestion is made.`,
     },
   ],
 };
