@@ -3,9 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": {
-    "node": "20.19.2"
-  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
@@ -13,7 +10,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@types/node": "^20.11.30",
+    "@types/node": "22.19.11",
     "tsx": "^4.19.0",
     "typescript": "^5.5.4"
   }
