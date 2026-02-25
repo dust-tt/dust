@@ -1,4 +1,5 @@
 import {
+  COPILOT_AGENT,
   COPILOT_ON_COPILOT,
   COPILOT_ON_COPILOT_TIMEOUT_MS,
   createMockAuthenticator,
@@ -78,12 +79,13 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
           async () => {
             const auth = createMockAuthenticator();
 
-            const { responseText, toolCalls } = await executeCopilot(
-              auth,
-              copilotConfig,
-              testCase.userMessage,
-              testCase.mockState
-            );
+            const { responseText, toolCalls, modelTimeMs } =
+              await executeCopilot(
+                auth,
+                copilotConfig,
+                testCase.userMessage,
+                testCase.mockState
+              );
 
             // Require either text response or tool calls (judge has access to tool calls)
             expect(
@@ -108,6 +110,7 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
               toolCalls,
               judgeResult,
               passed,
+              copilotModelTimeMs: modelTimeMs,
             });
 
             const actualToolNames = toolCalls.map((t) => t.name);
@@ -128,6 +131,38 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
       }
     });
   }
+
+  afterAll(() => {
+    if (evalResults.length === 0) {
+      return;
+    }
+
+    const totalCopilotTimeMs = evalResults.reduce(
+      (sum, r) => sum + r.copilotModelTimeMs,
+      0
+    );
+
+    const passedCount = evalResults.filter((r) => r.passed).length;
+    const passRate = ((passedCount / evalResults.length) * 100).toFixed(0);
+    const lines = [
+      "",
+      "=".repeat(60),
+      `COPILOT EVAL TIMING SUMMARY (agent: ${COPILOT_AGENT})`,
+      "=".repeat(60),
+      `Total scenarios: ${evalResults.length}`,
+      `Passed: ${passedCount}/${evalResults.length} (${passRate}%)`,
+      `Total copilot model time: ${(totalCopilotTimeMs / 1000).toFixed(1)}s`,
+      `Average copilot model time per scenario: ${(totalCopilotTimeMs / evalResults.length / 1000).toFixed(1)}s`,
+      "-".repeat(60),
+      ...evalResults.map((r) => {
+        const status = r.passed ? "PASS" : "FAIL";
+        return `  [${status}] ${r.testCase.category}/${r.testCase.scenarioId}: ${(r.copilotModelTimeMs / 1000).toFixed(1)}s`;
+      }),
+      "=".repeat(60),
+      "",
+    ];
+    console.log(lines.join("\n"));
+  });
 
   if (COPILOT_ON_COPILOT) {
     afterAll(async () => {
