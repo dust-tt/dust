@@ -23,7 +23,8 @@ function formatFieldValue(value: NonNullable<unknown>): string {
 
 export function renderTicket(
   ticket: ZendeskTicket,
-  includeFields: string[] = []
+  includeFields: string[] = [],
+  ticketFieldsResult?: Result<ZendeskTicketField[], Error>
 ): string {
   const lines = [
     `## Ticket ID: ${ticket.id}`,
@@ -56,39 +57,28 @@ export function renderTicket(
     }
   }
 
-  return lines.join("\n");
-}
-
-export function renderCustomFields(
-  ticket: ZendeskTicket,
-  ticketFieldsResult: Result<ZendeskTicketField[], Error>
-): string {
-  if (!ticket.custom_fields || ticket.custom_fields.length === 0) {
-    return "";
-  }
-
-  if (ticketFieldsResult.isErr()) {
-    return "\n- Custom Fields: (names could not be retrieved)";
-  }
-
-  const fieldMap = new Map(
-    ticketFieldsResult.value.map((f) => [f.id, f.title])
-  );
-  const lines: string[] = [];
-
-  for (const field of ticket.custom_fields) {
-    if (field.value !== null && field.value !== "") {
-      const fieldName = fieldMap.get(field.id);
-      if (fieldName) {
-        const valueStr = Array.isArray(field.value)
-          ? field.value.join(", ")
-          : String(field.value);
-        lines.push(`- Custom Fields — ${fieldName}: ${valueStr}`);
+  if (ticketFieldsResult !== undefined && ticket.custom_fields?.length) {
+    if (ticketFieldsResult.isErr()) {
+      lines.push("- Custom Fields: (names could not be retrieved)");
+    } else {
+      const fieldMap = new Map(
+        ticketFieldsResult.value.map((f) => [f.id, f.title])
+      );
+      for (const field of ticket.custom_fields) {
+        if (field.value !== null && field.value !== "") {
+          const fieldName = fieldMap.get(field.id);
+          if (fieldName) {
+            const valueStr = Array.isArray(field.value)
+              ? field.value.join(", ")
+              : String(field.value);
+            lines.push(`- Custom Fields — ${fieldName}: ${valueStr}`);
+          }
+        }
       }
     }
   }
 
-  return lines.length > 0 ? "\n" + lines.join("\n") : "";
+  return lines.join("\n");
 }
 
 function formatMinutes(minutes: number | null): string {

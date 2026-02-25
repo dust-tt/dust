@@ -8,7 +8,6 @@ import {
 } from "@app/lib/api/actions/servers/zendesk/client";
 import { ZENDESK_TOOLS_METADATA } from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
-  renderCustomFields,
   renderTicket,
   renderTicketComments,
   renderTicketFields,
@@ -50,13 +49,13 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
 
     const ticket = ticketResult.value;
 
-    let ticketText = renderTicket(ticket, includeFields);
-
+    let ticketFieldsResult: Result<ZendeskTicketField[], Error> | undefined;
     if (includeFields.includes("custom_fields")) {
       const fieldIds = getUniqueCustomFieldIds(ticket);
-      const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
-      ticketText += renderCustomFields(ticket, ticketFieldsResult);
+      ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
     }
+
+    let ticketText = renderTicket(ticket, includeFields, ticketFieldsResult);
 
     if (includeMetrics) {
       const metricsResult = await client.getTicketMetrics(ticketId);
@@ -147,19 +146,15 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       ]);
     }
 
-    const includeCustomFields = includeFields.includes("custom_fields");
     let ticketFieldsResult: Result<ZendeskTicketField[], Error> | undefined;
-    if (includeCustomFields) {
+    if (includeFields.includes("custom_fields")) {
       const fieldIds = getUniqueCustomFieldIds(results);
       ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
     }
 
     const ticketsText = results
       .map((ticket) => {
-        let text = renderTicket(ticket, includeFields);
-        if (includeCustomFields && ticketFieldsResult) {
-          text += renderCustomFields(ticket, ticketFieldsResult);
-        }
+        const text = renderTicket(ticket, includeFields, ticketFieldsResult);
         return ["---", text].join("\n");
       })
       .join("\n\n");
