@@ -23,12 +23,7 @@ const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
     tooltip:
       "You can generate an API token from your Front settings under Developers > API tokens.",
   },
-  openai_usage: {
-    label: "OpenAI Admin API Key",
-    placeholder: "Paste your OpenAI admin key (starts with sk-admin-)",
-    tooltip:
-      "This requires an Admin API key (starts with sk-admin-), not a regular API key. Generate one from the OpenAI platform under Settings > Organization > Admin Keys.",
-  },
+
   salesloft: {
     label: "Salesloft API Key",
     placeholder: "Paste your Salesloft API key",
