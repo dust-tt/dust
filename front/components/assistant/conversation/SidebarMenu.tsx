@@ -736,8 +736,6 @@ export function AgentSidebarMenu({
         hasMore={hasMore}
         loadMore={loadMore}
         isLoadingMore={isLoadingMore}
-        hideTriggeredConversations={hideTriggeredConversations}
-        setHideTriggeredConversations={setHideTriggeredConversations}
       />
     );
   }, [
@@ -1276,8 +1274,6 @@ interface NavigationListWithInboxProps {
   hasMore: boolean;
   loadMore: () => void;
   isLoadingMore: boolean;
-  hideTriggeredConversations: boolean;
-  setHideTriggeredConversations: (hide: boolean) => void;
 }
 
 function NavigationListWithInbox({
@@ -1298,8 +1294,6 @@ function NavigationListWithInbox({
   hasMore,
   loadMore,
   isLoadingMore,
-  hideTriggeredConversations,
-  setHideTriggeredConversations,
 }: NavigationListWithInboxProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { readConversations, inboxConversations } = useMemo(() => {
