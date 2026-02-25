@@ -22,13 +22,8 @@ import {
 
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
-import { normalizeError } from "../shared/utils/error_utils";
-import { GLOBAL_AGENTS_SID, isGlobalAgentId } from "./assistant";
+import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
-
-// Global agent config is expensive to fetch (MCP server queries) so we cache it.
-// This TTL can be increased when we have versions for global agents: we can then cache indefinitly.
-const GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
@@ -39,10 +34,6 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "agent_message_deleted",
   "user_message_deleted",
 ] as const;
-
-function isCachedGlobalAgent(agentId: string): boolean {
-  return agentId === GLOBAL_AGENTS_SID.COPILOT;
-}
 
 export type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
@@ -96,35 +87,6 @@ function getCachedGetConversation(ttlMs: number) {
     }
   );
 }
-
-async function getGlobalAgentConfigurationForCache(
-  auth: Authenticator,
-  agentId: string,
-  // Only used for cache key uniqueness.
-  _workspaceId: string,
-  _userId: string
-): Promise<AgentConfigurationType> {
-  const config = await getAgentConfiguration(auth, {
-    agentId: agentId,
-    variant: "full",
-  });
-  if (!config) {
-    // Throws on error because cacheWithRedis expects functions that throw (not nullable returns).
-    throw new Error(`Global agent configuration not found for id ${agentId}.`);
-  }
-  return config;
-}
-
-const getCachedGlobalAgentConfiguration = cacheWithRedis(
-  getGlobalAgentConfigurationForCache,
-  // cache is done per user as the prompt (available tools, skills...) may differ per users.
-  (_auth, agentId, workspaceId, userId) =>
-    `${workspaceId}:${agentId}:${userId}`,
-  {
-    ttlMs: GLOBAL_AGENT_CONFIGURATION_CACHE_TTL_MS,
-    useDistributedLock: true,
-  }
-);
 
 export type AgentLoopArgs = {
   agentMessageId: string;
@@ -313,33 +275,31 @@ export async function getAgentLoopDataWithAuth(
     return new Err(new AgentLoopDataError("user_message_deleted"));
   }
 
-  let agentConfiguration: AgentConfigurationType;
   const agentId = agentMessage.configuration.sId;
-  const user = auth.user();
-  if (isCachedGlobalAgent(agentId) && user) {
-    try {
-      agentConfiguration = await getCachedGlobalAgentConfiguration(
-        auth,
-        agentId,
-        auth.getNonNullableWorkspace().sId,
-        user.sId
-      );
-    } catch (error) {
-      return new Err(normalizeError(error));
+
+  // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.
+  // The key will be different for a new message or a new version of the same message (retries).
+  const agentConfiguration = await cacheWithRedis<
+    AgentConfigurationType | null,
+    Parameters<typeof getAgentConfiguration<"full">>
+  >(
+    getAgentConfiguration,
+    () =>
+      `agentMessageId:${agentMessageId}-agentConfigurationId:${agentId}-agentMessageVersion:${agentMessageVersion}`,
+    {
+      ttlMs: 60 * 60 * 1000, // 1 hour
     }
-  } else {
-    const config = await getAgentConfiguration(auth, {
-      agentId,
-      // We do define agentMessage.configuration.version for global agent, ignoring this value here.
-      agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
-        ? undefined
-        : agentMessage.configuration.version,
-      variant: "full" as const,
-    });
-    if (!config) {
-      return new Err(new Error("Agent configuration not found"));
-    }
-    agentConfiguration = config;
+  )(auth, {
+    agentId,
+    // We do define agentMessage.configuration.version for global agent, ignoring this value here.
+    agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
+      ? undefined
+      : agentMessage.configuration.version,
+    variant: "full" as const,
+  });
+
+  if (!agentConfiguration) {
+    return new Err(new Error("Agent configuration not found"));
   }
 
   return new Ok({
