@@ -12,9 +12,9 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
+import { decrypt } from "@app/types/shared/utils/encryption";
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
-
 import handler from "./index";
 
 // Mock the data_sources module to spy on upsertTable
@@ -308,7 +308,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
     expect(credential?.encryptedKey).toBeTruthy();
     expect(
       decrypt({
-        encrypted: credential?.encryptedKey,
+        encrypted: credential?.encryptedKey ?? "",
         key: workspace.sId,
         useCase: "mcp_server_credentials",
       })
