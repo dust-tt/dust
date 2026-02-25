@@ -94,6 +94,7 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import {
@@ -201,6 +202,7 @@ export function loadAllModels() {
     UserProjectDigestModel,
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
+    SandboxModel,
   ];
 }
 
