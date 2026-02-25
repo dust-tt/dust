@@ -76,7 +76,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
         buffer: require.resolve("buffer/"),
         url: require.resolve("url/"),
         zlib: false,
-        assert: false,
+        assert: require.resolve("assert"),
       },
     },
     plugins: [
