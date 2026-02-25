@@ -75,6 +75,9 @@ export const ZendeskTicketSchema = z
       })
       .optional(),
     submitter_id: z.number(),
+    custom_status_id: z.number().nullable().optional(),
+    external_id: z.string().nullable().optional(),
+    problem_id: z.number().nullable().optional(),
   })
   .passthrough();
 

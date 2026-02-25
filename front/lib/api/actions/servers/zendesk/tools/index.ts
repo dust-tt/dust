@@ -27,7 +27,7 @@ function isTrackedError(error: Error): boolean {
 
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
   get_ticket: async (
-    { ticketId, includeMetrics, includeConversation },
+    { ticketId, fields, includeMetrics, includeConversation },
     { authInfo }
   ) => {
     const clientResult = getZendeskClient(authInfo);
@@ -48,12 +48,14 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     }
 
     const ticket = ticketResult.value;
+    const requestedFields = fields ?? [];
 
-    const fieldIds = getUniqueCustomFieldIds(ticket);
     const ticketFieldsResult: Result<ZendeskTicketField[], Error> =
-      await client.getTicketFieldsByIds(fieldIds);
+      requestedFields.includes("custom_fields")
+        ? await client.getTicketFieldsByIds(getUniqueCustomFieldIds(ticket))
+        : new Ok([]);
 
-    let ticketText = renderTicket(ticket, ticketFieldsResult);
+    let ticketText = renderTicket(ticket, ticketFieldsResult, requestedFields);
 
     if (includeMetrics) {
       const metricsResult = await client.getTicketMetrics(ticketId);
@@ -113,7 +115,10 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     ]);
   },
 
-  search_tickets: async ({ query, sortBy, sortOrder }, { authInfo }) => {
+  search_tickets: async (
+    { query, fields, sortBy, sortOrder },
+    { authInfo }
+  ) => {
     const clientResult = getZendeskClient(authInfo);
     if (clientResult.isErr()) {
       return clientResult;
@@ -141,13 +146,19 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       ]);
     }
 
-    const fieldIds = getUniqueCustomFieldIds(results);
+    const requestedFields = fields ?? [];
+
     const ticketFieldsResult: Result<ZendeskTicketField[], Error> =
-      await client.getTicketFieldsByIds(fieldIds);
+      requestedFields.includes("custom_fields")
+        ? await client.getTicketFieldsByIds(getUniqueCustomFieldIds(results))
+        : new Ok([]);
 
     const ticketsText = results
       .map((ticket) => {
-        return ["---", renderTicket(ticket, ticketFieldsResult)].join("\n");
+        return [
+          "---",
+          renderTicket(ticket, ticketFieldsResult, requestedFields),
+        ].join("\n");
       })
       .join("\n\n");
 

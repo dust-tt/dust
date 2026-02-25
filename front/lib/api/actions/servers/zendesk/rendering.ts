@@ -1,3 +1,4 @@
+import type { TicketOptionalField } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   ZendeskTicket,
   ZendeskTicketComment,
@@ -13,8 +14,11 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 
 export function renderTicket(
   ticket: ZendeskTicket,
-  ticketFieldsResult?: Result<ZendeskTicketField[], Error>
+  ticketFieldsResult: Result<ZendeskTicketField[], Error>,
+  fields: TicketOptionalField[] = []
 ): string {
+  const has = (field: TicketOptionalField) => fields.includes(field);
+
   const lines = [
     `## Ticket ID: ${ticket.id}`,
     `- URL: ${apiUrlToDocumentUrl(ticket.url)}`,
@@ -37,7 +41,82 @@ export function renderTicket(
   lines.push(`- Created: ${new Date(ticket.created_at).toISOString()}`);
   lines.push(`- Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
-  if (ticketFieldsResult !== undefined && ticket.custom_fields?.length) {
+  // Optional fields.
+  if (has("type") && ticket.type) {
+    lines.push(`- Type: ${ticket.type}`);
+  }
+  if (has("requester_id")) {
+    lines.push(`- Requester ID: ${ticket.requester_id}`);
+  }
+  if (has("submitter_id")) {
+    lines.push(`- Submitter ID: ${ticket.submitter_id}`);
+  }
+  if (has("assignee_id")) {
+    lines.push(
+      `- Assignee ID: ${ticket.assignee_id !== null ? ticket.assignee_id : "Unassigned"}`
+    );
+  }
+  if (has("group_id")) {
+    lines.push(
+      `- Group ID: ${ticket.group_id !== null ? ticket.group_id : "None"}`
+    );
+  }
+  if (has("organization_id")) {
+    lines.push(
+      `- Organization ID: ${ticket.organization_id !== null ? ticket.organization_id : "None"}`
+    );
+  }
+  if (has("brand_id") && ticket.brand_id !== undefined) {
+    lines.push(`- Brand ID: ${ticket.brand_id}`);
+  }
+  if (has("tags") && ticket.tags?.length) {
+    lines.push(`- Tags: ${ticket.tags.join(", ")}`);
+  }
+  if (has("via") && ticket.via) {
+    lines.push(`- Channel: ${ticket.via.channel}`);
+  }
+  if (has("due_at")) {
+    lines.push(
+      `- Due At: ${ticket.due_at ? new Date(ticket.due_at).toISOString() : "None"}`
+    );
+  }
+  if (has("has_incidents")) {
+    lines.push(`- Has Incidents: ${ticket.has_incidents}`);
+  }
+  if (has("problem_id") && ticket.problem_id !== undefined) {
+    lines.push(
+      `- Problem ID: ${ticket.problem_id !== null ? ticket.problem_id : "None"}`
+    );
+  }
+  if (has("external_id") && ticket.external_id !== undefined) {
+    lines.push(
+      `- External ID: ${ticket.external_id !== null ? ticket.external_id : "None"}`
+    );
+  }
+  if (has("custom_status_id") && ticket.custom_status_id !== undefined) {
+    lines.push(
+      `- Custom Status ID: ${ticket.custom_status_id !== null ? ticket.custom_status_id : "None"}`
+    );
+  }
+  if (has("satisfaction_rating") && ticket.satisfaction_rating) {
+    lines.push(`- Satisfaction: ${ticket.satisfaction_rating.score}`);
+    if (ticket.satisfaction_rating.comment) {
+      lines.push(
+        `- Satisfaction Comment: ${ticket.satisfaction_rating.comment}`
+      );
+    }
+  }
+  if (has("collaborator_ids") && ticket.collaborator_ids?.length) {
+    lines.push(`- Collaborator IDs: ${ticket.collaborator_ids.join(", ")}`);
+  }
+  if (has("follower_ids") && ticket.follower_ids?.length) {
+    lines.push(`- Follower IDs: ${ticket.follower_ids.join(", ")}`);
+  }
+  if (has("email_cc_ids") && ticket.email_cc_ids?.length) {
+    lines.push(`- Email CC IDs: ${ticket.email_cc_ids.join(", ")}`);
+  }
+
+  if (has("custom_fields") && ticket.custom_fields?.length) {
     if (ticketFieldsResult.isErr()) {
       lines.push("- Custom Fields: (names could not be retrieved)");
     } else {

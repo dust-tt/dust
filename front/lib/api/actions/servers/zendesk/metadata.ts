@@ -6,11 +6,36 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ZENDESK_TOOL_NAME = "zendesk" as const;
 
+export const TICKET_OPTIONAL_FIELDS = [
+  "type",
+  "assignee_id",
+  "requester_id",
+  "submitter_id",
+  "group_id",
+  "organization_id",
+  "tags",
+  "via",
+  "brand_id",
+  "due_at",
+  "has_incidents",
+  "satisfaction_rating",
+  "collaborator_ids",
+  "follower_ids",
+  "email_cc_ids",
+  "external_id",
+  "problem_id",
+  "custom_status_id",
+  "custom_fields",
+] as const;
+
+export type TicketOptionalField = (typeof TICKET_OPTIONAL_FIELDS)[number];
+
 export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   get_ticket: {
     description:
       "Retrieve a Zendesk ticket by its ID. " +
-      "Returns: id, url, subject, status, priority, description, created_at, updated_at, and custom fields. " +
+      "Returns by default: id, url, subject, status, priority, description, created_at, updated_at. " +
+      "Use fields to request additional data. " +
       "Use includeMetrics only if the user asks for resolution times or reply counts. " +
       "Use includeConversation only if the user asks for the full conversation.",
     schema: {
@@ -19,17 +44,27 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .int()
         .positive()
         .describe("The ID of the Zendesk ticket to retrieve."),
+      fields: z
+        .array(z.enum(TICKET_OPTIONAL_FIELDS))
+        .optional()
+        .describe(
+          "Optional list of additional fields to include in the response. " +
+            "By default only id, url, subject, status, priority, description, created_at, updated_at are returned. " +
+            `Valid values: ${TICKET_OPTIONAL_FIELDS.join(", ")}.`
+        ),
       includeMetrics: z
         .boolean()
         .optional()
         .describe(
-          "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
+          "Include ticket metrics (resolution times, wait times, reopens, replies). " +
+            "Do not set to true unless the user explicitly asks for metrics or resolution times."
         ),
       includeConversation: z
         .boolean()
         .optional()
         .describe(
-          "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
+          "Include the full conversation (all comments). " +
+            "Do not set to true unless the user explicitly asks for the conversation or comments."
         ),
     },
     stake: "never_ask",
@@ -41,9 +76,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   search_tickets: {
     description:
       "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets. " +
-      "Each ticket includes: id, url, subject, status, priority, description, created_at, updated_at, and custom fields. " +
+      "Each ticket returns by default: id, url, subject, status, priority, description, created_at, updated_at. " +
       'Supports filtering by status, priority, type, assignee, tags, and custom fields (syntax: custom_field_{id}:"value"). ' +
-      "Use list_ticket_fields to discover available custom field IDs.",
+      "Use list_ticket_fields to discover available custom field IDs. " +
+      "Use fields to request additional data per ticket.",
     schema: {
       query: z
         .string()
@@ -51,6 +87,14 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
           "Search query using Zendesk query syntax. Supports field:value pairs for status, priority, type, assignee, tags, " +
             'and custom_field_{id}:"value" for custom fields. Multiple conditions are combined with AND logic. ' +
             "Do not include 'type:ticket' as it is automatically added."
+        ),
+      fields: z
+        .array(z.enum(TICKET_OPTIONAL_FIELDS))
+        .optional()
+        .describe(
+          "Optional list of additional fields to include in the response. " +
+            "By default only id, url, subject, status, priority, description, created_at, updated_at are returned. " +
+            `Valid values: ${TICKET_OPTIONAL_FIELDS.join(", ")}.`
         ),
       sortBy: z
         .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
