@@ -134,6 +134,18 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return new Ok(deletedCount);
   }
 
+  static async deleteByConversationModelId(
+    auth: Authenticator,
+    conversationModelId: ModelId
+  ): Promise<number> {
+    return SandboxModel.destroy({
+      where: {
+        conversationId: conversationModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Provider-facing operations
   // ---------------------------------------------------------------------------
