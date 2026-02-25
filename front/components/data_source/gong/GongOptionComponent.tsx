@@ -119,9 +119,7 @@ function PermissionProfileSelector({
     if (!localProfileId) {
       return null;
     }
-    return (
-      permissionProfiles.find((p) => p.id === localProfileId) ?? null
-    );
+    return permissionProfiles.find((p) => p.id === localProfileId) ?? null;
   }, [localProfileId, permissionProfiles]);
 
   const handleSave = async () => {
