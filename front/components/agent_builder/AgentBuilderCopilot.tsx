@@ -113,7 +113,10 @@ function CopilotContent({
               owner={owner}
               user={user}
               conversationId={conversation.sId}
-              agentBuilderContext={agentBuilderContext}
+              agentBuilderContext={{
+                ...agentBuilderContext,
+                isCopilotConversation: true,
+              }}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
               key={conversation.sId}

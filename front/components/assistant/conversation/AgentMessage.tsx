@@ -158,6 +158,7 @@ interface AgentMessageProps {
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  isCopilotConversation?: boolean;
 }
 
 export function AgentMessage({
@@ -171,6 +172,7 @@ export function AgentMessage({
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  isCopilotConversation = false,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
 
@@ -839,6 +841,7 @@ export function AgentMessage({
           )}
         </ConversationMessageContent>
         {!isCancelledOrDeleted &&
+          !(isCopilotConversation && agentMessage.rank === 1) &&
           messageButtons &&
           messageButtons.length > 0 && (
             <div className="flex justify-start gap-3">{messageButtons}</div>
