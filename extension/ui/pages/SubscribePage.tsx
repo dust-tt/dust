@@ -1,3 +1,4 @@
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   BarHeader,
@@ -7,12 +8,11 @@ import {
   Page,
   RocketIcon,
 } from "@dust-tt/sparkle";
-import { useProtectedRouteContext } from "@extension/ui/components/auth/ProtectedRoute";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
 
 export const SubscribePage = () => {
-  const { user, workspace, handleLogout } = useProtectedRouteContext();
+  const { workspace } = useAuth();
   const { regionInfo } = useRegionContext();
   return (
     <div>
@@ -21,7 +21,7 @@ export const SubscribePage = () => {
         tooltip=""
         rightActions={
           <div className="items-right flex flex-row space-x-1">
-            <UserDropdownMenu user={user} handleLogout={handleLogout} />
+            <UserDropdownMenu />
           </div>
         }
       />

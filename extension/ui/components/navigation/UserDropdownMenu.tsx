@@ -1,4 +1,3 @@
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
   Avatar,
   DropdownMenu,
@@ -17,17 +16,14 @@ import {
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useTheme } from "@extension/ui/hooks/useTheme";
 
-interface UserDropdownMenuProps {
-  handleLogout: () => void;
-  user: UserTypeWithWorkspaces;
-}
-
-export const UserDropdownMenu = ({
-  user,
-  handleLogout,
-}: UserDropdownMenuProps) => {
+export const UserDropdownMenu = () => {
   const { theme, updateTheme } = useTheme();
-  const { workspace, handleSelectWorkspace } = useExtensionAuth();
+  const { user, workspace, handleLogout, handleSelectWorkspace } =
+    useExtensionAuth();
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
