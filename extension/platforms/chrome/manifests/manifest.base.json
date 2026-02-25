@@ -33,7 +33,8 @@
     "tabs",
     "scripting",
     "contextMenus"
-  ],
+  ],  
+  "optional_permissions":["notifications"],
   "host_permissions": ["<all_urls>"],
   "externally_connectable": {
     "matches": [

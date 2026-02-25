@@ -158,6 +158,11 @@ export const getConfig = async ({
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
         NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
           process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
+          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
+        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
+          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
