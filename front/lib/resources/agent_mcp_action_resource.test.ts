@@ -1,7 +1,13 @@
-import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  LightMCPToolConfigurationType,
+  LightServerSideMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItemModel,
+} from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -9,9 +15,54 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// In-memory GCS mock: writes persist content that reads can return.
+const gcsStore = new Map<string, Buffer>();
+
+vi.mock("@app/lib/file_storage", () => ({
+  getPrivateUploadBucket: vi.fn(() => ({
+    file: vi.fn((path: string) => ({
+      save: vi.fn(async (data: Buffer) => {
+        gcsStore.set(path, data);
+      }),
+      download: vi.fn(async () => {
+        const buf = gcsStore.get(path);
+        if (!buf) {
+          throw new Error(`GCS file not found: ${path}`);
+        }
+        return [buf];
+      }),
+    })),
+    delete: vi.fn(async (path: string, opts?: { ignoreNotFound?: boolean }) => {
+      if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
+        throw new Error(`GCS file not found: ${path}`);
+      }
+      gcsStore.delete(path);
+    }),
+  })),
+}));
+
+// Bypass Redis caching, pass through to the underlying function.
+vi.mock("@app/lib/utils/cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/utils/cache")>();
+  return {
+    ...actual,
+    cacheWithRedis: vi
+      .fn()
+      .mockImplementation(
+        <T, Args extends unknown[]>(fn: (...args: Args) => Promise<T>) => {
+          return async (...args: Args): Promise<T> => fn(...args);
+        }
+      ),
+  };
+});
 
 describe("listBlockedActionsForConversation", () => {
   let workspace: WorkspaceType;
@@ -287,5 +338,185 @@ describe("listBlockedActionsForConversation", () => {
       workspaceId: workspace.id,
     });
     expect(result[0].actionId).toBe(expectedActionSId);
+  });
+});
+
+describe("Output items with GCS storage", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let agentConfig: LightAgentConfigurationType;
+  let conversation: ConversationType | ConversationWithoutContentType;
+
+  const toolConfiguration: LightServerSideMCPToolConfigurationType = {
+    id: -1,
+    sId: "test-tool-config",
+    type: "mcp_configuration",
+    name: "test_tool",
+    originalName: "test_tool",
+    mcpServerName: "test_server",
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "test-server-view",
+    dustAppConfiguration: null,
+    internalMCPServerId: null,
+    secretName: null,
+    dustProject: null,
+    availability: "auto",
+    permission: "never_ask",
+    toolServerId: "test-server",
+    retryPolicy: "no_retry",
+  };
+
+  beforeEach(async () => {
+    gcsStore.clear();
+
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  const createActionWithOutputItems = async (
+    contents: Array<{ type: "text"; text: string }>
+  ) => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+
+    expect(action).toBeDefined();
+
+    const outputItems = await action!.createOutputItems(
+      auth,
+      contents.map((c) => ({ content: c }))
+    );
+
+    return { action: action!, outputItems };
+  };
+
+  it("should create output items in both DB and GCS", async () => {
+    const { outputItems } = await createActionWithOutputItems([
+      { type: "text", text: "Hello from GCS" },
+    ]);
+
+    expect(outputItems).toHaveLength(1);
+    expect(outputItems[0].content).toEqual({
+      type: "text",
+      text: "Hello from GCS",
+    });
+
+    // contentGcsPath should be set (GCS write succeeded).
+    expect(outputItems[0].contentGcsPath).toBeTruthy();
+
+    // GCS store should have one entry.
+    expect(gcsStore.size).toBe(1);
+  });
+
+  it("should read content from GCS, not from DB", async () => {
+    const { action } = await createActionWithOutputItems([
+      { type: "text", text: "original content" },
+    ]);
+
+    // Overwrite the GCS file with different content to prove the fetch path
+    // reads from GCS (not from the DB, which still has "original content").
+    const [[gcsPath]] = [...gcsStore.entries()];
+    const modified = JSON.stringify({ type: "text", text: "from GCS" });
+    gcsStore.set(gcsPath, Buffer.from(modified, "utf-8"));
+
+    const outputItemsByActionId =
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, [
+        action.id,
+      ]);
+
+    const items = outputItemsByActionId.get(action.id);
+    expect(items).toBeDefined();
+    expect(items).toHaveLength(1);
+
+    // Content should match the GCS version, proving it was read from GCS.
+    expect(items![0].content).toEqual({ type: "text", text: "from GCS" });
+  });
+
+  it("should destroy output items from both DB and GCS", async () => {
+    const { action } = await createActionWithOutputItems([
+      { type: "text", text: "To be deleted" },
+    ]);
+
+    expect(gcsStore.size).toBe(1);
+
+    await AgentMCPActionResource.destroyOutputItemsByActionIds(auth, [
+      action.id,
+    ]);
+
+    // GCS files should be deleted.
+    expect(gcsStore.size).toBe(0);
+
+    // DB rows should be deleted.
+    const remainingItems = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(remainingItems).toHaveLength(0);
+  });
+
+  it("should handle multiple actions independently", async () => {
+    const { action: action1 } = await createActionWithOutputItems([
+      { type: "text", text: "Action 1 content" },
+    ]);
+
+    // Create a second conversation so the factory can use rank 0 again
+    // (rank is unique per conversation).
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const { action: action2 } = await createActionWithOutputItems([
+      { type: "text", text: "Action 2 content" },
+    ]);
+
+    expect(gcsStore.size).toBe(2);
+
+    const outputItemsByActionId =
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, [
+        action1.id,
+        action2.id,
+      ]);
+
+    expect(outputItemsByActionId.get(action1.id)).toHaveLength(1);
+    expect(outputItemsByActionId.get(action2.id)).toHaveLength(1);
+
+    // Destroy only action1's items.
+    await AgentMCPActionResource.destroyOutputItemsByActionIds(auth, [
+      action1.id,
+    ]);
+
+    expect(gcsStore.size).toBe(1);
+
+    // action2's items should still be fetchable.
+    const remaining = await AgentMCPActionResource.fetchOutputItemsByActionIds(
+      auth,
+      [action2.id]
+    );
+    const items = remaining.get(action2.id);
+    expect(items).toHaveLength(1);
+    expect(items![0].content).toEqual({
+      type: "text",
+      text: "Action 2 content",
+    });
   });
 });

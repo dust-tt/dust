@@ -666,6 +666,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     // Update DB rows with their GCS paths.
+    // TODO(2026-02-25 PERF): Optimize by writing items only once.
     await concurrentExecutor(
       outputItems,
       async (item) => {
