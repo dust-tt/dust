@@ -7,6 +7,7 @@ import { useSearchParam } from "@app/lib/platform";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TemplateInfo } from "@app/types/assistant/templates";
+import { isString } from "@app/types/shared/utils/general";
 import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
@@ -66,7 +67,7 @@ export const CopilotPanelProvider = ({
   const sendNotification = useSendNotification();
   const model = useSearchParam("model");
   const copilotAgentId =
-    model === "haiku"
+    isString(model) && model === "haiku"
       ? GLOBAL_AGENTS_SID.COPILOT_HAIKU
       : GLOBAL_AGENTS_SID.COPILOT;
 
