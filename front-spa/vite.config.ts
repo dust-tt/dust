@@ -145,12 +145,15 @@ function serveHtmlPlugin(
     name: "serve-html",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
+        // Strip query string to check only the path portion.
+        const urlPath = req.url?.split("?")[0] ?? "";
+
         // Skip requests for actual files (assets, HMR, source files, etc.)
         if (
-          req.url?.startsWith("/@") ||
-          req.url?.startsWith("/node_modules") ||
-          req.url?.startsWith("/src") ||
-          req.url?.match(/\.\w+(\?|$)/)
+          urlPath.startsWith("/@") ||
+          urlPath.startsWith("/node_modules") ||
+          urlPath.startsWith("/src") ||
+          urlPath.match(/\.\w+$/)
         ) {
           return next();
         }

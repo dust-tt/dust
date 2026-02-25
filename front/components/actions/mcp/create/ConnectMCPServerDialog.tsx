@@ -21,6 +21,7 @@ import {
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import {
   useCreateMCPServerConnection,
   useDiscoverOAuthMetadata,
@@ -56,6 +57,7 @@ export function ConnectMCPServerDialog({
   setIsOpen,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
+  const regionContext = useRegionContextSafe();
 
   const defaultValues = getConnectMCPServerDialogDefaultValues();
   const form = useForm<MCPServerOAuthFormValues>({
@@ -189,6 +191,7 @@ export function ConnectMCPServerDialog({
       createMCPServerConnection,
       updateServerView,
       onBeforeAssociateConnection: () => setExternalIsLoading(true),
+      regionInfo: regionContext?.regionInfo ?? null,
     });
 
     if (submitRes.isErr()) {

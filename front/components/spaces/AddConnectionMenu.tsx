@@ -3,7 +3,9 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectionIdRequiredForProvider,
@@ -72,11 +74,13 @@ export async function setupConnection({
   provider,
   useCase = "connection",
   extraConfig,
+  regionInfo,
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
+  regionInfo: RegionInfo | null;
 }): Promise<
   Result<{ connectionId: string; relatedCredentialId?: string }, Error>
 > {
@@ -90,6 +94,7 @@ export async function setupConnection({
     provider,
     useCase,
     extraConfig,
+    regionInfo,
   });
   if (!cRes.isOk()) {
     return cRes;
@@ -130,6 +135,7 @@ export const AddConnectionMenu = ({
   const { isDark } = useTheme();
   const { featureFlags } = useFeatureFlags();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
+  const regionContext = useRegionContextSafe();
 
   const handleOnClose = useCallback(
     () =>
@@ -239,6 +245,7 @@ export const AddConnectionMenu = ({
         owner,
         provider,
         extraConfig,
+        regionInfo: regionContext?.regionInfo ?? null,
       });
       if (connectionRes.isErr()) {
         throw connectionRes.error;
