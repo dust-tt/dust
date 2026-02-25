@@ -1,9 +1,15 @@
 {
   "extends": "@tsconfig/recommended/tsconfig.json",
-  "include": ["src", "types", "./.eslintrc.js"],
+  "include": ["src"],
   "compilerOptions": {
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "rootDir": "src",
+    "paths": {
+      "@modelcontextprotocol/sdk/*": [
+        "../../node_modules/@modelcontextprotocol/sdk/dist/esm/*"
+      ]
+    },
     "outDir": "dist",
     "emitDeclarationOnly": true,
     "declaration": true,
