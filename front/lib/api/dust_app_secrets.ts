@@ -21,7 +21,11 @@ export async function getDustAppSecrets(
   });
 
   return secrets.map((s) => {
-    const clearSecret = decrypt(s.hash, owner.sId);
+    const clearSecret = decrypt({
+      encrypted: s.hash,
+      key: owner.sId,
+      useCase: "developer_secret",
+    });
     return {
       name: s.name,
       value: clear ? clearSecret : redactString(clearSecret, 1),

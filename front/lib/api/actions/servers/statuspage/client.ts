@@ -54,7 +54,11 @@ export async function getStatuspageClient(
   });
 
   const apiKey = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
+    ? decrypt({
+        encrypted: secret.hash,
+        key: auth.getNonNullableWorkspace().sId,
+        useCase: "developer_secret",
+      })
     : null;
   if (!apiKey) {
     return new Err(

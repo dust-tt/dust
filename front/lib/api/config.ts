@@ -445,6 +445,15 @@ const config = {
   getGatedAssetsTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
+  // Secrets for secure storage of keys and bearer tokens.
+  getDeveloperSecretsSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DEVELOPERS_SECRETS_SECRET");
+  },
+  getMcpServerCredentialsSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_MCP_SERVER_CREDENTIALS_SECRET"
+    );
+  },
   // E2B Sandbox.
   getE2BSandboxConfig: ():
     | { apiKey: string; templateId: string; domain: string | undefined }

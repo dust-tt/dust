@@ -95,7 +95,12 @@ async function handler(
       // Sanitize the secret name to be alphanumeric and underscores only
       const sanitizedSecretName = postSecretName.replace(/[^a-zA-Z0-9_]/g, "_");
 
-      const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
+      // We feed the workspace sid as key that will be added to the salt.
+      const encryptedValue = encrypt({
+        text: secretValue,
+        key: owner.sId,
+        useCase: "developer_secret",
+      });
 
       let postSecret = await getDustAppSecret(auth, sanitizedSecretName);
 
