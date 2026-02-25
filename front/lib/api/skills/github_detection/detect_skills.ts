@@ -4,21 +4,23 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Octokit } from "@octokit/core";
-
-import type {
-  DetectedSkill,
-  DetectedSkillAttachment,
-  GitHubTreeEntry,
-  GitHubTreeResponse,
-  SkillDetectionError,
-  SkillDirectory,
-} from "./types";
 import {
   extractDescription,
   findSkillDirectories,
   getContentType,
   parseGitHubRepoUrl,
-} from "./parsing";
+} from "@app/lib/api/skills/github_detection/parsing";
+import type {
+  DetectedSkill,
+  DetectedSkillAttachment,
+  GitHubTreeEntry,
+  SkillDetectionError,
+  SkillDirectory,
+} from "@app/lib/api/skills/github_detection/types";
+import {
+  GitHubBlobResponseSchema,
+  GitHubTreeResponseSchema,
+} from "@app/lib/api/skills/github_detection/types";
 
 export type { DetectedSkill, DetectedSkillAttachment, SkillDetectionError };
 export { parseGitHubRepoUrl };
@@ -26,47 +28,21 @@ export { parseGitHubRepoUrl };
 const FETCH_CONCURRENCY = 4;
 
 /**
- * Detects skills in a GitHub repository by fetching its tree and looking for
- * directories containing skill.md or SKILL.md files.
- *
- * Does not clone the repository — uses the GitHub Git Trees API for lightweight access.
+ * Fetches the repository tree from GitHub. Try/catch is scoped to the
+ * external API call only; the response is validated via Zod immediately.
  */
-export async function detectSkillsFromGitHubRepo({
-  repoUrl,
-  accessToken,
-}: {
-  repoUrl: string;
-  accessToken?: string;
-}): Promise<Result<DetectedSkill[], SkillDetectionError>> {
-  const parseResult = parseGitHubRepoUrl(repoUrl);
-  if (parseResult.isErr()) {
-    return parseResult;
-  }
-  const { owner, repo } = parseResult.value;
-
-  const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
-
-  // Fetch the full repository tree.
-  let tree: GitHubTreeEntry[];
+async function fetchRepoTree(
+  octokit: InstanceType<typeof Octokit>,
+  owner: string,
+  repo: string
+): Promise<Result<GitHubTreeEntry[], SkillDetectionError>> {
+  let rawData: unknown;
   try {
     const response = await octokit.request(
       "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
-      {
-        owner,
-        repo,
-        tree_sha: "HEAD",
-        recursive: "1",
-      }
+      { owner, repo, tree_sha: "HEAD", recursive: "1" }
     );
-    const data = response.data as GitHubTreeResponse;
-    tree = data.tree;
-
-    if (data.truncated) {
-      logger.warn(
-        { owner, repo },
-        "GitHub tree response was truncated; some skills may be missed."
-      );
-    }
+    rawData = response.data;
   } catch (err) {
     const error = normalizeError(err);
     if (error.message.includes("Not Found")) {
@@ -90,29 +66,99 @@ export async function detectSkillsFromGitHubRepo({
     });
   }
 
-  // Find directories that contain a skill.md / SKILL.md at their root.
-  const skillDirs = findSkillDirectories(tree);
+  const parsed = GitHubTreeResponseSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return new Err({
+      type: "api_error",
+      message: `Invalid tree response from GitHub: ${parsed.error.message}`,
+    });
+  }
 
+  if (parsed.data.truncated) {
+    logger.warn(
+      { owner, repo },
+      "GitHub tree response was truncated; some skills may be missed."
+    );
+  }
+
+  return new Ok(parsed.data.tree);
+}
+
+/**
+ * Fetches a blob's content from GitHub and returns it as a UTF-8 string.
+ */
+async function fetchBlobContent(
+  octokit: InstanceType<typeof Octokit>,
+  owner: string,
+  repo: string,
+  fileSha: string
+): Promise<Result<string, SkillDetectionError>> {
+  let rawData: unknown;
+  try {
+    const response = await octokit.request(
+      "GET /repos/{owner}/{repo}/git/blobs/{file_sha}",
+      { owner, repo, file_sha: fileSha }
+    );
+    rawData = response.data;
+  } catch (err) {
+    return new Err({
+      type: "api_error",
+      message: `Failed to fetch blob: ${normalizeError(err).message}`,
+    });
+  }
+
+  const parsed = GitHubBlobResponseSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return new Err({
+      type: "api_error",
+      message: `Invalid blob response from GitHub: ${parsed.error.message}`,
+    });
+  }
+
+  return new Ok(
+    Buffer.from(parsed.data.content, "base64").toString("utf-8")
+  );
+}
+
+/**
+ * Detects skills in a GitHub repository by fetching its tree and looking for
+ * directories containing skill.md or SKILL.md files.
+ *
+ * Does not clone the repository — uses the GitHub Git Trees API for lightweight access.
+ */
+export async function detectSkillsFromGitHubRepo({
+  repoUrl,
+  accessToken,
+}: {
+  repoUrl: string;
+  accessToken?: string;
+}): Promise<Result<DetectedSkill[], SkillDetectionError>> {
+  const parseResult = parseGitHubRepoUrl(repoUrl);
+  if (parseResult.isErr()) {
+    return parseResult;
+  }
+  const { owner, repo } = parseResult.value;
+
+  const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
+
+  const treeResult = await fetchRepoTree(octokit, owner, repo);
+  if (treeResult.isErr()) {
+    return treeResult;
+  }
+  const tree = treeResult.value;
+
+  const skillDirs = findSkillDirectories(tree);
   if (skillDirs.length === 0) {
     return new Ok([]);
   }
 
-  // Fetch skill.md content for each detected skill directory.
   const skills = await concurrentExecutor(
     skillDirs,
-    async (skillDir) => {
-      return fetchSkillFromDirectory({
-        octokit,
-        owner,
-        repo,
-        skillDir,
-        tree,
-      });
-    },
+    async (skillDir) =>
+      buildDetectedSkill({ octokit, owner, repo, skillDir, tree }),
     { concurrency: FETCH_CONCURRENCY }
   );
 
-  // Filter out failed fetches.
   const detectedSkills: DetectedSkill[] = [];
   for (const result of skills) {
     if (result.isOk()) {
@@ -124,9 +170,10 @@ export async function detectSkillsFromGitHubRepo({
 }
 
 /**
- * Fetches skill details from a detected skill directory.
+ * Builds a DetectedSkill from a skill directory by fetching its skill.md
+ * and collecting attachment metadata from the tree.
  */
-async function fetchSkillFromDirectory({
+async function buildDetectedSkill({
   octokit,
   owner,
   repo,
@@ -139,39 +186,29 @@ async function fetchSkillFromDirectory({
   skillDir: SkillDirectory;
   tree: GitHubTreeEntry[];
 }): Promise<Result<DetectedSkill, SkillDetectionError>> {
-  // Fetch the skill.md content.
-  let instructions: string;
-  try {
-    const response = await octokit.request(
-      "GET /repos/{owner}/{repo}/git/blobs/{file_sha}",
+  const blobResult = await fetchBlobContent(
+    octokit,
+    owner,
+    repo,
+    skillDir.skillMdSha
+  );
+  if (blobResult.isErr()) {
+    logger.error(
       {
+        err: new Error(blobResult.error.message),
         owner,
         repo,
-        file_sha: skillDir.skillMdSha,
-      }
-    );
-    const data = response.data as { content: string; encoding: string };
-    instructions = Buffer.from(data.content, "base64").toString("utf-8");
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      { err: error, owner, repo, skillMdPath: skillDir.skillMdPath },
+        skillMdPath: skillDir.skillMdPath,
+      },
       "Failed to fetch skill.md content."
     );
-    return new Err({
-      type: "api_error",
-      message: `Failed to fetch ${skillDir.skillMdPath}: ${error.message}`,
-    });
+    return blobResult;
   }
+  const instructions = blobResult.value;
 
-  // Extract the skill name from the directory path.
   const name = skillDir.dirPath.split("/").pop() ?? skillDir.dirPath;
-
-  // Extract description from the skill.md content.
   const description = extractDescription(instructions);
 
-  // Collect attachments: all other files in the skill directory (files in
-  // subdirectories relative to the skill dir are included — they are part of the skill).
   const attachments: DetectedSkillAttachment[] = [];
   const dirPrefix = skillDir.dirPath ? `${skillDir.dirPath}/` : "";
 
@@ -179,13 +216,9 @@ async function fetchSkillFromDirectory({
     if (entry.type !== "blob") {
       continue;
     }
-
-    // Must be inside the skill directory.
     if (!entry.path.startsWith(dirPrefix)) {
       continue;
     }
-
-    // Skip the skill.md file itself.
     if (entry.path === skillDir.skillMdPath) {
       continue;
     }
