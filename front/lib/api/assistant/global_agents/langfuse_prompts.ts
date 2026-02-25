@@ -1,12 +1,31 @@
 import { getLangfuseClient } from "@app/lib/api/langfuse_client";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import {
+  type AgentReasoningEffort,
+  AgentReasoningEffortSchema,
+  clampReasoningEffort,
+} from "@app/types/assistant/agent";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { z } from "zod";
 
-export async function fetchAndCompileLangfusePrompt(
+const LangfuseModelConfigSchema = z.object({
+  modelId: z.string(),
+  reasoningEffort: AgentReasoningEffortSchema.optional(),
+});
+
+export interface LangfusePromptConfig {
+  instructions: string;
+  modelConfig: ModelConfigurationType;
+  reasoningEffort?: AgentReasoningEffort;
+}
+
+export async function fetchLangfusePromptConfig(
   promptName: string,
   variables: Record<string, string>
-): Promise<Result<string, Error>> {
+): Promise<Result<LangfusePromptConfig, Error>> {
   const client = getLangfuseClient();
   if (!client) {
     return new Err(new Error("Langfuse is not enabled"));
@@ -14,9 +33,29 @@ export async function fetchAndCompileLangfusePrompt(
 
   try {
     const prompt = await client.prompt.get(promptName);
-    const compiledPrompt = prompt.compile(variables);
+    const instructions = prompt.compile(variables);
+    const parsedConfig = LangfuseModelConfigSchema.parse(prompt.config);
 
-    return new Ok(compiledPrompt);
+    const modelConfig = getModelConfigByModelId(parsedConfig.modelId);
+    if (!modelConfig) {
+      return new Err(
+        new Error(
+          `Unknown modelId in Langfuse config: "${parsedConfig.modelId}"`
+        )
+      );
+    }
+
+    return new Ok({
+      instructions,
+      modelConfig,
+      reasoningEffort: parsedConfig.reasoningEffort
+        ? clampReasoningEffort(
+            parsedConfig.reasoningEffort,
+            modelConfig.minimumReasoningEffort,
+            modelConfig.maximumReasoningEffort
+          )
+        : undefined,
+    });
   } catch (error) {
     return new Err(normalizeError(error));
   }

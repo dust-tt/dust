@@ -14,7 +14,7 @@ import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-
+import { z } from "zod";
 import type { OAuthProvider } from "../oauth/lib";
 import type { ModelIdType, ModelProviderIdType } from "./models/types";
 
@@ -93,7 +93,25 @@ export type AgentUsageType = {
 
 export type AgentRecentAuthors = readonly string[];
 
-export type AgentReasoningEffort = "none" | "light" | "medium" | "high";
+const AGENT_REASONING_EFFORTS = ["none", "light", "medium", "high"] as const;
+
+export const AgentReasoningEffortSchema = z.enum(AGENT_REASONING_EFFORTS);
+export type AgentReasoningEffort = z.infer<typeof AgentReasoningEffortSchema>;
+
+// Constrains a reasoning effort to the [min, max] range supported by a model.
+export function clampReasoningEffort(
+  effort: AgentReasoningEffort,
+  min: AgentReasoningEffort,
+  max: AgentReasoningEffort
+): AgentReasoningEffort {
+  const effortIndex = AGENT_REASONING_EFFORTS.indexOf(effort);
+  const minIndex = AGENT_REASONING_EFFORTS.indexOf(min);
+  const maxIndex = AGENT_REASONING_EFFORTS.indexOf(max);
+
+  return AGENT_REASONING_EFFORTS[
+    Math.max(minIndex, Math.min(maxIndex, effortIndex))
+  ];
+}
 
 export type AgentModelConfigurationType = {
   providerId: ModelProviderIdType;
