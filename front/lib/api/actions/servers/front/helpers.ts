@@ -1,7 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import logger from "@app/logger/logger";
-import { decrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
