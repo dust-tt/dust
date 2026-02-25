@@ -22,7 +22,6 @@ export async function runSandboxReaperWorker() {
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
-    maxConcurrentActivityTaskExecutions: 4,
     connection,
     namespace,
     interceptors: {
