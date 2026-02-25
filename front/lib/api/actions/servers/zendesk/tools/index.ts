@@ -27,7 +27,7 @@ function isTrackedError(error: Error): boolean {
 
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
   get_ticket: async (
-    { ticketId, includeMetrics, includeConversation, includeFields },
+    { ticketId, includeMetrics, includeConversation },
     { authInfo }
   ) => {
     const clientResult = getZendeskClient(authInfo);
@@ -49,13 +49,11 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
 
     const ticket = ticketResult.value;
 
-    let ticketFieldsResult: Result<ZendeskTicketField[], Error> | undefined;
-    if (includeFields.includes("custom_fields")) {
-      const fieldIds = getUniqueCustomFieldIds(ticket);
-      ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
-    }
+    const fieldIds = getUniqueCustomFieldIds(ticket);
+    const ticketFieldsResult: Result<ZendeskTicketField[], Error> =
+      await client.getTicketFieldsByIds(fieldIds);
 
-    let ticketText = renderTicket(ticket, includeFields, ticketFieldsResult);
+    let ticketText = renderTicket(ticket, ticketFieldsResult);
 
     if (includeMetrics) {
       const metricsResult = await client.getTicketMetrics(ticketId);
@@ -115,10 +113,7 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     ]);
   },
 
-  search_tickets: async (
-    { query, sortBy, sortOrder, includeFields },
-    { authInfo }
-  ) => {
+  search_tickets: async ({ query, sortBy, sortOrder }, { authInfo }) => {
     const clientResult = getZendeskClient(authInfo);
     if (clientResult.isErr()) {
       return clientResult;
@@ -146,16 +141,13 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       ]);
     }
 
-    let ticketFieldsResult: Result<ZendeskTicketField[], Error> | undefined;
-    if (includeFields.includes("custom_fields")) {
-      const fieldIds = getUniqueCustomFieldIds(results);
-      ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
-    }
+    const fieldIds = getUniqueCustomFieldIds(results);
+    const ticketFieldsResult: Result<ZendeskTicketField[], Error> =
+      await client.getTicketFieldsByIds(fieldIds);
 
     const ticketsText = results
       .map((ticket) => {
-        const text = renderTicket(ticket, includeFields, ticketFieldsResult);
-        return ["---", text].join("\n");
+        return ["---", renderTicket(ticket, ticketFieldsResult)].join("\n");
       })
       .join("\n\n");
 

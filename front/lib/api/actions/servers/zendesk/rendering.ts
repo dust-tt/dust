@@ -11,19 +11,8 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
 }
 
-function formatFieldValue(value: NonNullable<unknown>): string {
-  if (Array.isArray(value)) {
-    return value.join(", ");
-  }
-  if (value instanceof Object) {
-    return JSON.stringify(value);
-  }
-  return String(value);
-}
-
 export function renderTicket(
   ticket: ZendeskTicket,
-  includeFields: string[] = [],
   ticketFieldsResult?: Result<ZendeskTicketField[], Error>
 ): string {
   const lines = [
@@ -47,15 +36,6 @@ export function renderTicket(
 
   lines.push(`- Created: ${new Date(ticket.created_at).toISOString()}`);
   lines.push(`- Updated: ${new Date(ticket.updated_at).toISOString()}`);
-
-  const extraFields = includeFields.filter((f) => f !== "custom_fields");
-  const ticketRecord = Object.fromEntries(Object.entries(ticket));
-  for (const field of extraFields) {
-    const value = ticketRecord[field];
-    if (value !== null && value !== undefined) {
-      lines.push(`- ${field}: ${formatFieldValue(value)}`);
-    }
-  }
 
   if (ticketFieldsResult !== undefined && ticket.custom_fields?.length) {
     if (ticketFieldsResult.isErr()) {

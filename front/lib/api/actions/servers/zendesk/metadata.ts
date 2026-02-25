@@ -10,8 +10,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   get_ticket: {
     description:
       "Retrieve a Zendesk ticket by its ID. " +
-      "Returns by default: id, url, subject, status, priority, description, created_at, updated_at. " +
-      "Use includeFields to include additional fields. " +
+      "Returns: id, url, subject, status, priority, description, created_at, updated_at, and custom fields. " +
       "Use includeMetrics only if the user asks for resolution times or reply counts. " +
       "Use includeConversation only if the user asks for the full conversation.",
     schema: {
@@ -32,12 +31,6 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
         ),
-      includeFields: z
-        .array(z.string())
-        .default([])
-        .describe(
-          "Additional ticket fields to include in the response. Supported values: 'requester_id', 'assignee_id', 'tags', 'custom_fields', 'satisfaction_rating', 'due_at', 'type', 'organization_id', 'group_id', 'via'. Only set if explicitly requested by the user."
-        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -48,8 +41,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   search_tickets: {
     description:
       "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets. " +
-      "Each ticket includes by default: id, url, subject, status, priority, description, created_at, updated_at. " +
-      "Use includeFields to include additional fields. " +
+      "Each ticket includes: id, url, subject, status, priority, description, created_at, updated_at, and custom fields. " +
       'Supports filtering by status, priority, type, assignee, tags, and custom fields (syntax: custom_field_{id}:"value"). ' +
       "Use list_ticket_fields to discover available custom field IDs.",
     schema: {
@@ -70,12 +62,6 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .enum(["asc", "desc"])
         .optional()
         .describe("Sort order. Defaults to 'desc' if not specified."),
-      includeFields: z
-        .array(z.string())
-        .default([])
-        .describe(
-          "Additional ticket fields to include in the response. Supported values: 'requester_id', 'assignee_id', 'tags', 'custom_fields', 'satisfaction_rating', 'due_at', 'type', 'organization_id', 'group_id', 'via'. Only set if explicitly requested by the user."
-        ),
     },
     stake: "never_ask",
     displayLabels: {

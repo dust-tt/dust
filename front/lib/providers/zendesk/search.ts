@@ -120,7 +120,7 @@ export async function download({
   const fieldIds = getUniqueCustomFieldIds(ticket);
   const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
 
-  let content = renderTicket(ticket, [], ticketFieldsResult);
+  let content = renderTicket(ticket, ticketFieldsResult);
 
   // Fetch and add comments
   const commentsResult = await client.getTicketComments(ticketId);
