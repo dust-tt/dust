@@ -74,6 +74,7 @@ function PermissionProfileSelector({
 }: PermissionProfileSelectorProps) {
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
+  const [localProfileId, setLocalProfileId] = useState<string | null>(null);
 
   const {
     configValue: permissionProfileIdConfigValue,
@@ -105,17 +106,25 @@ function PermissionProfileSelector({
     }
   }, [permissionProfilesConfigValue]);
 
-  const selectedProfile = useMemo(() => {
-    if (!permissionProfileIdConfigValue) {
+  // The saved profile ID from the server, "" means "all participants".
+  const savedProfileId = permissionProfileIdConfigValue ?? "";
+  // The currently displayed profile ID (local override or saved value).
+  const displayedProfileId = localProfileId ?? savedProfileId;
+  const hasUnsavedChanges = localProfileId !== null;
+
+  const displayedProfile = useMemo(() => {
+    if (!displayedProfileId) {
       return null;
     }
     return (
-      permissionProfiles.find((p) => p.id === permissionProfileIdConfigValue) ??
-      null
+      permissionProfiles.find((p) => p.id === displayedProfileId) ?? null
     );
-  }, [permissionProfileIdConfigValue, permissionProfiles]);
+  }, [displayedProfileId, permissionProfiles]);
 
-  const handleSelect = async (profileId: string) => {
+  const handleSave = async () => {
+    if (localProfileId === null) {
+      return;
+    }
     setLoading(true);
     // The config API only accepts strings, so "" means "no filter" (normalized
     // to null on the connector side).
@@ -124,11 +133,12 @@ function PermissionProfileSelector({
       {
         headers: { "Content-Type": "application/json" },
         method: "POST",
-        body: JSON.stringify({ configValue: profileId }),
+        body: JSON.stringify({ configValue: localProfileId }),
       }
     );
     if (res.ok) {
       await mutatePermissionProfileIdConfig();
+      setLocalProfileId(null);
       sendNotification({
         type: "success",
         title: "Gong configuration updated",
@@ -150,53 +160,64 @@ function PermissionProfileSelector({
       title="Participant Filter"
       visual={<ContextItem.Visual visual={GongLogo} />}
       action={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              label={
-                selectedProfile
-                  ? selectedProfile.name.length > PROFILE_NAME_MAX_LENGTH
-                    ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) +
-                      "..."
-                    : selectedProfile.name
-                  : "All participants"
-              }
-              isSelect
-              disabled={disabled || loading}
-              tooltip={selectedProfile?.name}
-              className="w-40 overflow-hidden px-4"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              label="All participants"
-              onClick={() => handleSelect("")}
-            />
-            {permissionProfiles.map((profile) => {
-              const item = (
-                <DropdownMenuItem
-                  key={profile.id}
-                  label={profile.name}
-                  disabled={!profile.supported}
-                  onClick={() => handleSelect(profile.id)}
-                />
-              );
-              if (profile.reason) {
-                return (
-                  <DropdownTooltipTrigger
+        <div className="flex flex-row space-x-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                label={
+                  displayedProfile
+                    ? displayedProfile.name.length > PROFILE_NAME_MAX_LENGTH
+                      ? displayedProfile.name.slice(
+                          0,
+                          PROFILE_NAME_MAX_LENGTH
+                        ) + "..."
+                      : displayedProfile.name
+                    : "All participants"
+                }
+                isSelect
+                disabled={disabled || loading}
+                tooltip={displayedProfile?.name}
+                className="w-40 overflow-hidden px-4"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                label="All participants"
+                onClick={() => setLocalProfileId("")}
+              />
+              {permissionProfiles.map((profile) => {
+                const item = (
+                  <DropdownMenuItem
                     key={profile.id}
-                    description={profile.reason}
-                  >
-                    {item}
-                  </DropdownTooltipTrigger>
+                    label={profile.name}
+                    disabled={!profile.supported}
+                    onClick={() => setLocalProfileId(profile.id)}
+                  />
                 );
-              }
-              return item;
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                if (profile.reason) {
+                  return (
+                    <DropdownTooltipTrigger
+                      key={profile.id}
+                      description={profile.reason}
+                    >
+                      {item}
+                    </DropdownTooltipTrigger>
+                  );
+                }
+                return item;
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSave}
+            disabled={disabled || loading || !hasUnsavedChanges}
+            label="Save"
+          />
+        </div>
       }
     >
       <ContextItem.Description>
