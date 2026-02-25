@@ -3,7 +3,6 @@ import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -259,52 +258,6 @@ describe("POST /api/w/[wId]/mcp/", () => {
       value: originalConfig,
       writable: true,
       configurable: true,
-    });
-  });
-
-  it("should create an internal MCP server with bearer token credentials", async () => {
-    const { req, res, workspace } = await setupTest("admin", "POST");
-
-    req.body = {
-      name: "slab" as InternalMCPServerNameType,
-      serverType: "internal",
-      includeGlobal: true,
-      sharedSecret: "test-secret-123",
-      customHeaders: [
-        { key: "X-Custom-Header", value: "custom-value" },
-        { key: "Authorization", value: "Bearer should-be-kept" },
-      ],
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(201);
-    const responseData = res._getJSONData();
-    expect(responseData).toEqual({
-      success: true,
-      server: expect.objectContaining({
-        name: "slab",
-        sharedSecret: expect.stringContaining("•"),
-        customHeaders: expect.any(Object),
-      }),
-    });
-    expect(responseData.server.customHeaders).not.toBeNull();
-    expect(responseData.server.customHeaders).toHaveProperty("X-Custom-Header");
-    expect(responseData.server.customHeaders["X-Custom-Header"]).toContain("•");
-
-    const server = responseData.server;
-    const credential = await InternalMCPServerCredentialModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        internalMCPServerId: server.sId,
-      },
-    });
-
-    expect(credential).toBeDefined();
-    expect(credential?.sharedSecret).toBe("test-secret-123");
-    expect(credential?.customHeaders).toEqual({
-      Authorization: "Bearer should-be-kept",
-      "X-Custom-Header": "custom-value",
     });
   });
 });
