@@ -11,8 +11,8 @@ import tracer from "@app/logger/tracer";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isString } from "@app/types/shared/utils/general";
 import { sha256 } from "@app/types/shared/utils/encryption";
+import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type {
   WorkOS,
