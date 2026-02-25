@@ -44,6 +44,8 @@ export type CreateMCPServerResponseBody = {
   server: MCPServerType;
 };
 
+const MAX_URL_LENGTH = 2048;
+
 const PostQueryParamsSchema = t.union([
   t.type({
     serverType: t.literal("remote"),
@@ -136,336 +138,338 @@ async function handler(
       }
 
       const body = r.right;
-      if (body.serverType === "remote") {
-        const { url, sharedSecret } = body;
+      switch (body.serverType) {
+        case "remote": {
+          const { url, sharedSecret } = body;
 
-        if (!url) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "URL is required",
-            },
-          });
-        }
+          if (url.length > MAX_URL_LENGTH) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `MCP server URL exceeds maximum length (${MAX_URL_LENGTH} characters).`,
+              },
+            });
+          }
 
-        if (url.length > 2048) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "MCP server URL exceeds maximum length (2048 characters).",
-            },
-          });
-        }
+          // Default to the shared secret if it exists.
+          let bearerToken = sharedSecret ?? null;
+          let authorization: AuthorizationInfo | null = null;
 
-        // Default to the shared secret if it exists.
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        let bearerToken = sharedSecret || null;
-        let authorization: AuthorizationInfo | null = null;
-
-        // If a connectionId is provided, we use it to fetch the access token that must have been created by the admin.
-        if (body.connectionId) {
-          const token = await getOAuthConnectionAccessToken({
-            config: apiConfig.getOAuthAPIConfig(),
-            logger,
-            connectionId: body.connectionId,
-          });
-          if (token.isOk()) {
+          // If a connectionId is provided, we use it to fetch the access token that must have been created by the admin.
+          if (body.connectionId) {
+            const token = await getOAuthConnectionAccessToken({
+              config: apiConfig.getOAuthAPIConfig(),
+              logger,
+              connectionId: body.connectionId,
+            });
+            if (token.isErr()) {
+              // We fail early if the connectionId is provided, but the access token cannot be fetched.
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: "Error fetching OAuth connection access token",
+                },
+              });
+            }
             bearerToken = token.value.access_token;
             authorization = {
               provider: token.value.connection.provider,
               supported_use_cases: ["platform_actions", "personal_actions"],
             };
-          } else {
-            // We fail early if the connectionId is provided but the access token cannot be fetched.
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "Error fetching OAuth connection access token",
-              },
-            });
-          }
-        }
-
-        // Merge custom headers (if any) with Authorization when probing the server.
-        // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
-        const sanitizedCustomHeaders = headersArrayToRecord(body.customHeaders);
-
-        const headers = bearerToken
-          ? {
-              ...(sanitizedCustomHeaders ?? {}),
-              Authorization: `Bearer ${bearerToken}`,
-            }
-          : sanitizedCustomHeaders;
-
-        const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
-        if (r.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Error fetching remote server metadata: ${r.error.message}`,
-            },
-          });
-        }
-
-        const metadata = r.value;
-
-        const defaultConfig = DEFAULT_REMOTE_MCP_SERVERS.find(
-          (config) => config.url === url
-        );
-
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const name = defaultConfig?.name || metadata.name;
-        if (name.length > 2048) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "MCP server name exceeds maximum length (2048 characters).",
-            },
-          });
-        }
-
-        const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          url: url,
-          cachedName: name,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          cachedDescription: defaultConfig?.description || metadata.description,
-          cachedTools: metadata.tools,
-          icon:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            defaultConfig?.icon ||
-            (isCustomResourceIconType(metadata.icon)
-              ? metadata.icon
-              : DEFAULT_MCP_SERVER_ICON),
-          version: metadata.version,
-          sharedSecret: sharedSecret ?? null,
-          // Persist only user-provided custom headers
-          customHeaders: headersArrayToRecord(body.customHeaders),
-          authorization,
-          oAuthUseCase: body.useCase ?? null,
-        });
-
-        if (body.connectionId) {
-          // We create a connection to the remote MCP server to allow the user to use the MCP server in the future.
-          // The connexion is of type "workspace" because it is created by the admin.
-          // If the server can use personal connections, we rely on this "workspace" connection to get the related credentials.
-          await MCPServerConnectionResource.makeNew(auth, {
-            connectionId: body.connectionId,
-            connectionType: "workspace",
-            serverType: "remote",
-            remoteMCPServerId: newRemoteMCPServer.id,
-          });
-        }
-
-        // Create default tool stakes if specified
-        if (defaultConfig?.toolStakes) {
-          for (const [toolName, stakeLevel] of Object.entries(
-            defaultConfig.toolStakes
-          )) {
-            await RemoteMCPServerToolMetadataResource.makeNew(auth, {
-              remoteMCPServerId: newRemoteMCPServer.id,
-              toolName,
-              permission: stakeLevel,
-              enabled: true,
-            });
-          }
-        }
-
-        if (body.includeGlobal) {
-          const systemView =
-            await MCPServerViewResource.getMCPServerViewForSystemSpace(
-              auth,
-              newRemoteMCPServer.sId
-            );
-
-          if (!systemView) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message:
-                  "Missing system view for remote MCP server, it should have been created when creating the remote server.",
-              },
-            });
           }
 
-          const globalSpace =
-            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-
-          const { hasConflict, name } =
-            await MCPServerViewResource.hasNameConflictInSpace(
-              auth,
-              systemView,
-              globalSpace
-            );
-
-          if (hasConflict) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: `An existing Tool is already using the name "${name}"`,
-              },
-            });
-          }
-
-          await MCPServerViewResource.create(auth, {
-            systemView,
-            space: globalSpace,
-          });
-        }
-
-        return res.status(201).json({
-          success: true,
-          server: newRemoteMCPServer.toJSON(),
-        });
-      } else {
-        const { name } = body;
-
-        if (!isInternalMCPServerName(name)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Invalid internal MCP server name",
-            },
-          });
-        }
-
-        if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
-          const installedMCPServers =
-            await MCPServerViewResource.listForSystemSpace(auth, {
-              where: {
-                serverType: "internal",
-              },
-            });
-
-          const alreadyUsed = installedMCPServers.some((mcpServer) =>
-            matchesInternalMCPServerName(mcpServer.internalMCPServerId, name)
+          // Merge custom headers (if any) with Authorization when probing the server.
+          // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
+          const sanitizedCustomHeaders = headersArrayToRecord(
+            body.customHeaders
           );
 
-          if (alreadyUsed) {
+          const headers = bearerToken
+            ? {
+                ...(sanitizedCustomHeaders ?? {}),
+                Authorization: `Bearer ${bearerToken}`,
+              }
+            : sanitizedCustomHeaders;
+
+          const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
+          if (r.isErr()) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message:
-                  "This internal tool has already been added and only one instance is allowed.",
+                message: `Error fetching remote server metadata: ${r.error.message}`,
               },
             });
           }
-        }
 
-        const newInternalMCPServer =
-          await InternalMCPServerInMemoryResource.makeNew(auth, {
-            name,
-            useCase: body.useCase ?? null,
-          });
+          const metadata = r.value;
 
-        if (body.connectionId) {
-          // For personal tools, automatically create a personal connection for the admin
-          // so they don't need to re-authenticate when they first use the tool.
-          // Exception: If the provider has overridable credentials at personal auth time,
-          // each user should authenticate separately with their own settings.
-          const serverInfo = getInternalMCPServerInfo(name);
-          const provider = serverInfo.authorization?.provider;
-          const hasOverridableInputs = provider
-            ? !!getOverridablePersonalAuthInputs({ provider })
-            : false;
-          if (body.useCase === "personal_actions" && !hasOverridableInputs) {
+          const defaultConfig = DEFAULT_REMOTE_MCP_SERVERS.find(
+            (config) => config.url === url
+          );
+
+          const name = defaultConfig?.name ?? metadata.name;
+          if (name.length > MAX_URL_LENGTH) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `MCP server name exceeds maximum length (${MAX_URL_LENGTH} characters).`,
+              },
+            });
+          }
+
+          const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(
+            auth,
+            {
+              workspaceId: auth.getNonNullableWorkspace().id,
+              url: url,
+              cachedName: name,
+              cachedDescription:
+                defaultConfig?.description ?? metadata.description,
+              cachedTools: metadata.tools,
+              icon:
+                defaultConfig?.icon ??
+                (isCustomResourceIconType(metadata.icon)
+                  ? metadata.icon
+                  : DEFAULT_MCP_SERVER_ICON),
+              version: metadata.version,
+              sharedSecret: sharedSecret ?? null,
+              // Persist only user-provided custom headers
+              customHeaders: headersArrayToRecord(body.customHeaders),
+              authorization,
+              oAuthUseCase: body.useCase ?? null,
+            }
+          );
+
+          if (body.connectionId) {
+            // We create a connection to the remote MCP server to allow the user to use the MCP server in the future.
+            // The connection is of type "workspace" because it is created by the admin.
+            // If the server can use personal connections, we rely on this "workspace" connection to get the related credentials.
             await MCPServerConnectionResource.makeNew(auth, {
               connectionId: body.connectionId,
-              connectionType: "personal",
+              connectionType: "workspace",
+              serverType: "remote",
+              remoteMCPServerId: newRemoteMCPServer.id,
+            });
+          }
+
+          // Create default tool stakes if specified
+          if (defaultConfig?.toolStakes) {
+            for (const [toolName, stakeLevel] of Object.entries(
+              defaultConfig.toolStakes
+            )) {
+              await RemoteMCPServerToolMetadataResource.makeNew(auth, {
+                remoteMCPServerId: newRemoteMCPServer.id,
+                toolName,
+                permission: stakeLevel,
+                enabled: true,
+              });
+            }
+          }
+
+          if (body.includeGlobal) {
+            const systemView =
+              await MCPServerViewResource.getMCPServerViewForSystemSpace(
+                auth,
+                newRemoteMCPServer.sId
+              );
+
+            if (!systemView) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message:
+                    "Missing system view for remote MCP server, it should have been created when creating the remote server.",
+                },
+              });
+            }
+
+            const globalSpace =
+              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+            const { hasConflict, name } =
+              await MCPServerViewResource.hasNameConflictInSpace(
+                auth,
+                systemView,
+                globalSpace
+              );
+
+            if (hasConflict) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: `An existing Tool is already using the name "${name}"`,
+                },
+              });
+            }
+
+            await MCPServerViewResource.create(auth, {
+              systemView,
+              space: globalSpace,
+            });
+          }
+
+          return res.status(201).json({
+            success: true,
+            server: newRemoteMCPServer.toJSON(),
+          });
+        }
+        case "internal": {
+          const { name } = body;
+
+          if (!isInternalMCPServerName(name)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Invalid internal MCP server name",
+              },
+            });
+          }
+
+          if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
+            const installedMCPServers =
+              await MCPServerViewResource.listForSystemSpace(auth, {
+                where: {
+                  serverType: "internal",
+                },
+              });
+
+            const alreadyUsed = installedMCPServers.some((mcpServer) =>
+              matchesInternalMCPServerName(mcpServer.internalMCPServerId, name)
+            );
+
+            if (alreadyUsed) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message:
+                    "This internal tool has already been added and only one instance is allowed.",
+                },
+              });
+            }
+          }
+
+          const newInternalMCPServer =
+            await InternalMCPServerInMemoryResource.makeNew(auth, {
+              name,
+              useCase: body.useCase ?? null,
+            });
+
+          if (body.connectionId) {
+            // For personal tools, automatically create a personal connection for the admin
+            // so they don't need to re-authenticate when they first use the tool.
+            // Exception: If the provider has overridable credentials at personal auth time,
+            // each user should authenticate separately with their own settings.
+            const serverInfo = getInternalMCPServerInfo(name);
+            const provider = serverInfo.authorization?.provider;
+            const hasOverridableInputs = provider
+              ? !!getOverridablePersonalAuthInputs({ provider })
+              : false;
+            if (body.useCase === "personal_actions" && !hasOverridableInputs) {
+              await MCPServerConnectionResource.makeNew(auth, {
+                connectionId: body.connectionId,
+                connectionType: "personal",
+                serverType: "internal",
+                internalMCPServerId: newInternalMCPServer.id,
+              });
+            }
+
+            // We create a workspace connection to the internal MCP server.
+            // This connection is used to get the related credentials for personal connections.
+            await MCPServerConnectionResource.makeNew(auth, {
+              connectionId: body.connectionId,
+              connectionType: "workspace",
               serverType: "internal",
               internalMCPServerId: newInternalMCPServer.id,
             });
           }
 
-          // We create a workspace connection to the internal MCP server.
-          // This connection is used to get the related credentials for personal connections.
-          await MCPServerConnectionResource.makeNew(auth, {
-            connectionId: body.connectionId,
-            connectionType: "workspace",
-            serverType: "internal",
-            internalMCPServerId: newInternalMCPServer.id,
-          });
-        }
+          if (
+            requiresBearerTokenConfiguration(newInternalMCPServer.toJSON()) &&
+            (body.sharedSecret !== undefined ||
+              body.customHeaders !== undefined)
+          ) {
+            const sanitizedRecord = headersArrayToRecord(body.customHeaders);
+            const customHeaders =
+              Object.keys(sanitizedRecord).length > 0 ? sanitizedRecord : null;
 
-        if (
-          requiresBearerTokenConfiguration(newInternalMCPServer.toJSON()) &&
-          (body.sharedSecret !== undefined || body.customHeaders !== undefined)
-        ) {
-          const sanitizedRecord = headersArrayToRecord(body.customHeaders);
-          const customHeaders =
-            Object.keys(sanitizedRecord).length > 0 ? sanitizedRecord : null;
-
-          const upsertResult = await newInternalMCPServer.upsertCredentials(
-            auth,
-            {
-              sharedSecret: body.sharedSecret,
-              customHeaders,
+            const upsertResult = await newInternalMCPServer.upsertCredentials(
+              auth,
+              {
+                sharedSecret: body.sharedSecret,
+                customHeaders,
+              }
+            );
+            if (upsertResult.isErr()) {
+              throw upsertResult.error;
             }
-          );
-          if (upsertResult.isErr()) {
-            throw upsertResult.error;
-          }
-        }
-
-        if (body.includeGlobal) {
-          const globalSpace =
-            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-
-          const systemView =
-            await MCPServerViewResource.getMCPServerViewForSystemSpace(
-              auth,
-              newInternalMCPServer.id
-            );
-
-          if (!systemView) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message:
-                  "Missing system view for internal MCP server, it should have been created when creating the internal server.",
-              },
-            });
           }
 
-          const { hasConflict, name } =
-            await MCPServerViewResource.hasNameConflictInSpace(
-              auth,
+          if (body.includeGlobal) {
+            const globalSpace =
+              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+            const systemView =
+              await MCPServerViewResource.getMCPServerViewForSystemSpace(
+                auth,
+                newInternalMCPServer.id
+              );
+
+            if (!systemView) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message:
+                    "Missing system view for internal MCP server, it should have been created when creating the internal server.",
+                },
+              });
+            }
+
+            const { hasConflict, name } =
+              await MCPServerViewResource.hasNameConflictInSpace(
+                auth,
+                systemView,
+                globalSpace
+              );
+
+            if (hasConflict) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: `An existing Tool is already using the name "${name}"`,
+                },
+              });
+            }
+
+            await MCPServerViewResource.create(auth, {
               systemView,
-              globalSpace
-            );
-
-          if (hasConflict) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: `An existing Tool is already using the name "${name}"`,
-              },
+              space: globalSpace,
             });
           }
 
-          await MCPServerViewResource.create(auth, {
-            systemView,
-            space: globalSpace,
+          return res.status(201).json({
+            success: true,
+            server: newInternalMCPServer.toJSON(),
           });
         }
-
-        return res.status(201).json({
-          success: true,
-          server: newInternalMCPServer.toJSON(),
-        });
+        default: {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid server type",
+            },
+          });
+        }
       }
     }
 
