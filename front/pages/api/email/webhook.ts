@@ -19,7 +19,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -29,6 +29,44 @@ export const config = {
     bodyParser: false,
   },
 };
+
+function parseHeaderValue(
+  rawHeaders: string,
+  headerName: string
+): string | null {
+  const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Match the header name at line start, capture the first line value then any
+  // RFC 5322 folded continuation lines (lines starting with whitespace).
+  const headerPattern = new RegExp(
+    `^${escapedHeaderName}:\\s*((?:.*(?:\\r?\\n[ \\t]+.*)*))`,
+    "im"
+  );
+  const match = rawHeaders.match(headerPattern);
+  if (!match) {
+    return null;
+  }
+
+  // Unfold RFC 5322 continuation lines (CRLF/LF followed by spaces/tabs).
+  const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
+
+  return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
+}
+
+function parseThreadingHeaders(rawHeaders: string | null) {
+  if (!rawHeaders) {
+    return {
+      messageId: null,
+      inReplyTo: null,
+      references: null,
+    };
+  }
+
+  return {
+    messageId: parseHeaderValue(rawHeaders, "Message-ID"),
+    inReplyTo: parseHeaderValue(rawHeaders, "In-Reply-To"),
+    references: parseHeaderValue(rawHeaders, "References"),
+  };
+}
 
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
@@ -43,6 +81,7 @@ const parseSendgridWebhookContent = async (
     const full = fields["from"] ? fields["from"][0] : null;
     const SPF = fields["SPF"] ? fields["SPF"][0] : null;
     const dkim = fields["dkim"] ? fields["dkim"][0] : null;
+    const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
     const envelope = fields["envelope"]
       ? JSON.parse(fields["envelope"][0])
       : null;
@@ -85,6 +124,9 @@ const parseSendgridWebhookContent = async (
       text: text || "",
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: { SPF: SPF || "", dkim: dkim || "" },
+      threadingHeaders: parseThreadingHeaders(
+        isString(rawHeaders) ? rawHeaders : null
+      ),
       envelope: {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         to: envelope.to || [],
