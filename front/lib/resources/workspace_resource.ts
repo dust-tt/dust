@@ -36,7 +36,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-const WORKSPACE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE =
   "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks.";
 const INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX =
@@ -164,10 +163,11 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     };
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static fetchByIdCached = cacheWithRedis(
     WorkspaceResource._fetchByIdUncached,
     WorkspaceResource.workspaceCacheKeyResolver,
-    { ttlMs: WORKSPACE_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   private static invalidateWorkspaceCache = invalidateCacheWithRedis(

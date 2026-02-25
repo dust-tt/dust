@@ -48,8 +48,6 @@ const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 const TOOLS_VALIDATION_WILDCARD = "*";
 
-const USER_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
 type CachedUserData = {
   id: ModelId;
   sId: string;
@@ -219,10 +217,11 @@ export class UserResource extends BaseResource<UserModel> {
     };
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static fetchByWorkOSUserIdCached = cacheWithRedis(
     UserResource._fetchByWorkOSUserIdUncached,
     UserResource.userByWorkOSIdCacheKeyResolver,
-    { ttlMs: USER_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   private static invalidateUserByWorkOSIdCache = invalidateCacheWithRedis(
