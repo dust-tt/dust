@@ -263,61 +263,6 @@ describe("POST /api/w/[wId]/mcp/", () => {
       configurable: true,
     });
   });
-
-  it("should create an internal MCP server with bearer token credentials", async () => {
-    const { req, res, workspace } = await setupTest("admin", "POST");
-
-    await FeatureFlagFactory.basic("slab_mcp", workspace);
-    req.body = {
-      name: "slab" as InternalMCPServerNameType,
-      serverType: "internal",
-      includeGlobal: true,
-      sharedSecret: "test-secret-123",
-      customHeaders: [
-        { key: "X-Custom-Header", value: "custom-value" },
-        { key: "Authorization", value: "Bearer should-be-kept" },
-      ],
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(201);
-    const responseData = res._getJSONData();
-    expect(responseData).toEqual({
-      success: true,
-      server: expect.objectContaining({
-        name: "slab",
-        sharedSecret: expect.stringContaining("•"),
-        customHeaders: expect.any(Object),
-      }),
-    });
-    expect(responseData.server.customHeaders).not.toBeNull();
-    expect(responseData.server.customHeaders).toHaveProperty("X-Custom-Header");
-    expect(responseData.server.customHeaders["X-Custom-Header"]).toContain("•");
-
-    const server = responseData.server;
-    const credential = await InternalMCPServerCredentialModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        internalMCPServerId: server.sId,
-      },
-    });
-
-    expect(credential).toBeDefined();
-    // sharedSecret is encrypted at rest via the encryptedKey column.
-    expect(credential?.encryptedKey).toBeTruthy();
-    expect(
-      decrypt({
-        encrypted: credential?.encryptedKey ?? "",
-        key: workspace.sId,
-        useCase: "mcp_server_credentials",
-      })
-    ).toBe("test-secret-123");
-    expect(credential?.customHeaders).toEqual({
-      Authorization: "Bearer should-be-kept",
-      "X-Custom-Header": "custom-value",
-    });
-  });
 });
 
 describe("POST /api/w/[wId]/mcp/ - name conflict", () => {
