@@ -23,7 +23,7 @@ export async function setupOAuthConnection({
   extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
-    const oauthBaseUrl = config.getApiBaseUrl();
+    const oauthBaseUrl = config.getAppUrl();
     // Pass opener origin through OAuth flow so finalize page can postMessage back
     const openerOrigin = window.location.origin;
     let url = `${oauthBaseUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}&openerOrigin=${encodeURIComponent(openerOrigin)}`;
@@ -64,8 +64,8 @@ export async function setupOAuthConnection({
     };
 
     // Method 1: window.postMessage (preferred, direct communication)
-    // Accept messages from oauthBaseUrl origin (OAuth popup runs on NextJS server)
-    // In dev, bypass origin check as an extra safeguard for cross-port communication
+    // The finalize page runs on the app (SPA), same origin as the opener.
+    // In dev, bypass origin check as an extra safeguard for cross-port communication.
     const expectedOrigin = new URL(oauthBaseUrl).origin;
     const handleWindowMessage = (event: MessageEvent) => {
       if (!isDevelopment() && event.origin !== expectedOrigin) {
