@@ -12,6 +12,7 @@ import type {
   MCPServerTypeWithViews,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   MCPServerConnectionConnectionType,
@@ -849,6 +850,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     owner,
     connectionType: "personal",
   });
+  const regionContext = useRegionContextSafe();
 
   const createPersonalConnection = async ({
     mcpServerId,
@@ -905,6 +907,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         provider,
         useCase,
         extraConfig,
+        regionInfo: regionContext?.regionInfo ?? null,
       });
 
       if (cRes.isErr()) {

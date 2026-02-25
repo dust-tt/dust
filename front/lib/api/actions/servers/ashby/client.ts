@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
@@ -26,54 +25,21 @@ import {
   AshbyReportSynchronousResponseSchema,
   AshbyUserSearchResponseSchema,
 } from "@app/lib/api/actions/servers/ashby/types";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { decrypt } from "@app/types/shared/utils/encryption";
 import type { z } from "zod";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyClient({
-  auth,
-  agentLoopContext,
-}: ToolHandlerExtra): Promise<Result<AshbyClient, MCPError>> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
-    return new Err(
-      new MCPError(
-        "Ashby API key not configured. Please configure a secret containing your Ashby API key in the agent settings.",
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
-
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const apiKey = secret
-    ? decrypt({
-        encrypted: secret.hash,
-        key: auth.getNonNullableWorkspace().sId,
-        useCase: "developer_secret",
-      })
-    : null;
+export function getAshbyClient(
+  extra: ToolHandlerExtra
+): Result<AshbyClient, MCPError> {
+  const apiKey = extra.authInfo?.token;
   if (!apiKey) {
     return new Err(
       new MCPError(
-        "Ashby API key not found in workspace secrets. Please check the secret configuration.",
+        "Ashby API key not configured. Please configure the API key in the MCP server settings.",
         {
           tracked: false,
         }

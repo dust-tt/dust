@@ -62,6 +62,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/project_user_digest_queue");
     case "relocation":
       return path.join(baseDir, "temporal/relocation");
+    case "sandbox_reaper":
+      return path.join(baseDir, "temporal/sandbox_reaper");
     case "remote_tools_sync":
       return path.join(baseDir, "temporal/remote_tools");
     case "scrub_workspace_queue":

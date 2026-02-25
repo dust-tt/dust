@@ -11,7 +11,9 @@ import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionM
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   CONNECTOR_UI_CONFIGURATIONS,
@@ -96,7 +98,8 @@ export async function handleUpdatePermissions(
   dataSource: DataSourceType,
   owner: LightWorkspaceType,
   extraConfig: Record<string, string>,
-  sendNotification: (notification: NotificationType) => void
+  sendNotification: (notification: NotificationType) => void,
+  regionInfo: RegionInfo | null
 ) {
   const provider = connector.type;
 
@@ -104,6 +107,7 @@ export async function handleUpdatePermissions(
     owner,
     provider,
     extraConfig,
+    regionInfo,
   });
   if (connectionRes.isErr()) {
     sendNotification({
@@ -698,6 +702,7 @@ export function ConnectorPermissionsModal({
   readOnly,
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
+  const regionContext = useRegionContextSafe();
 
   const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
@@ -1125,7 +1130,8 @@ export function ConnectorPermissionsModal({
                     dataSource,
                     owner,
                     extraConfig,
-                    sendNotification
+                    sendNotification,
+                    regionContext?.regionInfo ?? null
                   );
                   closeModal(false);
                 }}
