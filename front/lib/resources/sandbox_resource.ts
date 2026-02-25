@@ -1,5 +1,9 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
-import type { ExecOptions, ExecResult } from "@app/lib/api/sandbox/provider";
+import type {
+  ExecOptions,
+  ExecResult,
+  SandboxProvider,
+} from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -213,6 +217,20 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   // Provider-facing operations
   // ---------------------------------------------------------------------------
 
+  private static async withLifecycleLock<T>(
+    conversationId: string,
+    fn: (provider: SandboxProvider) => Promise<Result<T, Error>>
+  ): Promise<Result<T, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    return executeWithLock(`sandbox:lifecycle:${conversationId}`, () =>
+      fn(provider)
+    );
+  }
+
   /**
    * Ensure a running sandbox exists for the given conversation.
    *
@@ -227,14 +245,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       "Cannot ensure sandbox without a workspace"
     );
 
-    const lockName = `sandbox:lifecycle:${conversation.sId}`;
-
-    return executeWithLock(lockName, async () => {
-      const provider = getSandboxProvider();
-      if (!provider) {
-        return new Err(new Error("Sandbox provider not configured."));
-      }
-
+    return this.withLifecycleLock(conversation.sId, async (provider) => {
       const conversationId = conversation.id;
 
       const existing = await SandboxResource.fetchByConversationId(
@@ -329,12 +340,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async dangerouslySleepIfRunning(
     conversationId: string
   ): Promise<Result<void, Error>> {
-    const provider = getSandboxProvider();
-    if (!provider) {
-      return new Err(new Error("Sandbox provider not configured."));
-    }
-
-    return executeWithLock(`sandbox:lifecycle:${conversationId}`, async () => {
+    return this.withLifecycleLock(conversationId, async (provider) => {
       const sandbox =
         await SandboxResource.dangerouslyFetchByConversationId(conversationId);
       if (!sandbox || sandbox.status !== "running") {
@@ -371,12 +377,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async dangerouslyDestroyIfSleeping(
     conversationId: string
   ): Promise<Result<void, Error>> {
-    const provider = getSandboxProvider();
-    if (!provider) {
-      return new Err(new Error("Sandbox provider not configured."));
-    }
-
-    return executeWithLock(`sandbox:lifecycle:${conversationId}`, async () => {
+    return this.withLifecycleLock(conversationId, async (provider) => {
       const sandbox =
         await SandboxResource.dangerouslyFetchByConversationId(conversationId);
       if (!sandbox || sandbox.status !== "sleeping") {
