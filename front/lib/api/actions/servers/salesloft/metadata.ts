@@ -39,7 +39,7 @@ export const SALESLOFT_SERVER = {
     version: "1.0.0",
     description: "Access Salesloft cadences, tasks, and actions.",
     authorization: null,
-    icon: "ActionDocumentTextIcon",
+    icon: "SalesloftLogo",
     documentationUrl: null,
     instructions: null,
     developerSecretSelection: "required",
