@@ -7,43 +7,13 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const ZENDESK_TOOL_NAME = "zendesk" as const;
 
 export const ZENDESK_TOOLS_METADATA = createToolsRecord({
-  get_ticket: {
-    description:
-      "Retrieve a Zendesk ticket by its ID. Returns the ticket details including subject, " +
-      "description, status, priority, assignee, and other metadata. Optionally include ticket metrics " +
-      "such as resolution times, wait times, and reply counts. Optionally include the full conversation " +
-      "with all comments.",
-    schema: {
-      ticketId: z
-        .number()
-        .int()
-        .positive()
-        .describe("The ID of the Zendesk ticket to retrieve."),
-      includeMetrics: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
-        ),
-      includeConversation: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Retrieving Zendesk ticket",
-      done: "Retrieve Zendesk ticket",
-    },
-  },
   search_tickets: {
     description:
-      "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets with their details. " +
-      "Supports filtering by status, priority, type, assignee, tags, custom fields, dates, and text fields. " +
-      'Custom fields use syntax: custom_field_{id}:"exact_value". Tags are simple labels; business-specific data ' +
-      "are typically stored in custom fields. Use list_ticket_fields to discover available custom field IDs.",
+      "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets. " +
+      "Each ticket includes by default: id, url, subject, status, priority, description, created_at, updated_at. " +
+      "Use includeFields to include additional fields. " +
+      'Supports filtering by status, priority, type, assignee, tags, and custom fields (syntax: custom_field_{id}:"value"). ' +
+      "Use list_ticket_fields to discover available custom field IDs.",
     schema: {
       query: z
         .string()
@@ -62,11 +32,55 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .enum(["asc", "desc"])
         .optional()
         .describe("Sort order. Defaults to 'desc' if not specified."),
+      includeFields: z
+        .array(z.string())
+        .default([])
+        .describe(
+          "Additional ticket fields to include in the response. Supported values: 'requester_id', 'assignee_id', 'tags', 'custom_fields', 'satisfaction_rating', 'due_at', 'type', 'organization_id', 'group_id', 'via'. Only set if explicitly requested by the user."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Searching Zendesk tickets",
       done: "Search Zendesk tickets",
+    },
+  },
+  get_ticket_details: {
+    description:
+      "Retrieve a Zendesk ticket by its ID. " +
+      "Returns by default: id, url, subject, status, priority, description, created_at, updated_at. " +
+      "Use includeFields to include additional fields. " +
+      "Use includeMetrics only if the user asks for resolution times or reply counts. " +
+      "Use includeConversation only if the user asks for the full conversation.",
+    schema: {
+      ticketId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The ID of the Zendesk ticket to retrieve."),
+      includeMetrics: z
+        .boolean()
+        .default(false)
+        .describe(
+          "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
+        ),
+      includeConversation: z
+        .boolean()
+        .default(false)
+        .describe(
+          "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
+        ),
+      includeFields: z
+        .array(z.string())
+        .default([])
+        .describe(
+          "Additional ticket fields to include in the response. Supported values: 'requester_id', 'assignee_id', 'tags', 'custom_fields', 'satisfaction_rating', 'due_at', 'type', 'organization_id', 'group_id', 'via'. Only set if explicitly requested by the user."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Zendesk ticket",
+      done: "Retrieve Zendesk ticket",
     },
   },
   list_ticket_fields: {

@@ -8,13 +8,18 @@ import {
 } from "@app/lib/api/actions/servers/zendesk/client";
 import { ZENDESK_TOOLS_METADATA } from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
+  renderCustomFields,
   renderTicket,
   renderTicketComments,
   renderTicketFields,
   renderTicketMetrics,
 } from "@app/lib/api/actions/servers/zendesk/rendering";
-import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
+import type {
+  ZendeskTicketField,
+  ZendeskUser,
+} from "@app/lib/api/actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 function isTrackedError(error: Error): boolean {
@@ -22,8 +27,68 @@ function isTrackedError(error: Error): boolean {
 }
 
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
-  get_ticket: async (
-    { ticketId, includeMetrics, includeConversation },
+  search_tickets: async (
+    { query, sortBy, sortOrder, includeFields },
+    { authInfo }
+  ) => {
+    const clientResult = getZendeskClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const result = await client.searchTickets(query, sortBy, sortOrder);
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to search tickets: ${result.error.message}`, {
+          tracked: isTrackedError(result.error),
+        })
+      );
+    }
+
+    const { results, count, next_page } = result.value;
+
+    if (results.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No tickets found matching the search criteria.",
+        },
+      ]);
+    }
+
+    const includeCustomFields = includeFields.includes("custom_fields");
+    let ticketFieldsResult: Result<ZendeskTicketField[], Error> | undefined;
+    if (includeCustomFields) {
+      const fieldIds = getUniqueCustomFieldIds(results);
+      ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
+    }
+
+    const ticketsText = results
+      .map((ticket) => {
+        let text = renderTicket(ticket, includeFields);
+        if (includeCustomFields && ticketFieldsResult) {
+          text += renderCustomFields(ticket, ticketFieldsResult);
+        }
+        return ["---", text].join("\n");
+      })
+      .join("\n\n");
+
+    const paginationInfo = next_page
+      ? "\n\nNote: There are more tickets available."
+      : "";
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${count} ticket(s):\n\n${ticketsText}${paginationInfo}`,
+      },
+    ]);
+  },
+
+  get_ticket_details: async (
+    { ticketId, includeMetrics, includeConversation, includeFields },
     { authInfo }
   ) => {
     const clientResult = getZendeskClient(authInfo);
@@ -45,10 +110,13 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
 
     const ticket = ticketResult.value;
 
-    const fieldIds = getUniqueCustomFieldIds(ticket);
-    const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
+    let ticketText = renderTicket(ticket, includeFields);
 
-    let ticketText = renderTicket(ticket, ticketFieldsResult);
+    if (includeFields.includes("custom_fields")) {
+      const fieldIds = getUniqueCustomFieldIds(ticket);
+      const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
+      ticketText += renderCustomFields(ticket, ticketFieldsResult);
+    }
 
     if (includeMetrics) {
       const metricsResult = await client.getTicketMetrics(ticketId);
@@ -104,55 +172,6 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: ticketText,
-      },
-    ]);
-  },
-
-  search_tickets: async ({ query, sortBy, sortOrder }, { authInfo }) => {
-    const clientResult = getZendeskClient(authInfo);
-    if (clientResult.isErr()) {
-      return clientResult;
-    }
-    const client = clientResult.value;
-
-    const result = await client.searchTickets(query, sortBy, sortOrder);
-
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to search tickets: ${result.error.message}`, {
-          tracked: isTrackedError(result.error),
-        })
-      );
-    }
-
-    const { results, count, next_page } = result.value;
-
-    if (results.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "No tickets found matching the search criteria.",
-        },
-      ]);
-    }
-
-    const fieldIds = getUniqueCustomFieldIds(results);
-    const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
-
-    const ticketsText = results
-      .map((ticket) => {
-        return ["---", renderTicket(ticket, ticketFieldsResult)].join("\n");
-      })
-      .join("\n\n");
-
-    const paginationInfo = next_page
-      ? "\n\nNote: There are more tickets available."
-      : "";
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `Found ${count} ticket(s):\n\n${ticketsText}${paginationInfo}`,
       },
     ]);
   },

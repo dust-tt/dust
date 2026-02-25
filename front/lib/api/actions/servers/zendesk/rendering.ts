@@ -13,92 +13,74 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 
 export function renderTicket(
   ticket: ZendeskTicket,
-  ticketFieldsResult: Result<ZendeskTicketField[], Error>
+  includeFields: string[] = []
 ): string {
   const lines = [
-    `ID: ${ticket.id}`,
-    `URL: ${apiUrlToDocumentUrl(ticket.url)}`,
-    `Subject: ${ticket.subject ?? "No subject"}`,
-    `Status: ${ticket.status}`,
+    `**Ticket ID: ${ticket.id}**`,
+    `- URL: ${apiUrlToDocumentUrl(ticket.url)}`,
+    `- Subject: ${ticket.subject ?? "No subject"}`,
+    `- Status: ${ticket.status}`,
   ];
 
   if (ticket.priority) {
-    lines.push(`Priority: ${ticket.priority}`);
-  }
-
-  if (ticket.type) {
-    lines.push(`Type: ${ticket.type}`);
+    lines.push(`- Priority: ${ticket.priority}`);
   }
 
   if (ticket.description) {
-    lines.push(`\nDescription:\n${ticket.description}`);
+    const quoted = ticket.description
+      .split("\n")
+      .map((l) => `   > ${l}`)
+      .join("\n");
+    lines.push(`- Description:\n${quoted}`);
   }
 
-  if (ticket.requester_id) {
-    lines.push(`\nRequester ID: ${ticket.requester_id}`);
-  }
+  lines.push(`- Created: ${new Date(ticket.created_at).toISOString()}`);
+  lines.push(`- Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
-  if (ticket.assignee_id) {
-    lines.push(`Assignee ID: ${ticket.assignee_id}`);
-  }
-
-  if (ticket.group_id) {
-    lines.push(`Group ID: ${ticket.group_id}`);
-  }
-
-  if (ticket.organization_id) {
-    lines.push(`Organization ID: ${ticket.organization_id}`);
-  }
-
-  if (ticket.tags.length > 0) {
-    lines.push(`\nTags: ${ticket.tags.join(", ")}`);
-  }
-
-  if (ticket.via?.channel) {
-    lines.push(`\nChannel: ${ticket.via.channel}`);
-  }
-
-  lines.push(`\nCreated: ${new Date(ticket.created_at).toISOString()}`);
-  lines.push(`Updated: ${new Date(ticket.updated_at).toISOString()}`);
-
-  if (ticket.custom_fields && ticket.custom_fields.length > 0) {
-    if (ticketFieldsResult.isErr()) {
-      lines.push(
-        "\nNote: Custom field names could not be retrieved. Only field IDs would be shown if displayed."
-      );
-    } else {
-      const fieldMap = new Map(
-        ticketFieldsResult.value.map((f) => [f.id, f.title])
-      );
-      const fieldsWithNames: string[] = [];
-      let fieldsAreMissing = false;
-
-      for (const field of ticket.custom_fields) {
-        if (field.value !== null && field.value !== "") {
-          const fieldName = fieldMap.get(field.id);
-          if (fieldName) {
-            const valueStr = Array.isArray(field.value)
-              ? field.value.join(", ")
-              : String(field.value);
-            fieldsWithNames.push(`- ${fieldName}: ${valueStr}`);
-          } else {
-            fieldsAreMissing = true;
-          }
-        }
-      }
-
-      if (fieldsWithNames.length > 0) {
-        lines.push("\nCustom Fields:");
-        lines.push(...fieldsWithNames);
-      }
-
-      if (fieldsAreMissing) {
-        lines.push("\nNote: Some custom fields could not be displayed.");
-      }
+  const extraFields = includeFields.filter((f) => f !== "custom_fields");
+  for (const field of extraFields) {
+    const ticketRecord = ticket as Record<string, unknown>;
+    const value = ticketRecord[field];
+    if (value !== null && value !== undefined) {
+      const valueStr =
+        typeof value === "object" ? JSON.stringify(value) : String(value);
+      lines.push(`- ${field}: ${valueStr}`);
     }
   }
 
   return lines.join("\n");
+}
+
+export function renderCustomFields(
+  ticket: ZendeskTicket,
+  ticketFieldsResult: Result<ZendeskTicketField[], Error>
+): string {
+  if (!ticket.custom_fields || ticket.custom_fields.length === 0) {
+    return "";
+  }
+
+  if (ticketFieldsResult.isErr()) {
+    return "\n- Custom Fields: (names could not be retrieved)";
+  }
+
+  const fieldMap = new Map(
+    ticketFieldsResult.value.map((f) => [f.id, f.title])
+  );
+  const lines: string[] = [];
+
+  for (const field of ticket.custom_fields) {
+    if (field.value !== null && field.value !== "") {
+      const fieldName = fieldMap.get(field.id);
+      if (fieldName) {
+        const valueStr = Array.isArray(field.value)
+          ? field.value.join(", ")
+          : String(field.value);
+        lines.push(`- Custom Fields — ${fieldName}: ${valueStr}`);
+      }
+    }
+  }
+
+  return lines.length > 0 ? "\n" + lines.join("\n") : "";
 }
 
 function formatMinutes(minutes: number | null): string {
