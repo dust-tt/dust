@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -272,6 +273,10 @@ const buildPostLoginUrl = (
       searchParams.set(key, value);
     }
   }
+
+  const currentRegion = multiRegionsConfig.getCurrentRegion();
+  searchParams.set("region", currentRegion);
+  searchParams.set("regionUrl", multiRegionsConfig.getRegionUrl(currentRegion));
 
   const queryString = searchParams.toString();
   return queryString ? `${path}?${queryString}` : path;

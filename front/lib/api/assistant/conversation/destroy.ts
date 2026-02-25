@@ -266,7 +266,7 @@ export async function destroyConversation(
     },
   });
 
-  await SandboxResource.deleteByConversationModelId(auth, conversation.id);
+  await SandboxResource.deleteByConversationId(auth, conversation.sId);
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,

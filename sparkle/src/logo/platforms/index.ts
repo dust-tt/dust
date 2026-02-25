@@ -56,6 +56,8 @@ export { default as OutlookLogo } from "./Outlook";
 export { default as ProductboardLogo } from "./Productboard";
 export { default as ReplicateLogo } from "./Replicate";
 export { default as SalesforceLogo } from "./Salesforce";
+export { default as SalesloftLogo } from "./Salesloft";
+export { default as SlabLogo } from "./Slab";
 export { default as SlackLogo } from "./Slack";
 export { default as SnowflakeLogo } from "./Snowflake";
 export { default as StatuspageLogo } from "./Statuspage";

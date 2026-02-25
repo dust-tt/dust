@@ -7,9 +7,6 @@
     "./styles/*": "./styles/*",
     "./types/*": "./types/*"
   },
-  "engines": {
-    "node": "22.22.0"
-  },
   "scripts": {
     "dev:all": "concurrently --kill-others \"cd ../types/ && npm run start\" \"sleep 20 && cd ../sdks/js/ && npm run start\" \"sleep 22 && next dev\" \"sleep 22 && tsx ./start_worker.ts\"",
     "dev": "next dev",

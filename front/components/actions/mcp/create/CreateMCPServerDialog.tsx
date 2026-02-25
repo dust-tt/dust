@@ -262,7 +262,9 @@ export function CreateMCPServerDialog({
 
               {internalMCPServer &&
                 requiresBearerTokenConfiguration(internalMCPServer) && (
-                  <InternalBearerTokenSection />
+                  <InternalBearerTokenSection
+                    serverName={internalMCPServer.name}
+                  />
                 )}
 
               <CustomHeadersConfigurationSection

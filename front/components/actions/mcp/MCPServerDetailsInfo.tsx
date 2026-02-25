@@ -79,7 +79,7 @@ export function MCPServerDetailsInfo({
       {isRemoteMCPServerType(mcpServerView.server) ? (
         <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
       ) : requiresBearerToken ? (
-        <InternalMCPBearerTokenForm />
+        <InternalMCPBearerTokenForm serverName={mcpServerView.server.name} />
       ) : null}
       <div className="mt-2">
         <ToolsList owner={owner} mcpServerView={mcpServerView} />

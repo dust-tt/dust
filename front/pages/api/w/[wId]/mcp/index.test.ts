@@ -1,8 +1,8 @@
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  allowsMultipleInstancesOfInternalMCPServerByName,
-  INTERNAL_MCP_SERVERS,
+    allowsMultipleInstancesOfInternalMCPServerByName,
+    INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -13,7 +13,6 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
-
 import handler from "./index";
 
 // Mock the data_sources module to spy on upsertTable

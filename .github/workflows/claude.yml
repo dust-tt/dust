@@ -2,13 +2,13 @@ name: Claude Code
 
 on:
   issue_comment:
-    types: [created]
+    types: [ created ]
   pull_request_review_comment:
-    types: [created]
+    types: [ created ]
   issues:
-    types: [opened, assigned]
+    types: [ opened, assigned ]
   pull_request_review:
-    types: [submitted]
+    types: [ submitted ]
 
 jobs:
   claude:
@@ -34,7 +34,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.13.0
+          node-version: 22.22.0
 
       # Setup Rust for core project
       - name: Setup Rust
