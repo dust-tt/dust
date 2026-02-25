@@ -30,7 +30,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { md5 } from "@app/types/shared/utils/hashing";
+import { md5 } from "@app/types/shared/utils/encryption";
 import type {
   LightWorkspaceType,
   RoleType,

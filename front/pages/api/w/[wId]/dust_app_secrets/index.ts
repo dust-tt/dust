@@ -10,7 +10,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { encrypt } from "@app/types/shared/utils/hashing";
+import { encrypt } from "@app/types/shared/utils/encryption";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetDustAppSecretsResponseBody = {

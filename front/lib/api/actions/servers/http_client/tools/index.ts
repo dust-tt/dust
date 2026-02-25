@@ -15,7 +15,7 @@ import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { decrypt } from "@app/types/shared/utils/hashing";
+import { decrypt } from "@app/types/shared/utils/encryption";
 
 const MAX_RESPONSE_SIZE = 1_000_000; // 1MB
 

@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { decrypt } from "@app/types/shared/utils/hashing";
+import { decrypt } from "@app/types/shared/utils/encryption";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 

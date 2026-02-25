@@ -21,7 +21,7 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { decrypt } from "@app/types/shared/utils/hashing";
+import { decrypt } from "@app/types/shared/utils/encryption";
 import type { z } from "zod";
 
 const STATUSPAGE_API_BASE_URL = "https://api.statuspage.io/v1";

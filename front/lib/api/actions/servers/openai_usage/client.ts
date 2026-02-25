@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { decrypt } from "@app/types/shared/utils/hashing";
+import { decrypt } from "@app/types/shared/utils/encryption";
 
 const OPENAI_API_BASE_URL = "https://api.openai.com/v1";
 
