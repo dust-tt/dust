@@ -18,7 +18,7 @@ import {
   Input,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
@@ -74,7 +74,7 @@ function PermissionProfileSelector({
 }: PermissionProfileSelectorProps) {
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
-  const [localProfileId, setLocalProfileId] = useState<string | null>(null);
+  const [localProfileId, setLocalProfileId] = useState("");
 
   const {
     configValue: permissionProfileIdConfigValue,
@@ -91,6 +91,13 @@ function PermissionProfileSelector({
     configKey: GONG_PERMISSION_PROFILES_CONFIG_KEY,
   });
 
+  // The saved profile ID from the server, "" means "all participants".
+  const savedProfileId = permissionProfileIdConfigValue ?? "";
+
+  useEffect(() => {
+    setLocalProfileId(savedProfileId);
+  }, [savedProfileId]);
+
   const permissionProfiles = useMemo<GongPermissionProfile[]>(() => {
     if (!permissionProfilesConfigValue) {
       return [];
@@ -106,26 +113,18 @@ function PermissionProfileSelector({
     }
   }, [permissionProfilesConfigValue]);
 
-  // The saved profile ID from the server, "" means "all participants".
-  const savedProfileId = permissionProfileIdConfigValue ?? "";
-  // The currently displayed profile ID (local override or saved value).
-  const displayedProfileId = localProfileId ?? savedProfileId;
-  const hasUnsavedChanges =
-    localProfileId !== null && localProfileId !== savedProfileId;
+  const hasUnsavedChanges = localProfileId !== savedProfileId;
 
   const displayedProfile = useMemo(() => {
-    if (!displayedProfileId) {
+    if (!localProfileId) {
       return null;
     }
     return (
-      permissionProfiles.find((p) => p.id === displayedProfileId) ?? null
+      permissionProfiles.find((p) => p.id === localProfileId) ?? null
     );
-  }, [displayedProfileId, permissionProfiles]);
+  }, [localProfileId, permissionProfiles]);
 
   const handleSave = async () => {
-    if (localProfileId === null) {
-      return;
-    }
     setLoading(true);
     // The config API only accepts strings, so "" means "no filter" (normalized
     // to null on the connector side).
@@ -139,7 +138,6 @@ function PermissionProfileSelector({
     );
     if (res.ok) {
       await mutatePermissionProfileIdConfig();
-      setLocalProfileId(null);
       sendNotification({
         type: "success",
         title: "Gong configuration updated",
