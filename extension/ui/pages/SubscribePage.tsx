@@ -6,15 +6,12 @@ import {
   Page,
   RocketIcon,
 } from "@dust-tt/sparkle";
-import type { ProtectedRouteChildrenProps } from "@extension/ui/components/auth/ProtectedRoute";
+import { useProtectedRouteContext } from "@extension/ui/components/auth/ProtectedRoute";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
 
-export const SubscribePage = ({
-  user,
-  workspace,
-  handleLogout,
-}: ProtectedRouteChildrenProps) => {
+export const SubscribePage = () => {
+  const { user, workspace, handleLogout } = useProtectedRouteContext();
   return (
     <div>
       <BarHeader

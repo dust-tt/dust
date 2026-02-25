@@ -4,7 +4,7 @@ import { postConversation } from "@extension/shared/lib/conversation";
 import { useDustAPI } from "@extension/shared/lib/dust_api";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export const RunPage = () => {
   const platform = usePlatform();

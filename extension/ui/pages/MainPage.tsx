@@ -17,7 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type { ProtectedRouteChildrenProps } from "@extension/ui/components/auth/ProtectedRoute";
+import { useProtectedRouteContext } from "@extension/ui/components/auth/ProtectedRoute";
 import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
@@ -25,11 +25,8 @@ import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdo
 import { useContext, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
-export const MainPage = ({
-  user,
-  workspace,
-  handleLogout,
-}: ProtectedRouteChildrenProps) => {
+export const MainPage = () => {
+  const { user, workspace, handleLogout } = useProtectedRouteContext();
   const { subscription } = useAuth();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
