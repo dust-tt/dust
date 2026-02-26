@@ -6,6 +6,7 @@ import {
   clampReasoningEffort,
 } from "@app/types/assistant/agent";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -32,7 +33,10 @@ export async function fetchLangfusePromptConfig(
   }
 
   try {
-    const prompt = await client.prompt.get(promptName);
+    const prompt = await client.prompt.get(promptName, {
+      // In development, we want to avoid caching prompts to ensure we always get the latest version.
+      cacheTtlSeconds: isDevelopment() ? 0 : undefined,
+    });
     const instructions = prompt.compile(variables);
     const parsedConfig = LangfuseModelConfigSchema.parse(prompt.config);
 
