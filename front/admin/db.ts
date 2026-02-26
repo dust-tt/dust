@@ -49,6 +49,7 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   SkillConfigurationModel,
   SkillDataSourceConfigurationModel,
+  SkillFileAttachmentModel,
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
@@ -197,6 +198,7 @@ export function loadAllModels() {
     ConversationSkillModel,
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
+    SkillFileAttachmentModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
     UserProjectDigestModel,
