@@ -267,9 +267,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       const conversationId = feedback.conversationId
         ? conversationIdByModelId.get(feedback.conversationId)
         : undefined;
-      const messageId = messageIdByAgentMessageId.get(
-        feedback.agentMessageId
-      );
+      const messageId = messageIdByAgentMessageId.get(feedback.agentMessageId);
       return new this(this.model, feedback.get(), {
         user: feedback.user,
         conversationId,
@@ -398,9 +396,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
 
     return feedbackRows.map((feedback) => {
-      const messageId = messageIdByAgentMessageId.get(
-        feedback.agentMessageId
-      );
+      const messageId = messageIdByAgentMessageId.get(feedback.agentMessageId);
       return new this(this.model, feedback.get(), {
         messageId,
       });
