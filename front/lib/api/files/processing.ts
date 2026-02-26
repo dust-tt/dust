@@ -434,13 +434,18 @@ const getProcessingFunction = ({
 
   // SVG files are stored as-is without any processing (no resize).
   if (contentType === "image/svg+xml") {
-    if (["conversation", "project_context", "tool_output"].includes(useCase)) {
+    if (
+      ["conversation", "project_context", "skill_attachment", "tool_output"].includes(useCase)
+    ) {
       return storeRawText;
     }
     return undefined;
   }
 
   if (isSupportedImageContentType(contentType)) {
+    if (useCase === "skill_attachment") {
+      return storeRawText;
+    }
     if (useCase === "conversation" || useCase === "project_context") {
       return makeResizeAndUploadImageToFileStorage(
         CONVERSATION_IMG_MAX_SIZE_PIXELS
@@ -468,6 +473,7 @@ const getProcessingFunction = ({
         "upsert_table",
         "tool_output",
         "project_context",
+        "skill_attachment",
       ].includes(useCase)
     ) {
       return storeRawText;
@@ -500,6 +506,7 @@ const getProcessingFunction = ({
           "upsert_document",
           "folders_document",
           "project_context",
+          "skill_attachment",
         ].includes(useCase)
       ) {
         return extractTextFromFileAndUpload;
@@ -545,6 +552,7 @@ const getProcessingFunction = ({
           "tool_output",
           "folders_document",
           "project_context",
+          "skill_attachment",
         ].includes(useCase)
       ) {
         return storeRawText;

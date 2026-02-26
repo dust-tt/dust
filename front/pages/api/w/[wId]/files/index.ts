@@ -65,6 +65,15 @@ const FileUploadUrlRequestSchema = t.union([
       spaceId: t.string,
     }),
   }),
+  t.type({
+    contentType: t.string,
+    fileName: t.string,
+    fileSize: t.number,
+    useCase: t.literal("skill_attachment"),
+    useCaseMetadata: t.type({
+      skillId: t.string,
+    }),
+  }),
 ]);
 
 export interface FileUploadRequestResponseBody {
