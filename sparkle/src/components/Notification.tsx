@@ -12,7 +12,7 @@ import { Toaster, toast } from "sonner";
 
 import { Icon } from "./Icon";
 
-const NOTIFICATION_DELAY = 3000;
+const NOTIFICATION_DELAY = 5000;
 
 export type NotificationType = {
   title?: string;
