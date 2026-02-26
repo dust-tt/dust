@@ -45,6 +45,7 @@ export const GitHubTreeResponseSchema = z
 export const GitHubBlobResponseSchema = z
   .object({
     content: z.string(),
+    encoding: z.literal("base64"),
   })
   .passthrough();
 
