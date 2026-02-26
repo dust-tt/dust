@@ -205,10 +205,15 @@ function buildBlockDecorations({
 
     if (change.fromB !== change.toB) {
       const insertedSlice = newNode.content.cut(change.fromB, change.toB);
+      const isCrossType = oldNode.type !== newNode.type;
+      // When old block is a different type, place the addition after it so the new content doesn't render inside the old block's container.
+      const widgetPos = isCrossType
+        ? blockPos + oldNode.nodeSize
+        : contentStart + change.fromA;
 
       decorations.push(
         Decoration.widget(
-          contentStart + change.fromA,
+          widgetPos,
           () => {
             const span = document.createElement("span");
             span.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
@@ -216,7 +221,13 @@ function buildBlockDecorations({
             span.contentEditable = "false";
 
             const serializer = DOMSerializer.fromSchema(schema);
-            serializer.serializeFragment(insertedSlice, {}, span);
+            if (isCrossType) {
+              // Serialize the full block node so the preview shows the new type
+              const blockEl = serializer.serializeNode(newNode, {});
+              span.appendChild(blockEl);
+            } else {
+              serializer.serializeFragment(insertedSlice, {}, span);
+            }
 
             // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)
             const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;

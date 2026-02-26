@@ -1091,6 +1091,29 @@ describe("InstructionSuggestionExtension", () => {
       expect(additions[0].suggestionId).toBe("cross-type-1");
     });
 
+    it("should show new block type in preview for cross-type replacement (paragraph → heading)", () => {
+      editor.commands.setContent("Output Guidelines", {
+        contentType: "markdown",
+      });
+      const [targetBlockId] = getBlockIds(editor);
+      expect(targetBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "cross-type-preview",
+        targetBlockId: targetBlockId!,
+        content: "<h2>Output Guidelines</h2>",
+      });
+
+      // Addition widget should render the full new node (h2), not just text in a span.
+      const additionEls = editor.view.dom.querySelectorAll(
+        ".suggestion-addition"
+      );
+      expect(additionEls.length).toBeGreaterThanOrEqual(1);
+      const h2 = additionEls[0].querySelector("h2");
+      expect(h2).not.toBeNull();
+      expect(h2?.textContent?.trim()).toBe("Output Guidelines");
+    });
+
     it("should accept a cross-type replacement (bulletList → paragraph)", () => {
       editor.commands.setContent("- Item one\n- Item two", {
         contentType: "markdown",

@@ -154,7 +154,6 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
 6. Diffs are computed automatically. Just provide the full new content.
 7. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
-8. You do NOT have the ability to perform whole-block replacement when suggestion changes node type. NEVER do this.
 </block_editing_principles>
 
 <block_examples>
@@ -262,7 +261,7 @@ Knowledge is needed when:
 - The agent references internal data ("check our docs", "look up the ticket", "find in Notion")
 - The agent must answer questions requiring current or company-specific facts
 
-Knowledge is good enough when: the agent has access to all data sources its instructions reference.
+Knowledge is good enough when: the agent has access to all data sources its instructions reference and all the required knowledge sources for the use case.
 
 Finding the right sources:
 Use to suggest adding or removing knowledge sources. Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
