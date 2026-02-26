@@ -1,6 +1,10 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 
-import { H2, P } from "@app/components/home/ContentComponents";
+import {
+  FullWidthSection,
+  H2,
+  P,
+} from "@app/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 import type { FinalCTAConfig } from "./types";
@@ -15,7 +19,7 @@ export function FinalCTASection({
   trackingPrefix = "competitor",
 }: FinalCTASectionProps) {
   return (
-    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50 py-12 md:py-16">
+    <FullWidthSection className="bg-blue-50 py-12 md:py-16">
       <div className="mx-auto max-w-3xl px-6 py-16 text-center md:py-20">
         <H2 className="mb-4 text-center text-3xl font-semibold text-foreground md:text-4xl lg:text-5xl">
           {config.title}
@@ -56,6 +60,6 @@ export function FinalCTASection({
           </P>
         )}
       </div>
-    </div>
+    </FullWidthSection>
   );
 }

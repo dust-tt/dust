@@ -15,7 +15,11 @@ import {
   buildIntegrationRegistry,
   getAllCategories,
 } from "@app/components/home/content/Integration/utils/integrationRegistry";
-import { H1, P } from "@app/components/home/ContentComponents";
+import {
+  FullWidthSection,
+  H1,
+  P,
+} from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -133,7 +137,7 @@ export default function IntegrationsPage({
 
       <div className="-mb-24 flex w-full flex-col">
         {/* Hero Section */}
-        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-white">
+        <FullWidthSection className="bg-white">
           <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
             <H1
               mono
@@ -183,7 +187,7 @@ export default function IntegrationsPage({
               {filteredIntegrations.length !== 1 ? "s" : ""} available
             </p>
           </div>
-        </div>
+        </FullWidthSection>
 
         {/* Integrations Grid */}
         <div className="container px-2 py-12 md:py-16">

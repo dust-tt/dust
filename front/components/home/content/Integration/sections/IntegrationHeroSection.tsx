@@ -1,6 +1,10 @@
 import { Button, ExternalLinkIcon, RocketIcon } from "@dust-tt/sparkle";
 
-import { H1, P } from "@app/components/home/ContentComponents";
+import {
+  FullWidthSection,
+  H1,
+  P,
+} from "@app/components/home/ContentComponents";
 import {
   getIcon,
   ResourceAvatar,
@@ -23,7 +27,7 @@ export function IntegrationHeroSection({
   const IconComponent = getIcon(integration.icon);
 
   return (
-    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-white">
+    <FullWidthSection className="bg-white">
       <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
         <div className="mb-6">
           <ResourceAvatar icon={IconComponent} size="lg" />
@@ -75,6 +79,6 @@ export function IntegrationHeroSection({
           )}
         </div>
       </div>
-    </div>
+    </FullWidthSection>
   );
 }

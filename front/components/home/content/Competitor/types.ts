@@ -1,107 +1,9 @@
-// Winner indicator for comparison tables
-export type ComparisonWinner = "dust" | "competitor" | "tie";
+// ===== Base types =====
 
-// Feature status for comparison tables
-export type FeatureStatus = "yes" | "partial" | "no";
-
-// Core positioning table row
-export interface CorePositioningRow {
-  dimension: string;
-  competitor: string;
-  dust: string;
-}
-
-// Feature comparison table row (data-driven, no JSX)
-export interface FeatureComparisonRow {
-  feature: string;
-  description: string;
-  dust: FeatureStatus;
-  competitor: FeatureStatus;
-}
-
-// Integration comparison row
-export interface IntegrationComparisonRow {
-  category: string;
-  dust: string;
-  competitor: string;
-  winner: ComparisonWinner;
-}
-
-// Valid icon types for benefit cards
-export type BenefitIconType =
-  | "rocket"
-  | "users"
-  | "dollar"
-  | "chart"
-  | "sparkles"
-  | "chat"
-  | "clock"
-  | "shield";
-
-// Benefit card for WhyChoose section
-export interface BenefitCard {
-  icon: BenefitIconType;
+// Base for items with a title and description
+interface TitledItem {
   title: string;
   description: string;
-}
-
-// Metric for MetricsSection
-export interface Metric {
-  value: string;
-  label: string;
-  description: string;
-}
-
-// When competitor is better card
-export interface CompetitorAdvantageCard {
-  title: string;
-  advantages: string[];
-  counterArgument: string;
-  whenToConcede: string;
-}
-
-// Use case fit item
-export interface UseCaseFitItem {
-  description: string;
-}
-
-// FAQ item (data-driven, plain text/markdown - no JSX)
-export interface FAQItem {
-  question: string;
-  answer: string;
-}
-
-// Discovery question for sales section
-export interface DiscoveryQuestion {
-  number: number;
-  question: string;
-  dustAdvantage: string;
-  competitorAdvantage: string;
-  whyItMatters: string;
-}
-
-// Quote/testimonial
-export interface Testimonial {
-  quote: string;
-  name: string;
-  title: string;
-  logo: string;
-  metric?: string;
-}
-
-// Shared CTA button configuration
-export interface CTAConfig {
-  label: string;
-  href: string;
-}
-
-// Hero section config
-export interface HeroConfig {
-  title: string;
-  subtitle: string;
-  primaryCTA: CTAConfig;
-  secondaryCTA: CTAConfig;
-  socialProofLogos: string[];
 }
 
 // Base section types for composition
@@ -113,14 +15,109 @@ interface OptionallyTitledSection {
   title?: string;
 }
 
-// Quick answer row (data-driven comparison)
-export interface QuickAnswerRow {
-  label: string;
+// Base for comparison rows (dust vs competitor)
+interface ComparisonRow {
   dust: string;
   competitor: string;
 }
 
-// Section configs using type composition
+// Shared CTA button configuration
+export interface CTAConfig {
+  label: string;
+  href: string;
+}
+
+// ===== Comparison types =====
+
+export type ComparisonWinner = "dust" | "competitor" | "tie";
+
+export type FeatureStatus = "yes" | "partial" | "no";
+
+export interface CorePositioningRow extends ComparisonRow {
+  dimension: string;
+}
+
+export interface FeatureComparisonRow extends TitledItem {
+  feature: string;
+  dust: FeatureStatus;
+  competitor: FeatureStatus;
+}
+
+export interface IntegrationComparisonRow extends ComparisonRow {
+  category: string;
+  winner: ComparisonWinner;
+}
+
+export interface QuickAnswerRow extends ComparisonRow {
+  label: string;
+}
+
+// ===== Card types =====
+
+export type BenefitIconType =
+  | "rocket"
+  | "users"
+  | "dollar"
+  | "chart"
+  | "sparkles"
+  | "chat"
+  | "clock"
+  | "shield";
+
+export interface BenefitCard extends TitledItem {
+  icon: BenefitIconType;
+}
+
+export interface Metric {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export interface CompetitorAdvantageCard {
+  title: string;
+  advantages: string[];
+  counterArgument: string;
+  whenToConcede: string;
+}
+
+export interface UseCaseFitItem {
+  description: string;
+}
+
+// ===== Content types =====
+
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+export interface DiscoveryQuestion {
+  number: number;
+  question: string;
+  dustAdvantage: string;
+  competitorAdvantage: string;
+  whyItMatters: string;
+}
+
+export interface Testimonial {
+  quote: string;
+  name: string;
+  title: string;
+  logo: string;
+  metric?: string;
+}
+
+// ===== Section configs =====
+
+export interface HeroConfig {
+  title: string;
+  subtitle: string;
+  primaryCTA: CTAConfig;
+  secondaryCTA: CTAConfig;
+  socialProofLogos: string[];
+}
+
 export type QuickAnswerConfig = OptionallyTitledSection & {
   rows: QuickAnswerRow[];
 };
@@ -158,7 +155,6 @@ export type DiscoveryQuestionsConfig = TitledSection & {
   questions: DiscoveryQuestion[];
 };
 
-// Final CTA section config
 export interface FinalCTAConfig {
   title: string;
   subtitle?: string;
@@ -168,19 +164,18 @@ export interface FinalCTAConfig {
   socialProofLogos?: string[];
 }
 
-// SEO configuration
 export interface SEOConfig {
   title: string;
   description: string;
   ogImage?: string;
 }
 
-// Metrics section config
 export type MetricsConfig = OptionallyTitledSection & {
   metrics: Metric[];
 };
 
-// Section types for layout ordering
+// ===== Layout & page config =====
+
 export type SectionType =
   | "hero"
   | "quickAnswer"
@@ -196,22 +191,15 @@ export type SectionType =
   | "discoveryQuestions"
   | "finalCTA";
 
-// Layout configuration
 export interface LayoutConfig {
   sections: SectionType[];
 }
 
-// Main competitor page configuration
 export interface CompetitorPageConfig {
-  // Competitor info
   competitorName: string;
   competitorDisplayName: string;
   competitorLogo?: string;
-
-  // SEO
   seo: SEOConfig;
-
-  // Layout
   layout: LayoutConfig;
 
   // Sections (all optional based on layout)
@@ -233,7 +221,6 @@ export interface CompetitorPageConfig {
   finalCTA?: FinalCTAConfig;
 }
 
-// Props for the main template
 export interface CompetitorTemplateProps {
   config: CompetitorPageConfig;
   trackingPrefix?: string;
