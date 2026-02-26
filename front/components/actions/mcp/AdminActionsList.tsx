@@ -27,13 +27,7 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import {
-  Chip,
-  classNames,
-  DataTable,
-  EmptyCTA,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Chip, cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -53,7 +47,7 @@ const NameCell = ({ row }: { row: RowData }) => {
   return (
     <DataTable.CellContent grow>
       <div
-        className={classNames(
+        className={cn(
           "flex flex-row items-center gap-3 py-3",
           mcpServerView ? "" : "opacity-50"
         )}

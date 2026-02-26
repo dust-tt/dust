@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { Separator } from "@sparkle/components/Separator";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 import React, { type ComponentType } from "react";
 
 import { Button, type ButtonProps } from "./Button";
@@ -21,7 +21,7 @@ export function Page({ children, variant = "normal" }: PageProps) {
   return (
     <main className={mainVariantClasses}>
       <div
-        className={classNames(
+        className={cn(
           "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal",
           "s-text-foreground dark:s-text-foreground-night",
           divVariantClassNames
@@ -103,7 +103,7 @@ const PsizeClasses = {
 Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
   return (
     <p
-      className={classNames(
+      className={cn(
         PsizeClasses[size],
         variant === "secondary"
           ? "s-text-muted-foreground dark:s-text-muted-foreground-night"
@@ -134,7 +134,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
 
   return (
     <Component
-      className={classNames(
+      className={cn(
         "s-text-foreground dark:s-text-foreground-night",
         hSizes[variant]
       )}
@@ -215,7 +215,7 @@ Page.Horizontal = function ({
 }: PageDivProps) {
   return (
     <div
-      className={classNames(
+      className={cn(
         "s-flex s-flex-col sm:s-flex-row",
         sizing === "grow" ? "s-grow s-basis-0" : "",
         sizing === "shrink" ? "s-shrink" : "",
@@ -239,7 +239,7 @@ Page.Vertical = function ({
 }: PageDivProps) {
   return (
     <div
-      className={classNames(
+      className={cn(
         "s-flex s-flex-col",
         sizing === "grow" ? "s-grow s-basis-0" : "",
         sizing === "shrink" ? "s-shrink" : "",
@@ -262,7 +262,7 @@ Page.Fluid = function ({
 }: PageDivProps) {
   return (
     <div
-      className={classNames(
+      className={cn(
         "s-flex s-flex-wrap",
         sizing === "grow" ? "s-grow" : "",
         sizing === "shrink" ? "s-shrink" : "",

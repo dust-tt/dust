@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useCallback } from "react";
 
@@ -67,13 +67,13 @@ export function Pagination({
 
   return (
     <div
-      className={classNames(
+      className={cn(
         "s-flex s-w-full s-items-center",
         controlsAreHidden ? "s-justify-end" : "s-justify-between"
       )}
     >
       <div
-        className={classNames(
+        className={cn(
           "s-flex",
           controlsAreHidden ? "s-invisible" : "s-visible",
           showPageButtons ? "s-gap-0" : "s-gap-2"
@@ -88,7 +88,7 @@ export function Pagination({
         />
 
         <div
-          className={classNames(
+          className={cn(
             "s-items-center",
             size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
             showPageButtons ? "s-flex" : "s-hidden"
@@ -107,7 +107,7 @@ export function Pagination({
       </div>
 
       <span
-        className={classNames(
+        className={cn(
           "s-text-xs",
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
           showDetails ? "s-visible" : "s-collapse"
@@ -132,7 +132,7 @@ function renderPageNumber(
   return (
     <button
       key={pageNumber}
-      className={classNames(
+      className={cn(
         "s-font-medium s-transition-colors s-duration-200",
         currentPage === pageNumber
           ? "s-text-foreground dark:s-text-foreground-night"
@@ -150,7 +150,7 @@ function renderPageNumber(
 function renderEllipses(size: "sm" | "xs") {
   return (
     <span
-      className={classNames(
+      className={cn(
         "s-text-sm s-font-medium",
         "s-text-muted-foreground dark:s-text-muted-foreground-night",
         size === "xs" ? "s-text-xs" : "s-text-sm"

@@ -10,7 +10,7 @@ import {
   Button,
   ChevronRightIcon,
   Chip,
-  classNames,
+  cn,
   DataTable,
   MovingMailIcon,
   Page,
@@ -128,7 +128,7 @@ export function InvitationsList({
         {isInvitationsLoading && (
           <div className="flex flex-col gap-2">
             <div
-              className={classNames(
+              className={cn(
                 "flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t py-2 text-xs sm:text-sm",
                 "border-border-dark bg-background dark:border-border-dark-night dark:bg-background-night"
               )}

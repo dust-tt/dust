@@ -1,4 +1,4 @@
-import { classNames, cn } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 import React, { type MouseEventHandler } from "react";
 
 type SliderToggleProps = {
@@ -49,7 +49,7 @@ export function SliderToggle({
   selected = false,
   size = "xs",
 }: SliderToggleProps) {
-  const combinedStateClasses = classNames(
+  const combinedStateClasses = cn(
     size ? sizeClasses[size] : "",
     selected ? stateClasses.selected : stateClasses.idle,
     disabled ? stateClasses.disabled : ""
@@ -62,7 +62,7 @@ export function SliderToggle({
           onClick?.(e); // Run passed onClick event
         }
       }}
-      className={classNames(className, baseClasses, combinedStateClasses)}
+      className={cn(className, baseClasses, combinedStateClasses)}
     >
       <div
         id="cursor"

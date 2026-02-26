@@ -9,7 +9,7 @@ import {
   CitationTitle,
 } from "@sparkle/components/Citation";
 import { Pagination } from "@sparkle/components/Pagination";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useState } from "react";
 
@@ -61,7 +61,7 @@ export function PaginatedCitationsGrid({
       </CitationGrid>
 
       <div
-        className={classNames(
+        className={cn(
           "s-pt-3",
           items.length > maxItemsPerPage ? "s-visible" : "s-collapse"
         )}
