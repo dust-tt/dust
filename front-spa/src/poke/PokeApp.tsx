@@ -17,8 +17,8 @@ const router = createBrowserRouter(routes, {
 export default function PokeApp() {
   return (
     <AppReadyProvider>
-      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-        <RegionProvider>
+      <RegionProvider>
+        <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
           <SparkleContext.Provider
             value={{ components: { link: ReactRouterLinkWrapper } }}
           >
@@ -28,8 +28,8 @@ export default function PokeApp() {
               </ErrorBoundary>
             </RootLayout>
           </SparkleContext.Provider>
-        </RegionProvider>
-      </FetcherProvider>
+        </FetcherProvider>
+      </RegionProvider>
     </AppReadyProvider>
   );
 }

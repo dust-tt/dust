@@ -3,7 +3,7 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
@@ -571,7 +571,7 @@ export function useAuthContext(
 ) {
   const { workspaceId, disabled } = options;
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
 
   const url = workspaceId
     ? `/api/w/${workspaceId}/auth-context`
@@ -594,7 +594,7 @@ export function useAuthContext(
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
+    if (regionRedirect) {
       regionContext.setRegionInfo(
         {
           name: regionRedirect.region,
@@ -682,7 +682,7 @@ export function useJoinData({
   conversationId: string | null;
 }) {
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
   const params = new URLSearchParams();
@@ -704,7 +704,7 @@ export function useJoinData({
 
   // Handle region redirect.
   useEffect(() => {
-    if (regionRedirect && regionContext) {
+    if (regionRedirect) {
       regionContext.setRegionInfo(
         {
           name: regionRedirect.region,

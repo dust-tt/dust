@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useRegionContextSafe } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -36,7 +36,7 @@ export function CreateWebhookSourceWithProviderForm({
   onReadyToSubmitChange,
 }: CreateWebhookSourceWithProviderFormProps) {
   const sendNotification = useSendNotification();
-  const regionContext = useRegionContextSafe();
+  const regionContext = useRegionContext();
   const [connection, setConnection] = useState<OAuthConnectionType | null>(
     null
   );
@@ -59,7 +59,7 @@ export function CreateWebhookSourceWithProviderForm({
         provider,
         useCase: "webhooks",
         extraConfig,
-        regionInfo: regionContext?.regionInfo ?? null,
+        regionInfo: regionContext.regionInfo,
       });
 
       if (connectionRes.isErr()) {

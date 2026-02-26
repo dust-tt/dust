@@ -6,10 +6,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import {
-  useRegionContext,
-  useRegionContextSafe,
-} from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   isEntreprisePlanPrefix,
   isFreePlan,
@@ -18,7 +15,7 @@ import {
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion, usePokeWorkspaces } from "@app/lib/swr/poke";
+import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
@@ -147,13 +144,7 @@ function WorkspaceList({
  * Entry point that renders the appropriate dashboard based on mode.
  */
 export function DashboardPage() {
-  const regionContext = useRegionContextSafe();
-
-  if (regionContext) {
-    return <DashboardPageSPA />;
-  }
-
-  return <DashboardPageLegacy />;
+  return <DashboardPageSPA />;
 }
 
 /**
@@ -196,7 +187,7 @@ function DashboardPageSPA() {
 
   const handleWorkspaceClick = useCallback(
     (ws: PokeWorkspaceWithRegion) => {
-      if (ws.region && ws.region !== regionInfo?.name && regionUrls) {
+      if (ws.region && ws.region !== regionInfo.name && regionUrls) {
         setRegionInfo({ name: ws.region, url: regionUrls[ws.region] });
       }
     },
@@ -233,65 +224,6 @@ function DashboardPageSPA() {
           workspaces={upgradedWorkspaces}
           showRegion
           onWorkspaceClick={handleWorkspaceClick}
-        />
-      )}
-      {isUpgradedWorkspacesLoading && <Spinner size="lg" variant="color" />}
-    </>
-  );
-}
-
-/**
- * NextJS mode: Single-region search (legacy).
- */
-function DashboardPageLegacy() {
-  useSetPokePageTitle("Home");
-
-  const {
-    workspaces: upgradedWorkspaces,
-    isWorkspacesLoading: isUpgradedWorkspacesLoading,
-    isWorkspacesError: isUpgradedWorkspacesError,
-  } = usePokeWorkspaces({ upgraded: true, limit: WORKSPACE_LIMIT });
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const searchDisabled = searchTerm.trim().length < 3;
-
-  const {
-    workspaces: searchResults,
-    isWorkspacesLoading: isSearchResultsLoading,
-    isWorkspacesError: isSearchResultsError,
-  } = usePokeWorkspaces({
-    search: searchTerm,
-    disabled: searchDisabled,
-    limit: WORKSPACE_LIMIT,
-  });
-
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-  };
-
-  return (
-    <>
-      <PokeFavoritesList />
-      <h1 className="mb-4 text-2xl font-bold">Search in Workspaces</h1>
-      <Input
-        type="text"
-        placeholder="Search"
-        value={searchTerm}
-        onChange={handleSearchChange}
-      />
-      {isSearchResultsError && (
-        <p>An error occurred while fetching search results.</p>
-      )}
-      {!isSearchResultsLoading && !isSearchResultsError && (
-        <WorkspaceList title="Search Results" workspaces={searchResults} />
-      )}
-      {isSearchResultsLoading && !searchDisabled && (
-        <Spinner size="lg" variant="color" />
-      )}
-      {!isUpgradedWorkspacesLoading && !isUpgradedWorkspacesError && (
-        <WorkspaceList
-          title={`Last ${WORKSPACE_LIMIT} Upgraded Workspaces`}
-          workspaces={upgradedWorkspaces}
         />
       )}
       {isUpgradedWorkspacesLoading && <Spinner size="lg" variant="color" />}

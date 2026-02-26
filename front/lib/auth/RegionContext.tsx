@@ -1,5 +1,5 @@
 import { setBaseUrlResolver } from "@app/lib/api/config";
-import type { RegionInfo } from "@app/lib/api/regions/config";
+import type { RegionInfo, RegionType } from "@app/lib/api/regions/config";
 import { isRegionType } from "@app/lib/api/regions/config";
 import {
   createContext,
@@ -17,6 +17,14 @@ const STORAGE_KEY =
 
 const DEFAULT_URL = import.meta.env?.VITE_DUST_CLIENT_FACING_URL ?? "";
 
+const DEFAULT_REGION: RegionType =
+  (import.meta.env?.VITE_DUST_REGION as RegionType) ?? "us-central1";
+
+const DEFAULT_REGION_INFO: RegionInfo = {
+  name: DEFAULT_REGION,
+  url: DEFAULT_URL,
+};
+
 function getStoredRegionInfo(): RegionInfo | null {
   const stored = localStorage.getItem(STORAGE_KEY);
 
@@ -33,21 +41,19 @@ function setStoredRegionInfo({ name, url }: RegionInfo): void {
 }
 
 export interface RegionContextValue {
-  regionInfo: RegionInfo | null;
+  regionInfo: RegionInfo;
   setRegionInfo: (
     regionInfo: RegionInfo,
     options?: { keepInStorage?: boolean }
   ) => void;
-  isReady: boolean;
 }
 
 const RegionContext = createContext<RegionContextValue | null>(null);
 
 export function RegionProvider({ children }: { children: React.ReactNode }) {
   const { mutate } = useSWRConfig();
-  const [currentRegionInfo, setCurrentRegionInfo] = useState<RegionInfo | null>(
-    null
-  );
+  const [currentRegionInfo, setCurrentRegionInfo] =
+    useState<RegionInfo>(DEFAULT_REGION_INFO);
   const [isReady, setIsReady] = useState(false);
 
   // Store the current URL to use in the resolver.
@@ -77,10 +83,9 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
       regionInfo = getStoredRegionInfo();
     }
 
-    if (regionInfo) {
-      setCurrentRegionInfo(regionInfo);
-      currentUrlRef.current = regionInfo.url;
-    }
+    const resolvedRegionInfo = regionInfo ?? DEFAULT_REGION_INFO;
+    setCurrentRegionInfo(resolvedRegionInfo);
+    currentUrlRef.current = resolvedRegionInfo.url;
 
     // Set up resolver that reads from ref (so it always gets latest value).
     setBaseUrlResolver(() => {
@@ -116,9 +121,8 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
     () => ({
       regionInfo: currentRegionInfo,
       setRegionInfo,
-      isReady,
     }),
-    [currentRegionInfo, setRegionInfo, isReady]
+    [currentRegionInfo, setRegionInfo]
   );
 
   return (
@@ -134,8 +138,4 @@ export function useRegionContext(): RegionContextValue {
     throw new Error("useRegionContext must be used within a RegionProvider");
   }
   return context;
-}
-
-export function useRegionContextSafe(): RegionContextValue | null {
-  return useContext(RegionContext);
 }
