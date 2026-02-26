@@ -435,7 +435,12 @@ const getProcessingFunction = ({
   // SVG files are stored as-is without any processing (no resize).
   if (contentType === "image/svg+xml") {
     if (
-      ["conversation", "project_context", "skill_attachment", "tool_output"].includes(useCase)
+      [
+        "conversation",
+        "project_context",
+        "skill_attachment",
+        "tool_output",
+      ].includes(useCase)
     ) {
       return storeRawText;
     }
