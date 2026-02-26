@@ -68,6 +68,7 @@ interface UserParticipation {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationResource
   extends ReadonlyAttributesType<ConversationModel> {
+  // Field name needs to match the included model alias in fetch queries for proper typing.
   conversation_participants?: ConversationParticipantModel[];
 }
 
