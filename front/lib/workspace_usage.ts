@@ -371,8 +371,8 @@ export async function getUserUsageData(
         where: {
           workspaceId: wId,
           createdAt: {
-            [Op.gt]: startDate,
-            [Op.lt]: endDate,
+            [Op.gte]: startDate,
+            [Op.lte]: endDate,
           },
         },
         include: [
@@ -574,8 +574,8 @@ export async function getBuildersUsageData(
         where: {
           workspaceId: wId,
           createdAt: {
-            [Op.gt]: startDate,
-            [Op.lt]: endDate,
+            [Op.gte]: startDate,
+            [Op.lte]: endDate,
           },
           status: {
             [Op.not]: "draft",
