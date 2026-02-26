@@ -569,8 +569,14 @@ const InputBarContainer = ({
     }
 
     const draft = getDraft();
+    const editorContainsOnlyStickyMentions =
+      !editorService.isEmpty() &&
+      editorService.getTrimmedText() === stickyMentionsTextContent.current;
     // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
-    if (draft && editorService.isEmpty()) {
+    if (
+      draft &&
+      (editorService.isEmpty() || editorContainsOnlyStickyMentions)
+    ) {
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() => editorService.setContent(draft.text));
     }
@@ -583,7 +589,7 @@ const InputBarContainer = ({
     getDraft,
   ]);
 
-  useHandleMentions(
+  const { stickyMentionsTextContent } = useHandleMentions(
     editorService,
     stickyMentions,
     selectedAgent,
