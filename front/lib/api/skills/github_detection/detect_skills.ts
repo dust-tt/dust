@@ -203,7 +203,7 @@ async function buildDetectedSkill({
   if (blobResult.isErr()) {
     logger.error(
       {
-        err: new Error(blobResult.error.message),
+        error: blobResult.error,
         owner,
         repo,
         skillMdPath: skillDir.skillMdPath,
