@@ -346,12 +346,13 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_agents: async ({ limit }, { auth }) => {
+  get_available_agents: async ({ limit, agentPrefix }, { auth }) => {
     const agents = await getAgentConfigurationsForView({
       auth,
       agentsGetView: "list",
       variant: "light",
       limit: limit ?? 100,
+      agentPrefix,
     });
 
     const agentList = agents.map((agent) => ({
