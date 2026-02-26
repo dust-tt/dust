@@ -10,6 +10,7 @@ import { InputBarProvider } from "@app/components/assistant/conversation/input_b
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations/useConversation";
+import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   BarHeader,
@@ -32,6 +33,7 @@ import { useParams } from "react-router-dom";
 export const MainPage = () => {
   const { user, workspace, subscription } = useAuth();
   const { serverId } = useMcpServer();
+  useSetupNotifications();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
 

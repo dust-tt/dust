@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useUser } from "@app/lib/swr/user";
+import { isChromeExtension } from "@app/lib/utils/extension";
 import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
 const LOCAL_STORAGE_KEY = "browser-notification-last-asked-for";
@@ -79,7 +80,11 @@ export const useEnableBrowserNotification = () => {
     });
 
     if (confirmed) {
-      await Notification.requestPermission();
+      if (isChromeExtension()) {
+        await chrome.permissions.request({ permissions: ["notifications"] });
+      } else {
+        await Notification.requestPermission();
+      }
     }
 
     shownRef.current = false;
