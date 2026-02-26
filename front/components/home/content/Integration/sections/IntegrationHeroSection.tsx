@@ -1,8 +1,6 @@
 import { Button, ExternalLinkIcon, RocketIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
 
-import { Grid, H1, P } from "@app/components/home/ContentComponents";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { H1, P } from "@app/components/home/ContentComponents";
 import {
   getIcon,
   ResourceAvatar,
@@ -26,71 +24,56 @@ export function IntegrationHeroSection({
 
   return (
     <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-white">
-      <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-16 md:pb-16 md:pt-24">
-        <Grid>
-          <div
-            className={cn(
-              "col-span-12 flex flex-col items-center justify-center text-center",
-              "lg:col-span-10 lg:col-start-2",
-              "xl:col-span-8 xl:col-start-3"
+      <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
+        <div className="mb-6">
+          <ResourceAvatar icon={IconComponent} size="lg" />
+        </div>
+
+        <H1
+          mono
+          className="mb-2 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
+        >
+          {seoTitle}
+        </H1>
+
+        <P size="lg" className="mb-4 max-w-2xl text-muted-foreground">
+          {seoSubtitle}
+        </P>
+
+        {integration.authorizationRequired && (
+          <P size="sm" className="mb-8 text-muted-foreground">
+            Requires authorization to connect
+          </P>
+        )}
+
+        {/* CTAs */}
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Button
+            variant="highlight"
+            size="md"
+            label="Get started with Dust"
+            icon={RocketIcon}
+            href="/home/contact"
+            onClick={withTracking(
+              TRACKING_AREAS.HOME,
+              `integration_${integration.slug}_hero_cta_primary`
             )}
-          >
-            <div className="mb-6">
-              <ResourceAvatar icon={IconComponent} size="lg" />
-            </div>
-
-            <H1
-              mono
-              className="mb-2 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
-            >
-              {seoTitle}
-            </H1>
-
-            <P size="lg" className="mb-4 max-w-2xl text-muted-foreground">
-              {seoSubtitle}
-            </P>
-
-            {integration.authorizationRequired && (
-              <P size="sm" className="mb-8 text-muted-foreground">
-                Requires authorization to connect
-              </P>
-            )}
-
-            {/* CTAs */}
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <Link href="/home/contact" shallow>
-                <Button
-                  variant="highlight"
-                  size="md"
-                  label="Get started with Dust"
-                  icon={RocketIcon}
-                  onClick={withTracking(
-                    TRACKING_AREAS.HOME,
-                    `integration_${integration.slug}_hero_cta_primary`
-                  )}
-                />
-              </Link>
-              {integration.documentationUrl && (
-                <Link
-                  href={integration.documentationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button
-                    variant="outline"
-                    size="md"
-                    label="View documentation"
-                    icon={ExternalLinkIcon}
-                    onClick={withTracking(
-                      TRACKING_AREAS.HOME,
-                      `integration_${integration.slug}_hero_cta_docs`
-                    )}
-                  />
-                </Link>
+          />
+          {integration.documentationUrl && (
+            <Button
+              variant="outline"
+              size="md"
+              label="View documentation"
+              icon={ExternalLinkIcon}
+              href={integration.documentationUrl}
+              target="_blank"
+              onClick={withTracking(
+                TRACKING_AREAS.HOME,
+                `integration_${integration.slug}_hero_cta_docs`
               )}
-            </div>
-          </div>
-        </Grid>
+            />
+          )}
+        </div>
       </div>
     </div>
   );

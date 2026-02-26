@@ -2,8 +2,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { FAQSection } from "@app/components/home/content/Competitor/FAQSection";
 import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
+import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -34,7 +34,8 @@ function generateIntegrationSchema(integration: IntegrationPageConfig) {
     name: `${integration.name} Integration for Dust`,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
-    description: integration.enrichment?.longDescription ?? integration.description,
+    description:
+      integration.enrichment?.longDescription ?? integration.description,
     featureList: features.length > 0 ? features : undefined,
     offers: {
       "@type": "Offer",
@@ -152,12 +153,14 @@ export default function IntegrationTemplate({
         {/* FAQ Section (if enrichment provided) */}
         {enrichment?.faq && enrichment.faq.length > 0 && (
           <div className="container px-2">
-            <FAQSection
-              config={{
-                title: `Frequently asked questions about ${integration.name}`,
-                items: enrichment.faq,
-              }}
-            />
+            <div className="py-12 md:py-16">
+              <div className="mx-auto max-w-4xl">
+                <FAQ
+                  title={`Frequently asked questions about ${integration.name}`}
+                  items={enrichment.faq}
+                />
+              </div>
+            </div>
           </div>
         )}
 

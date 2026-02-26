@@ -1,3 +1,4 @@
+import type { FAQItem } from "@app/components/home/content/Competitor/types";
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 
 export type IntegrationType = "mcp_server" | "connector" | "both";
@@ -45,11 +46,6 @@ export interface IntegrationUseCase {
   icon: InternalAllowedIconType;
 }
 
-export interface IntegrationFAQItem {
-  question: string;
-  answer: string;
-}
-
 export interface IntegrationEnrichment {
   // SEO-optimized title for the page (e.g., "AI Sales Assistant for Salesforce")
   seoTitle?: string;
@@ -58,7 +54,7 @@ export interface IntegrationEnrichment {
   tagline?: string;
   longDescription?: string;
   useCases?: IntegrationUseCase[];
-  faq?: IntegrationFAQItem[];
+  faq?: FAQItem[];
   relatedIntegrations?: string[];
 }
 

@@ -1,4 +1,4 @@
-import { Button, RocketIcon, SearchInput } from "@dust-tt/sparkle";
+import { Button, SearchInput } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 
+import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
 import type {
   IntegrationBase,
   IntegrationCategory,
@@ -14,16 +15,14 @@ import {
   buildIntegrationRegistry,
   getAllCategories,
 } from "@app/components/home/content/Integration/utils/integrationRegistry";
-import { Grid, H1, P } from "@app/components/home/ContentComponents";
+import { H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 interface IntegrationsPageProps {
   integrations: IntegrationBase[];
@@ -135,165 +134,119 @@ export default function IntegrationsPage({
       <div className="-mb-24 flex w-full flex-col">
         {/* Hero Section */}
         <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-white">
-          <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-16 md:pb-16 md:pt-24">
-            <Grid>
-              <div
-                className={cn(
-                  "col-span-12 flex flex-col items-center justify-center text-center",
-                  "lg:col-span-10 lg:col-start-2",
-                  "xl:col-span-8 xl:col-start-3"
-                )}
-              >
-                <H1
-                  mono
-                  className="mb-2 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
-                >
-                  Integrations
-                </H1>
-                <P size="lg" className="mb-8 max-w-2xl text-muted-foreground">
-                  Connect Dust to your favorite tools and data sources. Build AI
-                  agents that work with your entire stack.
-                </P>
+          <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
+            <H1
+              mono
+              className="mb-2 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
+            >
+              Integrations
+            </H1>
+            <P size="lg" className="mb-8 max-w-2xl text-muted-foreground">
+              Connect Dust to your favorite tools and data sources. Build AI
+              agents that work with your entire stack.
+            </P>
 
-                {/* Search */}
-                <div className="mb-8 w-full max-w-md">
-                  <SearchInput
-                    name="search"
-                    placeholder="Search integrations..."
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                  />
-                </div>
+            {/* Search */}
+            <div className="mb-8 w-full max-w-md">
+              <SearchInput
+                name="search"
+                placeholder="Search integrations..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
 
-                {/* Category filters */}
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button
-                    label="All"
-                    variant={selectedCategory === null ? "primary" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedCategory(null)}
-                  />
-                  {categories.map((category) => (
-                    <Button
-                      key={category}
-                      label={CATEGORY_LABELS[category]}
-                      variant={
-                        selectedCategory === category ? "primary" : "outline"
-                      }
-                      size="sm"
-                      onClick={() => setSelectedCategory(category)}
-                    />
-                  ))}
-                </div>
+            {/* Category filters */}
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                label="All"
+                variant={selectedCategory === null ? "primary" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(null)}
+              />
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  label={CATEGORY_LABELS[category]}
+                  variant={
+                    selectedCategory === category ? "primary" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => setSelectedCategory(category)}
+                />
+              ))}
+            </div>
 
-                {/* Count */}
-                <p className="mt-6 text-sm text-muted-foreground">
-                  {filteredIntegrations.length} integration
-                  {filteredIntegrations.length !== 1 ? "s" : ""} available
-                </p>
-              </div>
-            </Grid>
+            {/* Count */}
+            <p className="mt-6 text-sm text-muted-foreground">
+              {filteredIntegrations.length} integration
+              {filteredIntegrations.length !== 1 ? "s" : ""} available
+            </p>
           </div>
         </div>
 
         {/* Integrations Grid */}
         <div className="container px-2 py-12 md:py-16">
-          <Grid>
-            <div className="col-span-12">
-              {selectedCategory === null ? (
-                // Show by category
-                <div className="space-y-12">
-                  {Array.from(integrationsByCategory.entries()).map(
-                    ([category, categoryIntegrations]) => (
-                      <div key={category}>
-                        <h2 className="mb-6 text-xl font-semibold text-foreground">
-                          {CATEGORY_LABELS[category]}
-                        </h2>
-                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                          {categoryIntegrations.map((integration) => (
-                            <IntegrationCard
-                              key={integration.slug}
-                              integration={integration}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-              ) : (
-                // Show flat grid for selected category
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {filteredIntegrations.map((integration) => (
-                    <IntegrationCard
-                      key={integration.slug}
-                      integration={integration}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {filteredIntegrations.length === 0 && (
-                <div className="py-12 text-center">
-                  <p className="text-muted-foreground">
-                    No integrations found matching your search.
-                  </p>
-                </div>
+          {selectedCategory === null ? (
+            // Show by category
+            <div className="space-y-12">
+              {Array.from(integrationsByCategory.entries()).map(
+                ([category, categoryIntegrations]) => (
+                  <div key={category}>
+                    <h2 className="mb-6 text-xl font-semibold text-foreground">
+                      {CATEGORY_LABELS[category]}
+                    </h2>
+                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                      {categoryIntegrations.map((integration) => (
+                        <IntegrationCard
+                          key={integration.slug}
+                          integration={integration}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )
               )}
             </div>
-          </Grid>
+          ) : (
+            // Show flat grid for selected category
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {filteredIntegrations.map((integration) => (
+                <IntegrationCard
+                  key={integration.slug}
+                  integration={integration}
+                />
+              ))}
+            </div>
+          )}
+
+          {filteredIntegrations.length === 0 && (
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">
+                No integrations found matching your search.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* CTA Section */}
-        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50 py-12 md:py-16">
-          <div className="mx-auto max-w-7xl px-6">
-            <Grid>
-              <div className="col-span-12">
-                <div className="px-6 py-16 md:px-12 md:py-20">
-                  <div className="mx-auto max-w-3xl text-center">
-                    <h2 className="mb-4 text-center text-3xl font-semibold text-foreground md:text-4xl">
-                      Ready to connect your tools?
-                    </h2>
-                    <P size="lg" className="mb-8 text-muted-foreground">
-                      Start building AI agents that work with your entire tech
-                      stack.
-                    </P>
-
-                    <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                      <Link href="/api/workos/login?screenHint=sign-up">
-                        <Button
-                          variant="highlight"
-                          size="md"
-                          label="Start free trial"
-                          icon={RocketIcon}
-                          onClick={withTracking(
-                            TRACKING_AREAS.HOME,
-                            "integrations_listing_cta_primary"
-                          )}
-                        />
-                      </Link>
-                      <Link href="/home/booking" shallow>
-                        <Button
-                          variant="outline"
-                          size="md"
-                          label="Talk to sales"
-                          onClick={withTracking(
-                            TRACKING_AREAS.HOME,
-                            "integrations_listing_cta_secondary"
-                          )}
-                        />
-                      </Link>
-                    </div>
-
-                    <P size="sm" className="mt-6 text-muted-foreground">
-                      14-day free trial. No credit card required.
-                    </P>
-                  </div>
-                </div>
-              </div>
-            </Grid>
-          </div>
-        </div>
+        <FinalCTASection
+          config={{
+            title: "Ready to connect your tools?",
+            subtitle:
+              "Start building AI agents that work with your entire tech stack.",
+            primaryCTA: {
+              label: "Start free trial",
+              href: "/api/workos/login?screenHint=sign-up",
+            },
+            secondaryCTA: {
+              label: "Talk to sales",
+              href: "/home/booking",
+            },
+            trustText: "14-day free trial. No credit card required.",
+          }}
+          trackingPrefix="integrations_listing"
+        />
       </div>
     </>
   );
