@@ -121,17 +121,22 @@ async function createMCPProxyConfig(auth: Authenticator, host: string) {
     isWorkspaceUsingStaticIP(workspace) ||
     (await isHostUnderVerifiedDomain(auth, host));
 
-  const dispatcher = useStaticIP
-    ? getStaticIPProxyAgent()
-    : getUntrustedEgressAgent();
-
-  if (useStaticIP && dispatcher) {
-    logger.info(
-      { workspaceId: workspace.sId, host, useStaticIP },
-      "Using static IP proxy for MCP request"
+  if (useStaticIP) {
+    const staticAgent = getStaticIPProxyAgent();
+    if (staticAgent) {
+      logger.info(
+        { workspaceId: workspace.sId, host },
+        "Using static IP proxy for MCP request"
+      );
+      return { dispatcher: staticAgent, fetch: createProxyFetch(staticAgent) };
+    }
+    logger.warn(
+      { workspaceId: workspace.sId, host },
+      "Static IP proxy required but not configured, falling back to untrusted egress"
     );
   }
 
+  const dispatcher = getUntrustedEgressAgent();
   if (!dispatcher) {
     return {};
   }
