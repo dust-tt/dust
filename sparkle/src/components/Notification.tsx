@@ -12,7 +12,7 @@ import { Toaster, toast } from "sonner";
 
 import { Icon } from "./Icon";
 
-const NOTIFICATION_DELAY = 3000;
+const NOTIFICATION_DELAY_MS = 5000;
 
 export type NotificationType = {
   title?: string;
@@ -127,7 +127,7 @@ export const Notification = {
             />
           ),
           {
-            duration: NOTIFICATION_DELAY,
+            duration: NOTIFICATION_DELAY_MS,
           }
         );
       },
@@ -149,7 +149,7 @@ export const Notification = {
             ),
           }}
           className="s-flex s-flex-col s-items-end"
-          duration={NOTIFICATION_DELAY}
+          duration={NOTIFICATION_DELAY_MS}
           visibleToasts={9}
           closeButton={false}
           expand={false}
