@@ -288,9 +288,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversationIds?: number[]
   ): Promise<Map<number, UserParticipation>> {
-    const user = auth.user();
-
-    assert(user, "User is expected to be authenticated");
+    const user = auth.getNonNullableUser();
 
     const whereClause: WhereOptions<ConversationParticipantModel> = {
       userId: user.id,
