@@ -44,6 +44,13 @@ const state: {
 };
 
 /**
+ * Helper function to check if the browser supports the Side Panel API.
+ */
+const isSidePanelSupported = (): boolean => {
+  return typeof chrome.sidePanel !== "undefined";
+};
+
+/**
  * Helper function to check if we can inject content script into a URL
  */
 const canInjectContentScript = (url: string | undefined): boolean => {
@@ -72,6 +79,9 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
  */
 chrome.runtime.onInstalled.addListener(() => {
   void platform.storage.set("extensionReady", false);
+  if (isSidePanelSupported()) {
+    void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  }
   chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
@@ -117,8 +127,15 @@ const ensureContentScriptLoaded = async (tabId: number): Promise<boolean> => {
 
 /**
  * Listener to toggle the sidebar when the user clicks on the extension icon.
+ * When the Side Panel API is supported, openPanelOnActionClick handles this
+ * automatically, so we only need this handler for the content script fallback.
  */
 chrome.action.onClicked.addListener(async (tab) => {
+  if (isSidePanelSupported()) {
+    // Side panel is opened automatically via openPanelOnActionClick.
+    return;
+  }
+
   if (!tab.id || !canInjectContentScript(tab.url)) {
     console.log("Cannot inject content script in this tab:", tab.url);
     return;
@@ -268,16 +285,20 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
   const isExtensionReady =
     await platform.storage.get<boolean>("extensionReady");
 
-  if (!isExtensionReady && tab?.id && canInjectContentScript(tab.url)) {
+  if (!isExtensionReady && tab) {
     // Store the handler for later use when the extension is ready.
     state.lastHandler = handler;
-    // Open the sidebar via content script
-    const loaded = await ensureContentScriptLoaded(tab.id);
-    if (loaded) {
-      try {
-        await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
-      } catch (error) {
-        console.error("Failed to open sidebar:", error);
+    if (isSidePanelSupported()) {
+      void chrome.sidePanel.open({ windowId: tab.windowId });
+    } else if (tab.id && canInjectContentScript(tab.url)) {
+      // Open the sidebar via content script
+      const loaded = await ensureContentScriptLoaded(tab.id);
+      if (loaded) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+        } catch (error) {
+          console.error("Failed to open sidebar:", error);
+        }
       }
     }
   } else {
@@ -483,26 +504,35 @@ chrome.runtime.onMessageExternal.addListener((request) => {
 
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const tab = tabs[0];
-    if (!tab?.id || !canInjectContentScript(tab.url)) {
-      log("[onMessageExternal] Cannot inject content script in this tab");
+    if (!tab) {
+      log("[onMessageExternal] No active tab found");
       return;
     }
 
-    // Ensure content script is loaded
-    const loaded = await ensureContentScriptLoaded(tab.id);
-    if (!loaded) {
-      log("[onMessageExternal] Failed to load content script");
-      return;
-    }
+    const openSidebar = async () => {
+      if (isSidePanelSupported()) {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+      } else {
+        if (!tab.id || !canInjectContentScript(tab.url)) {
+          log("[onMessageExternal] Cannot inject content script in this tab");
+          return;
+        }
+        const loaded = await ensureContentScriptLoaded(tab.id);
+        if (!loaded) {
+          log("[onMessageExternal] Failed to load content script");
+          return;
+        }
+        await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+      }
+    };
 
     try {
-      // Open the sidebar via content script
-      await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+      await openSidebar();
 
       chrome.storage.local.get(
         ["extensionReady", "selectedWorkspace"],
         ({ extensionReady, selectedWorkspace }) => {
-          if (request.workspaceId != user?.selectedWorkspace) {
+          if (request.workspaceId != selectedWorkspace) {
             log("[onMessageExternal] User selected another workspace.");
             return;
           }
