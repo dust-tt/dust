@@ -12,6 +12,7 @@ const router = createBrowserRouter(
   [
     {
       element: <RootRouterLayout />,
+      errorElement: <GlobalErrorFallback />,
       children: [
         // Frame: /share/frame/:token
         {
