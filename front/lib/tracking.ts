@@ -44,6 +44,7 @@ export const TRACKING_AREAS = {
 
   // Features
   ACADEMY: "academy",
+  BANNER: "banner",
   BUILDER: "builder",
   SPACES: "spaces",
   LABS: "labs",

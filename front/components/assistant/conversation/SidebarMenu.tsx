@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { AcademyBanner } from "@app/components/assistant/conversation/InAppBanner";
+import { TableForSalesBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
 import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
@@ -1010,7 +1010,7 @@ export function AgentSidebarMenu({
               conversationsList
             )}
 
-            {!hideInAppBanner && <AcademyBanner />}
+            {!hideInAppBanner && <TableForSalesBanner />}
           </div>
         </div>
       </div>
