@@ -213,28 +213,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       };
     }
 
-    const agentMessageFeedback = await this.model.findAll({
+    const feedbackRows = await this.model.findAll({
       where,
       include: [
-        {
-          model: AgentMessageModel,
-          attributes: ["id"],
-          as: "agentMessage",
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              attributes: ["id", "sId"],
-              include: [
-                {
-                  model: ConversationModel,
-                  as: "conversation",
-                  attributes: ["id", "sId"],
-                },
-              ],
-            },
-          ],
-        },
         {
           model: UserResource.model,
           as: "user",
@@ -252,11 +233,47 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       limit: paginationParams.limit,
     });
 
-    return agentMessageFeedback.map((feedback) => {
+    if (feedbackRows.length === 0) {
+      return [];
+    }
+
+    // Fetch conversation sIds and message sIds in separate queries.
+    const conversationIds = [
+      ...new Set(
+        feedbackRows.map((f) => f.conversationId).filter((id) => id !== null)
+      ),
+    ];
+    const conversations = await ConversationModel.findAll({
+      attributes: ["id", "sId"],
+      where: { id: conversationIds },
+    });
+    const conversationIdByModelId = new Map(
+      conversations.map((c) => [c.id, c.sId])
+    );
+
+    const agentMessageIds = feedbackRows.map((f) => f.agentMessageId);
+    const messages = await MessageModel.findAll({
+      attributes: ["sId", "agentMessageId"],
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: workspace.id,
+      },
+    });
+    const messageIdByAgentMessageId = new Map(
+      messages.map((m) => [m.agentMessageId, m.sId])
+    );
+
+    return feedbackRows.map((feedback) => {
+      const conversationId = feedback.conversationId
+        ? conversationIdByModelId.get(feedback.conversationId)
+        : undefined;
+      const messageId = messageIdByAgentMessageId.get(
+        feedback.agentMessageId
+      );
       return new this(this.model, feedback.get(), {
-        message: feedback.agentMessage?.message,
         user: feedback.user,
-        conversation: feedback.agentMessage?.message?.conversation,
+        conversationId,
+        messageId,
       });
     });
   }
@@ -272,7 +289,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     workspace: WorkspaceType;
     transaction?: Transaction;
   }) {
-    const agentMessageFeedback = await this.model.findAll({
+    const feedbackRows = await this.model.findAll({
       where: {
         // IMPORTANT: Necessary for global models who share ids across workspaces.
         workspaceId: workspace.id,
@@ -280,27 +297,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           [Op.and]: [{ [Op.lt]: endDate }, { [Op.gt]: startDate }],
         },
       },
-
       include: [
-        {
-          model: AgentMessageModel,
-          attributes: ["id"],
-          as: "agentMessage",
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              attributes: ["id", "sId"],
-              include: [
-                {
-                  model: ConversationModel,
-                  as: "conversation",
-                  attributes: ["id", "sId"],
-                },
-              ],
-            },
-          ],
-        },
         {
           model: UserResource.model,
           as: "user",
@@ -311,12 +308,33 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       transaction,
     });
 
-    return agentMessageFeedback
+    if (feedbackRows.length === 0) {
+      return [];
+    }
+
+    const conversationIds = [
+      ...new Set(
+        feedbackRows.map((f) => f.conversationId).filter((id) => id !== null)
+      ),
+    ];
+    const conversations = await ConversationModel.findAll({
+      attributes: ["id", "sId"],
+      where: { id: conversationIds },
+      transaction,
+    });
+    const conversationIdByModelId = new Map(
+      conversations.map((c) => [c.id, c.sId])
+    );
+
+    return feedbackRows
       .filter((feedback) => Boolean(feedback.user))
       .map((feedback) => {
+        const conversationId = feedback.conversationId
+          ? conversationIdByModelId.get(feedback.conversationId)
+          : undefined;
         return new this(this.model, feedback.get(), {
           user: feedback.user,
-          conversation: feedback.agentMessage?.message?.conversation,
+          conversationId,
         });
       });
   }
@@ -354,38 +372,37 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   ) {
     const user = auth.getNonNullableUser();
 
-    // Start from feedbacks (filtered by userId + workspaceId) and join back to
-    // messages (filtered by conversationId). This is more selective than scanning
-    // all messages in the conversation.
     const feedbackRows = await this.model.findAll({
       where: {
         userId: user.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
       },
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          attributes: ["id"],
-          required: true,
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              attributes: ["id", "sId"],
-              required: true,
-              where: {
-                conversationId: conversation.id,
-              },
-            },
-          ],
-        },
-      ],
     });
 
+    if (feedbackRows.length === 0) {
+      return [];
+    }
+
+    // Fetch message sIds in a separate query.
+    const agentMessageIds = feedbackRows.map((f) => f.agentMessageId);
+    const messages = await MessageModel.findAll({
+      attributes: ["sId", "agentMessageId"],
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    const messageIdByAgentMessageId = new Map(
+      messages.map((m) => [m.agentMessageId, m.sId])
+    );
+
     return feedbackRows.map((feedback) => {
+      const messageId = messageIdByAgentMessageId.get(
+        feedback.agentMessageId
+      );
       return new this(this.model, feedback.get(), {
-        message: feedback.agentMessage?.message,
+        messageId,
       });
     });
   }
