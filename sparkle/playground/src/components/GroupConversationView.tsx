@@ -59,6 +59,7 @@ import {
   TypingAnimation,
   UserGroupIcon,
   XMarkIcon,
+  WindIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -577,6 +578,17 @@ function buildWhatsNewScenario(
             { type: "text", text: "." },
           ],
         },
+        {
+          id: "pulse-stakeholder-sync",
+          segments: [
+            { type: "text", text: "Stakeholder feedback in " },
+            { type: "link", text: `"${secondHighlight}"` },
+            {
+              type: "text",
+              text: " shows stronger confidence after the latest sync update.",
+            },
+          ],
+        },
       ],
       updatedAt: getSummaryTimestamp(spaceName),
     },
@@ -588,7 +600,7 @@ function buildWhatsNewScenario(
         },
         {
           id: "todo-budget-check",
-          text: `Nina needs confirmation that budget assumptions for "${thirdHighlight}" are still valid.`,
+          text: `Nina mentioned you directly to validate budget impact linked to "${thirdHighlight}".`,
         },
         {
           id: "todo-customer-brief",
@@ -598,7 +610,7 @@ function buildWhatsNewScenario(
       keyDecisions: [
         {
           id: "decision-scope",
-          text: `Raphael and Priya aligned on keeping "${topHighlight}" in this milestone with no additional scope.`,
+          text: `Raphael and Priya aligned on keeping "${topHighlight}" in the current milestone without scope increase.`,
         },
         {
           id: "decision-dri",
@@ -617,19 +629,18 @@ function buildWhatsNewScenario(
             { type: "link", text: "the weekly recap thread" },
             {
               type: "text",
-              text: ` to align priorities in ${spaceName}, and now uses it as the source of truth for status.`,
+              text: ` to align priorities in ${spaceName} and reduce duplicate updates.`,
             },
           ],
         },
         {
-          id: "pulse-stakeholder-sync",
+          id: "pulse-risk-alignment",
           segments: [
-            { type: "text", text: "Stakeholder feedback in " },
-            { type: "link", text: `"${secondHighlight}"` },
-            {
-              type: "text",
-              text: " shows stronger confidence after the latest sync update.",
-            },
+            { type: "text", text: "Risk mitigation details from " },
+            { type: "link", text: `"${topHighlight}"` },
+            { type: "text", text: " are now tracked in " },
+            { type: "link", text: "the weekly risks summary" },
+            { type: "text", text: " for clearer owner follow-through." },
           ],
         },
         {
@@ -1322,9 +1333,7 @@ export function GroupConversationView({
         expandedConversations
       )
     );
-    setCheckedSummaryItems((previous) =>
-      withScenarioAutoChecks(previous, initialSummary)
-    );
+    setCheckedSummaryItems({});
     setSummaryItemDiffByKey({});
     setTypingItemKeys(new Set());
     setEnteringItemKeys(new Set());
@@ -1408,7 +1417,6 @@ export function GroupConversationView({
             withScenarioAutoChecks(previousChecked, updatedSummary)
           );
           setExitingItemKeys(new Set());
-          setEnteringItemKeys(new Set());
           deltaTransitionTimeoutRef.current = null;
         }, CHECKLIST_TRANSITION_MS);
 
@@ -1827,6 +1835,35 @@ export function GroupConversationView({
                 <InputBar
                   placeholder={`Start a conversation in ${space.name}`}
                 />
+                {hasHistory && (
+                  <div className="s-flex s-w-full s-gap-2 s-px-4">
+                    <SearchInputWithPopover
+                      name="conversation-search"
+                      value={searchText}
+                      onChange={(value) => {
+                        setSearchText(value);
+                        if (!value.trim()) {
+                          setIsSearchOpen(false);
+                        }
+                      }}
+                      open={isSearchOpen}
+                      onOpenChange={setIsSearchOpen}
+                      placeholder={`Search in ${space.name}`}
+                      className="s-w-full"
+                      items={searchResults}
+                      availableHeight
+                      noResults={
+                        searchText.trim()
+                          ? "No results found"
+                          : "Start typing to search"
+                      }
+                      onItemSelect={handleSearchItemSelect}
+                      renderItem={(item, selected) => (
+                        <SearchResultItem item={item} selected={selected} />
+                      )}
+                    />
+                  </div>
+                )}
 
                 {!hasHistory && (
                   <div className="s-flex s-flex-col s-gap-3">
@@ -1915,10 +1952,11 @@ export function GroupConversationView({
                     />
                     <div className="s-flex-1" />
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={CheckDoubleIcon}
-                      label="Clear"
+                      size="xs"
+                      variant="outline"
+                      icon={WindIcon}
+                      tooltip="Remove checked items"
+                      label="Clean"
                       onClick={() => {
                         const checkedKeys = new Set(
                           Object.entries(checkedSummaryItems)
@@ -1990,260 +2028,290 @@ export function GroupConversationView({
                         transition: "max-height 200ms ease",
                       }}
                     >
-                      {[
-                        {
-                          key: "needAttention",
-                          summaryCategory: "needAttention" as const,
-                          icon: TriangleIcon,
-                          iconClassName:
-                            "s-text-warning-300 dark:s-text-warning-300-night",
-                          label: "Need to do",
-                          items: ongoingSummary.needAttention,
-                        },
-                        {
-                          key: "needKnow",
-                          summaryCategory: "keyDecisions" as const,
-                          icon: SquareIcon,
-                          iconClassName:
-                            "s-text-golden-300 dark:s-text-golden-300-night",
-                          label: "Need to know",
-                          items: ongoingSummary.keyDecisions,
-                        },
-                        {
-                          key: "projectPulse",
-                          summaryCategory: "projectPulse" as const,
-                          icon: CircleIcon,
-                          iconClassName:
-                            "s-text-green-300 dark:s-text-green-300-night",
-                          label: "Good to know",
-                          items: ongoingSummary.projectPulse,
-                        },
-                      ].map((section) => (
-                        <div
-                          key={section.label}
-                          className="s-flex s-flex-col s-gap-2"
-                        >
-                          <div className="s-group/summary-title s-flex s-items-center s-gap-3 s-pt-2">
-                            <div className="s-flex s-items-center s-h-4 s-w-4">
-                              {section.summaryCategory === "projectPulse" ? (
-                                <Icon
-                                  visual={section.icon}
-                                  size="xs"
-                                  className={section.iconClassName}
-                                />
-                              ) : (
-                                (() => {
-                                  const sectionItemKeys = section.items.map(
-                                    (item) =>
-                                      getSummaryItemKey(
-                                        section.summaryCategory,
-                                        item
-                                      )
-                                  );
-                                  const areAllSectionItemsChecked =
-                                    sectionItemKeys.length > 0 &&
-                                    sectionItemKeys.every(
-                                      (itemKey) => checkedSummaryItems[itemKey]
+                      {ongoingSummary.needAttention.length +
+                        ongoingSummary.keyDecisions.length +
+                        ongoingSummary.projectPulse.length >
+                      0 ? (
+                        [
+                          {
+                            key: "needAttention",
+                            summaryCategory: "needAttention" as const,
+                            icon: TriangleIcon,
+                            iconClassName:
+                              "s-text-warning-300 dark:s-text-warning-300-night",
+                            label: "Need to do",
+                            items: ongoingSummary.needAttention,
+                          },
+                          {
+                            key: "needKnow",
+                            summaryCategory: "keyDecisions" as const,
+                            icon: SquareIcon,
+                            iconClassName:
+                              "s-text-golden-300 dark:s-text-golden-300-night",
+                            label: "Need to know",
+                            items: ongoingSummary.keyDecisions,
+                          },
+                          {
+                            key: "projectPulse",
+                            summaryCategory: "projectPulse" as const,
+                            icon: CircleIcon,
+                            iconClassName:
+                              "s-text-green-300 dark:s-text-green-300-night",
+                            label: "Good to know",
+                            items: ongoingSummary.projectPulse,
+                          },
+                        ]
+                          .filter((section) => section.items.length > 0)
+                          .map((section) => (
+                            <div
+                              key={section.label}
+                              className="s-flex s-flex-col s-gap-2"
+                            >
+                              <div className="s-group/summary-title s-flex s-items-center s-gap-3 s-pt-2">
+                                <div className="s-flex s-items-center s-h-4 s-w-4">
+                                  {(() => {
+                                    const sectionItemKeys = section.items.map(
+                                      (item) =>
+                                        getSummaryItemKey(
+                                          section.summaryCategory,
+                                          item
+                                        )
                                     );
+                                    const areAllSectionItemsChecked =
+                                      sectionItemKeys.length > 0 &&
+                                      sectionItemKeys.every(
+                                        (itemKey) =>
+                                          checkedSummaryItems[itemKey]
+                                      );
 
-                                  return (
-                                    <>
-                                      <Icon
-                                        visual={section.icon}
-                                        size="xs"
-                                        className={cn(
-                                          "group-hover/summary-title:s-hidden",
-                                          section.iconClassName
+                                    return (
+                                      <>
+                                        <Icon
+                                          visual={section.icon}
+                                          size="xs"
+                                          className={cn(
+                                            "group-hover/summary-title:s-hidden",
+                                            section.iconClassName
+                                          )}
+                                        />
+                                        <Checkbox
+                                          size="xs"
+                                          className="s-hidden group-hover/summary-title:s-inline-block"
+                                          checked={areAllSectionItemsChecked}
+                                          onCheckedChange={(checked) => {
+                                            if (checked !== true) {
+                                              return;
+                                            }
+
+                                            setCheckedSummaryItems(
+                                              (previous) => ({
+                                                ...previous,
+                                                ...Object.fromEntries(
+                                                  sectionItemKeys.map((key) => [
+                                                    key,
+                                                    true,
+                                                  ])
+                                                ),
+                                              })
+                                            );
+                                          }}
+                                        />
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                                <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                                  {section.label}
+                                </h4>
+                              </div>
+                              {section.summaryCategory === "projectPulse" ? (
+                                <div
+                                  className={cn(
+                                    "s-text-sm s-pl-7",
+                                    section.items.every(
+                                      (item) =>
+                                        checkedSummaryItems[
+                                          getSummaryItemKey(
+                                            section.summaryCategory,
+                                            item
+                                          )
+                                        ]
+                                    )
+                                      ? "s-text-faint s-line-through dark:s-text-faint-night"
+                                      : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+                                  )}
+                                >
+                                  {section.items.map((item, index) => {
+                                    const itemKey = getSummaryItemKey(
+                                      section.summaryCategory,
+                                      item
+                                    );
+                                    const relatedConversationIds =
+                                      summaryRelatedConversations[itemKey] ??
+                                      [];
+                                    const isChecked =
+                                      checkedSummaryItems[itemKey] ?? false;
+                                    const shouldTypePulseItem =
+                                      typingItemKeys.has(itemKey) &&
+                                      (summaryItemDiffByKey[itemKey] ===
+                                        "modified" ||
+                                        summaryItemDiffByKey[itemKey] ===
+                                          "added");
+
+                                    return (
+                                      <span key={itemKey}>
+                                        {shouldTypePulseItem ? (
+                                          <TypingAnimation
+                                            key={`${itemKey}-${typingVersion}`}
+                                            text={item.segments
+                                              .map((segment) => segment.text)
+                                              .join("")}
+                                            duration={16}
+                                          />
+                                        ) : (
+                                          renderProjectPulseItemWithInlineLinks(
+                                            item,
+                                            relatedConversationIds,
+                                            isChecked
+                                          )
                                         )}
-                                      />
-                                      <Checkbox
-                                        size="xs"
-                                        className="s-hidden group-hover/summary-title:s-inline-block"
-                                        checked={areAllSectionItemsChecked}
-                                        onCheckedChange={(checked) => {
-                                          if (checked !== true) {
-                                            return;
-                                          }
-
-                                          setCheckedSummaryItems(
-                                            (previous) => ({
-                                              ...previous,
-                                              ...Object.fromEntries(
-                                                sectionItemKeys.map((key) => [
-                                                  key,
-                                                  true,
-                                                ])
-                                              ),
-                                            })
-                                          );
-                                        }}
-                                      />
-                                    </>
-                                  );
-                                })()
-                              )}
-                            </div>
-                            <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                              {section.label}
-                            </h4>
-                          </div>
-                          <div className="s-flex s-flex-col s-gap-2 s-pl-4">
-                            {section.summaryCategory === "projectPulse" ? (
-                              <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night s-pl-1">
-                                {section.items.map((item, index) => {
+                                        {index < section.items.length - 1
+                                          ? " "
+                                          : null}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                section.items.map((item) => {
                                   const itemKey = getSummaryItemKey(
                                     section.summaryCategory,
                                     item
                                   );
+                                  const itemDiff =
+                                    summaryItemDiffByKey[itemKey];
+                                  const isChecked =
+                                    checkedSummaryItems[itemKey] ?? false;
                                   const relatedConversationIds =
                                     summaryRelatedConversations[itemKey] ?? [];
-                                  const shouldTypePulseItem =
+                                  const isAdded = itemDiff === "added";
+                                  const hasEntered =
+                                    enteringItemKeys.has(itemKey);
+                                  const isExiting =
+                                    exitingItemKeys.has(itemKey);
+                                  const shouldTypeChecklistItem =
                                     typingItemKeys.has(itemKey) &&
-                                    (summaryItemDiffByKey[itemKey] ===
-                                      "modified" ||
-                                      summaryItemDiffByKey[itemKey] ===
-                                        "added");
+                                    itemDiff === "modified";
 
                                   return (
-                                    <span key={itemKey}>
-                                      {shouldTypePulseItem ? (
-                                        <TypingAnimation
-                                          key={`${itemKey}-${typingVersion}`}
-                                          text={item.segments
-                                            .map((segment) => segment.text)
-                                            .join("")}
-                                          duration={16}
-                                        />
-                                      ) : (
-                                        renderProjectPulseItemWithInlineLinks(
-                                          item,
-                                          relatedConversationIds,
-                                          false
-                                        )
-                                      )}
-                                      {index < section.items.length - 1
-                                        ? " "
-                                        : null}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              section.items.map((item) => {
-                                const itemKey = getSummaryItemKey(
-                                  section.summaryCategory,
-                                  item
-                                );
-                                const itemDiff = summaryItemDiffByKey[itemKey];
-                                const isChecked =
-                                  checkedSummaryItems[itemKey] ?? false;
-                                const relatedConversationIds =
-                                  summaryRelatedConversations[itemKey] ?? [];
-                                const isAdded = itemDiff === "added";
-                                const hasEntered =
-                                  enteringItemKeys.has(itemKey);
-                                const isExiting = exitingItemKeys.has(itemKey);
-                                const shouldTypeChecklistItem =
-                                  typingItemKeys.has(itemKey) &&
-                                  itemDiff === "modified";
-
-                                return (
-                                  <div
-                                    key={itemKey}
-                                    className={cn(
-                                      "s-flex s-items-start s-gap-3 s-overflow-hidden",
-                                      "s-transition-all s-duration-200",
-                                      isExiting
-                                        ? "s-max-h-0 s-opacity-0"
-                                        : isAdded && !hasEntered
+                                    <div
+                                      key={itemKey}
+                                      className={cn(
+                                        "s-flex s-items-start s-gap-3 s-overflow-hidden",
+                                        "s-transition-all s-duration-200",
+                                        isExiting
                                           ? "s-max-h-0 s-opacity-0"
-                                          : "s-max-h-32 s-opacity-100"
-                                    )}
-                                  >
-                                    <Checkbox
-                                      size="xs"
-                                      className="s-mt-1"
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const nextChecked = checked === true;
-                                        setCheckedSummaryItems((previous) => ({
-                                          ...previous,
-                                          [itemKey]: nextChecked,
-                                        }));
-                                      }}
-                                    />
-                                    <div className="s-flex s-flex-col">
-                                      <span
-                                        className={`s-text-base ${
-                                          isChecked
-                                            ? "s-text-faint s-line-through dark:s-text-faint-night"
-                                            : "s-text-foreground dark:s-text-foreground-night"
-                                        }`}
-                                      >
-                                        {shouldTypeChecklistItem ? (
-                                          <TypingAnimation
-                                            key={`${itemKey}-${typingVersion}`}
-                                            text={item.text}
-                                            duration={16}
-                                          />
-                                        ) : (
-                                          renderSummaryItemWithEmphasizedNames(
-                                            item.text
-                                          )
-                                        )}
-                                      </span>
-                                      {(() => {
-                                        if (isChecked) {
-                                          return null;
-                                        }
+                                          : isAdded && !hasEntered
+                                            ? "s-max-h-0 s-opacity-0"
+                                            : "s-max-h-32 s-opacity-100"
+                                      )}
+                                    >
+                                      <Checkbox
+                                        size="xs"
+                                        className="s-mt-1"
+                                        isMutedAfterCheck
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => {
+                                          const nextChecked = checked === true;
+                                          setCheckedSummaryItems(
+                                            (previous) => ({
+                                              ...previous,
+                                              [itemKey]: nextChecked,
+                                            })
+                                          );
+                                        }}
+                                      />
+                                      <div className="s-flex s-flex-col">
+                                        <span
+                                          className={cn(
+                                            "s-text-base",
+                                            isChecked
+                                              ? "s-text-faint s-line-through dark:s-text-faint-night"
+                                              : "s-text-foreground dark:s-text-foreground-night"
+                                          )}
+                                        >
+                                          {shouldTypeChecklistItem ? (
+                                            <TypingAnimation
+                                              key={`${itemKey}-${typingVersion}`}
+                                              text={item.text}
+                                              duration={16}
+                                            />
+                                          ) : (
+                                            renderSummaryItemWithEmphasizedNames(
+                                              item.text
+                                            )
+                                          )}
+                                        </span>
+                                        {(() => {
+                                          if (isChecked) {
+                                            return null;
+                                          }
 
-                                        if (
-                                          relatedConversationIds.length === 0
-                                        ) {
-                                          return null;
-                                        }
+                                          if (
+                                            relatedConversationIds.length === 0
+                                          ) {
+                                            return null;
+                                          }
 
-                                        return (
-                                          <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                            <span>In </span>
-                                            {relatedConversationIds.map(
-                                              (conversationId, index) => (
-                                                <span key={conversationId}>
-                                                  <button
-                                                    type="button"
-                                                    className="s-underline hover:s-no-underline"
-                                                    onClick={(event) => {
-                                                      event.stopPropagation();
-                                                      scrollToConversationRow(
+                                          return (
+                                            <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                              <span>In </span>
+                                              {relatedConversationIds.map(
+                                                (conversationId, index) => (
+                                                  <span key={conversationId}>
+                                                    <button
+                                                      type="button"
+                                                      className="s-underline hover:s-no-underline"
+                                                      onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        scrollToConversationRow(
+                                                          conversationId
+                                                        );
+                                                      }}
+                                                    >
+                                                      {conversationTitleById.get(
                                                         conversationId
-                                                      );
-                                                    }}
-                                                  >
-                                                    {conversationTitleById.get(
-                                                      conversationId
-                                                    ) ?? conversationId}
-                                                  </button>
-                                                  {index <
-                                                    relatedConversationIds.length -
-                                                      1 && ", "}
-                                                </span>
-                                              )
-                                            )}
-                                          </div>
-                                        );
-                                      })()}
+                                                      ) ?? conversationId}
+                                                    </button>
+                                                    {index <
+                                                      relatedConversationIds.length -
+                                                        1 && ", "}
+                                                  </span>
+                                                )
+                                              )}
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          ))
+                      ) : (
+                        <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
+                          You're all catch up!
                         </div>
-                      ))}
+                      )}
                     </div>
-                    {!isOngoingSummaryExpanded && (
-                      <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
-                    )}
+                    {!isOngoingSummaryExpanded &&
+                      ongoingSummary.needAttention.length +
+                        ongoingSummary.keyDecisions.length +
+                        ongoingSummary.projectPulse.length >
+                        0 && (
+                        <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
+                      )}
                   </div>
                   {ongoingSummary.needAttention.length +
                     ongoingSummary.keyDecisions.length +
@@ -2269,38 +2337,6 @@ export function GroupConversationView({
               <div className="s-flex s-flex-col s-gap-3">
                 {expandedConversations.length > 0 && (
                   <>
-                    <div className="s-flex s-w-full s-gap-2 s-px-3">
-                      <SearchInputWithPopover
-                        name="conversation-search"
-                        value={searchText}
-                        onChange={(value) => {
-                          setSearchText(value);
-                          if (!value.trim()) {
-                            setIsSearchOpen(false);
-                          }
-                        }}
-                        open={isSearchOpen}
-                        onOpenChange={setIsSearchOpen}
-                        placeholder={`Search in ${space.name}`}
-                        className="s-w-full"
-                        items={searchResults}
-                        availableHeight
-                        noResults={
-                          searchText.trim()
-                            ? "No results found"
-                            : "Start typing to search"
-                        }
-                        onItemSelect={handleSearchItemSelect}
-                        renderItem={(item, selected) => (
-                          <SearchResultItem item={item} selected={selected} />
-                        )}
-                      />
-                      <Button
-                        icon={CheckDoubleIcon}
-                        variant="outline"
-                        label="Mark all as read"
-                      />
-                    </div>
                     <div className="s-flex s-flex-col">
                       {(
                         [
@@ -2454,7 +2490,7 @@ export function GroupConversationView({
                             onClick={suggestion.onClick}
                             className="s-cursor-pointer"
                           >
-                            <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
+                            <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-base">
                               <div
                                 className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
                                   suggestion.variant === "highlight"

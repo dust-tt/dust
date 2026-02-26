@@ -163,6 +163,7 @@ export { default as TrashIcon } from "./Trash";
 export { default as TriangleIcon } from "./Triangle";
 export { default as UserIcon } from "./User";
 export { default as UserGroupIcon } from "./UserGroup";
+export { default as WindIcon } from "./Wind";
 export { default as XCircleIcon } from "./XCircle";
 export { default as XMarkIcon } from "./XMark";
 export { default as YoutubeIcon } from "./Youtube";
