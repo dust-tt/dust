@@ -36,6 +36,10 @@ jobs:
           cache-dependency-path: ./package-lock.json
       - name: Install Biome
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Grit CLI
+        run: |
+          curl -fsSL https://docs.grit.io/install | bash
+          echo "$HOME/.grit/bin" >> $GITHUB_PATH
       - name: Format Check
         run: npm run biome
       - name: GritQL Plugin Tests

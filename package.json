@@ -24,11 +24,10 @@
     "lint:lefthook": "biome lint --error-on-warnings",
     "biome": "biome check --error-on-warnings .",
     "biome:lefthook": "biome check --write --error-on-warnings",
-    "test:grit": "grit patterns test"
+    "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.0",
-    "@getgrit/cli": "^0.1.0-alpha.1743007075",
     "knip": "^5.80.0",
     "@typescript/native-preview": "^7.0.0-dev.20260224.1",
     "lefthook": "^2.1.0",
