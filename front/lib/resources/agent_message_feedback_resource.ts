@@ -239,9 +239,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     // Fetch conversation sIds and message sIds in separate queries.
     const conversationIds = [
-      ...new Set(
-        feedbackRows.map((f) => f.conversationId)
-      ),
+      ...new Set(feedbackRows.map((f) => f.conversationId)),
     ];
     const conversations = await ConversationModel.findAll({
       attributes: ["id", "sId"],
@@ -307,9 +305,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     }
 
     const conversationIds = [
-      ...new Set(
-        feedbackRows.map((f) => f.conversationId)
-      ),
+      ...new Set(feedbackRows.map((f) => f.conversationId)),
     ];
     const conversations = await ConversationModel.findAll({
       attributes: ["id", "sId"],
