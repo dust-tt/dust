@@ -40,7 +40,7 @@ export const SALESLOFT_SERVER = {
     description: "Access Salesloft cadences, tasks, and actions.",
     authorization: null,
     icon: "SalesloftLogo",
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/salesloft-mcp",
     instructions: null,
   },
   tools: Object.values(SALESLOFT_TOOLS_METADATA).map((t) => ({
