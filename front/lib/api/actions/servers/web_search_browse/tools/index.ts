@@ -113,9 +113,12 @@ async function handleWebbrowser(
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
 
+  const browsingProvider = Math.random() < 0.8 ? "firecrawl" : "spider";
+
   const results = await browseUrls(urls, 8, format, {
     screenshotMode,
     links,
+    provider: browsingProvider,
   });
 
   if (useSummarization) {
