@@ -100,4 +100,4 @@ const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
   }
 };
 
-export default ConfettiBackground;
+export { ConfettiBackground };
