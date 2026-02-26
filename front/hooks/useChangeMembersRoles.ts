@@ -63,12 +63,19 @@ export function useChangeMembersRoles({
         const errors = results.filter((res) => !res.ok);
 
         if (errors.length > 0) {
+          let description: string;
+          if (errors.length === 1) {
+            const body = await errors[0].json().catch(() => null);
+            description =
+              body?.error?.message ?? "Failed to update member role.";
+          } else {
+            description = `Failed to update members role for ${errors.length} member(s) (${members.length - errors.length} succeeded).`;
+          }
+
           sendNotification({
             type: "error",
             title: "Update failed",
-            description: `Failed to update members role for ${
-              errors.length
-            } member(s) (${members.length - errors.length} succeeded).`,
+            description,
           });
           return false;
         } else {
