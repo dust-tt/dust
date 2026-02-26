@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use axum::{
     extract::DefaultBodyLimit,
     middleware::from_fn,
+    response::IntoResponse,
     routing::{delete, get, patch, post},
     Router,
 };
@@ -27,6 +28,7 @@ use dust::{
         store::{self},
     },
 };
+use http::StatusCode;
 
 use std::sync::Arc;
 use tikv_jemallocator::Jemalloc;
@@ -40,10 +42,28 @@ use tracing::{error, info};
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
+#[allow(non_upper_case_globals)]
+#[export_name = "malloc_conf"]
+pub static malloc_conf: &[u8] = b"prof:true,prof_active:true,lg_prof_sample:19\0";
+
 /// Index
 
 async fn index() -> &'static str {
     "dust_api server ready"
+}
+
+pub async fn handle_get_heap() -> Result<impl IntoResponse, (StatusCode, String)> {
+    let Some(prof_ctl) = jemalloc_pprof::PROF_CTL.as_ref() else {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "jemalloc profiling not enabled — are you on a supported platform?".to_string(),
+        ));
+    };
+    let mut prof_ctl = prof_ctl.lock().await;
+    let pprof = prof_ctl
+        .dump_pprof()
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+    Ok(pprof)
 }
 
 // Misc
@@ -94,6 +114,7 @@ fn main() {
         ));
 
         let router = Router::new()
+        .route("/debug/pprof/heap", get(handle_get_heap))
         // Projects
         .route("/projects", post(projects::projects_create))
         .route("/projects/{project_id}", delete(projects::projects_delete))
