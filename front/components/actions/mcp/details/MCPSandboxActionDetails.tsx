@@ -58,7 +58,11 @@ function deriveSummary(command: string, exitCode: number | null): string {
     return `\`${name}\` failed with exit code ${exitCode}.`;
   }
 
-  return `Ran \`${name}\` successfully.`;
+  if (exitCode === 0) {
+    return `Ran \`${name}\` successfully.`;
+  }
+
+  return `Ran \`${name}\`.`;
 }
 
 /**
