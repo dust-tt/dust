@@ -11,11 +11,12 @@ interface CompetitiveHeroSectionProps {
   chip: string;
   headline: ReactNode;
   postItText: string;
-  valueProps: string[];
-  valuePropTitle: string;
+  valueProps?: string[];
+  valuePropTitle?: string;
   ctaButtonText: string;
   trustBadges: string[];
   trackingObject?: string;
+  animationWidget?: ReactNode;
 }
 
 export function CompetitiveHeroSection({
@@ -27,6 +28,7 @@ export function CompetitiveHeroSection({
   ctaButtonText,
   trustBadges,
   trackingObject = "glean_hero",
+  animationWidget,
 }: CompetitiveHeroSectionProps) {
   const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
   const [hasSession, setHasSession] = useState(false);
@@ -69,24 +71,31 @@ export function CompetitiveHeroSection({
             </span>
           </div>
 
-          {/* Value props box */}
-          <div className="mt-4 w-full max-w-2xl">
-            <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
-              <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-blue-100">
-                {valuePropTitle}
-              </p>
-              <ul className="space-y-3 text-left">
-                {valueProps.map((prop, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-400">
-                      <CheckIcon className="h-3 w-3 text-white" />
-                    </span>
-                    <span className="text-white/95">{prop}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Value props box — shown only when valueProps provided (no animationWidget) */}
+          {valueProps && valueProps.length > 0 && (
+            <div className="mt-4 w-full max-w-2xl">
+              <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
+                <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-blue-100">
+                  {valuePropTitle}
+                </p>
+                <ul className="space-y-3 text-left">
+                  {valueProps.map((prop, index) => (
+                    <li key={index} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-400">
+                        <CheckIcon className="h-3 w-3 text-white" />
+                      </span>
+                      <span className="text-white/95">{prop}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Animation widget — shown instead of value props when provided */}
+          {animationWidget && (
+            <div className="mt-4 w-full max-w-2xl">{animationWidget}</div>
+          )}
 
           {/* Email CTA */}
           <div className="mt-2 w-full max-w-lg">
@@ -125,6 +134,7 @@ export function CompetitiveHeroSection({
               </div>
             ))}
           </div>
+
         </div>
       </div>
     </section>

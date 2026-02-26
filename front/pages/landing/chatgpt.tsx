@@ -4,6 +4,7 @@ import { CompetitiveHeroSection } from "@app/components/home/content/Competitive
 import { chatgptConfig } from "@app/components/home/content/Competitive/config/chatgptConfig";
 import { DifferentiatorsSection } from "@app/components/home/content/Competitive/DifferentiatorsSection";
 import { EmailCTASection } from "@app/components/home/content/Competitive/EmailCTASection";
+import { SalesAnimationWidget } from "@app/components/home/content/Competitive/SalesAnimationWidget";
 import { StatsSection } from "@app/components/home/content/Competitive/StatsSection";
 import { TestimonialsGridSection } from "@app/components/home/content/Competitive/TestimonialsGridSection";
 import { FAQ } from "@app/components/home/FAQ";
@@ -37,11 +38,10 @@ export default function ChatGPTLandingPage() {
         chip={chatgptConfig.hero.chip}
         headline={chatgptConfig.hero.headline}
         postItText={chatgptConfig.hero.postItText}
-        valuePropTitle={chatgptConfig.hero.valuePropTitle}
-        valueProps={chatgptConfig.hero.valueProps}
         ctaButtonText={chatgptConfig.hero.ctaButtonText}
         trustBadges={chatgptConfig.hero.trustBadges}
         trackingObject="chatgpt_hero"
+        animationWidget={<SalesAnimationWidget />}
       />
 
       {/* Customers */}
