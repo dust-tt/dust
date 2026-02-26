@@ -129,7 +129,7 @@ async function fetchBlobContent(
  * Detects skills in a GitHub repository by fetching its tree and looking for
  * directories containing skill.md or SKILL.md files.
  *
- * Does not clone the repository — uses the GitHub Git Trees API for lightweight access.
+ * Uses the GitHub Git Trees API for lightweight access.
  */
 export async function detectSkillsFromGitHubRepo({
   repoUrl,
@@ -174,10 +174,6 @@ export async function detectSkillsFromGitHubRepo({
   return new Ok(detectedSkills);
 }
 
-/**
- * Builds a DetectedSkill from a skill directory by fetching its skill.md
- * and collecting attachment metadata from the tree.
- */
 async function buildDetectedSkill({
   octokit,
   owner,
