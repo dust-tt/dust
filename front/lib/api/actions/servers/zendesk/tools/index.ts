@@ -208,6 +208,31 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       },
     ]);
   },
+
+  post_reply: async ({ ticketId, body }, { authInfo }) => {
+    const clientResult = getZendeskClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const result = await client.postReply(ticketId, body);
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to post reply: ${result.error.message}`, {
+          tracked: isTrackedError(result.error),
+        })
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Public reply successfully posted to ticket ${ticketId}. The comment is visible to the end user.`,
+      },
+    ]);
+  },
 };
 
 export const TOOLS = buildTools(ZENDESK_TOOLS_METADATA, handlers);
