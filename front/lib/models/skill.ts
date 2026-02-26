@@ -2,6 +2,7 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
@@ -235,6 +236,84 @@ MCPServerViewModel.hasMany(SkillMCPServerConfigurationModel, {
 SkillMCPServerConfigurationModel.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   as: "mcpServerView",
+});
+
+// Skill File Attachment (files attached to a skill for sandbox sync)
+export class SkillFileAttachmentModel extends WorkspaceAwareModel<SkillFileAttachmentModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
+  declare fileId: ForeignKey<FileModel["id"]>;
+  declare fileName: string;
+}
+
+SkillFileAttachmentModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    skillConfigurationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: SkillConfigurationModel,
+        key: "id",
+      },
+    },
+    fileId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: FileModel,
+        key: "id",
+      },
+    },
+    fileName: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "skill_file_attachment",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "skillConfigurationId"],
+        name: "idx_skill_file_attachment_workspace_skill_config",
+      },
+      {
+        fields: ["workspaceId", "fileModelId"],
+        name: "idx_skill_file_attachment_workspace_file",
+        unique: true,
+      },
+    ],
+  }
+);
+
+// Skill config <> File Attachment
+SkillConfigurationModel.hasMany(SkillFileAttachmentModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "fileAttachments",
+});
+SkillFileAttachmentModel.belongsTo(SkillConfigurationModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  as: "skillConfiguration",
+});
+
+// File Attachment <> File
+SkillFileAttachmentModel.belongsTo(FileModel, {
+  foreignKey: { name: "fileModelId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "file",
 });
 
 SkillConfigurationModel.hasMany(SkillVersionModel, {
