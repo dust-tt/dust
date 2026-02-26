@@ -22,9 +22,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Octokit } from "@octokit/core";
 
-export type { DetectedSkill, DetectedSkillAttachment, SkillDetectionError };
-export { parseGitHubRepoUrl };
-
 const FETCH_CONCURRENCY = 4;
 
 async function fetchRepoTree(
