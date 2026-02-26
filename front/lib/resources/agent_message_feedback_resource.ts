@@ -49,7 +49,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   readonly user?: Attributes<UserModel>;
 
-  readonly _conversationId?: string;
+  readonly _conversationId?: string; // conversationId is already taken via the Sequelize model (it's the FK).
   readonly _messageId?: string;
 
   constructor(
