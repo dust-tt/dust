@@ -229,6 +229,33 @@ class ZendeskClient {
     return new Ok(result.value.ticket);
   }
 
+  async postReply(
+    ticketId: number,
+    body: string
+  ): Promise<Result<ZendeskTicket, Error>> {
+    const result = await this.request(
+      `tickets/${ticketId}`,
+      ZendeskTicketResponseSchema,
+      {
+        method: "PUT",
+        body: {
+          ticket: {
+            comment: {
+              body,
+              public: true,
+            },
+          },
+        },
+      }
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.ticket);
+  }
+
   async getTicketFieldsByIds(
     fieldIds: number[]
   ): Promise<Result<ZendeskTicketField[], Error>> {

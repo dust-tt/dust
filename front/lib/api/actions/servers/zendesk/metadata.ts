@@ -99,8 +99,25 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low", // Low because it's a draft.
     displayLabels: {
-      running: "Drafting Zendesk reply",
-      done: "Draft Zendesk reply",
+      running: "Drafting reply to Zendesk",
+      done: "Draft reply to Zendesk",
+    },
+  },
+  post_reply: {
+    description:
+      "Post a public reply to a Zendesk ticket. The reply will be visible to the end user.",
+    schema: {
+      ticketId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The ID of the Zendesk ticket to reply to."),
+      body: z.string().describe("The content of the reply."),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Posting reply to Zendesk",
+      done: "Post reply to Zendesk",
     },
   },
 });
