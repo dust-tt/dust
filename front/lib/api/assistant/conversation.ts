@@ -64,6 +64,10 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchOrSignalButlerWorkflow,
+  signalButlerComplete,
+} from "@app/temporal/butler/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -818,6 +822,26 @@ export async function postUserMessage(
       : Promise.resolve(undefined),
   ]);
 
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block message posting.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: userMessage.sId,
+    });
+
+    if (agentMessages.length === 0) {
+      void signalButlerComplete({
+        authType: auth.toJSON(),
+        conversationId: conversation.sId,
+      });
+    }
+  }
+
   return new Ok({
     userMessage,
     agentMessages,
@@ -1127,6 +1151,26 @@ export async function editUserMessage(
     agentMessages
   );
 
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block message editing.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: userMessage.sId,
+    });
+
+    if (agentMessages.length === 0) {
+      void signalButlerComplete({
+        authType: auth.toJSON(),
+        conversationId: conversation.sId,
+      });
+    }
+  }
+
   return new Ok({
     userMessage,
     agentMessages,
@@ -1190,6 +1234,8 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
+  const owner = auth.getNonNullableWorkspace();
+
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -1385,6 +1431,19 @@ export async function retryAgentMessage(
     startStep: 0,
   });
 
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block retries.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+    });
+  }
+
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
   // we should move this to a dedicated real-time sync mechanism.
@@ -1524,6 +1583,23 @@ export async function postNewContentFragment(
     conversationId: conversation.sId,
     message: messageRow,
   });
+
+  const featureFlags = await getFeatureFlags(owner);
+  if (
+    featureFlags.includes("conversation_butler") &&
+    isProjectConversation(conversation)
+  ) {
+    // Fire-and-forget: butler failures must not block content fragment posting.
+    void launchOrSignalButlerWorkflow({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+      messageId,
+    });
+    void signalButlerComplete({
+      authType: auth.toJSON(),
+      conversationId: conversation.sId,
+    });
+  }
 
   return new Ok(render);
 }
