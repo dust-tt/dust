@@ -16,7 +16,7 @@ export function renderTicket(
   ticketFieldsResult: Result<ZendeskTicketField[], Error>
 ): string {
   const lines = [
-    `## Ticket ID: ${ticket.id}`,
+    `# Ticket ID: ${ticket.id}`,
     `- URL: ${apiUrlToDocumentUrl(ticket.url)}`,
     `- Subject: ${ticket.subject ?? "No subject"}`,
     `- Status: ${ticket.status}`,
@@ -62,11 +62,7 @@ export function renderTicket(
 
   if (ticket.satisfaction_rating) {
     const { score, comment } = ticket.satisfaction_rating;
-    lines.push(
-      comment
-        ? `- Satisfaction: ${score} ("${comment}")`
-        : `- Satisfaction: ${score}`
-    );
+    lines.push(`- Satisfaction: ${score}` + (comment ? ` ("${comment}")` : ""));
   }
 
   if (ticket.due_at) {
