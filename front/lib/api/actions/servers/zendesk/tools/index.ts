@@ -6,7 +6,11 @@ import {
   getZendeskClient,
   ZendeskApiError,
 } from "@app/lib/api/actions/servers/zendesk/client";
-import { ZENDESK_TOOLS_METADATA } from "@app/lib/api/actions/servers/zendesk/metadata";
+import {
+  isTicketOptionalField,
+  TICKET_OPTIONAL_FIELDS,
+  ZENDESK_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
   renderTicket,
   renderTicketComments,
@@ -48,7 +52,19 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     }
 
     const ticket = ticketResult.value;
-    const requestedFields = fields ?? [];
+
+    const invalidFields = (fields ?? []).filter(
+      (f) => !isTicketOptionalField(f)
+    );
+    if (invalidFields.length > 0) {
+      return new Err(
+        new MCPError(
+          `Invalid field(s): ${invalidFields.join(", ")}. Valid values: ${TICKET_OPTIONAL_FIELDS.join(", ")}.`,
+          { tracked: false }
+        )
+      );
+    }
+    const requestedFields = (fields ?? []).filter(isTicketOptionalField);
 
     const ticketFieldsResult: Result<ZendeskTicketField[], Error> =
       requestedFields.includes("custom_fields")
@@ -146,7 +162,18 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       ]);
     }
 
-    const requestedFields = fields ?? [];
+    const invalidFields = (fields ?? []).filter(
+      (f) => !isTicketOptionalField(f)
+    );
+    if (invalidFields.length > 0) {
+      return new Err(
+        new MCPError(
+          `Invalid field(s): ${invalidFields.join(", ")}. Valid values: ${TICKET_OPTIONAL_FIELDS.join(", ")}.`,
+          { tracked: false }
+        )
+      );
+    }
+    const requestedFields = (fields ?? []).filter(isTicketOptionalField);
 
     const ticketFieldsResult: Result<ZendeskTicketField[], Error> =
       requestedFields.includes("custom_fields")

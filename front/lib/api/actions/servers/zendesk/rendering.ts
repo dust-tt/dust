@@ -8,6 +8,8 @@ import type {
 } from "@app/lib/api/actions/servers/zendesk/types";
 import type { Result } from "@app/types/shared/result";
 
+const MAX_CUSTOM_FIELDS = 50;
+
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
 }
@@ -17,8 +19,6 @@ export function renderTicket(
   ticketFieldsResult: Result<ZendeskTicketField[], Error>,
   fields: TicketOptionalField[] = []
 ): string {
-  const has = (field: TicketOptionalField) => fields.includes(field);
-
   const lines = [
     `## Ticket ID: ${ticket.id}`,
     `- URL: ${apiUrlToDocumentUrl(ticket.url)}`,
@@ -31,74 +31,61 @@ export function renderTicket(
   }
 
   if (ticket.description) {
-    const quoted = ticket.description
-      .split("\n")
-      .map((l) => `   > ${l}`)
-      .join("\n");
-    lines.push(`- Description:\n${quoted}`);
+    lines.push(`- Description: ${ticket.description}`);
   }
 
   lines.push(`- Created: ${new Date(ticket.created_at).toISOString()}`);
   lines.push(`- Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
   // Optional fields.
-  if (has("type") && ticket.type) {
+  if (fields.includes("type") && ticket.type) {
     lines.push(`- Type: ${ticket.type}`);
   }
-  if (has("requester_id")) {
+  if (fields.includes("requester_id")) {
     lines.push(`- Requester ID: ${ticket.requester_id}`);
   }
-  if (has("submitter_id")) {
+  if (fields.includes("submitter_id")) {
     lines.push(`- Submitter ID: ${ticket.submitter_id}`);
   }
-  if (has("assignee_id")) {
-    lines.push(
-      `- Assignee ID: ${ticket.assignee_id !== null ? ticket.assignee_id : "Unassigned"}`
-    );
+  if (fields.includes("assignee_id")) {
+    lines.push(`- Assignee ID: ${ticket.assignee_id ?? "Unassigned"}`);
   }
-  if (has("group_id")) {
-    lines.push(
-      `- Group ID: ${ticket.group_id !== null ? ticket.group_id : "None"}`
-    );
+  if (fields.includes("group_id")) {
+    lines.push(`- Group ID: ${ticket.group_id ?? "None"}`);
   }
-  if (has("organization_id")) {
-    lines.push(
-      `- Organization ID: ${ticket.organization_id !== null ? ticket.organization_id : "None"}`
-    );
+  if (fields.includes("organization_id")) {
+    lines.push(`- Organization ID: ${ticket.organization_id ?? "None"}`);
   }
-  if (has("brand_id") && ticket.brand_id !== undefined) {
+  if (fields.includes("brand_id") && ticket.brand_id !== undefined) {
     lines.push(`- Brand ID: ${ticket.brand_id}`);
   }
-  if (has("tags") && ticket.tags?.length) {
+  if (fields.includes("tags") && ticket.tags?.length) {
     lines.push(`- Tags: ${ticket.tags.join(", ")}`);
   }
-  if (has("via") && ticket.via) {
+  if (fields.includes("via") && ticket.via) {
     lines.push(`- Channel: ${ticket.via.channel}`);
   }
-  if (has("due_at")) {
+  if (fields.includes("due_at")) {
     lines.push(
       `- Due At: ${ticket.due_at ? new Date(ticket.due_at).toISOString() : "None"}`
     );
   }
-  if (has("has_incidents")) {
+  if (fields.includes("has_incidents")) {
     lines.push(`- Has Incidents: ${ticket.has_incidents}`);
   }
-  if (has("problem_id") && ticket.problem_id !== undefined) {
-    lines.push(
-      `- Problem ID: ${ticket.problem_id !== null ? ticket.problem_id : "None"}`
-    );
+  if (fields.includes("problem_id") && ticket.problem_id !== undefined) {
+    lines.push(`- Problem ID: ${ticket.problem_id ?? "None"}`);
   }
-  if (has("external_id") && ticket.external_id !== undefined) {
-    lines.push(
-      `- External ID: ${ticket.external_id !== null ? ticket.external_id : "None"}`
-    );
+  if (fields.includes("external_id") && ticket.external_id !== undefined) {
+    lines.push(`- External ID: ${ticket.external_id ?? "None"}`);
   }
-  if (has("custom_status_id") && ticket.custom_status_id !== undefined) {
-    lines.push(
-      `- Custom Status ID: ${ticket.custom_status_id !== null ? ticket.custom_status_id : "None"}`
-    );
+  if (
+    fields.includes("custom_status_id") &&
+    ticket.custom_status_id !== undefined
+  ) {
+    lines.push(`- Custom Status ID: ${ticket.custom_status_id ?? "None"}`);
   }
-  if (has("satisfaction_rating") && ticket.satisfaction_rating) {
+  if (fields.includes("satisfaction_rating") && ticket.satisfaction_rating) {
     lines.push(`- Satisfaction: ${ticket.satisfaction_rating.score}`);
     if (ticket.satisfaction_rating.comment) {
       lines.push(
@@ -106,24 +93,23 @@ export function renderTicket(
       );
     }
   }
-  if (has("collaborator_ids") && ticket.collaborator_ids?.length) {
+  if (fields.includes("collaborator_ids") && ticket.collaborator_ids?.length) {
     lines.push(`- Collaborator IDs: ${ticket.collaborator_ids.join(", ")}`);
   }
-  if (has("follower_ids") && ticket.follower_ids?.length) {
+  if (fields.includes("follower_ids") && ticket.follower_ids?.length) {
     lines.push(`- Follower IDs: ${ticket.follower_ids.join(", ")}`);
   }
-  if (has("email_cc_ids") && ticket.email_cc_ids?.length) {
+  if (fields.includes("email_cc_ids") && ticket.email_cc_ids?.length) {
     lines.push(`- Email CC IDs: ${ticket.email_cc_ids.join(", ")}`);
   }
 
-  if (has("custom_fields") && ticket.custom_fields?.length) {
+  if (fields.includes("custom_fields") && ticket.custom_fields?.length) {
     if (ticketFieldsResult.isErr()) {
       lines.push("- Custom Fields: (names could not be retrieved)");
     } else {
       const fieldMap = new Map(
         ticketFieldsResult.value.map((f) => [f.id, f.title])
       );
-      const MAX_CUSTOM_FIELDS = 50;
       let customFieldCount = 0;
       for (const field of ticket.custom_fields) {
         if (
@@ -135,9 +121,7 @@ export function renderTicket(
         }
         if (customFieldCount >= MAX_CUSTOM_FIELDS) {
           lines.push(
-            `- Custom Fields: display limit reached (${MAX_CUSTOM_FIELDS} shown). ` +
-              `There may be more custom fields available. If needed, use list_ticket_fields to discover all fields ` +
-              `and search_tickets with the required custom fields.`
+            `- Custom Fields: display limit reached (${MAX_CUSTOM_FIELDS} shown). There may be more custom fields available.`
           );
           break;
         }

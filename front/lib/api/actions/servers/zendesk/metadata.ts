@@ -30,14 +30,20 @@ export const TICKET_OPTIONAL_FIELDS = [
 
 export type TicketOptionalField = (typeof TICKET_OPTIONAL_FIELDS)[number];
 
+export function isTicketOptionalField(
+  value: string
+): value is TicketOptionalField {
+  return (TICKET_OPTIONAL_FIELDS as readonly string[]).includes(value);
+}
+
 export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   get_ticket: {
     description:
       "Retrieve a Zendesk ticket by its ID. " +
       "Returns by default: id, url, subject, status, priority, description, created_at, updated_at. " +
-      "Use fields to request additional data. " +
-      "Use includeMetrics only if the user asks for resolution times or reply counts. " +
-      "Use includeConversation only if the user asks for the full conversation.",
+      "fields can be used to request additional data. " +
+      "includeMetrics can be used to retrieve resolution times or reply counts, only if clearly asked by the user. " +
+      "includeConversation can be used to retrieve the full conversation, only if clearly asked by the user.",
     schema: {
       ticketId: z
         .number()
@@ -45,7 +51,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .positive()
         .describe("The ID of the Zendesk ticket to retrieve."),
       fields: z
-        .array(z.enum(TICKET_OPTIONAL_FIELDS))
+        .array(z.string())
         .optional()
         .describe(
           "Optional list of additional fields to include in the response. " +
@@ -78,8 +84,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets. " +
       "Each ticket returns by default: id, url, subject, status, priority, description, created_at, updated_at. " +
       'Supports filtering by status, priority, type, assignee, tags, and custom fields (syntax: custom_field_{id}:"value"). ' +
-      "Use list_ticket_fields to discover available custom field IDs. " +
-      "Use fields to request additional data per ticket.",
+      "list_ticket_fields can be used to discover available custom field IDs. " +
+      "fields can be used to request additional data per ticket.",
     schema: {
       query: z
         .string()
@@ -89,7 +95,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
             "Do not include 'type:ticket' as it is automatically added."
         ),
       fields: z
-        .array(z.enum(TICKET_OPTIONAL_FIELDS))
+        .array(z.string())
         .optional()
         .describe(
           "Optional list of additional fields to include in the response. " +
@@ -117,7 +123,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     description:
       "Lists ticket field definitions with their ID, title, type, and whether they are active. " +
       "Includes built-in fields (Subject, Priority, Status) and custom fields. " +
-      "Returns active fields by default. Set includeInactive=true for all fields.",
+      "Returns active fields by default. includeInactive can be set to true to include all fields.",
     schema: {
       includeInactive: z
         .boolean()
