@@ -22,6 +22,43 @@ export const newAgentSuite: TestSuite = {
       judgeCriteria: `Intent is clear: engineering docs agent. Must call suggest_prompt_edits with technical instructions; may suggest tools. Score 0-1 if instructions are generic or missing technical/docs focus.`,
     },
     {
+      scenarioId: "shows-suggestions-in-response",
+      conversation: [
+        {
+          role: "user",
+          content:
+            "Build me an agent that creates support issues on GitHub when customers report bugs.",
+        },
+        {
+          role: "assistant",
+          content:
+            "Before I set this up, a couple of quick questions:\n\n1. Which GitHub repo should issues go to?\n2. What details should the agent collect (title, steps to reproduce, severity, environment)?",
+        },
+        {
+          role: "user",
+          content:
+            "Use the acme/support repo. Collect title, description, steps to reproduce, and severity. Tag issues with the 'bug' label.",
+        },
+      ],
+      mockState: BLANK_AGENT,
+      expectedToolCalls: [
+        "get_agent_config",
+        "suggest_prompt_edits",
+        "suggest_tools",
+      ],
+      judgeCriteria: `This test checks that the copilot includes suggestion directives in its response text.
+
+CRITICAL CHECK — the copilot response MUST contain:
+1. At least one \`:agent_suggestion[]{sId=... kind=instructions}\` directive (from suggest_prompt_edits)
+2. At least one \`:agent_suggestion[]{sId=... kind=tools}\` directive (from suggest_tools)
+
+These directives are returned by the suggest_prompt_edits and suggest_tools tools and MUST be included verbatim in the copilot's text response so they render as interactive suggestion cards for the user.
+
+Score 0 if ANY of the directives are missing from the response text.
+Score 1 if directives are present but the surrounding explanation is poor.
+Score 2-3 if directives are present and the response clearly explains what was suggested (instructions for bug collection/formatting and GitHub tool).`,
+    },
+    {
       scenarioId: "vague-make-agent",
       userMessage: "Make me an agent",
       mockState: BLANK_AGENT,

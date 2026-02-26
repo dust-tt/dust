@@ -140,7 +140,10 @@ const MOCK_MCP_SERVER_VIEWS: MCPServerViewsForGlobalAgentsMap =
     MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [name, null])
   ) as MCPServerViewsForGlobalAgentsMap;
 
-export async function getCopilotConfig(): Promise<CopilotConfig> {
+export async function getCopilotConfig(): Promise<{
+  config: CopilotConfig;
+  auth: Authenticator;
+}> {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const mockCopilotContext = getMockCopilotContext();
@@ -215,19 +218,11 @@ export async function getCopilotConfig(): Promise<CopilotConfig> {
   }
 
   return {
-    instructions: copilotConfig.instructions ?? "",
-    model: copilotConfig.model,
-    tools,
+    config: {
+      instructions: copilotConfig.instructions ?? "",
+      model: copilotConfig.model,
+      tools,
+    },
+    auth,
   };
-}
-
-export function createMockAuthenticator(): Authenticator {
-  return new Authenticator({
-    workspace: null,
-    user: null,
-    role: "none",
-    groupModelIds: [],
-    subscription: null,
-    authMethod: "internal",
-  });
 }

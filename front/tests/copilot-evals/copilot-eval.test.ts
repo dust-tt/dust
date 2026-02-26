@@ -1,8 +1,8 @@
+import type { Authenticator } from "@app/lib/auth";
 import {
   COPILOT_AGENT,
   COPILOT_ON_COPILOT,
   COPILOT_ON_COPILOT_TIMEOUT_MS,
-  createMockAuthenticator,
   FILTER_CATEGORY,
   FILTER_SCENARIO,
   getCopilotConfig,
@@ -66,9 +66,12 @@ for (const testCase of testCases) {
 
 describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
   let copilotConfig: CopilotConfig;
+  let auth: Authenticator;
 
   beforeAll(async () => {
-    copilotConfig = await getCopilotConfig();
+    const result = await getCopilotConfig();
+    copilotConfig = result.config;
+    auth = result.auth;
   }, TIMEOUT_MS);
 
   for (const [category, scenarios] of testGroups) {
@@ -77,8 +80,6 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
         it.concurrent(
           scenarioId,
           async () => {
-            const auth = createMockAuthenticator();
-
             const { responseText, toolCalls, modelTimeMs } =
               await executeCopilot(
                 auth,
@@ -174,7 +175,6 @@ describe.skipIf(!RUN_COPILOT_EVAL)("Copilot Evaluation Tests", () => {
         return;
       }
 
-      const auth = createMockAuthenticator();
       await generateCopilotImprovementSuggestions(
         auth,
         copilotConfig,

@@ -13,11 +13,21 @@ function instructionsToHtml(instructions: string): string {
   return `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">${blocks}</div>`;
 }
 
+let mockSuggestionCounter = 0;
+
+function getSuggestionsArray(
+  toolArguments: Record<string, unknown> | undefined
+): unknown[] {
+  const raw = toolArguments?.suggestions;
+  return Array.isArray(raw) ? raw : [null];
+}
+
 export function getMockToolResponse(
   toolName: string,
-  agentState: MockAgentState
+  agentState: MockAgentState,
+  toolArguments?: Record<string, unknown>
 ): string {
-  const mockResponses: Record<string, () => object> = {
+  const mockResponses: Record<string, () => object | string> = {
     get_agent_info: () => agentState,
 
     get_agent_config: () => ({
@@ -222,41 +232,38 @@ export function getMockToolResponse(
       ],
     }),
 
-    suggest_prompt_edits: () => ({
-      status: "success",
-      suggestionsCreated: 1,
-      message: "Suggestion created successfully",
-    }),
+    suggest_prompt_edits: () =>
+      getSuggestionsArray(toolArguments)
+        .map(() => {
+          const sId = `mock_sId_${++mockSuggestionCounter}`;
+          return `:agent_suggestion[]{sId=${sId} kind=instructions}`;
+        })
+        .join("\n\n"),
 
-    suggest_tools: () => ({
-      status: "success",
-      suggestionsCreated: 1,
-      message: "Tool suggestion created successfully",
-    }),
+    suggest_tools: () =>
+      getSuggestionsArray(toolArguments)
+        .map(() => {
+          const sId = `mock_sId_${++mockSuggestionCounter}`;
+          return `:agent_suggestion[]{sId=${sId} kind=tools}`;
+        })
+        .join("\n\n"),
 
-    suggest_skills: () => ({
-      status: "success",
-      suggestionsCreated: 1,
-      message: "Skill suggestion created successfully",
-    }),
+    suggest_skills: () =>
+      getSuggestionsArray(toolArguments)
+        .map(() => {
+          const sId = `mock_sId_${++mockSuggestionCounter}`;
+          return `:agent_suggestion[]{sId=${sId} kind=skills}`;
+        })
+        .join("\n\n"),
 
-    suggest_model: () => ({
-      status: "success",
-      suggestionsCreated: 1,
-      message: "Model suggestion created successfully",
-    }),
+    suggest_model: () =>
+      `:agent_suggestion[]{sId=mock_sId_${++mockSuggestionCounter} kind=model}`,
 
-    suggest_knowledge: () => ({
-      status: "success",
-      suggestionsCreated: 1,
-      message: "Knowledge suggestion created successfully",
-    }),
+    suggest_knowledge: () =>
+      `:agent_suggestion[]{sId=mock_sId_${++mockSuggestionCounter} kind=knowledge}`,
 
-    suggest_sub_agent: () => ({
-      status: "success",
-      suggestionsCreated: 1,
-      message: "Sub-agent suggestion created successfully",
-    }),
+    suggest_sub_agent: () =>
+      `:agent_suggestion[]{sId=mock_sId_${++mockSuggestionCounter} kind=sub_agent}`,
 
     search_knowledge: () => ({
       results: [
@@ -345,5 +352,12 @@ export function getMockToolResponse(
     throw new Error(`Unknown tool: ${toolName}`);
   }
 
-  return JSON.stringify(responseFactory(), null, 2);
+  const result = responseFactory();
+
+  // Suggestion tools return plain-text directives, not JSON objects.
+  if (typeof result === "string") {
+    return result;
+  }
+
+  return JSON.stringify(result, null, 2);
 }

@@ -160,7 +160,11 @@ export async function executeCopilot(
         role: "function" as const,
         name: tc.toolCall.name,
         function_call_id: tc.id,
-        content: getMockToolResponse(tc.toolCall.name, agentState),
+        content: getMockToolResponse(
+          tc.toolCall.name,
+          agentState,
+          tc.toolCall.arguments
+        ),
       });
     }
 
