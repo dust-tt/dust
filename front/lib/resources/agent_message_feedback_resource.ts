@@ -239,12 +239,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     }
 
     // Fetch conversation sIds and message sIds in separate queries.
-    const conversationIds = [
-      ...new Set(feedbackRows.map((f) => f.conversationId)),
-    ];
     const conversations = await ConversationModel.findAll({
       attributes: ["id", "sId"],
-      where: { id: conversationIds },
+      where: {
+        workspaceId: workspace.id,
+        id: feedbackRows.map((f) => f.conversationId),
+      },
     });
     const conversationIdByModelId = new Map(
       conversations.map((c) => [c.id, c.sId])
@@ -305,12 +305,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       return [];
     }
 
-    const conversationIds = [
-      ...new Set(feedbackRows.map((f) => f.conversationId)),
-    ];
     const conversations = await ConversationModel.findAll({
-      attributes: ["id", "sId"],
-      where: { id: conversationIds },
+      attributes: ["id", "sId"] ,
+      where: {
+        workspaceId: workspace.id,
+        id: feedbackRows.map((f) => f.conversationId),
+      },
       transaction,
     });
     const conversationIdByModelId = new Map(
