@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Button, SearchInput } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
@@ -82,7 +83,7 @@ export const getStaticProps: GetStaticProps<
   };
 };
 
-export default function IntegrationsPage({
+export default function IntegrationsPageNextJS({
   integrations,
   categories,
 }: IntegrationsPageProps) {
@@ -286,7 +287,7 @@ function IntegrationCard({ integration }: IntegrationCardProps) {
   );
 }
 
-IntegrationsPage.getLayout = (
+IntegrationsPageNextJS.getLayout = (
   page: ReactElement,
   pageProps: LandingLayoutProps
 ) => {

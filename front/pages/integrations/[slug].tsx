@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { GetStaticPaths, GetStaticProps } from "next";
 import type { ReactElement } from "react";
 
@@ -60,7 +61,7 @@ export const getStaticProps: GetStaticProps<IntegrationPageProps> = async ({
   };
 };
 
-export default function IntegrationPage({
+export default function IntegrationPageNextJS({
   integration,
   relatedIntegrations,
 }: IntegrationPageProps) {
@@ -72,7 +73,7 @@ export default function IntegrationPage({
   );
 }
 
-IntegrationPage.getLayout = (
+IntegrationPageNextJS.getLayout = (
   page: ReactElement,
   pageProps: LandingLayoutProps
 ) => {
