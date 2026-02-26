@@ -249,6 +249,11 @@ export const NotificationPreferences = forwardRef<
             },
             "Failed to load notification preferences from Novu (session error)."
           );
+          setConversationPreferences(undefined);
+          originalConversationPreferencesRef.current = undefined;
+          setProjectNewConversationPreferences(undefined);
+          originalProjectNewConversationPreferencesRef.current = undefined;
+          return;
         }
 
         const preferenceList = preferences.data ?? [];
