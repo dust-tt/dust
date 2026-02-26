@@ -284,12 +284,12 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          // All models should be from anthropic only.
-          expect(parsed.models.length).toBeGreaterThan(0);
-          for (const model of parsed.models) {
-            expect(model.providerId).toBe("anthropic");
-          }
+          // Output is markdown. Should contain anthropic models only.
+          expect(content.text).toContain("## AVAILABLE MODELS");
+          expect(content.text).toContain("### anthropic");
+          // Should not contain other providers.
+          expect(content.text).not.toContain("### openai");
+          expect(content.text).not.toContain("### google_ai_studio");
         }
       }
     });
@@ -305,13 +305,12 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.count).toBeGreaterThan(0);
-          // Should have multiple providers.
-          const providers = new Set(
-            parsed.models.map((m: { providerId: string }) => m.providerId)
-          );
-          expect(providers.size).toBeGreaterThan(1);
+          // Output is markdown. Should contain models from multiple providers.
+          expect(content.text).toContain("## AVAILABLE MODELS");
+          expect(content.text).toContain("models available.");
+          // Should have multiple provider sections.
+          const providerSections = content.text.match(/^### /gm) ?? [];
+          expect(providerSections.length).toBeGreaterThan(1);
         }
       }
     });
@@ -330,18 +329,18 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.count).toBeGreaterThan(0);
-          for (const model of parsed.models) {
-            expect(model.providerId).toBe("openai");
-          }
+          // Output is markdown. Should only contain openai models.
+          expect(content.text).toContain("## AVAILABLE MODELS");
+          expect(content.text).toContain("### openai");
+          // Should not contain other providers.
+          expect(content.text).not.toContain("### anthropic");
         }
       }
     });
   });
 
   describe("get_available_skills", () => {
-    it("returns skills with toolSIds array", async () => {
+    it("returns skills in markdown format", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Create a skill.
@@ -359,16 +358,11 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.count).toBeGreaterThan(0);
-          // Find our skill.
-          const foundSkill = parsed.skills.find(
-            (s: { sId: string }) => s.sId === skill.sId
-          );
-          expect(foundSkill).toBeDefined();
-          expect(foundSkill.name).toBe("Test Skill");
-          expect(foundSkill.toolSIds).toBeDefined();
-          expect(Array.isArray(foundSkill.toolSIds)).toBe(true);
+          // Output is markdown.
+          expect(content.text).toContain("## AVAILABLE SKILLS");
+          expect(content.text).toContain("skills available.");
+          expect(content.text).toContain(`**Test Skill** (ID: ${skill.sId})`);
+          expect(content.text).toContain("Agent facing description");
         }
       }
     });
@@ -387,7 +381,11 @@ describe("agent_copilot_context tools", () => {
       const server2 = await RemoteMCPServerFactory.create(workspace);
 
       // Create system views (required before creating space views).
-      await MCPServerViewFactory.create(workspace, server1.sId, globalSpace);
+      const view1 = await MCPServerViewFactory.create(
+        workspace,
+        server1.sId,
+        globalSpace
+      );
       await MCPServerViewFactory.create(
         workspace,
         server2.sId,
@@ -402,17 +400,11 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          // Should only include tools from spaces the user can access.
+          // Output is markdown.
+          expect(content.text).toContain("## AVAILABLE TOOLS");
           // server1 view should be present (in global space).
-          expect(
-            parsed.tools.some(
-              (t: { sId: string }) =>
-                t.sId.includes(server1.sId) || parsed.tools.length >= 1
-            )
-          ).toBe(true);
+          expect(content.text).toContain(view1.sId);
           // The tool from restricted space should not be returned.
-          // This is checked implicitly since the user only has access to global space.
         }
       }
     });
@@ -437,13 +429,11 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.count).toBeGreaterThan(0);
+          // Output is markdown.
+          expect(content.text).toContain("## AVAILABLE TOOLS");
+          expect(content.text).toContain("tools available.");
           // Should find the tool view.
-          const foundTool = parsed.tools.find(
-            (t: { sId: string }) => t.sId === view.sId
-          );
-          expect(foundTool).toBeDefined();
+          expect(content.text).toContain(view.sId);
         }
       }
     });
@@ -462,10 +452,10 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          const toolNames = parsed.tools.map((t: { name: string }) => t.name);
+          // Output is markdown.
+          expect(content.text).toContain("## AVAILABLE TOOLS");
 
-          // Knowledge tools should be excluded.
+          // Knowledge tools should be excluded from markdown output.
           const knowledgeToolNames = [
             "Search",
             "Query Tables",
@@ -473,11 +463,11 @@ describe("agent_copilot_context tools", () => {
             "Extract Data",
           ];
           for (const knowledgeName of knowledgeToolNames) {
-            expect(toolNames).not.toContain(knowledgeName);
+            expect(content.text).not.toContain(`**${knowledgeName}**`);
           }
 
           // Non-knowledge auto tools should still be present.
-          expect(toolNames.length).toBeGreaterThan(0);
+          expect(content.text).toContain("tools available.");
         }
       }
     });
