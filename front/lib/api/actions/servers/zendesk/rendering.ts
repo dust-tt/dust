@@ -16,50 +16,69 @@ export function renderTicket(
   ticketFieldsResult: Result<ZendeskTicketField[], Error>
 ): string {
   const lines = [
-    `ID: ${ticket.id}`,
-    `URL: ${apiUrlToDocumentUrl(ticket.url)}`,
-    `Subject: ${ticket.subject ?? "No subject"}`,
-    `Status: ${ticket.status}`,
+    `## Ticket ID: ${ticket.id}`,
+    `- URL: ${apiUrlToDocumentUrl(ticket.url)}`,
+    `- Subject: ${ticket.subject ?? "No subject"}`,
+    `- Status: ${ticket.status}`,
   ];
 
   if (ticket.priority) {
-    lines.push(`Priority: ${ticket.priority}`);
+    lines.push(`- Priority: ${ticket.priority}`);
   }
 
   if (ticket.type) {
-    lines.push(`Type: ${ticket.type}`);
+    lines.push(`- Type: ${ticket.type}`);
   }
 
   if (ticket.description) {
-    lines.push(`\nDescription:\n${ticket.description}`);
+    lines.push(
+      `- Description: ${ticket.description.trim().replace(/\n+/g, " ")}`
+    );
   }
 
   if (ticket.requester_id) {
-    lines.push(`\nRequester ID: ${ticket.requester_id}`);
+    lines.push(`- Requester ID: ${ticket.requester_id}`);
   }
 
   if (ticket.assignee_id) {
-    lines.push(`Assignee ID: ${ticket.assignee_id}`);
+    lines.push(`- Assignee ID: ${ticket.assignee_id}`);
   }
 
   if (ticket.group_id) {
-    lines.push(`Group ID: ${ticket.group_id}`);
+    lines.push(`- Group ID: ${ticket.group_id}`);
   }
 
   if (ticket.organization_id) {
-    lines.push(`Organization ID: ${ticket.organization_id}`);
+    lines.push(`- Organization ID: ${ticket.organization_id}`);
   }
 
   if (ticket.tags.length > 0) {
-    lines.push(`\nTags: ${ticket.tags.join(", ")}`);
+    lines.push(`- Tags: ${ticket.tags.join(", ")}`);
   }
 
   if (ticket.via?.channel) {
-    lines.push(`\nChannel: ${ticket.via.channel}`);
+    lines.push(`- Channel: ${ticket.via.channel}`);
   }
 
-  lines.push(`\nCreated: ${new Date(ticket.created_at).toISOString()}`);
-  lines.push(`Updated: ${new Date(ticket.updated_at).toISOString()}`);
+  if (ticket.satisfaction_rating) {
+    const { score, comment } = ticket.satisfaction_rating;
+    lines.push(
+      comment
+        ? `- Satisfaction: ${score} ("${comment}")`
+        : `- Satisfaction: ${score}`
+    );
+  }
+
+  if (ticket.due_at) {
+    lines.push(`- Due At: ${new Date(ticket.due_at).toISOString()}`);
+  }
+
+  if (ticket.has_incidents) {
+    lines.push(`- Has Incidents: ${ticket.has_incidents}`);
+  }
+
+  lines.push(`- Created: ${new Date(ticket.created_at).toISOString()}`);
+  lines.push(`- Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
   if (ticket.custom_fields && ticket.custom_fields.length > 0) {
     if (ticketFieldsResult.isErr()) {
