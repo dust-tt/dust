@@ -2,6 +2,7 @@ import {
   formatTemplatesAsText,
   getTemplatesForCopilot,
 } from "@app/lib/api/assistant/copilot_templates";
+import { fetchLangfuseFirstMessagePrompt } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -56,7 +57,7 @@ Example:
 :quickReply[Competitive intel - monitors competitor news]{message="I want to build a competitive intel agent that monitors competitor news and surfaces updates"}"
 
 ## STEP 2: Response
-Respond with the use case suggestions. Provide a succinct explanation that the user can also input a free answer if they do not want to select one of the suggested templates. 
+Respond with the use case suggestions. Provide a succinct explanation that the user can also input a free answer if they do not want to select one of the suggested templates.
 
 Users do not necessarily know they are using a pre-defined template. Avoid using that phrasing in your response.
 
@@ -74,9 +75,29 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
+      const { copilotEdge } = req.query;
       const jobType = await getJobTypeFromAuth(auth);
       const templatesMarkdown = await getTemplatesMarkdown(auth, jobType);
-      return res.status(200).json(buildFirstMessage(templatesMarkdown));
+
+      if (copilotEdge !== "true") {
+        return res.status(200).json(buildFirstMessage(templatesMarkdown));
+      }
+
+      const result = await fetchLangfuseFirstMessagePrompt(
+        "copilot-edge-first-message-new",
+        { templatesMarkdown }
+      );
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to generate copilot prompt.",
+          },
+        });
+      }
+
+      return res.status(200).json(result.value);
     }
     default:
       return apiError(req, res, {

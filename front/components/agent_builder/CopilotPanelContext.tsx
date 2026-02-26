@@ -63,8 +63,9 @@ export const CopilotPanelProvider = ({
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
   const sendNotification = useSendNotification();
-  const copilotEdge = useSearchParam("copilotEdge");
-  const copilotAgentId = copilotEdge
+  const copilotEdgeParam = useSearchParam("copilotEdge");
+  const isCopilotEdge = copilotEdgeParam === "true";
+  const copilotAgentId = isCopilotEdge
     ? GLOBAL_AGENTS_SID.COPILOT_EDGE
     : GLOBAL_AGENTS_SID.COPILOT;
 
@@ -81,6 +82,7 @@ export const CopilotPanelProvider = ({
     templateInfo,
     conversationId,
     agentConfigurationId: targetAgentConfigurationId ?? undefined,
+    copilotEdge: isCopilotEdge,
   });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
@@ -103,11 +105,21 @@ export const CopilotPanelProvider = ({
 
     setIsCreatingConversation(true);
 
-    const firstMessagePrompt = await getFirstMessage();
+    const firstMessageResult = await getFirstMessage();
+    if (firstMessageResult.isErr()) {
+      setCreationFailed(true);
+      setIsCreatingConversation(false);
+      sendNotification({
+        title: "Sidekick error",
+        description: firstMessageResult.error.message,
+        type: "error",
+      });
+      return;
+    }
 
     const result = await createConversationWithMessage({
       messageData: {
-        input: firstMessagePrompt,
+        input: firstMessageResult.value,
         mentions: [{ configurationId: copilotAgentId }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_copilot",
