@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { MAX_CUSTOM_FIELDS } from "@app/lib/api/actions/servers/zendesk/rendering";
 import type {
   ZendeskSearchResponse,
   ZendeskTicket,
@@ -35,8 +36,6 @@ export class ZendeskApiError extends Error {
   }
 }
 
-const MAX_CUSTOM_FIELDS_TO_FETCH = 50;
-
 export function getUniqueCustomFieldIds(
   tickets: ZendeskTicket | ZendeskTicket[]
 ): number[] {
@@ -53,7 +52,7 @@ export function getUniqueCustomFieldIds(
     }
   }
 
-  return Array.from(fieldIds).slice(0, MAX_CUSTOM_FIELDS_TO_FETCH);
+  return Array.from(fieldIds).slice(0, MAX_CUSTOM_FIELDS);
 }
 
 export function getZendeskClient(

@@ -8,7 +8,7 @@ import type {
 } from "@app/lib/api/actions/servers/zendesk/types";
 import type { Result } from "@app/types/shared/result";
 
-const MAX_CUSTOM_FIELDS = 50;
+export const MAX_CUSTOM_FIELDS = 50;
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
@@ -110,26 +110,20 @@ export function renderTicket(
       const fieldMap = new Map(
         ticketFieldsResult.value.map((f) => [f.id, f.title])
       );
-      let customFieldCount = 0;
-      for (const field of ticket.custom_fields) {
-        if (
-          field.value === null ||
-          field.value === "" ||
-          !fieldMap.has(field.id)
-        ) {
-          continue;
-        }
-        if (customFieldCount >= MAX_CUSTOM_FIELDS) {
-          lines.push(
-            `- Custom Fields: display limit reached (${MAX_CUSTOM_FIELDS} shown). There may be more custom fields available.`
-          );
-          break;
-        }
+      const validFields = ticket.custom_fields.filter(
+        (field) =>
+          field.value !== null && field.value !== "" && fieldMap.has(field.id)
+      );
+      for (const field of validFields.slice(0, MAX_CUSTOM_FIELDS)) {
         const valueStr = Array.isArray(field.value)
           ? field.value.join(", ")
           : String(field.value);
         lines.push(`- Custom Fields — ${fieldMap.get(field.id)}: ${valueStr}`);
-        customFieldCount++;
+      }
+      if (validFields.length > MAX_CUSTOM_FIELDS) {
+        lines.push(
+          `- Custom Fields: display limit reached (${MAX_CUSTOM_FIELDS} shown). There may be more custom fields available.`
+        );
       }
     }
   }
