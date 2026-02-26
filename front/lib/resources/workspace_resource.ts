@@ -14,6 +14,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -611,8 +612,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     const conversationIds = currentKillSwitch?.conversationIds ?? [];
     const wasBlockedBefore = conversationIds.includes(conversationId);
 
-    let metadata: Record<string, string | number | boolean | object>;
-
     switch (operation) {
       case "block": {
         if (wasBlockedBefore) {
@@ -621,13 +620,23 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
           });
         }
 
-        metadata = {
+        const metadata = {
           ...(this.metadata ?? {}),
           [WorkspaceResource.KILL_SWITCH_METADATA_KEY]: {
             conversationIds: [...conversationIds, conversationId],
           },
         };
-        break;
+        const updateResult = await WorkspaceResource.updateMetadata(
+          this.id,
+          metadata
+        );
+        if (updateResult.isErr()) {
+          return new Err(updateResult.error);
+        }
+
+        await terminateAllAgentLoopWorkflowsForConversation(conversationId);
+
+        return new Ok({ wasUpdated: true });
       }
 
       case "unblock": {
@@ -640,7 +649,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         const updatedConversationIds = conversationIds.filter(
           (cId) => cId !== conversationId
         );
-        metadata = { ...(this.metadata ?? {}) };
+        const metadata: Record<string, string | number | boolean | object> = {
+          ...(this.metadata ?? {}),
+        };
         if (updatedConversationIds.length === 0) {
           delete metadata[WorkspaceResource.KILL_SWITCH_METADATA_KEY];
         } else {
@@ -648,21 +659,17 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
             conversationIds: updatedConversationIds,
           };
         }
-        break;
+        const updateResult = await WorkspaceResource.updateMetadata(
+          this.id,
+          metadata
+        );
+        if (updateResult.isErr()) {
+          return new Err(updateResult.error);
+        }
+
+        return new Ok({ wasUpdated: true });
       }
     }
-
-    const updateResult = await WorkspaceResource.updateMetadata(
-      this.id,
-      metadata
-    );
-    if (updateResult.isErr()) {
-      return new Err(updateResult.error);
-    }
-
-    return new Ok({
-      wasUpdated: true,
-    });
   }
 
   async updateWorkspaceKillSwitch({
