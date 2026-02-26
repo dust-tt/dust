@@ -43,9 +43,7 @@ impl GoogleCloudStorageCSVContent {
                 "CSV file exceeds maximum size limit"
             );
             return Err(anyhow!(
-                "CSV file at {}/{} is too large to process: {} bytes (max {} bytes)",
-                bucket,
-                path,
+                "CSV file is too large to process: {} bytes (max {} bytes)",
                 metadata.size,
                 MAX_CSV_FILE_SIZE_BYTES
             ));
