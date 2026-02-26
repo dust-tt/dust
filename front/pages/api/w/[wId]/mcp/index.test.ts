@@ -260,6 +260,54 @@ describe("POST /api/w/[wId]/mcp/", () => {
       configurable: true,
     });
   });
+
+  it("should create an internal MCP server with bearer token credentials", async () => {
+    const { req, res, authenticator } = await setupTest("admin", "POST");
+
+    const sharedSecret = "test-secret-123";
+
+    req.body = {
+      name: "slab" satisfies InternalMCPServerNameType,
+      serverType: "internal",
+      includeGlobal: true,
+      sharedSecret,
+      customHeaders: [
+        { key: "X-Custom-Header", value: "custom-value" },
+        { key: "Authorization", value: "Bearer should-be-kept" },
+      ],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    const responseData = res._getJSONData();
+    expect(responseData).toEqual({
+      success: true,
+      server: expect.objectContaining({
+        name: "slab",
+        sharedSecret: expect.stringContaining("•"),
+        customHeaders: expect.any(Object),
+      }),
+    });
+    expect(responseData.server.customHeaders).not.toBeNull();
+    expect(responseData.server.customHeaders).toHaveProperty("X-Custom-Header");
+    expect(responseData.server.customHeaders["X-Custom-Header"]).toContain("•");
+
+    const server = responseData.server;
+    const credentials =
+      await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
+        authenticator,
+        server.sId
+      );
+
+    expect(credentials).toBeDefined();
+    expect(credentials?.sharedSecret).toBeTruthy();
+    expect(credentials?.sharedSecret).toBe(sharedSecret);
+    expect(credentials?.customHeaders).toEqual({
+      Authorization: "Bearer should-be-kept",
+      "X-Custom-Header": "custom-value",
+    });
+  });
 });
 
 describe("POST /api/w/[wId]/mcp/ - name conflict", () => {
