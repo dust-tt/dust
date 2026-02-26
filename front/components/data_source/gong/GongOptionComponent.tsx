@@ -74,7 +74,6 @@ function PermissionProfileSelector({
 }: PermissionProfileSelectorProps) {
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
-  const [localProfileId, setLocalProfileId] = useState("");
 
   const {
     configValue: permissionProfileIdConfigValue,
@@ -90,13 +89,13 @@ function PermissionProfileSelector({
     dataSource,
     configKey: GONG_PERMISSION_PROFILES_CONFIG_KEY,
   });
-
-  // The saved profile ID from the server, "" means "all participants".
-  const savedProfileId = permissionProfileIdConfigValue ?? "";
+  const [localProfileId, setLocalProfileId] = useState(
+    permissionProfileIdConfigValue ?? ""
+  );
 
   useEffect(() => {
-    setLocalProfileId(savedProfileId);
-  }, [savedProfileId]);
+    setLocalProfileId(permissionProfileIdConfigValue ?? "");
+  }, [permissionProfileIdConfigValue]);
 
   const permissionProfiles = useMemo<GongPermissionProfile[]>(() => {
     if (!permissionProfilesConfigValue) {
@@ -113,7 +112,9 @@ function PermissionProfileSelector({
     }
   }, [permissionProfilesConfigValue]);
 
-  const hasUnsavedChanges = localProfileId !== savedProfileId;
+  const hasUnsavedChanges =
+    permissionProfileIdConfigValue !== undefined &&
+    localProfileId !== permissionProfileIdConfigValue;
 
   const displayedProfile = useMemo(() => {
     if (!localProfileId) {
