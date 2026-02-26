@@ -240,7 +240,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     // Fetch conversation sIds and message sIds in separate queries.
     const conversationIds = [
       ...new Set(
-        feedbackRows.map((f) => f.conversationId).filter((id) => id !== null)
+        feedbackRows.map((f) => f.conversationId)
       ),
     ];
     const conversations = await ConversationModel.findAll({
@@ -264,14 +264,10 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
 
     return feedbackRows.map((feedback) => {
-      const conversationId = feedback.conversationId
-        ? conversationIdByModelId.get(feedback.conversationId)
-        : undefined;
-      const messageId = messageIdByAgentMessageId.get(feedback.agentMessageId);
       return new this(this.model, feedback.get(), {
         user: feedback.user,
-        conversationId,
-        messageId,
+        conversationId: conversationIdByModelId.get(feedback.conversationId),
+        messageId: messageIdByAgentMessageId.get(feedback.agentMessageId),
       });
     });
   }
@@ -312,7 +308,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     const conversationIds = [
       ...new Set(
-        feedbackRows.map((f) => f.conversationId).filter((id) => id !== null)
+        feedbackRows.map((f) => f.conversationId)
       ),
     ];
     const conversations = await ConversationModel.findAll({
@@ -327,12 +323,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return feedbackRows
       .filter((feedback) => Boolean(feedback.user))
       .map((feedback) => {
-        const conversationId = feedback.conversationId
-          ? conversationIdByModelId.get(feedback.conversationId)
-          : undefined;
         return new this(this.model, feedback.get(), {
           user: feedback.user,
-          conversationId,
+          conversationId: conversationIdByModelId.get(feedback.conversationId),
         });
       });
   }
