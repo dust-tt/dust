@@ -80,9 +80,12 @@ export function MCPServerDetails({
       : undefined,
   });
 
-  // Reset form when defaults change (e.g., when switching between servers)
+  // Reset form when defaults change (e.g., when switching between servers),
+  // but not if the user has unsaved edits.
   useEffect(() => {
-    form.reset(defaults);
+    if (!form.formState.isDirty) {
+      form.reset(defaults);
+    }
   }, [defaults, form]);
 
   const applyToolChanges = async (
