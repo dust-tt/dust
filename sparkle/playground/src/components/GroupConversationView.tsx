@@ -77,6 +77,7 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
+import { WhatsNewDeltaList } from "./WhatsNewDeltaList";
 
 interface GroupConversationViewProps {
   space: Space;
@@ -357,6 +358,8 @@ interface OngoingSummary {
 
 type SummaryRelatedConversations = Record<string, string[]>;
 type SummaryItemDiffByKey = Record<string, SummaryItemDiffState>;
+type AutoCheckRationaleByKey = Record<string, string>;
+const SUMMARY_ITEM_TRANSITION_MS = 240;
 
 interface WhatsNewScenario {
   before: OngoingSummary;
@@ -490,6 +493,40 @@ function buildRandomSummaryRelatedConversations(
   });
 
   return links;
+}
+
+function buildAutoCheckRationale(
+  itemText: string,
+  relatedConversationTitles: string[]
+): string {
+  const lowerText = itemText.toLowerCase();
+  let reason = "Item resolved in the thread";
+
+  if (lowerText.includes("question")) {
+    reason = "Question answered in the thread";
+  } else if (
+    lowerText.includes("sign-off") ||
+    lowerText.includes("signoff") ||
+    lowerText.includes("approval") ||
+    lowerText.includes("approve")
+  ) {
+    reason = "Approval confirmed in the thread";
+  } else if (lowerText.includes("budget")) {
+    reason = "Budget point clarified in the thread";
+  } else if (lowerText.includes("owner") || lowerText.includes("dri")) {
+    reason = "Ownership clarified in the thread";
+  }
+
+  if (relatedConversationTitles.length === 0) {
+    return `${reason}.`;
+  }
+
+  const [primaryTitle, ...relatedTitles] = relatedConversationTitles;
+  if (relatedTitles.length === 0) {
+    return `${reason} in ${primaryTitle}.`;
+  }
+
+  return `${reason} in ${primaryTitle}. Related: ${relatedTitles.join(", ")}.`;
 }
 
 function getSummaryTimestamp(spaceId: string): Date {
@@ -851,6 +888,8 @@ export function GroupConversationView({
     useState<SummaryRelatedConversations>({});
   const [summaryItemDiffByKey, setSummaryItemDiffByKey] =
     useState<SummaryItemDiffByKey>({});
+  const [autoCheckRationaleByKey, setAutoCheckRationaleByKey] =
+    useState<AutoCheckRationaleByKey>({});
   const [typingItemKeys, setTypingItemKeys] = useState<Set<string>>(new Set());
   const [enteringItemKeys, setEnteringItemKeys] = useState<Set<string>>(
     new Set()
@@ -861,6 +900,7 @@ export function GroupConversationView({
   const [typingVersion, setTypingVersion] = useState(0);
   const deltaTransitionTimeoutRef = useRef<number | null>(null);
   const deltaTransitionStartTimeoutRef = useRef<number | null>(null);
+  const cleanTransitionTimeoutRef = useRef<number | null>(null);
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
@@ -1144,7 +1184,7 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
-  const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 180;
+  const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 260;
 
   const conversationTitleById = useMemo(() => {
     const titleMap = new Map<string, string>();
@@ -1153,6 +1193,48 @@ export function GroupConversationView({
     });
     return titleMap;
   }, [expandedConversations]);
+
+  const getAutoCheckRationales = (
+    summary: OngoingSummary,
+    relatedConversations: SummaryRelatedConversations,
+    autoCheckedItemIds: string[]
+  ): AutoCheckRationaleByKey => {
+    const rationales: AutoCheckRationaleByKey = {};
+
+    autoCheckedItemIds.forEach((itemId) => {
+      const needAttentionItem = summary.needAttention.find(
+        (item) => item.id === itemId
+      );
+      if (needAttentionItem) {
+        const itemKey = getSummaryItemKey("needAttention", needAttentionItem);
+        const relatedTitles = (relatedConversations[itemKey] ?? []).map(
+          (conversationId) =>
+            conversationTitleById.get(conversationId) ?? conversationId
+        );
+        rationales[itemKey] = buildAutoCheckRationale(
+          needAttentionItem.text,
+          relatedTitles
+        );
+      }
+
+      const keyDecisionItem = summary.keyDecisions.find(
+        (item) => item.id === itemId
+      );
+      if (keyDecisionItem) {
+        const itemKey = getSummaryItemKey("keyDecisions", keyDecisionItem);
+        const relatedTitles = (relatedConversations[itemKey] ?? []).map(
+          (conversationId) =>
+            conversationTitleById.get(conversationId) ?? conversationId
+        );
+        rationales[itemKey] = buildAutoCheckRationale(
+          keyDecisionItem.text,
+          relatedTitles
+        );
+      }
+    });
+
+    return rationales;
+  };
 
   const formatSummaryUpdatedAt = (date: Date): string => {
     const diffMs = Date.now() - date.getTime();
@@ -1250,6 +1332,9 @@ export function GroupConversationView({
       if (deltaTransitionTimeoutRef.current !== null) {
         window.clearTimeout(deltaTransitionTimeoutRef.current);
       }
+      if (cleanTransitionTimeoutRef.current !== null) {
+        window.clearTimeout(cleanTransitionTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -1291,6 +1376,7 @@ export function GroupConversationView({
       setIsOngoingSummaryExpanded(false);
       setSummaryRelatedConversations({});
       setSummaryItemDiffByKey({});
+      setAutoCheckRationaleByKey({});
       setTypingItemKeys(new Set());
       setEnteringItemKeys(new Set());
       setExitingItemKeys(new Set());
@@ -1299,8 +1385,6 @@ export function GroupConversationView({
 
     const scenario = buildWhatsNewScenario(space.name, expandedConversations);
     const initialSummary = scenario.before;
-    const CHECKLIST_TRANSITION_MS = 240;
-
     const withScenarioAutoChecks = (
       previousChecked: Record<string, boolean>,
       summary: OngoingSummary
@@ -1335,6 +1419,7 @@ export function GroupConversationView({
     );
     setCheckedSummaryItems({});
     setSummaryItemDiffByKey({});
+    setAutoCheckRationaleByKey({});
     setTypingItemKeys(new Set());
     setEnteringItemKeys(new Set());
     setExitingItemKeys(new Set());
@@ -1395,10 +1480,17 @@ export function GroupConversationView({
         setCheckedSummaryItems((previousChecked) =>
           withScenarioAutoChecks(previousChecked, transitionalSummary)
         );
-        setSummaryRelatedConversations(
+        const transitionalRelatedConversations =
           buildRandomSummaryRelatedConversations(
             transitionalSummary,
             expandedConversations
+          );
+        setSummaryRelatedConversations(transitionalRelatedConversations);
+        setAutoCheckRationaleByKey(
+          getAutoCheckRationales(
+            transitionalSummary,
+            transitionalRelatedConversations,
+            scenario.autoCheckedItemIds
           )
         );
 
@@ -1407,10 +1499,17 @@ export function GroupConversationView({
         }
         deltaTransitionTimeoutRef.current = window.setTimeout(() => {
           setOngoingSummary(updatedSummary);
-          setSummaryRelatedConversations(
+          const updatedRelatedConversations =
             buildRandomSummaryRelatedConversations(
               updatedSummary,
               expandedConversations
+            );
+          setSummaryRelatedConversations(updatedRelatedConversations);
+          setAutoCheckRationaleByKey(
+            getAutoCheckRationales(
+              updatedSummary,
+              updatedRelatedConversations,
+              scenario.autoCheckedItemIds
             )
           );
           setCheckedSummaryItems((previousChecked) =>
@@ -1418,7 +1517,7 @@ export function GroupConversationView({
           );
           setExitingItemKeys(new Set());
           deltaTransitionTimeoutRef.current = null;
-        }, CHECKLIST_TRANSITION_MS);
+        }, SUMMARY_ITEM_TRANSITION_MS);
 
         return transitionalSummary;
       });
@@ -1968,50 +2067,113 @@ export function GroupConversationView({
                           return;
                         }
 
-                        setOngoingSummary((previousSummary) => {
-                          if (!previousSummary) {
-                            return previousSummary;
-                          }
-                          const updatedSummary = {
-                            ...previousSummary,
-                            needAttention: previousSummary.needAttention.filter(
-                              (item) =>
-                                !checkedKeys.has(
-                                  getSummaryItemKey("needAttention", item)
+                        const checkedKeysArray = Array.from(checkedKeys);
+                        const exitingChecklistKeys = checkedKeysArray.filter(
+                          (key) =>
+                            key.startsWith("needAttention::") ||
+                            key.startsWith("keyDecisions::")
+                        );
+
+                        setExitingItemKeys(
+                          (previousExiting) =>
+                            new Set([
+                              ...previousExiting,
+                              ...exitingChecklistKeys,
+                            ])
+                        );
+
+                        if (cleanTransitionTimeoutRef.current !== null) {
+                          window.clearTimeout(
+                            cleanTransitionTimeoutRef.current
+                          );
+                        }
+
+                        cleanTransitionTimeoutRef.current = window.setTimeout(
+                          () => {
+                            setOngoingSummary((previousSummary) => {
+                              if (!previousSummary) {
+                                return previousSummary;
+                              }
+                              const updatedSummary = {
+                                ...previousSummary,
+                                needAttention:
+                                  previousSummary.needAttention.filter(
+                                    (item) =>
+                                      !checkedKeys.has(
+                                        getSummaryItemKey("needAttention", item)
+                                      )
+                                  ),
+                                keyDecisions:
+                                  previousSummary.keyDecisions.filter(
+                                    (item) =>
+                                      !checkedKeys.has(
+                                        getSummaryItemKey("keyDecisions", item)
+                                      )
+                                  ),
+                                projectPulse:
+                                  previousSummary.projectPulse.filter(
+                                    (item) =>
+                                      !checkedKeys.has(
+                                        getSummaryItemKey("projectPulse", item)
+                                      )
+                                  ),
+                              };
+                              setSummaryRelatedConversations(
+                                (previousLinks) => {
+                                  const validKeys = new Set(
+                                    getSummaryItemKeys(updatedSummary)
+                                  );
+                                  return Object.fromEntries(
+                                    Object.entries(previousLinks).filter(
+                                      ([key]) => validKeys.has(key)
+                                    )
+                                  );
+                                }
+                              );
+                              return updatedSummary;
+                            });
+
+                            setCheckedSummaryItems((previousChecked) =>
+                              Object.fromEntries(
+                                Object.entries(previousChecked).filter(
+                                  ([key]) => !checkedKeys.has(key)
                                 )
-                            ),
-                            keyDecisions: previousSummary.keyDecisions.filter(
-                              (item) =>
-                                !checkedKeys.has(
-                                  getSummaryItemKey("keyDecisions", item)
-                                )
-                            ),
-                            projectPulse: previousSummary.projectPulse.filter(
-                              (item) =>
-                                !checkedKeys.has(
-                                  getSummaryItemKey("projectPulse", item)
-                                )
-                            ),
-                          };
-                          setSummaryRelatedConversations((previousLinks) => {
-                            const validKeys = new Set(
-                              getSummaryItemKeys(updatedSummary)
-                            );
-                            return Object.fromEntries(
-                              Object.entries(previousLinks).filter(([key]) =>
-                                validKeys.has(key)
                               )
                             );
-                          });
-                          return updatedSummary;
-                        });
-
-                        setCheckedSummaryItems((previousChecked) =>
-                          Object.fromEntries(
-                            Object.entries(previousChecked).filter(
-                              ([, checked]) => !checked
-                            )
-                          )
+                            setSummaryItemDiffByKey((previousDiffByKey) =>
+                              Object.fromEntries(
+                                Object.entries(previousDiffByKey).filter(
+                                  ([key]) => !checkedKeys.has(key)
+                                )
+                              )
+                            );
+                            setAutoCheckRationaleByKey(
+                              (previousAutoCheckRationaleByKey) =>
+                                Object.fromEntries(
+                                  Object.entries(
+                                    previousAutoCheckRationaleByKey
+                                  ).filter(([key]) => !checkedKeys.has(key))
+                                )
+                            );
+                            setTypingItemKeys((previousTypingItemKeys) => {
+                              const nextTypingItemKeys = new Set(
+                                previousTypingItemKeys
+                              );
+                              checkedKeysArray.forEach((key) =>
+                                nextTypingItemKeys.delete(key)
+                              );
+                              return nextTypingItemKeys;
+                            });
+                            setExitingItemKeys((previousExiting) => {
+                              const nextExiting = new Set(previousExiting);
+                              exitingChecklistKeys.forEach((key) =>
+                                nextExiting.delete(key)
+                              );
+                              return nextExiting;
+                            });
+                            cleanTransitionTimeoutRef.current = null;
+                          },
+                          SUMMARY_ITEM_TRANSITION_MS
                         );
                       }}
                     />
@@ -2032,51 +2194,80 @@ export function GroupConversationView({
                         ongoingSummary.keyDecisions.length +
                         ongoingSummary.projectPulse.length >
                       0 ? (
-                        [
-                          {
-                            key: "needAttention",
-                            summaryCategory: "needAttention" as const,
-                            icon: TriangleIcon,
-                            iconClassName:
-                              "s-text-warning-300 dark:s-text-warning-300-night",
-                            label: "Need to do",
-                            items: ongoingSummary.needAttention,
-                          },
-                          {
-                            key: "needKnow",
-                            summaryCategory: "keyDecisions" as const,
-                            icon: SquareIcon,
-                            iconClassName:
-                              "s-text-golden-300 dark:s-text-golden-300-night",
-                            label: "Need to know",
-                            items: ongoingSummary.keyDecisions,
-                          },
-                          {
-                            key: "projectPulse",
-                            summaryCategory: "projectPulse" as const,
-                            icon: CircleIcon,
-                            iconClassName:
-                              "s-text-green-300 dark:s-text-green-300-night",
-                            label: "Good to know",
-                            items: ongoingSummary.projectPulse,
-                          },
-                        ]
-                          .filter((section) => section.items.length > 0)
-                          .map((section) => (
-                            <div
-                              key={section.label}
-                              className="s-flex s-flex-col s-gap-2"
-                            >
+                        <>
+                          {[
+                            {
+                              key: "needAttention",
+                              summaryCategory: "needAttention" as const,
+                              icon: TriangleIcon,
+                              iconClassName:
+                                "s-text-warning-300 dark:s-text-warning-300-night",
+                              label: "Need to do",
+                              items: ongoingSummary.needAttention,
+                            },
+                            {
+                              key: "needKnow",
+                              summaryCategory: "keyDecisions" as const,
+                              icon: SquareIcon,
+                              iconClassName:
+                                "s-text-golden-300 dark:s-text-golden-300-night",
+                              label: "Need to know",
+                              items: ongoingSummary.keyDecisions,
+                            },
+                          ]
+                            .filter((section) => section.items.length > 0)
+                            .map((section) => (
+                              <WhatsNewDeltaList
+                                key={section.key}
+                                label={section.label}
+                                summaryCategory={section.summaryCategory}
+                                icon={section.icon}
+                                iconClassName={section.iconClassName}
+                                items={section.items}
+                                checkedSummaryItems={checkedSummaryItems}
+                                summaryRelatedConversations={
+                                  summaryRelatedConversations
+                                }
+                                summaryItemDiffByKey={summaryItemDiffByKey}
+                                typingItemKeys={typingItemKeys}
+                                enteringItemKeys={enteringItemKeys}
+                                exitingItemKeys={exitingItemKeys}
+                                typingVersion={typingVersion}
+                                getSummaryItemKey={getSummaryItemKey}
+                                renderSummaryItemText={
+                                  renderSummaryItemWithEmphasizedNames
+                                }
+                                onCheckItem={(itemKey, nextChecked) => {
+                                  setCheckedSummaryItems((previous) => ({
+                                    ...previous,
+                                    [itemKey]: nextChecked,
+                                  }));
+                                }}
+                                onCheckSection={(sectionItemKeys) => {
+                                  setCheckedSummaryItems((previous) => ({
+                                    ...previous,
+                                    ...Object.fromEntries(
+                                      sectionItemKeys.map((key) => [key, true])
+                                    ),
+                                  }));
+                                }}
+                                onConversationClick={scrollToConversationRow}
+                                conversationTitleById={conversationTitleById}
+                                autoCheckRationaleByKey={
+                                  autoCheckRationaleByKey
+                                }
+                              />
+                            ))}
+
+                          {ongoingSummary.projectPulse.length > 0 && (
+                            <div className="s-flex s-flex-col s-gap-2">
                               <div className="s-group/summary-title s-flex s-items-center s-gap-3 s-pt-2">
                                 <div className="s-flex s-items-center s-h-4 s-w-4">
                                   {(() => {
-                                    const sectionItemKeys = section.items.map(
-                                      (item) =>
-                                        getSummaryItemKey(
-                                          section.summaryCategory,
-                                          item
-                                        )
-                                    );
+                                    const sectionItemKeys =
+                                      ongoingSummary.projectPulse.map((item) =>
+                                        getSummaryItemKey("projectPulse", item)
+                                      );
                                     const areAllSectionItemsChecked =
                                       sectionItemKeys.length > 0 &&
                                       sectionItemKeys.every(
@@ -2087,11 +2278,11 @@ export function GroupConversationView({
                                     return (
                                       <>
                                         <Icon
-                                          visual={section.icon}
+                                          visual={CircleIcon}
                                           size="xs"
                                           className={cn(
                                             "group-hover/summary-title:s-hidden",
-                                            section.iconClassName
+                                            "s-text-green-300 dark:s-text-green-300-night"
                                           )}
                                         />
                                         <Checkbox
@@ -2121,29 +2312,26 @@ export function GroupConversationView({
                                   })()}
                                 </div>
                                 <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                                  {section.label}
+                                  Good to know
                                 </h4>
                               </div>
-                              {section.summaryCategory === "projectPulse" ? (
-                                <div
-                                  className={cn(
-                                    "s-text-sm s-pl-7",
-                                    section.items.every(
-                                      (item) =>
-                                        checkedSummaryItems[
-                                          getSummaryItemKey(
-                                            section.summaryCategory,
-                                            item
-                                          )
-                                        ]
-                                    )
-                                      ? "s-text-faint s-line-through dark:s-text-faint-night"
-                                      : "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                                  )}
-                                >
-                                  {section.items.map((item, index) => {
+                              <div
+                                className={cn(
+                                  "s-text-sm s-pl-7",
+                                  ongoingSummary.projectPulse.every(
+                                    (item) =>
+                                      checkedSummaryItems[
+                                        getSummaryItemKey("projectPulse", item)
+                                      ]
+                                  )
+                                    ? "s-text-faint s-line-through dark:s-text-faint-night"
+                                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+                                )}
+                              >
+                                {ongoingSummary.projectPulse.map(
+                                  (item, index) => {
                                     const itemKey = getSummaryItemKey(
-                                      section.summaryCategory,
+                                      "projectPulse",
                                       item
                                     );
                                     const relatedConversationIds =
@@ -2175,130 +2363,18 @@ export function GroupConversationView({
                                             isChecked
                                           )
                                         )}
-                                        {index < section.items.length - 1
+                                        {index <
+                                        ongoingSummary.projectPulse.length - 1
                                           ? " "
                                           : null}
                                       </span>
                                     );
-                                  })}
-                                </div>
-                              ) : (
-                                section.items.map((item) => {
-                                  const itemKey = getSummaryItemKey(
-                                    section.summaryCategory,
-                                    item
-                                  );
-                                  const itemDiff =
-                                    summaryItemDiffByKey[itemKey];
-                                  const isChecked =
-                                    checkedSummaryItems[itemKey] ?? false;
-                                  const relatedConversationIds =
-                                    summaryRelatedConversations[itemKey] ?? [];
-                                  const isAdded = itemDiff === "added";
-                                  const hasEntered =
-                                    enteringItemKeys.has(itemKey);
-                                  const isExiting =
-                                    exitingItemKeys.has(itemKey);
-                                  const shouldTypeChecklistItem =
-                                    typingItemKeys.has(itemKey) &&
-                                    itemDiff === "modified";
-
-                                  return (
-                                    <div
-                                      key={itemKey}
-                                      className={cn(
-                                        "s-flex s-items-start s-gap-3 s-overflow-hidden",
-                                        "s-transition-all s-duration-200",
-                                        isExiting
-                                          ? "s-max-h-0 s-opacity-0"
-                                          : isAdded && !hasEntered
-                                            ? "s-max-h-0 s-opacity-0"
-                                            : "s-max-h-32 s-opacity-100"
-                                      )}
-                                    >
-                                      <Checkbox
-                                        size="xs"
-                                        className="s-mt-1"
-                                        isMutedAfterCheck
-                                        checked={isChecked}
-                                        onCheckedChange={(checked) => {
-                                          const nextChecked = checked === true;
-                                          setCheckedSummaryItems(
-                                            (previous) => ({
-                                              ...previous,
-                                              [itemKey]: nextChecked,
-                                            })
-                                          );
-                                        }}
-                                      />
-                                      <div className="s-flex s-flex-col">
-                                        <span
-                                          className={cn(
-                                            "s-text-base",
-                                            isChecked
-                                              ? "s-text-faint s-line-through dark:s-text-faint-night"
-                                              : "s-text-foreground dark:s-text-foreground-night"
-                                          )}
-                                        >
-                                          {shouldTypeChecklistItem ? (
-                                            <TypingAnimation
-                                              key={`${itemKey}-${typingVersion}`}
-                                              text={item.text}
-                                              duration={16}
-                                            />
-                                          ) : (
-                                            renderSummaryItemWithEmphasizedNames(
-                                              item.text
-                                            )
-                                          )}
-                                        </span>
-                                        {(() => {
-                                          if (isChecked) {
-                                            return null;
-                                          }
-
-                                          if (
-                                            relatedConversationIds.length === 0
-                                          ) {
-                                            return null;
-                                          }
-
-                                          return (
-                                            <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                              <span>In </span>
-                                              {relatedConversationIds.map(
-                                                (conversationId, index) => (
-                                                  <span key={conversationId}>
-                                                    <button
-                                                      type="button"
-                                                      className="s-underline hover:s-no-underline"
-                                                      onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        scrollToConversationRow(
-                                                          conversationId
-                                                        );
-                                                      }}
-                                                    >
-                                                      {conversationTitleById.get(
-                                                        conversationId
-                                                      ) ?? conversationId}
-                                                    </button>
-                                                    {index <
-                                                      relatedConversationIds.length -
-                                                        1 && ", "}
-                                                  </span>
-                                                )
-                                              )}
-                                            </div>
-                                          );
-                                        })()}
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              )}
+                                  }
+                                )}
+                              </div>
                             </div>
-                          ))
+                          )}
+                        </>
                       ) : (
                         <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
                           You're all catch up!
@@ -2353,7 +2429,7 @@ export function GroupConversationView({
                         return (
                           <>
                             <ListItemSection>{bucketKey}</ListItemSection>
-                            <ListGroup>
+                            <ListGroup className="!s-border-transparent">
                               {bucketConversations.map((conversation) => {
                                 const participants = getRandomParticipants(
                                   conversation,
