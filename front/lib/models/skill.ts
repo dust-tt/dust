@@ -290,7 +290,7 @@ SkillFileAttachmentModel.init(
         name: "idx_skill_file_attachment_workspace_skill_config",
       },
       {
-        fields: ["workspaceId", "fileModelId"],
+        fields: ["workspaceId", "fileId"],
         name: "idx_skill_file_attachment_workspace_file",
         unique: true,
       },
@@ -311,7 +311,7 @@ SkillFileAttachmentModel.belongsTo(SkillConfigurationModel, {
 
 // File Attachment <> File
 SkillFileAttachmentModel.belongsTo(FileModel, {
-  foreignKey: { name: "fileModelId", allowNull: false },
+  foreignKey: { name: "fileId", allowNull: false },
   onDelete: "RESTRICT",
   as: "file",
 });
