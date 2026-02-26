@@ -225,6 +225,8 @@ interface CardPropsWithButton
   href?: never;
 }
 
+InnerCard.displayName = "InnerCard";
+
 export type CardProps = CardPropsWithLink | CardPropsWithButton;
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(

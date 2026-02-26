@@ -126,6 +126,7 @@ const TabsTrigger = React.forwardRef<
     );
   }
 );
+TabsTrigger.displayName = "TabsTrigger";
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,

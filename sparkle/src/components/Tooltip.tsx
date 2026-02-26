@@ -109,6 +109,7 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
     </TooltipProvider>
   )
 );
+Tooltip.displayName = "Tooltip";
 
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
