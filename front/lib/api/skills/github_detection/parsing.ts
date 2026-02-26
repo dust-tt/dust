@@ -53,14 +53,14 @@ export function parseGitHubRepoUrl(
   }
 
   // Strip https://github.com/ or github.com/ prefix.
-  ownerRepo = ownerRepo
+  remainder = remainder
     .replace(/^https?:\/\/github\.com\//, "")
     .replace(/^github\.com\//, "");
 
   // Remove trailing slash or .git suffix.
-  ownerRepo = ownerRepo.replace(/\/+$/, "").replace(/\.git$/, "");
+  remainder = remainder.replace(/\/+$/, "").replace(/\.git$/, "");
 
-  const parts = ownerRepo.split("/");
+  const parts = remainder.split("/");
   if (parts.length < 2 || !parts[0] || !parts[1]) {
     return new Err({
       type: "not_found",
@@ -147,7 +147,11 @@ export function findSkillDirectories(
     }
 
     const lastSlash = entry.path.lastIndexOf("/");
-    const dirPath = lastSlash === -1 ? "" : entry.path.slice(0, lastSlash);
+    // Skip skill.md at the repo root, a skill must live in a directory.
+    if (lastSlash === -1) {
+      continue;
+    }
+    const dirPath = entry.path.slice(0, lastSlash);
 
     skillDirs.push({
       dirPath,
