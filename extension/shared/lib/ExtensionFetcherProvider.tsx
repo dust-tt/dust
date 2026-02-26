@@ -25,6 +25,7 @@ export function ExtensionFetcherProvider({
       const res = await clientFetch(url, {
         ...init,
         headers: addAuthHeaders(init?.headers),
+        credentials: "omit", // Ensure cookies are not sent with requests from the extension
       });
       return resHandler(res);
     };
@@ -41,6 +42,7 @@ export function ExtensionFetcherProvider({
           "Content-Type": "application/json",
         }),
         body: JSON.stringify(body),
+        credentials: "omit", // Ensure cookies are not sent with requests from the extension
       });
       return resHandler(res);
     };

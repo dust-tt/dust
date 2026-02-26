@@ -90,7 +90,10 @@ const shouldDisableContextMenuForDomain = async (
   try {
     const res = await fetch(
       `${regionInfo.url}/api/w/${selectedWorkspace}/extension/config`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "omit", // Ensure cookies are not sent with requests from the extension
+      }
     );
     if (!res.ok) {
       return false;

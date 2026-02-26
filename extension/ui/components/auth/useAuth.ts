@@ -123,6 +123,7 @@ export const useAuthHook = ({
       try {
         const res = await fetch(`${dustDomain}/api/v1/me`, {
           headers: { Authorization: `Bearer ${tokens.accessToken}` },
+          credentials: "omit", // Ensure cookies are not sent with requests from the extension
         });
         if (res.ok) {
           const data = await res.json();
@@ -191,7 +192,10 @@ export const useAuthHook = ({
     void (async () => {
       const res = await fetch(
         `${dustDomain}/api/w/${workspace.sId}/feature-flags`,
-        { headers: { Authorization: `Bearer ${tokens.accessToken}` } }
+        {
+          headers: { Authorization: `Bearer ${tokens.accessToken}` },
+          credentials: "omit", // Ensure cookies are not sent with requests from the extension
+        }
       );
       if (res.ok) {
         const { feature_flags } = await res.json();
