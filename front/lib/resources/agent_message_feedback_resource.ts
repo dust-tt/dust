@@ -306,7 +306,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     }
 
     const conversations = await ConversationModel.findAll({
-      attributes: ["id", "sId"] ,
+      attributes: ["id", "sId"],
       where: {
         workspaceId: workspace.id,
         id: feedbackRows.map((f) => f.conversationId),
