@@ -245,6 +245,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude Sonnet 4.6",
   // 200k, reducing it temporarily to avoid "prompt too long" errors on dust agent
   // due to reasoning tokens not being counted when estimating prompt size in countTokensForMessages
+  // Keeping 190k while Anthropic token count API rate limit hasn't been increased
   contextSize: 190_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 64,
