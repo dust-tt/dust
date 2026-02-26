@@ -25,7 +25,6 @@ export async function launchOrSignalButlerWorkflow({
   messageId: string;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForFrontNamespace();
-
   const workflowId = makeButlerWorkflowId(authType.workspaceId, conversationId);
 
   try {
@@ -34,7 +33,7 @@ export async function launchOrSignalButlerWorkflow({
       taskQueue: QUEUE_NAME,
       workflowId,
       signal: butlerRefreshSignal,
-      signalArgs: undefined,
+      signalArgs: [messageId],
       workflowExecutionTimeout: "1 hour",
       memo: {
         workspaceId: authType.workspaceId,
@@ -62,9 +61,11 @@ export async function launchOrSignalButlerWorkflow({
 export async function signalButlerComplete({
   authType,
   conversationId,
+  messageId,
 }: {
   authType: AuthenticatorType;
   conversationId: string;
+  messageId: string;
 }): Promise<void> {
   try {
     const client = await getTemporalClientForFrontNamespace();
@@ -72,7 +73,9 @@ export async function signalButlerComplete({
       authType.workspaceId,
       conversationId
     );
-    await client.workflow.getHandle(workflowId).signal(butlerCompleteSignal);
+    await client.workflow
+      .getHandle(workflowId)
+      .signal(butlerCompleteSignal, messageId);
   } catch (e) {
     // Swallow errors — workflow may have already completed or timed out.
     logger.warn(

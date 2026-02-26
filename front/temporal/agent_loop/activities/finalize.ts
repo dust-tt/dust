@@ -52,6 +52,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
       ? signalButlerComplete({
           authType,
           conversationId: agentLoopArgs.conversationId,
+          messageId: agentLoopArgs.agentMessageId,
         })
       : Promise.resolve(),
   ]);
