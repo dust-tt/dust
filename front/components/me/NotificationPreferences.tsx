@@ -3,6 +3,7 @@ import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import logger from "@app/logger/logger";
 import type {
   NotificationCondition,
   NotificationPreferencesDelay,
@@ -69,12 +70,16 @@ const PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_LABELS: Record<
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
 const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
 const NOVU_SESSION_ERROR_CODE = "novu_session_initialization_failed";
+const NOVU_REQUEST_ERROR_CODE = "novu_preferences_request_failed";
 const MISSING_WORKFLOW_ERROR_CODE = "missing_conversation_unread_workflow";
 const GENERIC_LOAD_ERROR_CODE = "notification_preferences_not_loaded";
 
 type NotificationPreferencesLoadFailure =
   | {
       code: typeof NOVU_SESSION_ERROR_CODE;
+    }
+  | {
+      code: typeof NOVU_REQUEST_ERROR_CODE;
     }
   | {
       code: typeof MISSING_WORKFLOW_ERROR_CODE;
@@ -257,13 +262,13 @@ export const NotificationPreferences = forwardRef<
         }
 
         if (preferences.error) {
-          console.error(
-            "Failed to load notification preferences from Novu (session error).",
+          logger.error(
             {
               code: NOVU_SESSION_ERROR_CODE,
               ownerId: owner.sId,
               message: preferences.error.message,
-            }
+            },
+            "Failed to load notification preferences from Novu (session error)."
           );
           setConversationPreferences(undefined);
           originalConversationPreferencesRef.current = undefined;
@@ -297,14 +302,14 @@ export const NotificationPreferences = forwardRef<
             .map((preference) => preference.workflow?.identifier)
             .filter((identifier): identifier is string => Boolean(identifier));
 
-          console.error(
-            "Failed to load notification preferences from Novu (workflow missing).",
+          logger.error(
             {
               code: MISSING_WORKFLOW_ERROR_CODE,
               ownerId: owner.sId,
               missingWorkflowIdentifier: CONVERSATION_UNREAD_TRIGGER_ID,
               availableWorkflowIdentifiers,
-            }
+            },
+            "Failed to load notification preferences from Novu (workflow missing)."
           );
 
           setLoadFailure({
@@ -320,13 +325,13 @@ export const NotificationPreferences = forwardRef<
         }
 
         const message = error instanceof Error ? error.message : String(error);
-        console.error(
-          "Failed to load notification preferences from Novu (unexpected error).",
+        logger.error(
           {
-            code: NOVU_SESSION_ERROR_CODE,
+            code: NOVU_REQUEST_ERROR_CODE,
             ownerId: owner.sId,
             message,
-          }
+          },
+          "Failed to load notification preferences from Novu (unexpected error)."
         );
 
         setConversationPreferences(undefined);
@@ -334,7 +339,7 @@ export const NotificationPreferences = forwardRef<
         setProjectNewConversationPreferences(undefined);
         originalProjectNewConversationPreferencesRef.current = undefined;
         setLoadFailure({
-          code: NOVU_SESSION_ERROR_CODE,
+          code: NOVU_REQUEST_ERROR_CODE,
         });
       } finally {
         if (!isCancelled) {
@@ -638,6 +643,15 @@ export const NotificationPreferences = forwardRef<
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Unable to load notification preferences. Please refresh and try again.
         <div className="text-xs">Error code: {NOVU_SESSION_ERROR_CODE}.</div>
+      </div>
+    );
+  }
+
+  if (loadFailure?.code === NOVU_REQUEST_ERROR_CODE) {
+    return (
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Unable to load notification preferences. Please refresh and try again.
+        <div className="text-xs">Error code: {NOVU_REQUEST_ERROR_CODE}.</div>
       </div>
     );
   }
