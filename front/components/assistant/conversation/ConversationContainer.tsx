@@ -34,6 +34,7 @@ interface ConversationContainerProps {
   subscription: SubscriptionType;
   user: UserType;
   conversationId?: string | null;
+  clientSideMCPServerIds?: string[];
 }
 
 export function ConversationContainerVirtuoso({
@@ -41,6 +42,7 @@ export function ConversationContainerVirtuoso({
   subscription,
   user,
   conversationId: conversationIdProp,
+  clientSideMCPServerIds,
 }: ConversationContainerProps) {
   const conversationIdFromRouter = useActiveConversationId();
   const activeConversationId =
@@ -88,6 +90,7 @@ export function ConversationContainerVirtuoso({
           input,
           mentions: mentions.map(toMentionType),
           contentFragments,
+          clientSideMCPServerIds,
           selectedMCPServerViewIds,
           selectedSkillIds,
         },
@@ -138,6 +141,7 @@ export function ConversationContainerVirtuoso({
       router,
       sendNotification,
       createConversationWithMessage,
+      clientSideMCPServerIds,
     ]
   );
 
@@ -160,6 +164,7 @@ export function ConversationContainerVirtuoso({
           conversationId={activeConversationId}
           setPlanLimitReached={setPlanLimitReached}
           key={activeConversationId}
+          clientSideMCPServerIds={clientSideMCPServerIds}
         />
       ) : (
         <>

@@ -1,6 +1,7 @@
 import { ChromeAuthService } from "@extension/platforms/chrome/services/auth";
 import { ChromeBrowserMessagingService } from "@extension/platforms/chrome/services/browser_messaging";
 import { ChromeCaptureService } from "@extension/platforms/chrome/services/capture";
+import { ChromeMcpService } from "@extension/platforms/chrome/services/mcp";
 import { ChromeStorageService } from "@extension/platforms/chrome/services/storage";
 import { CorePlatformService } from "@extension/shared/services/platform";
 
@@ -10,15 +11,19 @@ export interface PendingUpdate {
 }
 
 export class ChromeCorePlatformService extends CorePlatformService {
-  readonly supportsMCP = false;
+  readonly supportsMCP = true;
 
   constructor() {
+    const messaging = new ChromeBrowserMessagingService();
+    const mcpService = new ChromeMcpService(messaging);
+
     super(
       "chrome",
       ChromeAuthService,
       new ChromeStorageService(),
       new ChromeCaptureService(),
-      new ChromeBrowserMessagingService()
+      messaging,
+      mcpService
     );
   }
 
