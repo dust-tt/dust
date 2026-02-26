@@ -122,13 +122,10 @@ export function makeColumnsForTriggers(
       },
     },
     {
-      accessorKey: "enabled",
+      accessorKey: "status",
       header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Enabled" />
+        <PokeColumnSortableHeader column={column} label="Status" />
       ),
-      cell: ({ row }) => {
-        return row.getValue("enabled") ? "Yes" : "No";
-      },
     },
     {
       id: "editorEmail",
