@@ -225,6 +225,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
   },
+  conversation_butler: {
+    description:
+      "Enable conversation butler for automated conversation management",
+    stage: "dust_only",
+  },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
     stage: "dust_only",
