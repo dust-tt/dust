@@ -39,36 +39,47 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
  * Parses a GitHub repository identifier from various formats:
  * - "owner/repo"
  * - "https://github.com/owner/repo"
- * - "github.com/owner/repo"
+ * - "https://github.com/owner/repo.git"
  */
 export function parseGitHubRepoUrl(
   input: string
 ): Result<{ owner: string; repo: string }, SkillDetectionError> {
-  let remainder = input.trim();
+  const trimmed = input.trim();
 
-  // Strip query params and fragment using URL parsing when it looks like a URL.
-  if (remainder.startsWith("http://") || remainder.startsWith("https://")) {
-    const url = new URL(remainder);
-    remainder = `${url.origin}${url.pathname}`;
+  // Handles "github.com/owner/repo" (no protocol) and bare "owner/repo".
+  let normalized: string;
+  if (trimmed.includes("://")) {
+    normalized = trimmed;
+  } else if (trimmed.startsWith("github.com/")) {
+    normalized = `https://${trimmed}`;
+  } else {
+    normalized = `https://github.com/${trimmed}`;
   }
 
-  // Strip https://github.com/ or github.com/ prefix.
-  remainder = remainder
-    .replace(/^https?:\/\/github\.com\//, "")
-    .replace(/^github\.com\//, "");
-
-  // Remove trailing slash or .git suffix.
-  remainder = remainder.replace(/\/+$/, "").replace(/\.git$/, "");
-
-  const parts = remainder.split("/");
-  if (parts.length < 2 || !parts[0] || !parts[1]) {
+  let url: URL;
+  try {
+    url = new URL(normalized);
+  } catch {
     return new Err({
       type: "not_found",
       message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
     });
   }
 
-  return new Ok({ owner: parts[0], repo: parts[1] });
+  // Extract path segments, stripping leading/trailing slashes and .git suffix.
+  const segments = url.pathname
+    .replace(/\.git$/, "")
+    .split("/")
+    .filter(Boolean);
+
+  if (segments.length < 2 || !segments[0] || !segments[1]) {
+    return new Err({
+      type: "not_found",
+      message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
+    });
+  }
+
+  return new Ok({ owner: segments[0], repo: segments[1] });
 }
 
 /**
