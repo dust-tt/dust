@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import { lookupWorkspace } from "@app/lib/api/regions/lookup";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -111,12 +112,40 @@ async function handler(
       workspaceId
     );
     if (flow === "unauthorized") {
+      // Workspace not found on this region: redirect to the other region's /api/login (cookie is shared).
+      const workspaceRegionRes = await lookupWorkspace(workspaceId);
+      const currentRegion = multiRegionsConfig.getCurrentRegion();
+      if (
+        workspaceRegionRes.isOk() &&
+        workspaceRegionRes.value &&
+        workspaceRegionRes.value !== currentRegion
+      ) {
+        logger.info(
+          {
+            userId: user.sId,
+            workspaceId,
+            targetRegion: workspaceRegionRes.value,
+            sessionIsSSO: session.isSSO,
+            sessionWorkspaceId: session.workspaceId,
+            sessionOrganizationId: session.organizationId,
+            sessionAuthenticationMethod: session.authenticationMethod,
+            sessionRegion: session.region,
+          },
+          "Enterprise connection: redirecting to other region"
+        );
+        const targetUrl = multiRegionsConfig.getRegionUrl(
+          workspaceRegionRes.value
+        );
+        res.redirect(`${targetUrl}/api/login`);
+        return;
+      }
+
       logger.error(
         { userId: user.sId, workspaceId },
         "Enterprise connection : workspace not found"
       );
 
-      // Only happen if the workspace associated with workOSOrganizationId is not found.
+      // Workspace not in other region or lookup failed: show login error.
       res.redirect(
         `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
