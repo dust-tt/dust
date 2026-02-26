@@ -173,6 +173,9 @@ const config = {
   getAcademyJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_ACADEMY_JWT_SECRET");
   },
+  getSandboxJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_SANDBOX_JWT_SECRET");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),

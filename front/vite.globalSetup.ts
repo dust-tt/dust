@@ -35,6 +35,7 @@ export default async function setup() {
     DUST_US_URL: "http://fake-url",
     LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
     VIZ_JWT_SECRET: "viz-secret-for-tests",
+    DUST_SANDBOX_JWT_SECRET: "sandbox-secret-for-tests",
     REGION: "us-central1",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
 
