@@ -29,11 +29,6 @@ function setStoredRawMode(value: boolean): void {
 }
 
 /**
- * Derive a short user-friendly summary from the command string and output.
- * Used as the default (summary) view — will be replaced by model-generated
- * summaries once the backend supports them.
- */
-/**
  * Extract a clean, short command name from a potentially complex command string.
  * Strips heredocs, pipes, semicolons, and env vars to find the core binary/script.
  */
@@ -156,13 +151,12 @@ interface SandboxViewProps {
   exitCode: number | null;
 }
 
-function ToggleButton({
-  isRawMode,
-  onToggle,
-}: {
+interface ToggleButtonProps {
   isRawMode: boolean;
   onToggle: () => void;
-}) {
+}
+
+function ToggleButton({ isRawMode, onToggle }: ToggleButtonProps) {
   return (
     <Button
       size="xs"
@@ -174,7 +168,11 @@ function ToggleButton({
   );
 }
 
-function CommandPreview({ command }: { command: string }) {
+interface CommandPreviewProps {
+  command: string;
+}
+
+function CommandPreview({ command }: CommandPreviewProps) {
   return (
     <code className="rounded bg-muted px-1 py-0.5 text-xs dark:bg-muted-night">
       {extractCommandName(command)}
@@ -182,7 +180,11 @@ function CommandPreview({ command }: { command: string }) {
   );
 }
 
-function ExitCodeBadge({ exitCode }: { exitCode: number | null }) {
+interface ExitCodeBadgeProps {
+  exitCode: number | null;
+}
+
+function ExitCodeBadge({ exitCode }: ExitCodeBadgeProps) {
   if (exitCode === null) {
     return null;
   }
