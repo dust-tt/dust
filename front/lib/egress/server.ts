@@ -62,7 +62,10 @@ export function untrustedFetch(
  */
 export function createProxyFetch(
   agent: ProxyAgent
-): (input: string | URL, init?: globalThis.RequestInit) => Promise<globalThis.Response> {
+): (
+  input: string | URL,
+  init?: globalThis.RequestInit
+) => Promise<globalThis.Response> {
   // Capture dispatcher in a plain object so it can be spread into init
   // without triggering excess-property checks.
   const proxyInit = { dispatcher: agent };

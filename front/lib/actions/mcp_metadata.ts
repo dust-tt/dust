@@ -51,7 +51,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { ProxyAgent } from "undici";
+
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
@@ -111,10 +111,7 @@ export type MCPConnectionParams =
  * Without a custom `fetch`, those connections fall through to the global fetch
  * which may use a different proxy (e.g. squid-proxy instead of http-proxy).
  */
-async function createMCPProxyConfig(
-  auth: Authenticator,
-  host: string
-) {
+async function createMCPProxyConfig(auth: Authenticator, host: string) {
   const workspace = auth.getNonNullableWorkspace();
 
   // Check if workspace should use static IP:
