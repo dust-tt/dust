@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import { SANDBOX_TOKEN_PREFIX } from "@app/lib/api/sandbox/access_tokens";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
@@ -57,16 +59,23 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
+const SANDBOX_TOKEN_AUTH_METHOD = "sandbox_token" as const;
+
 export type AuthMethodType =
   | "system_api_key"
   | "api_key"
   | "oauth"
   | "session"
+  | typeof SANDBOX_TOKEN_AUTH_METHOD
   | "internal";
 
-// Any token which do not start with sk- is considered an OAuth token.
+export const isSandboxToken = (token: string): boolean => {
+  return token.startsWith(SANDBOX_TOKEN_PREFIX);
+};
+
+// Any token which does not start with sk- or sbt- is considered an OAuth token.
 export const isOAuthToken = (token: string): boolean => {
-  return !token.startsWith(SECRET_KEY_PREFIX);
+  return !token.startsWith(SECRET_KEY_PREFIX) && !isSandboxToken(token);
 };
 
 export interface AuthenticatorType {
@@ -396,6 +405,62 @@ export class Authenticator {
         groupModelIds: authData.groupModelIds,
         user,
         role: authData.role,
+        subscription: authData.subscription,
+      })
+    );
+  }
+
+  static async fromSandboxToken(
+    claims: SandboxExecTokenPayload,
+    wId: string
+  ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+    if (claims.wId !== wId) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The sandbox token workspace does not match the request.",
+        },
+      });
+    }
+
+    const [workspace, user] = await Promise.all([
+      WorkspaceResource.fetchById(wId),
+      UserResource.fetchById(claims.uId),
+    ]);
+
+    if (!workspace) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: "The workspace was not found.",
+        },
+      });
+    }
+
+    if (!user) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The user referenced by the sandbox token was not found.",
+        },
+      });
+    }
+
+    const authData = await this.fetchRoleGroupsAndSubscription({
+      user,
+      workspace,
+    });
+
+    return new Ok(
+      new Authenticator({
+        authMethod: SANDBOX_TOKEN_AUTH_METHOD,
+        workspace,
+        user,
+        role: authData.role,
+        groupModelIds: authData.groupModelIds,
         subscription: authData.subscription,
       })
     );
@@ -740,6 +805,10 @@ export class Authenticator {
 
   isKey(): boolean {
     return !!this._key;
+  }
+
+  isSandboxToken(): boolean {
+    return this._authMethod === SANDBOX_TOKEN_AUTH_METHOD;
   }
 
   authMethod(): AuthMethodType {

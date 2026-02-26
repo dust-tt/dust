@@ -1,8 +1,10 @@
+import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
   Authenticator,
   getAPIKey,
   getApiKeyNameFromHeaders,
   getSession,
+  isSandboxToken,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -367,6 +369,29 @@ export function withPublicAPIAuthentication<T>(
               "The request does not have valid authentication credentials.",
           },
         });
+      }
+
+      // Sandbox token authentication.
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (token && isSandboxToken(token)) {
+        const payload = verifySandboxExecToken(token);
+        if (!payload) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_sandbox_token_error",
+              message: "The sandbox token is invalid or expired.",
+            },
+          });
+        }
+
+        const authRes = await Authenticator.fromSandboxToken(payload, wId);
+        if (authRes.isErr()) {
+          return apiError(req, res, authRes.error);
+        }
+        const auth = authRes.value;
+
+        return handler(req, res, auth, null);
       }
 
       // Bearer token authentication (resolved by withLogging).
