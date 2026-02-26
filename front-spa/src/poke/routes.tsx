@@ -44,6 +44,18 @@ function PokeRedirect() {
   return <Navigate to={`/${rest}${location.search}${location.hash}`} replace />;
 }
 
+// Redirect app-style builder/agents/:aId to poke-style assistants/:aId.
+function BuilderAgentRedirect() {
+  const { aId } = useParams();
+  const location = useLocation();
+  return (
+    <Navigate
+      to={`../assistants/${aId}${location.search}${location.hash}`}
+      replace
+    />
+  );
+}
+
 export const routes: RouteObject[] = [
   {
     element: <RootRouterLayout />,
@@ -118,6 +130,11 @@ export const routes: RouteObject[] = [
           {
             path: "webhook-sources/:wsId",
             element: <WebhookSourceDetailsPage />,
+          },
+          // Redirect app-style URLs to poke-style URLs.
+          {
+            path: "builder/agents/:aId",
+            element: <BuilderAgentRedirect />,
           },
         ],
       },
