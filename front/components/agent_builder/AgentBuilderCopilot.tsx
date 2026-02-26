@@ -115,7 +115,7 @@ function CopilotContent({
               conversationId={conversation.sId}
               agentBuilderContext={{
                 ...agentBuilderContext,
-                isCopilotConversation: true,
+                shouldHideMessageButtons: true,
               }}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}

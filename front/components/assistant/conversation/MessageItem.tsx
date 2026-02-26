@@ -171,8 +171,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 context.additionalMarkdownComponents
               }
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
-              isCopilotConversation={
-                context.agentBuilderContext?.isCopilotConversation
+              shouldHideMessageButtons={
+                context.agentBuilderContext?.shouldHideMessageButtons
               }
             />
           )}
