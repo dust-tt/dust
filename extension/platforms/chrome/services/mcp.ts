@@ -1,5 +1,5 @@
-import type { DustAPI } from "@dust-tt/client";
-import { DustMcpServerTransport } from "@dust-tt/client";
+import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import type { WorkspaceType } from "@dust-tt/client/src/types";
 import { registerAllTools } from "@extension/platforms/chrome/tools";
 import { McpService } from "@extension/shared/services/mcp";
 import type { BrowserMessagingService } from "@extension/shared/services/platform";
@@ -12,7 +12,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export class ChromeMcpService extends McpService {
   private messaging: BrowserMessagingService | null;
   private server: McpServer | null = null;
-  private transport: DustMcpServerTransport | null = null;
+  private transport: BrowserMCPTransport | null = null;
   private serverId: string | undefined = undefined;
 
   constructor(messaging?: BrowserMessagingService) {
@@ -39,7 +39,7 @@ export class ChromeMcpService extends McpService {
 
   async connectServer(
     server: McpServer,
-    dustAPI: DustAPI,
+    owner: WorkspaceType,
     onServerIdReceived: (serverId: string) => void
   ): Promise<void> {
     if (!server) {
@@ -51,10 +51,14 @@ export class ChromeMcpService extends McpService {
         return;
       }
 
-      const transport = new DustMcpServerTransport(dustAPI, (serverId) => {
-        this.serverId = serverId;
-        onServerIdReceived(serverId);
-      });
+      const transport = new BrowserMCPTransport(
+        owner.sId,
+        "chrome-extension-client",
+        (serverId) => {
+          this.serverId = serverId;
+          onServerIdReceived(serverId);
+        }
+      );
 
       await server.connect(transport);
 
@@ -66,12 +70,12 @@ export class ChromeMcpService extends McpService {
   }
 
   async getOrCreateServer(
-    dustAPI: DustAPI,
+    owner: WorkspaceType,
     onServerIdReceived: (serverId: string) => void
   ): Promise<{ server: McpServer | null; serverId: string | undefined }> {
     try {
       if (this.server) {
-        await this.connectServer(this.server, dustAPI, onServerIdReceived);
+        await this.connectServer(this.server, owner, onServerIdReceived);
         return { server: this.server, serverId: this.serverId };
       }
 
@@ -80,7 +84,7 @@ export class ChromeMcpService extends McpService {
         return { server: null, serverId: undefined };
       }
 
-      await this.connectServer(server, dustAPI, onServerIdReceived);
+      await this.connectServer(server, owner, onServerIdReceived);
       return { server, serverId: this.serverId };
     } catch (error) {
       console.error("Error getting or creating MCP server:", error);
