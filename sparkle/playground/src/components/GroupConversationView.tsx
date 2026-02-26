@@ -1732,14 +1732,14 @@ export function GroupConversationView({
   }, [members, membersSearchText]);
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
+    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background dark:s-bg-background-night">
       {/* Tabs */}
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-px-6">
+        <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border dark:s-border-border-night s-px-6">
           <div className="s-flex s-h-full s-flex-1 s-items-end">
             <TabsList border={false}>
               <TabsTrigger
@@ -2672,12 +2672,12 @@ export function GroupConversationView({
 
               <div className="s-flex s-w-full s-flex-col s-gap-2">
                 <h3 className="s-heading-lg">Visibility</h3>
-                <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border s-py-4">
+                <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border dark:s-border-border-night s-py-4">
                   <div className="s-flex s-flex-col">
-                    <div className="s-heading-sm s-text-foreground">
+                    <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
                       Opened to everyone
                     </div>
-                    <div className="s-text-sm s-text-muted-foreground">
+                    <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                       Anyone in the workspace can find and join the room.
                     </div>
                   </div>

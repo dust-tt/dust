@@ -143,7 +143,7 @@ export function ConversationListItem({
       onClick={onClick}
       groupName="conversation-item"
       className={`s-transition-colors s-duration-500 ${
-        isFocusVisible ? "s-bg-highlight-50 dark:s-bg-highlight-50-night" : ""
+        isFocusVisible ? "s-bg-highlight-50 dark:s-bg-highlight-100-night" : ""
       }`}
     >
       {creator ? (
