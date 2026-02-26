@@ -12,6 +12,7 @@ import {
 
 const {
   gongCheckGarbageCollectionStateActivity,
+  gongDeleteExcludedTranscriptsActivity,
   gongDeleteOutdatedTranscriptsActivity,
   gongListAndSaveUsersActivity,
   gongSaveGarbageCollectionSuccessActivity,
@@ -133,6 +134,34 @@ export async function gongGarbageCollectWorkflow({
     const { hasMore } = await gongDeleteOutdatedTranscriptsActivity({
       connectorId,
       garbageCollectionStartTs,
+    });
+    hasMoreTranscripts = hasMore;
+  } while (hasMoreTranscripts);
+}
+
+/**
+ * Workflow to cleanup transcripts that match newly added exclude keywords.
+ *
+ * This workflow is triggered when exclude keywords are ADDED to the configuration.
+ * It removes already-synced transcripts whose titles match any of the provided keywords.
+ *
+ * Note: This is a one-way operation. Removing keywords does NOT trigger re-sync of
+ * previously excluded transcripts (incremental sync only fetches new transcripts).
+ */
+export async function gongCleanupExcludedTranscriptsWorkflow({
+  connectorId,
+  excludeKeywords,
+}: {
+  connectorId: ModelId;
+  excludeKeywords: string[];
+}) {
+  let hasMoreTranscripts: boolean | null = null;
+
+  // Loop to cleanup all matching transcripts in batches
+  do {
+    const { hasMore } = await gongDeleteExcludedTranscriptsActivity({
+      connectorId,
+      excludeKeywords,
     });
     hasMoreTranscripts = hasMore;
   } while (hasMoreTranscripts);

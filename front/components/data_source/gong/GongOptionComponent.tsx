@@ -399,7 +399,8 @@ export function GongOptionComponent({
               Max {MAX_EXCLUDE_KEYWORDS} keywords of{" "}
               {MAX_EXCLUDE_KEYWORD_LENGTH} characters each.
               <br />
-              Only applies to newly synced transcripts.
+              Adding keywords removes existing matching transcripts. Removing
+              keywords only affects future syncs.
             </div>
           </ContextItem.Description>
         </ContextItem>

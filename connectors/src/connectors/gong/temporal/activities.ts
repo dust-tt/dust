@@ -469,3 +469,47 @@ export async function gongDeleteOutdatedTranscriptsActivity({
     hasMore: outdatedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE,
   };
 }
+
+/**
+ * Activity to delete transcripts matching newly added exclude keywords.
+ * Processes transcripts in batches (100 at a time) to avoid timeout.
+ * Returns hasMore=true if additional batches remain.
+ */
+export async function gongDeleteExcludedTranscriptsActivity({
+  connectorId,
+  excludeKeywords,
+}: {
+  connectorId: ModelId;
+  excludeKeywords: string[];
+}): Promise<{ hasMore: boolean }> {
+  const connector = await fetchGongConnector({ connectorId });
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const excludedTranscripts =
+    await GongTranscriptResource.fetchByExcludeKeywords(
+      connector,
+      excludeKeywords,
+      { limit: GARBAGE_COLLECT_BATCH_SIZE }
+    );
+
+  // Delete from Core data source first
+  for (const transcript of excludedTranscripts) {
+    await deleteDataSourceDocument(
+      dataSourceConfig,
+      makeGongTranscriptInternalId(connector, transcript.callId),
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        provider: "gong",
+        callId: transcript.callId,
+      }
+    );
+  }
+
+  // Then delete from connectors DB
+  await GongTranscriptResource.batchDelete(connector, excludedTranscripts);
+
+  return {
+    hasMore: excludedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE,
+  };
+}

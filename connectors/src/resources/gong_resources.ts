@@ -443,6 +443,37 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     return transcripts.map((t) => new this(this.model, t.get()));
   }
 
+  /**
+   * Fetches transcripts whose title matches any of the provided exclude keywords.
+   * Uses case-insensitive substring matching (ILIKE) since keywords are stored lowercase.
+   */
+  static async fetchByExcludeKeywords(
+    connector: ConnectorResource,
+    keywords: string[],
+    { limit }: { limit: number }
+  ): Promise<GongTranscriptResource[]> {
+    if (!keywords || keywords.length === 0) {
+      return [];
+    }
+
+    // Build ILIKE conditions for case-insensitive substring matching
+    const whereConditions = {
+      connectorId: connector.id,
+      [Op.or]: keywords.map((kw) => ({
+        title: {
+          [Op.iLike]: `%${kw}%`, // Keywords already lowercase in DB
+        },
+      })),
+    };
+
+    const transcripts = await GongTranscriptModel.findAll({
+      where: whereConditions,
+      limit,
+    });
+
+    return transcripts.map((t) => new this(this.model, t.get()));
+  }
+
   static async batchDelete(
     connector: ConnectorResource,
     transcripts: GongTranscriptResource[]

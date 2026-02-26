@@ -5,6 +5,7 @@ import {
   fetchGongConfiguration,
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
+import { launchGongCleanupExcludedTranscriptsWorkflow } from "@connectors/connectors/gong/temporal/client";
 import {
   QUEUE_NAME,
   SCHEDULE_POLICIES,
@@ -424,22 +425,84 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Ok(undefined);
       }
       case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
-        // Parse comma-separated string
-        const keywords = configValue
+        const newKeywords = configValue
           .split(",")
           .map((k) => k.trim())
           .filter((k) => k.length > 0);
 
-        // Validation and storage handled by resource
-        const result = await configuration.setExcludeTitleKeywords(keywords);
+        const oldKeywords = configuration.excludeTitleKeywords || [];
+
+        // Update configuration first
+        const result = await configuration.setExcludeTitleKeywords(newKeywords);
         if (result.isErr()) {
           return result;
         }
 
         logger.info(
-          { connectorId: connector.id, keywords },
+          { connectorId: connector.id, oldKeywords, newKeywords },
           "[Gong] Updated exclude title keywords"
         );
+
+        // Sync behavior notes:
+        // - Adding keywords: Triggers immediate cleanup of already-synced matching transcripts
+        // - Removing keywords: Only affects future syncs. Previously excluded transcripts are NOT
+        //   automatically re-synced (connector uses incremental sync from lastSyncTimestamp).
+        // - Exception: If retentionPeriodDays is configured, transcripts within the retention window
+        //   will be re-fetched and re-evaluated on the next sync.
+
+        // Only clean up if keywords were added (not just removed)
+        const addedKeywords = newKeywords.filter(
+          (kw) => !oldKeywords.includes(kw)
+        );
+
+        if (addedKeywords.length > 0) {
+          logger.info(
+            { connectorId: connector.id, addedKeywords },
+            "[Gong] New keywords added, initiating cleanup"
+          );
+
+          // Pause the schedule to avoid conflicts
+          const scheduleId = makeGongSyncScheduleId(connector);
+          const pauseResult = await pauseSchedule({
+            connector,
+            scheduleId,
+            stopReason: "Paused to clean up excluded transcripts",
+          });
+
+          if (pauseResult.isErr()) {
+            logger.warn(
+              { connectorId: connector.id, error: pauseResult.error },
+              "[Gong] Failed to pause schedule, continuing with cleanup"
+            );
+          }
+
+          // Launch cleanup workflow (non-blocking)
+          const cleanupResult =
+            await launchGongCleanupExcludedTranscriptsWorkflow(
+              connector,
+              addedKeywords
+            );
+
+          if (cleanupResult.isErr()) {
+            logger.error(
+              { connectorId: connector.id, error: cleanupResult.error },
+              "[Gong] Failed to launch cleanup workflow"
+            );
+          }
+
+          // Resume the schedule immediately
+          const unpauseResult = await unpauseAndTriggerSchedule({
+            connector,
+            scheduleId,
+          });
+
+          if (unpauseResult.isErr()) {
+            logger.error(
+              { connectorId: connector.id, error: unpauseResult.error },
+              "[Gong] Failed to unpause schedule after cleanup"
+            );
+          }
+        }
 
         return new Ok(undefined);
       }
