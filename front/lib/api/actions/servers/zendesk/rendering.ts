@@ -15,73 +15,62 @@ export function renderTicket(
   ticket: ZendeskTicket,
   ticketFieldsResult: Result<ZendeskTicketField[], Error>
 ): string {
-  const lines = [
-    `# Ticket ID: ${ticket.id}`,
-    `- URL: ${apiUrlToDocumentUrl(ticket.url)}`,
-    `- Subject: ${ticket.subject ?? "No subject"}`,
-    `- Status: ${ticket.status}`,
-  ];
+  const lines = [`# Ticket ID: ${ticket.id}`, `\n## Fields`];
+
+  lines.push(`URL: ${apiUrlToDocumentUrl(ticket.url)}`);
+  lines.push(`Subject: ${ticket.subject ?? "No subject"}`);
+  lines.push(`Status: ${ticket.status}`);
 
   if (ticket.priority) {
-    lines.push(`- Priority: ${ticket.priority}`);
+    lines.push(`Priority: ${ticket.priority}`);
   }
 
   if (ticket.type) {
-    lines.push(`- Type: ${ticket.type}`);
-  }
-
-  if (ticket.description) {
-    lines.push(
-      `- Description: ${ticket.description.trim().replace(/\n+/g, " ")}`
-    );
+    lines.push(`Type: ${ticket.type}`);
   }
 
   if (ticket.requester_id) {
-    lines.push(`- Requester ID: ${ticket.requester_id}`);
+    lines.push(`Requester ID: ${ticket.requester_id}`);
   }
 
   if (ticket.assignee_id) {
-    lines.push(`- Assignee ID: ${ticket.assignee_id}`);
+    lines.push(`Assignee ID: ${ticket.assignee_id}`);
   }
 
   if (ticket.group_id) {
-    lines.push(`- Group ID: ${ticket.group_id}`);
+    lines.push(`Group ID: ${ticket.group_id}`);
   }
 
   if (ticket.organization_id) {
-    lines.push(`- Organization ID: ${ticket.organization_id}`);
+    lines.push(`Organization ID: ${ticket.organization_id}`);
   }
 
   if (ticket.tags.length > 0) {
-    lines.push(`- Tags: ${ticket.tags.join(", ")}`);
+    lines.push(`Tags: ${ticket.tags.join(", ")}`);
   }
 
   if (ticket.via?.channel) {
-    lines.push(`- Channel: ${ticket.via.channel}`);
+    lines.push(`Channel: ${ticket.via.channel}`);
   }
 
   if (ticket.satisfaction_rating) {
     const { score, comment } = ticket.satisfaction_rating;
-    lines.push(`- Satisfaction: ${score}` + (comment ? ` ("${comment}")` : ""));
+    lines.push(`Satisfaction: ${score}` + (comment ? ` ("${comment}")` : ""));
   }
 
   if (ticket.due_at) {
-    lines.push(`- Due At: ${new Date(ticket.due_at).toISOString()}`);
+    lines.push(`Due At: ${new Date(ticket.due_at).toISOString()}`);
   }
 
   if (ticket.has_incidents) {
-    lines.push(`- Has Incidents: ${ticket.has_incidents}`);
+    lines.push(`Has Incidents: ${ticket.has_incidents}`);
   }
 
-  lines.push(`- Created: ${new Date(ticket.created_at).toISOString()}`);
-  lines.push(`- Updated: ${new Date(ticket.updated_at).toISOString()}`);
+  lines.push(`Created: ${new Date(ticket.created_at).toISOString()}`);
+  lines.push(`Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
   if (ticket.custom_fields && ticket.custom_fields.length > 0) {
-    if (ticketFieldsResult.isErr()) {
-      lines.push(
-        "\nNote: Custom field names could not be retrieved. Only field IDs would be shown if displayed."
-      );
-    } else {
+    if (ticketFieldsResult.isOk()) {
       const fieldMap = new Map(
         ticketFieldsResult.value.map((f) => [f.id, f.title])
       );
@@ -95,7 +84,7 @@ export function renderTicket(
             const valueStr = Array.isArray(field.value)
               ? field.value.join(", ")
               : String(field.value);
-            fieldsWithNames.push(`- ${fieldName}: ${valueStr}`);
+            fieldsWithNames.push(`${fieldName}: ${valueStr}`);
           } else {
             fieldsAreMissing = true;
           }
@@ -111,6 +100,10 @@ export function renderTicket(
         lines.push("\nNote: Some custom fields could not be displayed.");
       }
     }
+  }
+
+  if (ticket.description) {
+    lines.push(`\n## Description\n${ticket.description.trim()}`);
   }
 
   return lines.join("\n");
