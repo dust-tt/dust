@@ -1,3 +1,5 @@
+import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { clientFetch } from "@app/lib/egress/client";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import type { WorkspaceType } from "@dust-tt/client";
@@ -16,13 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute
 const log = console.error;
 
-export const useAuthHook = ({
-  dustDomain,
-  setDustDomain,
-}: {
-  dustDomain: string | null;
-  setDustDomain: (url: string) => void;
-}) => {
+export const useAuthHook = () => {
   const platform = usePlatform();
 
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
@@ -37,11 +33,11 @@ export const useAuthHook = ({
     string | undefined
   >();
   const [featureFlags, setFeatureFlags] = useState<WhitelistableFeature[]>([]);
+  const { setRegionInfo } = useRegionContext();
 
   const isAuthenticated = useMemo(
-    () =>
-      !!(tokens?.accessToken && tokens.expiresAt > Date.now() && dustDomain),
-    [tokens, dustDomain]
+    () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
+    [tokens]
   );
 
   const isUserSetup = !!(user && user.sId && selectedWorkspace);
@@ -112,16 +108,16 @@ export const useAuthHook = ({
     return () => unsub();
   }, []);
 
-  // Fetch user data from /api/v1/me when authenticated.
+  // Fetch user data from /api/user when authenticated.
   useEffect(() => {
-    if (!isAuthenticated || !tokens?.accessToken || !dustDomain) {
+    if (!isAuthenticated || !tokens?.accessToken) {
       return;
     }
 
     setIsUserLoading(true);
     void (async () => {
       try {
-        const res = await fetch(`${dustDomain}/api/v1/me`, {
+        const res = await clientFetch("/api/user", {
           headers: { Authorization: `Bearer ${tokens.accessToken}` },
           credentials: "omit", // Ensure cookies are not sent with requests from the extension
         });
@@ -144,26 +140,26 @@ export const useAuthHook = ({
         setIsUserLoading(false);
       }
     })();
-  }, [isAuthenticated, tokens?.accessToken, dustDomain]);
+  }, [isAuthenticated, tokens?.accessToken]);
 
   // Initialize from storage on mount.
+  // RegionContext already restores region info from localStorage, so we only
+  // need to restore tokens, connection details, and selected workspace here.
   useEffect(() => {
     void (async () => {
       setIsLoading(true);
 
       const storedTokens = await platform.auth.getStoredTokens();
-      const storedRegionInfo = await platform.auth.getRegionInfoFromStorage();
       const storedConnectionDetails =
         await platform.auth.getConnectionDetailsFromStorage();
       const storedSelectedWorkspace =
         await platform.auth.getSelectedWorkspace();
 
-      if (!storedTokens || !storedRegionInfo) {
+      if (!storedTokens) {
         setIsLoading(false);
         return;
       }
       setTokens(storedTokens);
-      setDustDomain(storedRegionInfo.url);
       setConnectionDetails(storedConnectionDetails);
       setSelectedWorkspace(storedSelectedWorkspace);
 
@@ -184,19 +180,18 @@ export const useAuthHook = ({
 
   // Fetch feature flags when workspace is ready.
   useEffect(() => {
-    if (!isAuthenticated || !workspace || !tokens?.accessToken || !dustDomain) {
+    if (!isAuthenticated || !workspace || !tokens?.accessToken) {
       setFeatureFlags([]);
       return;
     }
 
     void (async () => {
-      const res = await fetch(
-        `${dustDomain}/api/w/${workspace.sId}/feature-flags`,
-        {
-          headers: { Authorization: `Bearer ${tokens.accessToken}` },
+      const res = await clientFetch(`/api/w/${workspace.sId}/feature-flags`, {
+        headers: {
+          Authorization: `Bearer ${tokens.accessToken}`,
           credentials: "omit", // Ensure cookies are not sent with requests from the extension
-        }
-      );
+        },
+      });
       if (res.ok) {
         const { feature_flags } = await res.json();
         setFeatureFlags(feature_flags ?? []);
@@ -204,7 +199,7 @@ export const useAuthHook = ({
         setFeatureFlags([]);
       }
     })();
-  }, [workspace, tokens?.accessToken, dustDomain, isAuthenticated]);
+  }, [workspace, tokens?.accessToken, isAuthenticated]);
 
   const redirectToSSOLogin = useCallback(
     async (workspace: WorkspaceType) => {
@@ -269,7 +264,7 @@ export const useAuthHook = ({
     }
 
     setTokens(newTokens);
-    setDustDomain(newRegionInfo.url);
+    setRegionInfo(newRegionInfo);
     setConnectionDetails(newConnectionDetails);
     setAuthError(null);
     setIsLoading(false);

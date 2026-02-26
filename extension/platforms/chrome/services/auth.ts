@@ -58,7 +58,7 @@ export class ChromeAuthService extends AuthService {
   }
 
   // Login sends a message to the background script to call the workos login endpoint.
-  // It saves the tokens and auth metadata (dustDomain, connectionDetails).
+  // It saves the tokens and auth metadata (regionInfo, connectionDetails).
   async login({ forcedConnection }: { forcedConnection?: string }) {
     try {
       const response = await sendAuthMessage(forcedConnection);
