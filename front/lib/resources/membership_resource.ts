@@ -798,7 +798,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     Result<
       { role: MembershipRoleType; startAt: Date; endAt: Date },
       {
-        type: "not_found" | "already_revoked" | "invalid_end_at";
+        type: "not_found" | "already_revoked" | "invalid_end_at" | "last_admin";
       }
     >
   > {
@@ -816,6 +816,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (membership.endAt) {
       return new Err({ type: "already_revoked" });
     }
+
+    // Prevent revoking the last admin of a workspace.
+    if (membership.role === "admin") {
+      const adminsCount = await this.getMembersCountForWorkspace({
+        workspace,
+        activeOnly: true,
+        rolesFilter: ["admin"],
+        transaction,
+      });
+
+      if (adminsCount < 2) {
+        return new Err({ type: "last_admin" });
+      }
+    }
+
     await MembershipModel.update(
       { endAt },
       { where: { id: membership.id }, transaction }
