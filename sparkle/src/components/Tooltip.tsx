@@ -3,7 +3,7 @@ import {
   KeyboardShortcut,
   type KeyboardShortcutProps,
 } from "@sparkle/components/KeyboardShortcut";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 import { useEffect, useState } from "react";
 
@@ -38,7 +38,7 @@ const TooltipContent = React.forwardRef<
       <TooltipPrimitive.Content
         ref={ref}
         sideOffset={sideOffset}
-        className={classNames(
+        className={cn(
           "s-z-50 s-max-w-sm s-overflow-hidden s-whitespace-pre-wrap s-break-words s-rounded-md s-border",
           "s-bg-background dark:s-bg-background-night",
           "s-text-foreground dark:s-text-foreground-night",
