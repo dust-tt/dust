@@ -52,7 +52,6 @@ import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
 // Short timeout: the Redis round-trip is near-instant when the browser
