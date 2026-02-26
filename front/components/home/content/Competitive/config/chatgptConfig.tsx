@@ -64,7 +64,7 @@ export interface ChatGPTConfig {
 
 export const chatgptConfig: ChatGPTConfig = {
   hero: {
-    chip: "Dust vs ChatGPT Comparison",
+    chip: "Dust vs ChatGPT - Sales Use Case Comparison",
     headline: (
       <>
         <span className="text-gray-900">ChatGPT gives advice.</span>
@@ -106,7 +106,7 @@ export const chatgptConfig: ChatGPTConfig = {
         name: "Multi-model AI",
         description: "GPT-4, Claude, Gemini, Mistral—choose the best per task",
         dust: "yes",
-        competitor: "partial",
+        competitor: "no",
       },
       {
         name: "Transparent pricing",

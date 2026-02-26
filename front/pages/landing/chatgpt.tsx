@@ -1,4 +1,5 @@
 import { ComparisonTableSection } from "@app/components/home/content/Competitive/ComparisonTableSection";
+import { CompetitiveCustomersSection } from "@app/components/home/content/Competitive/CompetitiveCustomersSection";
 import { CompetitiveHeroSection } from "@app/components/home/content/Competitive/CompetitiveHeroSection";
 import { chatgptConfig } from "@app/components/home/content/Competitive/config/chatgptConfig";
 import { DifferentiatorsSection } from "@app/components/home/content/Competitive/DifferentiatorsSection";
@@ -43,6 +44,11 @@ export default function ChatGPTLandingPage() {
         trackingObject="chatgpt_hero"
       />
 
+      {/* Customers */}
+      <div className="mt-8">
+        <CompetitiveCustomersSection competitorName="ChatGPT" />
+      </div>
+
       {/* Testimonials */}
       <div className="mt-8">
         <TestimonialsGridSection
@@ -54,8 +60,10 @@ export default function ChatGPTLandingPage() {
       {/* Comparison Table */}
       <div className="mt-8">
         <ComparisonTableSection
+          title="How Dust Compares to ChatGPT"
           dustHeader={chatgptConfig.comparison.dustHeader}
           competitorHeader={chatgptConfig.comparison.competitorHeader}
+          competitorLogo="/static/landing/logos/gray/chatgpt.svg"
           features={chatgptConfig.comparison.features}
         />
       </div>
