@@ -15,7 +15,7 @@ export function renderTicket(
   ticket: ZendeskTicket,
   ticketFieldsResult: Result<ZendeskTicketField[], Error>
 ): string {
-  const lines = [`# Ticket ID: ${ticket.id}`, `\n## Fields`];
+  const lines = [`# Ticket ID: ${ticket.id}\n`, `## Fields\n`];
 
   lines.push(`URL: ${apiUrlToDocumentUrl(ticket.url)}`);
   lines.push(`Subject: ${ticket.subject ?? "No subject"}`);
@@ -103,7 +103,8 @@ export function renderTicket(
   }
 
   if (ticket.description) {
-    lines.push(`\n## Description\n${ticket.description.trim()}`);
+    lines.push("\n## Description\n");
+    lines.push(ticket.description.trim());
   }
 
   return lines.join("\n");
