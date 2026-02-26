@@ -1,5 +1,6 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -769,6 +770,24 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         new MCPError(
           `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
             `Check <workspace_context> for valid tool IDs.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Reject knowledge tools — they should be suggested via suggest_knowledge.
+    const knowledgeTools = tools.filter((t) => {
+      const json = t.toJSON();
+      return json !== null && isToolWithKnowledge(json);
+    });
+    if (knowledgeTools.length > 0) {
+      const knowledgeToolNames = knowledgeTools
+        .map((t) => `${t.sId} (${t.toJSON()?.server.name ?? "unknown"})`)
+        .join(", ");
+      return new Err(
+        new MCPError(
+          `The following ID(s) are knowledge tools, not regular tools: ${knowledgeToolNames}. ` +
+            `Use \`suggest_knowledge\` instead of \`suggest_tools\` for data source, table, or data warehouse tools.`,
           { tracked: false }
         )
       );

@@ -9,6 +9,7 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   MCPServerType,
   MCPServerTypeWithViews,
@@ -228,6 +229,31 @@ export function isKnowledgeTemplateAction(
     presetAction.type === "RETRIEVAL_SEARCH" ||
     presetAction.type === "TABLES_QUERY" ||
     presetAction.type === "PROCESS"
+  );
+}
+
+/**
+ * Checks whether an MCP server view is a "knowledge" tool — i.e. it requires
+ * data source, data warehouse, or table configuration.
+ *
+ * The interactive_content server is explicitly excluded because it includes
+ * list/cat tools for convenience but is not primarily a data source tool.
+ */
+export function isToolWithKnowledge(view: MCPServerViewType): boolean {
+  if (view.server.name === "interactive_content") {
+    return false;
+  }
+
+  const {
+    requiresDataSourceConfiguration,
+    requiresDataWarehouseConfiguration,
+    requiresTableConfiguration,
+  } = getMCPServerRequirements(view);
+
+  return (
+    requiresDataSourceConfiguration ||
+    requiresDataWarehouseConfiguration ||
+    requiresTableConfiguration
   );
 }
 
