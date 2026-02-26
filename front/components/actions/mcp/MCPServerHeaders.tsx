@@ -73,7 +73,12 @@ export function McpServerHeaders({
           </div>
         ))}
       </div>
-      <Button className="mt-4" variant="outline" label="Add Header" onClick={addHeader} />
+      <Button
+        className="mt-4"
+        variant="outline"
+        label="Add Header"
+        onClick={addHeader}
+      />
     </div>
   );
 }
