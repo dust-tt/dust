@@ -1,7 +1,6 @@
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
@@ -9,7 +8,9 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import { useAppRouter } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
+import { isAPIErrorResponse } from "@app/types/error";
 import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +19,7 @@ import type { Country } from "react-phone-number-input";
 type Step = "phone" | "code";
 
 export function VerifyPage() {
+  const { fetcherWithBody } = useFetcher();
   const { workspace } = useAuth();
   const router = useAppRouter();
   const { mutateAuthContext } = useAuthContext({
@@ -85,43 +87,36 @@ export function VerifyPage() {
 
     setIsLoading(true);
     const e164Phone = phoneNumber;
-    let response: Response;
     try {
-      response = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${workspace.sId}/verification/start`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: e164Phone }),
+        { phoneNumber: e164Phone },
+        "POST",
+      ]);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setStep("code");
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        const apiError = e.error as Record<string, unknown>;
+        if (apiError?.type === "rate_limit_error" && apiError?.retryAfter) {
+          const waitSeconds = Math.max(
+            0,
+            (apiError.retryAfter as number) - Math.floor(Date.now() / 1000)
+          );
+          setResendCooldown(waitSeconds);
+          const waitMinutes = Math.ceil(waitSeconds / 60);
+          setPhoneError(
+            `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
+          );
+          return;
         }
-      );
-    } catch {
-      setPhoneError("Unexpected error. Please try again.");
-      return;
+        setPhoneError(e.error?.message ?? "Failed to send code");
+      } else {
+        setPhoneError("Unexpected error. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
-
-    if (!response.ok) {
-      const data = await response.json();
-      if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
-        const waitSeconds = Math.max(
-          0,
-          data.error.retryAfter - Math.floor(Date.now() / 1000)
-        );
-        setResendCooldown(waitSeconds);
-        const waitMinutes = Math.ceil(waitSeconds / 60);
-        setPhoneError(
-          `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
-        );
-        return;
-      }
-      setPhoneError(data.error?.message ?? "Failed to send code");
-      return;
-    }
-
-    setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    setStep("code");
   };
 
   const handleVerifyCode = async () => {
@@ -136,42 +131,29 @@ export function VerifyPage() {
     try {
       const e164Phone = phoneNumber;
 
-      const verifyResponse = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${workspace.sId}/verification/validate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: e164Phone, code: fullCode }),
-        }
-      );
+        { phoneNumber: e164Phone, code: fullCode },
+        "POST",
+      ]);
 
-      if (!verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        setPhoneError(data.error?.message ?? "Invalid code");
-        return;
-      }
-
-      const trialResponse = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${workspace.sId}/trial/start`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-
-      if (!trialResponse.ok) {
-        const data = await trialResponse.json();
-        setPhoneError(data.api_error?.message ?? "Failed to start trial");
-        return;
-      }
+        {},
+        "POST",
+      ]);
 
       // Revalidate the auth context so the SPA picks up the new subscription
       // (canUseProduct is now true) and doesn't redirect back to /trial.
       await mutateAuthContext();
 
       void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
-    } catch {
-      setPhoneError("Network error. Please try again.");
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        setPhoneError(e.error?.message ?? "Invalid code");
+      } else {
+        setPhoneError("Network error. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

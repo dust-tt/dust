@@ -22,12 +22,12 @@ import {
 } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { ChapterPageProps } from "@app/lib/contentful/types";
-import { clientFetch } from "@app/lib/egress/client";
 import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
 import {
   useAcademyBrowserId,
   useAcademyCourseProgress,
 } from "@app/lib/swr/academy";
+import { useFetcher } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import {
@@ -135,6 +135,7 @@ export default function ChapterPage({
   academyUser,
   preview,
 }: ChapterPageProps) {
+  const { fetcherWithBody } = useFetcher();
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = courseImage?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${courseSlug}/chapter/${chapter.slug}`;
@@ -154,18 +155,29 @@ export default function ChapterPage({
       void mutateCourseProgress();
     } else if (browserId) {
       void (async () => {
-        await clientFetch("/api/academy/progress/visit", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Academy-Browser-Id": browserId,
-          },
-          body: JSON.stringify({ courseSlug, chapterSlug: chapter.slug }),
-        });
+        await fetcherWithBody(
+          [
+            "/api/academy/progress/visit",
+            { courseSlug, chapterSlug: chapter.slug },
+            "POST",
+          ],
+          {
+            headers: {
+              "X-Academy-Browser-Id": browserId,
+            },
+          }
+        );
         void mutateCourseProgress();
       })();
     }
-  }, [courseSlug, chapter.slug, academyUser, browserId, mutateCourseProgress]);
+  }, [
+    courseSlug,
+    chapter.slug,
+    academyUser,
+    browserId,
+    mutateCourseProgress,
+    fetcherWithBody,
+  ]);
   const completedChapterSlugs =
     courseProgress?.[courseSlug]?.completedChapterSlugs;
   const attemptedChapterSlugs =

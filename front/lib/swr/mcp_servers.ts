@@ -13,7 +13,6 @@ import type {
   MCPServerViewType,
 } from "@app/lib/api/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
-import { clientFetch } from "@app/lib/egress/client";
 import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
@@ -28,7 +27,6 @@ import type {
   DeleteMCPServerResponseBody,
   GetMCPServerResponseBody,
   PatchMCPServerBody,
-  PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
 import type {
@@ -48,7 +46,6 @@ import type {
 } from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type {
@@ -206,6 +203,7 @@ export function useMCPServers({
  * Hook to delete an MCP server
  */
 export function useDeleteMCPServer(owner: LightWorkspaceType) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
@@ -215,39 +213,12 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
     async (server: MCPServerType): Promise<boolean> => {
       setIsDeleting(true);
       try {
-        const response = await clientFetch(
+        const result: DeleteMCPServerResponseBody = await fetcher(
           `/api/w/${owner.sId}/mcp/${server.sId}`,
           {
             method: "DELETE",
           }
         );
-
-        if (!response.ok) {
-          const body = await response.json();
-          sendNotification({
-            title: `Failure`,
-            type: "error",
-            description:
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              body.error?.message ||
-              `Failed to delete ${getMcpServerDisplayName(server)}`,
-          });
-          return false;
-        }
-
-        const result: WithAPIErrorResponse<DeleteMCPServerResponseBody> =
-          await response.json();
-
-        if (isAPIErrorResponse(result)) {
-          sendNotification({
-            title: `Failure`,
-            type: "error",
-            description:
-              result.error?.message ||
-              `Failed to delete ${getMcpServerDisplayName(server)}`,
-          });
-          return false;
-        }
 
         if (!result.deleted) {
           sendNotification({
@@ -265,17 +236,36 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
         });
         await mutate();
         return result.deleted;
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              e.error?.message ||
+              `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+        } else {
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description: `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+        }
+        return false;
       } finally {
         setIsDeleting(false);
       }
     },
-    [mutate, owner.sId, sendNotification]
+    [mutate, owner.sId, sendNotification, fetcher]
   );
 
   return { deleteServer, isDeleting };
 }
 
 export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
+  const { fetcherWithBody } = useFetcher();
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const createInternalMCPServer = async ({
@@ -291,30 +281,32 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
   }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
-    const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        serverType: "internal",
-        useCase: oauthConnection?.useCase,
-        connectionId: oauthConnection?.connectionId,
-        includeGlobal,
-        ...(sharedSecret !== undefined ? { sharedSecret } : {}),
-        ...(customHeaders !== undefined ? { customHeaders } : {}),
-      }),
-    });
+    try {
+      const result: CreateMCPServerResponseBody = await fetcherWithBody([
+        `/api/w/${owner.sId}/mcp`,
+        {
+          name,
+          serverType: "internal",
+          useCase: oauthConnection?.useCase,
+          connectionId: oauthConnection?.connectionId,
+          includeGlobal,
+          ...(sharedSecret !== undefined ? { sharedSecret } : {}),
+          ...(customHeaders !== undefined ? { customHeaders } : {}),
+        },
+        "POST",
+      ]);
 
-    if (!response.ok) {
-      const body = await response.json();
-      return new Err(
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        new Error(body.error?.message || "Failed to create server")
-      );
+      await mutate();
+      return new Ok(result);
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        return new Err(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          new Error(e.error?.message || "Failed to create server")
+        );
+      }
+      return new Err(new Error("Failed to create server"));
     }
-
-    await mutate();
-    return new Ok(await response.json());
   };
 
   return { createInternalMCPServer };
@@ -329,31 +321,33 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
  * Note: this hook should not be called too frequently, as it is likely rate limited by the mcp server provider.
  */
 export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
+  const { fetcherWithBody } = useFetcher();
   const discoverOAuthMetadata = useCallback(
     async (
       url: string,
       customHeaders?: { key: string; value: string }[]
     ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, customHeaders }),
-        }
-      );
-
-      if (!response.ok) {
-        const body = await response.json();
-        return new Err(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          new Error(body.error.message || "Failed to check OAuth connection")
+      try {
+        const result: DiscoverOAuthMetadataResponseBody = await fetcherWithBody(
+          [
+            `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
+            { url, customHeaders },
+            "POST",
+          ]
         );
-      }
 
-      return new Ok(await response.json());
+        return new Ok(result);
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            new Error(e.error.message || "Failed to check OAuth connection")
+          );
+        }
+        return new Err(new Error("Failed to check OAuth connection"));
+      }
     },
-    [owner.sId]
+    [owner.sId, fetcherWithBody]
   );
 
   return { discoverOAuthMetadata };
@@ -363,6 +357,7 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
  * Hook to create a new MCP server from a URL
  */
 export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
+  const { fetcherWithBody } = useFetcher();
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const { mutateConnections } = useMCPServerConnections({
@@ -397,27 +392,29 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (customHeaders) {
         body.customHeaders = customHeaders;
       }
-      const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      try {
+        const r: CreateMCPServerResponseBody = await fetcherWithBody([
+          `/api/w/${owner.sId}/mcp`,
+          body,
+          "POST",
+        ]);
 
-      if (!response.ok) {
-        const body = await response.json();
-        return new Err(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          new Error(body.error?.message || "Failed to create server")
-        );
+        await mutate();
+        if (oauthConnection?.connectionId) {
+          await mutateConnections();
+        }
+        return new Ok(r);
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            new Error(e.error?.message || "Failed to create server")
+          );
+        }
+        return new Err(new Error("Failed to create server"));
       }
-      await mutate();
-      if (oauthConnection?.connectionId) {
-        await mutateConnections();
-      }
-      const r = await response.json();
-      return new Ok(r);
     },
-    [mutate, mutateConnections, owner.sId]
+    [mutate, mutateConnections, owner.sId, fetcherWithBody]
   );
 
   return { createWithURL };
@@ -440,46 +437,43 @@ export function useSyncRemoteMCPServer(
 
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
+  const { fetcher } = useFetcher();
+
   const syncServer = async (): Promise<boolean> => {
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${serverId}/sync`,
-      {
-        method: "POST",
+    try {
+      const result: SyncMCPServerResponseBody = await fetcher(
+        `/api/w/${owner.sId}/mcp/${serverId}/sync`,
+        {
+          method: "POST",
+        }
+      );
+
+      sendNotification({
+        title: "Success",
+        type: "success",
+        description: `${getMcpServerDisplayName(result.server)} synchronized successfully.`,
+      });
+
+      void mutateMCPServer();
+      void mutate();
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          title: `Error synchronizing server`,
+          type: "error",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: e.error?.message || "An error occurred",
+        });
+      } else {
+        sendNotification({
+          title: `Error synchronizing server`,
+          type: "error",
+          description: "An error occurred",
+        });
       }
-    );
-
-    if (!response.ok) {
-      const body = await response.json();
-      sendNotification({
-        title: `Error synchronizing server`,
-        type: "error",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: body.error?.message || "An error occurred",
-      });
       return false;
     }
-
-    const result: WithAPIErrorResponse<SyncMCPServerResponseBody> =
-      await response.json();
-
-    if (isAPIErrorResponse(result)) {
-      sendNotification({
-        title: `Error synchronizing server`,
-        type: "error",
-        description: result.error.message || "An error occurred",
-      });
-      return false;
-    }
-
-    sendNotification({
-      title: "Success",
-      type: "success",
-      description: `${getMcpServerDisplayName(result.server)} synchronized successfully.`,
-    });
-
-    void mutateMCPServer();
-    void mutate();
-    return true;
   };
 
   return { syncServer };
@@ -502,48 +496,42 @@ export function useUpdateMCPServer(
 
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
+  const { fetcherWithBody } = useFetcher();
+
   const updateServer = async (data: PatchMCPServerBody): Promise<boolean> => {
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
+        data,
+        "PATCH",
+      ]);
+
+      sendNotification({
+        title: `${getMcpServerViewDisplayName(mcpServerView)} updated`,
+        type: "success",
+        description: `${getMcpServerViewDisplayName(mcpServerView)} has been successfully updated.`,
+      });
+
+      void mutateMCPServer();
+      void mutate();
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          title: `Error updating server`,
+          type: "error",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: e.error?.message || "An error occurred",
+        });
+      } else {
+        sendNotification({
+          title: `Error updating server`,
+          type: "error",
+          description: "An error occurred",
+        });
       }
-    );
-
-    if (!response.ok) {
-      const body = await response.json();
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: body.error?.message || "An error occurred",
-      });
-
       return false;
     }
-
-    const result: WithAPIErrorResponse<PatchMCPServerResponseBody> =
-      await response.json();
-    if (isAPIErrorResponse(result)) {
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        description: result.error?.message || "An error occurred",
-      });
-      return false;
-    }
-
-    sendNotification({
-      title: `${getMcpServerViewDisplayName(mcpServerView)} updated`,
-      type: "success",
-      description: `${getMcpServerViewDisplayName(mcpServerView)} has been successfully updated.`,
-    });
-
-    void mutateMCPServer();
-    void mutate();
-    return true;
   };
 
   return { updateServer };
@@ -565,51 +553,45 @@ export function useUpdateMCPServerView(
 
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
+  const { fetcherWithBody } = useFetcher();
+
   const updateServerView = async (
     data: PatchMCPServerViewBody
   ): Promise<boolean> => {
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/views/${mcpServerView.sId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+    try {
+      const result: PatchMCPServerViewResponseBody = await fetcherWithBody([
+        `/api/w/${owner.sId}/mcp/views/${mcpServerView.sId}`,
+        data,
+        "PATCH",
+      ]);
+
+      const serverView = result.serverView;
+      sendNotification({
+        title: `${getMcpServerViewDisplayName(serverView)} updated`,
+        type: "success",
+        description: `${getMcpServerViewDisplayName(serverView)} has been successfully updated.`,
+      });
+
+      void mutateMCPServer();
+      void mutate();
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          title: `Error updating server`,
+          type: "error",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: e.error?.message || "An error occurred",
+        });
+      } else {
+        sendNotification({
+          title: `Error updating server`,
+          type: "error",
+          description: "An error occurred",
+        });
       }
-    );
-
-    if (!response.ok) {
-      const body = await response.json();
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: body.error?.message || "An error occurred",
-      });
-
       return false;
     }
-
-    const result: WithAPIErrorResponse<PatchMCPServerViewResponseBody> =
-      await response.json();
-    if (isAPIErrorResponse(result)) {
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        description: result.error?.message || "An error occurred",
-      });
-      return false;
-    }
-
-    const serverView = result.serverView;
-    sendNotification({
-      title: `${getMcpServerViewDisplayName(serverView)} updated`,
-      type: "success",
-      description: `${getMcpServerViewDisplayName(serverView)} has been successfully updated.`,
-    });
-
-    void mutateMCPServer();
-    void mutate();
-    return true;
   };
 
   return { updateServerView };
@@ -659,6 +641,8 @@ export function useCreateMCPServerConnection({
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
+
   const createMCPServerConnection = async ({
     connectionId,
     mcpServerId,
@@ -670,21 +654,17 @@ export function useCreateMCPServerConnection({
     mcpServerDisplayName: string;
     provider: OAuthProvider;
   }): Promise<PostConnectionResponseBody | null> => {
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    try {
+      const result: PostConnectionResponseBody = await fetcherWithBody([
+        `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
+        {
           connectionId,
           mcpServerId,
           provider,
-        }),
-      }
-    );
-    if (response.ok) {
+        },
+        "POST",
+      ]);
+
       sendNotification({
         type: "success",
         title: `${mcpServerDisplayName} connected`,
@@ -694,8 +674,8 @@ export function useCreateMCPServerConnection({
       if (connectionType === "workspace") {
         void mutate();
       }
-      return response.json();
-    } else {
+      return result;
+    } catch {
       sendNotification({
         type: "error",
         title: `Failed to connect ${mcpServerDisplayName}`,
@@ -731,6 +711,8 @@ export function useDeleteMCPServerConnection({
 
   const sendNotification = useSendNotification();
 
+  const { fetcher } = useFetcher();
+
   const deleteMCPServerConnection = useCallback(
     async ({
       connection,
@@ -739,16 +721,14 @@ export function useDeleteMCPServerConnection({
       connection: MCPServerConnectionType;
       mcpServer: MCPServerType;
     }): Promise<{ success: boolean }> => {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/mcp/connections/${connection.connectionType}/${connection.sId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (response.ok) {
+      try {
+        const result = await fetcher(
+          `/api/w/${owner.sId}/mcp/connections/${connection.connectionType}/${connection.sId}`,
+          {
+            method: "DELETE",
+          }
+        );
+
         sendNotification({
           type: "success",
           title: `${getMcpServerDisplayName(mcpServer)} disconnected`,
@@ -760,15 +740,16 @@ export function useDeleteMCPServerConnection({
         } else if (connection.connectionType === "personal") {
           void mutatePersonalConnections();
         }
-      } else {
+
+        return result;
+      } catch {
         sendNotification({
           type: "error",
           title: `Failed to disconnect ${getMcpServerDisplayName(mcpServer)}`,
           description: `Could not disconnect from ${getMcpServerDisplayName(mcpServer)}. Please try again.`,
         });
+        return { success: false };
       }
-
-      return response.json();
     },
     [
       owner.sId,
@@ -776,6 +757,7 @@ export function useDeleteMCPServerConnection({
       mutateWorkspaceConnections,
       mutatePersonalConnections,
       mutate,
+      fetcher,
     ]
   );
 
@@ -801,6 +783,8 @@ export function useUpdateMCPServerToolsSettings({
 
   const sendNotification = useSendNotification();
 
+  const { fetcherWithBody } = useFetcher();
+
   const updateToolSettings = async ({
     toolName,
     permission,
@@ -814,23 +798,12 @@ export function useUpdateMCPServerToolsSettings({
       permission,
       enabled,
     };
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${toolName}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        body.error?.message || "Failed to update MCP tool settings"
-      );
-    }
+    const result: PatchMCPServerToolsPermissionsResponseBody =
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${toolName}`,
+        body,
+        "PATCH",
+      ]);
 
     sendNotification({
       type: "success",
@@ -839,7 +812,7 @@ export function useUpdateMCPServerToolsSettings({
     });
 
     void mutateMCPServerViews();
-    return response.json();
+    return result;
   };
 
   return { updateToolSettings };
@@ -1103,6 +1076,7 @@ export function useAddMCPServerToSpace(
   owner: LightWorkspaceType,
   options?: { skipNotification?: boolean }
 ) {
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
   const { mutateMCPServers } = useMCPServers({
     owner,
@@ -1112,35 +1086,18 @@ export function useAddMCPServerToSpace(
     async (server: MCPServerType, space: SpaceType): Promise<void> => {
       await mutateMCPServers(
         async (data) => {
-          const response = await clientFetch(
+          await fetcherWithBody([
             `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ mcpServerId: server.sId }),
-            }
-          );
-
-          if (!response.ok) {
-            const body = await response.json();
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            throw new Error(body.error?.message || "Unknown error");
-          }
+            { mcpServerId: server.sId },
+            "POST",
+          ]);
 
           if (!options?.skipNotification) {
-            if (response.ok) {
-              sendNotification({
-                type: "success",
-                title: `Actions added to space ${space.name}`,
-                description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
-              });
-            } else {
-              sendNotification({
-                type: "error",
-                title: `Failed to add actions to space ${space.name}`,
-                description: `Could not add ${getMcpServerDisplayName(server)} to the ${space.name} space. Please try again.`,
-              });
-            }
+            sendNotification({
+              type: "success",
+              title: `Actions added to space ${space.name}`,
+              description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
+            });
           }
           return getOptimisticDataForCreate(data, server, space);
         },
@@ -1152,7 +1109,13 @@ export function useAddMCPServerToSpace(
         }
       );
     },
-    [sendNotification, owner, mutateMCPServers, options?.skipNotification]
+    [
+      sendNotification,
+      owner,
+      mutateMCPServers,
+      options?.skipNotification,
+      fetcherWithBody,
+    ]
   );
 
   return { addToSpace: createView };
@@ -1162,6 +1125,7 @@ export function useRemoveMCPServerViewFromSpace(
   owner: LightWorkspaceType,
   options?: { skipNotification?: boolean }
 ) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const { mutateMCPServers } = useMCPServers({
     owner,
@@ -1171,15 +1135,15 @@ export function useRemoveMCPServerViewFromSpace(
     async (serverView: MCPServerViewType, space: SpaceType): Promise<void> => {
       await mutateMCPServers(
         async (data) => {
-          const response = await clientFetch(
-            `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.sId}`,
-            {
-              method: "DELETE",
-            }
-          );
+          try {
+            await fetcher(
+              `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.sId}`,
+              {
+                method: "DELETE",
+              }
+            );
 
-          if (!options?.skipNotification) {
-            if (response.ok) {
+            if (!options?.skipNotification) {
               sendNotification({
                 type: "success",
                 title:
@@ -1188,16 +1152,25 @@ export function useRemoveMCPServerViewFromSpace(
                     : "Action removed from space",
                 description: `${getMcpServerDisplayName(serverView.server)} has been removed from the ${space.name} space successfully.`,
               });
-            } else {
-              const res = await response.json();
-              sendNotification({
-                type: "error",
-                title: "Failed to remove action",
-                description:
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                  res.error?.message ||
-                  `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
-              });
+            }
+          } catch (e) {
+            if (!options?.skipNotification) {
+              if (isAPIErrorResponse(e)) {
+                sendNotification({
+                  type: "error",
+                  title: "Failed to remove action",
+                  description:
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                    e.error?.message ||
+                    `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
+                });
+              } else {
+                sendNotification({
+                  type: "error",
+                  title: "Failed to remove action",
+                  description: `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
+                });
+              }
             }
           }
 
@@ -1211,7 +1184,13 @@ export function useRemoveMCPServerViewFromSpace(
         }
       );
     },
-    [sendNotification, owner, mutateMCPServers, options?.skipNotification]
+    [
+      sendNotification,
+      owner,
+      mutateMCPServers,
+      options?.skipNotification,
+      fetcher,
+    ]
   );
 
   return { removeFromSpace: deleteView };

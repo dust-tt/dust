@@ -1,9 +1,9 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { useFetcher } from "@app/lib/swr/swr";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -11,6 +11,7 @@ import {
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { canShowAgentConversationActions } from "@app/types/assistant/assistant";
+import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
@@ -165,6 +166,7 @@ export function AgentDetailsDropdownMenu({
   contextMenuPosition,
 }: AgentDetailsDropdownMenuProps) {
   const sendNotification = useSendNotification();
+  const { fetcher } = useFetcher();
   const router = useAppRouter();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
@@ -179,25 +181,11 @@ export function AgentDetailsDropdownMenu({
 
   const handleExportToYAML = async () => {
     setIsExporting(true);
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration?.sId}/export/yaml`
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      sendNotification({
-        title: "Export failed",
-        description:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          errorData.error?.message || "An error occurred while exporting",
-        type: "error",
-      });
-      setIsExporting(false);
-      return;
-    }
-
-    const { yamlContent, filename } = await response.json();
     try {
+      const { yamlContent, filename } = await fetcher(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration?.sId}/export/yaml`
+      );
+
       const blob = new Blob([yamlContent], { type: "application/yaml" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -214,17 +202,26 @@ export function AgentDetailsDropdownMenu({
         type: "success",
       });
     } catch (error) {
-      sendNotification({
-        title: "Export failed",
-        description:
-          normalizeError(error).message || "An error occurred while exporting",
-        type: "error",
-      });
+      if (isAPIErrorResponse(error)) {
+        sendNotification({
+          title: "Export failed",
+          description: error.error.message,
+          type: "error",
+        });
+      } else {
+        sendNotification({
+          title: "Export failed",
+          description:
+            normalizeError(error).message ||
+            "An error occurred while exporting",
+          type: "error",
+        });
 
-      logger.error(
-        { workspaceId: owner.sId, agentId: agentConfiguration.sId },
-        "Failed to export agent configuration to YAML"
-      );
+        logger.error(
+          { workspaceId: owner.sId, agentId: agentConfiguration.sId },
+          "Failed to export agent configuration to YAML"
+        );
+      }
     } finally {
       setIsExporting(false);
     }

@@ -1,7 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { useFetcher } from "@app/lib/swr/swr";
 
 export function useDeleteAgentMessage({
   owner,
@@ -11,23 +10,16 @@ export function useDeleteAgentMessage({
   conversationId: string;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcher } = useFetcher();
 
   const { submit: deleteAgentMessage, isSubmitting } = useSubmitFunction(
     async (messageId: string) => {
-      const res = await clientFetch(
+      await fetcher(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}`,
         {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
         }
       );
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw normalizeError(errorData);
-      }
 
       sendNotification({
         title: "Message deleted",

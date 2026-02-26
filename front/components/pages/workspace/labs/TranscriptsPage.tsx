@@ -10,17 +10,19 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
 export function TranscriptsPage() {
+  const { fetcher } = useFetcher();
   const owner = useWorkspace();
   const router = useAppRouter();
 
@@ -61,32 +63,34 @@ export function TranscriptsPage() {
       return;
     }
 
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    if (!response.ok) {
-      sendNotification({
-        type: "error",
-        title: "Failed to disconnect provider",
-        description:
-          "Could not disconnect from your transcripts provider. Please try again.",
-      });
-    } else {
+    try {
+      await fetcher(
+        `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
+        { method: "DELETE" }
+      );
       sendNotification({
         type: "success",
         title: "Provider disconnected",
         description:
           "Your transcripts provider has been disconnected successfully.",
       });
-
       await mutateTranscriptsConfiguration();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to disconnect provider",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to disconnect provider",
+          description:
+            "Could not disconnect from your transcripts provider. Please try again.",
+        });
+      }
     }
-
-    return response;
   };
 
   const agents = agentConfigurations.filter((a) => a.status === "active");

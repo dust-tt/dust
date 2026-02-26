@@ -18,8 +18,8 @@ import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSource
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import {
   useCreateWebhookSource,
   useDeleteWebhookSource,
@@ -146,6 +146,7 @@ function WebhookSourceSheetContent({
 }: WebhookSourceSheetContentProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification(true);
+  const { fetcherWithBody, fetcher } = useFetcher();
   const [currentPageId, setCurrentPageId] = useState<
     WebhookSourceSheetMode["type"]
   >(mode.type);
@@ -285,42 +286,36 @@ function WebhookSourceSheetContent({
         }
 
         if (change.action === "add") {
-          const response = await clientFetch(
+          await fetcherWithBody([
             `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`,
             {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                webhookSourceId: webhookSource.sId,
-              }),
-            }
-          );
-          if (!response.ok) {
-            const body = await response.json();
-            throw new Error(body.error?.message ?? "Failed to add to space");
-          }
+              webhookSourceId: webhookSource.sId,
+            },
+            "POST",
+          ]);
         } else {
           const view = webhookSourceWithViews?.views.find(
             (v) => v.spaceId === space.sId
           );
           if (view) {
-            const response = await clientFetch(
+            await fetcher(
               `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views/${view.sId}`,
               {
                 method: "DELETE",
               }
             );
-            if (!response.ok) {
-              const body = await response.json();
-              throw new Error(
-                body.error?.message ?? "Failed to remove from space"
-              );
-            }
           }
         }
       }
     },
-    [webhookSource, spaces, owner.sId, webhookSourceWithViews]
+    [
+      webhookSource,
+      spaces,
+      owner.sId,
+      webhookSourceWithViews,
+      fetcherWithBody,
+      fetcher,
+    ]
   );
 
   const onEditSave = useCallback(async (): Promise<boolean> => {
@@ -335,20 +330,11 @@ function WebhookSourceSheetContent({
           const diff = diffWebhookSourceForm(editDefaults, values);
 
           if (diff.requestBody) {
-            const response = await clientFetch(
+            await fetcherWithBody([
               `/api/w/${owner.sId}/webhook_sources/views/${systemView.sId}`,
-              {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(diff.requestBody),
-              }
-            );
-            if (!response.ok) {
-              const body = await response.json();
-              throw new Error(
-                body.error?.message ?? "Failed to update webhook source view"
-              );
-            }
+              diff.requestBody,
+              "PATCH",
+            ]);
           }
 
           if (diff.sharingChanges && diff.sharingChanges.length > 0) {
@@ -421,6 +407,7 @@ function WebhookSourceSheetContent({
     applySharingChanges,
     mutateWebhookSourcesWithViews,
     sendNotification,
+    fetcherWithBody,
   ]);
 
   const changeTab = useCallback((next: string) => {

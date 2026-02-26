@@ -1,6 +1,6 @@
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -16,22 +16,20 @@ export function InvitationsDataTable({
   invitations,
 }: InvitationsDataTableProps) {
   const router = useAppRouter();
+  const { fetcher, fetcherWithBody } = useFetcher();
+
   async function onResendInvitation(invitationId: string): Promise<void> {
     if (!window.confirm("Are you sure you want to resend this invitation?")) {
       return;
     }
 
     try {
-      const r = await clientFetch(
+      const response = await fetcher(
         `/api/poke/workspaces/${owner.sId}/invitations/${invitationId}`,
         {
           method: "PATCH",
         }
       );
-      if (!r.ok) {
-        throw new Error(`Failed to resend invitation: ${r.statusText}`);
-      }
-      const response = await r.json();
       window.alert("Invitation resent successfully to " + response.email + ".");
       router.reload();
     } catch (e) {
@@ -46,21 +44,11 @@ export function InvitationsDataTable({
     }
 
     try {
-      const r = await clientFetch(
+      await fetcherWithBody([
         `/api/poke/workspaces/${owner.sId}/invitations`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-          }),
-        }
-      );
-      if (!r.ok) {
-        throw new Error(`Failed to revoke invitation: ${r.statusText}`);
-      }
+        { email },
+        "DELETE",
+      ]);
       router.reload();
     } catch (e) {
       console.error(e);

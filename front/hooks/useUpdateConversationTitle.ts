@@ -1,6 +1,6 @@
 import { useConversation, useConversations } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
@@ -12,6 +12,7 @@ export function useUpdateConversationTitle({
   conversationId: string | null;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const { mutateConversation } = useConversation({
     conversationId,
     workspaceId: owner.sId,
@@ -25,18 +26,13 @@ export function useUpdateConversationTitle({
         return false;
       }
 
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title }),
-        }
-      );
-
-      if (!response.ok) {
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+          { title },
+          "PATCH",
+        ]);
+      } catch {
         sendNotification({ type: "error", title: "Failed to edit title" });
         return false;
       }
@@ -52,6 +48,7 @@ export function useUpdateConversationTitle({
       mutateConversation,
       mutateConversations,
       sendNotification,
+      fetcherWithBody,
     ]
   );
 }

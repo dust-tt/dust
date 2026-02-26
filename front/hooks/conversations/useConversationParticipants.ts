@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
+import { isAPIErrorResponse } from "@app/types/error";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -101,6 +101,7 @@ export const useJoinConversation = ({
   conversationId?: string | null;
 }): (() => Promise<boolean>) => {
   const sendNotification = useSendNotification();
+  const { fetcher } = useFetcher();
 
   const { mutateConversations } = useConversations({ workspaceId: ownerId });
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -114,7 +115,7 @@ export const useJoinConversation = ({
       return false;
     }
     try {
-      const response = await clientFetch(
+      await fetcher(
         `/api/w/${ownerId}/assistant/conversations/${conversationId}/participants`,
         {
           method: "POST",
@@ -123,27 +124,23 @@ export const useJoinConversation = ({
           },
         }
       );
-      if (!response.ok) {
-        const { error } = await response.json();
-        if (error.type === "user_already_participant") {
-          sendNotification({
-            type: "error",
-            title: "Already subscribed",
-            description: "You are already a participant in this conversation.",
-          });
-          return false;
-        }
-
-        throw new Error("Failed to subscribe to the conversation.");
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Error",
-        description: "Failed to subscribe to the conversation.",
-      });
+      if (
+        isAPIErrorResponse(error) &&
+        error.error.type === "user_already_participant"
+      ) {
+        sendNotification({
+          type: "error",
+          title: "Already subscribed",
+          description: "You are already a participant in this conversation.",
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error",
+          description: "Failed to subscribe to the conversation.",
+        });
+      }
       return false;
     }
 
@@ -163,6 +160,7 @@ export const useJoinConversation = ({
     mutateConversations,
     mutateConversationParticipants,
     conversationId,
+    fetcher,
   ]);
 
   return joinConversation;

@@ -1,14 +1,15 @@
 import { useConversations } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
 export function useDeleteConversation(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
   const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { fetcher } = useFetcher();
 
   return useCallback(
     async (
@@ -19,21 +20,27 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
         return false;
       }
 
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}?forceDelete=${forceDelete}`,
-        {
-          method: "DELETE",
+      try {
+        await fetcher(
+          `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}?forceDelete=${forceDelete}`,
+          {
+            method: "DELETE",
+          }
+        );
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            title: "Error deleting conversation.",
+            description: e.error.message,
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: "Error deleting conversation.",
+            description: "An error occurred",
+            type: "error",
+          });
         }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-
-        sendNotification({
-          title: "Error deleting conversation.",
-          description: errorData.message,
-          type: "error",
-        });
         return false;
       }
 
@@ -44,6 +51,6 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
 
       return true;
     },
-    [owner.sId, mutateConversations, sendNotification]
+    [owner.sId, mutateConversations, sendNotification, fetcher]
   );
 }

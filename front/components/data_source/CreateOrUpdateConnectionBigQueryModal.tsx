@@ -3,8 +3,8 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { clientFetch } from "@app/lib/egress/client";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
   ConnectorProvider,
@@ -68,6 +68,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionBigQueryModalProps) {
   const { isDark } = useTheme();
+  const { fetcherWithBody } = useFetcher();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<string>("");
@@ -175,32 +176,26 @@ export function CreateOrUpdateConnectionBigQueryModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const createCredentialsRes = await clientFetch(
-      `/api/w/${owner.sId}/credentials`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    let data: any;
+    try {
+      data = await fetcherWithBody([
+        `/api/w/${owner.sId}/credentials`,
+        {
           provider: "bigquery" as const,
           credentials: {
             ...credentialsState.credentials,
             location: selectedLocation,
           } as BigQueryCredentialsWithLocation,
-        } as PostCredentialsBody),
-      }
-    );
-
-    if (!createCredentialsRes.ok) {
+        } as PostCredentialsBody,
+        "POST",
+      ]);
+    } catch {
       setError("Failed to create connection: cannot verify those credentials.");
       setIsLoading(false);
       return false;
     }
 
     // Then we can try to create the connector.
-    const data = await createCredentialsRes.json();
-
     const createDataSourceRes = await createDatasource({
       provider: "bigquery",
       connectionId: data.credentials.id,
@@ -249,49 +244,37 @@ export function CreateOrUpdateConnectionBigQueryModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const credentialsRes = await clientFetch(
-      `/api/w/${owner.sId}/credentials`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    let data: any;
+    try {
+      data = await fetcherWithBody([
+        `/api/w/${owner.sId}/credentials`,
+        {
           provider: "bigquery",
           credentials: {
             ...credentialsState.credentials,
             location: selectedLocation,
           } as BigQueryCredentialsWithLocation,
-        }),
-      }
-    );
-
-    if (!credentialsRes.ok) {
+        },
+        "POST",
+      ]);
+    } catch {
       setError("Failed to update connection: cannot verify those credentials.");
       setIsLoading(false);
       return false;
     }
 
-    const data = await credentialsRes.json();
-
-    const updateConnectorRes = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSourceToUpdate.sId}/managed/update`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSourceToUpdate.sId}/managed/update`,
+        {
           connectionId: data.credentials.id,
-        }),
-      }
-    );
-
-    setIsLoading(false);
-
-    if (!updateConnectorRes.ok) {
-      const err = await updateConnectorRes.json();
-      const maybeConnectorsError = "error" in err && err.error.connectors_error;
+        },
+        "POST",
+      ]);
+    } catch (e: any) {
+      setIsLoading(false);
+      const maybeConnectorsError =
+        e && "error" in e && e.error?.connectors_error;
 
       if (
         isConnectorsAPIError(maybeConnectorsError) &&
@@ -301,12 +284,15 @@ export function CreateOrUpdateConnectionBigQueryModal({
           `Failed to update BigQuery connection: ${maybeConnectorsError.message}`
         );
       } else {
-        setError(`Failed to update BigQuery connection: ${err.error.message}`);
+        setError(
+          `Failed to update BigQuery connection: ${e?.error?.message ?? "Unknown error"}`
+        );
       }
 
       return false;
     }
 
+    setIsLoading(false);
     onSuccess(dataSourceToUpdate);
     return true;
   };

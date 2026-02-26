@@ -11,8 +11,8 @@ import {
   HEADQUARTERS_REGION_OPTIONS,
   LANGUAGE_OPTIONS,
 } from "@app/lib/api/hubspot/contactFormSchema";
-import { clientFetch } from "@app/lib/egress/client";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { useFetcher } from "@app/lib/swr/swr";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -39,6 +39,7 @@ interface ContactFormProps {
 }
 
 function useContactFormSubmit() {
+  const { fetcherWithBody } = useFetcher();
   const [submitResult, setSubmitResult] =
     useState<ContactSubmitResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -68,22 +69,18 @@ function useContactFormSubmit() {
     });
 
     try {
-      const response = await clientFetch("/api/home/contact/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result: ContactSubmitResponse = await fetcherWithBody([
+        "/api/home/contact/submit",
+        {
           formData: data,
           tracking,
           pageUri: window.location.href,
           pageName: document.title,
-        }),
-      });
+        },
+        "POST",
+      ]);
 
-      const result: ContactSubmitResponse = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         setSubmitError(
           result.error ?? "Failed to submit form. Please try again."
         );

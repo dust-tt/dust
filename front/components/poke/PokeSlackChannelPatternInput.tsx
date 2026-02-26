@@ -1,7 +1,7 @@
 import { SlackAutoReadPatternsTable } from "@app/components/poke/data_sources/slack/table";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import { usePokeSpaces } from "@app/poke/swr/spaces";
 import type { SlackAutoReadPattern } from "@app/types/connectors/slack";
 import type { DataSourceType } from "@app/types/data_source";
@@ -35,27 +35,20 @@ export function SlackChannelPatternInput({
     spaceId: "",
   });
 
+  const { fetcherWithBody } = useFetcher();
   const { isLoading, data: spaces } = usePokeSpaces({ owner });
   const sendNotification = useSendNotification();
 
   const { submit: updatePatterns } = useSubmitFunction(
     async (patterns: SlackAutoReadPattern[]) => {
-      const r = await clientFetch(
+      await fetcherWithBody([
         `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/config`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            configKey: "autoReadChannelPatterns",
-            configValue: JSON.stringify(patterns),
-          }),
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to update autoReadChannelPatterns.");
-      }
+          configKey: "autoReadChannelPatterns",
+          configValue: JSON.stringify(patterns),
+        },
+        "POST",
+      ]);
     }
   );
 

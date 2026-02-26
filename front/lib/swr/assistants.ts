@@ -8,10 +8,8 @@ import type {
   ToolLatencyRow,
   ToolLatencyView,
 } from "@app/lib/api/assistant/observability/tool_latency";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
-  getErrorFromResponse,
   useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
@@ -43,6 +41,7 @@ import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
@@ -591,18 +590,20 @@ export function useDeleteAgentConfiguration({
     disabled: true, // We only use the hook to mutate the cache
   });
 
+  const { fetcher } = useFetcher();
+
   const doDelete = async () => {
     if (!agentConfiguration) {
       return;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
-      {
-        method: "DELETE",
-      }
-    );
+    try {
+      await fetcher(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-    if (res.ok) {
       void mutateAgentConfiguration();
       void mutateAgentConfigurations();
 
@@ -611,16 +612,23 @@ export function useDeleteAgentConfiguration({
         title: `Successfully deleted ${agentConfiguration.name}`,
         description: `${agentConfiguration.name} was successfully archived.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Error archiving ${agentConfiguration.name}`,
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Error archiving ${agentConfiguration.name}`,
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Error archiving ${agentConfiguration.name}`,
+          description: "An error occurred",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doDelete;
@@ -641,24 +649,19 @@ export function useBatchDeleteAgentConfigurations({
       disabled: true, // We only use the hook to mutate the cache
     });
 
+  const { fetcherWithBody } = useFetcher();
+
   const doDelete = async () => {
     if (agentConfigurationIds.length === 0) {
       return;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/delete`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          agentConfigurationIds,
-        }),
-      }
-    );
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/assistant/agent_configurations/delete`,
+        { agentConfigurationIds },
+        "POST",
+      ]);
 
-    if (res.ok) {
       void mutateAgentConfigurations();
 
       sendNotification({
@@ -666,16 +669,23 @@ export function useBatchDeleteAgentConfigurations({
         title: `Successfully archived agents`,
         description: `${agentConfigurationIds.length} agents were successfully archived.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Error archiving agents`,
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Error archiving agents`,
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Error archiving agents`,
+          description: "An error occurred",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doDelete;
@@ -702,6 +712,8 @@ export function useUpdateUserFavorite({
 
   const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false);
 
+  const { fetcherWithBody } = useFetcher();
+
   const doUpdate = useCallback(
     async (userFavorite: boolean) => {
       setIsUpdatingFavorite(true);
@@ -711,43 +723,36 @@ export function useUpdateUserFavorite({
           userFavorite: userFavorite,
         };
 
-        const res = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${owner.sId}/members/me/agent_favorite`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          }
-        );
+          body,
+          "POST",
+        ]);
 
-        if (res.ok) {
-          sendNotification({
-            title: `Assistant ${
-              userFavorite ? "added to favorites" : "removed from favorites"
-            }`,
-            type: "success",
-          });
-          await mutateCurrentAgentConfiguration();
-          await mutateAgentConfigurations();
-          return true;
-        } else {
-          const data = await res.json();
+        sendNotification({
+          title: `Assistant ${
+            userFavorite ? "added to favorites" : "removed from favorites"
+          }`,
+          type: "success",
+        });
+        await mutateCurrentAgentConfiguration();
+        await mutateAgentConfigurations();
+        return true;
+      } catch (error) {
+        if (isAPIErrorResponse(error)) {
           sendNotification({
             title: `Error ${userFavorite ? "adding" : "removing"} Assistant`,
-            description: data.error.message,
+            description: error.error.message,
             type: "error",
           });
-          return false;
+        } else {
+          sendNotification({
+            title: `Error updating agent list.`,
+            description:
+              normalizeError(error).message || "An unknown error occurred",
+            type: "error",
+          });
         }
-      } catch (error) {
-        sendNotification({
-          title: `Error updating agent list.`,
-          description:
-            normalizeError(error).message || "An unknown error occurred",
-          type: "error",
-        });
         return false;
       } finally {
         setIsUpdatingFavorite(false);
@@ -759,6 +764,7 @@ export function useUpdateUserFavorite({
       mutateCurrentAgentConfiguration,
       owner.sId,
       sendNotification,
+      fetcherWithBody,
     ]
   );
   return { updateUserFavorite: doUpdate, isUpdatingFavorite };
@@ -785,18 +791,20 @@ export function useRestoreAgentConfiguration({
     disabled: true, // We only use the hook to mutate the cache
   });
 
+  const { fetcher } = useFetcher();
+
   const doRestore = async () => {
     if (!agentConfiguration) {
       return;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
-      {
-        method: "POST",
-      }
-    );
+    try {
+      await fetcher(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
+        {
+          method: "POST",
+        }
+      );
 
-    if (res.ok) {
       void mutateAgentConfiguration();
       void mutateAgentConfigurations();
 
@@ -805,16 +813,23 @@ export function useRestoreAgentConfiguration({
         title: `Successfully restored ${agentConfiguration.name}`,
         description: `${agentConfiguration.name} was successfully restored.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Error restoring ${agentConfiguration.name}`,
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Error restoring ${agentConfiguration.name}`,
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Error restoring ${agentConfiguration.name}`,
+          description: "An error occurred",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doRestore;
@@ -825,26 +840,20 @@ export function useBatchUpdateAgentTags({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { fetcherWithBody } = useFetcher();
+
   const batchUpdateAgentTags = useCallback(
     async (
       agentIds: string[],
       body: { addTagIds?: string[]; removeTagIds?: string[] }
     ) => {
-      await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            agentIds,
-            ...body,
-          }),
-        }
-      );
+        { agentIds, ...body },
+        "POST",
+      ]);
     },
-    [owner]
+    [owner, fetcherWithBody]
   );
 
   return batchUpdateAgentTags;
@@ -855,23 +864,17 @@ export function useBatchUpdateAgentScope({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { fetcherWithBody } = useFetcher();
+
   const batchUpdateAgentScope = useCallback(
     async (agentIds: string[], body: { scope: "visible" | "hidden" }) => {
-      await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_scope`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            agentIds,
-            ...body,
-          }),
-        }
-      );
+        { agentIds, ...body },
+        "POST",
+      ]);
     },
-    [owner]
+    [owner, fetcherWithBody]
   );
 
   return batchUpdateAgentScope;

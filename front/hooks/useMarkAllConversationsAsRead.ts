@@ -5,7 +5,7 @@ import {
   useSpaceUnreadConversationIds,
 } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -20,6 +20,7 @@ export function useMarkAllConversationsAsRead({
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
@@ -49,27 +50,16 @@ export function useMarkAllConversationsAsRead({
       const total = conversationIds.length;
 
       try {
-        const response = await clientFetch(
+        const result = await fetcherWithBody([
           `/api/w/${owner.sId}/assistant/conversations/bulk-actions`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "mark_as_read",
-              conversationIds,
-            }),
-          }
-        );
+            action: "mark_as_read",
+            conversationIds,
+          },
+          "POST",
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to mark conversations as read");
-        }
-
-        const { success } = await response.json();
-
-        if (!success) {
+        if (!(result as { success: boolean }).success) {
           throw new Error("Failed to mark conversations as read");
         }
 
@@ -100,6 +90,7 @@ export function useMarkAllConversationsAsRead({
       mutateSpaceConversations,
       sendNotification,
       mutateUnreadConversationIds,
+      fetcherWithBody,
     ]
   );
 

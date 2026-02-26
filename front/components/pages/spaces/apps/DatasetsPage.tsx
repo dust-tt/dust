@@ -1,6 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   LinkWrapper,
   useAppRouter,
@@ -8,12 +7,14 @@ import {
 } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
+import { useFetcher } from "@app/lib/swr/swr";
 import { classNames } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import { Button, Chip, PlusIcon, Spinner, TrashIcon } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
 export function DatasetsPage() {
+  const { fetcher } = useFetcher();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -46,14 +47,9 @@ export function DatasetsPage() {
         validateVariant: "warning",
       })
     ) {
-      await clientFetch(
+      await fetcher(
         `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${datasetName}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { method: "DELETE" }
       );
       await router.push(
         `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`

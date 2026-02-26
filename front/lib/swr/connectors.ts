@@ -1,11 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type {
@@ -15,6 +10,7 @@ import type {
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo, useState } from "react";
 import type { Fetcher } from "swr";
@@ -148,6 +144,7 @@ export function useToggleChatBot({
   botName: string;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const { mutateConfig } = useConnectorConfig({
     owner,
@@ -167,22 +164,15 @@ export function useToggleChatBot({
   }
 
   const doToggle = async (botEnabled: boolean) => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: botEnabled.toString() }),
-      }
-    );
-
-    if (res.ok) {
-      void mutateConfig();
-
+    try {
       const response: GetOrPostManagedDataSourceConfigResponseBody =
-        await res.json();
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
+          { configValue: botEnabled.toString() },
+          "POST",
+        ]);
+
+      void mutateConfig();
 
       const { configValue } = response;
 
@@ -196,14 +186,20 @@ export function useToggleChatBot({
           : `The ${botName} has been disabled.`,
       });
       return configValue;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Failed to Enable ${botName}`,
-        description: errorData.message,
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Failed to Enable ${botName}`,
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Failed to Enable ${botName}`,
+          description: "An error occurred",
+        });
+      }
       return null;
     }
   };
@@ -219,6 +215,7 @@ export function useToggleDiscordChatBot({
   owner: LightWorkspaceType;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const { mutateConfig } = useConnectorConfig({
     owner,
@@ -239,22 +236,15 @@ export function useToggleDiscordChatBot({
   }
 
   const doToggle = async (botEnabled: boolean) => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: botEnabled.toString() }),
-      }
-    );
-
-    if (res.ok) {
-      void mutateConfig();
-
+    try {
       const response: GetOrPostManagedDataSourceConfigResponseBody =
-        await res.json();
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
+          { configValue: botEnabled.toString() },
+          "POST",
+        ]);
+
+      void mutateConfig();
 
       const { configValue } = response;
 
@@ -268,14 +258,20 @@ export function useToggleDiscordChatBot({
           : "The Discord bot has been disabled.",
       });
       return configValue;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: "Failed to Enable Discord Bot",
-        description: errorData.message,
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to Enable Discord Bot",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to Enable Discord Bot",
+          description: "An error occurred",
+        });
+      }
       return null;
     }
   };
@@ -292,6 +288,7 @@ export function useTogglePdfEnabled({
 }) {
   const sendNotification = useSendNotification();
   const [isLoading, setIsLoading] = useState(false);
+  const { fetcherWithBody } = useFetcher();
 
   const { mutateConfig } = useConnectorConfig({
     owner,
@@ -316,22 +313,15 @@ export function useTogglePdfEnabled({
 
   const doToggle = async (pdfEnabled: boolean) => {
     setIsLoading(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/pdfEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: pdfEnabled.toString() }),
-      }
-    );
-
-    if (res.ok) {
-      void mutateConfig();
-
+    try {
       const response: GetOrPostManagedDataSourceConfigResponseBody =
-        await res.json();
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/pdfEnabled`,
+          { configValue: pdfEnabled.toString() },
+          "POST",
+        ]);
+
+      void mutateConfig();
 
       const { configValue } = response;
 
@@ -344,14 +334,20 @@ export function useTogglePdfEnabled({
       });
       setIsLoading(false);
       return configValue;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: "Failed to update PDF sync setting",
-        description: errorData.message,
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update PDF sync setting",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to update PDF sync setting",
+          description: "An error occurred",
+        });
+      }
       setIsLoading(false);
       return null;
     }

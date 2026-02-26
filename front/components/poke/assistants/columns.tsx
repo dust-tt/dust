@@ -1,6 +1,5 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import config from "@app/lib/api/config";
-import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -17,7 +16,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,
   agentsRetention: Record<string, number>,
-  onAgentArchivedOrRestored: () => Promise<void>
+  onAgentArchivedOrRestored: () => Promise<void>,
+  fetcherFn: (url: string, init?: RequestInit) => Promise<any>
 ): ColumnDef<PokeAgentConfigurationType>[] {
   return [
     {
@@ -124,12 +124,14 @@ export function makeColumnsForAssistants(
                   ? archiveAssistant(
                       owner,
                       onAgentArchivedOrRestored,
-                      assistant
+                      assistant,
+                      fetcherFn
                     )
                   : restoreAssistant(
                       owner,
                       onAgentArchivedOrRestored,
-                      assistant
+                      assistant,
+                      fetcherFn
                     ));
               }}
             />
@@ -155,7 +157,8 @@ export function makeColumnsForAssistants(
 async function archiveAssistant(
   owner: LightWorkspaceType,
   onAgentArchived: () => Promise<void>,
-  agentConfiguration: PokeAgentConfigurationType
+  agentConfiguration: PokeAgentConfigurationType,
+  fetcherFn: (url: string, init?: RequestInit) => Promise<any>
 ) {
   if (
     !window.confirm(
@@ -166,18 +169,12 @@ async function archiveAssistant(
   }
 
   try {
-    const r = await clientFetch(
+    await fetcherFn(
       `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}`,
       {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
       }
     );
-    if (!r.ok) {
-      throw new Error("Failed to archive agent configuration.");
-    }
 
     await onAgentArchived();
   } catch (e) {
@@ -189,7 +186,8 @@ async function archiveAssistant(
 async function restoreAssistant(
   owner: LightWorkspaceType,
   onAgentRestored: () => Promise<void>,
-  agentConfiguration: PokeAgentConfigurationType
+  agentConfiguration: PokeAgentConfigurationType,
+  fetcherFn: (url: string, init?: RequestInit) => Promise<any>
 ) {
   if (
     !window.confirm(
@@ -200,18 +198,12 @@ async function restoreAssistant(
   }
 
   try {
-    const r = await clientFetch(
+    await fetcherFn(
       `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}/restore`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       }
     );
-    if (!r.ok) {
-      throw new Error("Failed to restore agent configuration.");
-    }
 
     await onAgentRestored();
   } catch (e) {

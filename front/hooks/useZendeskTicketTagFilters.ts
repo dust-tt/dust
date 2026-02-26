@@ -1,8 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DataSourceType } from "@app/types/data_source";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
@@ -14,6 +15,7 @@ export function useZendeskTicketTagFilters({
   dataSource: DataSourceType;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const {
     configValue: includedTagsConfig,
@@ -58,44 +60,30 @@ export function useZendeskTicketTagFilters({
         }
 
         const newTags = [...currentTags, tag];
-        const res = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
-          {
-            headers: { "Content-Type": "application/json" },
-            method: "POST",
-            body: JSON.stringify({ configValue: JSON.stringify(newTags) }),
-          }
-        );
+          { configValue: JSON.stringify(newTags) },
+          "POST",
+        ]);
 
-        if (res.ok) {
-          if (type === "include") {
-            await mutateIncludedTags();
-          } else {
-            await mutateExcludedTags();
-          }
-          sendNotification({
-            type: "success",
-            title: "Tag added",
-            description: `Added "${tag}" to ${type} list.`,
-          });
+        if (type === "include") {
+          await mutateIncludedTags();
         } else {
-          const err = await res.json();
-          sendNotification({
-            type: "error",
-            title: "Failed to add tag",
-            description:
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              err.error?.connectors_error?.message ||
-              "An unknown error occurred",
-          });
+          await mutateExcludedTags();
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
+        sendNotification({
+          type: "success",
+          title: "Tag added",
+          description: `Added "${tag}" to ${type} list.`,
+        });
       } catch (error) {
         sendNotification({
           type: "error",
           title: "Failed to add tag",
-          description: "An error occurred while adding the tag.",
+          description: isAPIErrorResponse(error)
+            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              error.error.message || "An unknown error occurred"
+            : "An error occurred while adding the tag.",
         });
       }
     },
@@ -107,6 +95,7 @@ export function useZendeskTicketTagFilters({
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,
+      fetcherWithBody,
     ]
   );
 
@@ -130,44 +119,30 @@ export function useZendeskTicketTagFilters({
         }
 
         const newTags = currentTags.filter((t: string) => t !== tag);
-        const res = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
-          {
-            headers: { "Content-Type": "application/json" },
-            method: "POST",
-            body: JSON.stringify({ configValue: JSON.stringify(newTags) }),
-          }
-        );
+          { configValue: JSON.stringify(newTags) },
+          "POST",
+        ]);
 
-        if (res.ok) {
-          if (type === "include") {
-            await mutateIncludedTags();
-          } else {
-            await mutateExcludedTags();
-          }
-          sendNotification({
-            type: "success",
-            title: "Tag removed",
-            description: `Removed "${tag}" from ${type} list.`,
-          });
+        if (type === "include") {
+          await mutateIncludedTags();
         } else {
-          const err = await res.json();
-          sendNotification({
-            type: "error",
-            title: "Failed to remove tag",
-            description:
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              err.error?.connectors_error?.message ||
-              "An unknown error occurred",
-          });
+          await mutateExcludedTags();
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
+        sendNotification({
+          type: "success",
+          title: "Tag removed",
+          description: `Removed "${tag}" from ${type} list.`,
+        });
       } catch (error) {
         sendNotification({
           type: "error",
           title: "Failed to remove tag",
-          description: "An error occurred while removing the tag.",
+          description: isAPIErrorResponse(error)
+            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              error.error.message || "An unknown error occurred"
+            : "An error occurred while removing the tag.",
         });
       }
     },
@@ -179,6 +154,7 @@ export function useZendeskTicketTagFilters({
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,
+      fetcherWithBody,
     ]
   );
 

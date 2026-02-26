@@ -2,7 +2,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
@@ -27,6 +27,7 @@ export function JsonSchemaSection({
 
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const generateSchemaFromInstructions = async () => {
     const agentInstructions = getAgentInstructions();
@@ -48,24 +49,13 @@ export function JsonSchemaSection({
         fullInstructions += `\n\nTool description:\n${toolDescription}`;
       }
 
-      const res = await clientFetch(
+      const data = await fetcherWithBody([
         `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            instructions: fullInstructions,
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        throw new Error("Failed to generate schema");
-      }
-
-      const data = await res.json();
+          instructions: fullInstructions,
+        },
+        "POST",
+      ]);
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const schemaObject = data.schema || null;
       const schemaString = schemaObject

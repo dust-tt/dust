@@ -1,8 +1,8 @@
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DocumentType } from "@app/types/document";
@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 
 export function DataSourceSearchPage() {
   const owner = useWorkspace();
+  const { fetcher } = useFetcher();
   useSetPokePageTitle(`${owner.name} - Search`);
 
   const dsId = useRequiredPathParam("dsId");
@@ -82,26 +83,22 @@ export function DataSourceSearchPage() {
       searchParams.append("top_k", "10");
       searchParams.append("full_text", "false");
 
-      const searchRes = await clientFetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/search?` +
-          searchParams.toString(),
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+      try {
+        const documentsResult = await fetcher(
+          `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/search?` +
+            searchParams.toString()
+        );
+        setIsSearching(false);
+        if (isCancelled) {
+          return;
         }
-      );
-      setIsSearching(false);
-      if (isCancelled) {
-        return;
-      }
-
-      if (searchRes.ok) {
         setSearchError(false);
-        const documentsResult = await searchRes.json();
         setDocuments(documentsResult.documents);
-      } else {
+      } catch {
+        setIsSearching(false);
+        if (isCancelled) {
+          return;
+        }
         setSearchError(true);
         setDocuments([]);
       }
@@ -110,7 +107,7 @@ export function DataSourceSearchPage() {
     return () => {
       isCancelled = true;
     };
-  }, [dataSourceDetails, owner.sId, searchQuery, tagsIn, tagsNotIn]);
+  }, [dataSourceDetails, owner.sId, searchQuery, tagsIn, tagsNotIn, fetcher]);
 
   if (isLoading) {
     return (

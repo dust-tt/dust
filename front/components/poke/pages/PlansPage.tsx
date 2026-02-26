@@ -8,9 +8,10 @@ import {
   useEditingPlan,
 } from "@app/components/poke/plans/form";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { usePokePlans } from "@app/lib/swr/poke";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
 import {
   Button,
@@ -29,6 +30,7 @@ export function PlansPage() {
   useSetPokePageTitle("Plans");
 
   const { mutate } = useSWRConfig();
+  const { fetcherWithBody } = useFetcher();
 
   const sendNotification = useSendNotification();
 
@@ -82,21 +84,26 @@ export function PlansPage() {
 
     const requestBody: PlanType = toPlanType(editingPlan);
 
-    const r = await clientFetch("/api/poke/plans", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(
-        requestBody satisfies t.TypeOf<typeof PlanTypeSchema>
-      ),
-    });
-    if (!r.ok) {
-      sendNotification({
-        title: "Error saving plan",
-        type: "error",
-        description: `Something went wrong: ${r.status} ${await r.text()}`,
-      });
+    try {
+      await fetcherWithBody([
+        "/api/poke/plans",
+        requestBody satisfies t.TypeOf<typeof PlanTypeSchema>,
+        "POST",
+      ]);
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          title: "Error saving plan",
+          type: "error",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          title: "Error saving plan",
+          type: "error",
+          description: "An error occurred",
+        });
+      }
       return;
     }
 

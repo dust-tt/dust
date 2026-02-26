@@ -1,10 +1,11 @@
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { usePokeTables } from "@app/poke/swr";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DataSourceType } from "@app/types/data_source";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -30,6 +31,7 @@ interface QueryContentProps {
 }
 
 function QueryContent({ owner, dataSource }: QueryContentProps) {
+  const { fetcherWithBody } = useFetcher();
   const [query, setQuery] = useState("");
   const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
   const [isExecuting, setIsExecuting] = useState(false);
@@ -71,30 +73,22 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
     setQueryResult(null);
 
     try {
-      const response = await clientFetch(
+      const result = await fetcherWithBody([
         `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/query`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query,
-            tableIds: Array.from(selectedTables),
-          }),
-        }
-      );
+          query,
+          tableIds: Array.from(selectedTables),
+        },
+        "POST",
+      ]);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        throw new Error(errorData.error?.message || "Failed to execute query");
-      }
-
-      const result = await response.json();
       setQueryResult(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      if (isAPIErrorResponse(err)) {
+        setError(err.error.message);
+      } else {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      }
     } finally {
       setIsExecuting(false);
     }

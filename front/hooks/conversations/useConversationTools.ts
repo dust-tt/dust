@@ -1,4 +1,3 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type {
@@ -58,6 +57,8 @@ export function useAddDeleteConversationTool({
     },
   });
 
+  const { fetcherWithBody } = useFetcher();
+
   const addTool = useCallback(
     async (mcpServerViewId: string): Promise<boolean> => {
       if (!conversationId) {
@@ -65,25 +66,15 @@ export function useAddDeleteConversationTool({
       }
 
       try {
-        const response = await clientFetch(
+        const result = await fetcherWithBody([
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "add",
-              mcp_server_view_id: mcpServerViewId,
-            } satisfies ConversationToolActionRequest),
-          }
-        );
+            action: "add",
+            mcp_server_view_id: mcpServerViewId,
+          } satisfies ConversationToolActionRequest,
+          "POST",
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to add tool to conversation");
-        }
-
-        const result = await response.json();
         if (result.success) {
           // Refetch the tools list to get the updated state
           void mutateConversationTools();
@@ -96,7 +87,7 @@ export function useAddDeleteConversationTool({
         return false;
       }
     },
-    [conversationId, workspaceId, mutateConversationTools]
+    [conversationId, workspaceId, mutateConversationTools, fetcherWithBody]
   );
 
   const deleteTool = useCallback(
@@ -106,25 +97,15 @@ export function useAddDeleteConversationTool({
       }
 
       try {
-        const response = await clientFetch(
+        const result = await fetcherWithBody([
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "delete",
-              mcp_server_view_id: mcpServerViewId,
-            } satisfies ConversationToolActionRequest),
-          }
-        );
+            action: "delete",
+            mcp_server_view_id: mcpServerViewId,
+          } satisfies ConversationToolActionRequest,
+          "POST",
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to remove tool from conversation");
-        }
-
-        const result = await response.json();
         if (result.success) {
           // Refetch the tools list to get the updated state
           void mutateConversationTools();
@@ -137,7 +118,7 @@ export function useAddDeleteConversationTool({
         return false;
       }
     },
-    [conversationId, workspaceId, mutateConversationTools]
+    [conversationId, workspaceId, mutateConversationTools, fetcherWithBody]
   );
 
   return { addTool, deleteTool };

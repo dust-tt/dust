@@ -1,11 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  emptyArray,
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
@@ -21,6 +15,7 @@ import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -210,15 +205,17 @@ export function useArchiveSkill({
       disabled: true,
     });
 
+  const { fetcher } = useFetcher();
+
   const doArchive = async () => {
     if (!skill.sId) {
       return;
     }
-    const res = await clientFetch(`/api/w/${owner.sId}/skills/${skill.sId}`, {
-      method: "DELETE",
-    });
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}`, {
+        method: "DELETE",
+      });
 
-    if (res.ok) {
       void mutateArchivedSkills();
       void mutateActiveSkills();
       void mutateSuggestedSkills();
@@ -228,16 +225,23 @@ export function useArchiveSkill({
         title: `Successfully archived ${skill.name}`,
         description: `${skill.name} was successfully archived.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Error archiving ${skill.name}`,
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Error archiving ${skill.name}`,
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Error archiving ${skill.name}`,
+          description: "An unexpected error occurred.",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doArchive;
@@ -264,18 +268,17 @@ export function useRestoreSkill({
       disabled: true,
     });
 
+  const { fetcher } = useFetcher();
+
   const doRestore = async () => {
     if (!skill.sId) {
       return;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/skills/${skill.sId}/restore`,
-      {
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}/restore`, {
         method: "POST",
-      }
-    );
+      });
 
-    if (res.ok) {
       void mutateArchivedSkills();
       void mutateActiveSkills();
 
@@ -284,16 +287,23 @@ export function useRestoreSkill({
         title: `Successfully restored ${skill.name}`,
         description: `${skill.name} was successfully restored.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Error restoring ${skill.name}`,
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Error restoring ${skill.name}`,
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Error restoring ${skill.name}`,
+          description: "An unexpected error occurred.",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doRestore;

@@ -1,10 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PatchAgentTagsRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/tags";
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { TagKind, TagType } from "@app/types/tag";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -94,35 +94,39 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
+  const { fetcherWithBody } = useFetcher();
 
   const createTag = async (
     name: string,
     agentIds?: string[]
   ): Promise<TagType | null> => {
-    const res = await clientFetch(`/api/w/${owner.sId}/tags`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, agentIds }),
-    });
+    try {
+      const json = await fetcherWithBody([
+        `/api/w/${owner.sId}/tags`,
+        { name, agentIds },
+        "POST",
+      ]);
 
-    if (!res.ok) {
-      const json = await res.json();
-      sendNotification({
-        type: "error",
-        title: "Failed to create tag",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: json.error.message || "Failed to create tag",
-      });
-
+      void mutateTags();
+      void mutateTagsUsage();
+      return json.tag;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to create tag",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: e.error.message || "Failed to create tag",
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to create tag",
+          description: "An error occurred",
+        });
+      }
       return null;
     }
-
-    void mutateTags();
-    void mutateTagsUsage();
-    const json = await res.json();
-    return json.tag;
   };
 
   return {
@@ -134,35 +138,37 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
+  const { fetcher } = useFetcher();
 
   const deleteTag = async (tagId: string) => {
-    const res = await clientFetch(`/api/w/${owner.sId}/tags/${tagId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      const json = await res.json();
-
-      sendNotification({
-        type: "error",
-        title: "Failed to delete tag",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: json.error.message || "Failed to delete tag",
+    try {
+      await fetcher(`/api/w/${owner.sId}/tags/${tagId}`, {
+        method: "DELETE",
       });
 
-      return;
+      sendNotification({
+        type: "success",
+        title: "Tag deleted",
+      });
+
+      void mutateTags();
+      void mutateTagsUsage();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete tag",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: e.error.message || "Failed to delete tag",
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete tag",
+          description: "An error occurred",
+        });
+      }
     }
-
-    sendNotification({
-      type: "success",
-      title: "Tag deleted",
-    });
-
-    void mutateTags();
-    void mutateTagsUsage();
   };
 
   return {
@@ -180,38 +186,39 @@ export function useUpdateTag({
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
+  const { fetcherWithBody } = useFetcher();
 
   const updateTag = async ({ name, kind }: { name: string; kind: TagKind }) => {
-    const res = await clientFetch(`/api/w/${owner.sId}/tags/${tagId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        kind,
-      }),
-    });
-
-    if (!res.ok) {
-      const json = await res.json();
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/tags/${tagId}`,
+        { name, kind },
+        "PUT",
+      ]);
 
       sendNotification({
-        type: "error",
-        title: "Failed to delete tag",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: json.error.message || "Failed to create tag",
+        type: "success",
+        title: "Tag updated",
       });
-      return;
+
+      void mutateTags();
+      void mutateTagsUsage();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete tag",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: e.error.message || "Failed to create tag",
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete tag",
+          description: "An error occurred",
+        });
+      }
     }
-
-    sendNotification({
-      type: "success",
-      title: "Tag updated",
-    });
-
-    void mutateTags();
-    void mutateTagsUsage();
   };
 
   return {
@@ -220,20 +227,17 @@ export function useUpdateTag({
 }
 
 export function useUpdateAgentTags({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcherWithBody } = useFetcher();
+
   const updateAgentTags = useCallback(
     async (agentConfigurationId: string, body: PatchAgentTagsRequestBody) => {
-      await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/tags`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
+        body,
+        "PATCH",
+      ]);
     },
-    [owner]
+    [owner, fetcherWithBody]
   );
 
   return updateAgentTags;

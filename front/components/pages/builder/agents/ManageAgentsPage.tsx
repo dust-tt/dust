@@ -15,8 +15,8 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useFetcher } from "@app/lib/swr/swr";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -24,6 +24,7 @@ import {
 } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { TagType } from "@app/types/tag";
 import { isAdmin } from "@app/types/user";
 import {
@@ -86,6 +87,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 }
 
 export function ManageAgentsPage() {
+  const { fetcherWithBody } = useFetcher();
   const owner = useWorkspace();
   const { user, isBuilder } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
@@ -204,29 +206,25 @@ export function ManageAgentsPage() {
       setShowDisabledFreeWorkspacePopup(agent.sId);
       return;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
+        {
           status:
             agent.status === "disabled_by_admin"
               ? "active"
               : "disabled_by_admin",
-        }),
+        },
+        "PATCH",
+      ]);
+      await mutateAgentConfigurations();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        window.alert(`Error toggling agent: ${e.error.message}`);
+      } else {
+        window.alert("Error toggling agent: An unexpected error occurred");
       }
-    );
-
-    if (!res.ok) {
-      const data = await res.json();
-      window.alert(`Error toggling agent: ${data.error.message}`);
-      return;
     }
-
-    await mutateAgentConfigurations();
   };
 
   // if search is active, show search tabs, otherwise show all tabs except search tabs

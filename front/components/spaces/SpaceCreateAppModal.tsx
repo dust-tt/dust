@@ -1,11 +1,11 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useApps } from "@app/lib/swr/apps";
+import { useFetcher } from "@app/lib/swr/swr";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
 import { APP_NAME_REGEXP } from "@app/types/app";
-import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -37,6 +37,7 @@ export const SpaceCreateAppModal = ({
 }: SpaceCreateAppModalProps) => {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -65,22 +66,16 @@ export const SpaceCreateAppModal = ({
     // Validation is already done in onChange handlers and Save button disabled logic
     // Only proceed if all validations pass (button wouldn't be enabled otherwise)
     if (name.trim() && description.trim() && !nameError) {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${space.sId}/apps`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      try {
+        const response: PostAppResponseBody = await fetcherWithBody([
+          `/api/w/${owner.sId}/spaces/${space.sId}/apps`,
+          {
             name: name.slice(0, MODELS_STRING_MAX_LENGTH),
             description: description.slice(0, MODELS_STRING_MAX_LENGTH),
-          }),
-        }
-      );
-      if (res.ok) {
+          },
+          "POST",
+        ]);
         await mutateApps();
-        const response: PostAppResponseBody = await res.json();
         const { app } = response;
         await router.push(
           `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`
@@ -92,13 +87,20 @@ export const SpaceCreateAppModal = ({
           title: "Successfully created app",
           description: "App was successfully created.",
         });
-      } else {
-        const err: { error: APIError } = await res.json();
-        sendNotification({
-          title: "Error Saving App",
-          type: "error",
-          description: `Error: ${err.error.message}`,
-        });
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            title: "Error Saving App",
+            type: "error",
+            description: `Error: ${e.error.message}`,
+          });
+        } else {
+          sendNotification({
+            title: "Error Saving App",
+            type: "error",
+            description: "An error occurred",
+          });
+        }
       }
     }
   };

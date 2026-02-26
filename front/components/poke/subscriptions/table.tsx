@@ -10,7 +10,6 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   FREE_NO_PLAN_CODE,
   isDustCompanyPlan,
@@ -19,6 +18,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import { isDevelopment } from "@app/types/shared/env";
@@ -422,6 +422,7 @@ function UpgradeDowngradeModal({
   programmaticUsageConfig,
 }: UpgradeDowngradeModalProps) {
   const router = useAppRouter();
+  const { fetcher, fetcherWithBody } = useFetcher();
   const { plans } = usePokePlans();
 
   const { submit: onDowngrade } = useSubmitFunction(async () => {
@@ -433,18 +434,9 @@ function UpgradeDowngradeModal({
       return;
     }
     try {
-      const r = await clientFetch(
-        `/api/poke/workspaces/${owner.sId}/downgrade`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to downgrade workspace.");
-      }
+      await fetcher(`/api/poke/workspaces/${owner.sId}/downgrade`, {
+        method: "POST",
+      });
       router.reload();
     } catch (e) {
       console.error(e);
@@ -462,21 +454,11 @@ function UpgradeDowngradeModal({
         return;
       }
       try {
-        const r = await clientFetch(
+        await fetcherWithBody([
           `/api/poke/workspaces/${owner.sId}/upgrade`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              planCode: plan.code,
-            }),
-          }
-        );
-        if (!r.ok) {
-          throw new Error("Failed to upgrade workspace to plan.");
-        }
+          { planCode: plan.code },
+          "POST",
+        ]);
         router.reload();
       } catch (e) {
         console.error(e);

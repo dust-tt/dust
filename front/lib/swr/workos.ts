@@ -1,14 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  emptyArray,
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -49,25 +44,16 @@ export function useRemoveWorkspaceDomain({
   const { mutate } = useWorkspaceDomains({ owner, disabled: true });
   const sendNotification = useSendNotification();
 
+  const { fetcherWithBody } = useFetcher();
+
   const doRemoveWorkspaceDomain = async (domain: string) => {
-    const response = await clientFetch(`/api/w/${owner.sId}/domains`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ domain }),
-    });
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/domains`,
+        { domain },
+        "DELETE",
+      ]);
 
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
-        title: "Failed to remove domain",
-        description: errorData.message,
-      });
-
-      return null;
-    } else {
       void mutate();
 
       sendNotification({
@@ -75,6 +61,21 @@ export function useRemoveWorkspaceDomain({
         title: "Domain removed",
         description: "The domain has been removed from the workspace.",
       });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to remove domain",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to remove domain",
+          description: "An unexpected error occurred.",
+        });
+      }
+      return null;
     }
   };
 
@@ -116,24 +117,14 @@ export function useDisableWorkOSSSOConnection({
   const { mutate } = useWorkOSSSOStatus({ owner, disabled: true });
   const sendNotification = useSendNotification();
 
-  const doDisableWorkOSSSOConnection = async () => {
-    const response = await clientFetch(`/api/w/${owner.sId}/sso`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const { fetcher } = useFetcher();
 
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
-        title: "Failed to disable WorkOS SSO",
-        description: errorData.message,
+  const doDisableWorkOSSSOConnection = async () => {
+    try {
+      await fetcher(`/api/w/${owner.sId}/sso`, {
+        method: "DELETE",
       });
 
-      return null;
-    } else {
       void mutate();
 
       sendNotification({
@@ -141,6 +132,21 @@ export function useDisableWorkOSSSOConnection({
         title: "WorkOS SSO disabled",
         description: "WorkOS SSO has been disabled for the workspace.",
       });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to disable WorkOS SSO",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to disable WorkOS SSO",
+          description: "An unexpected error occurred.",
+        });
+      }
+      return null;
     }
   };
 
@@ -182,24 +188,14 @@ export function useDisableWorkOSDirectorySyncConnection({
   const { mutate } = useWorkOSDSyncStatus({ owner, disabled: true });
   const sendNotification = useSendNotification();
 
-  const doDisableWorkOSDirectorySyncConnection = async () => {
-    const response = await clientFetch(`/api/w/${owner.sId}/dsync`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const { fetcher } = useFetcher();
 
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
-        title: "Failed to disable WorkOS Directory Sync",
-        description: errorData.message,
+  const doDisableWorkOSDirectorySyncConnection = async () => {
+    try {
+      await fetcher(`/api/w/${owner.sId}/dsync`, {
+        method: "DELETE",
       });
 
-      return null;
-    } else {
       void mutate();
 
       sendNotification({
@@ -208,6 +204,21 @@ export function useDisableWorkOSDirectorySyncConnection({
         description:
           "WorkOS Directory Sync has been disabled for the workspace.",
       });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to disable WorkOS Directory Sync",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to disable WorkOS Directory Sync",
+          description: "An unexpected error occurred.",
+        });
+      }
+      return null;
     }
   };
 

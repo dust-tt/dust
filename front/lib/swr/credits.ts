@@ -1,10 +1,10 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
 } from "@app/types/credits";
+import { isAPIErrorResponse } from "@app/types/error";
 import { useCallback, useSyncExternalStore } from "react";
 import type { Fetcher } from "swr";
 
@@ -104,6 +104,8 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
     workspaceId,
   });
 
+  const { fetcherWithBody } = useFetcher();
+
   const purchaseCredits = useCallback(
     async (amountDollars: number): Promise<PurchaseResult> => {
       if (getPurchaseLoading(workspaceId)) {
@@ -113,27 +115,11 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
       setPurchaseLoading(workspaceId, true);
 
       try {
-        const response = await clientFetch(
+        const responseData = await fetcherWithBody([
           `/api/w/${workspaceId}/credits/purchase`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ amountDollars }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          const errorMessage =
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            errorData.error?.message || "Failed to purchase credits";
-
-          return { status: "error", message: errorMessage };
-        }
-
-        const responseData = await response.json();
+          { amountDollars },
+          "POST",
+        ]);
 
         if (responseData.paymentUrl) {
           return { status: "redirect", paymentUrl: responseData.paymentUrl };
@@ -144,6 +130,12 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
 
         return { status: "success" };
       } catch (err) {
+        if (isAPIErrorResponse(err)) {
+          const errorMessage =
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            err.error?.message || "Failed to purchase credits";
+          return { status: "error", message: errorMessage };
+        }
         const errorMessage =
           err instanceof Error ? err.message : "Failed to purchase credits";
 
@@ -152,7 +144,7 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
         setPurchaseLoading(workspaceId, false);
       }
     },
-    [workspaceId, mutateCredits]
+    [workspaceId, mutateCredits, fetcherWithBody]
   );
 
   return {

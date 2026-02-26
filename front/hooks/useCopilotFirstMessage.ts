@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { TemplateInfo } from "@app/types/assistant/templates";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
@@ -64,6 +64,8 @@ export function useCopilotFirstMessage({
   conversationId?: string;
   agentConfigurationId?: string;
 }) {
+  const { fetcher } = useFetcher();
+
   const { endpoint, useCase } = useMemo(
     () =>
       getCopilotScenario({
@@ -77,19 +79,9 @@ export function useCopilotFirstMessage({
   );
 
   const getFirstMessage = useCallback(async (): Promise<string> => {
-    const res = await clientFetch(endpoint, {
-      method: "GET",
-    });
-
-    if (!res.ok) {
-      throw new Error(
-        `Failed to fetch copilot first message: ${res.status} ${res.statusText}`
-      );
-    }
-
-    const data = (await res.json()) as string;
+    const data = (await fetcher(endpoint)) as string;
     return data;
-  }, [endpoint]);
+  }, [endpoint, fetcher]);
 
   return { getFirstMessage, useCase };
 }

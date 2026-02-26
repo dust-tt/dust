@@ -1,8 +1,9 @@
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
+import { useFetcher } from "@app/lib/swr/swr";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
+import { isAPIErrorResponse } from "@app/types/error";
 import { SliderToggle, Spinner } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
@@ -31,6 +32,7 @@ export function KillPage() {
   const { killSwitches, isKillSwitchesLoading } = usePokeKillSwitches();
   const [loading, setLoading] = useState(false);
   const { mutate } = useSWRConfig();
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
 
   async function toggleKillSwitch(killSwitch: KillSwitchType) {
@@ -53,32 +55,35 @@ export function KillPage() {
       }
     }
 
-    const res = await clientFetch(`/api/poke/kill`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        enabled: !isEnabled,
-        type: killSwitch,
-      }),
-    });
-
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/poke/kill`,
+        {
+          enabled: !isEnabled,
+          type: killSwitch,
+        },
+        "POST",
+      ]);
       await mutate("/api/poke/kill");
       sendNotification({
         title: "Kill switch updated",
         description: `Kill switch ${killSwitch} updated`,
         type: "success",
       });
-    } else {
-      const errorData = await res.json();
-      console.error(errorData);
-      sendNotification({
-        title: "Error updating kill switch",
-        description: `Error: ${errorData.error.message}`,
-        type: "error",
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          title: "Error updating kill switch",
+          description: `Error: ${e.error.message}`,
+          type: "error",
+        });
+      } else {
+        sendNotification({
+          title: "Error updating kill switch",
+          description: "An error occurred",
+          type: "error",
+        });
+      }
     }
 
     setLoading(false);

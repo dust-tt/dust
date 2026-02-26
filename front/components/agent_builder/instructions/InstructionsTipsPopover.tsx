@@ -1,7 +1,9 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { clientFetch } from "@app/lib/egress/client";
+import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
 import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -31,6 +33,7 @@ interface InstructionTipsPopoverProps {
 
 // TODO(copilot): Remove the whole InstructionTipsPopover when copilot is released.
 export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
+  const { fetcherWithBody } = useFetcher();
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -67,6 +70,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
         owner,
         currentInstructions,
         formerSuggestions: [],
+        fetcherWithBody,
       });
 
       if (result.isErr()) {
@@ -95,7 +99,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
       lastInstructionsRef.current = currentInstructions;
       setStatus("loaded");
     },
-    [owner]
+    [owner, fetcherWithBody]
   );
 
   function onOpenChange(isOpen: boolean) {
@@ -172,34 +176,34 @@ async function getRankedSuggestions({
   owner,
   currentInstructions,
   formerSuggestions,
+  fetcherWithBody,
 }: {
   owner: WorkspaceType;
   currentInstructions: string;
   formerSuggestions: string[];
+  fetcherWithBody: FetcherWithBodyFn;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
-  const res = await clientFetch(
-    `/api/w/${owner.sId}/assistant/builder/suggestions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+  try {
+    const data = await fetcherWithBody([
+      `/api/w/${owner.sId}/assistant/builder/suggestions`,
+      {
         type: "instructions",
         inputs: {
           current_instructions: currentInstructions,
           former_suggestions: formerSuggestions,
         },
-      }),
-    }
-  );
+      },
+      "POST",
+    ]);
 
-  if (!res.ok) {
+    return new Ok(data);
+  } catch (e) {
+    if (isAPIErrorResponse(e)) {
+      return new Err(e.error);
+    }
     return new Err({
       type: "internal_server_error",
       message: "Failed to get suggestions",
     });
   }
-
-  return new Ok(await res.json());
 }

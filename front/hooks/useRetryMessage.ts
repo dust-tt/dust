@@ -1,8 +1,10 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
 export function useRetryMessage({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcher } = useFetcher();
+
   return useCallback(
     async ({
       conversationId,
@@ -13,16 +15,13 @@ export function useRetryMessage({ owner }: { owner: LightWorkspaceType }) {
       messageId: string;
       blockedOnly?: boolean;
     }): Promise<void> => {
-      await clientFetch(
+      await fetcher(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
         }
       );
     },
-    [owner.sId]
+    [owner.sId, fetcher]
   );
 }

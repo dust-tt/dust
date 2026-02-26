@@ -3,13 +3,13 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   isProPlan,
   isUpgraded,
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import {
   usePerSeatPricing,
   useSubscriptionTrialInfo,
@@ -17,6 +17,7 @@ import {
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
   BillingPeriod,
   SubscriptionPerSeatPricing,
@@ -186,6 +187,7 @@ function CancelFreeTrialDialog({
 }
 
 export function SubscriptionPage() {
+  const { fetcherWithBody } = useFetcher();
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();
@@ -242,22 +244,31 @@ export function SubscriptionPage() {
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
-      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          billingPeriod,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
+      try {
+        const content = await fetcherWithBody([
+          `/api/w/${owner.sId}/subscriptions`,
+          { billingPeriod },
+          "POST",
+        ]);
+        if (content.checkoutUrl) {
+          await router.push(content.checkoutUrl);
+        } else if (content.success) {
+          router.reload(); // We cannot swr the plan so we just reload the page.
+        }
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            type: "error",
+            title: "Subscription failed",
+            description: e.error.message,
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Subscription failed",
+            description: "Failed to subscribe to a new plan.",
+          });
+        }
         // Then we remove the query params to avoid going through this logic again.
         void router.push(
           { pathname: `/w/${owner.sId}/subscription` },
@@ -266,13 +277,6 @@ export function SubscriptionPage() {
             shallow: true,
           }
         );
-      } else {
-        const content = await res.json();
-        if (content.checkoutUrl) {
-          await router.push(content.checkoutUrl);
-        } else if (content.success) {
-          router.reload(); // We cannot swr the plan so we just reload the page.
-        }
       }
     });
 
@@ -287,23 +291,14 @@ export function SubscriptionPage() {
     submit: handleUpgradeToBusiness,
     isSubmitting: isUpgradingToBusiness,
   } = useSubmitFunction(async () => {
-    const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        action: "upgrade_to_business",
-      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
-    });
-
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Upgrade failed",
-        description: "Failed to upgrade to Enterprise seat-based plan.",
-      });
-    } else {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/subscriptions`,
+        {
+          action: "upgrade_to_business",
+        } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>,
+        "PATCH",
+      ]);
       sendNotification({
         type: "success",
         title: "Upgrade successful",
@@ -311,36 +306,46 @@ export function SubscriptionPage() {
           "Your workspace has been upgraded to Enterprise seat-based plan.",
       });
       router.reload();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Upgrade failed",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Upgrade failed",
+          description: "Failed to upgrade to Enterprise seat-based plan.",
+        });
+      }
     }
   });
 
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/subscriptions`,
+          {
             action: "pay_now",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>,
+          "PATCH",
+        ]);
+        sendNotification({
+          type: "success",
+          title: "Upgrade successful",
+          description: "Redirecting...",
         });
-        if (!res.ok) {
-          sendNotification({
-            type: "error",
-            title: "Transition to paid plan failed",
-            description: "Failed to transition to paid plan.",
-          });
-        } else {
-          sendNotification({
-            type: "success",
-            title: "Upgrade successful",
-            description: "Redirecting...",
-          });
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-          router.reload();
-        }
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        router.reload();
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Transition to paid plan failed",
+          description: "Failed to transition to paid plan.",
+        });
       } finally {
         setShowSkipFreeTrialDialog(false);
       }
@@ -349,29 +354,25 @@ export function SubscriptionPage() {
   const { submit: cancelFreeTrial, isSubmitting: cancelFreeTrialSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/subscriptions`,
+          {
             action: "cancel_free_trial",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>,
+          "PATCH",
+        ]);
+        sendNotification({
+          type: "success",
+          title: "Free trial cancelled",
+          description: "Redirecting...",
         });
-        if (!res.ok) {
-          sendNotification({
-            type: "error",
-            title: "Failed to open billing dashboard",
-            description: "Failed to open billing dashboard.",
-          });
-        } else {
-          sendNotification({
-            type: "success",
-            title: "Free trial cancelled",
-            description: "Redirecting...",
-          });
-          await router.push(`/w/${owner.sId}/subscription`);
-        }
+        await router.push(`/w/${owner.sId}/subscription`);
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to open billing dashboard",
+          description: "Failed to open billing dashboard.",
+        });
       } finally {
         setShowCancelFreeTrialDialog(false);
       }

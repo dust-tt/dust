@@ -1,10 +1,11 @@
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthProvider, OAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
@@ -59,6 +60,7 @@ export function BotToggle({
 
   const [isChangingBot, setIsChangingBot] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const regionContext = useRegionContext();
 
   const createBotConnectionAndDataSource = async () => {
@@ -76,26 +78,23 @@ export function BotToggle({
 
     const connectionId = cRes.value.connection_id;
 
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    try {
+      const data = await fetcherWithBody([
+        `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
+        {
           provider: connectorProvider,
           connectionId,
           name: undefined,
           configuration: null,
-        } satisfies PostDataSourceRequestBody),
+        } satisfies PostDataSourceRequestBody,
+        "POST",
+      ]);
+      return new Ok(data);
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        return new Err(e.error?.connectors_error);
       }
-    );
-
-    if (res.ok) {
-      return new Ok(await res.json());
-    } else {
-      return new Err((await res.json()).error?.connectors_error);
+      return new Err(undefined);
     }
   };
 

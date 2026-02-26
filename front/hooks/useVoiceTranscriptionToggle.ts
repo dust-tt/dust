@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
@@ -12,6 +12,7 @@ export function useVoiceTranscriptionToggle({
 }: UseVoiceTranscriptionToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [isEnabled, setIsEnabled] = useState(
     owner.metadata?.allowVoiceTranscription !== false
   );
@@ -19,23 +20,15 @@ export function useVoiceTranscriptionToggle({
   const doToggleVoiceTranscription = async () => {
     setIsChanging(true);
     try {
-      const res = await clientFetch(`/api/w/${owner.sId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      await fetcherWithBody([
+        `/api/w/${owner.sId}`,
+        {
           allowVoiceTranscription: !isEnabled,
-        }),
-      });
+        },
+        "POST",
+      ]);
       setIsEnabled(!isEnabled);
-
-      if (!res.ok) {
-        throw new Error("Failed to update Voice transcription setting");
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Failed to update Voice transcription setting",

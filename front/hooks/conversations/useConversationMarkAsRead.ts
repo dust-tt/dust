@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -17,6 +17,7 @@ export function useConversationMarkAsRead({
   workspaceId: string;
 }) {
   const { mutateConversations } = useConversations({ workspaceId });
+  const { fetcherWithBody } = useFetcher();
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId,
@@ -34,22 +35,13 @@ export function useConversationMarkAsRead({
       }
     ): Promise<void> => {
       try {
-        const response = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
           {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              read: true,
-            } satisfies PatchConversationsRequestBody),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to mark conversation as read");
-        }
+            read: true,
+          } satisfies PatchConversationsRequestBody,
+          "PATCH",
+        ]);
         if (options?.mutateList) {
           void mutateConversations(
             (prevState: ConversationWithoutContentType[] | undefined) =>
@@ -94,6 +86,7 @@ export function useConversationMarkAsRead({
       mutateConversations,
       mutateSpaceSummary,
       conversation?.spaceId,
+      fetcherWithBody,
     ]
   );
 

@@ -1,8 +1,8 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -27,6 +27,7 @@ export function ZendeskRateLimitConfig({
 }) {
   const { isDark } = useTheme();
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [loading, setLoading] = useState(false);
   const [rateLimitInput, setRateLimitInput] = useState("");
 
@@ -53,15 +54,12 @@ export function ZendeskRateLimitConfig({
     configValue: number | string
   ) => {
     setLoading(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
-      {
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-        body: JSON.stringify({ configValue: configValue.toString() }),
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
+        { configValue: configValue.toString() },
+        "POST",
+      ]);
       await mutateRateLimitConfig();
       setLoading(false);
       sendNotification({
@@ -69,15 +67,14 @@ export function ZendeskRateLimitConfig({
         title: "Rate limit transactions per second updated",
         description: `The rate limit transactions per second has been updated to ${configValue}.`,
       });
-    } else {
+    } catch (e: any) {
       setLoading(false);
-      const err = await res.json();
       sendNotification({
         type: "info",
         title: "Failed to edit Zendesk configuration",
         description:
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          err.error?.connectors_error.message || "An unknown error occurred",
+          e?.error?.connectors_error?.message || "An unknown error occurred",
       });
     }
     return true;

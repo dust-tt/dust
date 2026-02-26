@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightContentNode } from "@app/types/api/public/spaces";
 import { isSpreadsheetFolderContentNode } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
@@ -34,6 +34,7 @@ export const DocumentOrTableDeleteDialog = ({
   onDeleteSuccess,
 }: DocumentOrTableDeleteDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { fetcher } = useFetcher();
   const params = useQueryParams(["viewType", DocumentDeletionKey]);
   const isOpen =
     params[DocumentDeletionKey].value === "true" &&
@@ -71,10 +72,7 @@ export const DocumentOrTableDeleteDialog = ({
       setIsLoading(true);
       const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${contentNode.type}s/${encodeURIComponent(contentNode.internalId)}`;
 
-      const res = await clientFetch(endpoint, { method: "DELETE" });
-      if (!res.ok) {
-        throw new Error(`Failed to delete ${contentNode.type}`);
-      }
+      await fetcher(endpoint, { method: "DELETE" });
 
       sendNotification({
         type: "success",

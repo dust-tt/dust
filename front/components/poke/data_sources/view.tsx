@@ -7,7 +7,7 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import {
   decodeSqids,
   formatTimestampToFriendlyDate,
@@ -18,6 +18,7 @@ import type { InternalConnectorType } from "@app/types/connectors/connectors_api
 import type { CoreAPIDataSource } from "@app/types/core/data_source";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { isAPIErrorResponse } from "@app/types/error";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -380,6 +381,7 @@ function CheckConnectorStuck({
   isRunning,
   temporalWorkspace,
 }: CheckConnectorStuckProps) {
+  const { fetcher } = useFetcher();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckStuckResponseBody | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -387,18 +389,16 @@ function CheckConnectorStuck({
   const checkStuck = async () => {
     setIsLoading(true);
     try {
-      const res = await clientFetch(
+      const data = await fetcher(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/check-stuck`
       );
-      if (!res.ok) {
-        const err = await res.json();
-        alert(`Failed to check connector status: ${JSON.stringify(err)}`);
-        return;
-      }
-      const data = await res.json();
       setResult(data);
     } catch (error) {
-      alert(`Error checking connector: ${error}`);
+      if (isAPIErrorResponse(error)) {
+        alert(`Failed to check connector status: ${JSON.stringify(error)}`);
+      } else {
+        alert(`Error checking connector: ${error}`);
+      }
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,6 @@
 import { useConversationFeedbacks } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
@@ -12,6 +12,7 @@ export function useMessageFeedback({
   conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const { mutateReactions } = useConversationFeedbacks({
     conversationId: conversationId ?? "",
     workspaceId: owner.sId,
@@ -36,22 +37,17 @@ export function useMessageFeedback({
         return false;
       }
 
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/feedbacks`,
-        {
-          method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/feedbacks`,
+          {
             thumbDirection,
             feedbackContent,
             isConversationShared,
-          }),
-        }
-      );
+          },
+          shouldRemoveExistingFeedback ? "DELETE" : "POST",
+        ]);
 
-      if (response.ok) {
         if (feedbackContent && !shouldRemoveExistingFeedback) {
           sendNotification({
             title: "Feedback submitted",
@@ -63,10 +59,16 @@ export function useMessageFeedback({
 
         await mutateReactions();
         return true;
+      } catch {
+        return false;
       }
-
-      return false;
     },
-    [owner.sId, conversationId, sendNotification, mutateReactions]
+    [
+      owner.sId,
+      conversationId,
+      sendNotification,
+      mutateReactions,
+      fetcherWithBody,
+    ]
   );
 }

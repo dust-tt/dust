@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import { useCallback } from "react";
 
@@ -11,6 +11,7 @@ export function usePostOnboardingFollowUp({
   conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const postFollowUp = useCallback(
     async (toolId: string): Promise<boolean> => {
@@ -18,18 +19,11 @@ export function usePostOnboardingFollowUp({
         return false;
       }
       try {
-        const response = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/onboarding-followup`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ toolId }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to post onboarding follow-up");
-        }
+          { toolId },
+          "POST",
+        ]);
 
         return true;
       } catch (error) {
@@ -46,7 +40,7 @@ export function usePostOnboardingFollowUp({
         return false;
       }
     },
-    [workspaceId, conversationId, sendNotification]
+    [workspaceId, conversationId, sendNotification, fetcherWithBody]
   );
 
   return { postFollowUp };

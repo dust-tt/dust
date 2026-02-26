@@ -1,12 +1,13 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
 import logger from "@app/logger/logger";
+import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
@@ -18,6 +19,7 @@ interface UseYAMLUploadOptions {
 export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [isUploading, setIsUploading] = useState(false);
 
   const uploadYAMLFile = useCallback(
@@ -39,41 +41,52 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       setIsUploading(true);
       const yamlContent = await file.text();
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ yamlContent }),
+
+      let result: {
+        agentConfiguration: { sId: string; name: string; scope: string };
+        skippedActions?: { name: string; reason: string }[];
+      };
+
+      try {
+        result = await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
+          { yamlContent },
+          "POST",
+        ]);
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          logger.error(
+            {
+              workspaceId: owner.sId,
+            },
+            e.error.message || "Failed to create agent from YAML file."
+          );
+
+          sendNotification({
+            title: "Agent creation failed",
+            description:
+              e.error.message ||
+              "An error occurred while creating the agent from YAML",
+            type: "error",
+          });
+        } else {
+          logger.error(
+            {
+              workspaceId: owner.sId,
+            },
+            normalizeError(e).message ||
+              "Failed to create agent from YAML file."
+          );
+
+          sendNotification({
+            title: "Agent creation failed",
+            description: "An error occurred while creating the agent from YAML",
+            type: "error",
+          });
         }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        logger.error(
-          {
-            workspaceId: owner.sId,
-          },
-
-          normalizeError(errorData).message ||
-            "Failed to create agent from YAML file."
-        );
-
-        sendNotification({
-          title: "Agent creation failed",
-          description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            errorData.error?.message ||
-            "An error occurred while creating the agent from YAML",
-          type: "error",
-        });
         setIsUploading(false);
         return;
       }
-
-      const result = await response.json();
 
       trackEvent({
         area: TRACKING_AREAS.BUILDER,
@@ -83,7 +96,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
           agent_id: result.agentConfiguration.sId,
           source: "yaml_upload",
           scope: result.agentConfiguration.scope,
-          has_skipped_actions: result.skippedActions?.length > 0,
+          has_skipped_actions: (result.skippedActions?.length ?? 0) > 0,
         },
       });
 
@@ -115,7 +128,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       setIsUploading(false);
     },
-    [owner.sId, router, sendNotification]
+    [owner.sId, router, sendNotification, fetcherWithBody]
   );
 
   const triggerYAMLUpload = useCallback(() => {

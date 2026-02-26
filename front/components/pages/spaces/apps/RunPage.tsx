@@ -3,14 +3,15 @@ import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
 import { cleanSpecificationFromCore } from "@app/lib/api/run";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
+import { useFetcher } from "@app/lib/swr/swr";
 import Custom404 from "@app/pages/404";
 import { Button, CheckCircleIcon, ClockIcon, Spinner } from "@dust-tt/sparkle";
 import { useContext, useState } from "react";
 
 export function RunPage() {
+  const { fetcherWithBody } = useFetcher();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const runId = useRequiredPathParam("runId");
@@ -61,20 +62,15 @@ export function RunPage() {
 
     cleanSpecificationFromCore(specCopy);
 
-    await clientFetch(
+    await fetcherWithBody([
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/state`,
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          specification: JSON.stringify(specCopy),
-          config: JSON.stringify(run.config.blocks),
-          run: run.run_id,
-        }),
-      }
-    );
+        specification: JSON.stringify(specCopy),
+        config: JSON.stringify(run.config.blocks),
+        run: run.run_id,
+      },
+      "POST",
+    ]);
 
     setIsLoading(false);
     setSavedRunId(run.run_id);

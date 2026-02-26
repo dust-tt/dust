@@ -1,9 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentMemoriesResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/memories";
 import type { PatchAgentMemoryRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/memories/[mId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -50,40 +50,49 @@ export function useUpdateAgentMemory({
     disabled: true,
   });
 
+  const { fetcherWithBody } = useFetcher();
+
   const updateMemory = useCallback(
     async (memoryId: string, body: PatchAgentMemoryRequestBody) => {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/memories/${memoryId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      try {
+        const json = await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/memories/${memoryId}`,
+          body,
+          "PATCH",
+        ]);
 
-      if (!res.ok) {
-        const json = await res.json();
         sendNotification({
-          type: "error",
-          title: "Failed to update memory",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          description: json.error?.message || "Failed to update memory",
+          type: "success",
+          title: "Memory updated",
         });
+
+        void mutateMemories();
+        return json.memory;
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            type: "error",
+            title: "Failed to update memory",
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            description: e.error?.message || "Failed to update memory",
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Failed to update memory",
+            description: "Failed to update memory",
+          });
+        }
         return null;
       }
-
-      sendNotification({
-        type: "success",
-        title: "Memory updated",
-      });
-
-      void mutateMemories();
-      const json = await res.json();
-      return json.memory;
     },
-    [owner.sId, agentConfiguration, sendNotification, mutateMemories]
+    [
+      owner.sId,
+      agentConfiguration,
+      sendNotification,
+      mutateMemories,
+      fetcherWithBody,
+    ]
   );
 
   return { updateMemory };
@@ -103,38 +112,44 @@ export function useDeleteAgentMemory({
     disabled: true,
   });
 
+  const { fetcher } = useFetcher();
+
   const deleteMemory = useCallback(
     async (memoryId: string) => {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/memories/${memoryId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      try {
+        await fetcher(
+          `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/memories/${memoryId}`,
+          {
+            method: "DELETE",
+          }
+        );
 
-      if (!res.ok) {
-        const json = await res.json();
         sendNotification({
-          type: "error",
-          title: "Failed to delete memory",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          description: json.error?.message || "Failed to delete memory",
+          type: "success",
+          title: "Memory deleted",
         });
+
+        void mutateMemories();
+        return true;
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            type: "error",
+            title: "Failed to delete memory",
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            description: e.error?.message || "Failed to delete memory",
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Failed to delete memory",
+            description: "Failed to delete memory",
+          });
+        }
         return false;
       }
-
-      sendNotification({
-        type: "success",
-        title: "Memory deleted",
-      });
-
-      void mutateMemories();
-      return true;
     },
-    [owner.sId, agentConfiguration, sendNotification, mutateMemories]
+    [owner.sId, agentConfiguration, sendNotification, mutateMemories, fetcher]
   );
 
   return { deleteMemory };

@@ -1,17 +1,12 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  emptyArray,
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
 import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -88,8 +83,10 @@ export function useUserApprovals(owner: LightWorkspaceType) {
 }
 
 export function useDeleteMetadata() {
+  const { fetcher } = useFetcher();
+
   const deleteMetadata = async (prefix: string) => {
-    return clientFetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
+    return fetcher(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
       method: "DELETE",
     });
   };
@@ -121,6 +118,7 @@ export function useIsOnboardingConversation(
 export function usePatchUser() {
   const { mutateUser } = useUser();
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const patchUser = async (
     firstName: string,
@@ -132,23 +130,21 @@ export function usePatchUser() {
     emailProvider?: EmailProviderType,
     workspaceId?: string
   ) => {
-    const res = await clientFetch("/api/user", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        firstName,
-        lastName,
-        jobType,
-        imageUrl,
-        favoritePlatforms,
-        emailProvider,
-        workspaceId,
-      }),
-    });
+    try {
+      const data = await fetcherWithBody([
+        "/api/user",
+        {
+          firstName,
+          lastName,
+          jobType,
+          imageUrl,
+          favoritePlatforms,
+          emailProvider,
+          workspaceId,
+        },
+        "PATCH",
+      ]);
 
-    if (res.ok) {
       if (notifySuccess) {
         sendNotification({
           type: "success",
@@ -159,14 +155,21 @@ export function usePatchUser() {
 
       await mutateUser();
 
-      return res.json();
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error Updating User",
-        description: `Error: ${errorData.message}`,
-      });
+      return data;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Error Updating User",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error Updating User",
+          description: "An error occurred",
+        });
+      }
 
       return null;
     }

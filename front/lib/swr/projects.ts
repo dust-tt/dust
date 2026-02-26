@@ -1,16 +1,12 @@
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   FileWithCreatorType,
   GetProjectFilesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -46,23 +42,14 @@ export function useProjectFiles({
 }
 
 export function useDeleteProjectFile({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
 
   return async (fileId: string): Promise<Result<void, Error>> => {
     try {
-      const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}`, {
+      await fetcher(`/api/w/${owner.sId}/files/${fileId}`, {
         method: "DELETE",
       });
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to delete file",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
 
       sendNotification({
         type: "success",
@@ -71,6 +58,14 @@ export function useDeleteProjectFile({ owner }: { owner: LightWorkspaceType }) {
 
       return new Ok(undefined);
     } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete file",
+          description: e.error.message,
+        });
+        return new Err(new Error(e.error.message));
+      }
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
@@ -83,6 +78,7 @@ export function useDeleteProjectFile({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
 
   return async (
@@ -90,26 +86,11 @@ export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
     fileName: string
   ): Promise<Result<void, Error>> => {
     try {
-      const res = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/files/${fileId}/rename`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ fileName }),
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to rename file",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
+        { fileName },
+        "PATCH",
+      ]);
 
       sendNotification({
         type: "success",
@@ -118,6 +99,14 @@ export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
 
       return new Ok(undefined);
     } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to rename file",
+          description: e.error.message,
+        });
+        return new Err(new Error(e.error.message));
+      }
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",

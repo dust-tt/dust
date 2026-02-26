@@ -1,4 +1,3 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
@@ -12,6 +11,7 @@ import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spa
 import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/cancel";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 import type { AppType } from "@app/types/app";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { RunRunType } from "@app/types/run";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -218,31 +218,28 @@ export function useCancelRun({
   owner: LightWorkspaceType;
   app: AppType | null;
 }) {
+  const { fetcher } = useFetcher();
+
   const doCancel = async (runId: string): Promise<boolean> => {
     if (!app) {
       return false;
     }
 
     try {
-      const res = await clientFetch(
+      const data: PostRunCancelResponseBody = await fetcher(
         `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${runId}/cancel`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
         }
       );
 
-      if (!res.ok) {
-        logger.error({ err: await res.text() }, "Failed to cancel run");
-        return false;
-      }
-
-      const data: PostRunCancelResponseBody = await res.json();
       return data.success;
     } catch (error) {
-      logger.error({ err: error }, "Error canceling run");
+      if (isAPIErrorResponse(error)) {
+        logger.error({ err: error.error.message }, "Failed to cancel run");
+      } else {
+        logger.error({ err: error }, "Error canceling run");
+      }
       return false;
     }
   };

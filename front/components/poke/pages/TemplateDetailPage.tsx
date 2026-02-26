@@ -19,8 +19,8 @@ import {
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import { generateTailwindBackgroundColors } from "@app/types/assistant/avatar";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
@@ -432,6 +432,7 @@ export function TemplateDetailPage() {
   const templateId = useRequiredPathParam("tId");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useAppRouter();
+  const { fetcher, fetcherWithBody } = useFetcher();
 
   const sendNotification = useSendNotification();
 
@@ -466,19 +467,7 @@ export function TemplateDetailPage() {
           const url = assistantTemplate
             ? `/api/poke/templates/${assistantTemplate.sId}`
             : "/api/poke/templates";
-          const r = await clientFetch(url, {
-            method,
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(cleanedValues),
-          });
-
-          if (!r.ok) {
-            throw new Error(
-              `Something went wrong: ${r.status} ${await r.text()}`
-            );
-          }
+          await fetcherWithBody([url, cleanedValues, method]);
           sendNotification({
             title: `Template ${assistantTemplate ? "updated" : "created"}`,
             type: "success",
@@ -498,7 +487,13 @@ export function TemplateDetailPage() {
         }
       }
     },
-    [assistantTemplate, sendNotification, setIsSubmitting, router]
+    [
+      assistantTemplate,
+      sendNotification,
+      setIsSubmitting,
+      router,
+      fetcherWithBody,
+    ]
   );
 
   const { submit: onDelete } = useSubmitFunction(async () => {
@@ -517,18 +512,9 @@ export function TemplateDetailPage() {
       return;
     }
     try {
-      const r = await clientFetch(
-        `/api/poke/templates/${assistantTemplate.sId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to delete template.");
-      }
+      await fetcher(`/api/poke/templates/${assistantTemplate.sId}`, {
+        method: "DELETE",
+      });
       await router.push("/poke/templates");
     } catch (e) {
       console.error(e);

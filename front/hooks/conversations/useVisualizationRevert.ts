@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import { useCallback } from "react";
 
@@ -9,6 +9,8 @@ export function useVisualizationRevert({
   workspaceId: string | null;
   conversationId?: string | null;
 }) {
+  const { fetcherWithBody } = useFetcher();
+
   const handleVisualizationRevert = useCallback(
     async ({
       fileId,
@@ -18,31 +20,22 @@ export function useVisualizationRevert({
       agentConfigurationId: string;
     }): Promise<boolean> => {
       try {
-        const response = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              content: `Please revert the previous change in ${fileId}`,
-              mentions: [
-                {
-                  configurationId: agentConfigurationId,
-                },
-              ],
-              context: {
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                profilePictureUrl: null,
+            content: `Please revert the previous change in ${fileId}`,
+            mentions: [
+              {
+                configurationId: agentConfigurationId,
               },
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to send revert message");
-        }
+            ],
+            context: {
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              profilePictureUrl: null,
+            },
+          },
+          "POST",
+        ]);
 
         return true;
       } catch (error) {
@@ -50,7 +43,7 @@ export function useVisualizationRevert({
         return false;
       }
     },
-    [workspaceId, conversationId]
+    [workspaceId, conversationId, fetcherWithBody]
   );
 
   return {

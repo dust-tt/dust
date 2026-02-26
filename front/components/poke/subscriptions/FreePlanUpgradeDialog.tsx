@@ -3,10 +3,10 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
-import { clientFetch } from "@app/lib/egress/client";
 import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { FreePlanUpgradeFormType } from "@app/types/plan";
 import { FreePlanUpgradeFormSchema } from "@app/types/plan";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -33,6 +33,7 @@ export default function FreePlanUpgradeDialog({
   owner: WorkspaceType;
 }) {
   const router = useAppRouter();
+  const { fetcherWithBody } = useFetcher();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -67,22 +68,11 @@ export default function FreePlanUpgradeDialog({
       setIsSubmitting(true);
       setError(null);
       try {
-        const r = await clientFetch(
+        await fetcherWithBody([
           `/api/poke/workspaces/${owner.sId}/upgrade`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(cleanedValues),
-          }
-        );
-
-        if (!r.ok) {
-          throw new Error(
-            `Something went wrong: ${r.status} ${await r.text()}`
-          );
-        }
+          cleanedValues,
+          "POST",
+        ]);
 
         form.reset();
         setOpen(false);

@@ -1,8 +1,8 @@
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { MEMBERSHIP_ROLE_TYPES } from "@app/types/memberships";
 import type {
   RoleType,
@@ -40,6 +40,7 @@ export function MembersDataTable({
   readonly,
 }: MembersDataTableProps) {
   const router = useAppRouter();
+  const { fetcherWithBody } = useFetcher();
 
   const onRevokeMember = async (m: MemberDisplayType) => {
     if (!window.confirm(`Are you sure you want to revoke ${m.email}?`)) {
@@ -47,18 +48,11 @@ export function MembersDataTable({
     }
 
     try {
-      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: m.sId,
-        }),
-      });
-      if (!r.ok) {
-        throw new Error("Failed to revoke user.");
-      }
+      await fetcherWithBody([
+        `/api/poke/workspaces/${owner.sId}/revoke`,
+        { userId: m.sId },
+        "POST",
+      ]);
       router.reload();
     } catch (e) {
       console.error(e);
@@ -76,19 +70,11 @@ export function MembersDataTable({
     }
 
     try {
-      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/roles`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: m.sId,
-          role,
-        }),
-      });
-      if (!r.ok) {
-        throw new Error("Failed to update user role.");
-      }
+      await fetcherWithBody([
+        `/api/poke/workspaces/${owner.sId}/roles`,
+        { userId: m.sId, role },
+        "POST",
+      ]);
       router.reload();
     } catch (e) {
       console.error(e);

@@ -11,8 +11,8 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
@@ -23,6 +23,7 @@ import type {
   ZendeskFetchTicketResponseType,
 } from "@app/types/connectors/admin/cli";
 import type { DataSourceType } from "@app/types/data_source";
+import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -278,63 +279,65 @@ async function handleCheckOrFindNotionUrl(
   url: string,
   wId: string,
   dsId: string,
-  command: "check-url" | "find-url"
+  command: "check-url" | "find-url",
+  fetcherWithBody: (args: [string, any, string]) => Promise<any>
 ): Promise<NotionCheckUrlResponseType | NotionFindUrlResponseType | null> {
-  const res = await clientFetch(`/api/poke/admin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      majorCommand: "notion",
-      command,
-      args: {
-        url,
-        wId,
-        dsId,
+  try {
+    return await fetcherWithBody([
+      `/api/poke/admin`,
+      {
+        majorCommand: "notion",
+        command,
+        args: {
+          url,
+          wId,
+          dsId,
+        },
       },
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    alert(
-      `Failed to ${command} Notion URL: ${
-        err.error?.connectors_error?.message
-      }\n\n${JSON.stringify(err)}`
-    );
+      "POST",
+    ]);
+  } catch (e) {
+    if (isAPIErrorResponse(e)) {
+      alert(
+        `Failed to ${command} Notion URL: ${
+          e.error?.connectors_error?.message
+        }\n\n${JSON.stringify(e)}`
+      );
+    } else {
+      alert(`Failed to ${command} Notion URL.`);
+    }
     return null;
   }
-  return res.json();
 }
 
 async function handleCheckZendeskTicket(
   args:
     | { brandId: number | null; ticketId: number; wId: string; dsId: string }
-    | { ticketUrl: string; wId: string; dsId: string }
+    | { ticketUrl: string; wId: string; dsId: string },
+  fetcherWithBody: (args: [string, any, string]) => Promise<any>
 ): Promise<ZendeskFetchTicketResponseType | null> {
-  const res = await clientFetch(`/api/poke/admin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      majorCommand: "zendesk",
-      command: "fetch-ticket",
-      args,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    alert(
-      `Failed to check Zendesk ticket: ${
-        err.error?.connectors_error?.message
-      }\n\n${JSON.stringify(err)}`
-    );
+  try {
+    return await fetcherWithBody([
+      `/api/poke/admin`,
+      {
+        majorCommand: "zendesk",
+        command: "fetch-ticket",
+        args,
+      },
+      "POST",
+    ]);
+  } catch (e) {
+    if (isAPIErrorResponse(e)) {
+      alert(
+        `Failed to check Zendesk ticket: ${
+          e.error?.connectors_error?.message
+        }\n\n${JSON.stringify(e)}`
+      );
+    } else {
+      alert("Failed to check Zendesk ticket.");
+    }
     return null;
   }
-  return res.json();
 }
 
 function NotionUrlCheckOrFind({
@@ -345,6 +348,7 @@ function NotionUrlCheckOrFind({
   dsId: string;
 }) {
   const { isDark } = useTheme();
+  const { fetcherWithBody } = useFetcher();
   const [notionUrl, setNotionUrl] = useState("");
   const [urlDetails, setUrlDetails] = useState<
     NotionCheckUrlResponseType | NotionFindUrlResponseType | null
@@ -420,12 +424,9 @@ function NotionUrlCheckOrFind({
                 ? "databases"
                 : "blocks";
 
-          const res = await clientFetch(`/api/poke/admin`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+          const result = await fetcherWithBody([
+            `/api/poke/admin`,
+            {
               majorCommand: "notion",
               command: "api-request",
               args: {
@@ -434,15 +435,9 @@ function NotionUrlCheckOrFind({
                 url: `${apiType}/${currentId}`,
                 method: "GET",
               },
-            }),
-          });
-
-          if (!res.ok) {
-            addEntryAndDisplayChain(`${currentId} error: ${res.statusText}`);
-            break;
-          }
-
-          const result = await res.json();
+            },
+            "POST",
+          ]);
           const responseData = result.data;
           let title = "";
 
@@ -524,7 +519,8 @@ function NotionUrlCheckOrFind({
                 notionUrl,
                 owner.sId,
                 dsId,
-                "check-url"
+                "check-url",
+                fetcherWithBody
               )
             );
           }}
@@ -539,7 +535,8 @@ function NotionUrlCheckOrFind({
                 notionUrl,
                 owner.sId,
                 dsId,
-                "find-url"
+                "find-url",
+                fetcherWithBody
               )
             );
           }}
@@ -669,6 +666,7 @@ function ZendeskTicketCheck({
   dsId: string;
 }) {
   const { isDark } = useTheme();
+  const { fetcherWithBody } = useFetcher();
   const [brandId, setBrandId] = useState<number | null>(null);
   const [ticketId, setTicketId] = useState<number | null>(null);
   const [ticketUrl, setTicketUrl] = useState<string | null>(null);
@@ -711,12 +709,15 @@ function ZendeskTicketCheck({
             if (ticketId) {
               setIdsIsLoading(true);
               setTicketDetails(
-                await handleCheckZendeskTicket({
-                  brandId,
-                  ticketId,
-                  wId: owner.sId,
-                  dsId,
-                })
+                await handleCheckZendeskTicket(
+                  {
+                    brandId,
+                    ticketId,
+                    wId: owner.sId,
+                    dsId,
+                  },
+                  fetcherWithBody
+                )
               );
               setIdsIsLoading(false);
             }
@@ -742,11 +743,14 @@ function ZendeskTicketCheck({
             if (ticketUrl) {
               setUrlIsLoading(true);
               setTicketDetails(
-                await handleCheckZendeskTicket({
-                  ticketUrl,
-                  wId: owner.sId,
-                  dsId,
-                })
+                await handleCheckZendeskTicket(
+                  {
+                    ticketUrl,
+                    wId: owner.sId,
+                    dsId,
+                  },
+                  fetcherWithBody
+                )
               );
               setUrlIsLoading(false);
             }
@@ -844,24 +848,17 @@ const ConfigToggle = ({
   dataSource: DataSourceType;
 }) => {
   const router = useAppRouter();
+  const { fetcherWithBody } = useFetcher();
   const { isSubmitting, submit: onToggle } = useSubmitFunction(async () => {
     try {
-      const r = await clientFetch(
+      await fetcherWithBody([
         `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/config`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            configKey,
-            configValue: `${!features[featureKey]}`,
-          }),
-        }
-      );
-      if (!r.ok) {
-        throw new Error(`Failed to toggle ${configKey}.`);
-      }
+          configKey,
+          configValue: `${!features[featureKey]}`,
+        },
+        "POST",
+      ]);
       router.reload();
     } catch (e) {
       console.error(e);

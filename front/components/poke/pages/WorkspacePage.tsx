@@ -26,10 +26,10 @@ import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
+import { useFetcher } from "@app/lib/swr/swr";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
 import { isString } from "@app/types/shared/utils/general";
@@ -50,6 +50,7 @@ import {
 
 export function WorkspacePage() {
   const owner = useWorkspace();
+  const { fetcherWithBody } = useFetcher();
   useSetPokePageTitle(owner.name ?? "Workspace");
   const { regionData } = usePokeRegion();
 
@@ -82,18 +83,11 @@ export function WorkspacePage() {
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
     async (segmentation: WorkspaceSegmentationType) => {
       try {
-        const r = await clientFetch(`/api/poke/workspaces/${owner.sId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            segmentation,
-          }),
-        });
-        if (!r.ok) {
-          throw new Error("Failed to update workspace.");
-        }
+        await fetcherWithBody([
+          `/api/poke/workspaces/${owner.sId}`,
+          { segmentation },
+          "PATCH",
+        ]);
         router.reload();
       } catch {
         window.alert("An error occurred while updating the workspace.");

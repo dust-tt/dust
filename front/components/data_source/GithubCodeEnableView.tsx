@@ -1,8 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DataSourceType } from "@app/types/data_source";
-import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, GithubLogo, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -26,30 +25,25 @@ export function GithubCodeEnableView({
   const codeSyncEnabled = configValue === "true";
 
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [loading, setLoading] = useState(false);
 
   const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
     setLoading(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/codeSyncEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: codeSyncEnabled.toString() }),
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/codeSyncEnabled`,
+        { configValue: codeSyncEnabled.toString() },
+        "POST",
+      ]);
       await mutateConfig();
       setLoading(false);
-    } else {
+    } catch (e: any) {
       setLoading(false);
-      const err = (await res.json()) as { error: APIError };
       sendNotification({
         type: "error",
         title: "Failed to enable GitHub code sync",
-        description: err.error.message,
+        description: e?.error?.message ?? "An error occurred",
       });
     }
     return true;

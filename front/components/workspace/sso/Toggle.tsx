@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -21,6 +22,7 @@ export function ToggleEnforceEnterpriseConnectionModal({
   owner: WorkspaceType;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const titleAndContent = {
     enforce: {
@@ -41,27 +43,26 @@ export function ToggleEnforceEnterpriseConnectionModal({
 
   const handleToggleSsoEnforced = React.useCallback(
     async (ssoEnforced: boolean) => {
-      const res = await clientFetch(`/api/w/${owner.sId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ssoEnforced,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Update failed",
-          description: `Failed to enforce sso on workspace.`,
-        });
-      } else {
+      try {
+        await fetcherWithBody([`/api/w/${owner.sId}`, { ssoEnforced }, "POST"]);
         onClose(true);
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            type: "error",
+            title: "Update failed",
+            description: e.error.message,
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Update failed",
+            description: `Failed to enforce sso on workspace.`,
+          });
+        }
       }
     },
-    [owner, sendNotification, onClose]
+    [owner, sendNotification, onClose, fetcherWithBody]
   );
 
   const dialog = titleAndContent[owner.ssoEnforced ? "remove" : "enforce"];

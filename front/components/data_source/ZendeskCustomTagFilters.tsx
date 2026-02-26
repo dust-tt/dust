@@ -1,8 +1,8 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DataSourceType } from "@app/types/data_source";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { WorkspaceType } from "@app/types/user";
@@ -35,6 +35,7 @@ export function ZendeskCustomFieldFilters({
 }) {
   const { isDark } = useTheme();
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [inputValue, setInputValue] = useState("");
 
   const {
@@ -94,32 +95,27 @@ export function ZendeskCustomFieldFilters({
       const currentFieldIds = customFields.map((field) => field.id);
       const updatedFieldIds = [...currentFieldIds, numericFieldId];
 
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
-        {
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-          body: JSON.stringify({
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
+          {
             configValue: JSON.stringify(updatedFieldIds),
-          }),
-        }
-      );
-
-      if (res.ok) {
+          },
+          "POST",
+        ]);
         await mutateCustomFieldsConfig();
         sendNotification({
           type: "success",
           title: "Custom field added",
           description: `Added custom field with ID ${numericFieldId}.`,
         });
-      } else {
-        const err = await res.json();
+      } catch (e: any) {
         sendNotification({
           type: "error",
           title: "Failed to add custom field",
           description:
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            err.error?.connectors_error?.message || "An unknown error occurred",
+            e?.error?.connectors_error?.message || "An unknown error occurred",
         });
       }
     },
@@ -127,6 +123,7 @@ export function ZendeskCustomFieldFilters({
       owner.sId,
       dataSource.sId,
       customFields,
+      fetcherWithBody,
       mutateCustomFieldsConfig,
       sendNotification,
     ]
@@ -148,30 +145,25 @@ export function ZendeskCustomFieldFilters({
         .filter((field) => field.id !== fieldId)
         .map((field) => field.id);
 
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
-        {
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-          body: JSON.stringify({ configValue: JSON.stringify(newFieldIds) }),
-        }
-      );
-
-      if (res.ok) {
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
+          { configValue: JSON.stringify(newFieldIds) },
+          "POST",
+        ]);
         await mutateCustomFieldsConfig();
         sendNotification({
           type: "success",
           title: "Custom field removed",
           description: `Removed custom field "${fieldToRemove.name}".`,
         });
-      } else {
-        const err = await res.json();
+      } catch (e: any) {
         sendNotification({
           type: "error",
           title: "Failed to remove custom field",
           description:
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            err.error?.connectors_error?.message || "An unknown error occurred",
+            e?.error?.connectors_error?.message || "An unknown error occurred",
         });
       }
     },
@@ -179,6 +171,7 @@ export function ZendeskCustomFieldFilters({
       owner.sId,
       dataSource.sId,
       customFields,
+      fetcherWithBody,
       mutateCustomFieldsConfig,
       sendNotification,
     ]

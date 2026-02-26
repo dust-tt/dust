@@ -1,8 +1,9 @@
 import { MultiDomainAutoJoinModal } from "@app/components/workspace/sso/MultiDomainAutoJoinModal";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
@@ -36,6 +37,7 @@ function DomainAutoJoinModal({
   owner,
 }: DomainAutoJoinModalProps) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const title = domainAutoJoinEnabled
     ? "De-activate Auto-join"
     : "Activate Auto-join";
@@ -54,26 +56,29 @@ function DomainAutoJoinModal({
   );
 
   async function handleUpdateWorkspace(): Promise<void> {
-    const res = await clientFetch(`/api/w/${owner.sId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        domainAutoJoinEnabled: !domainAutoJoinEnabled,
-      }),
-    });
-
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Update failed",
-        description: `Failed to enable auto-add for whitelisted domain.`,
-      });
-    } else {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}`,
+        { domainAutoJoinEnabled: !domainAutoJoinEnabled },
+        "POST",
+      ]);
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner
       // object so that the formValidation logic keeps working.
       window.location.reload();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Update failed",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Update failed",
+          description: `Failed to enable auto-add for whitelisted domain.`,
+        });
+      }
     }
   }
 

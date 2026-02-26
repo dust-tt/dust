@@ -5,8 +5,8 @@ import type {
   TrackingParams,
 } from "@app/lib/api/hubspot/ebookFormSchema";
 import { EbookFormSchema } from "@app/lib/api/hubspot/ebookFormSchema";
-import { clientFetch } from "@app/lib/egress/client";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { useFetcher } from "@app/lib/swr/swr";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Button, Checkbox, Input, Label, Spinner } from "@dust-tt/sparkle";
@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 
 function useEbookFormSubmit() {
+  const { fetcherWithBody } = useFetcher();
   const [downloadToken, setDownloadToken] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -35,22 +36,18 @@ function useEbookFormSubmit() {
     };
 
     try {
-      const response = await clientFetch("/api/home/ebook/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result: EbookSubmitResponse = await fetcherWithBody([
+        "/api/home/ebook/submit",
+        {
           formData: data,
           tracking,
           pageUri: window.location.href,
           pageName: document.title,
-        }),
-      });
+        },
+        "POST",
+      ]);
 
-      const result: EbookSubmitResponse = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         setSubmitError(
           result.error ?? "Failed to submit form. Please try again."
         );

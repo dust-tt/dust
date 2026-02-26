@@ -13,7 +13,7 @@ import {
   STEP_2_FIELDS,
   STEP_3_FIELDS,
 } from "@app/lib/api/hubspot/partnerFormSchema";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -39,6 +39,7 @@ const STEP_TITLES = [
 ] as const;
 
 function usePartnerFormSubmit() {
+  const { fetcherWithBody } = useFetcher();
   const [submitResult, setSubmitResult] =
     useState<PartnerSubmitResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -67,22 +68,18 @@ function usePartnerFormSubmit() {
     });
 
     try {
-      const response = await clientFetch("/api/home/partner/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result: PartnerSubmitResponse = await fetcherWithBody([
+        "/api/home/partner/submit",
+        {
           formData: data,
           tracking,
           pageUri: window.location.href,
           pageName: document.title,
-        }),
-      });
+        },
+        "POST",
+      ]);
 
-      const result: PartnerSubmitResponse = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         setSubmitError(
           result.error ?? "Failed to submit form. Please try again."
         );

@@ -1,18 +1,13 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import {
-  emptyArray,
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
 import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
 import type { PatchDataSourceTableRequestBody } from "@app/types/api/public/data_sources";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
@@ -123,27 +118,17 @@ export function useUpdateDataSourceViewTable(
     disabled: true, // Needed just to mutate
   });
 
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
 
   const doUpdate = async (body: PatchDataSourceTableRequestBody) => {
-    const tableUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables/${encodeURIComponent(tableId)}`;
-    const res = await clientFetch(tableUrl, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error creating table",
-        description: `Error: ${errorData.message}`,
-      });
-      console.error("Error updating table", errorData);
-      return null;
-    } else {
+    try {
+      const response: PatchTableResponseBody = await fetcherWithBody([
+        `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables/${encodeURIComponent(tableId)}`,
+        body,
+        "PATCH",
+      ]);
+
       void mutateContentNodes();
       void mutateTable();
 
@@ -153,8 +138,22 @@ export function useUpdateDataSourceViewTable(
         description: "Table has been updated",
       });
 
-      const response: PatchTableResponseBody = await res.json();
       return response.table;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Error creating table",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error creating table",
+          description: "An unexpected error occurred.",
+        });
+      }
+      return null;
     }
   };
 

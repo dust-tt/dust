@@ -1,5 +1,5 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { checkProvider } from "@app/lib/providers";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -304,6 +304,7 @@ export function ProviderSetup({
   onClose,
 }: ProviderSetupProps) {
   const { mutate } = useSWRConfig();
+  const { fetcherWithBody, fetcher } = useFetcher();
   const [values, setValues] = useState<Record<string, string>>({});
   const [testError, setTestError] = useState("");
   const [testSuccessful, setTestSuccessful] = useState(false);
@@ -348,18 +349,18 @@ export function ProviderSetup({
       payload[field.name] = values[field.name];
     }
 
-    await clientFetch(`/api/w/${owner.sId}/providers/${providerId}`, {
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-      body: JSON.stringify({ config: JSON.stringify(payload) }),
-    });
+    await fetcherWithBody([
+      `/api/w/${owner.sId}/providers/${providerId}`,
+      { config: JSON.stringify(payload) },
+      "POST",
+    ]);
     setEnableRunning(false);
     await mutate(`/api/w/${owner.sId}/providers`);
     onClose();
   };
 
   const handleDisable = async () => {
-    await clientFetch(`/api/w/${owner.sId}/providers/${providerId}`, {
+    await fetcher(`/api/w/${owner.sId}/providers/${providerId}`, {
       method: "DELETE",
     });
     await mutate(`/api/w/${owner.sId}/providers`);

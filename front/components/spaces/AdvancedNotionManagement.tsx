@@ -1,5 +1,5 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
+import { useFetcher } from "@app/lib/swr/swr";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/internal/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
@@ -39,6 +39,7 @@ export function AdvancedNotionManagement({
   dataSource: DataSourceType;
   sendNotification: (notification: NotificationType) => void;
 }) {
+  const { fetcherWithBody } = useFetcher();
   const [urls, setUrls] = useState<string[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
   const [syncing, setSyncing] = useState(false);
@@ -197,22 +198,11 @@ export function AdvancedNotionManagement({
     setUrlStatus(null);
 
     try {
-      const response = await clientFetch(
+      const data = await fetcherWithBody([
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_status`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url: statusUrl }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to check URL status");
-      }
-
-      const data = await response.json();
+        { url: statusUrl },
+        "POST",
+      ]);
       setUrlStatus({
         notion: data.notion,
         dust: data.dust,
@@ -238,27 +228,15 @@ export function AdvancedNotionManagement({
 
     try {
       if (trimmedUrls.length && validateUrls(trimmedUrls)) {
-        const r = await clientFetch(
+        const data = await fetcherWithBody([
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_sync`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              urls: trimmedUrls,
-              method,
-            }),
-          }
-        );
-
-        if (!r.ok) {
-          const error: { error: { message: string } } = await r.json();
-          throw new Error(error.error.message);
-        }
-        const response = GetPostNotionSyncResponseBodySchema.decode(
-          await r.json()
-        );
+            urls: trimmedUrls,
+            method,
+          },
+          "POST",
+        ]);
+        const response = GetPostNotionSyncResponseBodySchema.decode(data);
         if (isLeft(response)) {
           sendNotification({
             type: "error",

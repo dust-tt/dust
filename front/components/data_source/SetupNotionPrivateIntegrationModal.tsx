@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -36,6 +36,7 @@ export function SetupNotionPrivateIntegrationModal({
   onSuccess,
   sendNotification,
 }: SetupNotionPrivateIntegrationModalProps) {
+  const { fetcher, fetcherWithBody } = useFetcher();
   const [integrationToken, setIntegrationToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,15 +54,9 @@ export function SetupNotionPrivateIntegrationModal({
     const fetchWebhookConfig = async () => {
       setIsLoadingWebhookConfig(true);
       try {
-        const response = await clientFetch(
+        const data: GetNotionWebhookConfigResponseBody = await fetcher(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion/webhook_config`
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch webhook configuration");
-        }
-
-        const data: GetNotionWebhookConfigResponseBody = await response.json();
         setWebhookConfig(data);
       } catch (err) {
         sendNotification({
@@ -75,56 +70,34 @@ export function SetupNotionPrivateIntegrationModal({
     };
 
     void fetchWebhookConfig();
-  }, [isOpen, owner.sId, dataSource.sId, sendNotification]);
+  }, [isOpen, owner.sId, dataSource.sId, sendNotification, fetcher]);
 
   const handleSave = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await clientFetch(`/api/w/${owner.sId}/credentials`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const data = await fetcherWithBody([
+        `/api/w/${owner.sId}/credentials`,
+        {
           provider: "notion",
           credentials: {
             integration_token: integrationToken,
           },
-        }),
-      });
+        },
+        "POST",
+      ]);
 
-      if (!response.ok) {
-        const error = await response.json();
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        throw new Error(error.error?.message || "Failed to create credential");
-      }
-
-      const data = await response.json();
       const credentialId = data.credentials.id;
 
       // Set the credential ID on the connector
-      const configRes = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/privateIntegrationCredentialId`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            configValue: credentialId,
-          }),
-        }
-      );
-
-      if (!configRes.ok) {
-        const error = await configRes.json();
-        throw new Error(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          error.error?.message || "Failed to set connector configuration"
-        );
-      }
+          configValue: credentialId,
+        },
+        "POST",
+      ]);
 
       sendNotification({
         type: "success",

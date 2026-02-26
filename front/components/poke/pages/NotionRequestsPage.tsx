@@ -1,9 +1,10 @@
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import { isAPIErrorResponse } from "@app/types/error";
 import {
   Button,
   Input,
@@ -18,6 +19,7 @@ type HttpMethod = "GET" | "POST";
 
 export function NotionRequestsPage() {
   const owner = useWorkspace();
+  const { fetcherWithBody } = useFetcher();
   useSetPokePageTitle(`${owner.name} - Notion Requests`);
 
   const dsId = useRequiredPathParam("dsId");
@@ -92,12 +94,9 @@ export function NotionRequestsPage() {
     setResponse(null);
 
     try {
-      const res = await clientFetch(`/api/poke/admin`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result = await fetcherWithBody([
+        `/api/poke/admin`,
+        {
           majorCommand: "notion",
           command: "api-request",
           args: {
@@ -107,24 +106,18 @@ export function NotionRequestsPage() {
             method,
             body: method === "POST" && body.trim() ? body : undefined,
           },
-        }),
-      });
+        },
+        "POST",
+      ]);
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          errorData.error?.connectors_error?.message ||
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            errorData.error?.message ||
-            "Failed to execute request"
-        );
-      }
-
-      const result = await res.json();
       setResponse(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      if (isAPIErrorResponse(err)) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        setError(err.error?.connectors_error?.message || err.error.message);
+      } else {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      }
     } finally {
       setIsExecuting(false);
     }

@@ -1,7 +1,8 @@
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -18,6 +19,7 @@ export function useToolFileUpload({
     new Set()
   );
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const getFileKey = useCallback(
     (file: ToolSearchResult) => `${file.serverViewId}-${file.externalId}`,
@@ -47,29 +49,17 @@ export function useToolFileUpload({
       setUploadingFileKeys((prev) => new Set(prev).add(fileKey));
 
       try {
-        const response = await clientFetch(
+        const { file } = await fetcherWithBody([
           `/api/w/${owner.sId}/search/tools/upload`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              serverViewId: toolFile.serverViewId,
-              externalId: toolFile.externalId,
-              conversationId,
-              serverName: toolFile.serverName,
-              serverIcon: toolFile.serverIcon,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error?.message ?? "Failed to upload file");
-        }
-
-        const { file } = await response.json();
+            serverViewId: toolFile.serverViewId,
+            externalId: toolFile.externalId,
+            conversationId,
+            serverName: toolFile.serverName,
+            serverIcon: toolFile.serverIcon,
+          },
+          "POST",
+        ]);
 
         fileUploaderService.addUploadedFile({
           id: `tool-${fileKey}`,
@@ -85,8 +75,9 @@ export function useToolFileUpload({
         sendNotification({
           type: "error",
           title: "Failed to attach file",
-          description:
-            error instanceof Error ? error.message : "Unknown error occurred",
+          description: isAPIErrorResponse(error)
+            ? error.error.message
+            : "Unknown error occurred",
         });
       } finally {
         setUploadingFileKeys((prev) => {
@@ -102,6 +93,7 @@ export function useToolFileUpload({
       sendNotification,
       getFileKey,
       conversationId,
+      fetcherWithBody,
     ]
   );
 

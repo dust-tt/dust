@@ -5,7 +5,7 @@ import {
 } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 
 export function useReaction({
   owner,
@@ -17,6 +17,7 @@ export function useReaction({
   message: VirtuosoMessage;
 }) {
   const { user } = useAuth();
+  const { fetcherWithBody } = useFetcher();
 
   const { submit: onReactionToggle } = useSubmitFunction(
     async ({ emoji }: { emoji: string }) => {
@@ -37,16 +38,11 @@ export function useReaction({
         (r) => r.emoji === emoji && r.users.some((u) => u.userId === user?.sId)
       );
 
-      await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/reactions`,
-        {
-          method: hasReacted ? "DELETE" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ reaction: emoji }),
-        }
-      );
+        { reaction: emoji },
+        hasReacted ? "DELETE" : "POST",
+      ]);
     }
   );
 

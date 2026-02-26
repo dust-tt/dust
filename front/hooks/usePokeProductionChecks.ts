@@ -1,8 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import type { GetProductionChecksResponseBody } from "@app/pages/api/poke/production-checks";
 import type { GetCheckHistoryResponseBody } from "@app/pages/api/poke/production-checks/[checkName]/history";
+import { isAPIErrorResponse } from "@app/types/error";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
@@ -50,6 +50,7 @@ export function usePokeCheckHistory(checkName: string, enabled: boolean) {
 
 export function useRunProductionCheck() {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const { mutateProductionChecks } = usePokeProductionChecks();
   const [runningChecks, setRunningChecks] = useState<Set<string>>(new Set());
 
@@ -57,36 +58,34 @@ export function useRunProductionCheck() {
     setRunningChecks((prev) => new Set(prev).add(checkName));
 
     try {
-      const res = await clientFetch("/api/poke/production-checks/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkName }),
-      });
+      await fetcherWithBody([
+        "/api/poke/production-checks/run",
+        { checkName },
+        "POST",
+      ]);
 
-      if (res.ok) {
-        sendNotification({
-          title: "Check started",
-          description: `${checkName} has been triggered`,
-          type: "success",
-        });
-        setTimeout(() => {
-          void mutateProductionChecks();
-        }, REFETCH_DELAY_MS);
-      } else {
-        const errorData = await res.json();
+      sendNotification({
+        title: "Check started",
+        description: `${checkName} has been triggered`,
+        type: "success",
+      });
+      setTimeout(() => {
+        void mutateProductionChecks();
+      }, REFETCH_DELAY_MS);
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
         sendNotification({
           title: "Failed to start check",
-          description: errorData.error?.message ?? "Unknown error",
+          description: e.error.message,
+          type: "error",
+        });
+      } else {
+        sendNotification({
+          title: "Failed to start check",
+          description: "Network error",
           type: "error",
         });
       }
-    } catch (err) {
-      console.error(err);
-      sendNotification({
-        title: "Failed to start check",
-        description: "Network error",
-        type: "error",
-      });
     } finally {
       setRunningChecks((prev) => {
         const next = new Set(prev);

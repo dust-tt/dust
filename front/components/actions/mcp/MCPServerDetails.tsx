@@ -13,12 +13,12 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
   useMutateMCPServersViewsForAdmin,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -54,6 +54,7 @@ export function MCPServerDetails({
   const { mutate: mutateMCPServersViewsForAdmin } =
     useMutateMCPServersViewsForAdmin(owner);
   const sendNotification = useSendNotification(true);
+  const { fetcherWithBody, fetcher } = useFetcher();
 
   const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
@@ -93,25 +94,14 @@ export function MCPServerDetails({
     }>
   ) => {
     for (const change of toolChanges) {
-      const response = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools/${change.toolName}`,
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            permission: change.permission,
-            enabled: change.enabled,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(
-          body.error?.message ?? "Failed to update tool settings"
-        );
-      }
+          permission: change.permission,
+          enabled: change.enabled,
+        },
+        "PATCH",
+      ]);
     }
   };
 
@@ -128,37 +118,24 @@ export function MCPServerDetails({
       }
 
       if (change.action === "add") {
-        const response = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views`,
           {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              mcpServerId: mcpServerView?.server.sId,
-            }),
-          }
-        );
-        if (!response.ok) {
-          const body = await response.json();
-          throw new Error(body.error?.message ?? "Failed to add to space");
-        }
+            mcpServerId: mcpServerView?.server.sId,
+          },
+          "POST",
+        ]);
       } else {
         const view = mcpServerWithViews?.views.find(
           (v) => v.spaceId === space.sId
         );
         if (view) {
-          const response = await clientFetch(
+          await fetcher(
             `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${view.sId}`,
             {
               method: "DELETE",
             }
           );
-          if (!response.ok) {
-            const body = await response.json();
-            throw new Error(
-              body.error?.message ?? "Failed to remove from space"
-            );
-          }
         }
       }
     }
@@ -183,18 +160,11 @@ export function MCPServerDetails({
 
     // Patch the server view if needed.
     if (diff.serverView) {
-      const response = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/mcp/views/${mcpServerView?.sId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(diff.serverView),
-        }
-      );
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error?.message ?? "Failed to update server view");
-      }
+        diff.serverView,
+        "PATCH",
+      ]);
     }
 
     // Patch remote server settings if needed.
@@ -210,18 +180,11 @@ export function MCPServerDetails({
         patchBody.customHeaders = diff.authCustomHeaders;
       }
 
-      const response = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patchBody),
-        }
-      );
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error?.message ?? "Failed to update server");
-      }
+        patchBody,
+        "PATCH",
+      ]);
     }
   };
 

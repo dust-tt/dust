@@ -1,4 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import { useCallback, useRef, useState } from "react";
 
 interface QuizMessage {
@@ -28,8 +29,8 @@ interface UseAcademyQuizReturn {
 
 const TOTAL_QUESTIONS = 5;
 
-const CORRECT_MARKER = "✅";
-const INCORRECT_MARKER = "❌";
+const CORRECT_MARKER = "\u2705";
+const INCORRECT_MARKER = "\u274C";
 
 export function useAcademyQuiz({
   contentType,
@@ -44,6 +45,7 @@ export function useAcademyQuiz({
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const csrfTokenRef = useRef<string | null>(null);
+  const { fetcher } = useFetcher();
 
   const isCompleted = totalQuestions >= TOTAL_QUESTIONS;
 
@@ -53,18 +55,10 @@ export function useAcademyQuiz({
       return csrfTokenRef.current;
     }
 
-    const response = await clientFetch("/api/academy/chat", {
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to get CSRF token");
-    }
-
-    const data = await response.json();
-    csrfTokenRef.current = data.csrfToken;
-    return data.csrfToken;
-  }, []);
+    const data = await fetcher("/api/academy/chat");
+    csrfTokenRef.current = (data as { csrfToken: string }).csrfToken;
+    return (data as { csrfToken: string }).csrfToken;
+  }, [fetcher]);
 
   const streamResponse = useCallback(
     async (
@@ -79,6 +73,7 @@ export function useAcademyQuiz({
         // Fetch CSRF token before making the request
         const csrfToken = await fetchCsrfToken();
 
+        // Streaming request requires raw fetch since fetcher parses JSON
         const response = await clientFetch("/api/academy/chat", {
           method: "POST",
           headers: {
@@ -166,7 +161,7 @@ export function useAcademyQuiz({
           const newTotalQuestions = currentTotalQuestions + 1;
           setTotalQuestions(newTotalQuestions);
 
-          // Check if response indicates correct answer via ✅/❌ markers.
+          // Check if response indicates correct answer via markers.
           const isCorrect =
             assistantMessage.includes(CORRECT_MARKER) &&
             !assistantMessage.includes(INCORRECT_MARKER);

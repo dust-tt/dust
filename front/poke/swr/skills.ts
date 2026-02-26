@@ -1,14 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  emptyArray,
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSkillsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/skills";
 import type { PostSkillSuggestionBodyType } from "@app/pages/api/poke/workspaces/[wId]/skills/suggestions";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
@@ -40,38 +35,42 @@ export function useCreatePokeSkillSuggestion({
   const sendNotification = useSendNotification();
   const { mutate } = usePokeSkills({ owner, disabled: true });
 
+  const { fetcherWithBody } = useFetcher();
+
   const createSkillSuggestion = async (
     body: PostSkillSuggestionBodyType
   ): Promise<boolean> => {
-    const response = await clientFetch(
-      `/api/poke/workspaces/${owner.sId}/skills/suggestions`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
+    try {
+      await fetcherWithBody([
+        `/api/poke/workspaces/${owner.sId}/skills/suggestions`,
+        body,
+        "POST",
+      ]);
 
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
       sendNotification({
-        type: "error",
-        title: "Failed to create skill suggestion",
-        description: errorData.message,
+        type: "success",
+        title: "Skill suggestion created",
+        description: `"${body.name}" has been created.`,
       });
+      void mutate();
+      onSuccess?.();
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to create skill suggestion",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to create skill suggestion",
+          description: "An unexpected error occurred.",
+        });
+      }
       return false;
     }
-
-    sendNotification({
-      type: "success",
-      title: "Skill suggestion created",
-      description: `"${body.name}" has been created.`,
-    });
-    void mutate();
-    onSuccess?.();
-    return true;
   };
 
   return { createSkillSuggestion };

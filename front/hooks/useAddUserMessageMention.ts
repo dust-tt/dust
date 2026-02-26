@@ -1,8 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { serializeMention } from "@app/lib/mentions/format";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
@@ -14,6 +15,7 @@ export function useAddUserMessageMention({
   conversationId: string | null;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   return useCallback(
     async ({
@@ -37,14 +39,10 @@ export function useAddUserMessageMention({
         ? `${serializeMention(agent)}\n\n${userMessage.content}`
         : `${serializeMention(agent)} ${userMessage.content}`;
 
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
+          {
             content: editedContent,
             mentions: [
               {
@@ -52,22 +50,28 @@ export function useAddUserMessageMention({
                 configurationId: agent.sId,
               },
             ],
-          }),
+          },
+          "POST",
+        ]);
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            type: "error",
+            title: "Error adding mention to message",
+            description: e.error.message,
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Error adding mention to message",
+            description: "An error occurred",
+          });
         }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        sendNotification({
-          type: "error",
-          title: "Error adding mention to message",
-          description: data.error.message,
-        });
         return false;
       }
 
       return true;
     },
-    [owner.sId, conversationId, sendNotification]
+    [owner.sId, conversationId, sendNotification, fetcherWithBody]
   );
 }

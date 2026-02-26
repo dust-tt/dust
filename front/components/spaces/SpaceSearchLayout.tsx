@@ -30,10 +30,10 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import type {
   DataSourceViewCategory,
   LightContentNode,
@@ -45,7 +45,6 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
@@ -588,6 +587,7 @@ function SearchResultsTable({
   const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner);
 
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   // `contentActionsRef` is always null in a search context as results are pulled across data
   // sources views. We still create the ref to comply to the API of getMenuItems.
@@ -602,50 +602,30 @@ function SearchResultsTable({
       );
 
       try {
-        let res;
         if (existingViewForSpace) {
-          res = await clientFetch(
+          await fetcherWithBody([
             `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views/${existingViewForSpace.sId}`,
             {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                parentsToAdd: [node.internalId],
-              }),
-            }
-          );
+              parentsToAdd: [node.internalId],
+            },
+            "PATCH",
+          ]);
         } else {
-          res = await clientFetch(
+          await fetcherWithBody([
             `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views`,
             {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                dataSourceId: node.dataSourceView.dataSource.sId,
-                parentsIn: [node.internalId],
-              }),
-            }
-          );
+              dataSourceId: node.dataSourceView.dataSource.sId,
+              parentsIn: [node.internalId],
+            },
+            "POST",
+          ]);
         }
 
-        if (!res.ok) {
-          const rawError: { error: APIError } = await res.json();
-          sendNotification({
-            title: "Error while adding data to space",
-            description: rawError.error.message,
-            type: "error",
-          });
-        } else {
-          sendNotification({
-            title: "Data added to space",
-            type: "success",
-          });
-          await mutateDataSourceViews();
-        }
+        sendNotification({
+          title: "Data added to space",
+          type: "success",
+        });
+        await mutateDataSourceViews();
       } catch (e) {
         sendNotification({
           title: "Error while adding data to space",
@@ -654,7 +634,13 @@ function SearchResultsTable({
         });
       }
     },
-    [dataSourceViews, mutateDataSourceViews, owner.sId, sendNotification]
+    [
+      dataSourceViews,
+      fetcherWithBody,
+      mutateDataSourceViews,
+      owner.sId,
+      sendNotification,
+    ]
   );
 
   // Transform search results into format for DataTable.

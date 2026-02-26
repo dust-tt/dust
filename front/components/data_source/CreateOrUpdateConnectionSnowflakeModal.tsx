@@ -3,7 +3,7 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -59,6 +59,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionSnowflakeModalProps) {
   const { isDark } = useTheme();
+  const { fetcherWithBody } = useFetcher();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authType, setAuthType] = useState<"password" | "keypair">("password");
@@ -165,29 +166,23 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     }
 
     // First we post the credentials to OAuth service.
-    const createCredentialsRes = await clientFetch(
-      `/api/w/${owner.sId}/credentials`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    let data: any;
+    try {
+      data = await fetcherWithBody([
+        `/api/w/${owner.sId}/credentials`,
+        {
           provider: "snowflake",
           credentials: normalized,
-        }),
-      }
-    );
-
-    if (!createCredentialsRes.ok) {
+        },
+        "POST",
+      ]);
+    } catch {
       setError("Failed to create connection: cannot verify those credentials.");
       setIsLoading(false);
       return;
     }
 
     // Then we can try to create the connector.
-    const data = await createCredentialsRes.json();
-
     const createDataSourceRes = await createDatasource({
       provider: "snowflake",
       connectionId: data.credentials.id,
@@ -239,44 +234,33 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     }
 
     // First we post the credentials to OAuth service.
-    const credentialsRes = await clientFetch(
-      `/api/w/${owner.sId}/credentials`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    let data: any;
+    try {
+      data = await fetcherWithBody([
+        `/api/w/${owner.sId}/credentials`,
+        {
           provider: "snowflake",
           credentials: normalized,
-        }),
-      }
-    );
-
-    if (!credentialsRes.ok) {
+        },
+        "POST",
+      ]);
+    } catch {
       setError("Failed to update connection: cannot verify those credentials.");
       setIsLoading(false);
       return;
     }
 
-    const data = await credentialsRes.json();
-
-    const updateConnectorRes = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSourceToUpdate.sId}/managed/update`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSourceToUpdate.sId}/managed/update`,
+        {
           connectionId: data.credentials.id,
-        }),
-      }
-    );
-
-    if (!updateConnectorRes.ok) {
-      const err = await updateConnectorRes.json();
-      const maybeConnectorsError = "error" in err && err.error.connectors_error;
+        },
+        "POST",
+      ]);
+    } catch (e: any) {
+      const maybeConnectorsError =
+        e && "error" in e && e.error?.connectors_error;
       setIsLoading(false);
 
       if (
@@ -287,7 +271,9 @@ export function CreateOrUpdateConnectionSnowflakeModal({
           `Failed to update Snowflake connection: ${maybeConnectorsError.message}`
         );
       } else {
-        setError(`Failed to update Snowflake connection: ${err.error.message}`);
+        setError(
+          `Failed to update Snowflake connection: ${e?.error?.message ?? "Unknown error"}`
+        );
       }
 
       return;

@@ -1,8 +1,9 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type { SubmitMessageError } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -17,6 +18,8 @@ export function useSubmitMessage({
   user: UserType;
   conversationId: string | null;
 }) {
+  const { fetcherWithBody } = useFetcher();
+
   return useCallback(
     async (messageData: {
       input: string;
@@ -46,76 +49,67 @@ export function useSubmitMessage({
         contentFragments.uploaded.length > 0 ||
         contentFragments.contentNodes.length > 0
       ) {
-        const contentFragmentsRes = await Promise.all([
-          ...contentFragments.uploaded.map((contentFragment) => {
-            return clientFetch(
+        const contentFragmentPromises = [
+          ...contentFragments.uploaded.map((contentFragment) =>
+            fetcherWithBody([
               `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
               {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
+                title: contentFragment.title,
+                fileId: contentFragment.fileId,
+                url: contentFragment.url,
+                context: {
+                  timezone:
+                    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+                    "Etc/UTC",
+                  profilePictureUrl: user.image,
                 },
-                body: JSON.stringify({
-                  title: contentFragment.title,
-                  fileId: contentFragment.fileId,
-                  url: contentFragment.url,
-                  context: {
-                    timezone:
-                      Intl.DateTimeFormat().resolvedOptions().timeZone ||
-                      "Etc/UTC",
-                    profilePictureUrl: user.image,
-                  },
-                }),
-              }
-            );
-          }),
-          ...contentFragments.contentNodes.map((contentFragment) => {
-            return clientFetch(
+              },
+              "POST",
+            ])
+          ),
+          ...contentFragments.contentNodes.map((contentFragment) =>
+            fetcherWithBody([
               `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
               {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
+                title: contentFragment.title,
+                nodeId: contentFragment.internalId,
+                nodeDataSourceViewId: contentFragment.dataSourceView.sId,
+                context: {
+                  timezone:
+                    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+                    "Etc/UTC",
+                  profilePictureUrl: user.image,
                 },
-                body: JSON.stringify({
-                  title: contentFragment.title,
-                  nodeId: contentFragment.internalId,
-                  nodeDataSourceViewId: contentFragment.dataSourceView.sId,
-                  context: {
-                    timezone:
-                      Intl.DateTimeFormat().resolvedOptions().timeZone ||
-                      "Etc/UTC",
-                    profilePictureUrl: user.image,
-                  },
-                }),
-              }
-            );
-          }),
-        ]);
+              },
+              "POST",
+            ])
+          ),
+        ];
 
-        for (const mcfRes of contentFragmentsRes) {
-          if (!mcfRes.ok) {
-            const data = await mcfRes.json();
-            console.error("Error creating content fragment", data);
+        try {
+          await Promise.all(contentFragmentPromises);
+        } catch (e) {
+          if (isAPIErrorResponse(e)) {
             return new Err({
               type: "attachment_upload_error",
               title: "Error uploading file.",
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              message: data.error.message || "Please try again or contact us.",
+              message: e.error.message || "Please try again or contact us.",
             });
           }
+          return new Err({
+            type: "attachment_upload_error",
+            title: "Error uploading file.",
+            message: "Please try again or contact us.",
+          });
         }
       }
 
       // Create a new user message.
-      const mRes = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      try {
+        const data = await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
+          {
             content: input,
             context: {
               timezone:
@@ -125,32 +119,30 @@ export function useSubmitMessage({
             },
             mentions,
             skipToolsValidation,
-          }),
-        }
-      );
+          },
+          "POST",
+        ]);
 
-      if (!mRes.ok) {
-        if (mRes.status === 413) {
+        return new Ok(data as PostMessagesResponseBody);
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
           return new Err({
-            type: "content_too_large",
-            title: "Your message is too long to be sent.",
-            message: "Please try again with a shorter message.",
+            type:
+              e.error.type === "plan_message_limit_exceeded"
+                ? "plan_limit_reached_error"
+                : "message_send_error",
+            title: "Your message could not be sent.",
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            message: e.error.message || "Please try again or contact us.",
           });
         }
-        const data = await mRes.json();
         return new Err({
-          type:
-            data.error.type === "plan_message_limit_exceeded"
-              ? "plan_limit_reached_error"
-              : "message_send_error",
+          type: "message_send_error",
           title: "Your message could not be sent.",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          message: data.error.message || "Please try again or contact us.",
+          message: "Please try again or contact us.",
         });
       }
-
-      return new Ok(await mRes.json());
     },
-    [owner, user, conversationId]
+    [owner, user, conversationId, fetcherWithBody]
   );
 }

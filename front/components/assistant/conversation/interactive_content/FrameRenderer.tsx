@@ -15,9 +15,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
@@ -259,6 +260,7 @@ export function FrameRenderer({
   });
 
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const confirm = useContext(ConfirmContext);
   const [isSavingToProject, setIsSavingToProject] = useState(false);
 
@@ -383,23 +385,11 @@ export function FrameRenderer({
     }
     setIsSavingToProject(true);
     try {
-      const res = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/files/${fileId}/save-in-project`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId: projectIdToSave }),
-        }
-      );
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to save to project",
-          description: errorData.message,
-        });
-        return;
-      }
+        { projectId: projectIdToSave },
+        "POST",
+      ]);
       sendNotification({
         type: "success",
         title: "Saved to project",
@@ -408,17 +398,26 @@ export function FrameRenderer({
       // Invalidate file metadata so parent and this component get updated projectId.
       await mutateFileMetadata();
     } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save to project",
-        description: e instanceof Error ? e.message : "An error occurred",
-      });
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to save to project",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to save to project",
+          description: e instanceof Error ? e.message : "An error occurred",
+        });
+      }
     } finally {
       setIsSavingToProject(false);
     }
   }, [
     confirm,
     conversation?.spaceId,
+    fetcherWithBody,
     fileId,
     mutateFileMetadata,
     owner.sId,

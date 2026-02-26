@@ -32,6 +32,7 @@ import {
 } from "@app/lib/swr/connectors";
 import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
@@ -46,7 +47,6 @@ import type {
   DataSourceType,
 } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
@@ -537,6 +537,7 @@ function DataSourceDeletionModal({
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcher } = useFetcher();
   const { user } = useAuth();
   const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
@@ -560,13 +561,11 @@ function DataSourceDeletionModal({
 
   const handleDelete = async () => {
     setIsLoading(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources/${dataSource.sId}`,
-      {
-        method: "DELETE",
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcher(
+        `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources/${dataSource.sId}`,
+        { method: "DELETE" }
+      );
       sendNotification({
         title: "Successfully deleted connection",
         type: "success",
@@ -574,12 +573,11 @@ function DataSourceDeletionModal({
       });
       await mutateSpaceDataSourceViews();
       onClose();
-    } else {
-      const err = (await res.json()) as { error: APIError };
+    } catch (e: any) {
       sendNotification({
         title: "Error deleting connection",
         type: "error",
-        description: err.error.message,
+        description: e?.error?.message ?? "An error occurred",
       });
     }
     setIsLoading(false);
@@ -792,6 +790,7 @@ export function ConnectorPermissionsModal({
 
   const [saving, setSaving] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const { user } = useAuth();
 
   function closeModal(save: boolean) {
@@ -816,60 +815,46 @@ export function ConnectorPermissionsModal({
     setSaving(true);
     try {
       if (Object.keys(selectedNodes).length) {
-        const r = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              resources: Object.keys(selectedNodes).map((internalId) => ({
-                internal_id: internalId,
-                permission: selectedNodes[internalId].isSelected
-                  ? selectedPermission
-                  : unselectedPermission,
-              })),
-            }),
-          }
+            resources: Object.keys(selectedNodes).map((internalId) => ({
+              internal_id: internalId,
+              permission: selectedNodes[internalId].isSelected
+                ? selectedPermission
+                : unselectedPermission,
+            })),
+          },
+          "POST",
+        ]);
+
+        void mutate(
+          (key) =>
+            typeof key === "string" &&
+            key.startsWith(
+              `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
+            )
         );
 
-        if (!r.ok) {
-          const error: {
-            error: {
-              type: string;
-              message: string;
-              connectors_error: { type: string; message: string };
-            };
-          } = await r.json();
-          console.log(JSON.stringify(error, null, 2));
-          sendNotification({
-            type: "error",
-            title: error.error.message,
-            description: error.error.connectors_error.message,
-          });
-        } else {
-          void mutate(
-            (key) =>
-              typeof key === "string" &&
-              key.startsWith(
-                `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
-              )
-          );
-
-          // Display the data updated modal.
-          setModalToShow("data_updated");
-        }
+        // Display the data updated modal.
+        setModalToShow("data_updated");
       } else {
         closeModal(false);
       }
-    } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Error saving permissions",
-        description: "An unexpected error occurred while saving permissions.",
-      });
-      console.error(e);
+    } catch (e: any) {
+      if (e?.error?.connectors_error?.message) {
+        sendNotification({
+          type: "error",
+          title: e.error.message,
+          description: e.error.connectors_error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error saving permissions",
+          description: "An unexpected error occurred while saving permissions.",
+        });
+      }
     }
     setSaving(false);
   }

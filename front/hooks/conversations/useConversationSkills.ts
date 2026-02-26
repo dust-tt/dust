@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -47,6 +46,8 @@ export function useAddDeleteConversationSkill({
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
+
   const addSkill = useCallback(
     async (skillId: string): Promise<boolean> => {
       if (!conversationId) {
@@ -54,25 +55,15 @@ export function useAddDeleteConversationSkill({
       }
 
       try {
-        const response = await clientFetch(
+        const result = await fetcherWithBody([
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "add",
-              skillId,
-            } satisfies ConversationSkillActionRequest),
-          }
-        );
+            action: "add",
+            skillId,
+          } satisfies ConversationSkillActionRequest,
+          "POST",
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to add skill to conversation");
-        }
-
-        const result = await response.json();
         return result.success === true;
       } catch (err) {
         const error = normalizeError(err);
@@ -92,7 +83,7 @@ export function useAddDeleteConversationSkill({
         return false;
       }
     },
-    [conversationId, workspaceId, sendNotification]
+    [conversationId, workspaceId, sendNotification, fetcherWithBody]
   );
 
   const deleteSkill = useCallback(
@@ -102,25 +93,15 @@ export function useAddDeleteConversationSkill({
       }
 
       try {
-        const response = await clientFetch(
+        const result = await fetcherWithBody([
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "delete",
-              skillId,
-            } satisfies ConversationSkillActionRequest),
-          }
-        );
+            action: "delete",
+            skillId,
+          } satisfies ConversationSkillActionRequest,
+          "POST",
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to remove skill from conversation");
-        }
-
-        const result = await response.json();
         return result.success === true;
       } catch (err) {
         const error = normalizeError(err);
@@ -141,7 +122,7 @@ export function useAddDeleteConversationSkill({
         return false;
       }
     },
-    [conversationId, workspaceId, sendNotification]
+    [conversationId, workspaceId, sendNotification, fetcherWithBody]
   );
 
   return { addSkill, deleteSkill };

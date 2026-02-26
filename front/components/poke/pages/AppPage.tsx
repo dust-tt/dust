@@ -3,12 +3,12 @@ import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   useAppRouter,
   useRequiredPathParam,
   useSearchParam,
 } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAppDetails } from "@app/poke/swr/app_details";
 import type { AppType, SpecificationType } from "@app/types/app";
@@ -93,6 +93,7 @@ function AppSpecification({
 }) {
   const { isDark } = useTheme();
   const router = useAppRouter();
+  const { fetcherWithBody } = useFetcher();
   // Use asPath (actual URL) and strip query string to get the real pathname
   const pathname = router.asPath.split("?")[0];
   const hashParam = router.query.hash;
@@ -105,22 +106,14 @@ function AppSpecification({
         config[block.name] = block.config;
       }
 
-      const r = await clientFetch(
+      await fetcherWithBody([
         `/api/poke/workspaces/${owner.sId}/apps/${app.sId}/state`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            specification: JSON.stringify(specification),
-            config: JSON.stringify(config),
-          }),
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to update app specification.");
-      }
+          specification: JSON.stringify(specification),
+          config: JSON.stringify(config),
+        },
+        "POST",
+      ]);
       router.reload();
     } catch (e) {
       console.error(e);

@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillEditorsResponseBody,
@@ -53,50 +52,45 @@ export function useUpdateSkillEditors({
     disabled: true,
   });
 
+  const { fetcherWithBody } = useFetcher();
+
   const updateSkillEditors = useCallback(
     async (body: PatchSkillEditorsRequestBody) => {
-      const res = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/skills/${skillId}/editors`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
+        body,
+        "PATCH",
+      ]);
 
-      if (res.ok) {
-        void mutateEditors();
+      void mutateEditors();
 
-        let title;
-        let description: string | undefined = undefined;
-        if (
-          body.addEditorIds != null &&
-          body.addEditorIds.length > 0 &&
-          body.removeEditorIds != null &&
-          body.removeEditorIds.length > 0
-        ) {
-          title = "Successfully updated editors";
-          description = "Successfully added and removed editors";
-        } else if (
-          (body.addEditorIds == null || body.addEditorIds.length <= 0) &&
-          body.removeEditorIds != null &&
-          body.removeEditorIds.length > 0
-        ) {
-          title = `Successfully removed editor${pluralize(body.removeEditorIds.length)}`;
-        } else {
-          title = `Successfully added editor${pluralize(body.addEditorIds?.length ?? 0)}`;
-        }
-
-        sendNotification({
-          type: "success",
-          title,
-          description,
-        });
+      let title;
+      let description: string | undefined = undefined;
+      if (
+        body.addEditorIds != null &&
+        body.addEditorIds.length > 0 &&
+        body.removeEditorIds != null &&
+        body.removeEditorIds.length > 0
+      ) {
+        title = "Successfully updated editors";
+        description = "Successfully added and removed editors";
+      } else if (
+        (body.addEditorIds == null || body.addEditorIds.length <= 0) &&
+        body.removeEditorIds != null &&
+        body.removeEditorIds.length > 0
+      ) {
+        title = `Successfully removed editor${pluralize(body.removeEditorIds.length)}`;
+      } else {
+        title = `Successfully added editor${pluralize(body.addEditorIds?.length ?? 0)}`;
       }
+
+      sendNotification({
+        type: "success",
+        title,
+        description,
+      });
     },
-    [owner, skillId, mutateEditors, sendNotification]
+    [owner, skillId, mutateEditors, sendNotification, fetcherWithBody]
   );
 
   return updateSkillEditors;

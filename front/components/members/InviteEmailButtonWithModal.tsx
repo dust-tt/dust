@@ -4,11 +4,11 @@ import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
   sendInvitations,
 } from "@app/lib/invitations";
+import { useFetcher } from "@app/lib/swr/swr";
 import { isEmailValid } from "@app/lib/utils";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
@@ -71,6 +71,7 @@ export function InviteEmailButtonWithModal({
   const [open, setOpen] = useState(false);
 
   const sendNotification = useSendNotification();
+  const { fetcher } = useFetcher();
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
@@ -91,13 +92,9 @@ export function InviteEmailButtonWithModal({
 
     const existingMembersResponses = await Promise.all(
       inviteEmailsList.map(async (email) => {
-        const response = await clientFetch(
+        return fetcher(
           `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}`
         );
-        if (!response.ok) {
-          throw new Error("Failed to fetch member information");
-        }
-        return response.json();
       })
     );
     const existingMembers = existingMembersResponses.flatMap(

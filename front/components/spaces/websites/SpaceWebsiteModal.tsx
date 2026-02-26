@@ -2,10 +2,10 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { createWebsite, updateWebsite } from "@app/lib/api/website";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
 import { isWebCrawlerConfiguration } from "@app/types/connectors/configuration";
 import type { WebCrawlerConfigurationType } from "@app/types/connectors/webcrawler";
@@ -135,6 +135,7 @@ export default function SpaceWebsiteModal({
 }: SpaceWebsiteModalProps) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
+  const { fetcher } = useFetcher();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -265,14 +266,10 @@ export default function SpaceWebsiteModal({
     }
     setIsSaving(true);
     try {
-      const res = await clientFetch(
+      await fetcher(
         `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSourceView.dataSource.sId}`,
         { method: "DELETE" }
       );
-      if (!res.ok) {
-        const errRes = await res.json();
-        throw new Error(errRes.error.message);
-      }
       void mutateSpaceDataSourceViews();
       await router.push(
         `/w/${owner.sId}/spaces/${space.sId}/categories/${WEBSITE_CAT}`

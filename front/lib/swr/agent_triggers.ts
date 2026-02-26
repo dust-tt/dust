@@ -1,12 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
-import {
-  emptyArray,
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTriggersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
 import type { GetSubscribersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/subscribers";
 import type {
@@ -19,6 +13,7 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
+import { isAPIErrorResponse } from "@app/types/error";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -87,6 +82,7 @@ export function useDeleteTrigger({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
+  const { fetcher } = useFetcher();
   const { mutateTriggers } = useAgentTriggers({
     workspaceId,
     agentConfigurationId,
@@ -96,7 +92,7 @@ export function useDeleteTrigger({
   const deleteTrigger = useCallback(
     async (triggerId: string): Promise<boolean> => {
       try {
-        const response = await clientFetch(
+        await fetcher(
           `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
           {
             method: "DELETE",
@@ -107,19 +103,13 @@ export function useDeleteTrigger({
           }
         );
 
-        if (response.ok) {
-          void mutateTriggers();
-          return true;
-        } else {
-          return false;
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+        void mutateTriggers();
+        return true;
+      } catch {
         return false;
       }
     },
-    [workspaceId, agentConfigurationId, mutateTriggers]
+    [workspaceId, agentConfigurationId, mutateTriggers, fetcher]
   );
 
   return deleteTrigger;
@@ -243,6 +233,7 @@ export function useAddTriggerSubscriber({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
+  const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const { mutateTriggers } = useAgentTriggers({
     workspaceId,
@@ -253,43 +244,45 @@ export function useAddTriggerSubscriber({
   const addSubscriber = useCallback(
     async (triggerId: string): Promise<boolean> => {
       try {
-        const response = await clientFetch(
+        await fetcher(
           `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "POST",
           }
         );
 
-        if (response.ok) {
-          sendNotification({
-            type: "success",
-            title: "Subscribed to trigger",
-            description:
-              "You will now receive notifications when this trigger runs.",
-          });
-          void mutateTriggers();
-          return true;
-        } else {
-          const errorData = await getErrorFromResponse(response);
+        sendNotification({
+          type: "success",
+          title: "Subscribed to trigger",
+          description:
+            "You will now receive notifications when this trigger runs.",
+        });
+        void mutateTriggers();
+        return true;
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
           sendNotification({
             type: "error",
             title: "Failed to subscribe",
-            description: `Error: ${errorData.message}`,
+            description: `Error: ${e.error.message}`,
           });
-          return false;
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Failed to subscribe",
+            description: "An unexpected error occurred. Please try again.",
+          });
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to subscribe",
-          description: "An unexpected error occurred. Please try again.",
-        });
         return false;
       }
     },
-    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+    [
+      workspaceId,
+      agentConfigurationId,
+      sendNotification,
+      mutateTriggers,
+      fetcher,
+    ]
   );
 
   return addSubscriber;
@@ -314,6 +307,8 @@ export function useRemoveTriggerSubscriber({
     disabled: !!agentConfigurationId,
   });
 
+  const { fetcher } = useFetcher();
+
   const removeSubscriber = useCallback(
     async (
       triggerId: string,
@@ -324,46 +319,42 @@ export function useRemoveTriggerSubscriber({
         triggerAgentConfigurationId || agentConfigurationId;
 
       try {
-        const response = await clientFetch(
+        await fetcher(
           `/api/w/${workspaceId}/assistant/agent_configurations/${targetAgentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "DELETE",
           }
         );
 
-        if (response.ok) {
-          sendNotification({
-            type: "success",
-            title: "Unsubscribed from trigger",
-            description:
-              "You will no longer receive notifications when this trigger runs.",
-          });
+        sendNotification({
+          type: "success",
+          title: "Unsubscribed from trigger",
+          description:
+            "You will no longer receive notifications when this trigger runs.",
+        });
 
-          // Mutate the appropriate triggers list
-          if (agentConfigurationId) {
-            void mutateAgentTriggers();
-          } else {
-            void mutateUserTriggers();
-          }
-
-          return true;
+        // Mutate the appropriate triggers list
+        if (agentConfigurationId) {
+          void mutateAgentTriggers();
         } else {
-          const errorData = await getErrorFromResponse(response);
+          void mutateUserTriggers();
+        }
+
+        return true;
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
           sendNotification({
             type: "error",
             title: "Failed to unsubscribe",
-            description: `Error: ${errorData.message}`,
+            description: `Error: ${e.error.message}`,
           });
-          return false;
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Failed to unsubscribe",
+            description: "An unexpected error occurred. Please try again.",
+          });
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to unsubscribe",
-          description: "An unexpected error occurred. Please try again.",
-        });
         return false;
       }
     },
@@ -373,6 +364,7 @@ export function useRemoveTriggerSubscriber({
       sendNotification,
       mutateAgentTriggers,
       mutateUserTriggers,
+      fetcher,
     ]
   );
 

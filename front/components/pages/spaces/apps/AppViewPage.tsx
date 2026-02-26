@@ -3,7 +3,6 @@ import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { extractConfig } from "@app/lib/config";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import {
   addBlock,
@@ -12,6 +11,7 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useApp, useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
+import { useFetcher } from "@app/lib/swr/swr";
 import Custom404 from "@app/pages/404";
 import type {
   BlockRunConfig,
@@ -95,6 +95,7 @@ const isRunnable = (
 };
 
 export function AppViewPage() {
+  const { fetcherWithBody } = useFetcher();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -166,19 +167,14 @@ export function AppViewPage() {
 
     saveTimeout = setTimeout(async () => {
       if (!readOnly) {
-        await clientFetch(
+        await fetcherWithBody([
           `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/state`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              specification: JSON.stringify(spec),
-              config: JSON.stringify(config),
-            }),
-          }
-        );
+            specification: JSON.stringify(spec),
+            config: JSON.stringify(config),
+          },
+          "POST",
+        ]);
       }
     }, 1000);
   };
@@ -259,28 +255,17 @@ export function AppViewPage() {
 
     // setTimeout to yield execution so that the button updates right away.
     setTimeout(async () => {
-      const [runRes] = await Promise.all([
-        clientFetch(
+      try {
+        const run = await fetcherWithBody([
           `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              specification: JSON.stringify(spec),
-              config: JSON.stringify(config),
-            }),
-          }
-        ),
-      ]);
+            specification: JSON.stringify(spec),
+            config: JSON.stringify(config),
+          },
+          "POST",
+        ]);
 
-      if (!runRes.ok) {
-        const r: APIErrorResponse = await runRes.json();
-        setRunError(r.error.run_error as CoreAPIError);
-      } else {
         setRunError(null);
-        const [run] = await Promise.all([runRes.json()]);
 
         // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
         await mutate(
@@ -295,6 +280,11 @@ export function AppViewPage() {
             );
           })
         );
+      } catch (e) {
+        if (e && typeof e === "object" && "error" in e) {
+          const r = e as APIErrorResponse;
+          setRunError(r.error.run_error as CoreAPIError);
+        }
       }
     }, 0);
   };

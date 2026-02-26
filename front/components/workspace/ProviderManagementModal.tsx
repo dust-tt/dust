@@ -7,7 +7,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isModelAvailable } from "@app/lib/assistant";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import { useWorkspace } from "@app/lib/swr/workspaces";
 import { EMBEDDING_PROVIDER_IDS } from "@app/types/assistant/models/embedding";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
@@ -61,6 +61,7 @@ export function ProviderManagementModal({
 }: ProviderManagementModalProps) {
   const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const [open, setOpen] = useState(false);
 
@@ -152,20 +153,15 @@ export function ProviderManagementModal({
       });
     } else {
       try {
-        const response = await clientFetch(`/api/w/${owner.sId}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        await fetcherWithBody([
+          `/api/w/${owner.sId}`,
+          {
             whiteListedProviders: activeProviders,
             defaultEmbeddingProvider: embeddingProvider,
-          }),
-        });
+          },
+          "POST",
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to update workspace providers");
-        }
         sendNotifications({
           type: "success",
           title: "Providers Updated",
@@ -174,9 +170,7 @@ export function ProviderManagementModal({
 
         // Retrigger a server fetch after a successful update
         await mutateWorkspace();
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotifications({
           type: "error",
           title: "Update Failed",

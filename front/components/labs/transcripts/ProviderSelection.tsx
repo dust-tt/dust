@@ -1,12 +1,13 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
-import { clientFetch } from "@app/lib/egress/client";
 import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
+import { useFetcher } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import { isAPIErrorResponse } from "@app/types/error";
 import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
@@ -37,6 +38,7 @@ export function ProviderSelection({
   owner,
 }: ProviderSelectionProps) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const regionContext = useRegionContext();
   const [apiKey, setApiKey] = useState("");
   const [selectedProvider, setSelectedProvider] =
@@ -63,50 +65,48 @@ export function ProviderSelection({
       useConnectorConnection?: boolean
     ) => {
       try {
-        const response = await clientFetch(
+        await fetcherWithBody([
           `/api/w/${owner.sId}/labs/transcripts`,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              connectionId,
-              provider,
-              useConnectorConnection,
-            }),
-          }
-        );
-        if (!response.ok) {
+            connectionId,
+            provider,
+            useConnectorConnection,
+          },
+          "POST",
+        ]);
+        sendNotification({
+          type: "success",
+          title: "Provider connected",
+          description:
+            "Your transcripts provider has been connected successfully.",
+        });
+
+        await mutateTranscriptsConfiguration();
+      } catch (error) {
+        if (isAPIErrorResponse(error)) {
           sendNotification({
             type: "error",
             title: "Failed to connect provider",
             description:
+              error.error.message ??
               "Could not connect to your transcripts provider. Please try again.",
           });
         } else {
           sendNotification({
-            type: "success",
-            title: "Provider connected",
+            type: "error",
+            title: "Failed to connect provider",
             description:
-              "Your transcripts provider has been connected successfully.",
+              "Unexpected error trying to connect to your transcripts provider. Please try again.",
           });
-
-          await mutateTranscriptsConfiguration();
         }
-        return response;
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect provider",
-          description:
-            "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
-            // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-            error,
-        });
       }
     },
-    [owner.sId, sendNotification, mutateTranscriptsConfiguration]
+    [
+      owner.sId,
+      sendNotification,
+      mutateTranscriptsConfiguration,
+      fetcherWithBody,
+    ]
   );
 
   const handleConnectGoogleTranscriptsSource = useCallback(async () => {
@@ -132,62 +132,32 @@ export function ProviderSelection({
 
   const saveApiConnection = useCallback(
     async (apiKey: string, provider: string) => {
-      const response = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/labs/transcripts`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            apiKey,
-            provider,
-          }),
-        }
-      );
-
-      return response;
+          apiKey,
+          provider,
+        },
+        "POST",
+      ]);
     },
-    [owner.sId]
+    [owner.sId, fetcherWithBody]
   );
 
   const saveConnectorConnection = useCallback(
     async (provider: string) => {
-      const response = await clientFetch(
+      await fetcherWithBody([
         `/api/w/${owner.sId}/labs/transcripts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ provider, useConnectorConnection: true }),
-        }
-      );
-      return response;
+        { provider, useConnectorConnection: true },
+        "POST",
+      ]);
     },
-    [owner.sId]
+    [owner.sId, fetcherWithBody]
   );
 
   const handleConnectGongTranscriptsSource = useCallback(async () => {
     try {
-      const response = await saveConnectorConnection("gong");
-      if (!response.ok) {
-        const errorText = await response.text();
-        datadogLogger.error(
-          {
-            status: response.status,
-            error: errorText,
-            workspaceId: owner.sId,
-          },
-          "[Labs Transcripts] Failed to connect Gong"
-        );
-        sendNotification({
-          type: "error",
-          title: "Failed to connect Gong",
-          description: "Could not connect to Gong. Please try again.",
-        });
-        return;
-      }
+      await saveConnectorConnection("gong");
 
       sendNotification({
         type: "success",

@@ -3,17 +3,14 @@ import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import {
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
@@ -99,25 +96,14 @@ export function useUpsertFileAsDatasourceEntry(
 
   const sendNotification = useSendNotification();
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
+  const { fetcherWithBody } = useFetcher();
 
   const doCreate = async (body: UpsertFileToDataSourceRequestBody) => {
     const upsertUrl = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}/files`;
-    const res = await clientFetch(upsertUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Failed to upload the file.",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    } else {
+    try {
+      const response: UpsertFileToDataSourceResponseBody =
+        await fetcherWithBody([upsertUrl, body, "POST"]);
+
       void mutateContentNodes();
       startPeriodicRefresh();
 
@@ -127,8 +113,22 @@ export function useUpsertFileAsDatasourceEntry(
         description: "Your file is processing and will appear shortly.",
       });
 
-      const response: UpsertFileToDataSourceResponseBody = await res.json();
       return response.file;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to upload the file.",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to upload the file.",
+          description: "An error occurred",
+        });
+      }
+      return null;
     }
   };
 
@@ -247,29 +247,34 @@ export function useShareInteractiveContentFile({
 
   const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
 
-  const doShare = async (shareScope: FileShareScope) => {
-    const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ shareScope }),
-    });
+  const { fetcherWithBody } = useFetcher();
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Failed to share the Frame file.",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    } else {
+  const doShare = async (shareScope: FileShareScope) => {
+    try {
+      const response: ShareFileResponseBody = await fetcherWithBody([
+        `/api/w/${owner.sId}/files/${fileId}/share`,
+        { shareScope },
+        "POST",
+      ]);
+
       await mutate();
 
-      const response: ShareFileResponseBody = await res.json();
-
       return response;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to share the Frame file.",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to share the Frame file.",
+          description: "An error occurred",
+        });
+      }
+      return null;
     }
   };
 

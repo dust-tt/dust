@@ -1,5 +1,4 @@
 import type { LLMTrace } from "@app/lib/api/llm/traces/types";
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
@@ -20,27 +19,26 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export function usePokePullTemplates() {
+  const { fetcher } = useFetcher();
   const { mutateAssistantTemplates } = usePokeAssistantTemplates();
   const [isPulling, setIsPulling] = useState(false);
 
   const doPull = useCallback(async () => {
     setIsPulling(true);
-    const response = await clientFetch("/api/poke/templates/pull", {
-      method: "POST",
-    });
+    try {
+      const data = (await fetcher("/api/poke/templates/pull", {
+        method: "POST",
+      })) as PullTemplatesResponseBody;
 
-    if (!response.ok) {
-      throw new Error("Failed to pull templates");
-    }
-
-    const data = (await response.json()) as PullTemplatesResponseBody;
-    setIsPulling(false);
-    if (data.success && data.count > 0) {
-      void mutateAssistantTemplates();
+      if (data.success && data.count > 0) {
+        void mutateAssistantTemplates();
+        return data;
+      }
       return data;
+    } finally {
+      setIsPulling(false);
     }
-    return data;
-  }, [mutateAssistantTemplates]);
+  }, [mutateAssistantTemplates, fetcher]);
 
   return {
     doPull,

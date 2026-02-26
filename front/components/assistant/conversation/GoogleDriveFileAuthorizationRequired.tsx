@@ -2,7 +2,7 @@ import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
 import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -29,6 +29,7 @@ export function GoogleDriveFileAuthorizationRequired({
   retryHandler,
 }: GoogleDriveFileAuthorizationRequiredProps) {
   const { user } = useAuth();
+  const { fetcherWithBody } = useFetcher();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isOpeningPicker, setIsOpeningPicker] = useState(false);
   const [pickerCredentials, setPickerCredentials] = useState<{
@@ -52,20 +53,11 @@ export function GoogleDriveFileAuthorizationRequired({
 
     const fetchCredentials = async () => {
       try {
-        const response = await clientFetch(
+        const data: PickerTokenResponseType = await fetcherWithBody([
           `/api/w/${owner.sId}/google_drive/picker_token`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mcpServerId }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch picker credentials");
-        }
-
-        const data: PickerTokenResponseType = await response.json();
+          { mcpServerId },
+          "POST",
+        ]);
         setPickerCredentials(data);
       } catch {
         setCredentialsError("Failed to load picker credentials");
@@ -73,7 +65,13 @@ export function GoogleDriveFileAuthorizationRequired({
     };
 
     void fetchCredentials();
-  }, [isTriggeredByCurrentUser, owner.sId, mcpServerId, pickerCredentials]);
+  }, [
+    isTriggeredByCurrentUser,
+    owner.sId,
+    mcpServerId,
+    pickerCredentials,
+    fetcherWithBody,
+  ]);
 
   const handleFilesSelected = useCallback(
     (files: GooglePickerFile[]) => {

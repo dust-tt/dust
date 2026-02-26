@@ -1,5 +1,5 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PostSendOnboardingResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/send-onboarding";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -15,6 +15,7 @@ export function useOnboardingConversation({
   const router = useAppRouter();
   const welcome = useSearchParam("welcome");
   const isCreatingRef = useRef(false);
+  const { fetcherWithBody } = useFetcher();
 
   const createOnboardingConversation = useCallback(async () => {
     if (isCreatingRef.current) {
@@ -27,32 +28,28 @@ export function useOnboardingConversation({
         ? (navigator.language?.split("-")[0] ?? null)
         : null;
 
-    const res = await clientFetch(
-      `/api/w/${workspaceId}/assistant/conversations/send-onboarding`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ language }),
-      }
-    );
+    try {
+      const data = (await fetcherWithBody([
+        `/api/w/${workspaceId}/assistant/conversations/send-onboarding`,
+        { language },
+        "POST",
+      ])) as PostSendOnboardingResponseBody;
 
-    if (res.ok) {
-      const data = (await res.json()) as PostSendOnboardingResponseBody;
       if (data.conversationSId) {
         await router.replace(
           `/w/${workspaceId}/conversation/${data.conversationSId}`
         );
         return;
       }
+    } catch {
+      // If there was an error, fall through to remove the welcome param.
     }
 
     // If no conversation was created or there was an error, remove the welcome param
     const currentPath = router.asPath.replace(/[?&]welcome=true/, "");
     await router.replace(currentPath);
     isCreatingRef.current = false;
-  }, [workspaceId, router]);
+  }, [workspaceId, router, fetcherWithBody]);
 
   useEffect(() => {
     const shouldCreateOnboarding =

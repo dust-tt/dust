@@ -1,18 +1,19 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import { APP_NAME_REGEXP } from "@app/types/app";
-import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
 
 export function AppSettingsPage() {
+  const { fetcher, fetcherWithBody } = useFetcher();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -75,20 +76,23 @@ export function AppSettingsPage() {
       })
     ) {
       setIsDeleting(true);
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (res.ok) {
-        await router.push(dustAppsListUrl(owner, app.space));
-      } else {
-        setIsDeleting(false);
-        const err = (await res.json()) as { error: APIError };
-        window.alert(
-          `Failed to delete the app (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+      try {
+        await fetcher(
+          `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
+          { method: "DELETE" }
         );
+        await router.push(dustAppsListUrl(owner, app.space));
+      } catch (e) {
+        setIsDeleting(false);
+        if (isAPIErrorResponse(e)) {
+          window.alert(
+            `Failed to delete the app (contact support@dust.tt for assistance) (internal error: type=${e.error.type} message=${e.error.message})`
+          );
+        } else {
+          window.alert(
+            "Failed to delete the app (contact support@dust.tt for assistance)"
+          );
+        }
       }
       return true;
     } else {
@@ -102,29 +106,29 @@ export function AppSettingsPage() {
     }
 
     setIsUpdating(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
+        {
           name: appName,
           description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
-        }),
-      }
-    );
-    if (res.ok) {
+        },
+        "POST",
+      ]);
       await router.push(
         `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`
       );
-    } else {
+    } catch (e) {
       setIsUpdating(false);
-      const err = (await res.json()) as { error: APIError };
-      window.alert(
-        `Failed to update the app (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
-      );
+      if (isAPIErrorResponse(e)) {
+        window.alert(
+          `Failed to update the app (contact support@dust.tt for assistance) (internal error: type=${e.error.type} message=${e.error.message})`
+        );
+      } else {
+        window.alert(
+          "Failed to update the app (contact support@dust.tt for assistance)"
+        );
+      }
     }
   };
 

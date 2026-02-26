@@ -1,8 +1,7 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
 import type { GetOAuthSetupResponseBody } from "@app/pages/api/w/[wId]/oauth/[provider]/setup";
-import type { APIError, WithAPIErrorResponse } from "@app/types/error";
+import type { APIError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
   OAuthConnectionType,
@@ -15,6 +14,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { Fetcher } from "swr";
 
 export const useFinalize = () => {
+  const { fetcher } = useFetcher();
+
   const doFinalize = async (
     provider: OAuthProvider,
     queryParams: Record<string, string | string[] | undefined>
@@ -28,25 +29,21 @@ export const useFinalize = () => {
       }
     }
 
-    const res = await clientFetch(
-      `/api/oauth/${provider}/finalize?${params.toString()}`
-    );
+    try {
+      const result: { connection: OAuthConnectionType } = await fetcher(
+        `/api/oauth/${provider}/finalize?${params.toString()}`
+      );
 
-    const result: WithAPIErrorResponse<{ connection: OAuthConnectionType }> =
-      await res.json();
-
-    if (isAPIErrorResponse(result)) {
-      return new Err(result.error);
-    }
-
-    if (!res.ok) {
+      return new Ok(result.connection);
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        return new Err(e.error);
+      }
       return new Err({
         type: "internal_server_error",
-        message: `Failed to finalize OAuth: ${res.statusText}`,
+        message: "Failed to finalize OAuth",
       });
     }
-
-    return new Ok(result.connection);
   };
 
   return doFinalize;

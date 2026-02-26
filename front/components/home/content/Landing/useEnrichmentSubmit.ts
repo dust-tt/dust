@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { TrackingArea } from "@app/lib/tracking";
 import { TRACKING_ACTIONS, trackEvent } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
@@ -17,6 +17,7 @@ export function useEnrichmentSubmit({
   trackingArea,
   trackingObject,
 }: UseEnrichmentSubmitOptions) {
+  const { fetcherWithBody } = useFetcher();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +45,11 @@ export function useEnrichmentSubmit({
     setIsLoading(true);
 
     try {
-      const response = await clientFetch("/api/enrichment/company", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
+      const data = await fetcherWithBody([
+        "/api/enrichment/company",
+        { email },
+        "POST",
+      ]);
 
       if (!data.success && data.error) {
         setError(data.error);

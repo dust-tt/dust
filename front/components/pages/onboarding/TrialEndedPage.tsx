@@ -3,14 +3,16 @@ import { TrialPricingCard } from "@app/components/paywall/TrialPricingCard";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 
 export function TrialEndedPage() {
+  const { fetcherWithBody } = useFetcher();
   const { workspace } = useAuth();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -18,24 +20,12 @@ export function TrialEndedPage() {
 
   const { submit: handleSubscribePlan, isSubmitting } = useSubmitFunction(
     async (period: BillingPeriod) => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          billingPeriod: period,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-      } else {
-        const content = await res.json();
+      try {
+        const content = await fetcherWithBody([
+          `/api/w/${workspace.sId}/subscriptions`,
+          { billingPeriod: period },
+          "POST",
+        ]);
         if (content.checkoutUrl) {
           await router.push(content.checkoutUrl);
         } else {
@@ -44,6 +34,20 @@ export function TrialEndedPage() {
             title: "Subscription failed",
             description:
               "Failed to subscribe to a new plan. Please try again in a few minutes.",
+          });
+        }
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            type: "error",
+            title: "Subscription failed",
+            description: e.error.message,
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Subscription failed",
+            description: "Failed to subscribe to a new plan.",
           });
         }
       }

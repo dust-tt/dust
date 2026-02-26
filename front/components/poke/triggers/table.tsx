@@ -1,6 +1,7 @@
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForTriggers } from "@app/components/poke/triggers/columns";
+import { useFetcher } from "@app/lib/swr/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeTriggers } from "@app/poke/swr/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
@@ -18,6 +19,7 @@ export function TriggerDataTable({
   agentId,
   loadOnInit,
 }: TriggerDataTableProps) {
+  const { fetcher } = useFetcher();
   const { data: agentConfigurations } = usePokeAgentConfigurations({
     owner,
     disabled: false,
@@ -36,7 +38,8 @@ export function TriggerDataTable({
           agentConfigurations,
           async () => {
             await mutateTriggers();
-          }
+          },
+          fetcher
         );
 
         // Filter triggers by agent ID if provided

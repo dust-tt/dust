@@ -1,8 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DataSourceType } from "@app/types/data_source";
-import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import { BigQueryLogo, ContextItem, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -26,30 +25,25 @@ export function BigQueryUseMetadataForDBMLView({
   const useMetadataForDBML = configValue === "true";
 
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [loading, setLoading] = useState(false);
 
   const handleSetUseMetadataForDBML = async (useMetadataForDBML: boolean) => {
     setLoading(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/useMetadataForDBML`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: useMetadataForDBML.toString() }),
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/useMetadataForDBML`,
+        { configValue: useMetadataForDBML.toString() },
+        "POST",
+      ]);
       await mutateConfig();
       setLoading(false);
-    } else {
+    } catch (e: any) {
       setLoading(false);
-      const err = (await res.json()) as { error: APIError };
       sendNotification({
         type: "error",
         title: "Failed to enable BigQuery use metadata for DBML",
-        description: err.error.message,
+        description: e?.error?.message ?? "An error occurred",
       });
     }
     return true;

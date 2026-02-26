@@ -43,7 +43,6 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
@@ -116,7 +115,7 @@ export default function AgentBuilder({
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const { hasFeature } = useFeatureFlags();
-  const { fetcherWithBody } = useFetcher();
+  const { fetcherWithBody, fetcher } = useFetcher();
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
@@ -349,19 +348,11 @@ export default function AgentBuilder({
 
     const createPendingAgent = async () => {
       try {
-        const response = await clientFetch(
+        const data = await fetcher(
           `/api/w/${owner.sId}/assistant/agent_configurations/create-pending`,
           { method: "POST" }
         );
-        if (response.ok) {
-          const data = await response.json();
-          setPendingAgentId(data.sId);
-        } else {
-          datadogLogger.error(
-            { status: response.status },
-            "[Agent builder] - Failed to create pending agent"
-          );
-        }
+        setPendingAgentId(data.sId);
       } catch (error) {
         datadogLogger.error(
           { error: normalizeError(error) },
@@ -370,7 +361,13 @@ export default function AgentBuilder({
       }
     };
     void createPendingAgent();
-  }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
+  }, [
+    agentConfiguration,
+    duplicateAgentId,
+    owner.sId,
+    pendingAgentId,
+    fetcher,
+  ]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {

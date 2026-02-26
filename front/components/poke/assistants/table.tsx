@@ -1,13 +1,13 @@
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { clientFetch } from "@app/lib/egress/client";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -37,7 +37,8 @@ function prepareAgentConfigurationForDisplay(
 const importAssistant = async (
   owner: LightWorkspaceType,
   router: AppRouter,
-  setImporting: (importing: boolean) => void
+  setImporting: (importing: boolean) => void,
+  fetcherWithBody: (args: [string, any, string]) => Promise<any>
 ) => {
   const input = document.createElement("input");
   input.type = "file";
@@ -49,22 +50,22 @@ const importAssistant = async (
     }
     setImporting(true);
     const fileContent = await file.text();
-    const response = await clientFetch(
-      `/api/poke/workspaces/${owner.sId}/agent_configurations/import`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: fileContent,
-      }
-    );
-    setImporting(false);
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
-      window.alert(`Failed to import agent. ${errorData.message}`);
-    } else {
+    try {
+      const parsedContent = JSON.parse(fileContent);
+      await fetcherWithBody([
+        `/api/poke/workspaces/${owner.sId}/agent_configurations/import`,
+        parsedContent,
+        "POST",
+      ]);
+      setImporting(false);
       router.reload();
+    } catch (e) {
+      setImporting(false);
+      if (isAPIErrorResponse(e)) {
+        window.alert(`Failed to import agent. ${e.error.message}`);
+      } else {
+        window.alert("Failed to import agent.");
+      }
     }
   };
   input.click();
@@ -76,6 +77,7 @@ export function AssistantsDataTable({
   loadOnInit,
 }: AssistantsDataTableProps) {
   const router = useAppRouter();
+  const { fetcher, fetcherWithBody } = useFetcher();
   const [showRestoreAssistantModal, setShowRestoreAssistantModal] =
     useState(false);
   const [importing, setImporting] = useState(false);
@@ -93,7 +95,9 @@ export function AssistantsDataTable({
         aria-label="Import an agent"
         variant="outline"
         size="sm"
-        onClick={() => importAssistant(owner, router, setImporting)}
+        onClick={() =>
+          importAssistant(owner, router, setImporting, fetcherWithBody)
+        }
         label={importing ? "📥 Importing..." : "📥 Import agent"}
         isLoading={importing}
       />
@@ -122,7 +126,8 @@ export function AssistantsDataTable({
               agentsRetention,
               async () => {
                 await mutate();
-              }
+              },
+              fetcher
             )}
             data={prepareAgentConfigurationForDisplay(data)}
           />
@@ -143,6 +148,7 @@ function RestoreAssistantModal({
   owner: LightWorkspaceType;
   agentsRetention: Record<string, number>;
 }) {
+  const { fetcher } = useFetcher();
   const { data: archivedAssistants, mutate } = usePokeAgentConfigurations({
     owner,
     disabled: !show,
@@ -170,7 +176,8 @@ function RestoreAssistantModal({
                 agentsRetention,
                 async () => {
                   await mutate();
-                }
+                },
+                fetcher
               )}
               data={prepareAgentConfigurationForDisplay(archivedAssistants)}
             />

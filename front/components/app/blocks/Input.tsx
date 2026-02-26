@@ -1,8 +1,8 @@
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useDataset } from "@app/lib/swr/datasets";
+import { useFetcher } from "@app/lib/swr/swr";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -71,6 +71,7 @@ export default function Input({
     null
   );
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
@@ -82,25 +83,22 @@ export default function Input({
     setIsDatasetModalOpen(false);
     setDatasetModalData(null);
     if (dataset) {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+          {
             dataset: datasetModalData,
             schema: dataset.schema,
-          }),
-        }
-      );
-      if (res.ok) {
+          },
+          "POST",
+        ]);
         sendNotification({
           title: `Dataset updated`,
           description: `The data of ${block.config.dataset} was successfully updated.`,
           type: "success",
         });
+      } catch {
+        // Error handled by fetcher
       }
     }
   };

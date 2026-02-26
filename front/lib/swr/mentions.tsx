@@ -1,10 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import {
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   PostMentionActionRequestBody,
@@ -12,6 +7,7 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/mentions";
 import type { RichMentionWithStatus } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
+import { isAPIErrorResponse } from "@app/types/error";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -104,43 +100,34 @@ export function useDismissMention({
   conversationId: string;
   messageId: string;
 }) {
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
   const dismissMention = useCallback(
     async (mention: RichMentionWithStatus): Promise<boolean> => {
       try {
-        const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
-
-        const res = await clientFetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const result: PostMentionActionResponseBody = await fetcherWithBody([
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`,
+          {
             type: mention.type,
             id: mention.id,
             action: "dismissed",
-          } as PostMentionActionRequestBody),
-        });
+          } as PostMentionActionRequestBody,
+          "POST",
+        ]);
 
-        if (!res.ok) {
-          const errorData = await getErrorFromResponse(res);
+        return result.success;
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
           sendNotification({
             type: "error",
             title: `Error dismissing mention`,
-            description: errorData.message ?? "An error occurred",
+            description: e.error.message ?? "An error occurred",
           });
-          return false;
         }
-
-        const result: PostMentionActionResponseBody = await res.json();
-
-        return result.success;
-      } catch (error) {
-        console.error(error);
         return false;
       }
     },
-    [workspaceId, conversationId, messageId, sendNotification]
+    [workspaceId, conversationId, messageId, sendNotification, fetcherWithBody]
   );
 
   return { dismissMention };
@@ -157,6 +144,7 @@ export function useMentionValidation({
   messageId: string;
   isProjectConversation: boolean;
 }) {
+  const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
 
   const validateMention = useCallback(
@@ -165,32 +153,15 @@ export function useMentionValidation({
       action: "approved" | "rejected"
     ): Promise<boolean> => {
       try {
-        const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
-
-        const res = await clientFetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const result: PostMentionActionResponseBody = await fetcherWithBody([
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`,
+          {
             type: mention.type,
             id: mention.id,
             action,
-          } as PostMentionActionRequestBody),
-        });
-
-        if (!res.ok) {
-          const errorData = await getErrorFromResponse(res);
-          const actionLabel = action === "approved" ? "approving" : "rejecting";
-          sendNotification({
-            type: "error",
-            title: `Error ${actionLabel} mention`,
-            description: errorData.message ?? "An error occurred",
-          });
-          return false;
-        }
-
-        const result: PostMentionActionResponseBody = await res.json();
+          } as PostMentionActionRequestBody,
+          "POST",
+        ]);
 
         if (result.success && action === "approved") {
           sendNotification({
@@ -205,12 +176,20 @@ export function useMentionValidation({
         return result.success;
       } catch (error) {
         const actionLabel = action === "approved" ? "approving" : "rejecting";
-        sendNotification({
-          type: "error",
-          title: `Error ${actionLabel} mention`,
-          description:
-            error instanceof Error ? error.message : "An error occurred",
-        });
+        if (isAPIErrorResponse(error)) {
+          sendNotification({
+            type: "error",
+            title: `Error ${actionLabel} mention`,
+            description: error.error.message ?? "An error occurred",
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: `Error ${actionLabel} mention`,
+            description:
+              error instanceof Error ? error.message : "An error occurred",
+          });
+        }
         return false;
       }
     },
@@ -220,6 +199,7 @@ export function useMentionValidation({
       messageId,
       isProjectConversation,
       sendNotification,
+      fetcherWithBody,
     ]
   );
 

@@ -6,18 +6,17 @@ import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
@@ -69,6 +68,7 @@ export function EditSpaceManagedDataSourcesViews({
   onOpenModalHandled,
 }: EditSpaceManagedDataSourcesViewsProps) {
   const sendNotification = useSendNotification();
+  const { fetcher, fetcherWithBody } = useFetcher();
   const confirm = useContext(ConfirmContext);
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -187,19 +187,12 @@ export function EditSpaceManagedDataSourcesViews({
     const deletePromisesErrors = await Promise.all(
       deletedViews.map(async (deletedView) => {
         try {
-          const res = await clientFetch(
+          await fetcher(
             `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${deletedView.sId}?force=true`,
             {
               method: "DELETE",
-              headers: {
-                "Content-Type": "application/json",
-              },
             }
           );
-          if (!res.ok) {
-            const rawError: { error: APIError } = await res.json();
-            return rawError.error.message;
-          }
         } catch (e) {
           return `${e}`;
         }
@@ -228,7 +221,6 @@ export function EditSpaceManagedDataSourcesViews({
           };
 
           try {
-            let res;
             if (existingViewForDs) {
               if (
                 !selectionConfiguration.isSelectAll &&
@@ -239,33 +231,18 @@ export function EditSpaceManagedDataSourcesViews({
                     "it should have been removed. Action: check the DataSourceViewSelector component."
                 );
               } else {
-                res = await clientFetch(
+                await fetcherWithBody([
                   `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${existingViewForDs.sId}`,
-                  {
-                    method: "PATCH",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(body),
-                  }
-                );
+                  body,
+                  "PATCH",
+                ]);
               }
             } else {
-              res = await clientFetch(
+              await fetcherWithBody([
                 `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify(body),
-                }
-              );
-            }
-
-            if (!res.ok) {
-              const rawError: { error: APIError } = await res.json();
-              return rawError.error.message;
+                body,
+                "POST",
+              ]);
             }
           } catch (e) {
             return `An Unknown error ${e} occurred while adding data to space.`;

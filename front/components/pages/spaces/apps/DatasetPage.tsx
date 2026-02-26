@@ -3,16 +3,17 @@ import "@uiw/react-textarea-code-editor/dist.css";
 import DatasetView from "@app/components/app/DatasetView";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDataset } from "@app/lib/swr/datasets";
+import { useFetcher } from "@app/lib/swr/swr";
 import Custom404 from "@app/pages/404";
 import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 export function DatasetPage() {
+  const { fetcherWithBody } = useFetcher();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -105,20 +106,14 @@ export function DatasetPage() {
     }
 
     setLoading(true);
-    const res = await clientFetch(
+    await fetcherWithBody([
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${dataset.name}`,
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          dataset: updatedDataset,
-          schema: updatedSchema,
-        }),
-      }
-    );
-    await res.json();
+        dataset: updatedDataset,
+        schema: updatedSchema,
+      },
+      "POST",
+    ]);
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };

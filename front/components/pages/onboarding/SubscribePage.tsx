@@ -4,15 +4,16 @@ import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
+import { useFetcher } from "@app/lib/swr/swr";
 import { useUser } from "@app/lib/swr/user";
 import {
   useSubscriptionStatus,
   useWorkspaceSubscriptions,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
@@ -20,6 +21,7 @@ import { CreditCardIcon } from "@heroicons/react/20/solid";
 import React, { useEffect } from "react";
 
 export function SubscribePage() {
+  const { fetcherWithBody } = useFetcher();
   const { workspace, isAdmin } = useAuth();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -34,24 +36,12 @@ export function SubscribePage() {
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          billingPeriod,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-      } else {
-        const content = await res.json();
+      try {
+        const content = await fetcherWithBody([
+          `/api/w/${workspace.sId}/subscriptions`,
+          { billingPeriod },
+          "POST",
+        ]);
         if (content.checkoutUrl) {
           await router.push(content.checkoutUrl);
         } else if (content.success) {
@@ -60,6 +50,20 @@ export function SubscribePage() {
             title: "Subscription failed",
             description:
               "Failed to subscribe to a new plan. Please try again in a few minutes.",
+          });
+        }
+      } catch (e) {
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            type: "error",
+            title: "Subscription failed",
+            description: e.error.message,
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Subscription failed",
+            description: "Failed to subscribe to a new plan.",
           });
         }
       }

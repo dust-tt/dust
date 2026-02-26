@@ -22,7 +22,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import {
@@ -30,6 +29,7 @@ import {
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useFetcher } from "@app/lib/swr/swr";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
@@ -38,7 +38,6 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
 import type { FileUseCase } from "@app/types/files";
 import type { PlanType } from "@app/types/plan";
 import type { SpaceType } from "@app/types/space";
@@ -258,6 +257,7 @@ export const SpaceDataSourceViewContentList = ({
     useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const {
@@ -369,50 +369,30 @@ export const SpaceDataSourceViewContentList = ({
       );
 
       try {
-        let res;
         if (existingViewForSpace) {
-          res = await clientFetch(
+          await fetcherWithBody([
             `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views/${existingViewForSpace.sId}`,
             {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                parentsToAdd: [contentNode.internalId],
-              }),
-            }
-          );
+              parentsToAdd: [contentNode.internalId],
+            },
+            "PATCH",
+          ]);
         } else {
-          res = await clientFetch(
+          await fetcherWithBody([
             `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views`,
             {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                dataSourceId: dataSourceView.dataSource.sId,
-                parentsIn: [contentNode.internalId],
-              }),
-            }
-          );
+              dataSourceId: dataSourceView.dataSource.sId,
+              parentsIn: [contentNode.internalId],
+            },
+            "POST",
+          ]);
         }
 
-        if (!res.ok) {
-          const rawError: { error: APIError } = await res.json();
-          sendNotification({
-            title: "Error while adding data to space",
-            description: rawError.error.message,
-            type: "error",
-          });
-        } else {
-          sendNotification({
-            title: "Data added to space",
-            type: "success",
-          });
-          await mutateDataSourceViews();
-        }
+        sendNotification({
+          title: "Data added to space",
+          type: "success",
+        });
+        await mutateDataSourceViews();
       } catch (e) {
         sendNotification({
           title: "Error while adding data to space",
@@ -424,6 +404,7 @@ export const SpaceDataSourceViewContentList = ({
     [
       dataSourceView.dataSource.sId,
       dataSourceViews,
+      fetcherWithBody,
       mutateDataSourceViews,
       owner.sId,
       sendNotification,

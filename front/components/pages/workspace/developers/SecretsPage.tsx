@@ -1,8 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
   BookOpenIcon,
@@ -25,6 +25,7 @@ import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 export function SecretsPage() {
+  const { fetcher, fetcherWithBody } = useFetcher();
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
 
@@ -42,14 +43,12 @@ export function SecretsPage() {
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(async (secret: DustAppSecretType) => {
-      const r = await clientFetch(`/api/w/${owner.sId}/dust_app_secrets`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: secret.name, value: secret.value }),
-      });
-      if (r.ok) {
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/dust_app_secrets`,
+          { name: secret.name, value: secret.value },
+          "POST",
+        ]);
         await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
         setIsNewSecretPromptOpen(false);
         setNewDustAppSecret(defaultSecret);
@@ -58,8 +57,9 @@ export function SecretsPage() {
           title: "Secret saved",
           description: "Successfully saved the secret value securely.",
         });
-      } else {
-        const msg = await r.text();
+      } catch (e) {
+        const msg =
+          e instanceof Error ? e.message : "An unknown error occurred";
         sendNotification({
           type: "error",
           title: "Error saving secret",
@@ -70,14 +70,9 @@ export function SecretsPage() {
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (secret: DustAppSecretType) => {
-      await clientFetch(
+      await fetcher(
         `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/destroy`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { method: "DELETE" }
       );
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
       setSecretToRevoke(null);

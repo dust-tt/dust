@@ -3,10 +3,10 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
-import { clientFetch } from "@app/lib/egress/client";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
+import { useFetcher } from "@app/lib/swr/swr";
 import type {
   EnterpriseUpgradeFormType,
   SubscriptionType,
@@ -52,6 +52,7 @@ export default function EnterpriseUpgradeDialog({
 
   const { plans } = usePokePlans();
   const router = useAppRouter();
+  const { fetcherWithBody } = useFetcher();
 
   const freeCreditMicroUsd =
     programmaticUsageConfig?.freeCreditMicroUsd ?? null;
@@ -102,22 +103,11 @@ export default function EnterpriseUpgradeDialog({
         setIsSubmitting(true);
         setError(null);
         try {
-          const r = await clientFetch(
+          await fetcherWithBody([
             `/api/poke/workspaces/${owner.sId}/upgrade_enterprise`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(cleanedValues),
-            }
-          );
-
-          if (!r.ok) {
-            throw new Error(
-              `Something went wrong: ${r.status} ${await r.text()}`
-            );
-          }
+            cleanedValues,
+            "POST",
+          ]);
 
           form.reset();
           setOpen(false);
@@ -131,7 +121,15 @@ export default function EnterpriseUpgradeDialog({
       };
       void submit();
     },
-    [form, owner.sId, router, setError, setIsSubmitting, setOpen]
+    [
+      form,
+      owner.sId,
+      router,
+      setError,
+      setIsSubmitting,
+      setOpen,
+      fetcherWithBody,
+    ]
   );
 
   return (

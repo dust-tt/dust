@@ -1,11 +1,11 @@
 // LABS - CAN BE REMOVED ANYTIME
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -95,44 +95,50 @@ export function useUpdateTranscriptsConfiguration({
   transcriptsConfiguration: LabsTranscriptsConfigurationType;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
+
   const doUpdate = async (
     data: Partial<PatchTranscriptsConfiguration>
   ): Promise<Result<undefined, Error>> => {
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.sId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      }
-    );
-    if (!response.ok) {
-      const error = await response.json();
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.sId}`,
+        data,
+        "PATCH",
+      ]);
+
       sendNotification({
-        type: "error",
-        title: "Failed to update transcript configuration",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: error.error?.message || "Unknown error",
+        type: "success",
+        title: "Success!",
+        description:
+          // Check if we're updating processing (status field)
+          data.status !== undefined
+            ? data.status === "active"
+              ? "We will now process your meeting transcripts."
+              : "We will no longer process your meeting transcripts."
+            : // Check if we're updating storage (dataSourceViewId field)
+              data.dataSourceViewId
+              ? "We will now store your meeting transcripts."
+              : "We will no longer store your meeting transcripts.",
       });
-      return new Err(normalizeError(error));
+      return new Ok(undefined);
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update transcript configuration",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: e.error?.message || "Unknown error",
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to update transcript configuration",
+          description: "Unknown error",
+        });
+      }
+      return new Err(normalizeError(e));
     }
-    sendNotification({
-      type: "success",
-      title: "Success!",
-      description:
-        // Check if we're updating processing (status field)
-        data.status !== undefined
-          ? data.status === "active"
-            ? "We will now process your meeting transcripts."
-            : "We will no longer process your meeting transcripts."
-          : // Check if we're updating storage (dataSourceViewId field)
-            data.dataSourceViewId
-            ? "We will now store your meeting transcripts."
-            : "We will no longer store your meeting transcripts.",
-    });
-    return new Ok(undefined);
   };
   return { doUpdate };
 }

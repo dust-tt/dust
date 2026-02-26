@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import { useCallback, useState } from "react";
 
 export function useDismissFeedback({
@@ -15,22 +15,19 @@ export function useDismissFeedback({
 }) {
   const [isDismissing, setIsDismissing] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const toggleDismiss = useCallback(
     async (dismissed: boolean) => {
       setIsDismissing(true);
-      const response = await clientFetch(
-        `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks/${feedbackId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ dismissed }),
-        }
-      );
 
-      if (!response.ok) {
+      try {
+        await fetcherWithBody([
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks/${feedbackId}`,
+          { dismissed },
+          "PATCH",
+        ]);
+      } catch {
         sendNotification({
           type: "error",
           title: `Failed to mark feedback as ${dismissed ? "seen" : "unseen"}.`,
@@ -50,7 +47,14 @@ export function useDismissFeedback({
         onSuccess();
       }
     },
-    [workspaceId, agentConfigurationId, feedbackId, sendNotification, onSuccess]
+    [
+      workspaceId,
+      agentConfigurationId,
+      feedbackId,
+      sendNotification,
+      onSuccess,
+      fetcherWithBody,
+    ]
   );
 
   return {

@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
+  const { fetcherWithBody } = useFetcher();
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [workspaceName, setWorkspaceName] = useState(owner.name);
@@ -50,23 +51,19 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
 
   const handleUpdateWorkspace = async () => {
     setUpdating(true);
-    const res = await clientFetch(`/api/w/${owner.sId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: workspaceName,
-      }),
-    });
-    if (!res.ok) {
-      window.alert("Failed to update workspace.");
-      setUpdating(false);
-    } else {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}`,
+        { name: workspaceName },
+        "POST",
+      ]);
       setIsSheetOpen(false);
       // We perform a full refresh so that the Workspace name updates, and we get a fresh owner
       // object so that the formValidation logic keeps working.
       window.location.reload();
+    } catch {
+      window.alert("Failed to update workspace.");
+      setUpdating(false);
     }
   };
 

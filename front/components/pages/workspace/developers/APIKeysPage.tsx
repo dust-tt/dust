@@ -5,9 +5,10 @@ import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDia
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
 import { useGroups } from "@app/lib/swr/groups";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -28,6 +29,7 @@ interface APIKeysProps {
 }
 
 export function APIKeys({ owner }: APIKeysProps) {
+  const { fetcherWithBody } = useFetcher();
   const { mutate } = useSWRConfig();
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
@@ -56,20 +58,18 @@ export function APIKeys({ owner }: APIKeysProps) {
         monthlyCapMicroUsd: number | null;
       }) => {
         const globalGroup = groups.find((g) => g.kind === "global");
-        const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            group_id: group?.sId ? group.sId : globalGroup?.sId,
-            monthly_cap_micro_usd: monthlyCapMicroUsd,
-          }),
-        });
-        await mutate(`/api/w/${owner.sId}/keys`);
-        if (response.status >= 200 && response.status < 300) {
+        try {
+          await fetcherWithBody([
+            `/api/w/${owner.sId}/keys`,
+            {
+              name,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              group_id: group?.sId ? group.sId : globalGroup?.sId,
+              monthly_cap_micro_usd: monthlyCapMicroUsd,
+            },
+            "POST",
+          ]);
+          await mutate(`/api/w/${owner.sId}/keys`);
           setIsNewApiKeyCreatedOpen(true);
           sendNotification({
             title: "API Key Created",
@@ -77,25 +77,32 @@ export function APIKeys({ owner }: APIKeysProps) {
               "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API.",
             type: "success",
           });
-          return;
+        } catch (e) {
+          await mutate(`/api/w/${owner.sId}/keys`);
+          if (isAPIErrorResponse(e)) {
+            sendNotification({
+              title: "Error creating API key",
+              description: get(e, "error.message", "Unknown error"),
+              type: "error",
+            });
+          } else {
+            sendNotification({
+              title: "Error creating API key",
+              description: "Unknown error",
+              type: "error",
+            });
+          }
         }
-        const errorResponse = await response.json();
-        sendNotification({
-          title: "Error creating API key",
-          description: get(errorResponse, "error.message", "Unknown error"),
-          type: "error",
-        });
       }
     );
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (key: KeyType) => {
-      await clientFetch(`/api/w/${owner.sId}/keys/${key.id}/disable`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/keys/${key.id}/disable`,
+        {},
+        "POST",
+      ]);
       await mutate(`/api/w/${owner.sId}/keys`);
     }
   );
@@ -105,30 +112,33 @@ export function APIKeys({ owner }: APIKeysProps) {
       if (!editCapKey) {
         return;
       }
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/keys/${editCapKey.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ monthly_cap_micro_usd: monthlyCapMicroUsd }),
-        }
-      );
-      await mutate(`/api/w/${owner.sId}/keys`);
-      if (response.ok) {
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/keys/${editCapKey.id}`,
+          { monthly_cap_micro_usd: monthlyCapMicroUsd },
+          "PATCH",
+        ]);
+        await mutate(`/api/w/${owner.sId}/keys`);
         sendNotification({
           title: "Monthly cap updated",
           type: "success",
         });
         setEditCapKey(null);
-      } else {
-        const errorResponse = await response.json();
-        sendNotification({
-          title: "Error updating monthly cap",
-          description: get(errorResponse, "error.message", "Unknown error"),
-          type: "error",
-        });
+      } catch (e) {
+        await mutate(`/api/w/${owner.sId}/keys`);
+        if (isAPIErrorResponse(e)) {
+          sendNotification({
+            title: "Error updating monthly cap",
+            description: get(e, "error.message", "Unknown error"),
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: "Error updating monthly cap",
+            description: "Unknown error",
+            type: "error",
+          });
+        }
       }
     });
 

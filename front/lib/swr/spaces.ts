@@ -5,11 +5,9 @@ import type {
   SortingParams,
 } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
 import {
   emptyArray,
-  getErrorFromResponse,
   useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
@@ -44,6 +42,7 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
 import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
@@ -312,27 +311,21 @@ export function useCreateFolder({
       disabled: true, // Needed just to mutate
     });
 
+  const { fetcherWithBody } = useFetcher();
+
   const doCreate = async (name: string | null, description: string | null) => {
     if (!name) {
       return null;
     }
 
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          description,
-        }),
-      }
-    );
-    if (res.ok) {
+    try {
+      const response: PostSpaceDataSourceResponseBody = await fetcherWithBody([
+        `/api/w/${owner.sId}/spaces/${spaceId}/data_sources`,
+        { name, description },
+        "POST",
+      ]);
+
       void mutateSpaceDataSourceViews();
-      const response: PostSpaceDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
       sendNotification({
         type: "success",
@@ -340,14 +333,20 @@ export function useCreateFolder({
         description: "Folder was successfully created.",
       });
       return dataSourceView;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: "Error creating Folder",
-        description: `Error: ${errorData.message}`,
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Error creating Folder",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error creating Folder",
+          description: "An error occurred",
+        });
+      }
       return null;
     }
   };
@@ -363,6 +362,8 @@ export function useUpdateFolder({
   spaceId: string;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
+
   const doUpdate = async (
     dataSourceView: DataSourceViewType | null,
     description: string | null
@@ -370,34 +371,35 @@ export function useUpdateFolder({
     if (!dataSourceView || !description) {
       return false;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          description,
-        }),
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
+        { description },
+        "PATCH",
+      ]);
+
       sendNotification({
         type: "success",
         title: "Successfully updated folder",
         description: "Folder was successfully updated.",
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: "Error updating Folder",
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Error updating Folder",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error updating Folder",
+          description: "An error occurred",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doUpdate;
@@ -421,16 +423,18 @@ export function useDeleteFolderOrWebsite({
       disabled: true, // Needed just to mutate
     });
 
+  const { fetcher } = useFetcher();
+
   const doDelete = async (dataSourceView: DataSourceViewType | undefined) => {
     if (!dataSourceView) {
       return false;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
-      { method: "DELETE" }
-    );
+    try {
+      await fetcher(
+        `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
+        { method: "DELETE" }
+      );
 
-    if (res.ok) {
       await mutateSpaceDataSourceViews();
 
       sendNotification({
@@ -438,16 +442,23 @@ export function useDeleteFolderOrWebsite({
         title: `Successfully deleted ${category}`,
         description: `${getDisplayNameForDataSource(dataSourceView.dataSource)} was successfully deleted.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Error deleting ${category}`,
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Error deleting ${category}`,
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Error deleting ${category}`,
+          description: "An error occurred",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doDelete;
@@ -465,6 +476,8 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
+  const { fetcherWithBody } = useFetcher();
+
   const doCreate = async (
     params: PostSpaceRequestBodyType,
     notification?: { title: string; description: string }
@@ -476,7 +489,6 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     }
 
     const url = `/api/w/${owner.sId}/spaces`;
-    let res;
     let body: PostSpaceRequestBodyType;
 
     if (managementMode === "manual") {
@@ -499,14 +511,6 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         isRestricted,
         spaceKind,
       };
-
-      res = await clientFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
     } else if (managementMode === "group") {
       const { groupIds } = params;
 
@@ -522,28 +526,17 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         isRestricted,
         spaceKind,
       };
-
-      res = await clientFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
     } else {
       return null;
     }
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
+    try {
+      const response: PostSpacesResponseBody = await fetcherWithBody([
+        url,
+        body,
+        "POST",
+      ]);
 
-      sendNotification({
-        type: "error",
-        title: "Error creating space",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    } else {
       void mutateSpaces();
       void mutateSpacesAsAdmin();
 
@@ -554,8 +547,22 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
           notification?.description ?? "Space was successfully created.",
       });
 
-      const response: PostSpacesResponseBody = await res.json();
       return response.space;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Error creating space",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error creating space",
+          description: "An error occurred",
+        });
+      }
+      return null;
     }
   };
 
@@ -564,6 +571,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
 export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
     kinds: "all",
@@ -581,21 +589,13 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   ) => {
     const { name: newName, managementMode, isRestricted } = params;
 
-    const updatePromises: Promise<Response>[] = [];
+    const updatePromises: Promise<unknown>[] = [];
 
     // Prepare space update request.
     if (newName) {
       const spaceUrl = `/api/w/${owner.sId}/spaces/${space.sId}`;
       updatePromises.push(
-        clientFetch(spaceUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: newName,
-          }),
-        })
+        fetcherWithBody([spaceUrl, { name: newName }, "PATCH"])
       );
     }
 
@@ -603,35 +603,31 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     if (managementMode === "manual") {
       updatePromises.push(
-        clientFetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        fetcherWithBody([
+          spaceMembersUrl,
+          {
             name: newName,
             isRestricted,
             managementMode,
             memberIds: params.memberIds,
             editorIds: params.editorIds,
-          } satisfies PatchSpaceMembersRequestBodyType),
-        })
+          } satisfies PatchSpaceMembersRequestBodyType,
+          "PATCH",
+        ])
       );
     } else if (managementMode === "group") {
       updatePromises.push(
-        clientFetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        fetcherWithBody([
+          spaceMembersUrl,
+          {
             name: newName,
             isRestricted,
             managementMode,
             groupIds: params.groupIds,
             editorGroupIds: params.editorGroupIds,
-          } satisfies PatchSpaceMembersRequestBodyType),
-        })
+          } satisfies PatchSpaceMembersRequestBodyType,
+          "PATCH",
+        ])
       );
     }
 
@@ -639,32 +635,37 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       return null;
     }
 
-    const results = await Promise.all(updatePromises);
+    try {
+      const results = await Promise.all(updatePromises);
 
-    for (const res of results) {
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
+      void mutateSpaces();
+      void mutateSpacesAsAdmin();
 
+      sendNotification({
+        type: "success",
+        title: notification?.title ?? "Successfully updated space",
+        description:
+          notification?.description ?? "Space was successfully updated.",
+      });
+
+      const spaceResponse = results[0] as PatchSpaceResponseBody;
+      return spaceResponse.space;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
         sendNotification({
           type: "error",
           title: "Error updating space",
-          description: `Error: ${errorData.message}`,
+          description: `Error: ${e.error.message}`,
         });
-        return null;
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error updating space",
+          description: "An unexpected error occurred.",
+        });
       }
+      return null;
     }
-    void mutateSpaces();
-    void mutateSpacesAsAdmin();
-
-    sendNotification({
-      type: "success",
-      title: notification?.title ?? "Successfully updated space",
-      description:
-        notification?.description ?? "Space was successfully updated.",
-    });
-
-    const spaceResponse: PatchSpaceResponseBody = await results[0].json();
-    return spaceResponse.space;
   };
   return doUpdate;
 }
@@ -687,16 +688,18 @@ export function useDeleteSpace({
     disabled: true, // Needed just to mutate
   });
 
+  const { fetcher } = useFetcher();
+
   const doDelete = async (space: SpaceType | null) => {
     if (!space) {
       return false;
     }
     const url = `/api/w/${owner.sId}/spaces/${space.sId}?force=${force}`;
-    const res = await clientFetch(url, {
-      method: "DELETE",
-    });
+    try {
+      await fetcher(url, {
+        method: "DELETE",
+      });
 
-    if (res.ok) {
       void mutateSpaces();
       void mutateSpacesAsAdmin();
 
@@ -705,16 +708,23 @@ export function useDeleteSpace({
         title: `Successfully deleted ${getSpaceName(space)}`,
         description: `${getSpaceName(space)} was successfully deleted.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
-      sendNotification({
-        type: "error",
-        title: `Error deleting ${getSpaceName(space)}`,
-        description: `Error: ${errorData.message}`,
-      });
+      return true;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: `Error deleting ${getSpaceName(space)}`,
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Error deleting ${getSpaceName(space)}`,
+          description: "An error occurred",
+        });
+      }
+      return false;
     }
-    return res.ok;
   };
 
   return doDelete;
@@ -998,45 +1008,53 @@ export function useUpdateProjectMetadata({
     disabled: true,
   });
 
+  const { fetcherWithBody } = useFetcher();
+
   return async (
     updates: PatchProjectMetadataBodyType
   ): Promise<ProjectMetadataType | null> => {
     const url = `/api/w/${owner.sId}/spaces/${spaceId}/project_metadata`;
 
-    const res = await clientFetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+    try {
+      const response: PatchProjectMetadataResponseBody = await fetcherWithBody([
+        url,
+        updates,
+        "PATCH",
+      ]);
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
+      void mutateProjectMetadata();
+      void mutateSpaceSummary();
+      void mutateSpaceInfoRegardlessOfQueryParams();
+
+      const title =
+        updates.archive !== undefined
+          ? updates.archive
+            ? "Project archived"
+            : "Project unarchived"
+          : "Project updated";
+
       sendNotification({
-        type: "error",
-        title: "Error updating project metadata",
-        description: `Error: ${errorData.message}`,
+        type: "success",
+        title,
       });
+
+      return response.projectMetadata;
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Error updating project metadata",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error updating project metadata",
+          description: "An error occurred",
+        });
+      }
       return null;
     }
-
-    void mutateProjectMetadata();
-    void mutateSpaceSummary();
-    void mutateSpaceInfoRegardlessOfQueryParams();
-
-    const title =
-      updates.archive !== undefined
-        ? updates.archive
-          ? "Project archived"
-          : "Project unarchived"
-        : "Project updated";
-
-    sendNotification({
-      type: "success",
-      title,
-    });
-
-    const response: PatchProjectMetadataResponseBody = await res.json();
-    return response.projectMetadata;
   };
 }
 
@@ -1111,26 +1129,31 @@ export function useGenerateUserProjectDigest({
 }) {
   const sendNotification = useSendNotification();
 
-  const doGenerate = async () => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/user_project_digests/generate`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+  const { fetcher } = useFetcher();
 
-    if (res.ok) {
+  const doGenerate = async () => {
+    try {
+      await fetcher(
+        `/api/w/${owner.sId}/spaces/${spaceId}/user_project_digests/generate`,
+        {
+          method: "POST",
+        }
+      );
       return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error generating project digest",
-        description: `Error: ${errorData.message}`,
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Error generating project digest",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Error generating project digest",
+          description: "An error occurred",
+        });
+      }
       return false;
     }
   };
@@ -1160,13 +1183,14 @@ export function useLeaveProject({
     options: { disabled: true },
   });
 
-  const doLeave = async (): Promise<boolean> => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/leave`,
-      { method: "POST" }
-    );
+  const { fetcher } = useFetcher();
 
-    if (res.ok) {
+  const doLeave = async (): Promise<boolean> => {
+    try {
+      await fetcher(`/api/w/${owner.sId}/spaces/${spaceId}/leave`, {
+        method: "POST",
+      });
+
       void mutateSpaceInfoRegardlessOfQueryParams();
       void mutateSpaceSummary();
       sendNotification({
@@ -1175,13 +1199,20 @@ export function useLeaveProject({
         description: "You have successfully left the project.",
       });
       return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Could not leave project",
-        description: `Error: ${errorData.message}`,
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Could not leave project",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Could not leave project",
+          description: "An error occurred",
+        });
+      }
       return false;
     }
   };
@@ -1211,13 +1242,14 @@ export function useJoinProject({
     options: { disabled: true },
   });
 
-  const doJoin = async (): Promise<boolean> => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/join`,
-      { method: "POST" }
-    );
+  const { fetcher } = useFetcher();
 
-    if (res.ok) {
+  const doJoin = async (): Promise<boolean> => {
+    try {
+      await fetcher(`/api/w/${owner.sId}/spaces/${spaceId}/join`, {
+        method: "POST",
+      });
+
       void mutateSpaceInfoRegardlessOfQueryParams();
       void mutateSpaceSummary();
       sendNotification({
@@ -1226,13 +1258,20 @@ export function useJoinProject({
         description: "You can now participate in conversations.",
       });
       return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Could not join project",
-        description: `Error: ${errorData.message}`,
-      });
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Could not join project",
+          description: `Error: ${e.error.message}`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Could not join project",
+          description: "An error occurred",
+        });
+      }
       return false;
     }
   };

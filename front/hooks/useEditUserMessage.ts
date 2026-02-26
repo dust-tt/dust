@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
 
@@ -12,6 +12,7 @@ export function useEditUserMessage({
   conversationId: string;
 }) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   const { submit: editMessage, isSubmitting } = useSubmitFunction(
     async ({
@@ -25,21 +26,16 @@ export function useEditUserMessage({
     }) => {
       const apiMentions = mentions.map(toMentionType);
 
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/edit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/edit`,
+          {
             content,
             mentions: apiMentions,
-          }),
-        }
-      );
-
-      if (!res.ok) {
+          },
+          "POST",
+        ]);
+      } catch {
         sendNotification({
           title: "Failed to edit message",
           description: "Please try again.",

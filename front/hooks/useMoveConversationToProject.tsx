@@ -4,9 +4,9 @@ import {
   useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
@@ -14,6 +14,7 @@ import { useCallback, useContext } from "react";
 export function useMoveConversationToProject(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+  const { fetcherWithBody } = useFetcher();
 
   const { mutateConversations } = useConversations({ workspaceId: owner.sId });
 
@@ -43,23 +44,19 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
       if (!confirmed) {
         return false;
       }
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ spaceId: space.sId }),
-        }
-      );
 
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-
+      try {
+        await fetcherWithBody([
+          `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
+          { spaceId: space.sId },
+          "PATCH",
+        ]);
+      } catch (e) {
         sendNotification({
           title: "Error moving conversation.",
-          description: errorData.message,
+          description: isAPIErrorResponse(e)
+            ? e.error.message
+            : "An error occurred",
           type: "error",
         });
         return false;
@@ -82,6 +79,7 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
       mutateSpaceSummary,
       sendNotification,
       confirm,
+      fetcherWithBody,
     ]
   );
 }

@@ -5,8 +5,8 @@ import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTick
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -62,6 +62,7 @@ export function ZendeskConfigView({
   const hideCustomerDetailsEnabled = hideCustomerDetailsConfigValue === "true";
 
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [loading, setLoading] = useState(false);
   const [retentionInput, setRetentionInput] = useState(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -73,15 +74,12 @@ export function ZendeskConfigView({
     configValue: boolean | number
   ) => {
     setLoading(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
-      {
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-        body: JSON.stringify({ configValue: configValue.toString() }),
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
+        { configValue: configValue.toString() },
+        "POST",
+      ]);
       await mutateSyncUnresolvedTicketsConfig();
       await mutateHideCustomerDetailsConfig();
       await mutateRetentionPeriodConfig();
@@ -95,16 +93,15 @@ export function ZendeskConfigView({
           description: `The retention period has been updated to ${configValue} days.`,
         });
       }
-    } else {
+    } catch (e: any) {
       setLoading(false);
-      const err = await res.json();
 
       sendNotification({
         type: "info",
         title: "Failed to edit Zendesk configuration",
         description:
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          err.error?.connectors_error.message || "An unknown error occurred",
+          e?.error?.connectors_error?.message || "An unknown error occurred",
       });
     }
     return true;

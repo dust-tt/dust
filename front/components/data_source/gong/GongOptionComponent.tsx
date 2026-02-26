@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { DataSourceType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -76,6 +76,7 @@ function PermissionProfileSelector({
   disabled,
 }: PermissionProfileSelectorProps) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [loading, setLoading] = useState(false);
 
   const {
@@ -122,23 +123,19 @@ function PermissionProfileSelector({
     setLoading(true);
     // The config API only accepts strings, so "" means "no filter" (normalized
     // to null on the connector side).
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${GONG_PERMISSION_PROFILE_ID_CONFIG_KEY}`,
-      {
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-        body: JSON.stringify({ configValue: profileId }),
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${GONG_PERMISSION_PROFILE_ID_CONFIG_KEY}`,
+        { configValue: profileId },
+        "POST",
+      ]);
       await mutatePermissionProfileIdConfig();
       sendNotification({
         type: "success",
         title: "Gong configuration updated",
         description: "Participant filter successfully updated.",
       });
-    } else {
-      const err = await res.json();
+    } catch (err) {
       sendNotification({
         type: "error",
         title: "Failed to update Gong configuration",
@@ -282,6 +279,7 @@ export function GongOptionComponent({
 
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
 
   // TODO: fix the auto-save pattern here and replace with an actual save on the sheet.
   const handleConfigUpdate = async (configKey: string, newValue: string) => {
@@ -301,15 +299,12 @@ export function GongOptionComponent({
     }
 
     setLoading(true);
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
-      {
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-        body: JSON.stringify({ configValue: newValue }),
-      }
-    );
-    if (res.ok) {
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
+        { configValue: newValue },
+        "POST",
+      ]);
       let description: string;
       switch (configKey) {
         case GONG_RETENTION_PERIOD_CONFIG_KEY:
@@ -337,9 +332,8 @@ export function GongOptionComponent({
         title: "Gong configuration updated",
         description,
       });
-    } else {
+    } catch (err) {
       setLoading(false);
-      const err = await res.json();
       sendNotification({
         type: "error",
         title: "Failed to update Gong configuration",

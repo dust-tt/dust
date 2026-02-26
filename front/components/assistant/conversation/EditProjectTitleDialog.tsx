@@ -1,8 +1,8 @@
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -34,6 +34,7 @@ export const EditProjectTitleDialog = ({
   const [title, setTitle] = useState<string>(currentTitle);
   const inputRef = useRef<HTMLInputElement>(null);
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const { mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
@@ -61,37 +62,39 @@ export const EditProjectTitleDialog = ({
       return;
     }
 
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: trimmedTitle }),
+    try {
+      await fetcherWithBody([
+        `/api/w/${owner.sId}/spaces/${spaceId}`,
+        { name: trimmedTitle },
+        "PATCH",
+      ]);
+
+      void mutateSpaceInfo();
+      void mutateSpaceSummary();
+
+      sendNotification({ type: "success", title: "Title edited" });
+      onClose();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to edit title",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to edit title",
+          description: "An error occurred",
+        });
       }
-    );
-
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
-        title: "Failed to edit title",
-        description: errorData.message,
-      });
-      return;
     }
-
-    void mutateSpaceInfo();
-    void mutateSpaceSummary();
-
-    sendNotification({ type: "success", title: "Title edited" });
-    onClose();
   }, [
     title,
     currentTitle,
     owner.sId,
     spaceId,
+    fetcherWithBody,
     mutateSpaceInfo,
     mutateSpaceSummary,
     sendNotification,

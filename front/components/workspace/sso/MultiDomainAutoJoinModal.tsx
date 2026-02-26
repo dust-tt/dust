@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import {
@@ -28,6 +29,7 @@ export function MultiDomainAutoJoinModal({
   owner,
 }: MultiDomainAutoJoinModalProps) {
   const sendNotification = useSendNotification();
+  const { fetcherWithBody } = useFetcher();
   const [domainOverrides, setDomainOverrides] = useState<
     Record<string, boolean>
   >({});
@@ -79,24 +81,24 @@ export function MultiDomainAutoJoinModal({
 
     setIsSubmitting(true);
     try {
-      const res = await clientFetch(`/api/w/${owner.sId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ domainUpdates }),
-      });
+      await fetcherWithBody([`/api/w/${owner.sId}`, { domainUpdates }, "POST"]);
 
-      if (!res.ok) {
+      // Full refresh to update owner object and keep formValidation logic working.
+      window.location.reload();
+    } catch (e) {
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Update failed",
+          description: e.error.message,
+        });
+      } else {
         sendNotification({
           type: "error",
           title: "Update failed",
           description: "Failed to update auto-join settings.",
         });
       }
-
-      // Full refresh to update owner object and keep formValidation logic working.
-      window.location.reload();
     } finally {
       setIsSubmitting(false);
       onClose();
