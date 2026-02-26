@@ -1,4 +1,14 @@
-import { ListGroup, ListItem } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  ListGroup,
+  ListItem,
+  MoonIcon,
+  SunIcon,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 // Automatically discover all story files
@@ -16,18 +26,52 @@ const stories = Object.entries(storyModules)
   })
   .filter((s) => s.name !== "TemplateSelection");
 
+type Theme = "light" | "dark";
+const THEME_STORAGE_KEY = "sparkle-playground-theme";
+
 function StoryList({
   onSelectStory,
+  theme,
+  setTheme,
 }: {
   onSelectStory: (name: string) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 }) {
   return (
-    <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background">
-      <div className="s-w-full s-max-w-2xl s-px-4 s-text-center">
-        <h1 className="s-heading-4xl s-mb-4 s-text-foreground">Playgrounds</h1>
-        <p className="s-copy-lg s-mb-8 s-text-muted-foreground">
-          Select a playground to explore
-        </p>
+    <div className="s-flex s-min-h-screen s-items-start s-justify-center s-bg-background s-pt-6 dark:s-bg-background-night">
+      <div className="s-w-full s-max-w-2xl s-px-4 s-text-left">
+        <h1 className="s-heading-4xl s-mb-2 s-text-foreground dark:s-text-foreground-night">
+          Playgrounds
+        </h1>
+        <div className="s-mb-4 s-flex s-items-center s-justify-between s-gap-2">
+          <p className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+            Select a playground to explore
+          </p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                isSelect
+                icon={theme === "dark" ? MoonIcon : SunIcon}
+                label={theme === "dark" ? "Dark" : "Light"}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                icon={SunIcon}
+                label="Light"
+                onClick={() => setTheme("light")}
+              />
+              <DropdownMenuItem
+                icon={MoonIcon}
+                label="Dark"
+                onClick={() => setTheme("dark")}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <ListGroup>
           {stories.map((story, index) => (
             <ListItem
@@ -48,6 +92,21 @@ function StoryList({
 
 function App() {
   const [currentStory, setCurrentStory] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") {
+      return "light";
+    }
+    return localStorage.getItem(THEME_STORAGE_KEY) === "dark"
+      ? "dark"
+      : "light";
+  });
+
+  useEffect(() => {
+    const isDark = theme === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+    document.documentElement.classList.toggle("s-dark", isDark);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   // Read initial hash from URL
   useEffect(() => {
@@ -93,7 +152,13 @@ function App() {
     }
   }
 
-  return <StoryList onSelectStory={handleSelectStory} />;
+  return (
+    <StoryList
+      onSelectStory={handleSelectStory}
+      theme={theme}
+      setTheme={setTheme}
+    />
+  );
 }
 
 export default App;
