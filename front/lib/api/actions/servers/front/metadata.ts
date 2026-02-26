@@ -279,9 +279,7 @@ export const FRONT_SERVER = {
       "Manage support conversations, messages, and customer interactions.",
     authorization: null,
     icon: "FrontLogo",
-    documentationUrl: "https://dev.frontapp.com/reference/introduction",
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
+    documentationUrl: "https://docs.dust.tt/docs/front-mcp",
     instructions: null,
   },
   tools: Object.values(FRONT_TOOLS_METADATA).map((t) => ({

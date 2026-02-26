@@ -173,7 +173,7 @@ export const STATUSPAGE_SERVER = {
     description: "Monitor and manage Atlassian Statuspage incidents.",
     authorization: null,
     icon: "StatuspageLogo",
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/statuspage-mcp",
     instructions: null,
   },
   tools: Object.values(STATUSPAGE_TOOLS_METADATA).map((t) => ({

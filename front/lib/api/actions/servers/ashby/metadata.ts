@@ -121,7 +121,7 @@ export const ASHBY_SERVER = {
     description: "Access and manage Ashby ATS data.",
     authorization: null,
     icon: "AshbyLogo",
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/ashby-mcp",
     instructions: null,
   },
   tools: Object.values(ASHBY_TOOLS_METADATA).map((t) => ({
