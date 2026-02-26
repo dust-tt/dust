@@ -111,6 +111,11 @@ async function handler(
       workspaceId
     );
     if (flow === "unauthorized") {
+      logger.error(
+        { userId: user.sId, workspaceId },
+        "Enterprise connection : workspace not found"
+      );
+
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
         `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
@@ -170,6 +175,8 @@ async function handler(
       if (error instanceof AuthFlowError) {
         logger.error(
           {
+            userId: user.sId,
+            workspaceId: targetWorkspaceId,
             error,
           },
           "Error during login flow."
@@ -189,6 +196,16 @@ async function handler(
         error.workspaceId,
         null
       );
+
+      logger.error(
+        {
+          userId: user.sId,
+          workspaceId: targetWorkspaceId,
+          error,
+        },
+        "SSO enforcement : redirecting to SSO login."
+      );
+
       res.redirect(
         `/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
       );
