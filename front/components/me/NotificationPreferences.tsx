@@ -3,7 +3,7 @@ import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import logger from "@app/logger/logger";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   NotificationCondition,
   NotificationPreferencesDelay,
@@ -241,7 +241,7 @@ export const NotificationPreferences = forwardRef<
       .list()
       .then((preferences) => {
         if (preferences.error) {
-          logger.error(
+          datadogLogger.error(
             {
               code: NOVU_SESSION_ERROR_CODE,
               ownerId: owner.sId,
@@ -278,7 +278,7 @@ export const NotificationPreferences = forwardRef<
             .map((preference) => preference.workflow?.identifier)
             .filter((identifier): identifier is string => Boolean(identifier));
 
-          logger.error(
+          datadogLogger.error(
             {
               code: MISSING_WORKFLOW_ERROR_CODE,
               ownerId: owner.sId,
@@ -290,7 +290,7 @@ export const NotificationPreferences = forwardRef<
         }
       })
       .catch((error) => {
-        logger.error(
+        datadogLogger.error(
           {
             code: NOVU_REQUEST_ERROR_CODE,
             ownerId: owner.sId,
