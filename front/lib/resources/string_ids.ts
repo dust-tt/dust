@@ -68,15 +68,16 @@ export const RESOURCES_PREFIX = {
   // Project metadata.
   project_metadata: "pmd",
 
-  // User project digests.
-  user_project_digest: "pje",
-
   // Academy quiz attempts.
   academy_quiz_attempt: "aqz",
   academy_chapter_visit: "acv",
 
   // Sandboxes.
   sandbox: "sbx",
+
+  // Butler
+  user_project_digest: "pje",
+  conversation_butler_suggestion: "cbs",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

@@ -4791,6 +4791,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "sandbox",
   "user_conversation_reads",
   "user_project_digest",
+  "conversation_butler_suggestion",
 ];
 
 describe("ConversationResource cleanup on delete", () => {
