@@ -74,6 +74,10 @@ const EXTENSION_WHITELIST = [
   ".dockerfile",
   ".editorconfig",
 
+  // Shaders files.
+  ".shader",
+  ".hshader",
+
   // Infrastructure as Code
   ".tf", // Terraform
   ".hcl", // HashiCorp Configuration Language
