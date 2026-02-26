@@ -12,7 +12,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-// TODO(copilot): Remove useless suggestion types (or whole endpoint) when copilot is released.
+// TODO(copilot): Remove useless suggestion types when copilot is released.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
