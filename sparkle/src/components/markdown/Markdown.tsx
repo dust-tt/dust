@@ -99,8 +99,10 @@ export function Markdown({
   // Minimal test whenever editing this code: ensure that code block content of a streaming message
   // can be selected without blinking.
 
-  // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
-  const markdownComponents: Components = useMemo(() => {
+  // Memoized separately from additionalMarkdownComponents so that base component references
+  // (p, pre, ul, etc.) stay stable across re-renders. ReactMarkdown compares component types
+  // by reference — a new function would remount the entire subtree, destroying stateful children.
+  const baseMarkdownComponents: Components = useMemo(() => {
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       a: LinkBlock,
@@ -224,9 +226,21 @@ export function Markdown({
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
       code: CodeBlockWithExtendedSupport,
-      ...additionalMarkdownComponents,
     };
-  }, [textColor, compactSpacing, additionalMarkdownComponents]);
+  }, [textColor, compactSpacing, forcedTextSize, canCopyQuotes]);
+
+  // Merge base components with additional directive components.
+  // Even though this creates a new object when additionalMarkdownComponents changes,
+  // the spread copies the same function references from baseMarkdownComponents —
+  // it doesn't re-execute the arrow functions that define them.
+  // So base elements (p, pre, ul…) keep stable identities and won't remount.
+  const markdownComponents: Components = useMemo(
+    () => ({
+      ...baseMarkdownComponents,
+      ...additionalMarkdownComponents,
+    }),
+    [baseMarkdownComponents, additionalMarkdownComponents]
+  );
 
   const markdownPlugins: PluggableList = useMemo(
     () => [
