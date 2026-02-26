@@ -110,7 +110,7 @@ export const CopilotPanelProvider = ({
       setCreationFailed(true);
       setIsCreatingConversation(false);
       sendNotification({
-        title: "Copilot error",
+        title: "Sidekick error",
         description: firstMessageResult.error.message,
         type: "error",
       });
