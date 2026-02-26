@@ -107,6 +107,7 @@ export function findSkillDirectories(
   tree: GitHubTreeEntry[]
 ): SkillDirectory[] {
   const skillDirs: SkillDirectory[] = [];
+  const seenDirs = new Set<string>();
 
   for (const entry of tree) {
     if (entry.type !== "blob") {
@@ -124,6 +125,12 @@ export function findSkillDirectories(
       continue;
     }
     const dirPath = entry.path.slice(0, lastSlash);
+
+    // Avoid duplicates if a directory has both skill.md and SKILL.md.
+    if (seenDirs.has(dirPath)) {
+      continue;
+    }
+    seenDirs.add(dirPath);
 
     skillDirs.push({
       dirPath,
