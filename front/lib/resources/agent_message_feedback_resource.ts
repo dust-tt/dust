@@ -92,20 +92,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }
 
   static async makeNew(
-    blob: CreationAttributes<AgentMessageFeedbackModel>,
-    {
-      message,
-      user,
-    }: {
-      message?: Attributes<MessageModel>;
-      user?: Attributes<UserModel>;
-    } = {}
+    blob: CreationAttributes<AgentMessageFeedbackModel>
   ): Promise<AgentMessageFeedbackResource> {
     const agentMessageFeedback = await this.model.create({
       ...blob,
     });
 
-    return new this(this.model, agentMessageFeedback.get(), { message, user });
+    return new this(this.model, agentMessageFeedback.get());
   }
 
   async delete(
