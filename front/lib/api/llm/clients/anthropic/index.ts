@@ -29,7 +29,6 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -139,14 +138,7 @@ export class AnthropicLLM extends LLM {
         output_format: toOutputFormatParam(this.responseFormat),
       } as Parameters<typeof this.client.beta.messages.stream>[0]);
 
-      const isCountReasoningTokenEnabled =
-        await FeatureFlagResource.isEnabledForWorkspace(
-          this.workspace,
-          "anthropic_reasoning_token_count"
-        );
-
       const shouldCountReasoningTokens =
-        isCountReasoningTokenEnabled &&
         this.reasoningEffort !== "none" &&
         (this.reasoningEffort !== "light" ||
           !!this.modelConfig.useNativeLightReasoning);
