@@ -72,18 +72,6 @@ const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
 const NOVU_SESSION_ERROR_CODE = "novu_session_initialization_failed";
 const NOVU_REQUEST_ERROR_CODE = "novu_preferences_request_failed";
 const MISSING_WORKFLOW_ERROR_CODE = "missing_conversation_unread_workflow";
-const GENERIC_LOAD_ERROR_CODE = "notification_preferences_not_loaded";
-
-type NotificationPreferencesLoadFailure =
-  | {
-      code: typeof NOVU_SESSION_ERROR_CODE;
-    }
-  | {
-      code: typeof NOVU_REQUEST_ERROR_CODE;
-    }
-  | {
-      code: typeof MISSING_WORKFLOW_ERROR_CODE;
-    };
 
 export interface NotificationPreferencesRefProps {
   savePreferences: () => Promise<boolean>;
@@ -126,8 +114,6 @@ export const NotificationPreferences = forwardRef<
     setProjectNewConversationPreferences,
   ] = useState<Preference | undefined>();
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
-  const [loadFailure, setLoadFailure] =
-    useState<NotificationPreferencesLoadFailure | null>(null);
 
   // Email digest delay (for unread conversation email notifications)
   const [conversationEmailDelay, setConversationEmailDelay] =
@@ -249,18 +235,11 @@ export const NotificationPreferences = forwardRef<
     if (!novuClient) {
       return;
     }
-    let isCancelled = false;
+    setIsLoadingPreferences(true);
 
-    const loadPreferences = async () => {
-      setIsLoadingPreferences(true);
-      setLoadFailure(null);
-
-      try {
-        const preferences = await novuClient.preferences.list();
-        if (isCancelled) {
-          return;
-        }
-
+    void novuClient.preferences
+      .list()
+      .then((preferences) => {
         if (preferences.error) {
           logger.error(
             {
@@ -270,14 +249,6 @@ export const NotificationPreferences = forwardRef<
             },
             "Failed to load notification preferences from Novu (session error)."
           );
-          setConversationPreferences(undefined);
-          originalConversationPreferencesRef.current = undefined;
-          setProjectNewConversationPreferences(undefined);
-          originalProjectNewConversationPreferencesRef.current = undefined;
-          setLoadFailure({
-            code: NOVU_SESSION_ERROR_CODE,
-          });
-          return;
         }
 
         const preferenceList = preferences.data ?? [];
@@ -311,48 +282,25 @@ export const NotificationPreferences = forwardRef<
             },
             "Failed to load notification preferences from Novu (workflow missing)."
           );
-
-          setLoadFailure({
-            code: MISSING_WORKFLOW_ERROR_CODE,
-          });
-          return;
         }
-
-        setLoadFailure(null);
-      } catch (error) {
-        if (isCancelled) {
-          return;
-        }
-
-        const message = error instanceof Error ? error.message : String(error);
+      })
+      .catch((error) => {
         logger.error(
           {
             code: NOVU_REQUEST_ERROR_CODE,
             ownerId: owner.sId,
-            message,
+            error,
           },
-          "Failed to load notification preferences from Novu (unexpected error)."
+          "Failed to load notification preferences from Novu (request error)."
         );
-
         setConversationPreferences(undefined);
         originalConversationPreferencesRef.current = undefined;
         setProjectNewConversationPreferences(undefined);
         originalProjectNewConversationPreferencesRef.current = undefined;
-        setLoadFailure({
-          code: NOVU_REQUEST_ERROR_CODE,
-        });
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingPreferences(false);
-        }
-      }
-    };
-
-    void loadPreferences();
-
-    return () => {
-      isCancelled = true;
-    };
+      })
+      .finally(() => {
+        setIsLoadingPreferences(false);
+      });
   }, [novuClient, owner.sId]);
 
   // Expose methods to parent component
@@ -638,41 +586,10 @@ export const NotificationPreferences = forwardRef<
     return <Spinner />;
   }
 
-  if (loadFailure?.code === NOVU_SESSION_ERROR_CODE) {
-    return (
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Unable to load notification preferences. Please refresh and try again.
-        <div className="text-xs">Error code: {NOVU_SESSION_ERROR_CODE}.</div>
-      </div>
-    );
-  }
-
-  if (loadFailure?.code === NOVU_REQUEST_ERROR_CODE) {
-    return (
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Unable to load notification preferences. Please refresh and try again.
-        <div className="text-xs">Error code: {NOVU_REQUEST_ERROR_CODE}.</div>
-      </div>
-    );
-  }
-
-  if (loadFailure?.code === MISSING_WORKFLOW_ERROR_CODE) {
-    return (
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Notification preferences are temporarily unavailable. Please contact
-        support.
-        <div className="text-xs">
-          Error code: {MISSING_WORKFLOW_ERROR_CODE}.
-        </div>
-      </div>
-    );
-  }
-
   if (!conversationPreferences) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Unable to load notification preferences. Please contact support.
-        <div className="text-xs">Error code: {GENERIC_LOAD_ERROR_CODE}.</div>
       </div>
     );
   }
