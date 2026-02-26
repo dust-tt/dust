@@ -7,6 +7,7 @@ import {
 import type {
   DetectedSkill,
   DetectedSkillAttachment,
+  GitHubRepo,
   GitHubTreeEntry,
   SkillDetectionError,
   SkillDirectory,
@@ -33,9 +34,10 @@ const FETCH_CONCURRENCY = 4;
  */
 async function fetchRepoTree(
   octokit: InstanceType<typeof Octokit>,
-  owner: string,
-  repo: string
+  githubRepo: GitHubRepo
 ): Promise<Result<GitHubTreeEntry[], SkillDetectionError>> {
+  const { owner, repo } = githubRepo;
+
   let rawData: unknown;
   try {
     const response = await octokit.request(
