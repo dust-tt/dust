@@ -6,7 +6,7 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const SKILL_MD_FILENAMES = ["skill.md", "SKILL.md"];
+const SKILL_MD_FILENAME = "skill.md";
 
 // Content type mapping for common file extensions.
 const EXTENSION_CONTENT_TYPES: Record<string, string> = {
@@ -153,7 +153,7 @@ export function findSkillDirectories(
     }
 
     const filename = entry.path.split("/").pop() ?? "";
-    if (!SKILL_MD_FILENAMES.includes(filename)) {
+    if (filename.toLowerCase() !== SKILL_MD_FILENAME) {
       continue;
     }
 
