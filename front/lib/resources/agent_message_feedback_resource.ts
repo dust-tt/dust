@@ -47,9 +47,10 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   static model: ModelStatic<AgentMessageFeedbackModel> =
     AgentMessageFeedbackModel;
 
-  readonly messageId?: string;
   readonly user?: Attributes<UserModel>;
-  readonly conversationId?: string;
+
+  readonly _conversationId?: string;
+  readonly _messageId?: string;
 
   constructor(
     _: ModelStatic<AgentMessageFeedbackModel>,
@@ -66,9 +67,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   ) {
     super(AgentMessageFeedbackModel, blob);
 
-    this.messageId = messageId;
+    this._conversationId = conversationId;
+    this._messageId = messageId;
     this.user = user;
-    this.conversationId = conversationId;
   }
 
   get sId(): string {
@@ -543,7 +544,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return {
       id: this.id,
       sId: this.sId,
-      messageId: this.messageId,
+      messageId: this._messageId,
       agentMessageId: this.agentMessageId,
       userId: this.userId,
       thumbDirection: this.thumbDirection,
@@ -553,7 +554,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       createdAt: this.createdAt,
       agentConfigurationId: this.agentConfigurationId,
       agentConfigurationVersion: this.agentConfigurationVersion,
-      conversationId: this.conversationId,
+      conversationId: this._conversationId,
       ...(this.user
         ? {
             userName: this.user.name,
