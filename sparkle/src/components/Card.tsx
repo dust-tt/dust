@@ -290,7 +290,10 @@ export const CardGrid = React.forwardRef<
       <div
         className={cn(
           "s-grid s-grid-cols-1 s-gap-2",
-          "@xxs:s-grid-cols-2 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
+          "@xxs:has-[>:nth-child(2)]:s-grid-cols-2",
+          "@sm:has-[>:nth-child(3)]:s-grid-cols-3",
+          "@lg:has-[>:nth-child(4)]:s-grid-cols-4",
+          "@xl:has-[>:nth-child(5)]:s-grid-cols-5"
         )}
       >
         {children}
