@@ -11,6 +11,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/client";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -658,6 +659,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     );
     if (updateResult.isErr()) {
       return new Err(updateResult.error);
+    }
+
+    if (operation === "block") {
+      await terminateAllAgentLoopWorkflowsForConversation(conversationId);
     }
 
     return new Ok({

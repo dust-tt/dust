@@ -8,7 +8,10 @@ import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_i
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 import assert from "assert";
 
 import { QUEUE_NAME } from "./config";
@@ -108,4 +111,36 @@ export async function launchAgentLoopWorkflow({
   }
 
   return new Ok(undefined);
+}
+
+export async function terminateAllAgentLoopWorkflowsForConversation(
+  conversationId: string
+) {
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowInfos = client.workflow.list({
+    query: `ExecutionStatus = 'Running' AND conversationId = '${conversationId}'`,
+  });
+
+  logger.info(
+    { conversationId },
+    "About to terminate all agent loop workflows for conversation"
+  );
+
+  for await (const info of workflowInfos) {
+    logger.info(
+      { conversationId, workflowId: info.workflowId },
+      "Terminating agent loop workflow"
+    );
+
+    const handle = client.workflow.getHandle(info.workflowId);
+    try {
+      await handle.terminate("Conversation blocked via kill switch");
+    } catch (err) {
+      if (err instanceof WorkflowNotFoundError) {
+        continue;
+      }
+      throw err;
+    }
+  }
 }
