@@ -7,7 +7,7 @@
     "front-spa",
     "sparkle",
     "connectors",
-    "cli",
+    "cli/dust-cli",
     "extension",
     "viz",
     "sdks/js"

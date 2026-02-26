@@ -118,7 +118,7 @@ jobs:
 
             **front**: cd front && npm ci && npx tsc --noEmit && npm run lint && npm run format:check
             **connectors**: cd connectors && npm install && npm run build && npm run lint && npm run format:check
-            **cli**: cd cli && npm ci && npx tsc && npm run lint
+            **cli**: cd cli/dust-cli && npm ci && npx tsc && npm run lint
             **core**: cd core && cargo check && cargo fmt --all -- --check
             **extension**: cd extension && npm ci && npm run build && npm run lint
             **sparkle**: cd sparkle && npm install && npm run build && npm run lint
