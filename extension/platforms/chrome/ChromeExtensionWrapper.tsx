@@ -1,4 +1,4 @@
-import { Button, classNames, DustLogo, Page } from "@dust-tt/sparkle";
+import { Button, cn, DustLogo, Page } from "@dust-tt/sparkle";
 import type { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { compare } from "compare-versions";
@@ -38,7 +38,7 @@ export const ChromeExtensionWrapper = ({
   if (!isLatestVersion) {
     return (
       <div
-        className={classNames(
+        className={cn(
           "flex h-screen flex-col gap-2 p-4",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"

@@ -1,4 +1,4 @@
-import { classNames, Spinner } from "@dust-tt/sparkle";
+import { cn, Spinner } from "@dust-tt/sparkle";
 import type { RouteChangeMesssage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
@@ -37,7 +37,7 @@ export const ProtectedRoute = () => {
   if (isLoading || !isAuthenticated || !isUserSetup || !user || !workspace) {
     return (
       <div
-        className={classNames(
+        className={cn(
           "flex h-screen flex-col gap-2 p-4",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"
@@ -52,7 +52,7 @@ export const ProtectedRoute = () => {
 
   return (
     <div
-      className={classNames(
+      className={cn(
         "flex h-screen flex-col gap-2 overflow-y-auto px-4",
         "bg-background text-foreground",
         "dark:bg-background-night dark:text-foreground-night"
