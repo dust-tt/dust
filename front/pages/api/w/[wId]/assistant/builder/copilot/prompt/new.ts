@@ -68,6 +68,7 @@ From that point, follow the core workflow from main instructions.
 </dust_system>`;
 }
 
+// TODO: This will be deleted after we deploy changes to stop using on the client side.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<string>>,
