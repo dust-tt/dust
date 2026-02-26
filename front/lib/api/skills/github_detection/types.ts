@@ -7,7 +7,6 @@ export interface DetectedSkillAttachment {
 }
 
 export interface DetectedSkill {
-  name: string;
   dirPath: string;
   description: string;
   instructions: string;

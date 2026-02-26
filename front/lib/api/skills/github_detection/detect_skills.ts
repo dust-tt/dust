@@ -220,10 +220,8 @@ async function buildDetectedSkill({
     }
 
     const relativePath = entry.path.slice(dirPrefix.length);
-    const fileName = relativePath.split("/").pop() ?? relativePath;
 
     attachments.push({
-      name: fileName,
       path: relativePath,
       sizeBytes: entry.size ?? 0,
     });
