@@ -57,11 +57,10 @@ export function TableForSalesBanner() {
           </div>
           <div className="relative px-4 py-3">
             <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
-              Table for Sales — Live Demo
+              Table for Sales — Watch a Dust Sales rep actually use Dust.
             </div>
             <h4 className="mb-3 text-xs leading-tight text-muted-foreground dark:text-muted-foreground-night">
-              Watch our Sales rep demo the agents he built to run his entire
-              sales process. Real workflows, zero fluff. Mar 2, 6PM CET.
+              See how Edouard – on our Sales team – built agents that run his entire sales process. Real workflows, zero fluff. Mar 2, 6PM CET.
             </h4>
             <Button
               variant="highlight"
