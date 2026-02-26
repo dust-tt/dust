@@ -56,6 +56,7 @@ import {
   ToolsIcon,
   TrashIcon,
   TriangleIcon,
+  TypingAnimation,
   UserGroupIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -324,6 +325,13 @@ function getBaseConversationId(
 
 type OngoingSummaryCategory = "needAttention" | "keyDecisions" | "projectPulse";
 
+type SummaryItemDiffState = "unchanged" | "modified" | "added" | "removed";
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+}
+
 type ProjectPulseSegment =
   | {
       type: "text";
@@ -340,13 +348,20 @@ interface ProjectPulseItem {
 }
 
 interface OngoingSummary {
-  needAttention: string[];
-  keyDecisions: string[];
+  needAttention: ChecklistItem[];
+  keyDecisions: ChecklistItem[];
   projectPulse: ProjectPulseItem[];
   updatedAt: Date;
 }
 
 type SummaryRelatedConversations = Record<string, string[]>;
+type SummaryItemDiffByKey = Record<string, SummaryItemDiffState>;
+
+interface WhatsNewScenario {
+  before: OngoingSummary;
+  after: OngoingSummary;
+  autoCheckedItemIds: string[];
+}
 
 const SUMMARY_PEOPLE_NAMES = [
   "Raphael",
@@ -394,16 +409,15 @@ function renderSummaryItemWithEmphasizedNames(item: string): ReactNode {
   return <>{nodes.length > 0 ? nodes : item}</>;
 }
 
-function getSummaryItemIdentity(item: string | ProjectPulseItem): string {
-  if (typeof item === "string") {
-    return item;
-  }
+function getSummaryItemIdentity(
+  item: ChecklistItem | ProjectPulseItem
+): string {
   return item.id;
 }
 
 function getSummaryItemKey(
   category: OngoingSummaryCategory,
-  item: string | ProjectPulseItem
+  item: ChecklistItem | ProjectPulseItem
 ): string {
   return `${category}::${getSummaryItemIdentity(item)}`;
 }
@@ -441,7 +455,7 @@ function buildRandomSummaryRelatedConversations(
 
   const summarySections: Array<{
     category: OngoingSummaryCategory;
-    items: Array<string | ProjectPulseItem>;
+    items: Array<ChecklistItem | ProjectPulseItem>;
   }> = [
     { category: "needAttention", items: summary.needAttention },
     { category: "keyDecisions", items: summary.keyDecisions },
@@ -450,10 +464,14 @@ function buildRandomSummaryRelatedConversations(
 
   summarySections.forEach(({ category, items }) => {
     items.forEach((item) => {
+      const projectPulseItem =
+        category === "projectPulse" ? (item as ProjectPulseItem) : null;
       const linkSegmentCount =
-        category === "projectPulse" && typeof item !== "string"
-          ? item.segments.filter((segment) => segment.type === "link").length
-          : 0;
+        projectPulseItem === null
+          ? 0
+          : projectPulseItem.segments.filter(
+              (segment) => segment.type === "link"
+            ).length;
       const desiredCount =
         category === "projectPulse"
           ? Math.max(1, linkSegmentCount)
@@ -498,235 +516,296 @@ function getConversationHighlights(conversations: Conversation[]): string[] {
   return Array.from(uniqueTitles);
 }
 
-function pickDeterministicItems<T>(
-  pool: T[],
-  count: number,
-  seed: string,
-  offset: number
-): T[] {
-  const ranked = pool
-    .map((item, index) => ({
-      item,
-      score: seededRandom(seed, index + offset),
-    }))
-    .sort((a, b) => a.score - b.score)
-    .map(({ item }) => item);
-
-  return ranked.slice(0, Math.min(count, ranked.length));
-}
-
-function getSummaryCategoryPool(
-  category: OngoingSummaryCategory,
-  spaceName: string,
-  highlights: string[]
-): string[] {
-  const topHighlight = highlights[0] ?? "current project threads";
-  const secondHighlight = highlights[1] ?? "cross-team follow-up";
-  const thirdHighlight = highlights[2] ?? "delivery planning";
-
-  if (category === "needAttention") {
-    return [
-      `Raphael is asking for your sign-off on "${topHighlight}" before end of day.`,
-      `Seb asked you to confirm who owns the legal and security follow-up on "${secondHighlight}".`,
-      `Nina mentioned you directly to validate the budget impact linked to "${thirdHighlight}".`,
-      `Alex needs your call on a blocked handoff that is slowing execution in ${spaceName}.`,
-      `Maya is waiting for your approval before sharing the customer-facing update.`,
-      `Tom flagged that your response is needed to close an enterprise escalation thread.`,
-      `Lea asked you to provide missing compliance evidence for the current milestone.`,
-    ];
-  }
-
-  if (category === "keyDecisions") {
-    return [
-      `Raphael and Priya aligned on keeping "${topHighlight}" in the current milestone without scope increase.`,
-      `Seb and Jordan agreed to pass "${secondHighlight}" through the enterprise rollout checklist.`,
-      `Maya confirmed a single DRI will own "${thirdHighlight}" to reduce coordination delays.`,
-      `Alex and Tom agreed to prioritize reliability work over net-new scope this cycle.`,
-      `Lea and Sam decided to stay on the current vendor path until procurement review is complete.`,
-      `Nina aligned with leadership to defer non-critical backlog items and protect the committed timeline.`,
-      `Priya and Seb chose to apply the existing governance policy rather than request an exception.`,
-    ];
-  }
-
-  return [];
-}
-
-function getProjectPulseCategoryPool(
-  spaceName: string,
-  highlights: string[]
-): ProjectPulseItem[] {
-  const topHighlight = highlights[0] ?? "current project threads";
-  const secondHighlight = highlights[1] ?? "cross-team follow-up";
-  const thirdHighlight = highlights[2] ?? "delivery planning";
-
-  return [
-    {
-      id: "pulse-weekly-recap",
-      segments: [
-        { type: "text", text: `The team used ` },
-        { type: "link", text: "the weekly recap thread" },
-        {
-          type: "text",
-          text: ` to align priorities in ${spaceName} and reduce duplicate updates.`,
-        },
-      ],
-    },
-    {
-      id: "pulse-risk-alignment",
-      segments: [
-        { type: "text", text: "Risk mitigation details from " },
-        { type: "link", text: `"${topHighlight}"` },
-        { type: "text", text: " are now referenced in " },
-        { type: "link", text: "the rollout checklist discussion" },
-        { type: "text", text: "." },
-      ],
-    },
-    {
-      id: "pulse-stakeholder-sync",
-      segments: [
-        { type: "text", text: "Stakeholder feedback in " },
-        { type: "link", text: `"${secondHighlight}"` },
-        {
-          type: "text",
-          text: " shows stronger confidence after the latest sync update.",
-        },
-      ],
-    },
-    {
-      id: "pulse-delivery-readiness",
-      segments: [
-        { type: "text", text: "Delivery readiness signals from " },
-        { type: "link", text: `"${thirdHighlight}"` },
-        {
-          type: "text",
-          text: " indicate fewer unresolved blockers this cycle.",
-        },
-      ],
-    },
-    {
-      id: "pulse-exec-summary",
-      segments: [
-        { type: "text", text: "The executive summary and " },
-        { type: "link", text: "the product-engineering sync notes" },
-        {
-          type: "text",
-          text: " now present a consistent timeline for current milestones.",
-        },
-      ],
-    },
-    {
-      id: "pulse-customer-context",
-      segments: [
-        { type: "text", text: "Customer-facing context from " },
-        { type: "link", text: "the escalation follow-up" },
-        { type: "text", text: " was incorporated into " },
-        { type: "link", text: "the communication draft" },
-        { type: "text", text: "." },
-      ],
-    },
-    {
-      id: "pulse-ownership-clarity",
-      segments: [
-        { type: "text", text: "Ownership became clearer after " },
-        { type: "link", text: "the DRI handoff discussion" },
-        { type: "text", text: ", with explicit next steps captured in " },
-        { type: "link", text: "the action-items thread" },
-        { type: "text", text: "." },
-      ],
-    },
-  ];
-}
-
-function buildInitialOngoingSummary(
-  spaceId: string,
+function buildWhatsNewScenario(
   spaceName: string,
   conversations: Conversation[]
-): OngoingSummary {
+): WhatsNewScenario {
   const highlights = getConversationHighlights(conversations);
+  const topHighlight = highlights[0] ?? "current project threads";
+  const secondHighlight = highlights[1] ?? "cross-team follow-up";
+  const thirdHighlight = highlights[2] ?? "delivery planning";
+
   return {
-    needAttention: pickDeterministicItems(
-      getSummaryCategoryPool("needAttention", spaceName, highlights),
-      3,
-      `${spaceId}-need-attention-initial`,
-      0
-    ),
-    keyDecisions: pickDeterministicItems(
-      getSummaryCategoryPool("keyDecisions", spaceName, highlights),
-      3,
-      `${spaceId}-key-decisions-initial`,
-      20
-    ),
-    projectPulse: pickDeterministicItems(
-      getProjectPulseCategoryPool(spaceName, highlights),
-      3,
-      `${spaceId}-project-pulse-initial`,
-      40
-    ),
-    updatedAt: getSummaryTimestamp(spaceId),
+    before: {
+      needAttention: [
+        {
+          id: "todo-signoff",
+          text: `Raphael is asking for your sign-off on "${topHighlight}" before end of day.`,
+        },
+        {
+          id: "todo-legal-owner",
+          text: `Seb asked you to confirm who owns legal follow-up on "${secondHighlight}".`,
+        },
+        {
+          id: "todo-budget-check",
+          text: `Nina mentioned you directly to validate budget impact linked to "${thirdHighlight}".`,
+        },
+      ],
+      keyDecisions: [
+        {
+          id: "decision-scope",
+          text: `Raphael and Priya aligned on keeping "${topHighlight}" in the current milestone without scope increase.`,
+        },
+        {
+          id: "decision-rollout",
+          text: `Seb and Jordan agreed to pass "${secondHighlight}" through the enterprise rollout checklist.`,
+        },
+        {
+          id: "decision-dri",
+          text: `Maya confirmed a single DRI will own "${thirdHighlight}" to reduce coordination delays.`,
+        },
+      ],
+      projectPulse: [
+        {
+          id: "pulse-weekly-recap",
+          segments: [
+            { type: "text", text: "The team used " },
+            { type: "link", text: "the weekly recap thread" },
+            {
+              type: "text",
+              text: ` to align priorities in ${spaceName} and reduce duplicate updates.`,
+            },
+          ],
+        },
+        {
+          id: "pulse-risk-alignment",
+          segments: [
+            { type: "text", text: "Risk mitigation details from " },
+            { type: "link", text: `"${topHighlight}"` },
+            { type: "text", text: " are now referenced in " },
+            { type: "link", text: "the rollout checklist discussion" },
+            { type: "text", text: "." },
+          ],
+        },
+      ],
+      updatedAt: getSummaryTimestamp(spaceName),
+    },
+    after: {
+      needAttention: [
+        {
+          id: "todo-signoff",
+          text: `Raphael is asking for your final sign-off on "${topHighlight}" before end of day.`,
+        },
+        {
+          id: "todo-budget-check",
+          text: `Nina needs confirmation that budget assumptions for "${thirdHighlight}" are still valid.`,
+        },
+        {
+          id: "todo-customer-brief",
+          text: `Maya is waiting for your approval before sharing the customer-facing update.`,
+        },
+      ],
+      keyDecisions: [
+        {
+          id: "decision-scope",
+          text: `Raphael and Priya aligned on keeping "${topHighlight}" in this milestone with no additional scope.`,
+        },
+        {
+          id: "decision-dri",
+          text: `Maya confirmed a single DRI will own "${thirdHighlight}" to reduce coordination delays.`,
+        },
+        {
+          id: "decision-reliability",
+          text: `Alex and Tom agreed to prioritize reliability work over net-new scope this cycle.`,
+        },
+      ],
+      projectPulse: [
+        {
+          id: "pulse-weekly-recap",
+          segments: [
+            { type: "text", text: "The team used " },
+            { type: "link", text: "the weekly recap thread" },
+            {
+              type: "text",
+              text: ` to align priorities in ${spaceName}, and now uses it as the source of truth for status.`,
+            },
+          ],
+        },
+        {
+          id: "pulse-stakeholder-sync",
+          segments: [
+            { type: "text", text: "Stakeholder feedback in " },
+            { type: "link", text: `"${secondHighlight}"` },
+            {
+              type: "text",
+              text: " shows stronger confidence after the latest sync update.",
+            },
+          ],
+        },
+        {
+          id: "pulse-ownership-clarity",
+          segments: [
+            { type: "text", text: "Ownership became clearer after " },
+            { type: "link", text: "the DRI handoff discussion" },
+            { type: "text", text: ", with explicit next steps captured in " },
+            { type: "link", text: "the action-items thread" },
+            { type: "text", text: "." },
+          ],
+        },
+      ],
+      updatedAt: new Date(),
+    },
+    autoCheckedItemIds: ["todo-budget-check", "decision-dri"],
   };
 }
 
-function updateSummaryCategoryWithDelta<T>(
-  previousItems: T[],
-  pool: T[],
-  targetCount: number,
-  seed: string,
-  offset: number,
-  getItemId: (item: T) => string
-): T[] {
-  if (previousItems.length === 0) {
-    return pickDeterministicItems(pool, targetCount, seed, offset);
+function areProjectPulseItemsEqual(
+  previousItem: ProjectPulseItem,
+  nextItem: ProjectPulseItem
+): boolean {
+  if (previousItem.segments.length !== nextItem.segments.length) {
+    return false;
   }
 
-  const keepIndex = Math.floor(
-    seededRandom(`${seed}-keep`, offset) * previousItems.length
-  );
-  const keptItems = [previousItems[keepIndex]];
-  const keptItemIds = new Set(keptItems.map((item) => getItemId(item)));
-  const freshItems = pickDeterministicItems(
-    pool.filter((item) => !keptItemIds.has(getItemId(item))),
-    targetCount - keptItems.length,
-    seed,
-    offset + 100
-  );
-
-  return [...keptItems, ...freshItems];
+  return previousItem.segments.every((segment, index) => {
+    const nextSegment = nextItem.segments[index];
+    return (
+      segment.type === nextSegment.type && segment.text === nextSegment.text
+    );
+  });
 }
 
-function buildDeltaOngoingSummary(
+function mergeChecklistKeepingRemoved(
+  previousItems: ChecklistItem[],
+  nextItems: ChecklistItem[]
+): ChecklistItem[] {
+  const nextItemById = new Map(nextItems.map((item) => [item.id, item]));
+  const previousItemIds = new Set(previousItems.map((item) => item.id));
+
+  const merged: ChecklistItem[] = previousItems.map(
+    (item) => nextItemById.get(item.id) ?? item
+  );
+
+  nextItems.forEach((item) => {
+    if (!previousItemIds.has(item.id)) {
+      merged.push(item);
+    }
+  });
+
+  return merged;
+}
+
+function buildSummaryWithTemporaryRemovedChecklistItems(
   previousSummary: OngoingSummary,
-  spaceId: string,
-  spaceName: string,
-  conversations: Conversation[]
+  nextSummary: OngoingSummary
 ): OngoingSummary {
-  const highlights = getConversationHighlights(conversations);
   return {
-    needAttention: updateSummaryCategoryWithDelta(
+    ...nextSummary,
+    needAttention: mergeChecklistKeepingRemoved(
       previousSummary.needAttention,
-      getSummaryCategoryPool("needAttention", spaceName, highlights),
-      3,
-      `${spaceId}-need-attention-delta`,
-      0,
-      (item) => item
+      nextSummary.needAttention
     ),
-    keyDecisions: updateSummaryCategoryWithDelta(
+    keyDecisions: mergeChecklistKeepingRemoved(
       previousSummary.keyDecisions,
-      getSummaryCategoryPool("keyDecisions", spaceName, highlights),
-      3,
-      `${spaceId}-key-decisions-delta`,
-      20,
-      (item) => item
+      nextSummary.keyDecisions
     ),
-    projectPulse: updateSummaryCategoryWithDelta(
-      previousSummary.projectPulse,
-      getProjectPulseCategoryPool(spaceName, highlights),
-      3,
-      `${spaceId}-project-pulse-delta`,
-      40,
-      (item) => item.id
-    ),
-    updatedAt: new Date(),
   };
+}
+
+function getChecklistRemovedItemKeys(
+  previousSummary: OngoingSummary,
+  nextSummary: OngoingSummary
+): string[] {
+  const removedKeys: string[] = [];
+
+  const previousNeedAttentionIds = new Set(
+    previousSummary.needAttention.map((item) => item.id)
+  );
+  const nextNeedAttentionIds = new Set(
+    nextSummary.needAttention.map((item) => item.id)
+  );
+  previousNeedAttentionIds.forEach((itemId) => {
+    if (!nextNeedAttentionIds.has(itemId)) {
+      removedKeys.push(`needAttention::${itemId}`);
+    }
+  });
+
+  const previousKeyDecisionIds = new Set(
+    previousSummary.keyDecisions.map((item) => item.id)
+  );
+  const nextKeyDecisionIds = new Set(
+    nextSummary.keyDecisions.map((item) => item.id)
+  );
+  previousKeyDecisionIds.forEach((itemId) => {
+    if (!nextKeyDecisionIds.has(itemId)) {
+      removedKeys.push(`keyDecisions::${itemId}`);
+    }
+  });
+
+  return removedKeys;
+}
+
+function computeSummaryDiffByKey(
+  previousSummary: OngoingSummary,
+  nextSummary: OngoingSummary
+): SummaryItemDiffByKey {
+  const diffs: SummaryItemDiffByKey = {};
+
+  const fillChecklistDiff = (
+    category: "needAttention" | "keyDecisions",
+    previousItems: ChecklistItem[],
+    nextItems: ChecklistItem[]
+  ) => {
+    const previousById = new Map(previousItems.map((item) => [item.id, item]));
+    const nextById = new Map(nextItems.map((item) => [item.id, item]));
+
+    previousById.forEach((previousItem, itemId) => {
+      const nextItem = nextById.get(itemId);
+      const key = `${category}::${itemId}`;
+      if (!nextItem) {
+        diffs[key] = "removed";
+        return;
+      }
+      diffs[key] =
+        previousItem.text === nextItem.text ? "unchanged" : "modified";
+    });
+
+    nextById.forEach((_nextItem, itemId) => {
+      const key = `${category}::${itemId}`;
+      if (!previousById.has(itemId)) {
+        diffs[key] = "added";
+      }
+    });
+  };
+
+  fillChecklistDiff(
+    "needAttention",
+    previousSummary.needAttention,
+    nextSummary.needAttention
+  );
+  fillChecklistDiff(
+    "keyDecisions",
+    previousSummary.keyDecisions,
+    nextSummary.keyDecisions
+  );
+
+  const previousPulseById = new Map(
+    previousSummary.projectPulse.map((item) => [item.id, item])
+  );
+  const nextPulseById = new Map(
+    nextSummary.projectPulse.map((item) => [item.id, item])
+  );
+
+  previousPulseById.forEach((previousItem, itemId) => {
+    const nextItem = nextPulseById.get(itemId);
+    const key = `projectPulse::${itemId}`;
+    if (!nextItem) {
+      diffs[key] = "removed";
+      return;
+    }
+    diffs[key] = areProjectPulseItemsEqual(previousItem, nextItem)
+      ? "unchanged"
+      : "modified";
+  });
+
+  nextPulseById.forEach((_nextItem, itemId) => {
+    const key = `projectPulse::${itemId}`;
+    if (!previousPulseById.has(itemId)) {
+      diffs[key] = "added";
+    }
+  });
+
+  return diffs;
 }
 
 export function GroupConversationView({
@@ -759,6 +838,18 @@ export function GroupConversationView({
   >({});
   const [summaryRelatedConversations, setSummaryRelatedConversations] =
     useState<SummaryRelatedConversations>({});
+  const [summaryItemDiffByKey, setSummaryItemDiffByKey] =
+    useState<SummaryItemDiffByKey>({});
+  const [typingItemKeys, setTypingItemKeys] = useState<Set<string>>(new Set());
+  const [enteringItemKeys, setEnteringItemKeys] = useState<Set<string>>(
+    new Set()
+  );
+  const [exitingItemKeys, setExitingItemKeys] = useState<Set<string>>(
+    new Set()
+  );
+  const [typingVersion, setTypingVersion] = useState(0);
+  const deltaTransitionTimeoutRef = useRef<number | null>(null);
+  const deltaTransitionStartTimeoutRef = useRef<number | null>(null);
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
@@ -1142,6 +1233,12 @@ export function GroupConversationView({
       if (showFocusTimeoutRef.current !== null) {
         window.clearTimeout(showFocusTimeoutRef.current);
       }
+      if (deltaTransitionStartTimeoutRef.current !== null) {
+        window.clearTimeout(deltaTransitionStartTimeoutRef.current);
+      }
+      if (deltaTransitionTimeoutRef.current !== null) {
+        window.clearTimeout(deltaTransitionTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -1182,14 +1279,40 @@ export function GroupConversationView({
       setIsSummaryUpdating(false);
       setIsOngoingSummaryExpanded(false);
       setSummaryRelatedConversations({});
+      setSummaryItemDiffByKey({});
+      setTypingItemKeys(new Set());
+      setEnteringItemKeys(new Set());
+      setExitingItemKeys(new Set());
       return;
     }
 
-    const initialSummary = buildInitialOngoingSummary(
-      space.id,
-      space.name,
-      expandedConversations
-    );
+    const scenario = buildWhatsNewScenario(space.name, expandedConversations);
+    const initialSummary = scenario.before;
+    const CHECKLIST_TRANSITION_MS = 240;
+
+    const withScenarioAutoChecks = (
+      previousChecked: Record<string, boolean>,
+      summary: OngoingSummary
+    ): Record<string, boolean> => {
+      const validKeys = new Set(getSummaryItemKeys(summary));
+      const nextChecked = Object.fromEntries(
+        Object.entries(previousChecked).filter(
+          ([key, checked]) => checked && validKeys.has(key)
+        )
+      );
+
+      scenario.autoCheckedItemIds.forEach((itemId) => {
+        if (summary.needAttention.some((item) => item.id === itemId)) {
+          nextChecked[`needAttention::${itemId}`] = true;
+        }
+        if (summary.keyDecisions.some((item) => item.id === itemId)) {
+          nextChecked[`keyDecisions::${itemId}`] = true;
+        }
+      });
+
+      return nextChecked;
+    };
+
     setOngoingSummary(initialSummary);
     setIsSummaryUpdating(true);
     setIsOngoingSummaryExpanded(false);
@@ -1199,46 +1322,111 @@ export function GroupConversationView({
         expandedConversations
       )
     );
-    setCheckedSummaryItems((previous) => {
-      const validKeys = new Set(getSummaryItemKeys(initialSummary));
-      return Object.fromEntries(
-        Object.entries(previous).filter(
-          ([key, checked]) => checked && validKeys.has(key)
-        )
-      );
-    });
+    setCheckedSummaryItems((previous) =>
+      withScenarioAutoChecks(previous, initialSummary)
+    );
+    setSummaryItemDiffByKey({});
+    setTypingItemKeys(new Set());
+    setEnteringItemKeys(new Set());
+    setExitingItemKeys(new Set());
 
     const generationDelayMs = (8 + Math.floor(Math.random() * 13)) * 1000;
 
     const summaryTimeoutId = window.setTimeout(() => {
       setOngoingSummary((previous) => {
-        const updatedSummary = buildDeltaOngoingSummary(
-          previous ?? initialSummary,
-          space.id,
-          space.name,
-          expandedConversations
+        const previousSummary = previous ?? initialSummary;
+        const updatedSummary = { ...scenario.after, updatedAt: new Date() };
+        const diffByKey = computeSummaryDiffByKey(
+          previousSummary,
+          updatedSummary
         );
-        setCheckedSummaryItems((previousChecked) => {
-          const validKeys = new Set(getSummaryItemKeys(updatedSummary));
-          return Object.fromEntries(
-            Object.entries(previousChecked).filter(
-              ([key, checked]) => checked && validKeys.has(key)
+        const removedChecklistItemKeys = getChecklistRemovedItemKeys(
+          previousSummary,
+          updatedSummary
+        );
+        const addedChecklistItemKeys = Object.entries(diffByKey)
+          .filter(
+            ([key, diff]) =>
+              (key.startsWith("needAttention::") ||
+                key.startsWith("keyDecisions::")) &&
+              diff === "added"
+          )
+          .map(([key]) => key);
+        const keysToType = new Set(
+          Object.entries(diffByKey)
+            .filter(
+              ([key, diff]) =>
+                diff === "modified" ||
+                (key.startsWith("projectPulse::") && diff === "added")
             )
+            .map(([key]) => key)
+        );
+
+        const transitionalSummary =
+          buildSummaryWithTemporaryRemovedChecklistItems(
+            previousSummary,
+            updatedSummary
           );
-        });
+
+        setSummaryItemDiffByKey(diffByKey);
+        setTypingItemKeys(keysToType);
+        setTypingVersion((previousVersion) => previousVersion + 1);
+        setEnteringItemKeys(new Set());
+        setExitingItemKeys(new Set());
+
+        if (deltaTransitionStartTimeoutRef.current !== null) {
+          window.clearTimeout(deltaTransitionStartTimeoutRef.current);
+        }
+        deltaTransitionStartTimeoutRef.current = window.setTimeout(() => {
+          setEnteringItemKeys(new Set(addedChecklistItemKeys));
+          setExitingItemKeys(new Set(removedChecklistItemKeys));
+          deltaTransitionStartTimeoutRef.current = null;
+        }, 0);
+
+        setCheckedSummaryItems((previousChecked) =>
+          withScenarioAutoChecks(previousChecked, transitionalSummary)
+        );
         setSummaryRelatedConversations(
           buildRandomSummaryRelatedConversations(
-            updatedSummary,
+            transitionalSummary,
             expandedConversations
           )
         );
-        return updatedSummary;
+
+        if (deltaTransitionTimeoutRef.current !== null) {
+          window.clearTimeout(deltaTransitionTimeoutRef.current);
+        }
+        deltaTransitionTimeoutRef.current = window.setTimeout(() => {
+          setOngoingSummary(updatedSummary);
+          setSummaryRelatedConversations(
+            buildRandomSummaryRelatedConversations(
+              updatedSummary,
+              expandedConversations
+            )
+          );
+          setCheckedSummaryItems((previousChecked) =>
+            withScenarioAutoChecks(previousChecked, updatedSummary)
+          );
+          setExitingItemKeys(new Set());
+          setEnteringItemKeys(new Set());
+          deltaTransitionTimeoutRef.current = null;
+        }, CHECKLIST_TRANSITION_MS);
+
+        return transitionalSummary;
       });
       setIsSummaryUpdating(false);
     }, generationDelayMs);
 
     return () => {
       window.clearTimeout(summaryTimeoutId);
+      if (deltaTransitionStartTimeoutRef.current !== null) {
+        window.clearTimeout(deltaTransitionStartTimeoutRef.current);
+        deltaTransitionStartTimeoutRef.current = null;
+      }
+      if (deltaTransitionTimeoutRef.current !== null) {
+        window.clearTimeout(deltaTransitionTimeoutRef.current);
+        deltaTransitionTimeoutRef.current = null;
+      }
     };
   }, [expandedConversations, hasHistory, space.id, space.name]);
 
@@ -1845,17 +2033,13 @@ export function GroupConversationView({
                                 />
                               ) : (
                                 (() => {
-                                  const sectionItemKeys = section.items
-                                    .filter(
-                                      (item): item is string =>
-                                        typeof item === "string"
-                                    )
-                                    .map((item) =>
+                                  const sectionItemKeys = section.items.map(
+                                    (item) =>
                                       getSummaryItemKey(
                                         section.summaryCategory,
                                         item
                                       )
-                                    );
+                                  );
                                   const areAllSectionItemsChecked =
                                     sectionItemKeys.length > 0 &&
                                     sectionItemKeys.every(
@@ -1907,23 +2091,35 @@ export function GroupConversationView({
                             {section.summaryCategory === "projectPulse" ? (
                               <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night s-pl-1">
                                 {section.items.map((item, index) => {
-                                  if (typeof item === "string") {
-                                    return null;
-                                  }
-
                                   const itemKey = getSummaryItemKey(
                                     section.summaryCategory,
                                     item
                                   );
                                   const relatedConversationIds =
                                     summaryRelatedConversations[itemKey] ?? [];
+                                  const shouldTypePulseItem =
+                                    typingItemKeys.has(itemKey) &&
+                                    (summaryItemDiffByKey[itemKey] ===
+                                      "modified" ||
+                                      summaryItemDiffByKey[itemKey] ===
+                                        "added");
 
                                   return (
                                     <span key={itemKey}>
-                                      {renderProjectPulseItemWithInlineLinks(
-                                        item,
-                                        relatedConversationIds,
-                                        false
+                                      {shouldTypePulseItem ? (
+                                        <TypingAnimation
+                                          key={`${itemKey}-${typingVersion}`}
+                                          text={item.segments
+                                            .map((segment) => segment.text)
+                                            .join("")}
+                                          duration={16}
+                                        />
+                                      ) : (
+                                        renderProjectPulseItemWithInlineLinks(
+                                          item,
+                                          relatedConversationIds,
+                                          false
+                                        )
                                       )}
                                       {index < section.items.length - 1
                                         ? " "
@@ -1938,15 +2134,31 @@ export function GroupConversationView({
                                   section.summaryCategory,
                                   item
                                 );
+                                const itemDiff = summaryItemDiffByKey[itemKey];
                                 const isChecked =
                                   checkedSummaryItems[itemKey] ?? false;
                                 const relatedConversationIds =
                                   summaryRelatedConversations[itemKey] ?? [];
+                                const isAdded = itemDiff === "added";
+                                const hasEntered =
+                                  enteringItemKeys.has(itemKey);
+                                const isExiting = exitingItemKeys.has(itemKey);
+                                const shouldTypeChecklistItem =
+                                  typingItemKeys.has(itemKey) &&
+                                  itemDiff === "modified";
 
                                 return (
                                   <div
                                     key={itemKey}
-                                    className="s-flex s-items-start s-gap-3"
+                                    className={cn(
+                                      "s-flex s-items-start s-gap-3 s-overflow-hidden",
+                                      "s-transition-all s-duration-200",
+                                      isExiting
+                                        ? "s-max-h-0 s-opacity-0"
+                                        : isAdded && !hasEntered
+                                          ? "s-max-h-0 s-opacity-0"
+                                          : "s-max-h-32 s-opacity-100"
+                                    )}
                                   >
                                     <Checkbox
                                       size="xs"
@@ -1968,8 +2180,16 @@ export function GroupConversationView({
                                             : "s-text-foreground dark:s-text-foreground-night"
                                         }`}
                                       >
-                                        {renderSummaryItemWithEmphasizedNames(
-                                          item as string
+                                        {shouldTypeChecklistItem ? (
+                                          <TypingAnimation
+                                            key={`${itemKey}-${typingVersion}`}
+                                            text={item.text}
+                                            duration={16}
+                                          />
+                                        ) : (
+                                          renderSummaryItemWithEmphasizedNames(
+                                            item.text
+                                          )
                                         )}
                                       </span>
                                       {(() => {
