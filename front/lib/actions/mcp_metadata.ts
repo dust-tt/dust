@@ -28,6 +28,7 @@ import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_ac
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  createProxyFetch,
   getStaticIPProxyAgent,
   getUntrustedEgressAgent,
 } from "@app/lib/egress/server";
@@ -50,7 +51,6 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { ProxyAgent } from "undici";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
@@ -100,10 +100,17 @@ export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
 
-async function createMCPDispatcher(
-  auth: Authenticator,
-  host: string
-): Promise<ProxyAgent | undefined> {
+/**
+ * Build the proxy configuration for a remote MCP server connection.
+ *
+ * Returns both a `dispatcher` (for POST requests via `send()`) and a custom
+ * `fetch` function. The custom `fetch` is necessary because the MCP SDK's
+ * SSEClientTransport and StreamableHTTPClientTransport do NOT forward
+ * `requestInit.dispatcher` to their internal EventSource/GET fetch calls.
+ * Without a custom `fetch`, those connections fall through to the global fetch
+ * which may use a different proxy (e.g. squid-proxy instead of http-proxy).
+ */
+async function createMCPProxyConfig(auth: Authenticator, host: string) {
   const workspace = auth.getNonNullableWorkspace();
 
   // Check if workspace should use static IP:
@@ -114,17 +121,29 @@ async function createMCPDispatcher(
     (await isHostUnderVerifiedDomain(auth, host));
 
   if (useStaticIP) {
-    const staticIPProxy = getStaticIPProxyAgent();
-    if (staticIPProxy) {
+    const staticAgent = getStaticIPProxyAgent();
+    if (staticAgent) {
       logger.info(
-        { workspaceId: workspace.sId, host, useStaticIP },
+        { workspaceId: workspace.sId, host },
         "Using static IP proxy for MCP request"
       );
-      return staticIPProxy;
+      return { dispatcher: staticAgent, fetch: createProxyFetch(staticAgent) };
     }
+    logger.warn(
+      { workspaceId: workspace.sId, host },
+      "Static IP proxy required but not configured, falling back to untrusted egress"
+    );
   }
 
-  return getUntrustedEgressAgent();
+  const dispatcher = getUntrustedEgressAgent();
+  if (!dispatcher) {
+    return {};
+  }
+
+  return {
+    dispatcher,
+    fetch: createProxyFetch(dispatcher),
+  };
 }
 
 export async function connectToMCPServer(
@@ -410,13 +429,16 @@ export async function connectToMCPServer(
           }
 
           try {
+            const { dispatcher, fetch: proxyFetch } =
+              await createMCPProxyConfig(auth, url.hostname);
             const req = {
               requestInit: {
                 // Include stored custom headers
                 headers: remoteMCPServer.customHeaders ?? {},
-                dispatcher: await createMCPDispatcher(auth, url.hostname),
+                dispatcher,
               },
               authProvider: new MCPOAuthProvider(token),
+              fetch: proxyFetch,
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);
@@ -483,12 +505,17 @@ export async function connectToMCPServer(
           )
         );
       }
+      const { dispatcher, fetch: proxyFetch } = await createMCPProxyConfig(
+        auth,
+        url.hostname
+      );
       const req = {
         requestInit: {
-          dispatcher: await createMCPDispatcher(auth, url.hostname),
+          dispatcher,
           headers: { ...(params.headers ?? {}) },
         },
         authProvider: new MCPOAuthProvider(),
+        fetch: proxyFetch,
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
