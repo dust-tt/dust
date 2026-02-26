@@ -26,25 +26,28 @@ export interface SkillDirectory {
   skillMdSha: string;
 }
 
-const GitHubTreeEntrySchema = z.object({
-  path: z.string(),
-  mode: z.string(),
-  type: z.enum(["blob", "tree"]),
-  sha: z.string(),
-  size: z.number().optional(),
-  url: z.string(),
-});
+const GitHubTreeEntrySchema = z
+  .object({
+    path: z.string(),
+    type: z.enum(["blob", "tree"]),
+    sha: z.string(),
+    size: z.number().optional(),
+    url: z.string(),
+  })
+  .passthrough();
 
-export const GitHubTreeResponseSchema = z.object({
-  sha: z.string(),
-  tree: z.array(GitHubTreeEntrySchema),
-  truncated: z.boolean(),
-});
+export const GitHubTreeResponseSchema = z
+  .object({
+    tree: z.array(GitHubTreeEntrySchema),
+    truncated: z.boolean(),
+  })
+  .passthrough();
 
-export const GitHubBlobResponseSchema = z.object({
-  content: z.string(),
-  encoding: z.string(),
-});
+export const GitHubBlobResponseSchema = z
+  .object({
+    content: z.string(),
+  })
+  .passthrough();
 
 export type GitHubTreeEntry = z.infer<typeof GitHubTreeEntrySchema>;
 export type GitHubTreeResponse = z.infer<typeof GitHubTreeResponseSchema>;

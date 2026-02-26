@@ -7,7 +7,6 @@ import {
 import type {
   DetectedSkill,
   DetectedSkillAttachment,
-  GitHubRepo,
   GitHubTreeEntry,
   SkillDetectionError,
   SkillDirectory,
@@ -34,10 +33,14 @@ const FETCH_CONCURRENCY = 4;
  */
 async function fetchRepoTree(
   octokit: InstanceType<typeof Octokit>,
-  githubRepo: GitHubRepo
+  {
+    owner,
+    repo,
+  }: {
+    owner: string;
+    repo: string;
+  }
 ): Promise<Result<GitHubTreeEntry[], SkillDetectionError>> {
-  const { owner, repo } = githubRepo;
-
   let rawData: unknown;
   try {
     const response = await octokit.request(
@@ -91,9 +94,15 @@ async function fetchRepoTree(
  */
 async function fetchBlobContent(
   octokit: InstanceType<typeof Octokit>,
-  owner: string,
-  repo: string,
-  fileSha: string
+  {
+    owner,
+    repo,
+    fileSha,
+  }: {
+    owner: string;
+    repo: string;
+    fileSha: string;
+  }
 ): Promise<Result<string, SkillDetectionError>> {
   let rawData: unknown;
   try {
@@ -141,7 +150,7 @@ export async function detectSkillsFromGitHubRepo({
 
   const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
 
-  const treeResult = await fetchRepoTree(octokit, owner, repo);
+  const treeResult = await fetchRepoTree(octokit, { owner, repo });
   if (treeResult.isErr()) {
     return treeResult;
   }
@@ -186,12 +195,11 @@ async function buildDetectedSkill({
   skillDir: SkillDirectory;
   tree: GitHubTreeEntry[];
 }): Promise<Result<DetectedSkill, SkillDetectionError>> {
-  const blobResult = await fetchBlobContent(
-    octokit,
+  const blobResult = await fetchBlobContent(octokit, {
     owner,
     repo,
-    skillDir.skillMdSha
-  );
+    fileSha: skillDir.skillMdSha,
+  });
   if (blobResult.isErr()) {
     logger.error(
       {
