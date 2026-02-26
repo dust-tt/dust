@@ -29,7 +29,7 @@ export function InternalMCPBearerTokenForm({
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">
       <Collapsible>
-        <CollapsibleTrigger>
+        <CollapsibleTrigger className="pb-2">
           <div className="heading-lg">Authorization</div>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -48,7 +48,7 @@ export function InternalMCPBearerTokenForm({
         </CollapsibleContent>
       </Collapsible>
       <Collapsible>
-        <CollapsibleTrigger>
+        <CollapsibleTrigger className="pb-2">
           <div className="heading-lg">Headers ({fields.length})</div>
         </CollapsibleTrigger>
         <CollapsibleContent>

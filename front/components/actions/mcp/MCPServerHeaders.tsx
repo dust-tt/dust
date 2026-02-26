@@ -39,43 +39,46 @@ export function McpServerHeaders({
   };
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      <div className="flex w-full flex-col gap-3">
-        <div className="flex flex-col gap-4">
-          {headers.map((header, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <div className="grid flex-1 grid-cols-3 gap-2 px-1">
-                <div className="col-span-1">
-                  <Input
-                    placeholder="Header Name"
-                    value={header.key}
-                    name="headerName"
-                    onChange={getChangeHandler(index, "key")}
-                    disabled={header.value === WebCrawlerHeaderRedactedValue}
-                    className="w-full"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Input
-                    name="headerValue"
-                    placeholder="Header Value"
-                    value={header.value}
-                    onChange={getChangeHandler(index, "value")}
-                    disabled={header.value === WebCrawlerHeaderRedactedValue}
-                    className="w-full"
-                  />
-                </div>
+    <div className="flex w-full flex-col">
+      <div className="flex flex-col gap-4">
+        {headers.map((header, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className="grid flex-1 grid-cols-3 gap-2 px-1">
+              <div className="col-span-1">
+                <Input
+                  placeholder="Header Name"
+                  value={header.key}
+                  name="headerName"
+                  onChange={getChangeHandler(index, "key")}
+                  disabled={header.value === WebCrawlerHeaderRedactedValue}
+                  className="w-full"
+                />
               </div>
-              <Button
-                variant="outline"
-                icon={XMarkIcon}
-                onClick={() => removeHeader(index)}
-              />
+              <div className="col-span-2">
+                <Input
+                  name="headerValue"
+                  placeholder="Header Value"
+                  value={header.value}
+                  onChange={getChangeHandler(index, "value")}
+                  disabled={header.value === WebCrawlerHeaderRedactedValue}
+                  className="w-full"
+                />
+              </div>
             </div>
-          ))}
-        </div>
-        <Button variant="outline" label="Add Header" onClick={addHeader} />
+            <Button
+              variant="outline"
+              icon={XMarkIcon}
+              onClick={() => removeHeader(index)}
+            />
+          </div>
+        ))}
       </div>
+      <Button
+        className="mt-4"
+        variant="outline"
+        label="Add Header"
+        onClick={addHeader}
+      />
     </div>
   );
 }
