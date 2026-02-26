@@ -23,11 +23,33 @@ pub const MAX_TABLE_COLUMNS: usize = 512;
 pub const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
+// TODO(2026-02-26 INCIDENT): Revisit once we found limit.
+pub const MAX_CSV_FILE_SIZE_BYTES: u64 = 100 * 1024 * 1024; // 100MB
+
 impl GoogleCloudStorageCSVContent {
     pub async fn parse(&self) -> Result<Vec<Row>> {
         let now = utils::now();
         let bucket = &self.bucket;
         let path = &self.bucket_csv_path;
+
+        // Check file size before downloading to prevent OOM issues.
+        let metadata = Object::read(bucket, path).await?;
+        if metadata.size > MAX_CSV_FILE_SIZE_BYTES {
+            info!(
+                bucket = bucket,
+                path = path,
+                file_size_bytes = metadata.size,
+                max_size_bytes = MAX_CSV_FILE_SIZE_BYTES,
+                "CSV file exceeds maximum size limit"
+            );
+            return Err(anyhow!(
+                "CSV file at {}/{} is too large to process: {} bytes (max {} bytes)",
+                bucket,
+                path,
+                metadata.size,
+                MAX_CSV_FILE_SIZE_BYTES
+            ));
+        }
 
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
