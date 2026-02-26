@@ -27,10 +27,6 @@ export { parseGitHubRepoUrl };
 
 const FETCH_CONCURRENCY = 4;
 
-/**
- * Fetches the repository tree from GitHub. Try/catch is scoped to the
- * external API call only; the response is validated via Zod immediately.
- */
 async function fetchRepoTree(
   octokit: InstanceType<typeof Octokit>,
   {
