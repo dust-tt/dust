@@ -45,6 +45,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type {
@@ -717,14 +718,32 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           }),
         ]);
 
+        const statsDClient = getStatsDClient();
+
+        statsDClient.increment(
+          "mcp_output_items.fetch.count",
+          gcsItems.length,
+          ["storage:gcs"]
+        );
+        statsDClient.increment(
+          "mcp_output_items.fetch.count",
+          legacyItems.length,
+          ["storage:legacy"]
+        );
+
         // Hydrate GCS-backed items from cache/GCS.
         if (gcsItems.length > 0) {
+          const gcsStartMs = Date.now();
           const contentResult = await batchFetchContentsFromGcs(
             auth,
             gcsItems.map((item) => ({
               itemId: item.id,
               gcsPath: item.contentGcsPath!,
             }))
+          );
+          statsDClient.distribution(
+            "mcp_output_items.gcs_hydrate.duration_ms",
+            Date.now() - gcsStartMs
           );
 
           if (contentResult.isOk()) {
@@ -735,6 +754,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               }
             }
           } else {
+            statsDClient.increment(
+              "mcp_output_items.gcs_fallback_db.count",
+              gcsItems.length
+            );
             // TODO(2026-02-25 PERF): Remove this post-migration.
             // GCS read failed. We re-fetch from DB with content included.
             // This is a temporary fallback during the migration period while content is still in
