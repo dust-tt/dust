@@ -14,7 +14,7 @@ import {
   resolveChannelId,
   resolveUserDisplayName,
   SLACK_THREAD_LISTING_LIMIT,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
+} from "@app/lib/api/actions/servers/slack/helpers";
 import type {
   ToolDefinition,
   ToolHandlers,

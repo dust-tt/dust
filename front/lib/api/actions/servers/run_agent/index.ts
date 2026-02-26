@@ -4,13 +4,13 @@ import type {
   MCPProgressNotificationType,
   RunAgentQueryProgressOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
-import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
+import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
+import { isTransientStreamError } from "@app/lib/api/actions/servers/run_agent/network_errors";
 import type {
   ChildAgentBlob,
   RunAgentBlockingEvent,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+} from "@app/lib/api/actions/servers/run_agent/types";
+import { makeToolBlockedAwaitingInputResponse } from "@app/lib/api/actions/servers/run_agent/types";
 import type {
   ToolDefinition,
   ToolHandlerExtra,

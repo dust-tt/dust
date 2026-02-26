@@ -11,7 +11,7 @@
 // } from "@app/lib/actions/constants";
 // import type { ActionBaseParams } from "@app/lib/actions/mcp";
 // import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-// import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
+// import { makeQueryResource } from "@app/lib/api/actions/servers/search/utils";
 // import config from "@app/lib/api/config";
 // import { getWorkspaceInfos } from "@app/lib/api/workspace";
 // import { Authenticator } from "@app/lib/auth";

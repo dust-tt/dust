@@ -30,7 +30,7 @@ import {
   getInternalMCPServerToolStakes,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
-import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
+import { getInternalMCPServer } from "@app/lib/api/actions/servers";
 import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";

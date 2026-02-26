@@ -3,7 +3,7 @@ import {
   getDriveItemEndpoint,
   getGraphClient,
   parseCellRef,
-} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+} from "@app/lib/api/actions/servers/microsoft/utils";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeExcelRequest } from "@app/lib/api/actions/servers/microsoft_excel/helpers";

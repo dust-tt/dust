@@ -4,7 +4,7 @@ import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,
   getSchemaContent,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
+} from "@app/lib/api/actions/servers/tables_query/schema";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";

@@ -25,9 +25,9 @@ import {
   updateIssue,
   uploadAttachmentsToJira,
   withAuth,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
-import { renderIssueWithEmbeddedComments } from "@app/lib/actions/mcp_internal_actions/servers/jira/rendering";
-import { SEARCH_USERS_MAX_RESULTS } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+} from "@app/lib/api/actions/servers/jira/jira_api_helper";
+import { renderIssueWithEmbeddedComments } from "@app/lib/api/actions/servers/jira/rendering";
+import { SEARCH_USERS_MAX_RESULTS } from "@app/lib/api/actions/servers/jira/types";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
