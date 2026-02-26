@@ -688,8 +688,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     useCases: [
       {
         title: "File Access",
-        description:
-          "Access and search your OneDrive files through AI agents.",
+        description: "Access and search your OneDrive files through AI agents.",
         icon: "ActionMagnifyingGlassIcon",
       },
     ],
@@ -793,8 +792,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
 
   // ===== DATA =====
   snowflake: {
-    tagline:
-      "Query your Snowflake data warehouse directly from AI agents",
+    tagline: "Query your Snowflake data warehouse directly from AI agents",
     useCases: [
       {
         title: "Data Queries",
@@ -849,8 +847,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     useCases: [
       {
         title: "Data Analysis",
-        description:
-          "Query and analyze data stored in Databricks lakehouse.",
+        description: "Query and analyze data stored in Databricks lakehouse.",
         icon: "ActionTableIcon",
       },
     ],
