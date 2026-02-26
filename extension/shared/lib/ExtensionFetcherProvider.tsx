@@ -1,4 +1,4 @@
-import { getBaseUrlFromResolver } from "@app/lib/api/config";
+import { clientFetch } from "@app/lib/egress/client";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { resHandler } from "@extension/shared/lib/swr";
@@ -16,21 +16,13 @@ export function ExtensionFetcherProvider({
   const { token } = useExtensionAuth();
 
   const { fetcher, fetcherWithBody } = useMemo(() => {
-    const resolveUrl = (url: string) => {
-      if (url.startsWith("/")) {
-        const baseUrl = getBaseUrlFromResolver();
-        return `${baseUrl}${url}`;
-      }
-      return url;
-    };
-
     const addAuthHeaders = (headers: HeadersInit = {}): HeadersInit => ({
       ...headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     });
 
     const fetcher: FetcherFn = async (url, init) => {
-      const res = await fetch(resolveUrl(url), {
+      const res = await clientFetch(url, {
         ...init,
         headers: addAuthHeaders(init?.headers),
       });
@@ -41,7 +33,7 @@ export function ExtensionFetcherProvider({
       [url, body, method],
       init
     ) => {
-      const res = await fetch(resolveUrl(url), {
+      const res = await clientFetch(url, {
         ...init,
         method,
         headers: addAuthHeaders({

@@ -11,7 +11,7 @@ import { RegionProvider } from "@app/lib/auth/RegionContext";
 import { Notification } from "@dust-tt/sparkle";
 import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
 import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
-import { ExtensionFetcherProvider } from "@extension/shared/lib/FetcherProvider";
+import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
 import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
 import { useEffect, useState } from "react";
