@@ -10,6 +10,7 @@ import { InputBarProvider } from "@app/components/assistant/conversation/input_b
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations/useConversation";
+import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   BarHeader,
@@ -22,8 +23,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
-import { useSetupNotifications } from "@extension/shared/lib/setupNotifications";
-import { useProtectedRouteContext } from "@extension/ui/components/auth/ProtectedRoute";
 import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
