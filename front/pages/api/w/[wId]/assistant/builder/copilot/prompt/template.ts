@@ -1,3 +1,4 @@
+import { fetchLangfuseFirstMessagePrompt } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -45,7 +46,8 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
+    case "GET": {
+      const { copilotEdge } = req.query;
       const template = await TemplateResource.fetchByExternalId(templateId);
 
       if (!template || !template.copilotInstructions) {
@@ -58,7 +60,30 @@ async function handler(
         });
       }
 
-      return res.status(200).json(buildTemplateAgentInitMessage(template));
+      if (copilotEdge !== "true") {
+        return res.status(200).json(buildTemplateAgentInitMessage(template));
+      }
+
+      const result = await fetchLangfuseFirstMessagePrompt(
+        "copilot-edge-first-message-template",
+        {
+          handle: template.handle,
+          copilotInstructions: template.copilotInstructions,
+          agentFacingDescription: template.agentFacingDescription ?? "",
+        }
+      );
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to generate copilot prompt.",
+          },
+        });
+      }
+
+      return res.status(200).json(result.value);
+    }
     default:
       return apiError(req, res, {
         status_code: 405,

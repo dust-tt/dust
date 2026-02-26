@@ -1,5 +1,9 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { TemplateInfo } from "@app/types/assistant/templates";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 
@@ -12,42 +16,48 @@ const COPILOT_USE_CASES = [
 type CopilotUseCase = (typeof COPILOT_USE_CASES)[number];
 
 function getCopilotScenario({
-  workspaceSId,
+  workspaceId,
   isNewAgent,
   templateInfo,
   conversationId,
   agentConfigurationId,
+  copilotEdge,
 }: {
-  workspaceSId: string;
+  workspaceId: string;
   isNewAgent: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
+  copilotEdge: boolean;
 }): {
   endpoint: string;
   useCase: CopilotUseCase;
 } {
+  const params = new URLSearchParams();
+  let useCase: CopilotUseCase;
+
   if (templateInfo && templateInfo.copilotInstructions) {
-    return {
-      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/template?templateId=${templateInfo.templateId}`,
-      useCase: "template",
-    };
+    useCase = "template";
+    params.set("templateId", templateInfo.templateId);
+  } else if (!isNewAgent && agentConfigurationId) {
+    useCase = "existing";
+    params.set("agentConfigurationId", agentConfigurationId);
+  } else if (conversationId) {
+    useCase = "shrink-wrap";
+    params.set("conversationId", conversationId);
+  } else {
+    useCase = "new";
   }
-  if (!isNewAgent && agentConfigurationId) {
-    return {
-      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/existing?agentConfigurationId=${agentConfigurationId}`,
-      useCase: "existing",
-    };
+
+  if (copilotEdge) {
+    params.set("copilotEdge", "true");
   }
-  if (conversationId) {
-    return {
-      endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/shrink-wrap?conversationId=${conversationId}`,
-      useCase: "shrink-wrap",
-    };
-  }
+
+  const queryString = params.toString();
+  const path = `/api/w/${workspaceId}/assistant/builder/copilot/prompt/${useCase}`;
   return {
-    endpoint: `/api/w/${workspaceSId}/assistant/builder/copilot/prompt/new`,
-    useCase: "new",
+    endpoint: queryString ? `${path}?${queryString}` : path,
+    useCase,
   };
 }
 
@@ -57,38 +67,53 @@ export function useCopilotFirstMessage({
   templateInfo,
   conversationId,
   agentConfigurationId,
+  copilotEdge = false,
 }: {
   owner: WorkspaceType;
   isNewAgent: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
+  copilotEdge?: boolean;
 }) {
   const { endpoint, useCase } = useMemo(
     () =>
       getCopilotScenario({
-        workspaceSId: owner.sId,
+        workspaceId: owner.sId,
         isNewAgent,
         templateInfo,
         conversationId,
         agentConfigurationId,
+        copilotEdge,
       }),
-    [owner.sId, isNewAgent, templateInfo, conversationId, agentConfigurationId]
+    [
+      owner.sId,
+      isNewAgent,
+      templateInfo,
+      conversationId,
+      agentConfigurationId,
+      copilotEdge,
+    ]
   );
 
-  const getFirstMessage = useCallback(async (): Promise<string> => {
-    const res = await clientFetch(endpoint, {
-      method: "GET",
-    });
+  const getFirstMessage = useCallback(async (): Promise<
+    Result<string, Error>
+  > => {
+    try {
+      const res = await clientFetch(endpoint, {
+        method: "GET",
+      });
 
-    if (!res.ok) {
-      throw new Error(
-        `Failed to fetch copilot first message: ${res.status} ${res.statusText}`
-      );
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        return new Err(new Error(errorData.message));
+      }
+
+      const data = await res.json();
+      return new Ok(data);
+    } catch (error) {
+      return new Err(normalizeError(error));
     }
-
-    const data = (await res.json()) as string;
-    return data;
   }, [endpoint]);
 
   return { getFirstMessage, useCase };

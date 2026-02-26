@@ -1,6 +1,6 @@
 import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import {
-  fetchLangfusePromptConfig,
+  fetchLangfuseSystemPromptConfig,
   type LangfusePromptConfig,
 } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import type {
@@ -175,13 +175,10 @@ export async function buildCopilotContext(
   let langfuseConfig: LangfusePromptConfig | null = null;
 
   if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_EDGE)) {
-    const result = await fetchLangfusePromptConfig(
-      GLOBAL_AGENTS_SID.COPILOT_EDGE,
-      {
-        userContext: formattedUserContext ?? "",
-        workspaceContext: formattedWorkspaceContext,
-      }
-    );
+    const result = await fetchLangfuseSystemPromptConfig("copilot-edge", {
+      userContext: formattedUserContext ?? "",
+      workspaceContext: formattedWorkspaceContext,
+    });
     if (result.isErr()) {
       logger.error(
         {
