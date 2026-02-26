@@ -23,7 +23,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 
 interface MCPServerDetailsProps {
@@ -80,11 +80,15 @@ export function MCPServerDetails({
       : undefined,
   });
 
-  // Reset form when switching between servers.
-  const serverId = mcpServerView?.server.sId;
+  // Full reset when switching between servers.
+  const prevServerIdRef = useRef(mcpServerView?.server.sId);
   useEffect(() => {
-    form.reset(getDefaults());
-  }, [form, serverId]);
+    const serverId = mcpServerView?.server.sId;
+    if (serverId !== prevServerIdRef.current) {
+      prevServerIdRef.current = serverId;
+      form.reset(getDefaults());
+    }
+  });
 
   const applyToolChanges = async (
     toolChanges: Array<{
