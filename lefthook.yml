@@ -61,7 +61,7 @@ pre-commit:
 
     # Optional: package-lock.json sync check (skip with LEFTHOOK_EXCLUDE=package-lock-check)
     package-lock-check:
-      glob: "*/{package,package-lock}.json"
+      glob: "**/package*.json"
       run: scripts/check-package-lock-sync.sh
       priority: 1
 
