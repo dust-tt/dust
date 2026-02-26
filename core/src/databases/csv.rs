@@ -24,7 +24,7 @@ pub const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
 // TODO(2026-02-26 INCIDENT): Revisit once we found limit.
-pub const MAX_CSV_FILE_SIZE_BYTES: u64 = 50 * 1024 * 1024; // 50MB
+pub const MAX_CSV_FILE_SIZE_BYTES: u64 = 100 * 1024 * 1024; // 100MB
 
 impl GoogleCloudStorageCSVContent {
     pub async fn parse(&self) -> Result<Vec<Row>> {
