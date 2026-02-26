@@ -25,6 +25,8 @@ const EXTENSION_WHITELIST = [
   ".phtml", // PHP template
   ".twig", // PHP template
   ".module", // Drupal module
+  ".cls", // Salesforce Apex class
+  ".cls-meta.xml", // Salesforce Apex class metadata
 
   ".xhtml", // XML/HTML
   ".xsd", // XML Schema Definition
