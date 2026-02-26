@@ -77,11 +77,14 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
 /**
  * Listener to set up context menus when the extension is installed.
  */
+// Ensure Chrome never intercepts action clicks for the side panel — we handle
+// them ourselves in chrome.action.onClicked so the content script sidebar works.
+if (isSidePanelSupported()) {
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void platform.storage.set("extensionReady", false);
-  if (isSidePanelSupported()) {
-    void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-  }
   chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
@@ -131,17 +134,15 @@ const ensureContentScriptLoaded = async (tabId: number): Promise<boolean> => {
  * automatically, so we only need this handler for the content script fallback.
  */
 chrome.action.onClicked.addListener(async (tab) => {
-  if (isSidePanelSupported()) {
-    // Side panel is opened automatically via openPanelOnActionClick.
-    return;
-  }
-
+  // In Chrome with openPanelOnActionClick active, this listener never fires
+  // (Chrome handles the click natively). For all other cases — Arc, Firefox,
+  // and Chrome before onInstalled has run — we fall through to the content
+  // script sidebar.
   if (!tab.id || !canInjectContentScript(tab.url)) {
     console.log("Cannot inject content script in this tab:", tab.url);
     return;
   }
 
-  // Ensure content script is loaded
   const loaded = await ensureContentScriptLoaded(tab.id);
   if (!loaded) {
     console.error("Failed to load content script");
@@ -295,7 +296,7 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
       const loaded = await ensureContentScriptLoaded(tab.id);
       if (loaded) {
         try {
-          await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+          await chrome.tabs.sendMessage(tab.id, { action: "openSidebar" });
         } catch (error) {
           console.error("Failed to open sidebar:", error);
         }
@@ -522,7 +523,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
           log("[onMessageExternal] Failed to load content script");
           return;
         }
-        await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+        await chrome.tabs.sendMessage(tab.id, { action: "openSidebar" });
       }
     };
 

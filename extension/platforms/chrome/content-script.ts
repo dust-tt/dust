@@ -317,17 +317,12 @@ function removeSidebar(): void {
 async function init(): Promise<void> {
   try {
     // Restore previous state
-    const result = await chrome.storage.local.get([
-      STORAGE_KEY_VISIBLE,
-      STORAGE_KEY_WIDTH,
-    ]);
+    const result = await chrome.storage.local.get([STORAGE_KEY_WIDTH]);
 
     // Restore saved width
     if (result[STORAGE_KEY_WIDTH]) {
       sidebarWidth = result[STORAGE_KEY_WIDTH];
     }
-
-    showSidebar();
   } catch (error) {
     console.error("[Dust Content Script] Error initializing:", error);
   }
