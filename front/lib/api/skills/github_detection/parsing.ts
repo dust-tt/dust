@@ -8,33 +8,6 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const SKILL_MD_FILENAME = "skill.md";
 
-// Content type mapping for common file extensions.
-const EXTENSION_CONTENT_TYPES: Record<string, string> = {
-  ".md": "text/markdown",
-  ".txt": "text/plain",
-  ".json": "application/json",
-  ".js": "text/javascript",
-  ".ts": "text/typescript",
-  ".py": "text/x-python",
-  ".sh": "text/x-shellscript",
-  ".html": "text/html",
-  ".css": "text/css",
-  ".xml": "application/xml",
-  ".xsd": "application/xml",
-  ".yaml": "text/yaml",
-  ".yml": "text/yaml",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".pdf": "application/pdf",
-  ".zip": "application/zip",
-  ".ttf": "font/ttf",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-};
-
 /**
  * Parses a GitHub repository identifier from various formats:
  * - "owner/repo"
@@ -80,18 +53,6 @@ export function parseGitHubRepoUrl(
   }
 
   return new Ok({ owner: segments[0], repo: segments[1] });
-}
-
-/**
- * Infers content type from a file's extension.
- */
-export function getContentType(filename: string): string {
-  const lastDot = filename.lastIndexOf(".");
-  if (lastDot === -1) {
-    return "application/octet-stream";
-  }
-  const ext = filename.slice(lastDot).toLowerCase();
-  return EXTENSION_CONTENT_TYPES[ext] ?? "application/octet-stream";
 }
 
 /**

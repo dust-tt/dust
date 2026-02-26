@@ -1,7 +1,6 @@
 import {
   extractDescription,
   findSkillDirectories,
-  getContentType,
   parseGitHubRepoUrl,
 } from "@app/lib/api/skills/github_detection/parsing";
 import type {
@@ -227,7 +226,6 @@ async function buildDetectedSkill({
       name: fileName,
       path: relativePath,
       sizeBytes: entry.size ?? 0,
-      contentType: getContentType(fileName),
     });
   }
 

@@ -4,7 +4,6 @@ export interface DetectedSkillAttachment {
   name: string;
   path: string;
   sizeBytes: number;
-  contentType: string;
 }
 
 export interface DetectedSkill {
