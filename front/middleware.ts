@@ -89,7 +89,52 @@ export function middleware(request: NextRequest) {
     return handleCors(response, request);
   }
 
+  // Redirect /poke/* to the poke SPA app (the poke server handles its own auth).
+  if (url === "/poke" || url.startsWith("/poke/")) {
+    const pokeAppUrl = process.env.POKE_APP_URL;
+    if (pokeAppUrl) {
+      const pathAfterPoke = url.slice("/poke".length); // includes leading slash or empty
+      return NextResponse.redirect(`${pokeAppUrl}${pathAfterPoke}`, 302);
+    }
+  }
+
+  // Paths served by Next.js pages — do not redirect these.
+  if (isNextJsPagePath(url)) {
+    return NextResponse.next();
+  }
+
+  // Redirect all other paths to the main SPA app.
+  const appUrl = process.env.NEXT_PUBLIC_DUST_APP_URL;
+  if (appUrl) {
+    const queryString = request.nextUrl.search; // includes leading '?' or empty
+    return NextResponse.redirect(`${appUrl}${url}${queryString}`, 302);
+  }
+
   return NextResponse.next();
+}
+
+// Path prefixes served by Next.js (pages, API, static assets) — should not be redirected.
+const NEXTJS_PATH_PREFIXES = [
+  "/api",
+  "/home",
+  "/blog",
+  "/customers",
+  "/academy",
+  "/landing",
+  "/email",
+  "/_next",
+  "/static",
+];
+
+function isNextJsPagePath(pathname: string): boolean {
+  if (process.env.NODE_ENV !== "development" && pathname === "/") {
+    // In production, serve the index page from Next.js, that shows the home page for unlogged users
+    // In development, always redirect to SPA to have a quick redirect.
+    return true;
+  }
+  return NEXTJS_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 }
 
 function handleCors(
