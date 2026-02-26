@@ -75,6 +75,14 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onPrev, onNext]);
 
+  useEffect(() => {
+    const handleMouseMove = () => {
+      resetHideTimer();
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [resetHideTimer]);
+
   return (
     <>
       {/* Prev / Next arrow buttons */}
