@@ -26,7 +26,8 @@ export function useAuth(): AuthContextValue {
 }
 
 export function useFeatureFlags() {
-  const { featureFlags } = useAuth();
+  const ctx = useContext(AuthContext);
+  const featureFlags = ctx?.featureFlags ?? [];
 
   const hasFeature = useCallback(
     (flag: WhitelistableFeature | null | undefined) => {
