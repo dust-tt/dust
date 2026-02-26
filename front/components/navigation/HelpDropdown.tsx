@@ -10,6 +10,7 @@ import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
+  BookOpenIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
@@ -144,6 +145,12 @@ export function HelpDropdown({
           label="Guides & Documentation"
           icon={DocumentIcon}
           href="https://docs.dust.tt"
+          target="_blank"
+        />
+        <DropdownMenuItem
+          label="Dust Academy"
+          icon={BookOpenIcon}
+          href="https://dust.tt/academy"
           target="_blank"
         />
         <DropdownMenuItem
