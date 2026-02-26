@@ -67,7 +67,10 @@ interface UserParticipation {
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationResource
-  extends ReadonlyAttributesType<ConversationModel> {}
+  extends ReadonlyAttributesType<ConversationModel> {
+  // Field name needs to match the included model alias in fetch queries for proper typing.
+  conversation_participants?: ConversationParticipantModel[];
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {
@@ -191,6 +194,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ...options.where,
         workspaceId: workspace.id,
       },
+      include: options.includes,
       limit: options.limit,
       order: options.order,
     });
@@ -285,9 +289,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversationIds?: number[]
   ): Promise<Map<number, UserParticipation>> {
-    const user = auth.user();
-
-    assert(user, "User is expected to be authenticated");
+    const user = auth.getNonNullableUser();
 
     const whereClause: WhereOptions<ConversationParticipantModel> = {
       userId: user.id,
@@ -745,23 +747,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
-    const emptyResult = {
-      conversations: [],
-      hasMore: false,
-      lastValue: null,
-    };
+    const user = auth.user();
+    assert(user, "User is expected to be authenticated");
 
-    const participationMap = await this.fetchParticipationMapForUser(auth);
-    const conversationIds = Array.from(participationMap.keys());
-
-    if (conversationIds.length === 0) {
-      return emptyResult;
-    }
-
+    const workspace = auth.getNonNullableWorkspace();
     const orderDirection = pagination.orderDirection ?? "desc";
 
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
-      id: { [Op.in]: conversationIds },
       spaceId: { [Op.is]: null },
       visibility: { [Op.eq]: "unlisted" },
       ...extraWhereClause,
@@ -784,6 +776,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       {},
       {
         where: whereClause,
+        includes: [
+          {
+            model: ConversationParticipantModel,
+            as: "conversation_participants",
+            where: {
+              userId: user.id,
+              workspaceId: workspace.id,
+            },
+            required: true,
+          },
+        ],
         order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
         limit: fetchLimit,
       }
@@ -797,10 +800,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       resultConversations = conversations.slice(0, pagination.limit);
     }
 
+    // Fetch read data only for page results (not all conversations).
+    const pageConversationIds = resultConversations.map((c) => c.id);
+    const readMap = await this.fetchReadMapForUser(auth, pageConversationIds);
+
+    // Build participation data from included result + reads.
     resultConversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
+      const participation = c.conversation_participants?.[0];
       if (participation) {
-        c.userParticipation = participation;
+        c.userParticipation = {
+          actionRequired: participation.actionRequired,
+          lastReadAt: readMap.get(c.id) ?? null,
+          updated: participation.updatedAt.getTime(),
+        };
       }
     });
 
