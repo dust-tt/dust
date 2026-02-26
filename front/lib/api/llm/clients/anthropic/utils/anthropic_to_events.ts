@@ -1,9 +1,11 @@
 import assert from "node:assert";
-
+import type { APIPromise } from "@anthropic-ai/sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type {
-  MessageDeltaUsage,
+  MessageCountTokensParams,
+  MessageParam,
   MessageStreamEvent,
+  MessageTokensCount,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
@@ -14,22 +16,37 @@ import type {
   ReasoningGeneratedEvent,
   TextDeltaEvent,
   TextGeneratedEvent,
+  TokenUsage,
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import cloneDeep from "lodash/cloneDeep";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  countTokensCallback?: (
+    body: MessageCountTokensParams
+  ) => APIPromise<MessageTokensCount>
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
+  // Accumulate token usage to return later
+  const tokenUsageAccumulator: Required<TokenUsage> = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cachedTokens: 0,
+    cacheCreationTokens: 0,
+    uncachedInputTokens: 0,
+    totalTokens: 0,
+    reasoningTokens: 0,
+  };
 
   // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
   // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
@@ -41,12 +58,55 @@ export async function* streamLLMEvents(
     for (const ev of handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
-      metadata
+      metadata,
+      tokenUsageAccumulator
     )) {
       aggregate.add(ev);
       yield ev;
     }
   }
+
+  const outputTokensWithoutReasoning: MessageParam[] = [];
+
+  if (aggregate.textGenerated) {
+    outputTokensWithoutReasoning.push({
+      content: aggregate.textGenerated.content.text,
+      role: "user" as const,
+    });
+  }
+  if (aggregate.toolCalls) {
+    outputTokensWithoutReasoning.push(
+      ...aggregate.toolCalls.map((call) => ({
+        content: `${call.content.name} ${JSON.stringify(call.content.arguments)}`,
+        role: "user" as const,
+      }))
+    );
+  }
+
+  try {
+    // Anthropic does not send the output token coutn details
+    // This allows a rough estimation of the reasoning tokens
+    const tokenCount = (await countTokensCallback?.({
+      model: metadata.modelId,
+      messages: outputTokensWithoutReasoning,
+    })) ?? {
+      input_tokens: tokenUsageAccumulator.outputTokens,
+    };
+    const reasoningTokens = Math.max(
+      0,
+      tokenUsageAccumulator.outputTokens - tokenCount.input_tokens
+    );
+    tokenUsageAccumulator.reasoningTokens = reasoningTokens;
+    tokenUsageAccumulator.outputTokens =
+      tokenUsageAccumulator.outputTokens - reasoningTokens;
+  } catch (err) {
+    logger.error("Failed getting token details from Anthropic", {
+      error: err,
+      metadata,
+    });
+  }
+
+  yield tokenUsage(tokenUsageAccumulator, metadata);
 
   yield {
     type: "success",
@@ -61,7 +121,8 @@ export async function* streamLLMEvents(
 function* handleMessageStreamEvent(
   messageStreamEvent: BetaRawMessageStreamEvent,
   stateContainer: { state: StreamState },
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  tokenUsageAccumulator: Required<TokenUsage>
 ): Generator<LLMEvent> {
   switch (messageStreamEvent.type) {
     case "message_start":
@@ -100,7 +161,11 @@ function* handleMessageStreamEvent(
       );
       break;
     case "message_delta":
-      yield* handleMessageDelta(messageStreamEvent, metadata);
+      yield* handleMessageDelta(
+        messageStreamEvent,
+        metadata,
+        tokenUsageAccumulator
+      );
       break;
     default:
       assertNever(messageStreamEvent);
@@ -221,9 +286,22 @@ function* handleContentBlockStop(
 
 function* handleMessageDelta(
   event: Extract<BetaRawMessageStreamEvent, { type: "message_delta" }>,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  tokenUsageAccumulator: Required<TokenUsage>
 ): Generator<LLMEvent> {
-  yield tokenUsage(event.usage, metadata);
+  // Accumulate token usage instead of yielding it
+  const cachedTokens = event.usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = event.usage.cache_creation_input_tokens ?? 0;
+  const uncachedInputTokens = event.usage.input_tokens ?? 0;
+  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
+  const outputTokens = event.usage.output_tokens;
+
+  tokenUsageAccumulator.inputTokens = inputTokens;
+  tokenUsageAccumulator.outputTokens = outputTokens;
+  tokenUsageAccumulator.cachedTokens = cachedTokens;
+  tokenUsageAccumulator.cacheCreationTokens = cacheCreationTokens;
+  tokenUsageAccumulator.uncachedInputTokens = uncachedInputTokens;
+  tokenUsageAccumulator.totalTokens = inputTokens + outputTokens;
 
   if (event.delta.stop_reason) {
     yield* handleStopReason(event.delta.stop_reason, metadata);
@@ -322,25 +400,12 @@ function reasoningGenerated(
 }
 
 function tokenUsage(
-  usage: MessageDeltaUsage,
+  tokenUsageAccumulator: Required<TokenUsage>,
   metadata: LLMClientMetadata
 ): TokenUsageEvent {
-  const cachedTokens = usage.cache_read_input_tokens ?? 0;
-  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
-  const uncachedInputTokens = usage.input_tokens ?? 0;
-  // Include all input tokens to keep consistency with core implementation
-  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
-
   return {
     type: "token_usage",
-    content: {
-      inputTokens,
-      outputTokens: usage.output_tokens,
-      cachedTokens,
-      cacheCreationTokens,
-      uncachedInputTokens,
-      totalTokens: inputTokens + usage.output_tokens,
-    },
+    content: tokenUsageAccumulator,
     metadata,
   };
 }
