@@ -1,0 +1,27 @@
+.github/workflows/format-check.yml
+  be923db65fcbffff 17,46-47
+biome.json
+  be923db65fcbffff 78
+biome.ci.json
+  be923db65fcbffff 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "9d281eef9f3fcca112c4263e1a6c8d6970a1d391",
+  "prompts": {
+    "be923db65fcbffff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c30da3e0-ce63-4503-b974-695e99f574c6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 14,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    }
+  }
+}
