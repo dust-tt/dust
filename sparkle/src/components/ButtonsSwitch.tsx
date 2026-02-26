@@ -162,5 +162,3 @@ export const ButtonsSwitch = React.forwardRef<
   );
 });
 ButtonsSwitch.displayName = "ButtonsSwitch";
-
-export default ButtonsSwitch;

@@ -3,9 +3,9 @@ import {
   KeyboardShortcut,
   type KeyboardShortcutProps,
 } from "@sparkle/components/KeyboardShortcut";
+import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
-import { useEffect, useState } from "react";
 
 const TooltipProvider = TooltipPrimitive.Provider;
 
@@ -52,19 +52,7 @@ const TooltipContent = React.forwardRef<
       />
     );
 
-    const [container, setContainer] = useState<Element | undefined>(
-      mountPortalContainer
-    );
-
-    useEffect(() => {
-      if (mountPortal && !container) {
-        const dialogElements = document.querySelectorAll(
-          ".s-sheet[role=dialog][data-state=open]"
-        );
-        const defaultContainer = dialogElements[dialogElements.length - 1];
-        setContainer(defaultContainer);
-      }
-    }, [mountPortal, container]);
+    const container = useSheetContainer(mountPortalContainer);
 
     return mountPortal ? (
       <TooltipPrimitive.Portal container={container}>
@@ -109,6 +97,7 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
     </TooltipProvider>
   )
 );
+Tooltip.displayName = "Tooltip";
 
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 

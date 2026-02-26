@@ -18,6 +18,7 @@ import {
   SearchInput,
   type SearchInputProps,
 } from "@sparkle/components/SearchInput";
+import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -316,24 +317,10 @@ const DropdownMenuContent = React.forwardRef<
       </DropdownMenuPrimitive.Content>
     );
 
-    const [container, setContainer] = React.useState<Element | undefined>(
-      mountPortalContainer
-    );
-
-    React.useEffect(() => {
-      if (mountPortal && !container) {
-        const dialogElements = document.querySelectorAll(
-          ".s-sheet[role=dialog][data-state=open]"
-        );
-        const defaultContainer = dialogElements[dialogElements.length - 1];
-        setContainer(defaultContainer);
-      }
-    }, []);
+    const container = useSheetContainer(mountPortalContainer);
 
     return mountPortal ? (
-      <DropdownMenuPrimitive.Portal
-        container={mountPortalContainer ?? container}
-      >
+      <DropdownMenuPrimitive.Portal container={container}>
         {content}
       </DropdownMenuPrimitive.Portal>
     ) : (
@@ -816,19 +803,7 @@ const DropdownTooltipTrigger = React.forwardRef<
       </TooltipPrimitive.Content>
     );
 
-    const [container, setContainer] = React.useState<Element | undefined>(
-      mountPortalContainer
-    );
-
-    React.useEffect(() => {
-      if (mountPortal && !container) {
-        const dialogElements = document.querySelectorAll(
-          ".s-sheet[role=dialog][data-state=open]"
-        );
-        const defaultContainer = dialogElements[dialogElements.length - 1];
-        setContainer(defaultContainer);
-      }
-    }, [mountPortal, container]);
+    const container = useSheetContainer(mountPortalContainer);
 
     return (
       <TooltipPrimitive.Provider delayDuration={300}>

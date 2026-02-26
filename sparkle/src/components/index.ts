@@ -32,13 +32,13 @@ export {
 } from "./Checkbox";
 export { Chip } from "./Chip";
 export * from "./Citation";
-export { default as CollapseButton } from "./CollapseButton";
+export { CollapseButton } from "./CollapseButton";
 export {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
-export { default as ConfettiBackground } from "./ConfettiBackground";
+export { ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export {
   ContainerWithTopBar,
@@ -115,7 +115,7 @@ export {
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
 } from "./Dropdown";
-export { default as DropzoneOverlay } from "./DropzoneOverlay";
+export { DropzoneOverlay } from "./DropzoneOverlay";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
@@ -214,7 +214,7 @@ export {
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
 export { SidebarLayout } from "./SidebarLayout";
 export { SliderToggle } from "./SliderToggle";
-export { default as Spinner } from "./Spinner";
+export { Spinner } from "./Spinner";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
