@@ -3,6 +3,7 @@ import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import logger from "@app/logger/logger";
 import type {
   NotificationCondition,
   NotificationPreferencesDelay,
@@ -68,6 +69,9 @@ const PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_LABELS: Record<
 
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
 const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
+const NOVU_SESSION_ERROR_CODE = "novu_session_initialization_failed";
+const NOVU_REQUEST_ERROR_CODE = "novu_preferences_request_failed";
+const MISSING_WORKFLOW_ERROR_CODE = "missing_conversation_unread_workflow";
 
 export interface NotificationPreferencesRefProps {
   savePreferences: () => Promise<boolean>;
@@ -232,25 +236,77 @@ export const NotificationPreferences = forwardRef<
       return;
     }
     setIsLoadingPreferences(true);
-    void novuClient.preferences.list().then((preferences) => {
-      const conversationPref = preferences.data?.find(
-        (preference) =>
-          preference.workflow?.identifier === CONVERSATION_UNREAD_TRIGGER_ID
-      );
-      setConversationPreferences(conversationPref);
-      originalConversationPreferencesRef.current = conversationPref;
 
-      const projectNewConvPref = preferences.data?.find(
-        (preference) =>
-          preference.workflow?.identifier ===
-          PROJECT_NEW_CONVERSATION_TRIGGER_ID
-      );
-      setProjectNewConversationPreferences(projectNewConvPref);
-      originalProjectNewConversationPreferencesRef.current = projectNewConvPref;
+    void novuClient.preferences
+      .list()
+      .then((preferences) => {
+        if (preferences.error) {
+          logger.error(
+            {
+              code: NOVU_SESSION_ERROR_CODE,
+              ownerId: owner.sId,
+              message: preferences.error.message,
+            },
+            "Failed to load notification preferences from Novu (session error)."
+          );
+          setConversationPreferences(undefined);
+          originalConversationPreferencesRef.current = undefined;
+          setProjectNewConversationPreferences(undefined);
+          originalProjectNewConversationPreferencesRef.current = undefined;
+          return;
+        }
 
-      setIsLoadingPreferences(false);
-    });
-  }, [novuClient]);
+        const preferenceList = preferences.data ?? [];
+        const conversationPref = preferenceList.find(
+          (preference) =>
+            preference.workflow?.identifier === CONVERSATION_UNREAD_TRIGGER_ID
+        );
+        setConversationPreferences(conversationPref);
+        originalConversationPreferencesRef.current = conversationPref;
+
+        const projectNewConvPref = preferenceList.find(
+          (preference) =>
+            preference.workflow?.identifier ===
+            PROJECT_NEW_CONVERSATION_TRIGGER_ID
+        );
+        setProjectNewConversationPreferences(projectNewConvPref);
+        originalProjectNewConversationPreferencesRef.current =
+          projectNewConvPref;
+
+        if (!conversationPref) {
+          const availableWorkflowIdentifiers = preferenceList
+            .map((preference) => preference.workflow?.identifier)
+            .filter((identifier): identifier is string => Boolean(identifier));
+
+          logger.error(
+            {
+              code: MISSING_WORKFLOW_ERROR_CODE,
+              ownerId: owner.sId,
+              missingWorkflowIdentifier: CONVERSATION_UNREAD_TRIGGER_ID,
+              availableWorkflowIdentifiers,
+            },
+            "Failed to load notification preferences from Novu (workflow missing)."
+          );
+        }
+      })
+      .catch((error) => {
+        logger.error(
+          {
+            code: NOVU_REQUEST_ERROR_CODE,
+            ownerId: owner.sId,
+            error,
+          },
+          "Failed to load notification preferences from Novu (request error)."
+        );
+        setConversationPreferences(undefined);
+        originalConversationPreferencesRef.current = undefined;
+        setProjectNewConversationPreferences(undefined);
+        originalProjectNewConversationPreferencesRef.current = undefined;
+      })
+      .finally(() => {
+        setIsLoadingPreferences(false);
+      });
+  }, [novuClient, owner.sId]);
 
   // Expose methods to parent component
   useImperativeHandle(
