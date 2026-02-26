@@ -29,6 +29,7 @@ import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
+import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -40,6 +41,7 @@ import type {
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageNewEvent,
+  ButlerSuggestionCreatedEvent,
   ConversationTitleEvent,
   ConversationWithoutContentType,
   LightMessageType,
@@ -52,6 +54,7 @@ import {
   toMentionType,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -307,6 +310,40 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
   });
 
+  const [suggestionsByMessageSId, setSuggestionsByMessageSId] = useState(
+    () => new Map<string, ButlerSuggestionPublicType[]>()
+  );
+
+  const handleSuggestionAction = useCallback(
+    async (
+      suggestionSId: string,
+      status: "accepted" | "dismissed"
+    ): Promise<void> => {
+      // Optimistic update: remove the suggestion from local state.
+      // The update of the title is handled backend, so we don't need to do it here.
+      setSuggestionsByMessageSId((prev) => {
+        const next = new Map<string, ButlerSuggestionPublicType[]>();
+        for (const [msgSId, suggestions] of prev) {
+          const filtered = suggestions.filter((s) => s.sId !== suggestionSId);
+          if (filtered.length > 0) {
+            next.set(msgSId, filtered);
+          }
+        }
+        return next;
+      });
+
+      await clientFetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/butler_suggestions/${suggestionSId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+    },
+    [conversationId, owner.sId]
+  );
+
   // Hooks related to conversation events streaming.
 
   const debouncedMarkAsRead = useMemo(
@@ -326,7 +363,8 @@ export const ConversationViewer = ({
           | AgentMessageNewEvent
           | AgentMessageDoneEvent
           | AgentGenerationCancelledEvent
-          | ConversationTitleEvent;
+          | ConversationTitleEvent
+          | ButlerSuggestionCreatedEvent;
       } = JSON.parse(eventStr);
       const event = eventPayload.data;
 
@@ -465,6 +503,15 @@ export const ConversationViewer = ({
             );
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
+            break;
+          case "butler_suggestion_created":
+            setSuggestionsByMessageSId((prev) => {
+              const { suggestion } = event;
+              const existing = prev.get(suggestion.sourceMessageSId) ?? [];
+              const next = new Map(prev);
+              next.set(suggestion.sourceMessageSId, [...existing, suggestion]);
+              return next;
+            });
             break;
           default:
             ((t: never) => {
@@ -721,6 +768,8 @@ export const ConversationViewer = ({
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
+      suggestionsByMessageSId,
+      handleSuggestionAction,
       additionalMarkdownComponents,
       additionalMarkdownPlugins,
       isProjectMember,
@@ -736,6 +785,8 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
+    suggestionsByMessageSId,
+    handleSuggestionAction,
     additionalMarkdownComponents,
     additionalMarkdownPlugins,
     isProjectMember,

@@ -2,12 +2,16 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
 import logger from "@app/logger/logger";
 import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type {
+  ButlerSuggestionCreatedEvent,
+  ConversationType,
+} from "@app/types/assistant/conversation";
 
 const RENAME_TITLE_FUNCTION_NAME = "rename_title_decision";
 
@@ -223,12 +227,22 @@ async function evaluateRenameTitleSuggestion(
     return;
   }
 
-  await ConversationButlerSuggestionResource.makeNew(auth, {
+  const suggestion = await ConversationButlerSuggestionResource.makeNew(auth, {
     conversationId: conversation.id,
     sourceMessageId: sourceMessage.id,
     suggestionType: "rename_title",
     metadata: { suggestedTitle: new_title },
     status: "pending",
+  });
+
+  const event: ButlerSuggestionCreatedEvent = {
+    type: "butler_suggestion_created",
+    created: Date.now(),
+    suggestion: suggestion.toJSON(),
+  };
+
+  await publishConversationEvent(event, {
+    conversationId: conversation.sId,
   });
 
   logger.info(
