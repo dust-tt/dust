@@ -64,6 +64,8 @@ const EXTENSION_WHITELIST = [
   ".avsc", // Apache Avro schema definition
   ".avdl", // Apache Avro IDL definition
 
+  ".item", // Talend files, a data integration/ETL platform.
+
   // Build & Dependencies
   ".gradle",
   ".lock", // Text-based lock files
