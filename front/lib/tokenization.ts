@@ -12,7 +12,7 @@ import _ from "lodash";
 import config from "./api/config";
 
 // Tokenizing large text payloads causes memory stress in core API, leading to OOM issues.
-// We limit batch size to 100 texts per request to prevent memory exhaustion.
+// We limit batch size to 50 texts per request to prevent memory exhaustion.
 const MAX_BATCH_SIZE = 50;
 
 // Limit concurrent requests to core API to avoid overloading.
