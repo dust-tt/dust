@@ -315,6 +315,7 @@ function Input({
   ...props
 }: InputProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const checkboxRef = React.useRef<HTMLButtonElement>(null);
   React.useImperativeHandle(ref, () => inputRef.current!);
 
   if (type !== "checkbox") {
@@ -338,7 +339,7 @@ function Input({
   return (
     <div className="s-inline-flex s-items-center">
       <Checkbox
-        ref={inputRef as unknown as React.Ref<HTMLButtonElement>}
+        ref={checkboxRef}
         size="xs"
         checked={checked}
         className="s-translate-y-[3px]"

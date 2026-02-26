@@ -14,7 +14,7 @@ import {
   XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
-import React, { useCallback, useState } from "react";
+import React, { useRef, useState } from "react";
 
 function downloadFile(url: string, filename: string) {
   const link = document.createElement("a");
@@ -51,20 +51,23 @@ function ImageZoomDialog({
 }: ImageZoomDialogProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const handleDownload = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (image.downloadUrl && image.title) {
-        downloadFile(image.downloadUrl, image.title);
-      }
-    },
-    [image.downloadUrl, image.title]
-  );
+  // Reset image loaded state when dialog closes or image changes.
+  const prevSrcRef = useRef(image.src);
+  const prevOpenRef = useRef(open);
+  if (prevSrcRef.current !== image.src || prevOpenRef.current !== open) {
+    prevSrcRef.current = image.src;
+    prevOpenRef.current = open;
+    if (imageLoaded) {
+      setImageLoaded(false);
+    }
+  }
 
-  // Reset image loaded state when dialog closes or image changes
-  React.useEffect(() => {
-    setImageLoaded(false);
-  }, [open, image.src]);
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (image.downloadUrl && image.title) {
+      downloadFile(image.downloadUrl, image.title);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

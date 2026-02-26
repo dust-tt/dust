@@ -48,18 +48,14 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
     },
     ref
   ) => {
-    const { hasDescription, hasImage } = React.useMemo(() => {
-      const childrenArray = React.Children.toArray(children);
-      return {
-        hasDescription: childrenArray.some(
-          (child) =>
-            React.isValidElement(child) && child.type === CitationDescription
-        ),
-        hasImage: childrenArray.some(
-          (child) => React.isValidElement(child) && child.type === CitationImage
-        ),
-      };
-    }, [children]);
+    const childrenArray = React.Children.toArray(children);
+    const hasDescription = childrenArray.some(
+      (child) =>
+        React.isValidElement(child) && child.type === CitationDescription
+    );
+    const hasImage = childrenArray.some(
+      (child) => React.isValidElement(child) && child.type === CitationImage
+    );
 
     // IMPORTANT: The order of elements is crucial for event handling.
     // The CitationDescription must always come after other elements to ensure
