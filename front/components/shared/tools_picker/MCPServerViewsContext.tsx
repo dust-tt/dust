@@ -1,9 +1,9 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   getMcpServerViewDisplayName,
+  isToolWithKnowledge,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
@@ -98,29 +98,11 @@ function getGroupedMCPServerViews({
   });
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
-    groupBy(mcpServerViewsWithLabel, (view) => {
-      const {
-        requiresDataSourceConfiguration,
-        requiresDataWarehouseConfiguration,
-        requiresTableConfiguration,
-      } = getMCPServerRequirements(view);
-
-      // Special handling for interactive_content server:
-      // The interactive_content server includes list and cat tools for convenience, but its primary purpose is
-      // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isInteractiveContentServer =
-        view.server.name === "interactive_content";
-
-      const isWithKnowledge =
-        !isInteractiveContentServer &&
-        (requiresDataSourceConfiguration ||
-          requiresDataWarehouseConfiguration ||
-          requiresTableConfiguration);
-
-      return isWithKnowledge
+    groupBy(mcpServerViewsWithLabel, (view) =>
+      isToolWithKnowledge(view)
         ? "mcpServerViewsWithKnowledge"
-        : "mcpServerViewsWithoutKnowledge";
-    });
+        : "mcpServerViewsWithoutKnowledge"
+    );
 
   const grouped = groupBy(
     mcpServerViewsWithoutKnowledge,

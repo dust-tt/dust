@@ -447,6 +447,40 @@ describe("agent_copilot_context tools", () => {
         }
       }
     });
+
+    it("excludes knowledge tools (search, query_tables, include_data, extract_data)", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create all auto internal tools so knowledge tools exist.
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+
+      const tool = getToolByName("get_available_tools");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          const toolNames = parsed.tools.map((t: { name: string }) => t.name);
+
+          // Knowledge tools should be excluded.
+          const knowledgeToolNames = [
+            "Search",
+            "Query Tables",
+            "Include Data",
+            "Extract Data",
+          ];
+          for (const knowledgeName of knowledgeToolNames) {
+            expect(toolNames).not.toContain(knowledgeName);
+          }
+
+          // Non-knowledge auto tools should still be present.
+          expect(toolNames.length).toBeGreaterThan(0);
+        }
+      }
+    });
   });
 
   describe("get_available_agents", () => {
@@ -1312,6 +1346,49 @@ describe("agent_copilot_context tools", () => {
           { states: ["pending"], kind: "tools" }
         );
       expect(pendingSuggestions).toHaveLength(3);
+    });
+
+    it("returns error when suggesting a knowledge tool (e.g. search) instead of using suggest_knowledge", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+
+      // Get the search tool view — it's a knowledge tool.
+      const searchView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          authenticator,
+          "search"
+        );
+      expect(searchView).not.toBeNull();
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestions: [
+            {
+              action: "add",
+              toolId: searchView!.sId,
+              analysis: "Adding search tool",
+            },
+          ],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("knowledge tools");
+        expect(result.error.message).toContain("suggest_knowledge");
+      }
     });
   });
 
