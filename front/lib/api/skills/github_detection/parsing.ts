@@ -44,7 +44,13 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
 export function parseGitHubRepoUrl(
   input: string
 ): Result<{ owner: string; repo: string }, SkillDetectionError> {
-  let ownerRepo = input.trim();
+  let remainder = input.trim();
+
+  // Strip query params and fragment using URL parsing when it looks like a URL.
+  if (remainder.startsWith("http://") || remainder.startsWith("https://")) {
+    const url = new URL(remainder);
+    remainder = `${url.origin}${url.pathname}`;
+  }
 
   // Strip https://github.com/ or github.com/ prefix.
   ownerRepo = ownerRepo
