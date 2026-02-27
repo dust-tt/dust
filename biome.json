@@ -75,7 +75,7 @@
         "useImportType": "error"
       },
       "suspicious": {
-        "noImportCycles": "error"
+        "noImportCycles": "off"
       }
     }
   },

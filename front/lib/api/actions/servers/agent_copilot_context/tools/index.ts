@@ -177,6 +177,11 @@ async function markDuplicateSuggestionsAsOutdated(
 }
 
 import {
+  formatAvailableModels,
+  formatAvailableSkills,
+  formatAvailableTools,
+} from "@app/lib/api/assistant/global_agents/copilot_context";
+import {
   getAvailableModelsForWorkspace,
   listAvailableSkills,
   listAvailableTools,
@@ -311,27 +316,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       models = models.filter((m) => m.providerId === providerId);
     }
 
-    const modelList = models.map((m) => ({
-      providerId: m.providerId,
-      modelId: m.modelId,
-      displayName: m.displayName,
-      description: m.description,
-      contextSize: m.contextSize,
-      supportsVision: m.supportsVision,
-      isLatest: m.isLatest,
-    }));
-
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            count: modelList.length,
-            models: modelList,
-          },
-          null,
-          2
-        ),
+        text: formatAvailableModels(models),
       },
     ]);
   },
@@ -342,14 +330,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            count: skillList.length,
-            skills: skillList,
-          },
-          null,
-          2
-        ),
+        text: formatAvailableSkills(skillList),
       },
     ]);
   },
@@ -360,24 +341,18 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            count: toolList.length,
-            tools: toolList,
-          },
-          null,
-          2
-        ),
+        text: formatAvailableTools(toolList),
       },
     ]);
   },
 
-  get_available_agents: async ({ limit }, { auth }) => {
+  get_available_agents: async ({ limit, agentPrefix }, { auth }) => {
     const agents = await getAgentConfigurationsForView({
       auth,
       agentsGetView: "list",
       variant: "light",
       limit: limit ?? 100,
+      agentPrefix,
     });
 
     const agentList = agents.map((agent) => ({

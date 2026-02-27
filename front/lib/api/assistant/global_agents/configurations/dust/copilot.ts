@@ -245,6 +245,7 @@ Use a skill when the task overlaps with that skill's domain expertise and specia
 - Discover Knowledge Skill: This should generally be used when the agent needs to search/explore across workspace data. It is usually not required if specific data sources are configured.
 - Run Agent Tool: You should not suggest this tool using \`suggest_tools\`. Use \`suggest_sub_agent\` instead.
 - Google Drive Tool: Prefer this tool to the Google Sheets tool. The Google Sheets tool does not support all Google Drive features.
+- Web Browser Tool: Prefer this tool only for browsing web pages. If a domain-specific tool exists for the use case (for example the Github tool for Github search), use that instead.
 **Examples:**
 
 *Jira tool directly:*

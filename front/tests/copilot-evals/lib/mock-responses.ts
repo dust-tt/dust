@@ -47,67 +47,40 @@ export function getMockToolResponse(
       pendingSuggestions: [],
     }),
 
-    get_available_models: () => ({
-      models: [
-        { modelId: "gpt-4-turbo", providerId: "openai", name: "GPT-4 Turbo" },
-        { modelId: "gpt-5-mini", providerId: "openai", name: "GPT-5 Mini" },
-        {
-          modelId: "claude-sonnet-4-5-20250929",
-          providerId: "anthropic",
-          name: "Claude Sonnet 4.5",
-        },
-        {
-          modelId: "claude-opus-4-20250514",
-          providerId: "anthropic",
-          name: "Claude Opus 4",
-        },
-      ],
-    }),
+    get_available_models: () =>
+      [
+        "## AVAILABLE MODELS",
+        "4 models available.",
+        "",
+        "### openai",
+        "- **GPT-4 Turbo** (modelId: gpt-4-turbo): GPT-4 Turbo (no vision)",
+        "- **GPT-5 Mini** (modelId: gpt-5-mini): GPT-5 Mini (no vision)",
+        "",
+        "### anthropic",
+        "- **Claude Sonnet 4.5** (modelId: claude-sonnet-4-5-20250929): Claude Sonnet 4.5 (no vision)",
+        "- **Claude Opus 4** (modelId: claude-opus-4-20250514): Claude Opus 4 (no vision)",
+      ].join("\n"),
 
-    get_available_skills: () => ({
-      skills: [
-        {
-          sId: "skill_web_search",
-          name: "Web Search",
-          description: "Search the web for information",
-        },
-        {
-          sId: "skill_data_analysis",
-          name: "Data Analysis",
-          description: "Analyze data and generate insights",
-        },
-      ],
-    }),
+    get_available_skills: () =>
+      [
+        "## AVAILABLE SKILLS",
+        "2 skills available.",
+        "",
+        "- **Web Search** (ID: skill_web_search): Search the web for information",
+        "- **Data Analysis** (ID: skill_data_analysis): Analyze data and generate insights",
+      ].join("\n"),
 
-    get_available_tools: () => ({
-      tools: [
-        {
-          sId: "mcp_slack",
-          name: "Slack",
-          description: "Read and send Slack messages",
-        },
-        {
-          sId: "mcp_notion",
-          name: "Notion",
-          description: "Search Notion workspace",
-        },
-        {
-          sId: "mcp_github",
-          name: "GitHub",
-          description: "Access GitHub repositories",
-        },
-        {
-          sId: "mcp_datadog",
-          name: "Datadog",
-          description: "Search and query Datadog logs and metrics",
-        },
-        {
-          sId: "mcp_jira",
-          name: "JIRA",
-          description: "Search and manage JIRA issues and projects",
-        },
-      ],
-    }),
+    get_available_tools: () =>
+      [
+        "## AVAILABLE TOOLS",
+        "5 tools available.",
+        "",
+        "- **Slack** (ID: mcp_slack): Read and send Slack messages",
+        "- **Notion** (ID: mcp_notion): Search Notion workspace",
+        "- **GitHub** (ID: mcp_github): Access GitHub repositories",
+        "- **Datadog** (ID: mcp_datadog): Search and query Datadog logs and metrics",
+        "- **JIRA** (ID: mcp_jira): Search and manage JIRA issues and projects",
+      ].join("\n"),
 
     get_available_knowledge: () => ({
       count: {

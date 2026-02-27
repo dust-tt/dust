@@ -92,6 +92,13 @@ function PermissionProfileSelector({
     dataSource,
     configKey: GONG_PERMISSION_PROFILES_CONFIG_KEY,
   });
+  const [localProfileId, setLocalProfileId] = useState(
+    permissionProfileIdConfigValue ?? ""
+  );
+
+  useEffect(() => {
+    setLocalProfileId(permissionProfileIdConfigValue ?? "");
+  }, [permissionProfileIdConfigValue]);
 
   const permissionProfiles = useMemo<GongPermissionProfile[]>(() => {
     if (!permissionProfilesConfigValue) {
@@ -108,17 +115,18 @@ function PermissionProfileSelector({
     }
   }, [permissionProfilesConfigValue]);
 
-  const selectedProfile = useMemo(() => {
-    if (!permissionProfileIdConfigValue) {
+  const hasUnsavedChanges =
+    permissionProfileIdConfigValue !== undefined &&
+    localProfileId !== permissionProfileIdConfigValue;
+
+  const displayedProfile = useMemo(() => {
+    if (!localProfileId) {
       return null;
     }
-    return (
-      permissionProfiles.find((p) => p.id === permissionProfileIdConfigValue) ??
-      null
-    );
-  }, [permissionProfileIdConfigValue, permissionProfiles]);
+    return permissionProfiles.find((p) => p.id === localProfileId) ?? null;
+  }, [localProfileId, permissionProfiles]);
 
-  const handleSelect = async (profileId: string) => {
+  const handleSave = async () => {
     setLoading(true);
     // The config API only accepts strings, so "" means "no filter" (normalized
     // to null on the connector side).
@@ -127,7 +135,7 @@ function PermissionProfileSelector({
       {
         headers: { "Content-Type": "application/json" },
         method: "POST",
-        body: JSON.stringify({ configValue: profileId }),
+        body: JSON.stringify({ configValue: localProfileId }),
       }
     );
     if (res.ok) {
@@ -153,53 +161,64 @@ function PermissionProfileSelector({
       title="Participant Filter"
       visual={<ContextItem.Visual visual={GongLogo} />}
       action={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              label={
-                selectedProfile
-                  ? selectedProfile.name.length > PROFILE_NAME_MAX_LENGTH
-                    ? selectedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH) +
-                      "..."
-                    : selectedProfile.name
-                  : "All participants"
-              }
-              isSelect
-              disabled={disabled || loading}
-              tooltip={selectedProfile?.name}
-              className="w-40 overflow-hidden px-4"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              label="All participants"
-              onClick={() => handleSelect("")}
-            />
-            {permissionProfiles.map((profile) => {
-              const item = (
-                <DropdownMenuItem
-                  key={profile.id}
-                  label={profile.name}
-                  disabled={!profile.supported}
-                  onClick={() => handleSelect(profile.id)}
-                />
-              );
-              if (profile.reason) {
-                return (
-                  <DropdownTooltipTrigger
+        <div className="flex flex-row space-x-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                label={
+                  displayedProfile
+                    ? displayedProfile.name.length > PROFILE_NAME_MAX_LENGTH
+                      ? displayedProfile.name.slice(
+                          0,
+                          PROFILE_NAME_MAX_LENGTH
+                        ) + "..."
+                      : displayedProfile.name
+                    : "All participants"
+                }
+                isSelect
+                disabled={disabled || loading}
+                tooltip={displayedProfile?.name}
+                className="w-40 overflow-hidden px-4"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                label="All participants"
+                onClick={() => setLocalProfileId("")}
+              />
+              {permissionProfiles.map((profile) => {
+                const item = (
+                  <DropdownMenuItem
                     key={profile.id}
-                    description={profile.reason}
-                  >
-                    {item}
-                  </DropdownTooltipTrigger>
+                    label={profile.name}
+                    disabled={!profile.supported}
+                    onClick={() => setLocalProfileId(profile.id)}
+                  />
                 );
-              }
-              return item;
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                if (profile.reason) {
+                  return (
+                    <DropdownTooltipTrigger
+                      key={profile.id}
+                      description={profile.reason}
+                    >
+                      {item}
+                    </DropdownTooltipTrigger>
+                  );
+                }
+                return item;
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSave}
+            disabled={disabled || loading || !hasUnsavedChanges}
+            label={loading ? "Saving..." : "Save"}
+          />
+        </div>
       }
     >
       <ContextItem.Description>
@@ -265,8 +284,7 @@ export function GongOptionComponent({
   });
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    retentionPeriodConfigValue || ""
+    retentionPeriodConfigValue ?? ""
   );
 
   const [excludeKeywords, setExcludeKeywords] = useState<string>(
@@ -283,7 +301,6 @@ export function GongOptionComponent({
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
 
-  // TODO: fix the auto-save pattern here and replace with an actual save on the sheet.
   const handleConfigUpdate = async (configKey: string, newValue: string) => {
     // Validate that the value is either empty or a positive integer
     if (

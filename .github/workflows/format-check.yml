@@ -14,6 +14,7 @@ on:
       - "**/*.yml"
       - "**/*.yaml"
       - biome.json
+      - biome.ci.json
       - "**/biome.json"
       - "biome-plugins/**"
       - ".grit/**"
@@ -42,5 +43,7 @@ jobs:
           echo "$HOME/.grit/bin" >> $GITHUB_PATH
       - name: Format Check
         run: npm run biome
+      - name: Import Cycle Check
+        run: npm run biome -- --config-path biome.ci.json
       - name: GritQL Plugin Tests
         run: npm run test:grit

@@ -67,7 +67,7 @@ export function formatAvailableSkills(skills: AvailableSkill[]): string {
   const skillLines = skills
     .map(
       (s) =>
-        `- **${s.name}** (ID: ${s.sId}): ${s.agentFacingDescription ?? "No description"}`
+        `- **${s.name}** (ID: ${s.sId}): ${(s.agentFacingDescription ?? "No description").replace(/\n/g, " ")}`
     )
     .join("\n");
   return `## AVAILABLE SKILLS\n${skills.length} skills available.\n\n${skillLines}`;
@@ -75,7 +75,10 @@ export function formatAvailableSkills(skills: AvailableSkill[]): string {
 
 export function formatAvailableTools(tools: AvailableTool[]): string {
   const toolLines = tools
-    .map((t) => `- **${t.name}** (ID: ${t.sId}): ${t.description}`)
+    .map(
+      (t) =>
+        `- **${t.name}** (ID: ${t.sId}): ${t.description.replace(/\n/g, " ")}`
+    )
     .join("\n");
   return `## AVAILABLE TOOLS\n${tools.length} tools available.\n\n${toolLines}`;
 }
