@@ -383,6 +383,8 @@ Toto:
 
   it("should handle instruction blocks with attributes in top-level and nested contexts", () => {
     // Test the exact production scenario with attributes
+    // Tags with attributes should remain escaped (not parsed as instruction blocks)
+    // to prevent schema violations.
     expect(() => {
       editor.commands.setContent(
         `Hello
@@ -399,10 +401,16 @@ Toto:
       );
     }).not.toThrow();
 
-    // Should have parsed content
+    // Should have parsed content without crashing
     const json = editor.getJSON();
     expect(json.content).toBeDefined();
     expect(json.content?.length).toBeGreaterThan(0);
+
+    // Verify attributes are preserved as escaped text (not parsed as instruction blocks)
+    const markdown = editor.getMarkdown();
+    // Tags with attributes should remain escaped in the output
+    expect(markdown).toContain("task type");
+    expect(markdown).toContain("rule type");
   });
 
   it("should work on deep-nested instruction blocks with NBSP", () => {

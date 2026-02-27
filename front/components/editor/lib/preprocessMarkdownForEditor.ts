@@ -5,12 +5,16 @@ const ZWS = "\u200B";
 
 /**
  * Collects tag names that appear in matched instruction-block pairs (supports
- * nesting). Recurse into inner content to find nested pairs.
+ * nesting). Supports tags with attributes. Recurse into inner content to find nested pairs.
  */
 function collectMatchedTagNames(str: string): Set<string> {
   const matched = new Set<string>();
   let m;
-  const regex = new RegExp(`<(${TAG_NAME_PATTERN})>([\\s\\S]*?)<\\/\\1>`, "gi");
+  // Support attributes: <tag attr="value">...</tag>
+  const regex = new RegExp(
+    `<(${TAG_NAME_PATTERN})[^>]*>([\\s\\S]*?)<\\/\\1>`,
+    "gi"
+  );
   while ((m = regex.exec(str)) !== null) {
     matched.add(m[1].toLowerCase());
     for (const tag of collectMatchedTagNames(m[2])) {
@@ -39,16 +43,9 @@ function collectMatchedTagNames(str: string): Set<string> {
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
 export function preprocessMarkdownForEditor(markdown: string): string {
-  // Step 0: Escape instruction block tags with attributes to prevent schema violations
-  // Nested blocks with attributes cause invalid node structures in BlockIdExtension
-  // Match any instruction block opening tag with attributes: <tag attr="...">
-  // Only escape when they have whitespace+attributes (i.e., attributes present)
-  let processed = markdown.replace(
-    new RegExp(`<(${TAG_NAME_PATTERN})\\s+[^>]*>`, "g"),
-    "<" + ZWS + "$1>"
-  );
+  const matchedPairs = collectMatchedTagNames(markdown);
 
-  const matchedPairs = collectMatchedTagNames(processed);
+  let processed = markdown;
 
   // Step 1: Escape `<` only when not already followed by ZWS (avoids double-escaping round-trips).
   processed = processed.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
@@ -120,6 +117,10 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       const isNestedChild = validNestedPositions.has(offset);
 
       if (matchedPairs.has(normalized) && (isAtLineStart || isNestedChild)) {
+        // Don't un-escape if the tag has attributes — those cause schema violations
+        if (rest !== "") {
+          return match; // stay escaped
+        }
         openCount.set(normalized, (openCount.get(normalized) ?? 0) + 1);
         validNestedPositions.add(offset + match.length);
         return `<${slash}${tagName}${rest}>`;
