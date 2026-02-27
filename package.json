@@ -12,7 +12,9 @@
     "viz",
     "sdks/js"
   ],
+  "packageManager": "npm@11.11.0",
   "scripts": {
+    "preinstall": "corepack enable npm",
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
     "install:all": "npm install",
     "knip": "knip",
@@ -35,13 +37,6 @@
   },
   "engines": {
     "node": "22.22.0"
-  },
-  "optionalDependencies": {
-    "@biomejs/cli-linux-x64": "2.4.0",
-    "@next/swc-linux-x64-gnu": "14.2.33",
-    "@next/swc-linux-x64-musl": "14.2.33",
-    "@rollup/rollup-linux-x64-gnu": "4.55.2",
-    "@swc/core-linux-x64-gnu": "1.15.10"
   },
   "overrides": {
     "eslint-plugin-react-hooks": {
