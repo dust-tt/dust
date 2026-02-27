@@ -31,7 +31,7 @@ import {
   cleanUserPayload,
   executeListUserGroups,
   executeSearchUser,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
+} from "@app/lib/api/actions/servers/slack/helpers";
 
 beforeEach(() => {
   vi.clearAllMocks();

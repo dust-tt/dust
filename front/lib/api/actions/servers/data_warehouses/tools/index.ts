@@ -1,13 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  getDatabaseExampleRowsContent,
-  getQueryWritingInstructionsContent,
-  getSchemaContent,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-
 import {
   getAvailableWarehouses,
   getWarehouseNodes,
@@ -16,6 +10,11 @@ import {
 } from "@app/lib/api/actions/servers/data_warehouses/helpers";
 import { DATA_WAREHOUSES_TOOLS_METADATA } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { executeQuery } from "@app/lib/api/actions/servers/query_tables_v2/helpers";
+import {
+  getDatabaseExampleRowsContent,
+  getQueryWritingInstructionsContent,
+  getSchemaContent,
+} from "@app/lib/api/actions/servers/tables_query/schema";
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";

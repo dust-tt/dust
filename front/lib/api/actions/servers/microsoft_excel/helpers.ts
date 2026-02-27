@@ -1,4 +1,4 @@
-import { getDriveItemEndpoint } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import { getDriveItemEndpoint } from "@app/lib/api/actions/servers/microsoft/utils";
 import type { Client } from "@microsoft/microsoft-graph-client";
 
 // Session management for persistent Excel sessions

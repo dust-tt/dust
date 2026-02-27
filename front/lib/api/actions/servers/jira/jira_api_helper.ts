@@ -1,8 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   createJQLFromSearchFilters,
   processFieldsForJira,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+} from "@app/lib/api/actions/servers/jira/jira_utils";
 import type {
   ADFDocument,
   JiraConnectionInfoSchema,
@@ -16,7 +18,7 @@ import type {
   SearchFilter,
   SearchFilterField,
   SortDirection,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+} from "@app/lib/api/actions/servers/jira/types";
 import {
   isADFDocument,
   JiraAttachmentsResultSchema,
@@ -39,8 +41,7 @@ import {
   SEARCH_FILTER_FIELDS,
   SEARCH_ISSUES_MAX_RESULTS,
   SEARCH_USERS_MAX_RESULTS,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
-import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+} from "@app/lib/api/actions/servers/jira/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -50,8 +51,6 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { markdownToAdf } from "marklassian";
 import { z } from "zod";
-
-import { sanitizeFilename } from "../../utils/file_utils";
 
 const DEFAULT_ISSUE_FIELDS = ["*navigable"];
 
