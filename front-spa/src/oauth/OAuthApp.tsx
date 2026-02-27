@@ -5,19 +5,26 @@ import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
+import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 const router = createBrowserRouter(
   [
-    // Setup: /w/:wId/oauth/:provider/setup
     {
-      path: "/w/:wId/oauth/:provider/setup",
-      element: <OAuthSetupRedirectPage />,
-    },
-    // Finalize: /oauth/:provider/finalize
-    {
-      path: "/oauth/:provider/finalize",
-      element: <OAuthFinalizePage />,
+      element: <RootRouterLayout />,
+      errorElement: <GlobalErrorFallback />,
+      children: [
+        // Setup: /w/:wId/oauth/:provider/setup
+        {
+          path: "/w/:wId/oauth/:provider/setup",
+          element: <OAuthSetupRedirectPage />,
+        },
+        // Finalize: /oauth/:provider/finalize
+        {
+          path: "/oauth/:provider/finalize",
+          element: <OAuthFinalizePage />,
+        },
+      ],
     },
   ],
   {

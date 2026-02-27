@@ -55,14 +55,24 @@ const hexToRgba = (hex: string): [number, number, number, number] => {
   return [r, g, b, 1];
 };
 
+const isCustomColor = (key: string): key is keyof typeof customColors =>
+  key in customColors;
+
+const isShadeOf = <C extends keyof typeof customColors>(
+  color: C,
+  shade: string
+): shade is Extract<keyof (typeof customColors)[C], string> =>
+  shade in customColors[color];
+
 const colors: Record<Exclude<SpinnerVariantType, "color">, LottieColorType> = {
   ...Object.fromEntries(
     colorVariants.map((variant) => {
-      const color = variant.match(/[a-z]+/)?.[0] as keyof typeof customColors;
-      const shade = variant.match(
-        /\d+/
-      )?.[0] as unknown as keyof (typeof customColors)[typeof color];
-      return [variant, hexToRgba(customColors[color][shade])];
+      const colorMatch = variant.match(/[a-z]+/)?.[0] ?? "";
+      const shadeMatch = variant.match(/\d+/)?.[0] ?? "";
+      if (isCustomColor(colorMatch) && isShadeOf(colorMatch, shadeMatch)) {
+        return [variant, hexToRgba(customColors[colorMatch][shadeMatch])];
+      }
+      return [variant, [0, 0, 0, 1]];
     })
   ),
 };

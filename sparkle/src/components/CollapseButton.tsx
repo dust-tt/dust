@@ -143,8 +143,7 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({
     <div
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{ width: `24px`, height: `30px` }}
-      className="s-cursor-pointer"
+      className="s-w-6 s-h-[30px] s-cursor-pointer"
     >
       <Lottie
         lottieRef={lottieRef}

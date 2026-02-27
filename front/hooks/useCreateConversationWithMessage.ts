@@ -1,3 +1,4 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFetcher } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
@@ -6,6 +7,7 @@ import type {
 } from "@app/types/api/internal/assistant";
 import { isSupportedContentNodeFragmentContentType } from "@app/types/api/internal/assistant";
 import type {
+  ClientMessageOrigin,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
@@ -18,7 +20,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type * as t from "io-ts";
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
 
 export function useCreateConversationWithMessage({
   owner,
@@ -28,6 +30,7 @@ export function useCreateConversationWithMessage({
   user: UserType | null;
 }) {
   const { fetcher } = useFetcher();
+  const { origin: contextOrigin } = useContext(InputBarContext);
 
   return useCallback(
     async ({
@@ -45,7 +48,7 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
         selectedSkillIds?: string[];
-        origin?: "web" | "agent_copilot" | "project_kickoff" | "extension";
+        origin?: ClientMessageOrigin;
       };
       visibility?: ConversationVisibility;
       title?: string;
@@ -68,8 +71,9 @@ export function useCreateConversationWithMessage({
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
         selectedSkillIds,
-        origin,
+        origin: messageOrigin,
       } = messageData;
+      const origin = messageOrigin ?? contextOrigin;
 
       const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> =
         {
@@ -153,6 +157,6 @@ export function useCreateConversationWithMessage({
         });
       }
     },
-    [owner, user, fetcher]
+    [owner, user, fetcher, contextOrigin]
   );
 }

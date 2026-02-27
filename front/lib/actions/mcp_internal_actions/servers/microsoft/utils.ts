@@ -84,6 +84,9 @@ export interface TeamsChat {
   chatType: "oneOnOne" | "group" | "meeting";
   webUrl: string;
   tenantId: string;
+  lastMessagePreview?: {
+    createdDateTime: string;
+  };
 }
 
 export interface TeamsChannel {

@@ -43,7 +43,7 @@ export default function AppRootLayout({
   return (
     <WelcomeTourGuideProvider>
       <DesktopNavigationProvider>
-        <InputBarProvider>
+        <InputBarProvider origin="web">
           <Head>
             <link rel="icon" type="image/png" href={faviconPath} />
 

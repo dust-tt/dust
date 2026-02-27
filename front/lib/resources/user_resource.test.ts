@@ -1,10 +1,79 @@
+import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const inMemoryCache = vi.hoisted(() => new Map<string, string>());
+const deletedKeys = vi.hoisted(() => [] as string[]);
+
+vi.mock("@app/lib/utils/cache", () => ({
+  cacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return async (...args: Args): Promise<JsonSerializable<T>> => {
+          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          const cached = inMemoryCache.get(key);
+          if (cached) {
+            return JSON.parse(cached) as JsonSerializable<T>;
+          }
+          const result = await fn(...args);
+          inMemoryCache.set(key, JSON.stringify(result));
+          return result;
+        };
+      }
+    ),
+  invalidateCacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return (...args: Args): Promise<void> => {
+          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          inMemoryCache.delete(key);
+          deletedKeys.push(key);
+          return Promise.resolve();
+        };
+      }
+    ),
+  batchInvalidateCacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return async (argsList: Args[]): Promise<void> => {
+          for (const args of argsList) {
+            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+            inMemoryCache.delete(key);
+            deletedKeys.push(key);
+          }
+        };
+      }
+    ),
+  invalidateCacheAfterCommit: vi
+    .fn()
+    .mockImplementation(
+      (_transaction: unknown, invalidateFn: () => Promise<void>): void => {
+        void invalidateFn();
+      }
+    ),
+}));
+
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
+
+function getCacheKeyForWorkOSUserId(workOSUserId: string): string {
+  return `cacheWithRedis-_fetchByWorkOSUserIdUncached-user:workos:${workOSUserId}`;
+}
 
 describe("UserResource", () => {
   let user: UserResource;
@@ -15,6 +84,114 @@ describe("UserResource", () => {
     workspace = await WorkspaceFactory.basic();
     user = await UserFactory.basic();
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  });
+
+  describe("caching behavior", () => {
+    beforeEach(async () => {
+      inMemoryCache.clear();
+      deletedKeys.length = 0;
+    });
+
+    describe("fetchByWorkOSUserId", () => {
+      it("caches the user on first call", async () => {
+        const workOSUserId = `workos-cache-test-${Date.now()}`;
+        await UserFactory.withWorkOSId(workOSUserId);
+        const cacheKey = getCacheKeyForWorkOSUserId(workOSUserId);
+
+        expect(inMemoryCache.has(cacheKey)).toBe(false);
+
+        const { UserResource } = await import(
+          "@app/lib/resources/user_resource"
+        );
+        await UserResource.fetchByWorkOSUserId(workOSUserId);
+
+        expect(inMemoryCache.has(cacheKey)).toBe(true);
+      });
+
+      it("serves from cache on second call", async () => {
+        const workOSUserId = `workos-cache-serve-${Date.now()}`;
+        await UserFactory.withWorkOSId(workOSUserId);
+        const cacheKey = getCacheKeyForWorkOSUserId(workOSUserId);
+
+        const { UserResource } = await import(
+          "@app/lib/resources/user_resource"
+        );
+        await UserResource.fetchByWorkOSUserId(workOSUserId);
+        expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+        await UserResource.fetchByWorkOSUserId(workOSUserId);
+        expect(inMemoryCache.has(cacheKey)).toBe(true);
+      });
+    });
+
+    describe("update (via updateName)", () => {
+      it("invalidates cache when user with workOSUserId is updated", async () => {
+        const workOSUserId = `workos-update-test-${Date.now()}`;
+        const userWithWorkOS = await UserFactory.withWorkOSId(workOSUserId);
+        const cacheKey = getCacheKeyForWorkOSUserId(workOSUserId);
+
+        const { UserResource } = await import(
+          "@app/lib/resources/user_resource"
+        );
+        await UserResource.fetchByWorkOSUserId(workOSUserId);
+        expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+        await userWithWorkOS.updateName("NewFirst", "NewLast");
+
+        expect(deletedKeys).toContain(cacheKey);
+        expect(inMemoryCache.has(cacheKey)).toBe(false);
+      });
+    });
+
+    describe("updateInfo", () => {
+      it("invalidates cache for both old and new workOSUserId when changed", async () => {
+        const oldWorkOSUserId = `workos-old-${Date.now()}`;
+        const newWorkOSUserId = `workos-new-${Date.now()}`;
+        const userWithWorkOS = await UserFactory.withWorkOSId(oldWorkOSUserId);
+
+        const oldCacheKey = getCacheKeyForWorkOSUserId(oldWorkOSUserId);
+
+        const { UserResource } = await import(
+          "@app/lib/resources/user_resource"
+        );
+        await UserResource.fetchByWorkOSUserId(oldWorkOSUserId);
+        expect(inMemoryCache.has(oldCacheKey)).toBe(true);
+
+        await userWithWorkOS.updateInfo(
+          userWithWorkOS.username,
+          userWithWorkOS.firstName,
+          userWithWorkOS.lastName,
+          userWithWorkOS.email,
+          newWorkOSUserId
+        );
+
+        expect(deletedKeys).toContain(oldCacheKey);
+        const newCacheKey = getCacheKeyForWorkOSUserId(newWorkOSUserId);
+        expect(deletedKeys).toContain(newCacheKey);
+      });
+    });
+
+    describe("setWorkOSUserId", () => {
+      it("invalidates cache for old workOSUserId when changed", async () => {
+        const oldWorkOSUserId = `workos-set-old-${Date.now()}`;
+        const newWorkOSUserId = `workos-set-new-${Date.now()}`;
+        const userWithWorkOS = await UserFactory.withWorkOSId(oldWorkOSUserId);
+
+        const oldCacheKey = getCacheKeyForWorkOSUserId(oldWorkOSUserId);
+
+        const { UserResource } = await import(
+          "@app/lib/resources/user_resource"
+        );
+        await UserResource.fetchByWorkOSUserId(oldWorkOSUserId);
+        expect(inMemoryCache.has(oldCacheKey)).toBe(true);
+
+        await userWithWorkOS.setWorkOSUserId(newWorkOSUserId);
+
+        expect(deletedKeys).toContain(oldCacheKey);
+        const newCacheKey = getCacheKeyForWorkOSUserId(newWorkOSUserId);
+        expect(deletedKeys).toContain(newCacheKey);
+      });
+    });
   });
 
   describe("getMetadataAsArray", () => {
@@ -86,9 +263,9 @@ describe("UserResource", () => {
 
       const metadata = await user.getMetadata(key);
       expect(metadata).toBeTruthy();
-      expect(metadata!.value).toBe(value);
-      expect(metadata!.key).toBe(key);
-      expect(metadata!.userId).toBe(user.id);
+      expect(metadata?.value).toBe(value);
+      expect(metadata?.key).toBe(key);
+      expect(metadata?.userId).toBe(user.id);
     });
 
     it("should add value to existing metadata array", async () => {
@@ -244,9 +421,9 @@ describe("UserResource", () => {
 
         const metadata = await user.getMetadata(key);
         expect(metadata).not.toBeNull();
-        expect(metadata!.key).toBe(key);
-        expect(metadata!.value).toBe(value);
-        expect(metadata!.userId).toBe(user.id);
+        expect(metadata?.key).toBe(key);
+        expect(metadata?.value).toBe(value);
+        expect(metadata?.userId).toBe(user.id);
       });
 
       it("should update existing metadata", async () => {
@@ -258,7 +435,7 @@ describe("UserResource", () => {
         await user.setMetadata(key, updatedValue);
 
         const metadata = await user.getMetadata(key);
-        expect(metadata!.value).toBe(updatedValue);
+        expect(metadata?.value).toBe(updatedValue);
       });
 
       it("should return null for non-existent key", async () => {

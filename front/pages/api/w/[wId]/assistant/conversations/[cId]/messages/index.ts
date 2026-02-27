@@ -196,10 +196,13 @@ async function handler(
         }
       }
 
-      // Derive origin from conversation metadata - copilot conversations use agent_copilot origin.
-      const origin = isCopilotConversation(conversation.metadata)
-        ? "agent_copilot"
-        : "web";
+      // Derive origin: use explicitly provided origin, fall back to conversation metadata,
+      // then default to "web".
+      const origin =
+        context.origin ??
+        (isCopilotConversation(conversation.metadata)
+          ? "agent_copilot"
+          : "web");
 
       const messageRes = await postUserMessage(auth, {
         conversation,

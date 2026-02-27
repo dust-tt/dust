@@ -19,13 +19,7 @@ import {
   XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
-import React, {
-  forwardRef,
-  type Ref,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { forwardRef, type Ref, useRef, useState } from "react";
 
 export interface SearchInputProps {
   placeholder?: string;
@@ -175,13 +169,14 @@ function BaseSearchInputWithPopover<T>(
     (items.length > 0 && (displayItemCount || onSelectAll));
   const showBottom = Boolean(stickyBottomContent);
 
-  useEffect(() => {
-    itemRefs.current = new Array(items.length).fill(null);
-  }, [items.length]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [items]);
+  // Reset selection when items change.
+  const prevItemsRef = useRef(items);
+  if (prevItemsRef.current !== items) {
+    prevItemsRef.current = items;
+    if (selectedIndex !== 0) {
+      setSelectedIndex(0);
+    }
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open || !items.length) {

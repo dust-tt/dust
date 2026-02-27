@@ -29,5 +29,5 @@ jobs:
       - name: Upgrade npm for OIDC support
         run: npm install -g npm@latest
 
-      - working-directory: cli
+      - working-directory: cli/dust-cli
         run: npm ci && npm run build:prod && npm publish --provenance --access public

@@ -1,4 +1,5 @@
 import Custom404 from "@dust-tt/front/pages/404";
+import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
@@ -45,6 +46,7 @@ function PokeRedirect() {
 export const routes: RouteObject[] = [
   {
     element: <RootRouterLayout />,
+    errorElement: <GlobalErrorFallback />,
     children: [
       { path: "/", element: <IndexPage /> },
       {

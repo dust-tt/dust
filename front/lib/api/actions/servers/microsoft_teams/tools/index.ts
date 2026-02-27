@@ -174,6 +174,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       let apiCall = client
         .api("/me/chats")
         .orderby("lastMessagePreview/createdDateTime desc")
+        .expand("lastMessagePreview")
         .top(maxLimit);
 
       // Build filter conditions

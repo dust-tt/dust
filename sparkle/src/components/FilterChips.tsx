@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
 
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 
 import { Button } from "./Button";
 
@@ -19,16 +19,12 @@ export function FilterChips<T extends string>({
     defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
   );
 
-  const handleFilterClick = useCallback(
-    (filterName: T) => {
-      // Avoid unnecessary re-renders by only triggering event if filter has changed.
-      if (filterName !== selectedFilter) {
-        setSelectedFilter(filterName);
-        onFilterClick(filterName);
-      }
-    },
-    [onFilterClick, selectedFilter]
-  );
+  const handleFilterClick = (filterName: T) => {
+    if (filterName !== selectedFilter) {
+      setSelectedFilter(filterName);
+      onFilterClick(filterName);
+    }
+  };
 
   return (
     <div className="s-flex s-flex-row s-flex-wrap s-gap-2">
