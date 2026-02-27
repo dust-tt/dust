@@ -381,6 +381,51 @@ Toto:
     expect(text).toContain("Hello");
   });
 
+  it("should handle instruction blocks with attributes in top-level and nested contexts", () => {
+    // Test the exact production scenario with attributes.
+    // Tags with attributes should stay escaped (ZWS-prefixed), preserving the attribute text
+    // while tags without attributes (like nested <rule>) become instruction blocks.
+    expect(() => {
+      editor.commands.setContent(
+        `Hello
+
+<task type="main">
+This is task content with attributes
+<rule type="foo">
+This is rule content with attributes
+</rule>
+<rule>
+This rule has no attributes
+</rule>
+</task>`,
+        {
+          contentType: "markdown",
+        }
+      );
+    }).not.toThrow();
+
+    // Should have parsed content without crashing
+    const json = editor.getJSON();
+    expect(json.content).toBeDefined();
+    expect(json.content?.length).toBeGreaterThan(0);
+
+    // Verify content is preserved in the markdown output
+    const markdown = editor.getMarkdown();
+    expect(markdown).toBeDefined();
+
+    // Top-level text should always be preserved
+    expect(markdown).toContain("Hello");
+
+    // Content inside attribute-bearing tags should be preserved as text
+    expect(markdown).toContain("This is task content with attributes");
+    expect(markdown).toContain("This is rule content with attributes");
+
+    // Content inside attribute-free tags should be preserved (either as instruction block or text)
+    expect(markdown).toContain("This rule has no attributes");
+
+    // Most importantly: no crash and no invalid node structures
+  });
+
   it("should work on deep-nested instruction blocks with NBSP", () => {
     editor.commands.setContent(
       // Contains NBSP before the `1. something`

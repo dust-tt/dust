@@ -5,12 +5,16 @@ const ZWS = "\u200B";
 
 /**
  * Collects tag names that appear in matched instruction-block pairs (supports
- * nesting). Recurse into inner content to find nested pairs.
+ * nesting). Supports tags with attributes. Recurse into inner content to find nested pairs.
  */
 function collectMatchedTagNames(str: string): Set<string> {
   const matched = new Set<string>();
   let m;
-  const regex = new RegExp(`<(${TAG_NAME_PATTERN})>([\\s\\S]*?)<\\/\\1>`, "gi");
+  // Support attributes: <tag attr="value">...</tag>
+  const regex = new RegExp(
+    `<(${TAG_NAME_PATTERN})[^>]*>([\\s\\S]*?)<\\/\\1>`,
+    "gi"
+  );
   while ((m = regex.exec(str)) !== null) {
     matched.add(m[1].toLowerCase());
     for (const tag of collectMatchedTagNames(m[2])) {
@@ -111,6 +115,12 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       const isNestedChild = validNestedPositions.has(offset);
 
       if (matchedPairs.has(normalized) && (isAtLineStart || isNestedChild)) {
+        // Don't un-escape if the tag has attributes — those cause schema violations.
+        // When we skip un-escaping, openCount is NOT incremented, so the closing tag
+        // also stays escaped automatically.
+        if (rest !== "") {
+          return match;
+        }
         openCount.set(normalized, (openCount.get(normalized) ?? 0) + 1);
         validNestedPositions.add(offset + match.length);
         return `<${slash}${tagName}${rest}>`;
