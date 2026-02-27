@@ -57,7 +57,7 @@
       "sdks/js/**",
       "viz/**",
       "extension/**",
-      "cli/**",
+      "cli/dust-cli/**",
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",
@@ -81,7 +81,7 @@
   },
   "overrides": [
     {
-      "includes": ["cli/**", "sparkle/**"],
+      "includes": ["cli/dust-cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"
       }
@@ -159,7 +159,7 @@
       "sdks/js/**",
       "viz/**",
       "extension/**",
-      "cli/**",
+      "cli/dust-cli/**",
       "firebase-functions/**",
       "sparkle/**",
       "connectors/**",

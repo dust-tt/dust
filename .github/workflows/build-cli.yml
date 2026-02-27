@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - package-lock.json
-      - cli/**
+      - cli/dust-cli/**
       - .github/workflows/build-cli.yml
 
 permissions:
@@ -27,5 +27,5 @@ jobs:
           node-version: "22.22.0"
           build-sdks: "true"
       - name: Typecheck
-        working-directory: cli
+        working-directory: cli/dust-cli
         run: npx tsc --version && npx tsc
