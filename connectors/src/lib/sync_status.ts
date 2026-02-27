@@ -61,10 +61,18 @@ export async function reportInitialSyncProgress(
   return new Ok(undefined);
 }
 
-export async function clearInitialSyncProgress(connectorId: ModelId) {
+export async function clearInitialSyncProgress(
+  connectorId: ModelId,
+  logContext?: string
+) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
+  }
+
+  if (logContext) {
+    const localLogger = getActivityLogger(connector);
+    localLogger.info({ logContext }, "Clearing initial sync progress");
   }
 
   await connector.update({
