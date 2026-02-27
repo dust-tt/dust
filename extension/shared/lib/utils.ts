@@ -38,10 +38,6 @@ export const generatePKCE = async (): Promise<{
 };
 
 /**
- * COPYED FROM FRONT LIB, MAYBE WE SHOULD SHARE THIS CODE
- */
-
-/**
  * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
  * the same order, and returns the biggest index of the first character of a in b.
  */

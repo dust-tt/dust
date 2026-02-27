@@ -11,11 +11,10 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { getErrorFromResponse, useFetcher } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -68,6 +67,7 @@ function ExportContentDropdown({
 }: ExportContentDropdownProps) {
   const sendNotification = useSendNotification();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const { fetcher } = useFetcher();
 
   const exportAsPng = () => {
     if (fileContent) {
@@ -100,7 +100,7 @@ function ExportContentDropdown({
 
     setIsExportingPdf(true);
     try {
-      const response = await clientFetch(
+      const response = await fetcher(
         `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
         {
           method: "POST",
@@ -212,6 +212,7 @@ export function FrameRenderer({
   const [isLoading, setIsLoading] = useState(false);
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
   const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
+  const { fetcher } = useFetcher();
 
   const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -383,7 +384,7 @@ export function FrameRenderer({
     }
     setIsSavingToProject(true);
     try {
-      const res = await clientFetch(
+      const res = await fetcher(
         `/api/w/${owner.sId}/files/${fileId}/save-in-project`,
         {
           method: "POST",
@@ -424,6 +425,7 @@ export function FrameRenderer({
     owner.sId,
     projectInfo?.name,
     sendNotification,
+    fetcher,
   ]);
 
   if (error) {

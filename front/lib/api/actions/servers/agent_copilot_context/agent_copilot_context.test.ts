@@ -1799,7 +1799,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "claude-sonnet-4-5-20250929",
+            modelId: "claude-sonnet-4-6",
             reasoningEffort: "high",
           },
           analysis: "Upgrading to better model for complex tasks",
@@ -1876,12 +1876,14 @@ describe("agent_copilot_context tools", () => {
       );
 
       const tool = getToolByName("suggest_model");
-      // gpt-5 is in USED_MODEL_CONFIGS but openai is not whitelisted
-      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5")).toBe(true);
+      // gpt-5.2 is in USED_MODEL_CONFIGS but openai is not whitelisted
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.2")).toBe(
+        true
+      );
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "gpt-5",
+            modelId: "gpt-5.2",
           },
         },
         createTestExtra(authenticator)
@@ -1890,7 +1892,7 @@ describe("agent_copilot_context tools", () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toContain("Invalid model ID");
-        expect(result.error.message).toContain("gpt-5");
+        expect(result.error.message).toContain("gpt-5.2");
       }
     });
   });

@@ -1,10 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  getDatabaseExampleRowsContent,
-  getQueryWritingInstructionsContent,
-  getSchemaContent,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
@@ -17,6 +12,11 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   QUERY_TABLES_V2_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import {
+  getDatabaseExampleRowsContent,
+  getQueryWritingInstructionsContent,
+  getSchemaContent,
+} from "@app/lib/api/actions/servers/tables_query/schema";
 import config from "@app/lib/api/config";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";

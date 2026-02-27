@@ -1,17 +1,17 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  executeListPublicChannels,
-  executeListUserGroups,
-  executePostMessage,
-  executeSearchUser,
-  getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import type {
   ToolDefinition,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  executeListPublicChannels,
+  executeListUserGroups,
+  executePostMessage,
+  executeSearchUser,
+  getSlackClient,
+} from "@app/lib/api/actions/servers/slack/helpers";
 import { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";

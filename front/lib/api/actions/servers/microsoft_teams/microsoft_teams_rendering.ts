@@ -2,7 +2,7 @@ import type {
   TeamsChannel,
   TeamsChat,
   TeamsUser,
-} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+} from "@app/lib/api/actions/servers/microsoft/utils";
 
 export function renderUsers(users: TeamsUser[]): string {
   if (users.length === 0) {

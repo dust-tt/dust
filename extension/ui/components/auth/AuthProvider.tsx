@@ -1,12 +1,11 @@
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import type { AuthError } from "@extension/shared/services/auth";
 import { useAuthHook } from "@extension/ui/components/auth/useAuth";
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 // Extension-specific auth context (bearer token, login/logout, etc.)
 type ExtensionAuthContextType = {
@@ -99,17 +98,6 @@ interface ExtensionAuthProviderProps {
 export function ExtensionAuthProvider({
   children,
 }: ExtensionAuthProviderProps) {
-  const { regionInfo, setRegionInfo } = useRegionContext();
-
-  const dustDomain = regionInfo?.url ?? null;
-
-  const setDustDomain = useCallback(
-    (url: string) => {
-      setRegionInfo({ name: regionInfo?.name ?? "us-central1", url });
-    },
-    [setRegionInfo, regionInfo?.name]
-  );
-
   const {
     token,
     isAuthenticated,
@@ -124,7 +112,7 @@ export function ExtensionAuthProvider({
     handleLogout,
     handleSelectWorkspace,
     featureFlags,
-  } = useAuthHook({ dustDomain, setDustDomain });
+  } = useAuthHook();
 
   const extensionAuthValue = useMemo(
     () => ({
@@ -168,7 +156,7 @@ export function ExtensionAuthProvider({
       isAdmin: isAdmin(workspace),
       isBuilder: isBuilder(workspace),
       featureFlags,
-      vizUrl: "",
+      vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
     };
   }, [user, workspace, featureFlags]);
 

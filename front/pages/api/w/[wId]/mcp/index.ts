@@ -233,6 +233,29 @@ async function handler(
             });
           }
 
+          // Check for name conflicts before creating the server.
+          if (body.includeGlobal) {
+            const globalSpace =
+              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+            const { hasConflict } =
+              await MCPServerViewResource.hasNameConflictInSpaceByName(
+                auth,
+                name,
+                globalSpace
+              );
+
+            if (hasConflict) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: `An existing Tool is already using the name "${name}"`,
+                },
+              });
+            }
+          }
+
           const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(
             auth,
             {
@@ -300,29 +323,9 @@ async function handler(
               });
             }
 
-            const globalSpace =
-              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-
-            const { hasConflict, name } =
-              await MCPServerViewResource.hasNameConflictInSpace(
-                auth,
-                systemView,
-                globalSpace
-              );
-
-            if (hasConflict) {
-              return apiError(req, res, {
-                status_code: 400,
-                api_error: {
-                  type: "invalid_request_error",
-                  message: `An existing Tool is already using the name "${name}"`,
-                },
-              });
-            }
-
             await MCPServerViewResource.create(auth, {
               systemView,
-              space: globalSpace,
+              space: await SpaceResource.fetchWorkspaceGlobalSpace(auth),
             });
           }
 
@@ -363,6 +366,29 @@ async function handler(
                   type: "invalid_request_error",
                   message:
                     "This internal tool has already been added and only one instance is allowed.",
+                },
+              });
+            }
+          }
+
+          // Check for name conflicts before creating the server.
+          if (body.includeGlobal) {
+            const globalSpace =
+              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+            const { hasConflict } =
+              await MCPServerViewResource.hasNameConflictInSpaceByName(
+                auth,
+                name,
+                globalSpace
+              );
+
+            if (hasConflict) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: `An existing Tool is already using the name "${name}"`,
                 },
               });
             }
@@ -441,23 +467,6 @@ async function handler(
                   type: "invalid_request_error",
                   message:
                     "Missing system view for internal MCP server, it should have been created when creating the internal server.",
-                },
-              });
-            }
-
-            const { hasConflict, name } =
-              await MCPServerViewResource.hasNameConflictInSpace(
-                auth,
-                systemView,
-                globalSpace
-              );
-
-            if (hasConflict) {
-              return apiError(req, res, {
-                status_code: 400,
-                api_error: {
-                  type: "invalid_request_error",
-                  message: `An existing Tool is already using the name "${name}"`,
                 },
               });
             }

@@ -1,8 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { isTransientNetworkError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
-import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import { isTransientNetworkError } from "@app/lib/api/actions/servers/run_agent/network_errors";
+import type { ChildAgentBlob } from "@app/lib/api/actions/servers/run_agent/types";
+import { isRunAgentResumeState } from "@app/lib/api/actions/servers/run_agent/types";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
