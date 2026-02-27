@@ -67,7 +67,10 @@ async function handler(
       const conversationSIdMap = new Map<number, string>();
       if (conversationIds.length > 0) {
         const conversations = await ConversationModel.findAll({
-          where: { id: { [Op.in]: conversationIds } },
+          where: {
+            id: { [Op.in]: conversationIds },
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
           attributes: ["id", "sId"],
         });
         for (const conv of conversations) {

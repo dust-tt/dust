@@ -23,14 +23,15 @@ import {
   Avatar,
   BoltIcon,
   Button,
+  CardGrid,
   Chip,
   ClockIcon,
   CloudArrowDownIcon,
   DataTable,
   Page,
-  Separator,
   Spinner,
   TrashIcon,
+  ValueCard,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
@@ -108,6 +109,164 @@ function getRunStatusChip(status: string) {
   }
 }
 
+// -- Overview cards --
+
+interface OverviewCardsProps {
+  trigger: TriggerDetailType;
+  totalRunCount: number;
+  subscriberCount: number;
+}
+
+function OverviewCards({
+  trigger,
+  totalRunCount,
+  subscriberCount,
+}: OverviewCardsProps) {
+  const KindIcon = getKindIcon(trigger.kind);
+
+  return (
+    <CardGrid>
+      <ValueCard
+        title="Agent"
+        className="h-24"
+        content={
+          <div className="flex items-center gap-2">
+            <Avatar
+              visual={trigger.agentPictureUrl}
+              size="xs"
+              icon={BoltIcon}
+            />
+            <span className="truncate font-medium text-foreground dark:text-foreground-night">
+              @{trigger.agentName ?? "Unknown"}
+            </span>
+          </div>
+        }
+      />
+      <ValueCard
+        title="Type"
+        className="h-24"
+        content={
+          <div className="flex items-center gap-2">
+            <Chip size="sm" color="info" icon={KindIcon}>
+              {getKindLabel(trigger.kind)}
+            </Chip>
+          </div>
+        }
+      />
+      <ValueCard
+        title="Status"
+        className="h-24"
+        content={getStatusChip(trigger.status)}
+      />
+      <ValueCard
+        title="Total runs"
+        className="h-24"
+        content={
+          <span className="text-2xl text-foreground dark:text-foreground-night">
+            {totalRunCount.toLocaleString()}
+          </span>
+        }
+      />
+    </CardGrid>
+  );
+}
+
+// -- Configuration section --
+
+interface ConfigurationSectionProps {
+  trigger: TriggerDetailType;
+}
+
+function ConfigurationSection({ trigger }: ConfigurationSectionProps) {
+  const rows: { label: string; value: React.ReactNode }[] = [];
+
+  rows.push({
+    label: "Created by",
+    value: trigger.editorName ?? "Unknown",
+  });
+
+  rows.push({
+    label: "Created",
+    value: formatTimestampToFriendlyDate(trigger.createdAt, "compact"),
+  });
+
+  if (trigger.kind === "schedule") {
+    rows.push({
+      label: "Schedule",
+      value: (
+        <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+          {trigger.configuration.cron}
+        </code>
+      ),
+    });
+    if ("timezone" in trigger.configuration) {
+      rows.push({
+        label: "Timezone",
+        value: trigger.configuration.timezone,
+      });
+    }
+  }
+
+  if (trigger.kind === "webhook") {
+    if ("event" in trigger.configuration && trigger.configuration.event) {
+      rows.push({
+        label: "Event",
+        value: (
+          <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+            {trigger.configuration.event}
+          </code>
+        ),
+      });
+    }
+    if ("filter" in trigger.configuration && trigger.configuration.filter) {
+      rows.push({
+        label: "Filter",
+        value: (
+          <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+            {trigger.configuration.filter}
+          </code>
+        ),
+      });
+    }
+    if ("includePayload" in trigger.configuration) {
+      rows.push({
+        label: "Include payload",
+        value: trigger.configuration.includePayload ? "Yes" : "No",
+      });
+    }
+  }
+
+  if (trigger.customPrompt) {
+    rows.push({
+      label: "Message",
+      value: (
+        <p className="whitespace-pre-wrap text-sm">{trigger.customPrompt}</p>
+      ),
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Page.SectionHeader title="Configuration" />
+      <div className="rounded-lg border border-border p-4">
+        <div className="flex flex-col divide-y divide-border">
+          {rows.map((row) => (
+            <div
+              key={row.label}
+              className="flex items-baseline gap-4 py-2.5 first:pt-0 last:pb-0"
+            >
+              <span className="w-36 shrink-0 text-sm text-muted-foreground">
+                {row.label}
+              </span>
+              <div className="text-sm">{row.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // -- Run history table --
 
 type RunRowData = {
@@ -117,7 +276,6 @@ type RunRowData = {
   completedAt: number | null;
   errorMessage: string | null;
   conversationSId: string | null;
-  onClick?: () => void;
 };
 
 function getRunTableColumns(workspaceId: string) {
@@ -189,125 +347,6 @@ function getRunTableColumns(workspaceId: string) {
   ];
 }
 
-// -- Trigger overview --
-
-interface TriggerOverviewProps {
-  trigger: TriggerDetailType;
-}
-
-function TriggerOverview({ trigger }: TriggerOverviewProps) {
-  const KindIcon = getKindIcon(trigger.kind);
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <Avatar visual={trigger.agentPictureUrl} size="md" icon={BoltIcon} />
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold">
-            @{trigger.agentName ?? "Unknown agent"}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            Created by {trigger.editorName ?? "unknown"} ·{" "}
-            {formatTimestampToFriendlyDate(trigger.createdAt, "compact")}
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <Chip size="sm" color="info" icon={KindIcon}>
-            {getKindLabel(trigger.kind)}
-          </Chip>
-          {getStatusChip(trigger.status)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// -- Configuration section --
-
-interface TriggerConfigSectionProps {
-  trigger: TriggerDetailType;
-}
-
-function TriggerConfigSection({ trigger }: TriggerConfigSectionProps) {
-  return (
-    <div className="flex flex-col gap-3">
-      <Page.SectionHeader title="Configuration" />
-      <div className="flex flex-col gap-2">
-        {trigger.kind === "schedule" && (
-          <>
-            <div className="flex items-baseline gap-3">
-              <span className="w-32 shrink-0 text-sm text-muted-foreground">
-                Schedule
-              </span>
-              <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                {trigger.configuration.cron}
-              </code>
-            </div>
-            <div className="flex items-baseline gap-3">
-              <span className="w-32 shrink-0 text-sm text-muted-foreground">
-                Timezone
-              </span>
-              <span className="text-sm">
-                {"timezone" in trigger.configuration
-                  ? trigger.configuration.timezone
-                  : "UTC"}
-              </span>
-            </div>
-          </>
-        )}
-        {trigger.kind === "webhook" && (
-          <>
-            {"event" in trigger.configuration &&
-              trigger.configuration.event && (
-                <div className="flex items-baseline gap-3">
-                  <span className="w-32 shrink-0 text-sm text-muted-foreground">
-                    Event
-                  </span>
-                  <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                    {trigger.configuration.event}
-                  </code>
-                </div>
-              )}
-            {"filter" in trigger.configuration &&
-              trigger.configuration.filter && (
-                <div className="flex items-baseline gap-3">
-                  <span className="w-32 shrink-0 text-sm text-muted-foreground">
-                    Filter
-                  </span>
-                  <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                    {trigger.configuration.filter}
-                  </code>
-                </div>
-              )}
-            {"includePayload" in trigger.configuration && (
-              <div className="flex items-baseline gap-3">
-                <span className="w-32 shrink-0 text-sm text-muted-foreground">
-                  Include payload
-                </span>
-                <span className="text-sm">
-                  {trigger.configuration.includePayload ? "Yes" : "No"}
-                </span>
-              </div>
-            )}
-          </>
-        )}
-        {trigger.customPrompt && (
-          <div className="flex items-baseline gap-3">
-            <span className="w-32 shrink-0 text-sm text-muted-foreground">
-              Message
-            </span>
-            <p className="whitespace-pre-wrap text-sm">
-              {trigger.customPrompt}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// -- Run history section --
-
 interface RunHistorySectionProps {
   workspaceId: string;
   runs: TriggerRunType[];
@@ -342,18 +381,18 @@ function RunHistorySection({
 
   return (
     <div className="flex flex-col gap-3">
-      <Page.SectionHeader
-        title="Run History"
-        description={totalCount > 0 ? `${totalCount} total runs` : undefined}
-      />
+      <Page.SectionHeader title="Run History" />
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Spinner size="sm" />
         </div>
       ) : runRows.length === 0 ? (
-        <p className="py-4 text-sm text-muted-foreground">
-          No runs recorded yet.
-        </p>
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-border py-8 text-center">
+          <ClockIcon className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No runs recorded yet.
+          </p>
+        </div>
       ) : (
         <>
           <DataTable data={runRows} columns={getRunTableColumns(workspaceId)} />
@@ -400,26 +439,26 @@ function SubscribersSection({
 }: SubscribersSectionProps) {
   return (
     <div className="flex flex-col gap-3">
-      <Page.SectionHeader
-        title="Subscribers"
-        description={
-          subscribers.length > 0
-            ? `${subscribers.length} subscriber${subscribers.length > 1 ? "s" : ""}`
-            : undefined
-        }
-      />
+      <Page.SectionHeader title="Subscribers" />
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Spinner size="sm" />
         </div>
       ) : subscribers.length === 0 ? (
-        <p className="py-4 text-sm text-muted-foreground">
-          No subscribers yet.
-        </p>
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-border py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            No subscribers yet.
+          </p>
+        </div>
       ) : (
-        <div className="flex flex-col gap-1">
-          {subscribers.map((sub) => (
-            <div key={sub.sId} className="flex items-center gap-3 py-1.5">
+        <div className="rounded-lg border border-border">
+          {subscribers.map((sub, i) => (
+            <div
+              key={sub.sId}
+              className={`flex items-center gap-3 px-4 py-2.5 ${
+                i < subscribers.length - 1 ? "border-b border-border" : ""
+              }`}
+            >
               <Avatar visual={sub.image} size="xs" />
               <span className="text-sm">{sub.fullName}</span>
             </div>
@@ -566,13 +605,13 @@ export function TriggerDetailPage() {
       </div>
 
       <Page.Vertical gap="xl" align="stretch">
-        <TriggerOverview trigger={trigger} />
+        <OverviewCards
+          trigger={trigger}
+          totalRunCount={totalCount}
+          subscriberCount={subscribers.length}
+        />
 
-        <Separator />
-
-        <TriggerConfigSection trigger={trigger} />
-
-        <Separator />
+        <ConfigurationSection trigger={trigger} />
 
         <RunHistorySection
           workspaceId={owner.sId}
@@ -583,8 +622,6 @@ export function TriggerDetailPage() {
           runsOffset={runsOffset}
           onOffsetChange={setRunsOffset}
         />
-
-        <Separator />
 
         <SubscribersSection
           subscribers={subscribers}

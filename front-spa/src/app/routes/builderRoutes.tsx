@@ -57,6 +57,11 @@ const ManageTriggersPage = withSuspense(
     import("@dust-tt/front/components/pages/builder/triggers/ManageTriggersPage"),
   "ManageTriggersPage"
 );
+const TriggerDetailPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/builder/triggers/TriggerDetailPage"),
+  "TriggerDetailPage"
+);
 
 // Builder routes inside AppContentLayout (with sidebar)
 export const builderContentRoutes: RouteObject[] = [
@@ -64,6 +69,7 @@ export const builderContentRoutes: RouteObject[] = [
   { path: "builder/agents/create", element: <CreateAgentPage /> },
   { path: "builder/skills", element: <ManageSkillsPage /> },
   { path: "builder/triggers", element: <ManageTriggersPage /> },
+  { path: "builder/triggers/:tId", element: <TriggerDetailPage /> },
 ];
 
 // Builder routes outside AppContentLayout (full-page editors without sidebar)
