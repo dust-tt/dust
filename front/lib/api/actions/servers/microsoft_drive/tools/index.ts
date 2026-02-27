@@ -1,4 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  getFileFromConversationAttachment,
+  sanitizeFilename,
+} from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   downloadAndProcessMicrosoftFile,
   getDriveItemEndpoint,
@@ -7,12 +13,6 @@ import {
   validateDocumentXml,
   validateZipFile,
 } from "@app/lib/api/actions/servers/microsoft/utils";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  getFileFromConversationAttachment,
-  sanitizeFilename,
-} from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { Err, Ok } from "@app/types/shared/result";

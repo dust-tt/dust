@@ -10,6 +10,7 @@ language js
 `"@dust-tt/client"` as $source where {
     $filename <: not r".*pages/api/v1/.*",
     $filename <: not r".*lib/actions/mcp_internal_actions/.*",
+    $filename <: not r".*lib/api/actions/servers/.*",
     $filename <: not r".*\.test\..*",
     $filename <: not r".*/connectors/.*",
     $filename <: not r".*/cli/.*",

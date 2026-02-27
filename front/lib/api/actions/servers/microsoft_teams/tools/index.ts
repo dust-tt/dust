@@ -1,4 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   TeamsChannel,
   TeamsChat,
@@ -6,8 +8,6 @@ import type {
   TeamsUser,
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { getGraphClient } from "@app/lib/api/actions/servers/microsoft/utils";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { MICROSOFT_TEAMS_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import {
   renderChannels,

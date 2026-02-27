@@ -1,4 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   createComment,
   createIssue,
@@ -26,13 +30,9 @@ import {
   uploadAttachmentsToJira,
   withAuth,
 } from "@app/lib/api/actions/servers/jira/jira_api_helper";
+import { JIRA_TOOLS_METADATA } from "@app/lib/api/actions/servers/jira/metadata";
 import { renderIssueWithEmbeddedComments } from "@app/lib/api/actions/servers/jira/rendering";
 import { SEARCH_USERS_MAX_RESULTS } from "@app/lib/api/actions/servers/jira/types";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import { JIRA_TOOLS_METADATA } from "@app/lib/api/actions/servers/jira/metadata";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

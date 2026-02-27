@@ -1,4 +1,6 @@
 import { JIRA_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   ADFDocumentSchema,
   JiraCreateIssueLinkRequestSchema,
@@ -7,8 +9,6 @@ import {
   JiraSortSchema,
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/api/actions/servers/jira/types";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
