@@ -39,6 +39,13 @@ export function parseGitHubRepoUrl(
     });
   }
 
+  if (url.hostname !== "github.com") {
+    return new Err({
+      type: "not_found",
+      message: `Unsupported hostname "${url.hostname}". Only github.com repositories are supported.`,
+    });
+  }
+
   // Extract path segments, stripping leading/trailing slashes and .git suffix.
   const segments = url.pathname
     .replace(/\.git$/, "")
