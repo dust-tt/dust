@@ -21,6 +21,7 @@ export interface AgentAsset {
   instructions: string;
   pictureUrl: string;
   sharedWithAdditionalUsers?: boolean;
+  responseFormat?: string;
 }
 
 export interface UserAsset {

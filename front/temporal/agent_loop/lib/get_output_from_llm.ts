@@ -1,4 +1,5 @@
 import type { LLM } from "@app/lib/api/llm/llm";
+import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -9,6 +10,7 @@ import type {
 } from "@app/temporal/agent_loop/lib/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
@@ -328,6 +330,22 @@ export async function getOutputFromLLMStream(
   }
 
   await flushParserTokens();
+
+  // Validate structured output against the JSON schema when response format is set.
+  const responseFormat = parseResponseFormatSchema(llm.getResponseFormat());
+  if (responseFormat && generation) {
+    const parsed = safeParseJSON(generation);
+    if (parsed.isErr()) {
+      logger.warn(
+        {
+          ...logContext,
+          responseFormatName: responseFormat.json_schema.name,
+          error: parsed.error.message,
+        },
+        "Structured output JSON parsing failed: response from LLM may be invalid."
+      );
+    }
+  }
 
   if (contents.length === 0 && actions.length === 0) {
     return new Err({
