@@ -14,7 +14,7 @@ import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const PULSE_ANIMATION_DURATION = 1;
 
@@ -476,15 +476,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    const pointerEventProps =
-      isLoading || props.disabled
-        ? {
-            onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              e.stopPropagation();
-            },
-          }
-        : {};
+    const pointerEventProps = useMemo(() => {
+      if (isLoading || props.disabled) {
+        return {
+          onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+            e.preventDefault();
+            e.stopPropagation();
+          },
+        };
+      }
+      return {};
+    }, [isLoading, props.disabled]);
 
     // We cannot skip a button tag when it's disabled. We need
     // to apply disabled class manually (currently it has :disabled pseudo-class, which won't work if it's not a button)

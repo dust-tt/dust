@@ -54,7 +54,7 @@ function Hover3D({
 }: Hover3DProps) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [isHovered, setHovered] = useState(fullscreenSensible);
-  const [isTouch] = useState(() => isTouchDevice());
+  const [isTouch, setIsTouch] = useState(false);
   const [transform, setTransform] = useState(
     `perspective(${perspective}px) translateZ(${
       fullscreenSensible ? depth : 0
@@ -73,6 +73,11 @@ function Hover3D({
   ) => {
     return ostart + (ostop - ostart) * ((value - istart) / (istop - istart));
   };
+
+  // Detect touch device on mount
+  useEffect(() => {
+    setIsTouch(isTouchDevice());
+  }, []);
 
   useEffect(() => {
     // Skip 3D effect setup if on a touch device

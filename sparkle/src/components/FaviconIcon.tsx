@@ -1,7 +1,7 @@
 import { GlobeAltIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 
 const faviconVariants = cva("", {
   variants: {
@@ -37,14 +37,14 @@ export function FaviconIcon({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleError = () => {
+  const handleError = useCallback(() => {
     setHasError(true);
     setIsLoading(false);
-  };
+  }, []);
 
-  const handleLoad = () => {
+  const handleLoad = useCallback(() => {
     setIsLoading(false);
-  };
+  }, []);
 
   // Determine favicon URL
   let finalFaviconUrl = faviconUrl;

@@ -65,11 +65,13 @@ export function DropzoneOverlay({
         <Lottie
           lottieRef={lottieRef}
           animationData={anim}
-          style={{ width: "200px", height: "200px" }}
+          style={{ width: `200px`, height: `200px` }}
           loop={false}
           autoplay
         />
-        <div className="s-absolute s-top-[84px] s-left-[84px]">{visual}</div>
+        <div className="s-absolute" style={{ top: `84px`, left: `84px` }}>
+          {visual}
+        </div>
       </div>
       <div className="s-heading-xl">{title}</div>
       <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
