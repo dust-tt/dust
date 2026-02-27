@@ -53,7 +53,7 @@ export function AgentBuilderLeftPanel({
         }
       />
       <ScrollArea className="flex-1">
-        <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+        <div className="w-full space-y-10 px-2 py-8">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />

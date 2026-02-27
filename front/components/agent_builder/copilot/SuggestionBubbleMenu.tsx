@@ -106,7 +106,7 @@ export function SuggestionBubbleMenu({
     const blockEl = suggestionEl?.closest<HTMLElement>("[data-block-id]");
     if (blockEl) {
       activeBlockRef.current = blockEl;
-      blockEl.scrollIntoView({ behavior: "auto", block: "center" });
+      blockEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
     setPositionAtSuggestion(highlightedSuggestionId);
   }, [
