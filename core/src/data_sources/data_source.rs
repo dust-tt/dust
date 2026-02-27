@@ -896,7 +896,9 @@ impl DataSource {
         let now = utils::now();
         let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
 
-        if use_cache {
+        // Only look for cached embeddings if we have chunks and caching is enabled.
+        // This avoids expensive scroll operations on empty documents.
+        if use_cache && !splits_with_hash.is_empty() {
             let mut page_offset: Option<PointId> = None;
             loop {
                 let scroll_results = qdrant_client
