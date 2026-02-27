@@ -102,7 +102,7 @@ export class SnowflakeClient {
       const connectionOptions: ConnectionOptions = {
         // Replace any `_` with `-` in the account name for nginx proxy
         account: this.account.replace(/_/g, "-"),
-        warehouse: this.warehouse,
+        warehouse: this.warehouse || undefined,
 
         // Use proxy if defined to have all requests coming from the same IP.
         proxyHost: EnvironmentConfig.getOptionalEnvVariable("PROXY_HOST"),
@@ -184,16 +184,19 @@ export class SnowflakeClient {
         });
       });
 
-      // Explicitly set the warehouse - the connectionOptions.warehouse isn't always respected
-      try {
-        await this.runSql(
-          connection,
-          `USE WAREHOUSE "${escapeSnowflakeIdentifier(this.warehouse)}"`
-        );
-      } catch (error) {
-        // Clean up connection on USE WAREHOUSE failure
-        await this.closeConnection(connection);
-        return new Err(normalizeError(error));
+      // Explicitly set the warehouse - the connectionOptions.warehouse isn't always respected.
+      // If no warehouse is configured, skip — Snowflake will use the user's default warehouse.
+      if (this.warehouse) {
+        try {
+          await this.runSql(
+            connection,
+            `USE WAREHOUSE "${escapeSnowflakeIdentifier(this.warehouse)}"`
+          );
+        } catch (error) {
+          // Clean up connection on USE WAREHOUSE failure
+          await this.closeConnection(connection);
+          return new Err(normalizeError(error));
+        }
       }
 
       // Set query timeout to 2 minutes.

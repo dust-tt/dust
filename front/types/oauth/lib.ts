@@ -415,9 +415,10 @@ export function getProviderRequiredOAuthCredentialInputs({
             value: undefined,
             helpMessage:
               useCase === "platform_actions"
-                ? "The Snowflake role for all users (e.g., ANALYST)."
-                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
-            validator: isValidSnowflakeRole,
+                ? "Optional. The Snowflake role for all users (e.g., ANALYST). If empty, Snowflake uses the user's default role."
+                : "Optional. The default Snowflake role (e.g., ANALYST). If empty, Snowflake uses the user's default role. Users can override this during their personal authentication.",
+            validator: (s: unknown) =>
+              isOptionalSnowflakeIdentifier(s, isValidSnowflakeRole),
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",
             personalAuthHelpMessage:
@@ -426,8 +427,10 @@ export function getProviderRequiredOAuthCredentialInputs({
           snowflake_warehouse: {
             label: "Snowflake Warehouse",
             value: undefined,
-            helpMessage: "The warehouse to use for queries (e.g., COMPUTE_WH).",
-            validator: isValidSnowflakeWarehouse,
+            helpMessage:
+              "Optional. The warehouse to use for queries (e.g., COMPUTE_WH). If empty, Snowflake uses the user's default warehouse.",
+            validator: (s: unknown) =>
+              isOptionalSnowflakeIdentifier(s, isValidSnowflakeWarehouse),
           },
         };
         return result;
@@ -549,24 +552,36 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(v);
 }
 
+const SNOWFLAKE_IDENTIFIER_REGEX = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 export function isValidSnowflakeRole(s: unknown): s is string {
-  // Snowflake role names are uppercase identifiers
-  // Allow alphanumeric and underscores
   return (
     typeof s === "string" &&
     s.trim().length > 0 &&
-    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
+    SNOWFLAKE_IDENTIFIER_REGEX.test(s.trim())
   );
 }
 
 export function isValidSnowflakeWarehouse(s: unknown): s is string {
-  // Snowflake warehouse names follow same rules as roles
-  // Allow alphanumeric and underscores
   return (
     typeof s === "string" &&
     s.trim().length > 0 &&
-    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
+    SNOWFLAKE_IDENTIFIER_REGEX.test(s.trim())
   );
+}
+
+/**
+ * Validator that accepts empty/falsy values or a valid Snowflake identifier.
+ * Used for optional fields like role and warehouse in OAuth config.
+ */
+export function isOptionalSnowflakeIdentifier(
+  s: unknown,
+  validator: (s: unknown) => boolean
+): boolean {
+  if (!s || (typeof s === "string" && s.trim() === "")) {
+    return true;
+  }
+  return validator(s);
 }
 
 // Credentials Providers

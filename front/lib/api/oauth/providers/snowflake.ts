@@ -103,21 +103,21 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       throw new Error("Missing client ID for Snowflake");
     }
 
-    if (!extraConfig.snowflake_role) {
-      throw new Error("Missing Snowflake role");
-    }
-
     const account = extraConfig.snowflake_account;
-    const role = extraConfig.snowflake_role;
+    const role = isString(extraConfig.snowflake_role)
+      ? extraConfig.snowflake_role.trim()
+      : "";
 
-    // For Custom OAuth, use session:role:<ROLE> to specify the role.
-    // The role is set by admin as default, users can override during personal auth.
+    // For Custom OAuth, use session:role:<ROLE> to specify the role if provided.
+    // If no role is specified, use refresh_token scope to let Snowflake use the user's default role.
+    const scope = role ? `session:role:${role.toUpperCase()}` : "refresh_token";
+
     const qs = querystring.stringify({
       response_type: "code",
       client_id: clientId,
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("snowflake"),
-      scope: `session:role:${role.toUpperCase()}`,
+      scope,
     });
 
     // Build account-specific authorization URL
@@ -139,13 +139,11 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       if (extraConfig.mcp_server_id) {
         return true;
       }
-      // Initial admin setup - requires full credentials including default role and warehouse
+      // Initial admin setup - requires client credentials and account; role and warehouse are optional
       return !!(
         extraConfig.client_id &&
         extraConfig.client_secret &&
-        extraConfig.snowflake_account &&
-        extraConfig.snowflake_role &&
-        extraConfig.snowflake_warehouse
+        extraConfig.snowflake_account
       );
     }
     return Object.keys(extraConfig).length === 0;
@@ -198,18 +196,16 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       snowflake_warehouse,
     } = extraConfig;
 
-    // Validate that all are strings before using them
+    // Validate required fields are strings
     if (
       !isString(client_secret) ||
       !isString(client_id) ||
-      !isString(snowflake_account) ||
-      !isString(snowflake_role) ||
-      !isString(snowflake_warehouse)
+      !isString(snowflake_account)
     ) {
       return new Err({
         code: "credential_retrieval_failed",
         message:
-          "Missing or invalid client_id, client_secret, snowflake_account, snowflake_role, or snowflake_warehouse in extraConfig",
+          "Missing or invalid client_id, client_secret, or snowflake_account in extraConfig",
       });
     }
 
@@ -218,8 +214,10 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         client_secret,
         client_id,
         snowflake_account,
-        snowflake_role,
-        snowflake_warehouse,
+        snowflake_role: isString(snowflake_role) ? snowflake_role : "",
+        snowflake_warehouse: isString(snowflake_warehouse)
+          ? snowflake_warehouse
+          : "",
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
     });
@@ -258,36 +256,29 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
           snowflake_warehouse: wsWarehouse,
         } = connectionResult.value.metadata;
 
-        if (
-          !isString(wsClientId) ||
-          !isString(wsAccount) ||
-          !isString(wsRole) ||
-          !isString(wsWarehouse)
-        ) {
+        if (!isString(wsClientId) || !isString(wsAccount)) {
           throw new Error(
             "Workspace connection is missing required Snowflake configuration. " +
               "Please ask an admin to reconfigure the MCP server connection."
           );
         }
 
-        // Use user-provided role if specified, otherwise use the default from workspace connection.
-        let role = wsRole;
         const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
-        if (trimmedUserRole) {
-          if (!isValidSnowflakeRole(trimmedUserRole)) {
-            throw new Error(
-              `Invalid Snowflake role format: "${trimmedUserRole}". ` +
-                "Role must start with a letter or underscore and contain only alphanumeric characters and underscores."
-            );
-          }
-          role = trimmedUserRole;
+        if (trimmedUserRole && !isValidSnowflakeRole(trimmedUserRole)) {
+          throw new Error(
+            `Invalid Snowflake role format: "${trimmedUserRole}". ` +
+              "Role must start with a letter or underscore and contain only alphanumeric characters and underscores."
+          );
         }
+
+        // Use user-provided role if specified, otherwise fall back to workspace default.
+        const role = trimmedUserRole || (isString(wsRole) ? wsRole : "");
 
         return {
           client_id: wsClientId,
           snowflake_account: wsAccount,
           snowflake_role: role,
-          snowflake_warehouse: wsWarehouse,
+          snowflake_warehouse: isString(wsWarehouse) ? wsWarehouse : "",
         };
       }
     }
@@ -303,11 +294,18 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
   ): Promise<Result<void, { message: string }>> {
     const { snowflake_account, snowflake_warehouse } = connection.metadata;
 
-    if (!isString(snowflake_account) || !isString(snowflake_warehouse)) {
+    if (!isString(snowflake_account)) {
       return new Err({
-        message:
-          "Missing Snowflake account or warehouse configuration. Please try again.",
+        message: "Missing Snowflake account configuration. Please try again.",
       });
+    }
+
+    // If no warehouse is configured, skip warehouse validation — Snowflake will use the default
+    const warehouse = isString(snowflake_warehouse)
+      ? snowflake_warehouse.trim()
+      : "";
+    if (!warehouse) {
+      return new Ok(undefined);
     }
 
     // Get the access token
@@ -329,7 +327,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     const testResult = await this.testWarehouseAccess(
       snowflake_account,
       accessToken,
-      snowflake_warehouse
+      warehouse
     );
 
     if (testResult.isErr()) {

@@ -14,6 +14,7 @@ import { SnowflakeKeyPairCredentialsSchema } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
@@ -71,12 +72,13 @@ async function getClientFromAuthInfo(
   const warehouse = authInfo?.extra?.snowflake_warehouse;
   const token = authInfo?.token;
 
-  if (typeof account === "string" && typeof warehouse === "string" && token) {
+  if (typeof account === "string" && token) {
+    const warehouseStr = isString(warehouse) ? warehouse : "";
     return new Ok(
       new SnowflakeClient(
         account,
         { type: "oauth", token },
-        warehouse,
+        warehouseStr,
         queryTagMetadata
       )
     );
