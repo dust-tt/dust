@@ -5,9 +5,10 @@ import { Op } from "sequelize";
 makeScript({}, async ({ execute }, logger) => {
   const where = {
     type: "google_drive",
-    firstSyncProgress: {
-      [Op.not]: null,
-    },
+    [Op.and]: [
+      { firstSyncProgress: { [Op.not]: null } },
+      { firstSyncProgress: { [Op.ne]: "" } },
+    ],
   };
 
   const connectorsCount = await ConnectorModel.count({ where });
