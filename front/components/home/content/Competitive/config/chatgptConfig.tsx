@@ -100,7 +100,7 @@ export const chatgptConfig: ChatGPTConfig = {
         description:
           "Update CRM records, send follow-ups, and trigger workflows directly",
         dust: "yes",
-        competitor: "no",
+        competitor: "partial",
       },
       {
         name: "Multi-model AI",
@@ -112,13 +112,13 @@ export const chatgptConfig: ChatGPTConfig = {
         name: "Transparent pricing",
         description: "$29/mo per user with no hidden fees or minimums",
         dust: "yes",
-        competitor: "yes",
+        competitor: "no",
       },
       {
         name: "50+ integrations",
         description: "Salesforce, HubSpot, Slack, Notion, GitHub, and more",
         dust: "yes",
-        competitor: "no",
+        competitor: "yes",
       },
       {
         name: "Automated workflows",
@@ -132,7 +132,7 @@ export const chatgptConfig: ChatGPTConfig = {
         description:
           "Share agents, knowledge bases, and workflows across your sales team",
         dust: "yes",
-        competitor: "partial",
+        competitor: "no",
       },
       {
         name: "Interactive dashboards (Frames)",
@@ -144,7 +144,7 @@ export const chatgptConfig: ChatGPTConfig = {
         name: "SOC 2 Type II certified",
         description: "Enterprise-grade security and compliance",
         dust: "yes",
-        competitor: "no",
+        competitor: "yes",
       },
     ],
   },
