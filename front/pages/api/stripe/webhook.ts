@@ -888,44 +888,60 @@ async function handler(
             break;
           } // should not happen by definition of the subscription.updated event
 
-          // Billing cycle changed
-          if ("current_period_start" in previousAttributes) {
+          const subscriptionBecameActive =
+            previousAttributes.status === "incomplete" &&
+            stripeSubscription.status === "active";
+          const subscriptionCycleChanged =
+            "current_period_start" in previousAttributes;
+
+          if (subscriptionBecameActive || subscriptionCycleChanged) {
             const subscription = await SubscriptionResource.fetchByStripeId(
               stripeSubscription.id
             );
-            if (subscription) {
-              const workspace = await WorkspaceResource.fetchByModelId(
-                subscription.workspaceId
+            if (!subscription) {
+              logger.warn(
+                {
+                  stripeEventId: event.id,
+                  stripeEventType: event.type,
+                  stripeSubscriptionId: stripeSubscription.id,
+                },
+                "[Stripe Webhook] Subscription not found."
               );
-              assert(
-                workspace !== null,
-                "Workspace not found for subscription in customer.subscription.updated."
+              return res.status(200).json({ success: true });
+            }
+
+            const workspace = await WorkspaceResource.fetchByModelId(
+              subscription.workspaceId
+            );
+            assert(
+              workspace !== null,
+              "Workspace not found for subscription in customer.subscription.updated."
+            );
+
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspace.sId
+            );
+
+            const freeCreditsResult = await grantFreeCreditsForSubscription({
+              auth,
+              stripeSubscription,
+            });
+
+            if (freeCreditsResult.isErr()) {
+              logger.error(
+                {
+                  error: freeCreditsResult.error,
+                  subscriptionId: stripeSubscription.id,
+                  workspaceId: workspace.sId,
+                },
+                "[Stripe Webhook] Error granting free credits"
               );
+            }
 
-              const auth = await Authenticator.internalAdminForWorkspace(
-                workspace.sId
-              );
-
-              const freeCreditsResult = await grantFreeCreditsForSubscription({
-                auth,
-                stripeSubscription,
-              });
-
-              if (freeCreditsResult.isErr()) {
-                logger.error(
-                  {
-                    error: freeCreditsResult.error,
-                    subscriptionId: stripeSubscription.id,
-                    workspaceId: workspace.sId,
-                  },
-                  "[Stripe Webhook] Error granting free credits on renewal"
-                );
-              }
-
+            if (subscriptionCycleChanged) {
               const paygEnabled = await isPAYGEnabled(auth);
 
               if (isEnterpriseSubscription(stripeSubscription) && paygEnabled) {
-                // Allocate PAYG credits for the new billing cycle
                 const currentPeriod = StripeBillingPeriodSchema.safeParse({
                   current_period_start: stripeSubscription.current_period_start,
                   current_period_end: stripeSubscription.current_period_end,
@@ -972,15 +988,6 @@ async function handler(
                   );
                 }
               }
-            } else {
-              logger.warn(
-                {
-                  stripeEventId: event.id,
-                  stripeEventType: event.type,
-                  stripeSubscriptionId: stripeSubscription.id,
-                },
-                "[Stripe Webhook] Subscription not found for billing cycle change."
-              );
             }
           }
 
