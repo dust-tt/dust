@@ -23,7 +23,7 @@ makeScript({}, async ({ execute }, logger) => {
 
   const [updatedCount] = await ConnectorModel.update(
     {
-      firstSyncProgress: null,
+      firstSyncProgress: "",
     },
     { where }
   );

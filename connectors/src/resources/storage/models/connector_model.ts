@@ -29,7 +29,7 @@ export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare lastSyncFinishTime?: Date;
   declare lastSyncSuccessfulTime?: Date | null;
   declare firstSuccessfulSyncTime?: Date;
-  declare firstSyncProgress: string | null;
+  declare firstSyncProgress?: string;
   declare lastGCTime: Date | null;
 
   declare pausedAt?: Date | null;

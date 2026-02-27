@@ -70,7 +70,7 @@ export async function clearInitialSyncProgress(connectorId: ModelId) {
   localLogger.info("Clearing initial sync progress");
 
   await connector.update({
-    firstSyncProgress: null,
+    firstSyncProgress: "",
   });
 
   return new Ok(undefined);

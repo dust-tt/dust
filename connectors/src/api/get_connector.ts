@@ -38,9 +38,7 @@ const _getConnector = async (
     });
   }
 
-  let firstSyncProgress: string | undefined = connector.firstSyncProgress
-    ? connector.firstSyncProgress
-    : undefined;
+  let { firstSyncProgress } = connector;
 
   if (!firstSyncProgress) {
     switch (connector.type) {

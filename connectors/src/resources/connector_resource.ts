@@ -294,7 +294,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       lastSyncFinishTime: this.lastSyncFinishTime?.getTime(),
       lastSyncSuccessfulTime: this.lastSyncSuccessfulTime?.getTime(),
       firstSuccessfulSyncTime: this.firstSuccessfulSyncTime?.getTime(),
-      firstSyncProgress: this.firstSyncProgress ?? undefined,
+      firstSyncProgress: this.firstSyncProgress,
       errorType: this.errorType ?? undefined,
       configuration: this._configuration
         ? this.strategy.configurationJSON(this._configuration)
