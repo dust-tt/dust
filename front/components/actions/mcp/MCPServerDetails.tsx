@@ -55,7 +55,7 @@ export function MCPServerDetails({
     useMutateMCPServersViewsForAdmin(owner);
   const sendNotification = useSendNotification(true);
 
-  const defaults = useMemo((): MCPServerFormValues => {
+  const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
       return getMCPServerFormDefaults(
         mcpServerView,
