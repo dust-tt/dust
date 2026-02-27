@@ -44,6 +44,6 @@ jobs:
       - name: Format Check
         run: npm run biome
       - name: Import Cycle Check
-        run: node_modules/.bin/biome check --error-on-warnings --config-path biome.ci.json .
+        run: npm run biome -- --config-path biome.ci.json
       - name: GritQL Plugin Tests
         run: npm run test:grit
