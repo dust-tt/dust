@@ -45,10 +45,8 @@ function collectMatchedTagNames(str: string): Set<string> {
 export function preprocessMarkdownForEditor(markdown: string): string {
   const matchedPairs = collectMatchedTagNames(markdown);
 
-  let processed = markdown;
-
   // Step 1: Escape `<` only when not already followed by ZWS (avoids double-escaping round-trips).
-  processed = processed.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
+  let processed = markdown.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
 
   // Step 2: Normalize indented block-level tags
 
@@ -117,9 +115,11 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       const isNestedChild = validNestedPositions.has(offset);
 
       if (matchedPairs.has(normalized) && (isAtLineStart || isNestedChild)) {
-        // Don't un-escape if the tag has attributes — those cause schema violations
+        // Don't un-escape if the tag has attributes — those cause schema violations.
+        // When we skip un-escaping, openCount is NOT incremented, so the closing tag
+        // also stays escaped automatically.
         if (rest !== "") {
-          return match; // stay escaped
+          return match;
         }
         openCount.set(normalized, (openCount.get(normalized) ?? 0) + 1);
         validNestedPositions.add(offset + match.length);
