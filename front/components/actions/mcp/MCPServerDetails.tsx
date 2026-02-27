@@ -23,7 +23,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 interface MCPServerDetailsProps {
@@ -72,18 +72,16 @@ export function MCPServerDetails({
   }, [mcpServerView, mcpServerWithViews, spaces]);
 
   const form = useForm<MCPServerFormValues>({
-    defaultValues: defaults,
+    values: defaults,
     mode: "onChange",
     shouldUnregister: false, // Keep all fields registered even when not rendered
+    resetOptions: {
+      keepDirtyValues: true, // Preserve user edits on SWR refetch.
+    },
     resolver: mcpServerView
       ? zodResolver(getMCPServerFormSchema(mcpServerView))
       : undefined,
   });
-
-  // Reset form when defaults change (e.g., when switching between servers)
-  useEffect(() => {
-    form.reset(defaults);
-  }, [defaults, form]);
 
   const applyToolChanges = async (
     toolChanges: Array<{
