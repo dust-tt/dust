@@ -72,7 +72,7 @@ async function getClientFromAuthInfo(
   const warehouse = authInfo?.extra?.snowflake_warehouse;
   const token = authInfo?.token;
 
-  if (typeof account === "string" && token) {
+  if (isString(account) && token) {
     const warehouseStr = isString(warehouse) ? warehouse : "";
     return new Ok(
       new SnowflakeClient(
