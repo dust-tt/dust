@@ -300,13 +300,9 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       });
     }
 
-    // If no warehouse is configured, skip warehouse validation — Snowflake will use the default
     const warehouse = isString(snowflake_warehouse)
       ? snowflake_warehouse.trim()
       : "";
-    if (!warehouse) {
-      return new Ok(undefined);
-    }
 
     // Get the access token
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -323,11 +319,11 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
     const accessToken = accessTokenRes.value.access_token;
 
-    // Test the connection and warehouse access
-    const testResult = await this.testWarehouseAccess(
+    // Test the connection (and warehouse access if configured)
+    const testResult = await this.testConnectionAndWarehouse(
       snowflake_account,
       accessToken,
-      warehouse
+      warehouse || undefined
     );
 
     if (testResult.isErr()) {
@@ -340,12 +336,13 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   /**
-   * Test that the OAuth token can connect and use the specified warehouse.
+   * Test that the OAuth token can connect to Snowflake, and optionally
+   * verify access to the specified warehouse.
    */
-  private async testWarehouseAccess(
+  private async testConnectionAndWarehouse(
     account: string,
     accessToken: string,
-    warehouse: string
+    warehouse?: string
   ): Promise<Result<void, Error>> {
     // Configure SDK to suppress verbose logging
     snowflake.configure({ logLevel: "OFF" });
@@ -369,29 +366,31 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         });
       });
 
-      // Try to use the warehouse
-      try {
-        await new Promise<void>((resolve, reject) => {
-          connection.execute({
-            sqlText: `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`,
-            complete: (err: SnowflakeError | undefined) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve();
-              }
-            },
+      // Try to use the warehouse if one is configured
+      if (warehouse) {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            connection.execute({
+              sqlText: `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`,
+              complete: (err: SnowflakeError | undefined) => {
+                if (err) {
+                  reject(err);
+                } else {
+                  resolve();
+                }
+              },
+            });
           });
-        });
-      } catch {
-        // Clean up connection
-        connection.destroy(() => {});
-        return new Err(
-          new Error(
-            `The role does not have access to warehouse "${warehouse}". ` +
-              `Please ensure the role has USAGE privilege on the warehouse, or choose a different warehouse.`
-          )
-        );
+        } catch {
+          // Clean up connection
+          connection.destroy(() => {});
+          return new Err(
+            new Error(
+              `The role does not have access to warehouse "${warehouse}". ` +
+                `Please ensure the role has USAGE privilege on the warehouse, or choose a different warehouse.`
+            )
+          );
+        }
       }
 
       // Clean up connection
