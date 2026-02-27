@@ -51,6 +51,16 @@ const isSidePanelSupported = (): boolean => {
 };
 
 /**
+ * Returns true only when the native side panel is both supported and actually
+ * functional. Arc is Chromium-based so it exposes chrome.sidePanel, but it
+ * does not implement the native side panel UI — we fall back to the content
+ * script sidebar there.
+ */
+const useNativeSidePanel = (): boolean => {
+  return isSidePanelSupported() && !navigator.userAgent.includes("Arc/");
+};
+
+/**
  * Helper function to check if we can inject content script into a URL
  */
 const canInjectContentScript = (url: string | undefined): boolean => {
@@ -77,10 +87,14 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
 /**
  * Listener to set up context menus when the extension is installed.
  */
-// Ensure Chrome never intercepts action clicks for the side panel — we handle
-// them ourselves in chrome.action.onClicked so the content script sidebar works.
+// In Chrome (native side panel), let the browser handle action icon clicks
+// automatically. In Arc and other browsers without a working side panel UI,
+// keep openPanelOnActionClick false so chrome.action.onClicked always fires
+// and we can toggle the content script sidebar instead.
 if (isSidePanelSupported()) {
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+  void chrome.sidePanel.setPanelBehavior({
+    openPanelOnActionClick: useNativeSidePanel(),
+  });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -289,7 +303,7 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
   if (!isExtensionReady && tab) {
     // Store the handler for later use when the extension is ready.
     state.lastHandler = handler;
-    if (isSidePanelSupported()) {
+    if (useNativeSidePanel()) {
       void chrome.sidePanel.open({ windowId: tab.windowId });
     } else if (tab.id && canInjectContentScript(tab.url)) {
       // Open the sidebar via content script
@@ -511,7 +525,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
     }
 
     const openSidebar = async () => {
-      if (isSidePanelSupported()) {
+      if (useNativeSidePanel()) {
         await chrome.sidePanel.open({ windowId: tab.windowId });
       } else {
         if (!tab.id || !canInjectContentScript(tab.url)) {
