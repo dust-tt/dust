@@ -381,6 +381,30 @@ Toto:
     expect(text).toContain("Hello");
   });
 
+  it("should handle instruction blocks with attributes in top-level and nested contexts", () => {
+    // Test the exact production scenario with attributes
+    expect(() => {
+      editor.commands.setContent(
+        `Hello
+
+<task type="main">
+    <rule type="foo">
+    </rule>
+    <rule>
+    </rule>
+</task>`,
+        {
+          contentType: "markdown",
+        }
+      );
+    }).not.toThrow();
+
+    // Should have parsed content
+    const json = editor.getJSON();
+    expect(json.content).toBeDefined();
+    expect(json.content?.length).toBeGreaterThan(0);
+  });
+
   it("should work on deep-nested instruction blocks with NBSP", () => {
     editor.commands.setContent(
       // Contains NBSP before the `1. something`

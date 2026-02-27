@@ -39,10 +39,19 @@ function collectMatchedTagNames(str: string): Set<string> {
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
 export function preprocessMarkdownForEditor(markdown: string): string {
-  const matchedPairs = collectMatchedTagNames(markdown);
+  // Step 0: Escape instruction block tags with attributes to prevent schema violations
+  // Nested blocks with attributes cause invalid node structures in BlockIdExtension
+  // Match any instruction block opening tag with attributes: <tag attr="...">
+  // Only escape when they have whitespace+attributes (i.e., attributes present)
+  let processed = markdown.replace(
+    new RegExp(`<(${TAG_NAME_PATTERN})\\s+[^>]*>`, "g"),
+    "<" + ZWS + "$1>"
+  );
+
+  const matchedPairs = collectMatchedTagNames(processed);
 
   // Step 1: Escape `<` only when not already followed by ZWS (avoids double-escaping round-trips).
-  let processed = markdown.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
+  processed = processed.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
 
   // Step 2: Normalize indented block-level tags
 
