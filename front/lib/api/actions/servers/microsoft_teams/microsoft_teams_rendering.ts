@@ -66,7 +66,7 @@ export function renderChats(chats: TeamsChat[]): string {
         `Chat Type: ${chat.chatType}`,
         `Web URL: ${chat.webUrl}`,
         `Created: ${new Date(chat.createdDateTime).toISOString()}`,
-        `Last Updated: ${new Date(chat.lastUpdatedDateTime).toISOString()}`,
+        `Last Updated: ${new Date(chat.lastMessagePreview?.createdDateTime ?? chat.lastUpdatedDateTime).toISOString()}`,
       ];
 
       if (chat.topic) {
