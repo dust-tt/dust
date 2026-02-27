@@ -108,6 +108,9 @@ export interface Testimonial {
   metric?: string;
 }
 
+// Generic for titled sections with a rows array
+type TitledSectionWithRows<T> = TitledSection & { rows: T[] };
+
 // ===== Section configs =====
 
 export interface HeroConfig {
@@ -122,13 +125,10 @@ export type QuickAnswerConfig = OptionallyTitledSection & {
   rows: QuickAnswerRow[];
 };
 
-export type CorePositioningConfig = TitledSection & {
-  rows: CorePositioningRow[];
-};
+export type CorePositioningConfig = TitledSectionWithRows<CorePositioningRow>;
 
-export type FeatureComparisonConfig = TitledSection & {
-  rows: FeatureComparisonRow[];
-};
+export type FeatureComparisonConfig =
+  TitledSectionWithRows<FeatureComparisonRow>;
 
 export type WhenCompetitorBetterConfig = TitledSection & {
   cards: CompetitorAdvantageCard[];
@@ -138,9 +138,8 @@ export interface SocialProofConfig {
   testimonials: Testimonial[];
 }
 
-export type IntegrationComparisonConfig = TitledSection & {
-  rows: IntegrationComparisonRow[];
-};
+export type IntegrationComparisonConfig =
+  TitledSectionWithRows<IntegrationComparisonRow>;
 
 export type UseCaseFitConfig = TitledSection & {
   dustUseCases: UseCaseFitItem[];

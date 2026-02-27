@@ -1,5 +1,3 @@
-import { Button, ExternalLinkIcon, RocketIcon } from "@dust-tt/sparkle";
-
 import {
   FullWidthSection,
   H1,
@@ -10,6 +8,7 @@ import {
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { Button, ExternalLinkIcon, RocketIcon } from "@dust-tt/sparkle";
 
 import type { IntegrationBase } from "../types";
 

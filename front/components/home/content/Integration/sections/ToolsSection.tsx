@@ -1,6 +1,5 @@
-import { BookOpenIcon, PlusIcon } from "@dust-tt/sparkle";
-
 import { H2 } from "@app/components/home/ContentComponents";
+import { BookOpenIcon, PlusIcon } from "@dust-tt/sparkle";
 
 import type { IntegrationTool } from "../types";
 

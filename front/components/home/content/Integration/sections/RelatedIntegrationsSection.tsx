@@ -1,12 +1,12 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { ArrowRightIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
 
 import { H2 } from "@app/components/home/ContentComponents";
 import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
+import { ArrowRightIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 
 import type { IntegrationBase } from "../types";
 

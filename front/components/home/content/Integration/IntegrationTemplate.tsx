@@ -1,13 +1,13 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import Head from "next/head";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
 
 import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
 import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 import { IntegrationHeroSection } from "./sections/IntegrationHeroSection";
 import { RelatedIntegrationsSection } from "./sections/RelatedIntegrationsSection";

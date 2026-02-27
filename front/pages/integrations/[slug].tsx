@@ -1,6 +1,4 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import type { GetStaticPaths, GetStaticProps } from "next";
-import type { ReactElement } from "react";
 
 // Import all enrichment configs
 import { integrationEnrichments } from "@app/components/home/content/Integration/configs";
@@ -15,6 +13,8 @@ import {
   getRelatedIntegrations,
 } from "@app/components/home/content/Integration/utils/integrationRegistry";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import type { GetStaticPaths, GetStaticProps } from "next";
+import type { ReactElement } from "react";
 
 interface IntegrationPageProps {
   integration: IntegrationPageConfig;

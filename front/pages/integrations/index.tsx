@@ -1,12 +1,10 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { Button, SearchInput } from "@dust-tt/sparkle";
-import type { GetStaticProps } from "next";
-import Head from "next/head";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useMemo, useState } from "react";
 
+import {
+  FullWidthSection,
+  H1,
+  P,
+} from "@app/components/home/ContentComponents";
 import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
 import type {
   IntegrationBase,
@@ -16,11 +14,6 @@ import {
   buildIntegrationRegistry,
   getAllCategories,
 } from "@app/components/home/content/Integration/utils/integrationRegistry";
-import {
-  FullWidthSection,
-  H1,
-  P,
-} from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -28,6 +21,13 @@ import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
+import { Button, SearchInput } from "@dust-tt/sparkle";
+import type { GetStaticProps } from "next";
+import Head from "next/head";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useMemo, useState } from "react";
 
 interface IntegrationsPageProps {
   integrations: IntegrationBase[];
