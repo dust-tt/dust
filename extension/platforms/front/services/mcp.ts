@@ -1,5 +1,5 @@
-import type { DustAPI } from "@dust-tt/client";
-import { DustMcpServerTransport } from "@dust-tt/client";
+import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import type { WorkspaceType } from "@app/types/user";
 import { registerAllTools } from "@extension/platforms/front/tools";
 import { McpService } from "@extension/shared/services/mcp";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
@@ -12,7 +12,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export class FrontMcpService extends McpService {
   private frontContext: WebViewContext | null = null;
   private server: McpServer | null = null;
-  private transport: DustMcpServerTransport | null = null;
+  private transport: BrowserMCPTransport | null = null;
   private serverId: string | undefined = undefined;
 
   constructor() {
@@ -55,7 +55,7 @@ export class FrontMcpService extends McpService {
    */
   async connectServer(
     server: McpServer,
-    dustAPI: DustAPI,
+    owner: WorkspaceType,
     onServerIdReceived: (serverId: string) => void
   ): Promise<void> {
     if (!server) {
@@ -70,10 +70,14 @@ export class FrontMcpService extends McpService {
       }
 
       // Create our custom transport with workspace-scoped registration.
-      const transport = new DustMcpServerTransport(dustAPI, (serverId) => {
-        this.serverId = serverId;
-        onServerIdReceived(serverId);
-      });
+      const transport = new BrowserMCPTransport(
+        owner.sId,
+        "front-extension-client",
+        (serverId) => {
+          this.serverId = serverId;
+          onServerIdReceived(serverId);
+        }
+      );
 
       // Connect the server to the transport.
       await server.connect(transport);
@@ -91,14 +95,14 @@ export class FrontMcpService extends McpService {
    * This is a convenience method that provides the main API for client code
    */
   async getOrCreateServer(
-    dustAPI: DustAPI,
+    owner: WorkspaceType,
     onServerIdReceived: (serverId: string) => void
   ): Promise<{ server: McpServer | null; serverId: string | undefined }> {
     try {
       // Reuse existing server if we have one
       if (this.server) {
         // Connect if not already connected
-        await this.connectServer(this.server, dustAPI, onServerIdReceived);
+        await this.connectServer(this.server, owner, onServerIdReceived);
         return {
           server: this.server,
           serverId: this.serverId,
@@ -115,7 +119,7 @@ export class FrontMcpService extends McpService {
       }
 
       // Connect the server
-      await this.connectServer(server, dustAPI, onServerIdReceived);
+      await this.connectServer(server, owner, onServerIdReceived);
 
       return {
         server: server,
