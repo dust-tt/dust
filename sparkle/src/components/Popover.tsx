@@ -35,12 +35,15 @@ const PopoverContent = React.forwardRef<
     },
     ref
   ) => {
-    const handleCloseAutoFocus = (event: Event) => {
-      if (preventAutoFocusOnClose) {
-        event.preventDefault();
-      }
-      onCloseAutoFocus?.(event);
-    };
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
+        }
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
     const content = (
       <PopoverPrimitive.Content
         ref={ref}

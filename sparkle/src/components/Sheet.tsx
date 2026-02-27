@@ -113,32 +113,41 @@ const SheetContent = React.forwardRef<
     },
     ref
   ) => {
-    const handleCloseAutoFocus = (event: Event) => {
-      if (preventAutoFocusOnClose) {
-        event.preventDefault();
-      }
-      onCloseAutoFocus?.(event);
-    };
-
-    const handleOpenAutoFocus = (event: Event) => {
-      if (preventAutoFocusOnOpen) {
-        event.preventDefault();
-      }
-      onOpenAutoFocus?.(event);
-    };
-
-    const onKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        const root = e.currentTarget as HTMLElement;
-        const target = root.querySelector<HTMLButtonElement>(
-          '[data-sheet-save="true"]:not(:disabled)'
-        );
-        if (target) {
-          e.preventDefault();
-          target.click();
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
         }
-      }
-    };
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
+
+    const handleOpenAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnOpen) {
+          event.preventDefault();
+        }
+        onOpenAutoFocus?.(event);
+      },
+      [preventAutoFocusOnOpen, onOpenAutoFocus]
+    );
+
+    const onKeyDownCapture = React.useCallback(
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          const root = e.currentTarget as HTMLElement;
+          const target = root.querySelector<HTMLButtonElement>(
+            '[data-sheet-save="true"]:not(:disabled)'
+          );
+          if (target) {
+            e.preventDefault();
+            target.click();
+          }
+        }
+      },
+      []
+    );
 
     return (
       <SheetPortal>
