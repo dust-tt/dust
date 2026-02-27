@@ -18,7 +18,7 @@ export function clientFetch(
 
     // Include credentials for all requests targeting the API (needed for
     // cross-origin requests from the SPA on app.dust.tt to the API on dust.tt).
-    if (input.startsWith(baseUrl)) {
+    if (input.startsWith(baseUrl) && init?.credentials === undefined) {
       init = { ...init, credentials: "include" };
     }
   }

@@ -1,9 +1,11 @@
+import type { ClientMessageOrigin } from "@app/types/assistant/conversation";
 import type { RichAgentMention } from "@app/types/assistant/mentions";
 import { createContext, useCallback, useState } from "react";
 
 export const InputBarContext = createContext<{
   animate: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
+  origin: ClientMessageOrigin;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
 }>({
@@ -11,9 +13,16 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
+  origin: "web",
 });
 
-export function InputBarProvider({ children }: { children: React.ReactNode }) {
+export function InputBarProvider({
+  children,
+  origin,
+}: {
+  children: React.ReactNode;
+  origin: ClientMessageOrigin;
+}) {
   const [animate, setAnimate] = useState<boolean>(false);
 
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
@@ -46,6 +55,7 @@ export function InputBarProvider({ children }: { children: React.ReactNode }) {
     <InputBarContext.Provider
       value={{
         animate,
+        origin,
         setAnimate,
         getAndClearSelectedAgent,
         setSelectedAgent: setSelectedAgentOuter,

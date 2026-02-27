@@ -154,7 +154,7 @@ export const MainPage = () => {
             >
               <NoOpConversationSidePanelProvider>
                 <GenerationContextProvider>
-                  <InputBarProvider>
+                  <InputBarProvider origin="extension">
                     <ConversationContainerVirtuoso
                       owner={workspace}
                       user={user}

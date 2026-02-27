@@ -67,15 +67,23 @@ export type LightMessageType =
  * origin should be easily categorizable as either "programmatic" or "user".
  *
  */
+
+// Origins set explicitly by front-end clients (web app, extension, etc.).
+export type ClientMessageOrigin =
+  | "web"
+  | "project_kickoff"
+  | "extension"
+  | "agent_copilot";
+
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
   // below are API usages dedicated to standard product features.
+  | ClientMessageOrigin
   | "api"
   | "cli"
   | "cli_programmatic"
   | "email"
   | "excel"
-  | "extension"
   | "gsheet"
   | "make"
   | "n8n"
@@ -87,17 +95,14 @@ export type UserMessageOrigin =
   | "transcript"
   | "triggered_programmatic"
   | "triggered"
-  | "web"
   | "zapier"
   | "zendesk"
   // TODO onboarding_conversation, agent_copilot, and project_kickoff aren't message origins. They
   // have been used as a hack but should be removed and most likely handled as message metadata
   // (to be created).
   | "onboarding_conversation"
-  | "agent_copilot"
   // for internal use, for the butler in projects
-  | "project_butler"
-  | "project_kickoff";
+  | "project_butler";
 
 export type UserMessageContext = {
   username: string;
