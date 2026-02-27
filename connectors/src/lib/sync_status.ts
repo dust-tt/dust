@@ -66,8 +66,6 @@ export async function clearInitialSyncProgress(connectorId: ModelId) {
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
-  const localLogger = getActivityLogger(connector);
-  localLogger.info("Clearing initial sync progress");
 
   await connector.update({
     firstSyncProgress: "",
