@@ -805,6 +805,7 @@ export async function executePostMessage(
 ) {
   const slackClient = await getSlackClient(accessToken);
 
+  // If `to` is an array of user IDs, open or create a group DM (idempotent).
   const resolvedTo = Array.isArray(to)
     ? await (async () => {
         const openResp = await slackClient.conversations.open({

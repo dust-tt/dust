@@ -93,9 +93,9 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       to: z
         .union([z.string(), z.string().array().min(2)])
         .describe(
-          "The channel or user to post the message to. Accepted values are the channel name, the channel id or the user id." +
-            "To send to a group DM, pass an array of at least 2 user IDs. " +
-            "Messages sent to users will be sent as a direct message."
+          "Use a string to post to a channel (name or ID) or a single user (user ID for DM). " +
+            "Use an array of at least 2 user IDs to create a group DM (e.g. ['U123', 'U456']). " +
+            "Arrays only support user IDs, not channel names or IDs."
         ),
       message: z
         .string()
