@@ -7,7 +7,7 @@ import {
   DUST_SQLITE_INSTRUCTIONS,
   getGenericDialectInstructions,
   SALESFORCE_INSTRUCTIONS,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/dialect_instructions";
+} from "@app/lib/api/actions/servers/tables_query/dialect_instructions";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export function getSchemaContent(schemas: { dbml: string }[]): {
