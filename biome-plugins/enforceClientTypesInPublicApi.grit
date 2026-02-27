@@ -23,7 +23,7 @@ language js
     $filename <: not r".*/core/.*",
     register_diagnostic(
         span = $source,
-        message = "Files outside /api/v1/ or lib/actions/mcp_internal_actions/ cannot import from '@dust-tt/client'.",
+        message = "Files outside /api/v1/, lib/actions/mcp_internal_actions/ or lib/api/actions/mcp_internal_actions/ cannot import from '@dust-tt/client'.",
         severity = "error"
     )
 }
