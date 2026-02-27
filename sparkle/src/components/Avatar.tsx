@@ -227,7 +227,7 @@ export function Avatar({
       )}
       style={hexBgColor ? { backgroundColor: hexBgColor } : undefined}
     >
-      {size === "auto" && <div className="s-aspect-square" />}
+      {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visualToUse === "string" ? (
         <img
           src={visualToUse}
