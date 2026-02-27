@@ -32,7 +32,7 @@ async function getDirectoryUserEmails(
         directoryUserEmails.add(user.email.toLowerCase());
       }
     });
-    after = response.listMetadata?.after;
+    after = response.listMetadata?.after ?? undefined;
   } while (after);
 
   return directoryUserEmails;

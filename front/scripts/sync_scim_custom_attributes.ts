@@ -54,7 +54,7 @@ async function getAllDirectories(): Promise<Directory[]> {
         ...(after && { after }),
       });
     directories.push(...response.data);
-    after = response.listMetadata?.after;
+    after = response.listMetadata?.after ?? undefined;
   } while (after);
 
   return directories;
@@ -76,7 +76,7 @@ async function getDirectoryUsers(
       ...(after && { after }),
     });
     directoryUsers.push(...response.data);
-    after = response.listMetadata?.after;
+    after = response.listMetadata?.after ?? undefined;
   } while (after);
 
   return directoryUsers;

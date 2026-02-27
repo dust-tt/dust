@@ -3,6 +3,7 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isRecord } from "@app/types/shared/utils/general";
 import type { ActionContext, Event } from "@workos-inc/node";
 
 // WorkOS sends webhooks from a fixed set of IP addresses.
@@ -45,6 +46,9 @@ export async function validateWorkOSWebhookEvent(
   const workOS = getWorkOS();
 
   try {
+    if (typeof payload !== "object" || payload === null || !isRecord(payload)) {
+      return new Err(new Error("Invalid webhook payload format"));
+    }
     const verifiedEvent = await workOS.webhooks.constructEvent({
       payload,
       sigHeader: signatureHeader,
