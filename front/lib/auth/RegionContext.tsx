@@ -139,7 +139,3 @@ export function useRegionContext(): RegionContextValue {
   }
   return context;
 }
-
-export function useOptionalRegionContext(): RegionContextValue | null {
-  return useContext(RegionContext);
-}

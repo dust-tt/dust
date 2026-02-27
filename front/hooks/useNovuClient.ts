@@ -1,4 +1,4 @@
-import { useOptionalRegionContext } from "@app/lib/auth/RegionContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useUser } from "@app/lib/swr/user";
 import { Novu } from "@novu/js";
 import { useEffect, useMemo, useState } from "react";
@@ -41,7 +41,7 @@ const getNovuEnvForRegion = ({
 
 export const useNovuClient = () => {
   const { user } = useUser();
-  const regionContext = useOptionalRegionContext();
+  const regionContext = useRegionContext();
   const [novuClient, setNovuClient] = useState<Novu | null>(null);
 
   const novuConfig = useMemo(() => {
