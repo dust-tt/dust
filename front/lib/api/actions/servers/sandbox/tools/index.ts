@@ -6,6 +6,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
+import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -87,9 +88,17 @@ export function createSandboxTools(
 
       const { sandbox } = ensureResult.value;
 
+      const sandboxToken = generateSandboxExecToken({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        conversationId: conversation.sId,
+        userId: auth.getNonNullableUser().sId,
+        sandboxId: sandbox.sId,
+      });
+
       const execResult = await sandbox.exec(auth, command, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
         timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
+        envVars: { DUST_SANDBOX_TOKEN: sandboxToken },
       });
       if (execResult.isErr()) {
         return new Err(new MCPError(execResult.error.message));
