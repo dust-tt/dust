@@ -3,7 +3,7 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
-import React, { useCallback } from "react";
+import React from "react";
 
 import { Button } from "./Button";
 
@@ -50,12 +50,9 @@ export function Pagination({
       ? (pageIndex + 1) * pageSize
       : rowCount;
 
-  const onPaginationButtonClick = useCallback(
-    (pageIndex: number) => {
-      setPagination({ pageSize, pageIndex });
-    },
-    [pageIndex, setPagination]
-  );
+  const onPaginationButtonClick = (pageIndex: number) => {
+    setPagination({ pageSize, pageIndex });
+  };
 
   const pageButtons: React.ReactNode[] = getPageButtons(
     pageIndex,

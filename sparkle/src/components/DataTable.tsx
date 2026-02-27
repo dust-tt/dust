@@ -142,7 +142,9 @@ export function DataTable<TData extends TBaseData>({
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const columnFilters: ColumnFiltersState = filterColumn
+    ? [{ id: filterColumn, value: filter }]
+    : [];
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
   const isClientSideSortingEnabled =
@@ -192,7 +194,6 @@ export function DataTable<TData extends TBaseData>({
     }),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
-    onColumnFiltersChange: setColumnFilters,
     ...(enableRowSelection && {
       onRowSelectionChange,
     }),
@@ -212,12 +213,6 @@ export function DataTable<TData extends TBaseData>({
     enableMultiRowSelection,
     getRowId,
   });
-
-  useEffect(() => {
-    if (filterColumn) {
-      table.getColumn(filterColumn)?.setFilterValue(filter);
-    }
-  }, [filter, filterColumn]);
 
   return (
     <div className={cn("s-flex s-flex-col s-gap-2", className, widthClassName)}>
