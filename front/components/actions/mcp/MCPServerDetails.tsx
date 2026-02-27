@@ -23,7 +23,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 interface MCPServerDetailsProps {
@@ -55,7 +55,7 @@ export function MCPServerDetails({
     useMutateMCPServersViewsForAdmin(owner);
   const sendNotification = useSendNotification(true);
 
-  const getDefaults = (): MCPServerFormValues => {
+  const defaults = useMemo((): MCPServerFormValues => {
     if (mcpServerView) {
       return getMCPServerFormDefaults(
         mcpServerView,
@@ -69,25 +69,18 @@ export function MCPServerDetails({
       toolSettings: {},
       sharingSettings: {},
     };
-  };
+  }, [mcpServerView, mcpServerWithViews, spaces]);
 
   const form = useForm<MCPServerFormValues>({
-    defaultValues: getDefaults(),
+    values: defaults,
     mode: "onChange",
     shouldUnregister: false, // Keep all fields registered even when not rendered
+    resetOptions: {
+      keepDirtyValues: true, // Preserve user edits on SWR refetch.
+    },
     resolver: mcpServerView
       ? zodResolver(getMCPServerFormSchema(mcpServerView))
       : undefined,
-  });
-
-  // Full reset when switching between servers.
-  const prevServerIdRef = useRef(mcpServerView?.server.sId);
-  useEffect(() => {
-    const serverId = mcpServerView?.server.sId;
-    if (serverId !== prevServerIdRef.current) {
-      prevServerIdRef.current = serverId;
-      form.reset(getDefaults());
-    }
   });
 
   const applyToolChanges = async (
@@ -240,7 +233,7 @@ export function MCPServerDetails({
       async (values) => {
         try {
           // Calculate what changed.
-          const diff = diffMCPServerForm(getDefaults(), values, {
+          const diff = diffMCPServerForm(defaults, values, {
             isRemote: isRemoteMCPServerType(mcpServerView.server),
             requiresBearerToken: requiresBearerTokenConfiguration(
               mcpServerView.server
@@ -332,7 +325,7 @@ export function MCPServerDetails({
   };
 
   const onCancel = () => {
-    form.reset(getDefaults());
+    form.reset(defaults);
   };
 
   return (
