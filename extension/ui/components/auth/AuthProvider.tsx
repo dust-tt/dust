@@ -168,7 +168,7 @@ export function ExtensionAuthProvider({
       isAdmin: isAdmin(workspace),
       isBuilder: isBuilder(workspace),
       featureFlags,
-      vizUrl: "",
+      vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
     };
   }, [user, workspace, featureFlags]);
 

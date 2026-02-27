@@ -163,6 +163,8 @@ export const getConfig = async ({
         NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
           process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
