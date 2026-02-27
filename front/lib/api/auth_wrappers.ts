@@ -4,7 +4,7 @@ import {
   getAPIKey,
   getApiKeyNameFromHeaders,
   getSession,
-  isSandboxToken,
+  isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -15,6 +15,8 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -373,19 +375,8 @@ export function withPublicAPIAuthentication<T>(
 
       // Sandbox token authentication.
       const token = req.headers.authorization?.replace("Bearer ", "");
-      if (token && isSandboxToken(token)) {
-        const payload = verifySandboxExecToken(token);
-        if (!payload) {
-          return apiError(req, res, {
-            status_code: 401,
-            api_error: {
-              type: "invalid_sandbox_token_error",
-              message: "The sandbox token is invalid or expired.",
-            },
-          });
-        }
-
-        const authRes = await Authenticator.fromSandboxToken(payload, wId);
+      if (token && isSandboxTokenPrefix(token)) {
+        const authRes = await handleSandboxAuth(token, wId);
         if (authRes.isErr()) {
           return apiError(req, res, authRes.error);
         }
@@ -535,6 +526,27 @@ export function withTokenAuthentication<T>(
       return handler(req, res, session);
     }
   );
+}
+
+/**
+ * Verifies a sandbox token and returns an Authenticator for the sandbox user.
+ */
+async function handleSandboxAuth(
+  token: string,
+  wId: string
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  const payload = verifySandboxExecToken(token);
+  if (!payload) {
+    return new Err({
+      status_code: 401,
+      api_error: {
+        type: "invalid_sandbox_token_error",
+        message: "The sandbox token is invalid or expired.",
+      },
+    });
+  }
+
+  return Authenticator.fromSandboxToken(payload, wId);
 }
 
 /**

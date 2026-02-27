@@ -88,11 +88,10 @@ export function createSandboxTools(
 
       const { sandbox } = ensureResult.value;
 
-      const sandboxToken = generateSandboxExecToken({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        conversationId: conversation.sId,
-        userId: auth.getNonNullableUser().sId,
-        sandboxId: sandbox.sId,
+      const sandboxToken = generateSandboxExecToken(auth, {
+        conversation,
+        sandbox,
+        expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
       const execResult = await sandbox.exec(auth, command, {

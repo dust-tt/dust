@@ -3,9 +3,16 @@ import {
   SANDBOX_TOKEN_PREFIX,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
-
+import { Authenticator } from "@app/lib/auth";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import jwt from "jsonwebtoken";
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const TEST_SECRET = "test-sandbox-jwt-secret";
 
@@ -15,30 +22,53 @@ vi.mock("@app/lib/api/config", () => ({
   },
 }));
 
-const TOKEN_ARGS = {
-  workspaceId: "wks_abc123",
-  conversationId: "cnv_def456",
-  userId: "usr_ghi789",
-  sandboxId: "sbx_jkl012",
-} as const;
+async function setupTest() {
+  const user = await UserFactory.basic();
+  const workspace = await WorkspaceFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role: "admin" });
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+  await SpaceFactory.defaults(auth);
+
+  const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId: agentConfig.sId,
+    messagesCreatedAt: [],
+  });
+
+  const sandbox = await SandboxResource.makeNew(auth, {
+    conversationId: conversation.id,
+    providerId: "test-provider-id",
+    status: "running",
+  });
+
+  return { auth, conversation, sandbox };
+}
 
 describe("sandbox access tokens", () => {
-  test("round-trip: generate → verify → check claims", () => {
-    const token = generateSandboxExecToken(TOKEN_ARGS);
+  it("round-trip: generate → verify → check claims", async () => {
+    const { auth, conversation, sandbox } = await setupTest();
+
+    const token = generateSandboxExecToken(auth, { conversation, sandbox });
 
     expect(token.startsWith(SANDBOX_TOKEN_PREFIX)).toBe(true);
 
     const payload = verifySandboxExecToken(token);
 
     expect(payload).not.toBeNull();
-    expect(payload!.wId).toBe(TOKEN_ARGS.workspaceId);
-    expect(payload!.cId).toBe(TOKEN_ARGS.conversationId);
-    expect(payload!.uId).toBe(TOKEN_ARGS.userId);
-    expect(payload!.sbId).toBe(TOKEN_ARGS.sandboxId);
+    expect(payload!.wId).toBe(auth.getNonNullableWorkspace().sId);
+    expect(payload!.cId).toBe(conversation.sId);
+    expect(payload!.uId).toBe(auth.getNonNullableUser().sId);
+    expect(payload!.sbId).toBe(sandbox.sId);
   });
 
-  test("tampered token is rejected", () => {
-    const token = generateSandboxExecToken(TOKEN_ARGS);
+  it("tampered token is rejected", async () => {
+    const { auth, conversation, sandbox } = await setupTest();
+
+    const token = generateSandboxExecToken(auth, { conversation, sandbox });
 
     // Decode, modify, re-sign with a wrong secret.
     const jwtPart = token.slice(SANDBOX_TOKEN_PREFIX.length);
@@ -53,8 +83,10 @@ describe("sandbox access tokens", () => {
     expect(payload).toBeNull();
   });
 
-  test("token without sbt- prefix is rejected", () => {
-    const token = generateSandboxExecToken(TOKEN_ARGS);
+  it("token without sbt- prefix is rejected", async () => {
+    const { auth, conversation, sandbox } = await setupTest();
+
+    const token = generateSandboxExecToken(auth, { conversation, sandbox });
     const raw = token.slice(SANDBOX_TOKEN_PREFIX.length);
 
     expect(verifySandboxExecToken(raw)).toBeNull();
