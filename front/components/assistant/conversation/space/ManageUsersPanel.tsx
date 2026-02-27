@@ -1,5 +1,6 @@
+import type { MemberRowData } from "@app/components/members/MemberSelectionTable";
+import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
 import type {
@@ -10,9 +11,7 @@ import type {
 import {
   Button,
   CheckIcon,
-  createSelectionColumn,
   DataTable,
-  SearchInput,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -20,31 +19,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-interface UserRowData {
-  sId: string;
-  fullName: string;
-  email: string;
-  image: string;
-  onClick?: () => void;
-}
-
-interface UserRowInfo {
-  row: { original: UserRowData };
-}
-
-function getUserTableRows(
-  members: Pick<UserType, "sId" | "fullName" | "email" | "image">[]
-): UserRowData[] {
-  return members.map((user) => ({
-    sId: user.sId,
-    fullName: user.fullName,
-    email: user.email ?? "",
-    image: user.image ?? "",
-  }));
-}
 
 interface BaseManageUsersPanelProps {
   isOpen: boolean;
@@ -72,20 +48,11 @@ type ManageUsersPanelProps = SpaceMembersMode | EditorsOnlyMode;
 export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const { isOpen, setIsOpen, owner, mode } = props;
 
-  const [searchText, setSearchText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const sendNotification = useSendNotification();
   const doUpdateSpace = useUpdateSpace({ owner });
 
   const buildersOnly = mode === "editors-only" ? props.buildersOnly : undefined;
-
-  const { members, isLoading } = useSearchMembers({
-    workspaceId: owner.sId,
-    searchTerm: searchText,
-    pageIndex: 0,
-    pageSize: 100,
-    buildersOnly,
-  });
 
   const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
@@ -117,16 +84,13 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
     }
   }, [isOpen]);
 
-  // In editors-only mode, index search results into the user map.
-  useEffect(() => {
-    if (mode === "editors-only") {
-      for (const member of members) {
-        if (!userMapRef.current.has(member.sId)) {
-          userMapRef.current.set(member.sId, member);
-        }
+  const handleMembersLoaded = useCallback((members: UserType[]) => {
+    for (const member of members) {
+      if (!userMapRef.current.has(member.sId)) {
+        userMapRef.current.set(member.sId, member);
       }
     }
-  }, [members, mode]);
+  }, []);
 
   const toggleEditor = useCallback(
     (userId: string) => {
@@ -197,23 +161,10 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   };
 
   const handleClose = () => {
-    setSearchText("");
     setIsOpen(false);
   };
 
-  const rows = useMemo(() => getUserTableRows(members), [members]);
-
-  const rowSelectionState: RowSelectionState = useMemo(
-    () => Object.fromEntries(Array.from(currentMembers, (sId) => [sId, true])),
-    [currentMembers]
-  );
-
-  const handleRowSelectionChange = (newSelection: RowSelectionState) => {
-    const newMembers = new Set(
-      Object.entries(newSelection)
-        .filter(([, selected]) => selected)
-        .map(([sId]) => sId)
-    );
+  const handleSelectionChange = (newMembers: Set<string>) => {
     setCurrentMembers(newMembers);
 
     if (mode === "space-members") {
@@ -229,37 +180,18 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
     }
   };
 
-  const columns: ColumnDef<UserRowData>[] = useMemo(() => {
-    const baseColumns: ColumnDef<UserRowData>[] = [
-      createSelectionColumn<UserRowData>(),
+  const editorColumn: ColumnDef<MemberRowData>[] = useMemo(() => {
+    if (mode !== "space-members") {
+      return [];
+    }
+    return [
       {
-        accessorKey: "fullName",
-        header: "Name",
-        id: "fullName",
-        sortingFn: "text",
-        meta: {
-          className: "w-full",
-        },
-        cell: (info: UserRowInfo) => (
-          <DataTable.CellContent
-            avatarUrl={info.row.original.image}
-            roundedAvatar
-            description={info.row.original.email}
-          >
-            {info.row.original.fullName}
-          </DataTable.CellContent>
-        ),
-      },
-    ];
-
-    if (mode === "space-members") {
-      baseColumns.push({
         id: "editor",
         header: "",
         meta: {
           className: "w-28",
         },
-        cell: (info: UserRowInfo) => {
+        cell: (info: { row: { original: MemberRowData } }) => {
           const { sId } = info.row.original;
           const isMember = currentMembers.has(sId);
           const isEditor = currentEditors.has(sId);
@@ -283,10 +215,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             </DataTable.CellContent>
           );
         },
-      });
-    }
-
-    return baseColumns;
+      },
+    ];
   }, [mode, currentMembers, currentEditors, toggleEditor]);
 
   const canSave =
@@ -304,33 +234,14 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
           <SheetTitle>{sheetTitle}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <SearchInput
-            name="user-search"
-            value={searchText}
-            onChange={setSearchText}
-            placeholder="Search users..."
-            className="mt-2"
+          <MemberSelectionTable
+            owner={owner}
+            selectedMemberIds={currentMembers}
+            onSelectionChange={handleSelectionChange}
+            extraColumns={editorColumn}
+            buildersOnly={buildersOnly}
+            onMembersLoaded={handleMembersLoaded}
           />
-          <div className="flex min-h-0 flex-1 flex-col">
-            {isLoading ? (
-              <div className="flex items-center justify-center p-4">
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Loading users...
-                </span>
-              </div>
-            ) : (
-              <DataTable
-                data={rows}
-                columns={columns}
-                rowSelection={rowSelectionState}
-                setRowSelection={handleRowSelectionChange}
-                enableRowSelection
-                getRowId={(row) => row.sId}
-                filter={searchText}
-                filterColumn="fullName"
-              />
-            )}
-          </div>
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{

@@ -1,13 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupsList } from "@app/components/groups/GroupsList";
+import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
-import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
-import { useSendNotification } from "@app/hooks/useNotification";
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
-  DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,16 +13,11 @@ import {
   EmptyCTA,
   ScrollArea,
   SearchInput,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  CellContext,
-  PaginationState,
-  SortingState,
-} from "@tanstack/react-table";
+import type { PaginationState } from "@tanstack/react-table";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import * as React from "react";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useRef, useState } from "react";
 
 type MembersManagementType = "manual" | "group";
 
@@ -58,7 +51,36 @@ export function RestrictedAccessBody({
   onGroupsUpdated,
 }: RestrictedAccessBodyProps) {
   const confirm = useContext(ConfirmContext);
-  const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
+  const [searchSelectedGroups, setSearchSelectedGroups] = useState("");
+
+  // Map from sId to UserType for reconstructing UserType[] from selection set.
+  const userMapRef = useRef(
+    new Map<string, UserType>(selectedMembers.map((m) => [m.sId, m]))
+  );
+
+  const selectedMemberIds = new Set(selectedMembers.map((m) => m.sId));
+
+  const handleMembersLoaded = useCallback((members: UserType[]) => {
+    for (const member of members) {
+      if (!userMapRef.current.has(member.sId)) {
+        userMapRef.current.set(member.sId, member);
+      }
+    }
+  }, []);
+
+  const handleSelectionChange = useCallback(
+    (ids: Set<string>) => {
+      const users: UserType[] = [];
+      for (const sId of ids) {
+        const user = userMapRef.current.get(sId);
+        if (user) {
+          users.push(user);
+        }
+      }
+      onMembersUpdated(users);
+    },
+    [onMembersUpdated]
+  );
 
   const handleManagementTypeChange = useCallback(
     async (newManagementType: string) => {
@@ -120,7 +142,7 @@ export function RestrictedAccessBody({
 
   return (
     <>
-      {planAllowsSCIM ? (
+      {planAllowsSCIM && (
         <div className="flex flex-row items-center justify-between">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -149,13 +171,6 @@ export function RestrictedAccessBody({
               />
             </DropdownMenuContent>
           </DropdownMenu>
-          {isManual && selectedMembers.length > 0 && (
-            <SearchMembersDropdown
-              owner={owner}
-              selectedMembers={selectedMembers}
-              onMembersUpdated={onMembersUpdated}
-            />
-          )}
           {!isManual && selectedGroups.length > 0 && (
             <SearchGroupsDropdown
               owner={owner}
@@ -164,31 +179,17 @@ export function RestrictedAccessBody({
             />
           )}
         </div>
-      ) : (
-        isManual &&
-        selectedMembers.length > 0 && (
-          <div className="flex w-full justify-end">
-            <SearchMembersDropdown
-              owner={owner}
-              selectedMembers={selectedMembers}
-              onMembersUpdated={onMembersUpdated}
-            />
-          </div>
-        )
       )}
 
-      {isManual && selectedMembers.length === 0 && (
-        <EmptyCTA
-          action={
-            <SearchMembersDropdown
-              owner={owner}
-              selectedMembers={selectedMembers}
-              onMembersUpdated={onMembersUpdated}
-            />
-          }
-          message="Add members to the space"
+      {isManual && (
+        <MemberSelectionTable
+          owner={owner}
+          selectedMemberIds={selectedMemberIds}
+          onSelectionChange={handleSelectionChange}
+          onMembersLoaded={handleMembersLoaded}
         />
       )}
+
       {!isManual && selectedGroups.length === 0 && (
         <EmptyCTA
           action={
@@ -202,168 +203,24 @@ export function RestrictedAccessBody({
         />
       )}
 
-      {isManual && selectedMembers.length > 0 && (
-        <>
-          <SearchInput
-            name="search"
-            placeholder="Search (email)"
-            value={searchSelectedMembers}
-            onChange={setSearchSelectedMembers}
-          />
-          <ScrollArea className="h-full">
-            <MembersTable
-              onMembersUpdated={onMembersUpdated}
-              selectedMembers={selectedMembers}
-              searchSelectedMembers={searchSelectedMembers}
-            />
-          </ScrollArea>
-        </>
-      )}
       {!isManual && selectedGroups.length > 0 && (
         <>
           <SearchInput
             name="search"
             placeholder={"Search groups"}
-            value={searchSelectedMembers}
-            onChange={setSearchSelectedMembers}
+            value={searchSelectedGroups}
+            onChange={setSearchSelectedGroups}
           />
           <ScrollArea className="h-full">
             <GroupsTable
               onGroupsUpdated={onGroupsUpdated}
               selectedGroups={selectedGroups}
-              searchSelectedGroups={searchSelectedMembers}
+              searchSelectedGroups={searchSelectedGroups}
             />
           </ScrollArea>
         </>
       )}
     </>
-  );
-}
-
-type MemberRowData = {
-  icon: string;
-  name: string;
-  userId: string;
-  email: string;
-  onClick?: () => void;
-};
-
-type MemberInfo = CellContext<MemberRowData, unknown>;
-
-function getMemberTableRows(allUsers: UserType[]): MemberRowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-    email: user.email ?? "",
-  }));
-}
-
-interface MembersTableProps {
-  onMembersUpdated: (members: UserType[]) => void;
-  selectedMembers: UserType[];
-  searchSelectedMembers: string;
-}
-
-function MembersTable({
-  onMembersUpdated,
-  selectedMembers,
-  searchSelectedMembers,
-}: MembersTableProps) {
-  const sendNotifications = useSendNotification();
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
-  });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "email", desc: false },
-  ]);
-
-  const getTableColumns = useCallback(() => {
-    const removeMember = (userId: string) => {
-      if (selectedMembers.length === 1) {
-        sendNotifications({
-          title: "Cannot remove last member.",
-          description: "You cannot remove the last group member.",
-          type: "error",
-        });
-        return;
-      }
-      onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
-    };
-    return [
-      {
-        id: "name",
-        accessorKey: "name",
-        cell: (info: MemberInfo) => (
-          <>
-            <DataTable.CellContent
-              avatarUrl={info.row.original.icon}
-              className="hidden md:flex"
-            >
-              {info.row.original.name}
-            </DataTable.CellContent>
-            <DataTable.CellContent
-              avatarUrl={info.row.original.icon}
-              className="flex md:hidden"
-              description={info.row.original.email}
-            >
-              {info.row.original.name}
-            </DataTable.CellContent>
-          </>
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "email",
-        accessorKey: "email",
-        cell: (info: MemberInfo) => (
-          <DataTable.BasicCellContent label={info.row.original.email} />
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "action",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info: MemberInfo) => {
-          return (
-            <DataTable.CellContent>
-              <Button
-                icon={XMarkIcon}
-                size="xs"
-                variant="ghost-secondary"
-                onClick={() => removeMember(info.row.original.userId)}
-              />
-            </DataTable.CellContent>
-          );
-        },
-      },
-    ];
-  }, [onMembersUpdated, selectedMembers, sendNotifications]);
-
-  const rows = useMemo(
-    () => getMemberTableRows(selectedMembers),
-    [selectedMembers]
-  );
-  const columns = useMemo(() => getTableColumns(), [getTableColumns]);
-
-  return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      columnsBreakpoints={{
-        name: "md",
-      }}
-      pagination={pagination}
-      setPagination={setPagination}
-      sorting={sorting}
-      setSorting={setSorting}
-      totalRowCount={rows.length}
-      filter={searchSelectedMembers}
-      filterColumn="email"
-    />
   );
 }
 
@@ -378,7 +235,6 @@ function GroupsTable({
   selectedGroups,
   searchSelectedGroups,
 }: GroupsTableProps) {
-  const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 50,
@@ -386,17 +242,9 @@ function GroupsTable({
 
   const removeGroup = useCallback(
     (group: GroupType) => {
-      if (selectedGroups.length === 1) {
-        sendNotifications({
-          title: "Cannot remove last group.",
-          description: "You cannot remove the last group.",
-          type: "error",
-        });
-        return;
-      }
       onGroupsUpdated(selectedGroups.filter((g) => g.sId !== group.sId));
     },
-    [onGroupsUpdated, selectedGroups, sendNotifications]
+    [onGroupsUpdated, selectedGroups]
   );
 
   return (
