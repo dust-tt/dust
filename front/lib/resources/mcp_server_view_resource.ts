@@ -155,6 +155,18 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const viewJson = systemView.toJSON();
     const name = viewJson.name ?? viewJson.server.name;
 
+    return this.hasNameConflictInSpaceByName(auth, name, space);
+  }
+
+  /**
+   * Check whether a view with the given name already exists in the target
+   * space. This variant can be called before the server/view is created.
+   */
+  static async hasNameConflictInSpaceByName(
+    auth: Authenticator,
+    name: string,
+    space: SpaceResource
+  ): Promise<{ hasConflict: boolean; name: string }> {
     const existingViews = await this.listBySpace(auth, space);
     const hasConflict = existingViews.some((v) => {
       const view = v.toJSON();
