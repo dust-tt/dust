@@ -29,21 +29,25 @@ function buildFirstMessage({
     .join("\n\n");
 
   return `<dust_system>
-EXISTING agent.
-${dataSections ? `\n${dataSections}\n` : ""}
+This is an existing agent.
+
 ## STEP 1: Gather context
 Call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
 
 ## STEP 2: Opening message
-Based only on the provided in this prompt and the \`get_agent_config\` result:
+Based only on the information provided in <existing_agent_data_section> and the \`get_agent_config\` result:
 - If reinforced suggestions exist (source="reinforcement"), highlight them
-- If negative feedback patterns exist, mention the top issue
+- If negative feedback patterns exist in the current agent version, mention it as the top issue. Feedback from previous versions are provided for reference, but should not be mentioned in the opening message.
 - If pending suggestions exist from \`get_agent_config\`, output their directives to render them as cards:
   CRITICAL: For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 
 In addition, ask the user if you should suggest additional improvements or if there is something specific they'd like to work on.
 Keep the first message to 1–2 sentences (plus any suggestion cards). Response must fit in the copilot panel without scrolling.
 Do not make assumptions about the users's intent. Given that this is an existing agent, the user is likely to be asking for specific improvements or to work on a specific issue.
+
+<existing_agent_data_section>
+${dataSections ? `\n${dataSections}\n` : ""}
+</existing_agent_data_section>
 
 </dust_system>`;
 }
