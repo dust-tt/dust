@@ -13,6 +13,12 @@ const SIDEBAR_MARGIN = 8;
 const STORAGE_KEY_VISIBLE = "dustSidebarVisible";
 const STORAGE_KEY_WIDTH = "dustSidebarWidth";
 
+// Slide animation: sidebar translates off-screen to the right when hidden.
+const TRANSITION_DURATION = 300; // ms
+const SIDEBAR_TRANSITION = `transform ${TRANSITION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+// Must exceed SIDEBAR_MARGIN so the rounded edge is fully out of view.
+const SIDEBAR_SLIDE_OUT = `translateX(calc(100% + ${SIDEBAR_MARGIN * 2}px))`;
+
 // Track sidebar state
 let sidebarVisible = false;
 let sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
@@ -22,6 +28,8 @@ let iframeElement: HTMLIFrameElement | null = null;
 let resizeHandle: HTMLDivElement | null = null;
 let closeButton: HTMLButtonElement | null = null;
 let isResizing = false;
+// Deferred cleanup when hiding: resets backdrop + body margin after slide-out.
+let hideTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
 /**
  * Update sidebar width
@@ -118,8 +126,11 @@ function createSidebar(): void {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     overflow: hidden;
-    display: none;
+    display: flex;
     flex-direction: column;
+    transform: ${SIDEBAR_SLIDE_OUT};
+    transition: ${SIDEBAR_TRANSITION};
+    pointer-events: none;
   `;
 
   // Create resize handle
@@ -203,7 +214,9 @@ function createSidebar(): void {
   // Create iframe
   iframeElement = document.createElement("iframe");
   iframeElement.id = IFRAME_ID;
-  iframeElement.src = chrome.runtime.getURL("main.html");
+  // Mark the URL so PortProvider knows it is embedded in a content-script
+  // sidebar (Arc, etc.) rather than running as a native side panel.
+  iframeElement.src = chrome.runtime.getURL("main.html") + "?embedded=1";
   iframeElement.style.cssText = `
     flex: 1;
     width: 100%;
@@ -246,11 +259,21 @@ function showSidebar(): void {
   }
 
   if (sidebarElement) {
-    sidebarElement.style.display = "flex";
+    // Cancel any deferred cleanup from a previous hide.
+    if (hideTimeoutId !== undefined) {
+      clearTimeout(hideTimeoutId);
+      hideTimeoutId = undefined;
+    }
+
     if (backdropElement) {
       backdropElement.style.display = "block";
     }
     document.body.style.marginRight = `${sidebarWidth + SIDEBAR_MARGIN * 2}px`;
+    sidebarElement.style.pointerEvents = "all";
+    // Force a reflow so the off-screen transform is committed before we
+    // change it, ensuring the CSS transition fires.
+    void sidebarElement.offsetWidth;
+    sidebarElement.style.transform = "translateX(0)";
     sidebarVisible = true;
 
     // Save state
@@ -265,12 +288,19 @@ function showSidebar(): void {
  */
 function hideSidebar(): void {
   if (sidebarElement) {
-    sidebarElement.style.display = "none";
-    if (backdropElement) {
-      backdropElement.style.display = "none";
-    }
-    document.body.style.marginRight = "0";
+    sidebarElement.style.transform = SIDEBAR_SLIDE_OUT;
+    sidebarElement.style.pointerEvents = "none";
     sidebarVisible = false;
+
+    // Defer the layout cleanup until after the slide-out animation so the
+    // page content doesn't snap back before the panel has fully left.
+    hideTimeoutId = setTimeout(() => {
+      hideTimeoutId = undefined;
+      if (backdropElement) {
+        backdropElement.style.display = "none";
+      }
+      document.body.style.marginRight = "0";
+    }, TRANSITION_DURATION);
 
     // Save state
     chrome.storage.local
@@ -294,6 +324,11 @@ function toggleSidebar(): void {
  * Remove the sidebar from the page
  */
 function removeSidebar(): void {
+  if (hideTimeoutId !== undefined) {
+    clearTimeout(hideTimeoutId);
+    hideTimeoutId = undefined;
+  }
+
   if (sidebarElement) {
     sidebarElement.remove();
     sidebarElement = null;
