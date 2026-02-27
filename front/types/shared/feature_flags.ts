@@ -215,14 +215,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Sandbox MCP tool for executing code in isolated Linux containers",
     stage: "dust_only",
   },
-  dust_no_spa: {
-    description: "Disable redirect to Dust SPA",
-    stage: "on_demand",
-  },
-  dust_spa: {
-    description: "Redirect all pages to Dust SPA",
-    stage: "dust_only",
-  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
