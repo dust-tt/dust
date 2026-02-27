@@ -1,11 +1,6 @@
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import config from "@app/lib/api/config";
-import { getSession } from "@app/lib/auth";
-import {
-  getUserFromSession,
-  makeGetServerSidePropsRequirementsWrapper,
-} from "@app/lib/iam/session";
+import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { Landing } from "@app/pages/home";
 import type { ReactElement } from "react";
 
@@ -15,31 +10,8 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 })<{
   postLoginReturnToUrl: string;
 }>(async (context) => {
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
-
   const { inviteToken } = context.query;
 
-  // We keep redirecting to the app if user is authenticated and has workspaces.
-  // This is to keep previous behavior and users using https://dust.tt ,
-  // but we should consider keeping https://dust.tt as a landing page.
-  if (user && user.workspaces.length > 0) {
-    // Authenticated user: redirect to the SPA, forwarding query params.
-    const queryString = new URLSearchParams(
-      context.query as Record<string, string>
-    ).toString();
-    const baseUrl = config.getAppUrl();
-    const destination = queryString ? `${baseUrl}?${queryString}` : baseUrl;
-
-    return {
-      redirect: {
-        destination,
-        permanent: false,
-      },
-    };
-  }
-
-  // Unauthenticated user: show the landing page.
   let postLoginCallbackUrl = "/api/login";
   if (inviteToken) {
     postLoginCallbackUrl += `?inviteToken=${inviteToken}`;
