@@ -45,7 +45,6 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getApiKeyNameHeader,
-  getFeatureFlags,
   prodAPICredentialsForOwner,
 } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
