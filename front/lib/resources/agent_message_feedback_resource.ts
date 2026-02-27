@@ -47,28 +47,29 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   static model: ModelStatic<AgentMessageFeedbackModel> =
     AgentMessageFeedbackModel;
 
-  readonly message?: Attributes<MessageModel>;
   readonly user?: Attributes<UserModel>;
-  readonly conversation?: Attributes<ConversationModel>;
+
+  readonly _conversationId?: string; // conversationId is already taken via the Sequelize model (it's the FK).
+  readonly _messageId?: string;
 
   constructor(
     _: ModelStatic<AgentMessageFeedbackModel>,
     blob: Attributes<AgentMessageFeedbackModel>,
     {
-      message,
+      messageId,
       user,
-      conversation,
+      conversationId,
     }: {
-      message?: Attributes<MessageModel>;
+      messageId?: string;
       user?: Attributes<UserModel>;
-      conversation?: Attributes<ConversationModel>;
+      conversationId?: string;
     } = {}
   ) {
     super(AgentMessageFeedbackModel, blob);
 
-    this.message = message;
+    this._conversationId = conversationId;
+    this._messageId = messageId;
     this.user = user;
-    this.conversation = conversation;
   }
 
   get sId(): string {
@@ -92,20 +93,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }
 
   static async makeNew(
-    blob: CreationAttributes<AgentMessageFeedbackModel>,
-    {
-      message,
-      user,
-    }: {
-      message?: Attributes<MessageModel>;
-      user?: Attributes<UserModel>;
-    } = {}
+    blob: CreationAttributes<AgentMessageFeedbackModel>
   ): Promise<AgentMessageFeedbackResource> {
     const agentMessageFeedback = await this.model.create({
       ...blob,
     });
 
-    return new this(this.model, agentMessageFeedback.get(), { message, user });
+    return new this(this.model, agentMessageFeedback.get());
   }
 
   async delete(
@@ -220,28 +214,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       };
     }
 
-    const agentMessageFeedback = await this.model.findAll({
+    const feedbackRows = await this.model.findAll({
       where,
       include: [
-        {
-          model: AgentMessageModel,
-          attributes: ["id"],
-          as: "agentMessage",
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              attributes: ["id", "sId"],
-              include: [
-                {
-                  model: ConversationModel,
-                  as: "conversation",
-                  attributes: ["id", "sId"],
-                },
-              ],
-            },
-          ],
-        },
         {
           model: UserResource.model,
           as: "user",
@@ -259,11 +234,39 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       limit: paginationParams.limit,
     });
 
-    return agentMessageFeedback.map((feedback) => {
+    if (feedbackRows.length === 0) {
+      return [];
+    }
+
+    // Fetch conversation sIds and message sIds in separate queries.
+    const conversations = await ConversationModel.findAll({
+      attributes: ["id", "sId"],
+      where: {
+        workspaceId: workspace.id,
+        id: feedbackRows.map((f) => f.conversationId),
+      },
+    });
+    const conversationIdByModelId = new Map(
+      conversations.map((c) => [c.id, c.sId])
+    );
+
+    const agentMessageIds = feedbackRows.map((f) => f.agentMessageId);
+    const messages = await MessageModel.findAll({
+      attributes: ["sId", "agentMessageId"],
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: workspace.id,
+      },
+    });
+    const messageIdByAgentMessageId = new Map(
+      messages.map((m) => [m.agentMessageId, m.sId])
+    );
+
+    return feedbackRows.map((feedback) => {
       return new this(this.model, feedback.get(), {
-        message: feedback.agentMessage?.message,
         user: feedback.user,
-        conversation: feedback.agentMessage?.message?.conversation,
+        conversationId: conversationIdByModelId.get(feedback.conversationId),
+        messageId: messageIdByAgentMessageId.get(feedback.agentMessageId),
       });
     });
   }
@@ -279,7 +282,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     workspace: WorkspaceType;
     transaction?: Transaction;
   }) {
-    const agentMessageFeedback = await this.model.findAll({
+    const feedbackRows = await this.model.findAll({
       where: {
         // IMPORTANT: Necessary for global models who share ids across workspaces.
         workspaceId: workspace.id,
@@ -287,27 +290,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           [Op.and]: [{ [Op.lt]: endDate }, { [Op.gt]: startDate }],
         },
       },
-
       include: [
-        {
-          model: AgentMessageModel,
-          attributes: ["id"],
-          as: "agentMessage",
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              attributes: ["id", "sId"],
-              include: [
-                {
-                  model: ConversationModel,
-                  as: "conversation",
-                  attributes: ["id", "sId"],
-                },
-              ],
-            },
-          ],
-        },
         {
           model: UserResource.model,
           as: "user",
@@ -318,12 +301,28 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       transaction,
     });
 
-    return agentMessageFeedback
+    if (feedbackRows.length === 0) {
+      return [];
+    }
+
+    const conversations = await ConversationModel.findAll({
+      attributes: ["id", "sId"],
+      where: {
+        workspaceId: workspace.id,
+        id: feedbackRows.map((f) => f.conversationId),
+      },
+      transaction,
+    });
+    const conversationIdByModelId = new Map(
+      conversations.map((c) => [c.id, c.sId])
+    );
+
+    return feedbackRows
       .filter((feedback) => Boolean(feedback.user))
       .map((feedback) => {
         return new this(this.model, feedback.get(), {
           user: feedback.user,
-          conversation: feedback.agentMessage?.message?.conversation,
+          conversationId: conversationIdByModelId.get(feedback.conversationId),
         });
       });
   }
@@ -361,38 +360,35 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   ) {
     const user = auth.getNonNullableUser();
 
-    // Start from feedbacks (filtered by userId + workspaceId) and join back to
-    // messages (filtered by conversationId). This is more selective than scanning
-    // all messages in the conversation.
     const feedbackRows = await this.model.findAll({
       where: {
         userId: user.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
       },
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          attributes: ["id"],
-          required: true,
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              attributes: ["id", "sId"],
-              required: true,
-              where: {
-                conversationId: conversation.id,
-              },
-            },
-          ],
-        },
-      ],
     });
 
+    if (feedbackRows.length === 0) {
+      return [];
+    }
+
+    // Fetch message sIds in a separate query.
+    const agentMessageIds = feedbackRows.map((f) => f.agentMessageId);
+    const messages = await MessageModel.findAll({
+      attributes: ["sId", "agentMessageId"],
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    const messageIdByAgentMessageId = new Map(
+      messages.map((m) => [m.agentMessageId, m.sId])
+    );
+
     return feedbackRows.map((feedback) => {
+      const messageId = messageIdByAgentMessageId.get(feedback.agentMessageId);
       return new this(this.model, feedback.get(), {
-        message: feedback.agentMessage?.message,
+        messageId,
       });
     });
   }
@@ -548,7 +544,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return {
       id: this.id,
       sId: this.sId,
-      messageId: this.message?.sId,
+      messageId: this._messageId,
       agentMessageId: this.agentMessageId,
       userId: this.userId,
       thumbDirection: this.thumbDirection,
@@ -558,7 +554,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       createdAt: this.createdAt,
       agentConfigurationId: this.agentConfigurationId,
       agentConfigurationVersion: this.agentConfigurationVersion,
-      conversationId: this.conversation?.sId,
+      conversationId: this._conversationId,
       ...(this.user
         ? {
             userName: this.user.name,
