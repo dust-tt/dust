@@ -174,6 +174,7 @@ export function createPlaceholderAgentMessage({
       lastUpdated: new Date(),
       actionProgress: new Map(),
       useFullChainOfThought: false,
+      savedChainOfThoughtByStep: new Map(),
     },
   };
 }

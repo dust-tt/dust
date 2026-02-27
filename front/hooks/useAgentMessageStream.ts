@@ -251,6 +251,11 @@ export function useAgentMessageStream({
 
         case "agent_action_success":
           const action = eventPayload.data.action;
+          // Cancel any pending throttled update and snapshot the CoT ref
+          // before clearing it, so completed thinking rows can display it.
+          updateMessageThrottled.cancel();
+          const savedCoTForAction = chainOfThought.current.trim();
+          chainOfThought.current = "";
           methods.data.map((m) =>
             isMessageTemporayState(m) && m.sId === sId
               ? {
@@ -264,6 +269,14 @@ export function useAgentMessageStream({
                         ([id]) => id !== action.id
                       )
                     ),
+                    savedChainOfThoughtByStep:
+                      savedCoTForAction &&
+                      !m.streaming.savedChainOfThoughtByStep.has(action.step)
+                        ? new Map(m.streaming.savedChainOfThoughtByStep).set(
+                            action.step,
+                            savedCoTForAction
+                          )
+                        : m.streaming.savedChainOfThoughtByStep,
                   },
                 }
               : m
@@ -273,6 +286,11 @@ export function useAgentMessageStream({
 
         case "tool_params":
           const toolParams = eventPayload.data;
+          // Cancel any pending throttled update and snapshot the CoT ref
+          // before clearing it, so completed thinking rows can display it.
+          updateMessageThrottled.cancel();
+          const savedCoTForTool = chainOfThought.current.trim();
+          chainOfThought.current = "";
           methods.data.map((m) =>
             isMessageTemporayState(m) && m.sId === sId
               ? {
@@ -280,6 +298,16 @@ export function useAgentMessageStream({
                   streaming: {
                     ...m.streaming,
                     agentState: "acting",
+                    savedChainOfThoughtByStep:
+                      savedCoTForTool &&
+                      !m.streaming.savedChainOfThoughtByStep.has(
+                        toolParams.action.step
+                      )
+                        ? new Map(m.streaming.savedChainOfThoughtByStep).set(
+                            toolParams.action.step,
+                            savedCoTForTool
+                          )
+                        : m.streaming.savedChainOfThoughtByStep,
                   },
                 }
               : m
