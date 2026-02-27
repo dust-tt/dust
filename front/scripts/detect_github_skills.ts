@@ -32,13 +32,12 @@ makeScript(
     for (const skill of skills) {
       logger.info(
         {
-          name: skill.name,
           dirPath: skill.dirPath,
           descriptionLength: skill.description.length,
           instructionsLength: skill.instructions.length,
           attachmentCount: skill.attachments.length,
         },
-        `Skill: ${skill.name}`
+        "Skill"
       );
     }
   }
