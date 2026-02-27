@@ -2788,6 +2788,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   // See also front/types/files.ts.
   | "folders_document"
   | "project_context"
+  | "skill_attachment"
 >();
 
 export const FileTypeSchema = z.object({

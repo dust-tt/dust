@@ -25,10 +25,14 @@ export type FileUseCase =
   | "upsert_table"
   // Project context: case in which a file is uploaded to a project's shared
   // context datasource. Accessible to all conversations within the project.
-  | "project_context";
+  | "project_context"
+  // Skill attachment: file attached to a skill configuration, synced to the
+  // sandbox at /dust/skills/<skill-name>/<filename>.
+  | "skill_attachment";
 
 export type FileUseCaseMetadata = {
   conversationId?: string;
+  skillId?: string;
   spaceId?: string;
   sourceConversationId?: string;
   generatedTables?: string[];
