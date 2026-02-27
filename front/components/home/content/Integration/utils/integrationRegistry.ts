@@ -248,7 +248,7 @@ function getConnectorIcon(
     zendesk: "ZendeskLogo",
     bigquery: "ActionTableIcon", // No BigQueryLogo available
     salesforce: "SalesforceLogo",
-    gong: "ActionMicIcon", // GongLogo not yet in @dust-tt/client icon type
+    gong: "ActionSpeakIcon",
     webcrawler: "ActionGlobeAltIcon",
     discord_bot: "ActionMegaphoneIcon",
   };
