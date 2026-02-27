@@ -7,6 +7,7 @@ import type {
   HeadProps,
   ImageProps,
   RouterEvents,
+  RouterEventType,
   ScriptProps,
   TransitionOptions,
   UrlObject,
@@ -100,18 +101,25 @@ function urlToString(url: string | UrlObject): string {
  * Global event emitter for router events in extension
  * This mimics Next.js router events to work with NavigationLoadingContext
  */
-type RouterEventCallback = (url: string) => void;
+type RouterEventHandler = (url: string) => void;
+
+const routerEventListeners: Map<string, Set<RouterEventHandler>> = new Map();
 
 function createRouterEvents(): RouterEvents {
   return {
-    on: (event: string, callback: RouterEventCallback) => {
-      return;
+    on: (event: RouterEventType, handler: RouterEventHandler) => {
+      if (!routerEventListeners.has(event)) {
+        routerEventListeners.set(event, new Set());
+      }
+      routerEventListeners.get(event)!.add(handler);
     },
-    off: (event: string, callback: RouterEventCallback) => {
-      return;
+    off: (event: RouterEventType, handler: RouterEventHandler) => {
+      routerEventListeners.get(event)?.delete(handler);
     },
-    emit: (event: string, ...args: unknown[]) => {
-      return;
+    emit: (event: RouterEventType, ...args: unknown[]) => {
+      routerEventListeners
+        .get(event)
+        ?.forEach((handler) => handler(String(args[0] ?? "")));
     },
   };
 }

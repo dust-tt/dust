@@ -2,7 +2,7 @@
 const isDev = process.env.NODE_ENV === "development";
 
 const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-ancestors 'self' ${
-  isDev ? "http://localhost:3000 http://localhost:3011" : "https://dust.tt https://app.dust.tt https://eu.dust.tt https://front-edge.dust.tt https://eu.front-edge.dust.tt https://*.preview.dust.tt"
+  isDev ? "http://localhost:3000 http://localhost:3011 chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg" : "https://dust.tt https://app.dust.tt https://eu.dust.tt https://front-edge.dust.tt https://eu.front-edge.dust.tt https://*.preview.dust.tt chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn"
 };`;
 
 const nextConfig = {

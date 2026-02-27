@@ -55,28 +55,6 @@ interface ConversationSidePanelProviderProps {
   children: React.ReactNode;
 }
 
-const noOpPanelRef = { current: null };
-
-export function NoOpConversationSidePanelProvider({
-  children,
-}: ConversationSidePanelProviderProps) {
-  return (
-    <ConversationSidePanelContext.Provider
-      value={{
-        currentPanel: undefined,
-        openPanel: () => {},
-        closePanel: () => {},
-        onPanelClosed: () => {},
-        setPanelRef: () => {},
-        panelRef: noOpPanelRef,
-        data: undefined,
-      }}
-    >
-      {children}
-    </ConversationSidePanelContext.Provider>
-  );
-}
-
 export function ConversationSidePanelProvider({
   children,
 }: ConversationSidePanelProviderProps) {

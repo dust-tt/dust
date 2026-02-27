@@ -1,4 +1,5 @@
 import { ConfirmPopupArea } from "@app/components/Confirm";
+import { NoOpDesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
@@ -13,9 +14,11 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <ConfirmPopupArea>
-          <Notification.Area>{children}</Notification.Area>
-        </ConfirmPopupArea>
+        <NoOpDesktopNavigationProvider>
+          <ConfirmPopupArea>
+            <Notification.Area>{children}</Notification.Area>
+          </ConfirmPopupArea>
+        </NoOpDesktopNavigationProvider>
       </SidebarProvider>
     </ThemeProvider>
   );

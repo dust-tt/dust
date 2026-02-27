@@ -1,10 +1,9 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
-import { NoOpConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -29,6 +28,7 @@ import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useContext, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { ConversationContainer } from "../components/conversation/ConversationContainer";
 
 export const MainPage = () => {
   const { user, workspace, subscription } = useAuth();
@@ -147,24 +147,25 @@ export const MainPage = () => {
               </div>
             </div>
           )}
-          <div className="h-full w-full pt-28">
+          <div className="h-full w-full pt-16">
             <BlockedActionsProvider
               owner={workspace}
               conversation={conversation}
             >
-              <NoOpConversationSidePanelProvider>
+              <ConversationSidePanelProvider>
                 <GenerationContextProvider>
                   <InputBarProvider origin="extension">
-                    <ConversationContainerVirtuoso
-                      owner={workspace}
+                    <ConversationContainer
+                      workspace={workspace}
                       user={user}
                       subscription={subscription}
                       conversationId={conversationId}
-                      clientSideMCPServerIds={serverId ? [serverId] : undefined}
+                      conversation={conversation}
+                      serverId={serverId}
                     />
                   </InputBarProvider>
                 </GenerationContextProvider>
-              </NoOpConversationSidePanelProvider>
+              </ConversationSidePanelProvider>
             </BlockedActionsProvider>
           </div>
         </DropzoneContainer>
