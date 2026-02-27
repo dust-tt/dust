@@ -52,7 +52,13 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { type ReactNode, useEffect, useRef, useState } from "react";
+import React, {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
@@ -142,9 +148,10 @@ export function DataTable<TData extends TBaseData>({
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
-  const columnFilters: ColumnFiltersState = filterColumn
-    ? [{ id: filterColumn, value: filter }]
-    : [];
+  const columnFilters: ColumnFiltersState = useMemo(
+    () => (filterColumn ? [{ id: filterColumn, value: filter }] : []),
+    [filterColumn, filter]
+  );
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
   const isClientSideSortingEnabled =
