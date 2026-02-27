@@ -34,6 +34,11 @@ const CLI_TARGETS = [
     label: "Codex (OpenAI)",
     dir: path.join(os.homedir(), ".agents", "skills", SKILL_NAME),
   },
+  {
+    id: "copilot",
+    label: "Copilot (GitHub)",
+    dir: path.join(os.homedir(), ".copilot", "skills", SKILL_NAME),
+  },
 ];
 
 const ITEMS = CLI_TARGETS.map((t) => ({
