@@ -129,15 +129,12 @@ export default function ConnectorSyncingChip({
         connector.lastSyncStartTime > connector.lastSyncFinishTime);
 
     if (isSyncInProgress) {
-      const firstSyncProgress =
-        connector.firstSuccessfulSyncTime === undefined
-          ? connector.firstSyncProgress
-          : undefined;
-
       return (
         <Chip color="info" isBusy>
           Synchronizing
-          {firstSyncProgress ? ` (${firstSyncProgress})` : null}
+          {connector.firstSyncProgress
+            ? ` (${connector.firstSyncProgress})`
+            : null}
         </Chip>
       );
     } else if (connector.lastSyncSuccessfulTime) {

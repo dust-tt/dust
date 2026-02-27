@@ -61,6 +61,21 @@ export async function reportInitialSyncProgress(
   return new Ok(undefined);
 }
 
+export async function clearInitialSyncProgress(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error("Connector not found"));
+  }
+  const localLogger = getActivityLogger(connector);
+  localLogger.info("Clearing initial sync progress");
+
+  await connector.update({
+    firstSyncProgress: null,
+  });
+
+  return new Ok(undefined);
+}
+
 /**
  * Signal that a sync has succeeded.
  * This function can be used by the sync worker itself or by the supervisor.
