@@ -17,7 +17,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { timeFrameFromNow } from "@app/types/shared/utils/time_frame";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
