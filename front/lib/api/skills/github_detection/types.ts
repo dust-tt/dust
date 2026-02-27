@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export interface DetectedSkillAttachment {
-  name: string;
   path: string;
   sizeBytes: number;
 }
