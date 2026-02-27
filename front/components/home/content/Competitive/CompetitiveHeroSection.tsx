@@ -10,7 +10,7 @@ import { useCookies } from "react-cookie";
 interface CompetitiveHeroSectionProps {
   chip: string;
   headline: ReactNode;
-  postItText: string;
+  postItText: ReactNode;
   valueProps?: string[];
   valuePropTitle?: string;
   ctaButtonText: string;
