@@ -111,6 +111,15 @@ impl TableUpsertsBackgroundWorker {
                         "TableUpsertsBackgroundWorker: Too many columns in CSV file, ignoring: {}",
                         e
                     );
+                } else if e.to_string().contains("CSV file is too large") {
+                    // Likewise, if the csv file is too large, it's best to ignore those errors to prevent constant retries.
+                    error!(
+                        project_id = table_data.project_id,
+                        data_source_id = table_data.data_source_id,
+                        table_id = table_data.table_id,
+                        "TableUpsertsBackgroundWorker: CSV file is too large, ignoring: {}",
+                        e
+                    );
                 } else {
                     return Err(e);
                 }
