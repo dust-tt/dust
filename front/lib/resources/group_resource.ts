@@ -49,7 +49,6 @@ import { Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
-const GROUP_IDS_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -114,6 +113,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static dangerouslyListUserGroupsForAuthCached = cacheWithRedis(
     ({
       user,
@@ -127,7 +127,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspace,
       }),
     GroupResource.groupIdsCacheKeyResolver,
-    { ttlMs: GROUP_IDS_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   static invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(

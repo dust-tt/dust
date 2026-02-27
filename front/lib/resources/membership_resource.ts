@@ -368,8 +368,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
-  private static readonly ROLE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
   private static readonly roleCacheKeyResolver = ({
     userModelId,
     workspaceModelId,
@@ -401,11 +399,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return membership?.role ?? "none";
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static getActiveRoleForUserInWorkspaceCached = cacheWithRedis(
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
       MembershipResource.roleCacheKeyResolver(params),
-    { ttlMs: MembershipResource.ROLE_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   private static invalidateRoleCache = invalidateCacheWithRedis(
@@ -592,8 +591,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return result;
   }
 
-  private static readonly SEATS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-
   // Seat counting with caching - used to track active seats in a workspace
   private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
     `count-active-seats-in-workspace:${workspaceId}`;
@@ -612,10 +609,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static countActiveSeatsInWorkspaceCached = cacheWithRedis(
     MembershipResource._countActiveSeatsInWorkspaceUncached,
     MembershipResource.seatsCacheKeyResolver,
-    { ttlMs: MembershipResource.SEATS_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   private static invalidateActiveSeatsCache = invalidateCacheWithRedis(

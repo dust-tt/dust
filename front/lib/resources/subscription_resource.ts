@@ -76,8 +76,6 @@ import type Stripe from "stripe";
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
-const SUBSCRIPTION_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
 type CachedSubscription = {
   id: number;
   planId: number;
@@ -194,10 +192,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return new SubscriptionResource(SubscriptionModel, blob, data.plan);
   }
 
+  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static fetchActiveByWorkspaceModelIdCached = cacheWithRedis(
     SubscriptionResource._fetchActiveByWorkspaceModelIdUncached,
     SubscriptionResource.subscriptionCacheKeyResolver,
-    { ttlMs: SUBSCRIPTION_CACHE_TTL_MS, cacheNullValues: false }
+    { cacheNullValues: false }
   );
 
   static async fetchActiveByWorkspaceModelId(
