@@ -202,7 +202,6 @@ async function buildDetectedSkill({
   }
   const instructions = blobResult.value;
 
-  const name = skillDir.dirPath.split("/").pop() ?? skillDir.dirPath;
   const description = extractDescription(instructions);
 
   const attachments: DetectedSkillAttachment[] = [];
@@ -228,7 +227,6 @@ async function buildDetectedSkill({
   }
 
   return new Ok({
-    name,
     dirPath: skillDir.dirPath,
     description,
     instructions,
