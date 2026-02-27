@@ -1,5 +1,5 @@
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
-import { cn, Icon, Spinner } from "@dust-tt/sparkle";
+import { cn, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface ActionDetailsWrapperProps {
@@ -18,26 +18,7 @@ export function ActionDetailsWrapper({
   visual,
 }: ActionDetailsWrapperProps) {
   if (displayContext === "conversation") {
-    return (
-      <div className="flex w-full flex-col gap-y-2">
-        <div
-          className={cn(
-            "text-foreground dark:text-foreground-night",
-            "flex flex-grow flex-row items-center gap-x-2"
-          )}
-        >
-          <Icon visual={visual} size="xs" />
-          <span className="heading-sm font-medium">{actionName}</span>
-          <span className="flex-grow"></span>
-          {headerAction}
-          {/* TODO: Align spinner with CoT spinner: <div className="self-start"> */}
-          <div>
-            <Spinner size="xs" />
-          </div>
-        </div>
-        {children}
-      </div>
-    );
+    return <>{children}</>;
   }
 
   return (

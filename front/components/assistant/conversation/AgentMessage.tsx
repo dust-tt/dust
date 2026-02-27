@@ -1111,6 +1111,9 @@ function AgentMessageContent({
         lastAgentStateClassification={agentMessage.streaming.agentState}
         actionProgress={agentMessage.streaming.actionProgress}
         owner={owner}
+        savedChainOfThoughtByStep={
+          agentMessage.streaming.savedChainOfThoughtByStep
+        }
       />
       <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
       {completedImages.length > 0 && (
