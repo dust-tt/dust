@@ -27,6 +27,7 @@ describe("GET /api/user", () => {
         createdAt: user.createdAt.getTime(),
         lastLoginAt: user.lastLoginAt?.getTime(),
         organizations: [],
+        selectedWorkspace: workspace.sId,
         workspaces: [
           {
             id: workspace.id,
@@ -67,6 +68,7 @@ describe("GET /api/user", () => {
         createdAt: user.createdAt.getTime(),
         lastLoginAt: user.lastLoginAt?.getTime(),
         organizations: [],
+        selectedWorkspace: workspace.sId,
         workspaces: [
           {
             id: workspace.id,
