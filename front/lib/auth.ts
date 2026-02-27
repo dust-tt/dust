@@ -1,7 +1,5 @@
 import config from "@app/lib/api/config";
-import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
-import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -42,7 +40,6 @@ import type {
 } from "@app/types/user";
 import { isAdmin, isBuilder, isUser } from "@app/types/user";
 import assert from "assert";
-import { TokenExpiredError } from "jsonwebtoken";
 import memoizer from "lru-memoizer";
 import type {
   GetServerSidePropsContext,
@@ -248,8 +245,7 @@ export class Authenticator {
       }
 
       return new Authenticator({
-        authMethod:
-          session?.authenticationMethod === "bearer" ? "oauth" : "session",
+        authMethod: "session",
         workspace,
         user,
         role,
@@ -1091,77 +1087,6 @@ export async function getBearerToken(
   }
 
   return new Ok(parse[1]);
-}
-
-export type BearerTokenError =
-  | "not_authenticated"
-  | "invalid_oauth_token_error"
-  | "expired_oauth_token_error"
-  | "user_not_found";
-
-/**
- * Attempts to create a SessionWithUser from a bearer token in the request.
- *
- * This is used as a fallback in withLogging when no cookie-based session is available.
- * It validates the bearer token, resolves the user, and synthesizes a SessionWithUser
- * object so that downstream handlers (getUserFromSession, etc.) work transparently.
- *
- * Returns an Err with a BearerTokenError if the token is present but invalid/expired,
- * or Ok(null) if no bearer token is present, or Ok(session) on success.
- */
-export async function getSessionFromBearerToken(
-  req: NextApiRequest
-): Promise<Result<SessionWithUser | null, BearerTokenError>> {
-  const bearerTokenRes = await getBearerToken(req);
-  if (bearerTokenRes.isErr()) {
-    return new Ok(null);
-  }
-
-  const bearerToken = bearerTokenRes.value;
-  if (!isOAuthToken(bearerToken)) {
-    return new Ok(null);
-  }
-
-  let workOSDecoded: Result<WorkOSJwtPayload, Error>;
-  try {
-    workOSDecoded = await verifyWorkOSToken(bearerToken);
-  } catch {
-    // verifyWorkOSToken can throw if config is missing (e.g. WORKOS_CLIENT_ID).
-    return new Ok(null);
-  }
-  if (workOSDecoded.isErr()) {
-    if (workOSDecoded.error instanceof TokenExpiredError) {
-      // Token signature was valid but expired — this is definitely a WorkOS token.
-      return new Err("expired_oauth_token_error");
-    }
-    // Verification failed — could be a non-WorkOS token (e.g. viz JWT).
-    // Return null to let the handler do its own auth.
-    return new Ok(null);
-  }
-
-  const user = await getUserFromWorkOSToken(workOSDecoded.value);
-  if (!user) {
-    return new Err("user_not_found");
-  }
-
-  return new Ok({
-    type: "workos",
-    sessionId: "bearer-token",
-    user: {
-      email: user.email,
-      email_verified: true,
-      name: user.name,
-      nickname: user.username,
-      workOSUserId: user.workOSUserId ?? "",
-      given_name: user.firstName,
-      family_name: user.lastName ?? undefined,
-      picture: user.imageUrl ?? undefined,
-    },
-    region: multiRegionsConfig.getCurrentRegion(),
-    organizationId: workOSDecoded.value.org_id,
-    isSSO: false,
-    authenticationMethod: "bearer",
-  });
 }
 
 /**

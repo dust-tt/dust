@@ -1,6 +1,5 @@
 import { shouldForceClientReload } from "@app/lib/api/force_client_reload";
-import type { BearerTokenError } from "@app/lib/auth";
-import { getSession, getSessionFromBearerToken } from "@app/lib/auth";
+import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
   CustomGetServerSideProps,
@@ -28,15 +27,6 @@ import { statsDClient } from "./statsDClient";
 
 export type RequestContext = {
   [key: string]: ResourceLogJSON;
-};
-
-const BEARER_TOKEN_ERROR_MESSAGES: Record<BearerTokenError, string> = {
-  expired_oauth_token_error: "The access token expired.",
-  invalid_oauth_token_error:
-    "The request does not have valid authentication credentials.",
-  user_not_found: "The user is not registered.",
-  not_authenticated:
-    "The request does not have valid authentication credentials.",
 };
 
 // Sequelize errors (ValidationError, UniqueConstraintError, etc.) have a
@@ -116,27 +106,10 @@ export function withLogging<T>(
     const clientIp = getClientIp(req);
     const now = new Date();
 
-    // Try cookie-based session first, then fall back to bearer token.
-    let session = await tracer.trace(
+    const session = await tracer.trace(
       "workos.getSession",
       async () => await getSession(req, res)
     );
-    if (!session) {
-      const bearerTokenRes = await getSessionFromBearerToken(req);
-      if (bearerTokenRes.isOk()) {
-        session = bearerTokenRes.value;
-      } else {
-        // Bearer token was present but invalid/expired — fail fast.
-        apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: bearerTokenRes.error,
-            message: BEARER_TOKEN_ERROR_MESSAGES[bearerTokenRes.error],
-          },
-        });
-        return;
-      }
-    }
     const sessionId = session?.sessionId ?? "unknown";
 
     // Use freeze to make sure we cannot update `req.logContext` down the callstack
