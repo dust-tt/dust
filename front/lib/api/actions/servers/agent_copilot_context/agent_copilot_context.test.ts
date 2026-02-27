@@ -1877,7 +1877,9 @@ describe("agent_copilot_context tools", () => {
 
       const tool = getToolByName("suggest_model");
       // gpt-5.2 is in USED_MODEL_CONFIGS but openai is not whitelisted
-      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.2")).toBe(true);
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.2")).toBe(
+        true
+      );
       const result = await tool.handler(
         {
           suggestion: {
