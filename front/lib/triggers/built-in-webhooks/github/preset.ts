@@ -5,6 +5,10 @@ import {
   issueSchema,
 } from "@app/lib/triggers/built-in-webhooks/github/schemas/issues";
 import {
+  projectsV2ItemExample,
+  projectsV2ItemSchema,
+} from "@app/lib/triggers/built-in-webhooks/github/schemas/projects_v2_item";
+import {
   pullRequestExample,
   pullRequestSchema,
 } from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request";
@@ -61,6 +65,15 @@ const GITHUB_PUSH_EVENT: WebhookEvent = {
   sample: pushExample,
 };
 
+const GITHUB_PROJECTS_V2_ITEM_EVENT: WebhookEvent = {
+  name: "projects_v2_item (organizations only)",
+  value: "projects_v2_item",
+  description:
+    "Activity related to an item on an organization-level project. Only available for organization webhooks, not repository webhooks. The type of activity is specified in the `action` property of the payload object.",
+  schema: projectsV2ItemSchema,
+  sample: projectsV2ItemExample,
+};
+
 const GITHUB_RELEASE_EVENT: WebhookEvent = {
   name: "release",
   value: "release",
@@ -82,6 +95,7 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
     GITHUB_PULL_REQUEST_REVIEW_EVENT,
     GITHUB_PUSH_EVENT,
     GITHUB_RELEASE_EVENT,
+    GITHUB_PROJECTS_V2_ITEM_EVENT,
   ],
   event_blacklist: ["ping"],
   icon: "GithubLogo",
