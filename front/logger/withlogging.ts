@@ -15,6 +15,7 @@ import type {
   APIErrorWithStatusCode,
   WithAPIErrorResponse,
 } from "@app/types/error";
+import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type {
@@ -22,7 +23,6 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
-
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
@@ -116,27 +116,29 @@ export function withLogging<T>(
     const clientIp = getClientIp(req);
     const now = new Date();
 
-    // Try cookie-based session first, then fall back to bearer token.
-    let session = await tracer.trace(
-      "workos.getSession",
-      async () => await getSession(req, res)
-    );
-    if (!session) {
+    // Try bearer token first, then fall back to cookie-based session.
+    const sessionResult = await tracer.trace("auth.getSession", async () => {
       const bearerTokenRes = await getSessionFromBearerToken(req);
-      if (bearerTokenRes.isOk()) {
-        session = bearerTokenRes.value;
-      } else {
-        // Bearer token was present but invalid/expired — fail fast.
-        apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: bearerTokenRes.error,
-            message: BEARER_TOKEN_ERROR_MESSAGES[bearerTokenRes.error],
-          },
-        });
-        return;
+      if (bearerTokenRes.isErr() || bearerTokenRes.value) {
+        return bearerTokenRes;
       }
+      // No bearer token present — try cookie-based session.
+      const cookieSession = await getSession(req, res);
+      return new Ok(cookieSession);
+    });
+
+    if (sessionResult.isErr()) {
+      apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: sessionResult.error,
+          message: BEARER_TOKEN_ERROR_MESSAGES[sessionResult.error],
+        },
+      });
+      return;
     }
+    const session = sessionResult.value;
+
     const sessionId = session?.sessionId ?? "unknown";
 
     // Use freeze to make sure we cannot update `req.logContext` down the callstack
