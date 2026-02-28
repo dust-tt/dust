@@ -154,7 +154,9 @@ export function SuggestionBubbleMenu({
         setPositionAtMouse(id, event.clientX, event.clientY);
       }
 
-      if (isHighlightedSuggestionPinned) {
+      // Skip updating highlight only if it's the SAME pinned suggestion
+      // Always allow switching to a new suggestion, even if old one was pinned
+      if (!isNewSuggestion && isHighlightedSuggestionPinned) {
         return;
       }
       highlightSuggestion(id);
