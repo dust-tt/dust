@@ -23,7 +23,11 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
+import {
+  connectorIdSearchAttribute,
+  getTemporalClient,
+  terminateAllWorkflowsForConnectorId,
+} from "@connectors/lib/temporal";
 import {
   createSchedule,
   deleteSchedule,
@@ -427,7 +431,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
         const newKeywords = configValue
           .split(",")
-          .map((k) => k.trim())
+          .map((k) => k.trim().toLowerCase())
           .filter((k) => k.length > 0);
 
         const oldKeywords = configuration.excludeTitleKeywords || [];
@@ -457,12 +461,22 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
         if (addedKeywords.length > 0) {
           logger.info(
-            { connectorId: connector.id, addedKeywords },
+            {
+              connectorId: connector.id,
+              addedKeywords,
+              oldKeywords,
+              newKeywords,
+            },
             "[Gong] New keywords added, initiating cleanup"
           );
 
-          // Pause the schedule to avoid conflicts
+          // Pause the schedule to prevent new workflows from starting
           const scheduleId = makeGongSyncScheduleId(connector);
+          logger.info(
+            { connectorId: connector.id, scheduleId },
+            "[Gong] Pausing schedule for cleanup"
+          );
+
           const pauseResult = await pauseSchedule({
             connector,
             scheduleId,
@@ -471,12 +485,23 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
           if (pauseResult.isErr()) {
             logger.warn(
-              { connectorId: connector.id, error: pauseResult.error },
+              { connectorId: connector.id, scheduleId, error: pauseResult.error },
               "[Gong] Failed to pause schedule, continuing with cleanup"
+            );
+          } else {
+            logger.info(
+              { connectorId: connector.id, scheduleId },
+              "[Gong] Schedule paused successfully"
             );
           }
 
-          // Launch cleanup workflow (non-blocking)
+          // Terminate any running workflows before cleanup
+          await terminateAllWorkflowsForConnectorId({
+            connectorId: connector.id,
+            stopReason: "Terminating to clean up excluded transcripts",
+          });
+
+          // Launch cleanup workflow
           const cleanupResult =
             await launchGongCleanupExcludedTranscriptsWorkflow(
               connector,
@@ -488,20 +513,54 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
               { connectorId: connector.id, error: cleanupResult.error },
               "[Gong] Failed to launch cleanup workflow"
             );
-          }
-
-          // Resume the schedule immediately
-          const unpauseResult = await unpauseAndTriggerSchedule({
-            connector,
-            scheduleId,
-          });
-
-          if (unpauseResult.isErr()) {
-            logger.error(
-              { connectorId: connector.id, error: unpauseResult.error },
-              "[Gong] Failed to unpause schedule after cleanup"
+          } else {
+            // Wait for cleanup to complete before resuming schedule
+            const client = await getTemporalClient();
+            const workflowHandle = client.workflow.getHandle(
+              cleanupResult.value
             );
+
+            try {
+              await workflowHandle.result();
+              logger.info(
+                { connectorId: connector.id, workflowId: cleanupResult.value },
+                "[Gong] Cleanup workflow completed successfully"
+              );
+            } catch (err) {
+              logger.error(
+                {
+                  connectorId: connector.id,
+                  workflowId: cleanupResult.value,
+                  error: err,
+                },
+                "[Gong] Cleanup workflow failed"
+              );
+            }
           }
+
+          // TEMPORARILY COMMENTED OUT TO VERIFY WORKFLOW TERMINATION
+          // Resume the schedule after cleanup completes
+          // logger.info(
+          //   { connectorId: connector.id, scheduleId },
+          //   "[Gong] Resuming schedule after cleanup"
+          // );
+
+          // const unpauseResult = await unpauseAndTriggerSchedule({
+          //   connector,
+          //   scheduleId,
+          // });
+
+          // if (unpauseResult.isErr()) {
+          //   logger.error(
+          //     { connectorId: connector.id, scheduleId, error: unpauseResult.error },
+          //     "[Gong] Failed to unpause schedule after cleanup"
+          //   );
+          // } else {
+          //   logger.info(
+          //     { connectorId: connector.id, scheduleId },
+          //     "[Gong] Schedule resumed successfully"
+          //   );
+          // }
         }
 
         return new Ok(undefined);

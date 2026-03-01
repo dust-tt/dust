@@ -175,17 +175,27 @@ export async function unpauseAndTriggerSchedule({
     // Trigger the schedule to start the workflow immediately.
     await scheduleHandle.trigger();
   } catch (error) {
-    if (!(error instanceof ScheduleNotFoundError)) {
-      logger.error(
+    if (error instanceof ScheduleNotFoundError) {
+      logger.warn(
         {
           connectorId: connector?.id,
           scheduleId,
-          error,
         },
-        "Failed to unpause and trigger schedule."
+        "Schedule not found, cannot unpause (may not be created yet)"
       );
-      return new Err(normalizeError(error));
+      // Return Ok since this is not a fatal error - schedule might not exist yet
+      return new Ok(scheduleId);
     }
+
+    logger.error(
+      {
+        connectorId: connector?.id,
+        scheduleId,
+        error,
+      },
+      "Failed to unpause and trigger schedule."
+    );
+    return new Err(normalizeError(error));
   }
 
   return new Ok(scheduleId);
@@ -215,17 +225,27 @@ export async function pauseSchedule({
       stopReason,
     });
   } catch (error) {
-    if (!(error instanceof ScheduleNotFoundError)) {
-      logger.error(
+    if (error instanceof ScheduleNotFoundError) {
+      logger.warn(
         {
           connectorId: connector.id,
           scheduleId,
-          error,
         },
-        "Failed to stop schedule and terminate workflow."
+        "Schedule not found, cannot pause (may not be created yet)"
       );
-      return new Err(normalizeError(error));
+      // Return Ok since this is not a fatal error - schedule might not exist yet
+      return new Ok(undefined);
     }
+
+    logger.error(
+      {
+        connectorId: connector.id,
+        scheduleId,
+        error,
+      },
+      "Failed to stop schedule and terminate workflow."
+    );
+    return new Err(normalizeError(error));
   }
 
   return new Ok(undefined);

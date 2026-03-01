@@ -472,28 +472,87 @@ export async function gongDeleteOutdatedTranscriptsActivity({
 
 /**
  * Activity to delete transcripts matching newly added exclude keywords.
- * Processes transcripts in batches (100 at a time) to avoid timeout.
- * Returns hasMore=true if additional batches remain.
+ * Uses application-level filtering with shouldExcludeByTitle() for consistency
+ * with sync-time filtering logic. Uses cursor-based pagination to efficiently
+ * process transcripts in batches without re-processing.
  */
 export async function gongDeleteExcludedTranscriptsActivity({
   connectorId,
   excludeKeywords,
+  lastId,
 }: {
   connectorId: ModelId;
   excludeKeywords: string[];
-}): Promise<{ hasMore: boolean }> {
+  lastId?: number;
+}): Promise<{ hasMore: boolean; lastId: number | null }> {
   const connector = await fetchGongConnector({ connectorId });
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const excludedTranscripts =
-    await GongTranscriptResource.fetchByExcludeKeywords(
-      connector,
-      excludeKeywords,
-      { limit: GARBAGE_COLLECT_BATCH_SIZE }
+  // Fetch a batch of transcripts using cursor-based pagination
+  const transcripts = await GongTranscriptResource.fetchBatch(connector, {
+    limit: GARBAGE_COLLECT_BATCH_SIZE,
+    lastId,
+  });
+
+  if (transcripts.length === 0) {
+    logger.info(
+      { connectorId: connector.id, provider: "gong" },
+      "[Gong] Cleanup: No more transcripts to process"
     );
+    return { hasMore: false, lastId: null };
+  }
+
+  logger.info(
+    {
+      connectorId: connector.id,
+      provider: "gong",
+      batchSize: transcripts.length,
+      lastId,
+      excludeKeywords,
+    },
+    "[Gong] Cleanup: Processing batch of transcripts"
+  );
+
+  // Filter using the same logic as sync-time filtering
+  const transcriptsToDelete = transcripts.filter((transcript) => {
+    const shouldDelete = shouldExcludeByTitle(transcript.title, excludeKeywords);
+    logger.info(
+      {
+        connectorId: connector.id,
+        provider: "gong",
+        callId: transcript.callId,
+        title: transcript.title,
+        shouldDelete,
+        excludeKeywords,
+      },
+      `[Gong] Cleanup: Evaluated transcript - ${shouldDelete ? "WILL DELETE" : "keeping"}`
+    );
+    return shouldDelete;
+  });
+
+  logger.info(
+    {
+      connectorId: connector.id,
+      provider: "gong",
+      totalEvaluated: transcripts.length,
+      toDelete: transcriptsToDelete.length,
+      toKeep: transcripts.length - transcriptsToDelete.length,
+    },
+    "[Gong] Cleanup: Batch evaluation complete"
+  );
 
   // Delete from Core data source first
-  for (const transcript of excludedTranscripts) {
+  for (const transcript of transcriptsToDelete) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        provider: "gong",
+        callId: transcript.callId,
+        title: transcript.title,
+      },
+      "[Gong] Cleanup: Deleting transcript"
+    );
+
     await deleteDataSourceDocument(
       dataSourceConfig,
       makeGongTranscriptInternalId(connector, transcript.callId),
@@ -507,9 +566,25 @@ export async function gongDeleteExcludedTranscriptsActivity({
   }
 
   // Then delete from connectors DB
-  await GongTranscriptResource.batchDelete(connector, excludedTranscripts);
+  await GongTranscriptResource.batchDelete(connector, transcriptsToDelete);
+
+  logger.info(
+    {
+      connectorId: connector.id,
+      provider: "gong",
+      deletedCount: transcriptsToDelete.length,
+    },
+    "[Gong] Cleanup: Batch deletion complete"
+  );
+
+  // Get the last ID from the batch for cursor-based pagination
+  // Safe access since we already checked transcripts.length > 0
+  const lastTranscript = transcripts[transcripts.length - 1];
+  const newLastId = lastTranscript ? lastTranscript.id : null;
+  const hasMore = transcripts.length === GARBAGE_COLLECT_BATCH_SIZE;
 
   return {
-    hasMore: excludedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE,
+    hasMore,
+    lastId: newLastId,
   };
 }

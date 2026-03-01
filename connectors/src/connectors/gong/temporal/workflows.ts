@@ -144,6 +144,8 @@ export async function gongGarbageCollectWorkflow({
  *
  * This workflow is triggered when exclude keywords are ADDED to the configuration.
  * It removes already-synced transcripts whose titles match any of the provided keywords.
+ * Uses application-level filtering with shouldExcludeByTitle() for consistency with
+ * sync-time filtering logic.
  *
  * Note: This is a one-way operation. Removing keywords does NOT trigger re-sync of
  * previously excluded transcripts (incremental sync only fetches new transcripts).
@@ -155,14 +157,18 @@ export async function gongCleanupExcludedTranscriptsWorkflow({
   connectorId: ModelId;
   excludeKeywords: string[];
 }) {
-  let hasMoreTranscripts: boolean | null = null;
+  let hasMore = true;
+  let lastId: number | undefined = undefined;
 
-  // Loop to cleanup all matching transcripts in batches
-  do {
-    const { hasMore } = await gongDeleteExcludedTranscriptsActivity({
+  // Loop through all transcripts using cursor-based pagination
+  while (hasMore) {
+    const result = await gongDeleteExcludedTranscriptsActivity({
       connectorId,
       excludeKeywords,
+      lastId,
     });
-    hasMoreTranscripts = hasMore;
-  } while (hasMoreTranscripts);
+
+    hasMore = result.hasMore;
+    lastId = result.lastId ?? undefined;
+  }
 }
