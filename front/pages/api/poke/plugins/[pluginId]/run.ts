@@ -158,6 +158,11 @@ async function handler(
         });
       }
 
+      // Extract reason before validating plugin args.
+      const reason =
+        typeof formData.reason === "string" ? formData.reason : null;
+      delete formData.reason;
+
       const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
       const pluginArgsValidation = pluginCodec.decode(formData);
       if (isLeft(pluginArgsValidation)) {
@@ -182,7 +187,8 @@ async function handler(
         {
           resourceId: resourceId ?? undefined,
           resourceType,
-        }
+        },
+        reason
       );
 
       let runRes;

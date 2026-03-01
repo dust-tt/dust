@@ -133,15 +133,17 @@ export function useRunPokePlugin({
   }
 
   const doRunPlugin = async (
-    args: object
+    args: object,
+    reason?: string
   ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
+    const payload = reason ? { ...args, reason } : args;
     // Check if any of the args are File objects
     const hasFiles = Object.values(args).some((arg) => arg instanceof File);
     let res;
     if (hasFiles) {
       // Use FormData for multipart/form-data when files are present
       const formData = new FormData();
-      Object.entries(args).forEach(([key, value]) => {
+      Object.entries(payload).forEach(([key, value]) => {
         formData.append(key, value);
       });
 
@@ -161,7 +163,7 @@ export function useRunPokePlugin({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(args),
+          body: JSON.stringify(payload),
         }
       );
     }

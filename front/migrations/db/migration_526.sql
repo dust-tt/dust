@@ -1,0 +1,1 @@
+ALTER TABLE plugin_runs ADD COLUMN reason VARCHAR(512);

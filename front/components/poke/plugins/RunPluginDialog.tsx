@@ -38,6 +38,7 @@ export function RunPluginDialog({
   pluginResourceTarget,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
   const [result, setResult] = useState<PluginResponse | null>(null);
 
   const { isLoading, manifest } = usePokePluginManifest({
@@ -72,14 +73,17 @@ export function RunPluginDialog({
       setError(null);
       setResult(null);
 
-      const runRes = await doRunPlugin(args);
+      const runRes = await doRunPlugin(
+        args,
+        reason.trim() || undefined
+      );
       if (runRes.isErr()) {
         setError(runRes.error);
       } else {
         setResult(runRes.value);
       }
     },
-    [doRunPlugin]
+    [doRunPlugin, reason]
   );
 
   return (
@@ -159,6 +163,24 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
+              <div className="mb-4">
+                <label
+                  htmlFor="plugin-reason"
+                  className="mb-1 block text-sm font-medium"
+                >
+                  Reason (optional)
+                </label>
+                <textarea
+                  id="plugin-reason"
+                  className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                  placeholder="Why are you running this plugin?"
+                  rows={2}
+                  maxLength={512}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  disabled={result !== null}
+                />
+              </div>
               <PluginForm
                 disabled={result !== null}
                 manifest={manifest}
