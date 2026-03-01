@@ -29,6 +29,7 @@ import {
   isAccessBlockedError,
   isGeneralExceptionError,
   isItemNotFoundError,
+  isJSONParsingError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
@@ -67,7 +68,7 @@ import {
   isDevelopment,
 } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
-import { removeNulls } from "@dust-tt/client";
+import { normalizeError, removeNulls } from "@dust-tt/client";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
@@ -1694,6 +1695,37 @@ export async function microsoftGarbageCollectionActivity({
             body: null,
           })),
         };
+      } else if (isJSONParsingError(error)) {
+        logger.error(
+          {
+            connectorId,
+            error: error.message,
+            errorStack: error.stack,
+            chunkSize: chunk.length,
+            chunkUrls: chunk.map((req) => req.url),
+          },
+          "Batch request failed with JSON parsing error, attempting individual requests to identify problematic node"
+        );
+
+        // Try individual GET requests to identify which node is causing the issue
+        // Only for logging purpose at first
+        for (const req of chunk) {
+          try {
+            await getItem(logger, client, req.url);
+          } catch (itemError) {
+            const normalizedError = normalizeError(itemError);
+            logger.error(
+              {
+                connectorId,
+                error: normalizedError.message,
+                url: req.url,
+              },
+              "Individual request failed"
+            );
+          }
+        }
+
+        throw error;
       } else {
         throw error;
       }
