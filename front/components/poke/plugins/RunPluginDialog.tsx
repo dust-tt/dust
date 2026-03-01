@@ -73,10 +73,7 @@ export function RunPluginDialog({
       setError(null);
       setResult(null);
 
-      const runRes = await doRunPlugin(
-        args,
-        reason.trim() || undefined
-      );
+      const runRes = await doRunPlugin(args, reason.trim() || undefined);
       if (runRes.isErr()) {
         setError(runRes.error);
       } else {
