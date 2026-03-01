@@ -8,6 +8,7 @@ export const checkMessageUsagePlugin = createPlugin({
     name: "Check Message Usage",
     description: "Returns the current message usage count and the limit.",
     resourceTypes: ["workspaces"],
+    readonly: true,
     args: {},
   },
   execute: async (auth, workspace) => {

@@ -12,6 +12,7 @@ export const confluencePageCheckerPlugin = createPlugin({
   manifest: {
     id: "confluence-page-checker",
     name: "Check Confluence Page Exists",
+    readonly: true,
     description:
       "Check if a Confluence page exists and return its ancestors in a markdown tree format",
     resourceTypes: ["data_sources"],

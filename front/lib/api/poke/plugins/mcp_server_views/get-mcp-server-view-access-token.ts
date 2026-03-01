@@ -11,6 +11,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
     name: "Get MCP Server View Access Token",
     description: "Retrieve the OAuth access token for this MCP server view.",
     resourceTypes: ["mcp_server_views"],
+    readonly: true,
     args: {
       userId: {
         type: "string",

@@ -176,5 +176,5 @@ export function createPlugin<
 
 export type PluginListItem = Pick<
   PluginManifest<PluginArgs, SupportedResourceType>,
-  "id" | "name" | "description"
+  "id" | "name" | "description" | "readonly"
 >;

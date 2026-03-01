@@ -9,6 +9,7 @@ export const computeStatsPlugin = createPlugin({
     name: "Compute statistics",
     description: "Gather statistics for the data source",
     resourceTypes: ["data_sources"],
+    readonly: true,
     args: {},
   },
   execute: async (auth, dataSource) => {
