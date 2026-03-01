@@ -17,6 +17,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { isString } from "next/dist/build/webpack/plugins/jsconfig-paths-plugin";
 
 export const config = {
   api: {
@@ -158,6 +159,10 @@ async function handler(
         });
       }
 
+      // Extract reason before validating plugin args.
+      const reason = isString(formData.reason) ? formData.reason : null;
+      delete formData.reason;
+
       const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
       const pluginArgsValidation = pluginCodec.decode(formData);
       if (isLeft(pluginArgsValidation)) {
@@ -182,7 +187,8 @@ async function handler(
         {
           resourceId: resourceId ?? undefined,
           resourceType,
-        }
+        },
+        reason
       );
 
       let runRes;

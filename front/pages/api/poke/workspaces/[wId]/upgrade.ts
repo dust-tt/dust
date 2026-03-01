@@ -50,7 +50,8 @@ async function handler(
         {
           resourceId: owner.sId,
           resourceType: "workspaces",
-        }
+        },
+        null
       );
 
       const bodyValidation = FreePlanUpgradeFormSchema.decode(req.body);

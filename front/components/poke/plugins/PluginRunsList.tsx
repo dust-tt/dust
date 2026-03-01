@@ -39,6 +39,11 @@ function PluginRunItem({ run, onClick }: PluginRunItemProps) {
             <Clock className="ml-2 h-3 w-3" />
             <span>{formatTimestampToFriendlyDate(run.createdAt)}</span>
           </div>
+          {run.reason && (
+            <div className="mt-1 text-xs italic text-gray-400">
+              {run.reason}
+            </div>
+          )}
         </div>
       </div>
       <Button

@@ -235,6 +235,7 @@ export interface PluginRunType {
   createdAt: number;
   error: string | null;
   pluginId: string;
+  reason: string | null;
   resourceId: string | null;
   resourceType: string;
   result: string | null;
