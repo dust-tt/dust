@@ -478,7 +478,7 @@ function CopilotSuggestionsProviderContent({
           block: "center",
         });
 
-        highlightSuggestion(suggestionId, true);
+        highlightSuggestion(suggestionId);
       }
     },
     [getSuggestion, highlightSuggestion]
