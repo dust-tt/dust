@@ -161,7 +161,7 @@ async function handler(
 
       // Extract reason before validating plugin args.
       const reason =
-        typeof formData.reason === "string" ? formData.reason : null;
+      const reason = isString(formData.reason) ? formData.reason : null;
       delete formData.reason;
 
       const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
