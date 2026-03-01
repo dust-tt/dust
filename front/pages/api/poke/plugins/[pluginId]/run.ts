@@ -114,8 +114,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "This plugin is disabled during workspace maintenance.",
+            message: "This plugin is disabled during workspace maintenance.",
           },
         });
       }
