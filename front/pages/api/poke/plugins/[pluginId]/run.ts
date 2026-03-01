@@ -106,19 +106,6 @@ async function handler(
         });
       }
 
-      // Block non-readonly plugins during workspace maintenance.
-      const workspace = auth.workspace();
-      const maintenance = workspace?.metadata?.maintenance;
-      if (maintenance && !plugin.manifest.readonly) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "This plugin is disabled during workspace maintenance.",
-          },
-        });
-      }
-
       const resource = resourceId
         ? await fetchPluginResource(auth, resourceType, resourceId)
         : null;
