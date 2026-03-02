@@ -12,7 +12,8 @@ import {
 } from "react";
 
 // Suggestion bubble menu positioning constants
-const MENU_ABOVE_CURSOR_PX = 80; // Distance above cursor
+const MENU_ABOVE_CURSOR_PX = 80; // Distance above cursor when hovering
+const MENU_ABOVE_SUGGESTION_TOP_PX = 5; // Distance above suggestion top when opened without cursor
 const MENU_RIGHT_EDGE_PADDING_PX = 20; // Distance from right edge
 const MENU_VERTICAL_REPOSITION_THRESHOLD_PX = 380; // Vertical distance before repositioning
 
@@ -75,8 +76,35 @@ export function SuggestionBubbleMenu({
     if (!highlightedSuggestionId) {
       activeBlockRef.current = null;
       setActiveMenu(null);
+      return;
     }
-  }, [highlightedSuggestionId]);
+
+    // If a suggestion is highlighted but no menu is shown (e.g., from clicking the eye button),
+    // position the menu at the top of the suggestion element
+    if (!activeMenu || activeMenu.sId !== highlightedSuggestionId) {
+      const suggestionElement = editor.view.dom.querySelector(
+        `[data-suggestion-id="${highlightedSuggestionId}"]`
+      );
+
+      if (suggestionElement && containerRef.current) {
+        const suggestionRect = suggestionElement.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+
+        // Position menu just above suggestion top, fixed to right edge
+        // When opened without cursor (e.g., from eye button)
+        const viewportTop = suggestionRect.top - MENU_ABOVE_SUGGESTION_TOP_PX;
+        const containerRelativeLeft =
+          containerRect.width - MENU_RIGHT_EDGE_PADDING_PX;
+
+        setActiveMenu({
+          sId: highlightedSuggestionId,
+          top: viewportTop - containerRect.top,
+          left: containerRelativeLeft,
+          measured: false,
+        });
+      }
+    }
+  }, [highlightedSuggestionId, activeMenu, editor, containerRef]);
 
   // After menu is in DOM, clamp with real dimensions so it stays inside the form.
   useLayoutEffect(() => {
