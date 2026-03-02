@@ -1,6 +1,7 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   Button,
   ContextItem,
@@ -10,7 +11,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useFieldArray } from "react-hook-form";
 
 export function SkillBuilderFilesSection() {
@@ -24,11 +25,18 @@ export function SkillBuilderFilesSection() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const sendNotification = useSendNotification();
+
   const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
     owner,
     useCase: "skill_attachment",
     useCaseMetadata: skillId ? { skillId } : undefined,
   });
+
+  const existingFileNames = useMemo(
+    () => new Set(fields.map((f) => f.fileName)),
+    [fields]
+  );
 
   const onUploadClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -41,11 +49,27 @@ export function SkillBuilderFilesSection() {
         return;
       }
 
-      const uploaded = await handleFilesUpload(Array.from(files));
-      if (uploaded) {
-        for (const blob of uploaded) {
-          if (blob.fileId) {
-            append({ fileId: blob.fileId, fileName: blob.filename });
+      const allFiles = Array.from(files);
+      const newFiles = allFiles.filter(
+        (f) => !existingFileNames.has(f.name)
+      );
+      const duplicates = allFiles.filter((f) => existingFileNames.has(f.name));
+
+      if (duplicates.length > 0) {
+        sendNotification({
+          type: "error",
+          title: "Duplicate files skipped.",
+          description: `Already attached: ${duplicates.map((f) => f.name).join(", ")}`,
+        });
+      }
+
+      if (newFiles.length > 0) {
+        const uploaded = await handleFilesUpload(newFiles);
+        if (uploaded) {
+          for (const blob of uploaded) {
+            if (blob.fileId) {
+              append({ fileId: blob.fileId, fileName: blob.filename });
+            }
           }
         }
       }
@@ -53,7 +77,7 @@ export function SkillBuilderFilesSection() {
       // Reset input so re-uploading the same file triggers onChange.
       e.target.value = "";
     },
-    [handleFilesUpload, append]
+    [handleFilesUpload, append, existingFileNames, sendNotification]
   );
 
   const canUpload = !!skillId;
