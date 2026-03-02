@@ -7,6 +7,7 @@ import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
 import { downCommand } from "./commands/down";
 import { feedCommand } from "./commands/feed";
+import { flagCommand } from "./commands/flag";
 import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
@@ -337,6 +338,19 @@ cli
   .action(async (name: string | undefined, scenario: string | undefined) => {
     await prepareAndRun(feedCommand(name, scenario));
   });
+
+cli
+  .command("flag [name] [flagName]", "Toggle a feature flag on the workspace")
+  .option("-d, --disable", "Disable the flag (default is enable)")
+  .action(
+    async (
+      name: string | undefined,
+      flagName: string | undefined,
+      options: { disable?: boolean }
+    ) => {
+      await prepareAndRun(flagCommand(name, flagName, { disable: Boolean(options.disable) }));
+    }
+  );
 
 cli.help();
 
