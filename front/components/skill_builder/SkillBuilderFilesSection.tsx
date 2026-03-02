@@ -90,6 +90,10 @@ export function SkillBuilderFilesSection() {
 
   const uploadDisabled = !canUpload || isProcessingFiles;
 
+  const disabledTooltip = !canUpload
+    ? "Save the skill first to upload files."
+    : undefined;
+
   const headerActions = fields.length > 0 && (
     <Button
       type="button"
@@ -98,6 +102,7 @@ export function SkillBuilderFilesSection() {
       icon={isProcessingFiles ? Spinner : PlusIcon}
       variant="outline"
       disabled={uploadDisabled}
+      tooltip={disabledTooltip}
     />
   );
 
@@ -140,6 +145,7 @@ export function SkillBuilderFilesSection() {
                   icon={PlusIcon}
                   variant="outline"
                   disabled={!canUpload}
+                  tooltip={disabledTooltip}
                 />
               }
               className="py-8"
