@@ -3,6 +3,7 @@ import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientFetch } from "@app/lib/egress/client";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { isAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
   FORCE_RELOAD_INTERVAL_MS,
@@ -15,7 +16,8 @@ const addClientVersionHeaders = (headers: HeadersInit = {}): HeadersInit => ({
   "X-Build-Date": BUILD_DATE,
 });
 
-const resHandler = async (res: Response) => {
+const resHandler = async (res: Response, options?: FetcherOptions) => {
+  const responseType = options?.responseType ?? "json";
   if (res.headers.get("X-Reload-Required") === "true") {
     const lastReloadMs = sessionStorage.getItem(FORCE_RELOAD_SESSION_KEY);
     const nowMs = Date.now();
@@ -58,27 +60,50 @@ const resHandler = async (res: Response) => {
 
     throw new Error(errorText);
   }
-  return res.json();
+  switch (responseType) {
+    case "arrayBuffer":
+      return res.arrayBuffer();
+    case "blob":
+      return res.blob();
+    case "response":
+      return res;
+    case "text":
+      return res.text();
+    case "json":
+      return res.json();
+    default:
+      assertNever(responseType);
+  }
 };
 
-export type FetcherFn = (url: string, init?: RequestInit) => Promise<any>;
+export type FetcherOptions = {
+  responseType?: "json" | "blob" | "text" | "arrayBuffer" | "response";
+};
+
+export type FetcherFn = (
+  url: string,
+  init?: RequestInit,
+  options?: FetcherOptions
+) => Promise<any>;
 
 export type FetcherWithBodyFn = (
   args: [url: string, body: object, method: string],
-  init?: RequestInit
+  init?: RequestInit,
+  options?: FetcherOptions
 ) => Promise<any>;
 
-export const fetcher: FetcherFn = async (url, init) => {
+export const fetcher: FetcherFn = async (url, init, options) => {
   const res = await clientFetch(url, {
     ...init,
     headers: addClientVersionHeaders(init?.headers),
   });
-  return resHandler(res);
+  return resHandler(res, options);
 };
 
 export const fetcherWithBody: FetcherWithBodyFn = async (
   [url, body, method],
-  init
+  init,
+  options
 ) => {
   const res = await clientFetch(url, {
     ...init,
@@ -90,7 +115,7 @@ export const fetcherWithBody: FetcherWithBodyFn = async (
     body: JSON.stringify(body),
   });
 
-  return resHandler(res);
+  return resHandler(res, options);
 };
 
 type UrlsAndOptions = { url: string; options: RequestInit };

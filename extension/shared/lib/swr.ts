@@ -1,3 +1,5 @@
+import { FetcherOptions } from "@app/lib/swr/fetcher";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useAuthErrorCheck } from "@extension/ui/hooks/useAuthErrorCheck";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -96,9 +98,23 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   }
 }
 
-export const resHandler = async (res: Response) => {
+export const resHandler = async (res: Response, options?: FetcherOptions) => {
+  const responseType = options?.responseType ?? "json";
   if (res.status < 300) {
-    return res.json();
+    switch (responseType) {
+      case "arrayBuffer":
+        return res.arrayBuffer();
+      case "blob":
+        return res.blob();
+      case "response":
+        return res;
+      case "text":
+        return res.text();
+      case "json":
+        return res.json();
+      default:
+        assertNever(responseType);
+    }
   }
 
   let error;

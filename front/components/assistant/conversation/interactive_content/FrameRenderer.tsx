@@ -11,13 +11,13 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { getErrorFromResponse, useFetcher } from "@app/lib/swr/swr";
+import { useFetcher } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
@@ -68,6 +68,7 @@ function ExportContentDropdown({
 }: ExportContentDropdownProps) {
   const sendNotification = useSendNotification();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const { fetcher } = useFetcher();
 
   const exportAsPng = () => {
     if (fileContent) {
@@ -100,8 +101,7 @@ function ExportContentDropdown({
 
     setIsExportingPdf(true);
     try {
-      // Use direct fetch instead of fetcher to avoid JSON parsing of binary PDF data.
-      const response = await clientFetch(
+      const blob = await fetcher(
         `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
         {
           method: "POST",
@@ -109,15 +109,11 @@ function ExportContentDropdown({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ orientation }),
-        }
+        },
+        { responseType: "blob" }
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      // Get the PDF blob and trigger download.
-      const blob = await response.blob();
+      // Trigger download.
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -385,23 +381,11 @@ export function FrameRenderer({
     }
     setIsSavingToProject(true);
     try {
-      const res = await fetcher(
-        `/api/w/${owner.sId}/files/${fileId}/save-in-project`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId: projectIdToSave }),
-        }
-      );
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to save to project",
-          description: errorData.message,
-        });
-        return;
-      }
+      await fetcher(`/api/w/${owner.sId}/files/${fileId}/save-in-project`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: projectIdToSave }),
+      });
       sendNotification({
         type: "success",
         title: "Saved to project",
@@ -410,11 +394,19 @@ export function FrameRenderer({
       // Invalidate file metadata so parent and this component get updated projectId.
       await mutateFileMetadata();
     } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save to project",
-        description: e instanceof Error ? e.message : "An error occurred",
-      });
+      if (isAPIErrorResponse(e)) {
+        sendNotification({
+          type: "error",
+          title: "Failed to save to project",
+          description: e.error.message,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to save to project",
+          description: e instanceof Error ? e.message : "An error occurred",
+        });
+      }
     } finally {
       setIsSavingToProject(false);
     }

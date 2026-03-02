@@ -21,18 +21,19 @@ export function ExtensionFetcherProvider({
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     });
 
-    const fetcher: FetcherFn = async (url, init) => {
+    const fetcher: FetcherFn = async (url, init, options) => {
       const res = await clientFetch(url, {
         ...init,
         headers: addAuthHeaders(init?.headers),
         credentials: "omit", // Ensure cookies are not sent with requests from the extension
       });
-      return resHandler(res);
+      return resHandler(res, options);
     };
 
     const fetcherWithBody: FetcherWithBodyFn = async (
       [url, body, method],
-      init
+      init,
+      options
     ) => {
       const res = await clientFetch(url, {
         ...init,
@@ -44,7 +45,7 @@ export function ExtensionFetcherProvider({
         body: JSON.stringify(body),
         credentials: "omit", // Ensure cookies are not sent with requests from the extension
       });
-      return resHandler(res);
+      return resHandler(res, options);
     };
 
     return { fetcher, fetcherWithBody };
