@@ -352,7 +352,7 @@ async function handler(
       );
 
       // Update file useCaseMetadata with the newly created skill's sId.
-      if (files) {
+      if (files && files.length > 0) {
         await FileResource.bulkSetUseCaseMetadata(auth, files, {
           skillId: skill.sId,
         });
