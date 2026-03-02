@@ -89,7 +89,42 @@ export function middleware(request: NextRequest) {
     return handleCors(response, request);
   }
 
+  // Redirect /poke/* to the poke SPA app (the poke server handles its own auth).
+  if (url === "/poke" || url.startsWith("/poke/")) {
+    const pokeAppUrl = process.env.POKE_APP_URL;
+    if (pokeAppUrl) {
+      const pathAfterPoke = url.slice("/poke".length); // includes leading slash or empty
+      return NextResponse.redirect(`${pokeAppUrl}${pathAfterPoke}`, 302);
+    }
+  }
+
+  // Redirect SPA paths to the main SPA app.
+  if (isSpaPath(url)) {
+    const appUrl = process.env.NEXT_PUBLIC_DUST_APP_URL;
+    if (appUrl) {
+      const queryString = request.nextUrl.search; // includes leading '?' or empty
+      return NextResponse.redirect(`${appUrl}${url}${queryString}`, 302);
+    }
+  }
+
   return NextResponse.next();
+}
+
+// Paths served by the SPA app (front-spa) — redirect these to the SPA origin.
+const SPA_PATH_PREFIXES = [
+  "/w",
+  "/invite-choose",
+  "/no-workspace",
+  "/sso-enforced",
+  "/logout",
+  "/login-error",
+  "/maintenance",
+];
+
+function isSpaPath(pathname: string): boolean {
+  return SPA_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 }
 
 function handleCors(
