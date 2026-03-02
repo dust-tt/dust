@@ -41,17 +41,21 @@ import type { WorkspaceType } from "@app/types/user";
  */
 function buildSystemBlocks(
   [instructions, context]: [SystemPromptInstruction[], SystemPromptContext[]],
-  _: { hasConditionalJITTools?: boolean }
+  { hasConditionalJITTools }: { hasConditionalJITTools?: boolean }
 ) {
   const instructionsText = instructions.map((s) => s.content).join("\n");
   const contextText = context.map((s) => s.content).join("\n");
 
   const system: Anthropic.Beta.Messages.BetaTextBlockParam[] = [];
   if (instructionsText) {
+    // If we have conditional JIT tools, we expect more variability in the instructions, so we keep
+    // the default ephemeral cache. Otherwise, we can set a longer TTL to maximize cache hits.
+    const ttl: "1h" | undefined = hasConditionalJITTools ? undefined : "1h";
+
     system.push({
       type: "text",
       text: instructionsText,
-      cache_control: { type: "ephemeral" },
+      cache_control: { type: "ephemeral", ttl },
     });
   }
   if (contextText) {
