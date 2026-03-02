@@ -3,7 +3,8 @@ import { ConversationBranchModel } from "@app/lib/models/agent/conversation_bran
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -37,14 +38,18 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
    */
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<ConversationBranchModel>, "workspaceId">
+    blob: Omit<CreationAttributes<ConversationBranchModel>, "workspaceId">,
+    transaction?: Transaction
   ): Promise<ConversationBranchResource> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const branch = await this.model.create({
-      ...blob,
-      workspaceId: workspace.id,
-    });
+    const branch = await this.model.create(
+      {
+        ...blob,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
 
     return new this(this.model, branch.get());
   }
@@ -124,6 +129,23 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
 
   canWrite(auth: Authenticator) {
     return auth.getNonNullableUser().id === this.userId;
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("conversation_branch", { id, workspaceId });
+  }
+
+  get sId(): string {
+    return ConversationBranchResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
   }
 
   async delete(
