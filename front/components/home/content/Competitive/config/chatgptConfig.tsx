@@ -75,7 +75,7 @@ export const chatgptConfig: ChatGPTConfig = {
       </>
     ),
     postItText:
-      '"I tried updating HubSpot fields one by one after every call" – said no sales rep ever',
+      '"I love updating HubSpot fields one by one after every call" – said no sales rep ever',
     valuePropTitle:
       "Why top sales teams like Watershed, Clay, and Vanta choose Dust:",
     valueProps: [
