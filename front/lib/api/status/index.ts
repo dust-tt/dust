@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { StatusPageIncidentType } from "@app/lib/api/status/status_page";
@@ -115,3 +116,23 @@ export const getDustStatusMemoized = cacheWithRedis(
     ttlMs: 2 * 60 * 1000,
   }
 );
+
+export async function invalidateProviderStatusCacheForRegion(
+  region: RegionType
+): Promise<void> {
+  const redisCli = await getRedisCacheClient({
+    origin: "cache_with_redis",
+  });
+  const cacheKey = `cacheWithRedis-${getProvidersStatus.name}-provider-status-${region}`;
+  await redisCli.del(cacheKey);
+}
+
+export async function invalidateDustStatusCacheForRegion(
+  region: RegionType
+): Promise<void> {
+  const redisCli = await getRedisCacheClient({
+    origin: "cache_with_redis",
+  });
+  const cacheKey = `cacheWithRedis-${getDustStatus.name}-dust-status-${region}`;
+  await redisCli.del(cacheKey);
+}
