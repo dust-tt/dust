@@ -1,8 +1,9 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { analyzeConversationActivity } from "@app/temporal/butler/activities";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,8 +13,8 @@ vi.mock("@app/lib/api/assistant/conversation/fetch", () => ({
 }));
 
 // Mock the downstream function so we only test the activity's own logic.
-vi.mock("@app/lib/butler/suggest_rename_title", () => ({
-  evaluateRenameTitleSuggestion: vi.fn(),
+vi.mock("@app/lib/butler/analyze_conversation", () => ({
+  analyzeConversation: vi.fn(),
 }));
 
 const mockGetConversation = vi.mocked(getConversation);
@@ -23,44 +24,25 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-function makeFakeConversation(
-  overrides: Partial<ConversationType> = {}
-): ConversationType {
-  return {
-    id: 1,
-    sId: "fake-conv-sid",
-    created: Date.now(),
-    updated: Date.now(),
-    unread: false,
-    lastReadMs: null,
-    actionRequired: false,
-    hasError: false,
-    title: "Old auto-generated title",
-    spaceId: null,
-    triggerId: null,
-    depth: 0,
-    metadata: {},
-    owner: {} as ConversationType["owner"],
-    visibility: "unlisted",
-    content: [[], [], [], []],
-    ...overrides,
-  } as ConversationType;
-}
-
 describe("analyzeConversationActivity", () => {
   it("skips conversations with fewer than 4 content entries", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
 
-    // Return a short conversation (only 2 content entries).
-    mockGetConversation.mockResolvedValue(
-      new Ok(makeFakeConversation({ content: [[], []] })) as never
-    );
+    // Factory returns content: [] (length 0), which is < 4.
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    mockGetConversation.mockResolvedValue(new Ok(conversation) as never);
 
     await analyzeConversationActivity({
       authType: authenticator.toJSON(),
-      conversationId: "any-conv-id",
+      conversationId: conversation.sId,
       messageId: "any-msg-id",
     });
 
@@ -74,16 +56,26 @@ describe("analyzeConversationActivity", () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
 
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date(), new Date()],
+    });
+
+    // Override title to null and content to pass the length check.
     mockGetConversation.mockResolvedValue(
-      new Ok(
-        makeFakeConversation({ title: null, content: [[], [], [], []] })
-      ) as never
+      new Ok({
+        ...conversation,
+        title: null,
+        content: [[], [], [], []],
+      }) as never
     );
 
     await analyzeConversationActivity({
       authType: authenticator.toJSON(),
-      conversationId: "any-conv-id",
+      conversationId: conversation.sId,
       messageId: "any-msg-id",
     });
 

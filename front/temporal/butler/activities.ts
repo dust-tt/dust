@@ -1,6 +1,6 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
-import { evaluateRenameTitleSuggestion } from "@app/lib/butler/suggest_rename_title";
+import { analyzeConversation } from "@app/lib/butler/analyze_conversation";
 import logger from "@app/logger/logger";
 
 export async function analyzeConversationActivity({
@@ -44,7 +44,7 @@ export async function analyzeConversationActivity({
     return;
   }
 
-  await evaluateRenameTitleSuggestion(auth, {
+  await analyzeConversation(auth, {
     conversation,
     messageId,
   });
