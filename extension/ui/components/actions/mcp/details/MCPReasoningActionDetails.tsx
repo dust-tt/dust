@@ -1,4 +1,7 @@
-import { isReasoningSuccessOutput, isThinkingOutput } from "@dust-tt/client";
+import {
+  isReasoningSuccessOutput,
+  isThinkingOutput,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
 import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@extension/ui/components/actions/mcp/details/MCPActionDetails";

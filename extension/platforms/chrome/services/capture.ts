@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { sendGetActiveTabMessage } from "@extension/platforms/chrome/messages";
 import type {
   CaptureOperationId,

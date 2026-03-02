@@ -1,6 +1,6 @@
+import type { LightWorkspaceType } from "@app/types/user";
 import type {
   AgentActionPublicType,
-  LightWorkspaceType,
   ToolNotificationProgress,
 } from "@dust-tt/client";
 import {

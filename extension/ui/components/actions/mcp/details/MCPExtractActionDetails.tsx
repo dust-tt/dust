@@ -1,5 +1,5 @@
+import { isExtractQueryResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionPublicType } from "@dust-tt/client";
-import { isExtractQueryResourceType } from "@dust-tt/client";
 import {
   CodeBlock,
   Collapsible,

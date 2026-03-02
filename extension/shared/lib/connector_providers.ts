@@ -1,4 +1,4 @@
-import type { ConnectorProvider } from "@dust-tt/client";
+import type { ConnectorProvider } from "@app/types/data_source";
 import {
   BigQueryLogo,
   ConfluenceLogo,

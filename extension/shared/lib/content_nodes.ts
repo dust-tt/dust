@@ -1,6 +1,6 @@
+import type { DataSourceType } from "@app/types/data_source";
 import type {
   ContentNodeType,
-  DataSourceType,
   DataSourceViewContentNodeType,
 } from "@dust-tt/client";
 import { DATA_SOURCE_MIME_TYPE, INTERNAL_MIME_TYPES } from "@dust-tt/client";

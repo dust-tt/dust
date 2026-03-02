@@ -2,10 +2,8 @@
  * Utils to generate PKCE code verifier and challenge.
  */
 
-import type {
-  DataSourceViewContentNodeType,
-  LightAgentConfigurationType,
-} from "@dust-tt/client";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { DataSourceViewContentNodeType } from "@dust-tt/client";
 import { GLOBAL_AGENTS_SID } from "@extension/shared/lib/global_agents";
 
 const base64URLEncode = (buffer: ArrayBuffer): string => {

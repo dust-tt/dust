@@ -1,10 +1,10 @@
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type {
-  BlockedActionExecutionType,
-  MCPToolStakeLevelPublicType,
-  MCPValidationMetadataPublicType,
-  MCPValidationOutputPublicType,
-} from "@dust-tt/client";
+  MCPToolStakeLevelType,
+  MCPValidationMetadataType,
+  MCPValidationOutputType,
+} from "@app/lib/actions/constants";
+import type { BlockedActionExecutionType } from "@dust-tt/client";
 import {
   ActionPieChartIcon,
   Button,
@@ -27,8 +27,8 @@ type ActionValidationContextType = {
     conversationId: string;
     inputs: Record<string, unknown>;
     messageId: string;
-    metadata: MCPValidationMetadataPublicType;
-    stake?: MCPToolStakeLevelPublicType;
+    metadata: MCPValidationMetadataType;
+    stake?: MCPToolStakeLevelType;
     workspaceId: string;
   }) => void;
   hasBlockedActions: boolean;
@@ -41,8 +41,8 @@ export type PendingValidationRequestType = {
   conversationId: string;
   inputs: Record<string, unknown>;
   messageId: string;
-  metadata: MCPValidationMetadataPublicType;
-  stake?: MCPToolStakeLevelPublicType;
+  metadata: MCPValidationMetadataType;
+  stake?: MCPToolStakeLevelType;
   workspaceId: string;
 };
 
@@ -89,7 +89,7 @@ export function ActionValidationProvider({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [submitStatus, setSubmitStatus] =
-    useState<MCPValidationOutputPublicType | null>(null);
+    useState<MCPValidationOutputType | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   const { workspace } = useExtensionAuth();
@@ -177,7 +177,7 @@ export function ActionValidationProvider({
   }, [pendingValidations, errorMessage, neverAskAgain]);
 
   const submitValidation = useCallback(
-    async (status: MCPValidationOutputPublicType) => {
+    async (status: MCPValidationOutputType) => {
       setSubmitStatus(status);
 
       if (pendingValidations.length === 0) {

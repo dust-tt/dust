@@ -1,6 +1,8 @@
 import {
   isSupportedFileContentType,
   isSupportedImageContentType,
+} from "@app/types/files";
+import {
   isSupportedPlainTextContentType,
   supportedImageFileFormats,
   supportedOtherFileFormats,

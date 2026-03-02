@@ -1,4 +1,4 @@
-import { isThinkingOutput } from "@dust-tt/client";
+import { isThinkingOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { TableIcon } from "@dust-tt/sparkle";
 import { ActionDetailsWrapper } from "@extension/ui/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@extension/ui/components/actions/mcp/details/MCPActionDetails";

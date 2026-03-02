@@ -1,5 +1,5 @@
 import type { RegionInfo } from "@app/lib/api/regions/config";
-import type { Result } from "@dust-tt/client";
+import type { Result } from "@app/types/shared/result";
 import {
   DEFAULT_DUST_API_DOMAIN,
   DUST_EU_URL,

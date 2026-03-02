@@ -1,4 +1,4 @@
-import type { SpaceType } from "@dust-tt/client";
+import type { SpaceType } from "@app/types/space";
 import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle";
 
 export function getSpaceIcon(

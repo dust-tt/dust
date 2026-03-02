@@ -1,7 +1,7 @@
 import type {
   ReasoningSuccessOutputType,
   ThinkingOutputType,
-} from "@dust-tt/client";
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   ContentMessage,
   InformationCircleIcon,
