@@ -31,7 +31,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 import chunk from "lodash/chunk";
@@ -505,7 +505,7 @@ export class CoreAPI {
     featureFlags: WhitelistableFeature[],
     // TODO(x-dust-group-ids): remove groupIds once all receivers use X-Dust-User-Id.
     groupIds: string[],
-    userId: string,
+    user: UserType,
     {
       projectId,
       runType,
@@ -531,7 +531,7 @@ export class CoreAPI {
           "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
-          "X-Dust-User-Id": userId,
+          "X-Dust-User-Id": user.sId,
         },
         body: JSON.stringify({
           run_type: runType,
@@ -568,7 +568,7 @@ export class CoreAPI {
       isSystemKey,
       storeBlocksResults = true,
     }: CoreAPICreateRunParams,
-    userId?: string
+    user?: UserType
   ): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
@@ -586,7 +586,7 @@ export class CoreAPI {
           "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
-          ...(userId ? { "X-Dust-User-Id": userId } : {}),
+          ...(user ? { "X-Dust-User-Id": user.sId } : {}),
         },
         body: JSON.stringify({
           run_type: runType,

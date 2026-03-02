@@ -86,9 +86,9 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...(user
-            ? getHeaderFromUserId(user.sId)
-            : getHeaderFromGroupIds(requestedGroupIds)),
+          // TODO(x-dust-group-ids): return only if user is null after transition.
+          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...(user ? getHeaderFromUserId(user.sId) : {}),
         },
       },
       logger

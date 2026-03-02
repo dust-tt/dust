@@ -340,7 +340,7 @@ async function handler(
           isSystemKey: auth.isSystemKey(),
           storeBlocksResults,
         },
-        auth.user()?.sId
+        auth.user()?.toJSON()
       );
 
       if (runRes.isErr()) {
