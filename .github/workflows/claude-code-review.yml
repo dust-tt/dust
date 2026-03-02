@@ -43,8 +43,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          git fetch origin "$BASE_REF"
-          git show FETCH_HEAD:front/CODING_RULES.md > CLAUDE.md
+          git show origin/"$BASE_REF":front/CODING_RULES.md > CLAUDE.md
 
       - name: Run Code Review with Claude
         if: steps.should-run.outputs.result == 'true'
