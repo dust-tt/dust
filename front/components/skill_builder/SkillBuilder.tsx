@@ -1,5 +1,6 @@
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   SkillBuilderFormContext,
@@ -18,6 +19,7 @@ import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -47,6 +49,7 @@ export default function SkillBuilder({
   onSaved,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -188,6 +191,7 @@ export default function SkillBuilder({
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
                 <SkillBuilderInstructionsSection skill={skill} />
+                {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
                 <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />
               </div>
