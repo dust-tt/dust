@@ -2,6 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupsList } from "@app/components/groups/GroupsList";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -204,7 +205,17 @@ function GroupsTable({
     pageSize: 50,
   });
 
+  const sendNotification = useSendNotification();
+
   const removeGroup = (group: GroupType) => {
+    if (selectedGroups.length === 1) {
+      sendNotification({
+        title: "Cannot remove last group.",
+        description: "You cannot remove the last group.",
+        type: "error",
+      });
+      return;
+    }
     onGroupsUpdated(selectedGroups.filter((g) => g.sId !== group.sId));
   };
 
