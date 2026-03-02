@@ -58,9 +58,7 @@ export function SkillBuilderFilesSection() {
       }
 
       const allFiles = Array.from(files);
-      const newFiles = allFiles.filter(
-        (f) => !existingFileNames.has(f.name)
-      );
+      const newFiles = allFiles.filter((f) => !existingFileNames.has(f.name));
       const duplicates = allFiles.filter((f) => existingFileNames.has(f.name));
 
       if (duplicates.length > 0) {
@@ -152,9 +150,7 @@ export function SkillBuilderFilesSection() {
             {sortedFields.map(({ field, originalIndex }) => (
               <ContextItem
                 key={field.id}
-                title={
-                  <span className="font-normal">{field.fileName}</span>
-                }
+                title={<span className="font-normal">{field.fileName}</span>}
                 visual={<ContextItem.Visual visual={DocumentIcon} />}
                 hoverAction
                 action={
