@@ -13,7 +13,14 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, Separator, Spinner, Tooltip } from "@dust-tt/sparkle";
+import {
+  AttachmentChip,
+  Chip,
+  DocumentIcon,
+  Separator,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
 
@@ -70,6 +77,7 @@ export function SkillInfoTab({
   const showSeparator =
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
+    skill.fileAttachments.length > 0 ||
     sortedMCPServerViews.length > 0 ||
     shouldLoadSpaces;
 
@@ -95,10 +103,10 @@ export function SkillInfoTab({
           />
         </div>
       )}
-      {knowledgeItems.length > 0 && (
+      {(knowledgeItems.length > 0 || skill.fileAttachments.length > 0) && (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
-            Knowledge
+            Knowledge & files
           </div>
           <div className="flex flex-wrap gap-2">
             {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
@@ -107,6 +115,15 @@ export function SkillInfoTab({
                 node={item.node}
                 title={item.label}
                 color="primary"
+              />
+            ))}
+            {skill.fileAttachments.map((file) => (
+              <AttachmentChip
+                key={file.fileId}
+                label={file.fileName}
+                icon={{ visual: DocumentIcon }}
+                color="primary"
+                size="xs"
               />
             ))}
           </div>
