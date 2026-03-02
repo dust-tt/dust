@@ -12,7 +12,11 @@ import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds } from "@app/types/groups";
+import {
+  getHeaderFromGroupIds,
+  getHeaderFromUserEmail,
+  getHeaderFromUserId,
+} from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -24,6 +28,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         .map((action) => action.mcpServerViewId) ?? [];
 
     const owner = auth.getNonNullableWorkspace();
+    const user = auth.user();
     const requestedGroupIds = auth.groupIds();
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
@@ -34,7 +39,9 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...(user
+            ? getHeaderFromUserId(user.sId)
+            : getHeaderFromGroupIds(requestedGroupIds)),
         },
       },
       logger,
@@ -98,8 +105,10 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
+          // TODO(x-dust-group-ids): remove groupIds header after transition.
           ...getHeaderFromGroupIds(requestedGroupIds),
-          "x-api-user-email": user.email,
+          ...getHeaderFromUserId(user.sId),
+          ...getHeaderFromUserEmail(user.email),
         },
       },
       logger,

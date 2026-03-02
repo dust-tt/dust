@@ -23,7 +23,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
+import {
+  getHeaderFromGroupIds,
+  getHeaderFromRole,
+  getHeaderFromUserId,
+} from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -138,6 +142,13 @@ export default async function createServer(
           auth
         );
 
+        const user = auth.user();
+        if (!user) {
+          logger.warn(
+            { workspaceId: owner },
+            "No user available in auth to call Front API from server 'run_dust_app'"
+          );
+        }
         const requestedGroupIds = auth.groupIds();
 
         const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -147,7 +158,9 @@ export default async function createServer(
           {
             ...prodCredentials,
             extraHeaders: {
+              // TODO(x-dust-group-ids): return only if user is null after transition.
               ...getHeaderFromGroupIds(requestedGroupIds),
+              ...(user ? getHeaderFromUserId(user.sId) : {}),
               ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
             },
           },
