@@ -154,7 +154,6 @@ export function SkillBuilderFilesSection() {
                 key={field.id}
                 title={field.fileName}
                 visual={<ContextItem.Visual visual={DocumentIcon} />}
-                hasSeparator={false}
                 hoverAction
                 action={
                   <Button
