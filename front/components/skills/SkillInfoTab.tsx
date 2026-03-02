@@ -121,7 +121,7 @@ export function SkillInfoTab({
         </div>
       )}
       {skill.fileAttachments.length > 0 && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Files
           </div>
