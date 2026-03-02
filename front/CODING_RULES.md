@@ -612,6 +612,30 @@ export function useCreateFolder({
 };
 ```
 
+When a component is not always visible (modal, sheet, drawer, panel), its SWR hooks should accept
+and forward a `disabled` flag tied to visibility to avoid unnecessary API calls when the component
+is mounted but not shown. Skip `disabled` only when prefetching is intentional.
+
+```typescript
+// BAD — fetches on every mount, even when the sheet is closed
+function MCPServerDetails({ owner }: MCPServerDetailsProps) {
+  const { mcpServers } = useMCPServers({ owner });
+  // ...
+}
+
+// GOOD — fetch is skipped while the sheet is closed
+function MCPServerDetails({ owner, disabled }: MCPServerDetailsProps) {
+  const { mcpServers } = useMCPServers({ owner, disabled });
+  // ...
+}
+
+<MCPServerDetails owner={owner} disabled={!isOpen} />
+```
+
+Reviewer: If you see an SWR hook called unconditionally inside a conditionally-visible component,
+require the author to either add a `disabled` prop forwarded to the hook or justify the prefetch
+with a comment.
+
 In NextJS pages, getServerSideProps should not fetch data and return more that what's
 available in authenticator. Rather rely on API endpoint and SWR calls.
 
@@ -619,3 +643,23 @@ available in authenticator. Rather rely on API endpoint and SWR calls.
 
 Any load/async has a visible visual state (spinner, busy state, disabled button, etc), even if the
 load time is expected to be small.
+
+### [REACT4] Stable references on Context provider values
+
+Object or array literals passed as Context provider `value` create a new reference on every
+render, triggering re-renders of all consumers. Always memoize Context values.
+
+```typescript
+// BAD — every consumer re-renders on each parent render
+<MyContext.Provider value={{ items: id ? [id] : [] }}>
+
+// GOOD — consumers only re-render when id changes
+const value = useMemo(() => ({ items: id ? [id] : [] }), [id]);
+<MyContext.Provider value={value}>
+```
+
+For regular component props, only memoize when the child is wrapped in `React.memo` or the prop
+is used as a hook dependency. Do not add `useMemo` preemptively.
+
+Reviewer: If you see an inline object or array literal passed directly as a Context provider
+value, require the author to memoize it.
