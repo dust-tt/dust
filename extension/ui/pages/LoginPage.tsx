@@ -1,11 +1,6 @@
 import {
   Button,
-  ChevronDownIcon,
   cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   DustLogo,
   LoginIcon,
   Page,
@@ -23,7 +18,6 @@ export const LoginPage = () => {
     authError,
     isUserSetup,
     handleLogin,
-    handleSelectWorkspace,
     isLoading,
     handleLogout,
   } = useExtensionAuth();
@@ -122,42 +116,6 @@ export const LoginPage = () => {
           </Link>
           .
         </p>
-      </div>
-    );
-  }
-
-  if (isAuthenticated && !isUserSetup && user?.workspaces.length) {
-    return (
-      <div
-        className={cn(
-          "flex h-screen flex-col gap-2 p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
-        )}
-      >
-        <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <Page.SectionHeader title="Almost there!" />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label="Pick a workspace"
-                variant="outline"
-                icon={ChevronDownIcon}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {user.workspaces.map((w) => {
-                return (
-                  <DropdownMenuItem
-                    key={w.sId}
-                    onClick={() => void handleSelectWorkspace(w)}
-                    label={w.name}
-                  />
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
     );
   }

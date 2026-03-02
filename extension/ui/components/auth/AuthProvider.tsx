@@ -18,9 +18,9 @@ type ExtensionAuthContextType = {
   workspace: WorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
-  handleLogin: () => void;
+  handleLogin: (args?: { organizationId?: string }) => void;
   handleLogout: () => void;
-  handleSelectWorkspace: (workspace: WorkspaceType) => void;
+  handleSelectOrganization: (organizationId: string) => void;
 };
 
 const ExtensionAuthContext = createContext<ExtensionAuthContextType | null>(
@@ -110,7 +110,7 @@ export function ExtensionAuthProvider({
     isLoading,
     handleLogin,
     handleLogout,
-    handleSelectWorkspace,
+    handleSelectOrganization,
     featureFlags,
   } = useAuthHook();
 
@@ -127,7 +127,7 @@ export function ExtensionAuthProvider({
       isLoading,
       handleLogin,
       handleLogout,
-      handleSelectWorkspace,
+      handleSelectOrganization,
     }),
     [
       token,
@@ -141,7 +141,7 @@ export function ExtensionAuthProvider({
       isLoading,
       handleLogin,
       handleLogout,
-      handleSelectWorkspace,
+      handleSelectOrganization,
     ]
   );
 

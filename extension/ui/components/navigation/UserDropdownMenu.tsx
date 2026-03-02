@@ -1,3 +1,4 @@
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import {
   Avatar,
   DropdownMenu,
@@ -15,11 +16,17 @@ import {
 } from "@dust-tt/sparkle";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useTheme } from "@extension/ui/hooks/useTheme";
+import { useMemo } from "react";
 
 export const UserDropdownMenu = () => {
   const { theme, updateTheme } = useTheme();
-  const { user, workspace, handleLogout, handleSelectWorkspace } =
+  const { user, workspace, handleLogout, handleSelectOrganization } =
     useExtensionAuth();
+
+  const hasMultipleOrgs = useMemo(
+    () => !!user?.organizations && user.organizations.length > 1,
+    [user]
+  );
 
   if (!user) {
     return null;
@@ -44,21 +51,14 @@ export const UserDropdownMenu = () => {
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {workspace && (
+        {hasMultipleOrgs && workspace && (
           <>
             <DropdownMenuLabel label="Workspace" />
-            <DropdownMenuRadioGroup value={workspace.sId}>
-              {user.workspaces.map((w) => {
-                return (
-                  <DropdownMenuRadioItem
-                    key={w.sId}
-                    onClick={() => void handleSelectWorkspace(w)}
-                    label={w.name}
-                    value={w.sId}
-                  />
-                );
-              })}
-            </DropdownMenuRadioGroup>
+            <WorkspacePickerRadioGroup
+              user={user}
+              workspace={workspace}
+              onSelectOrganization={handleSelectOrganization}
+            />
           </>
         )}
         <DropdownMenuLabel label="Preferences" />

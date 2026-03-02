@@ -105,6 +105,7 @@ export abstract class AuthService {
   // Abstract methods that must be implemented by platform-specific services
   abstract login(args: {
     forcedConnection?: string;
+    organizationId?: string;
   }): Promise<Result<LoginResult, AuthError>>;
 
   abstract logout(): Promise<boolean>;

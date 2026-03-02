@@ -100,7 +100,13 @@ export class FrontAuthService extends AuthService {
     return result.data;
   }
 
-  async login({ forcedConnection }: { forcedConnection?: string }) {
+  async login({
+    forcedConnection,
+    organizationId,
+  }: {
+    forcedConnection?: string;
+    organizationId?: string;
+  }) {
     const { codeVerifier, codeChallenge } = await generatePKCE();
 
     // Store code verifier for later use
@@ -114,6 +120,7 @@ export class FrontAuthService extends AuthService {
         code_challenge: codeChallenge,
         provider: "authkit",
         connection: forcedConnection ?? "",
+        ...(organizationId ? { organizationId } : {}),
       };
 
       const result = await this.openAuthPopup(options);

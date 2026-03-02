@@ -487,7 +487,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
  * Authenticate the user using WorkOS.
  */
 const authenticate = async (
-  { connection }: AuthBackgroundMessage,
+  { connection, organizationId }: AuthBackgroundMessage,
   sendResponse: (
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void
@@ -503,6 +503,7 @@ const authenticate = async (
   const options: Record<string, string> = {
     redirect_uri: redirectUrl,
     workspaceId: workspaceId,
+    ...(organizationId ? { organizationId } : {}),
   };
 
   const queryString = new URLSearchParams(options).toString();

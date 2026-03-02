@@ -4,13 +4,9 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import type { WorkspaceType } from "@dust-tt/client";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import type {
-  ConnectionDetails,
-  StoredTokens,
-} from "@extension/shared/services/auth";
+import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
-  isValidEnterpriseConnection,
   makeEnterpriseConnectionName,
 } from "@extension/shared/services/auth";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,12 +18,8 @@ export const useAuthHook = () => {
   const platform = usePlatform();
 
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
-  const [connectionDetails, setConnectionDetails] =
-    useState<ConnectionDetails | null>(null);
-  const [selectedWorkspace, setSelectedWorkspace] = useState<string | null>(
-    null
-  );
   const [user, setUser] = useState<UserTypeWithWorkspaces | null>(null);
+  const [workspace, setWorkspace] = useState<WorkspaceType | undefined>();
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const [forcedConnection, setForcedConnection] = useState<
     string | undefined
@@ -40,17 +32,10 @@ export const useAuthHook = () => {
     [tokens]
   );
 
-  const isUserSetup = !!(user && user.sId && selectedWorkspace);
+  const isUserSetup = !!(user && user.sId && workspace);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
 
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Derive workspace from user workspaces + selectedWorkspace
-  const workspace = useMemo(
-    () => user?.workspaces.find((w) => w.sId === selectedWorkspace),
-    [user, selectedWorkspace]
-  );
 
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
@@ -60,8 +45,7 @@ export const useAuthHook = () => {
       return;
     }
     setTokens(null);
-    setConnectionDetails(null);
-    setSelectedWorkspace(null);
+    setWorkspace(undefined);
     setUser(null);
     setAuthError(null);
     setForcedConnection(undefined);
@@ -114,7 +98,6 @@ export const useAuthHook = () => {
       return;
     }
 
-    setIsUserLoading(true);
     void (async () => {
       try {
         const res = await clientFetch("/api/user", {
@@ -126,49 +109,41 @@ export const useAuthHook = () => {
           const fetchedUser = data.user as UserTypeWithWorkspaces;
           setUser(fetchedUser);
 
-          // If user has a selectedWorkspace from the server (org-scoped login),
-          // and we don't have one stored, use it.
-          if (!selectedWorkspace && fetchedUser.selectedWorkspace) {
-            setSelectedWorkspace(fetchedUser.selectedWorkspace);
-            await platform.storage.set(
-              "selectedWorkspace",
-              fetchedUser.selectedWorkspace
-            );
+          const ws = fetchedUser.selectedWorkspace
+            ? fetchedUser.workspaces.find(
+                (w) => w.sId === fetchedUser.selectedWorkspace
+              )
+            : fetchedUser.workspaces[0];
+          setWorkspace(ws);
+          if (ws) {
+            await platform.storage.set("selectedWorkspace", ws.sId);
           }
         }
       } finally {
-        setIsUserLoading(false);
+        setIsLoading(false);
       }
     })();
   }, [isAuthenticated, tokens?.accessToken]);
 
   // Initialize from storage on mount.
   // RegionContext already restores region info from localStorage, so we only
-  // need to restore tokens, connection details, and selected workspace here.
+  // need to restore tokens here.
   useEffect(() => {
     void (async () => {
-      setIsLoading(true);
-
       const storedTokens = await platform.auth.getStoredTokens();
-      const storedConnectionDetails =
-        await platform.auth.getConnectionDetailsFromStorage();
-      const storedSelectedWorkspace =
-        await platform.auth.getSelectedWorkspace();
 
       if (!storedTokens) {
         setIsLoading(false);
         return;
       }
       setTokens(storedTokens);
-      setConnectionDetails(storedConnectionDetails);
-      setSelectedWorkspace(storedSelectedWorkspace);
 
       // Token refresh.
       if (storedTokens.expiresAt < Date.now() + PROACTIVE_REFRESH_WINDOW_MS) {
         await handleRefreshToken();
       }
 
-      setIsLoading(false);
+      // isLoading stays true — the user fetch effect will clear it.
     })();
 
     return () => {
@@ -216,59 +191,36 @@ export const useAuthHook = () => {
     [setAuthError, setForcedConnection]
   );
 
-  const handleSelectWorkspace = async (workspace: WorkspaceType) => {
-    await platform.storage.set("selectedWorkspace", workspace.sId);
-    setSelectedWorkspace(workspace.sId);
-
-    if (
-      connectionDetails &&
-      !isValidEnterpriseConnection(connectionDetails, workspace)
-    ) {
-      await redirectToSSOLogin(workspace);
-    }
-  };
-
-  const handleLogin = useCallback(async () => {
-    setIsLoading(true);
-    const response = await platform.auth.login({
-      forcedConnection,
-    });
-    if (response.isErr()) {
-      setAuthError(response.error);
-      setIsLoading(false);
-      void platform.clearStoredData();
-      return;
-    }
-
-    const {
-      tokens: newTokens,
-      regionInfo: newRegionInfo,
-      connectionDetails: newConnectionDetails,
-    } = response.value;
-
-    // Restore selectedWorkspace from storage if available.
-    const storedSelectedWorkspace = await platform.auth.getSelectedWorkspace();
-
-    if (storedSelectedWorkspace && user) {
-      const selectedWs = user.workspaces.find(
-        (w) => w.sId === storedSelectedWorkspace
-      );
-      if (
-        selectedWs &&
-        !isValidEnterpriseConnection(newConnectionDetails, selectedWs)
-      ) {
-        await redirectToSSOLogin(selectedWs);
+  const handleLogin = useCallback(
+    async (args?: { organizationId?: string }) => {
+      setIsLoading(true);
+      const response = await platform.auth.login({
+        forcedConnection,
+        organizationId: args?.organizationId,
+      });
+      if (response.isErr()) {
+        setAuthError(response.error);
         setIsLoading(false);
+        void platform.clearStoredData();
         return;
       }
-    }
 
-    setTokens(newTokens);
-    setRegionInfo(newRegionInfo);
-    setConnectionDetails(newConnectionDetails);
-    setAuthError(null);
-    setIsLoading(false);
-  }, [forcedConnection, user]);
+      const { tokens: newTokens, regionInfo: newRegionInfo } = response.value;
+
+      setTokens(newTokens);
+      setRegionInfo(newRegionInfo, { keepInStorage: true });
+      setAuthError(null);
+      // isLoading stays true — the user fetch effect will clear it.
+    },
+    [forcedConnection]
+  );
+
+  const handleSelectOrganization = useCallback(
+    async (organizationId: string) => {
+      await handleLogin({ organizationId });
+    },
+    [handleLogin]
+  );
 
   return {
     token: tokens?.accessToken ?? null,
@@ -279,10 +231,10 @@ export const useAuthHook = () => {
     user,
     workspace,
     isUserSetup,
-    isLoading: isLoading || isUserLoading,
+    isLoading,
     handleLogin,
     handleLogout,
-    handleSelectWorkspace,
+    handleSelectOrganization,
     featureFlags,
   };
 };
