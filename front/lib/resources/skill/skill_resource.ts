@@ -2152,7 +2152,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         where: { workspaceId },
       });
       for (const file of filesToDelete) {
-        await file.delete(auth);
+        const res = await file.delete(auth);
+        if (res.isErr()) {
+          throw res.error;
+        }
       }
     }
 
