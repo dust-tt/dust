@@ -84,8 +84,8 @@ export async function* streamLLMEvents(
   }
 
   try {
-    // Anthropic does not send the output token coutn details
-    // This allows a rough estimation of the reasoning tokens
+    // Anthropic does not send the output token count details.
+    // This allows a rough estimation of the reasoning tokens.
     const tokenCount = (await countTokensCallback?.({
       model: metadata.modelId,
       messages: outputTokensWithoutReasoning,
