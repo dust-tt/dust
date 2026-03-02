@@ -31,7 +31,6 @@ import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
-
 export abstract class LLM<TPayload = unknown> {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
