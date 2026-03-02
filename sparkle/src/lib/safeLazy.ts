@@ -1,5 +1,7 @@
 import { type ComponentType, lazy } from "react";
 
+import { reportToDatadog } from "./reportToDatadog";
+
 export const FORCE_RELOAD_SESSION_KEY = "force_reload_at";
 export const FORCE_RELOAD_INTERVAL_MS = 10_000;
 
@@ -40,39 +42,74 @@ async function probeChunk(url: string): Promise<string> {
  * key as the SWR reload guard and skips the reload if one happened within the last
  * 60 seconds.
  */
+const RETRY_DELAY_MS = 1_500;
+const MAX_RETRIES = 2;
+
+/**
+ * Wait for a given number of milliseconds.
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function safeLazy<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>
 ) {
-  return lazy(() =>
-    factory().catch(async (error) => {
-      // In Next.js (detected via __NEXT_DATA__), let the framework handle errors.
-      if (typeof window !== "undefined" && "__NEXT_DATA__" in window) {
-        throw error;
+  return lazy(async () => {
+    // In Next.js (detected via __NEXT_DATA__), let the framework handle errors.
+    const isNextJs = typeof window !== "undefined" && "__NEXT_DATA__" in window;
+
+    let lastError: unknown;
+
+    // Attempt the import with retries before resorting to a full page reload.
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await factory();
+      } catch (error) {
+        lastError = error;
+
+        if (isNextJs) {
+          throw error;
+        }
+
+        if (attempt < MAX_RETRIES) {
+          reportToDatadog(error, {
+            source: "safeLazy",
+            event: "retry",
+            attempt: attempt + 1,
+            maxAttempts: MAX_RETRIES + 1,
+          });
+          await delay(RETRY_DELAY_MS);
+        }
       }
+    }
 
-      // Enrich the error with diagnostic information.
-      const chunkUrl = extractChunkUrl(error);
-      const probeInfo = chunkUrl ? await probeChunk(chunkUrl) : "no URL found";
-      const online = navigator.onLine ? "online" : "offline";
-      const diagnostic = `[safeLazy] ${error instanceof Error ? error.message : String(error)} | ${probeInfo} | navigator=${online}`;
+    // All retries exhausted — enrich the error with diagnostic information.
+    const chunkUrl = extractChunkUrl(lastError);
+    const probeInfo = chunkUrl ? await probeChunk(chunkUrl) : "no URL found";
+    const online = navigator.onLine ? "online" : "offline";
+    const diagnostic = `[safeLazy] ${lastError instanceof Error ? lastError.message : String(lastError)} | ${probeInfo} | navigator=${online}`;
 
-      // Guard against continuous reload loops.
-      const lastReloadMs = sessionStorage.getItem(FORCE_RELOAD_SESSION_KEY);
-      const nowMs = Date.now();
-      const lastMs = lastReloadMs !== null ? Number(lastReloadMs) : Number.NaN;
-      const shouldReload =
-        !Number.isFinite(lastMs) || nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS;
+    // Guard against continuous reload loops.
+    const lastReloadMs = sessionStorage.getItem(FORCE_RELOAD_SESSION_KEY);
+    const nowMs = Date.now();
+    const lastMs = lastReloadMs !== null ? Number(lastReloadMs) : Number.NaN;
+    const shouldReload =
+      !Number.isFinite(lastMs) || nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS;
 
-      if (!shouldReload) {
-        throw new Error(diagnostic, { cause: error });
-      }
+    if (!shouldReload) {
+      throw new Error(diagnostic, { cause: lastError });
+    }
 
-      // In SPA (Vite), reload to fetch fresh assets.
-      console.warn(diagnostic + " | reloading page");
-      sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
-      window.location.reload();
-      return new Promise<never>(() => {});
-    })
-  );
+    // In SPA (Vite), reload to fetch fresh assets.
+    reportToDatadog(lastError, {
+      source: "safeLazy",
+      event: "reload",
+      diagnostic,
+    });
+    sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
+    window.location.reload();
+    return new Promise<never>(() => {});
+  });
 }
