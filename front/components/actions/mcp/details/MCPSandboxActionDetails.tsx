@@ -4,12 +4,12 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import {
   ActionDocumentTextIcon,
   Button,
-  CodeBlock,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   CommandLineIcon,
   cn,
+  Markdown,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -231,15 +231,9 @@ function ConversationView({
 
       {!isRunning && isRawMode && (
         <div className="flex flex-col gap-1">
-          {command && (
-            <CodeBlock className="language-bash max-h-20 overflow-y-auto">
-              {command}
-            </CodeBlock>
-          )}
+          {command && <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />}
           {rawOutputText && (
-            <CodeBlock className="language-text max-h-40 overflow-y-auto">
-              {rawOutputText}
-            </CodeBlock>
+            <Markdown content={`\`\`\`\n${rawOutputText}\n\`\`\``} />
           )}
           <ExitCodeBadge exitCode={exitCode} />
         </div>
@@ -284,9 +278,7 @@ function SidebarView({
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="py-2">
-                  <CodeBlock className="language-bash max-h-40 overflow-y-auto">
-                    {command}
-                  </CodeBlock>
+                  <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -306,9 +298,7 @@ function SidebarView({
             <CollapsibleContent>
               <div className="py-2">
                 {rawOutputText ? (
-                  <CodeBlock className="language-text max-h-96 overflow-y-auto">
-                    {rawOutputText}
-                  </CodeBlock>
+                  <Markdown content={`\`\`\`\n${rawOutputText}\n\`\`\``} />
                 ) : (
                   <p className="text-sm italic text-muted-foreground dark:text-muted-foreground-night">
                     {isRunning ? "Waiting for output…" : "(no output)"}
