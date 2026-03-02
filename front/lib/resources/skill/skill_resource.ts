@@ -569,15 +569,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
       });
 
-      const allFileResources =
-        await FileResource.fetchByModelIdsWithAuth(
-              auth,
-              fileAttachmentModels.map((a) => a.fileId)
-            )
-
-      const fileResourceById = new Map(
-        allFileResources.map((f) => [f.id, f])
+      const allFileResources = await FileResource.fetchByModelIdsWithAuth(
+        auth,
+        fileAttachmentModels.map((a) => a.fileId)
       );
+
+      const fileResourceById = new Map(allFileResources.map((f) => [f.id, f]));
 
       const fileAttachmentsBySkillId = groupBy(
         fileAttachmentModels,
@@ -648,8 +645,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           editorGroup: skillEditorGroupsMap.get(customSkill.id),
           dataSourceConfigurations: skillDataSourceConfigs,
           fileAttachments: removeNulls(
-            (fileAttachmentsBySkillId[customSkill.id] ?? []).map((a) =>
-              fileResourceById.get(a.fileId) ?? null
+            (fileAttachmentsBySkillId[customSkill.id] ?? []).map(
+              (a) => fileResourceById.get(a.fileId) ?? null
             )
           ),
         });
