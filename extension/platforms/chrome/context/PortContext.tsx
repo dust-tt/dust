@@ -9,8 +9,11 @@ export const PortProvider = ({ children }: { children: React.ReactNode }) => {
     // Use a different port name when embedded in a content-script iframe (e.g.
     // Arc) vs. running as a native side panel (e.g. Chrome). The content
     // script sets ?embedded=1 on the iframe src so we can tell the two apart
-    // reliably — window.self !== window.top is not sufficient because Chrome
-    // also embeds the native side panel in a frame internally.
+    // reliably (window.self !== window.top is not sufficient because Chrome
+    // also embeds the native side panel in a frame internally).
+    // This is necessary to avoid conflicts between the two contexts since they
+    // both use the same background script and could otherwise accidentally
+    // receive each other's messages.
     const isEmbedded =
       new URLSearchParams(window.location.search).get("embedded") === "1";
     const portName = isEmbedded

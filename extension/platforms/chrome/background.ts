@@ -158,9 +158,9 @@ const tryOpenNativeSidePanel = async (windowId: number): Promise<boolean> => {
 };
 
 /**
- * Helper function to check if we can inject content script into a URL
+ * Helper function to check if we can inject content script into a URL or open the side panel
  */
-const canInjectContentScript = (url: string | undefined): boolean => {
+const canOpenExtension = (url: string | undefined): boolean => {
   if (!url) {
     return false;
   }
@@ -245,6 +245,10 @@ chrome.action.onClicked.addListener(async (tab) => {
   // Fast path for Chrome (native side panel already confirmed): toggle it.
   // If the panel is open, ask it to close itself; otherwise open it.
   if (nativeSidePanelCache === true) {
+    if (!tab.id || !canOpenExtension(tab.url)) {
+      console.log("Cannot open extension on this tab:", tab.url);
+      return;
+    }
     if (activeSidePanelPort) {
       activeSidePanelPort.postMessage({ type: "CLOSE_SIDE_PANEL" });
     } else {
@@ -253,14 +257,13 @@ chrome.action.onClicked.addListener(async (tab) => {
     return;
   }
 
-  // For the first click (or after a service-worker restart where the probe
-  // hasn't run yet), go through the full detection flow.
+  // For the first click, go through the full detection flow.
   if (await tryOpenNativeSidePanel(tab.windowId)) {
     return;
   }
 
-  if (!tab.id || !canInjectContentScript(tab.url)) {
-    console.log("Cannot inject content script in this tab:", tab.url);
+  if (!tab.id || !canOpenExtension(tab.url)) {
+    console.log("Cannot open extension on this tab:", tab.url);
     return;
   }
 
@@ -428,7 +431,7 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
     state.lastHandler = handler;
     if (await tryOpenNativeSidePanel(tab.windowId)) {
       // Native side panel opened — it will fire INPUT_BAR_STATUS when ready.
-    } else if (tab.id && canInjectContentScript(tab.url)) {
+    } else if (tab.id && canOpenExtension(tab.url)) {
       // Open the sidebar via content script
       const loaded = await ensureContentScriptLoaded(tab.id);
       if (loaded) {
@@ -651,7 +654,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
       if (await tryOpenNativeSidePanel(tab.windowId)) {
         return;
       }
-      if (!tab.id || !canInjectContentScript(tab.url)) {
+      if (!tab.id || !canOpenExtension(tab.url)) {
         log("[onMessageExternal] Cannot inject content script in this tab");
         return;
       }

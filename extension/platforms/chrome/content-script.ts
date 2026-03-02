@@ -31,9 +31,6 @@ let isResizing = false;
 // Deferred cleanup when hiding: resets backdrop + body margin after slide-out.
 let hideTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
-/**
- * Update sidebar width
- */
 function updateSidebarWidth(width: number): void {
   const clampedWidth = Math.max(
     MIN_SIDEBAR_WIDTH,
@@ -59,9 +56,6 @@ function updateSidebarWidth(width: number): void {
     .catch(console.error);
 }
 
-/**
- * Handle resize start
- */
 function handleResizeStart(e: MouseEvent): void {
   e.preventDefault();
   isResizing = true;
@@ -74,9 +68,6 @@ function handleResizeStart(e: MouseEvent): void {
   }
 }
 
-/**
- * Handle resize move
- */
 function handleResizeMove(e: MouseEvent): void {
   if (!isResizing) {
     return;
@@ -86,9 +77,6 @@ function handleResizeMove(e: MouseEvent): void {
   updateSidebarWidth(newWidth);
 }
 
-/**
- * Handle resize end
- */
 function handleResizeEnd(): void {
   if (isResizing) {
     isResizing = false;
@@ -102,9 +90,6 @@ function handleResizeEnd(): void {
   }
 }
 
-/**
- * Create and inject the sidebar into the page
- */
 function createSidebar(): void {
   // Check if sidebar already exists
   if (sidebarElement) {
@@ -250,9 +235,6 @@ function createSidebar(): void {
   document.addEventListener("mouseup", handleResizeEnd);
 }
 
-/**
- * Show the sidebar
- */
 function showSidebar(): void {
   if (!sidebarElement) {
     createSidebar();
@@ -283,9 +265,6 @@ function showSidebar(): void {
   }
 }
 
-/**
- * Hide the sidebar
- */
 function hideSidebar(): void {
   if (sidebarElement) {
     sidebarElement.style.transform = SIDEBAR_SLIDE_OUT;
@@ -309,9 +288,6 @@ function hideSidebar(): void {
   }
 }
 
-/**
- * Toggle sidebar visibility
- */
 function toggleSidebar(): void {
   if (sidebarVisible) {
     hideSidebar();
@@ -320,9 +296,8 @@ function toggleSidebar(): void {
   }
 }
 
-/**
- * Remove the sidebar from the page
- */
+// Unlike hideSidebar (animated slide-out), this immediately destroys the DOM
+// elements and removes global event listeners. Used on page unload.
 function removeSidebar(): void {
   if (hideTimeoutId !== undefined) {
     clearTimeout(hideTimeoutId);
@@ -346,9 +321,6 @@ function removeSidebar(): void {
   document.removeEventListener("mouseup", handleResizeEnd);
 }
 
-/**
- * Initialize the content script
- */
 async function init(): Promise<void> {
   try {
     // Restore previous state
