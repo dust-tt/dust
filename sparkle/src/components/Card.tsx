@@ -53,7 +53,7 @@ const cardVariants = cva(
         highlight: cn(
           "s-bg-highlight-50",
           "s-border-border/0",
-          "dark:s-bg-highlight-50-night",
+          "dark:s-bg-highlight-100-night",
           "dark:s-border-border-night/0"
         ),
         warning: cn(

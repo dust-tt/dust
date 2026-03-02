@@ -178,15 +178,15 @@ function MetadataRow({
   descriptionClassName,
 }: MetadataRowProps) {
   const descriptionClasses = [
-    "s-text-sm s-text-muted-foreground",
+    "s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night",
     descriptionClassName,
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
-      <div className="s-w-[80px] s-text-sm s-text-muted-foreground">
+    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border dark:s-border-border-night s-py-2">
+      <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
         {label}
       </div>
       {action}
@@ -667,8 +667,10 @@ export function AgentBuilderView({
     return (
       <div className="s-flex s-w-full s-items-end s-gap-2">
         <div className="s-flex s-flex-1 s-flex-col">
-          <div className="s-heading-base s-text-foreground">{title}</div>
-          <div className="s-text-base s-text-muted-foreground">
+          <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+            {title}
+          </div>
+          <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
             {description}
           </div>
         </div>
@@ -683,7 +685,7 @@ export function AgentBuilderView({
   ];
 
   return (
-    <div className="s-h-screen s-w-full s-bg-background">
+    <div className="s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
       <style>{`
         :root {
           --focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
@@ -727,7 +729,7 @@ export function AgentBuilderView({
           <Allotment.Pane
             minSize={360}
             preferredSize={60}
-            className="s-flex s-h-full s-flex-col s-overflow-hidden s-border-r s-border-border"
+            className="s-flex s-h-full s-flex-col s-overflow-hidden s-border-r s-border-border dark:s-border-border-night"
           >
             <div className="s-flex s-h-full s-flex-col">
               <Bar
@@ -967,7 +969,7 @@ export function AgentBuilderView({
                     </div>
                     {selectedSpaces.length === 0 &&
                       selectedProjects.length === 0 && (
-                        <div className="s-copy-sm s-text-muted-foreground">
+                        <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                           No spaces selected.
                         </div>
                       )}
@@ -1013,11 +1015,11 @@ export function AgentBuilderView({
                   <div className="s-flex s-flex-col">
                     <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-2">
                       <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-2">
-                        <div className="s-heading-base s-text-foreground">
+                        <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
                           Settings
                         </div>
                         <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-2">
-                          <div className="s-w-[80px] s-text-sm s-text-muted-foreground">
+                          <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                             Handle
                           </div>
                           <DropdownMenu>
@@ -1059,8 +1061,8 @@ export function AgentBuilderView({
                         className="s-mb-2"
                       />
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
-                      <div className="s-w-[80px] s-text-sm s-text-muted-foreground">
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border dark:s-border-border-night s-py-2">
+                      <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                         Description
                       </div>
                       <DropdownMenu>
@@ -1453,7 +1455,7 @@ export function AgentBuilderView({
                   value="testing"
                   className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground">
+                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                     Testing panel content.
                   </div>
                 </TabsContent>
@@ -1461,7 +1463,7 @@ export function AgentBuilderView({
                   value="insights"
                   className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground">
+                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                     Insights panel content.
                   </div>
                 </TabsContent>
@@ -1469,7 +1471,7 @@ export function AgentBuilderView({
                   value="feedback"
                   className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground">
+                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                     Feedback panel content.
                   </div>
                 </TabsContent>
@@ -1542,10 +1544,10 @@ export function AgentBuilderView({
                             size="sm"
                           />
                           <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                            <span className="s-heading-sm s-truncate s-text-foreground">
+                            <span className="s-heading-sm s-truncate s-text-foreground dark:s-text-foreground-night">
                               {space.name}
                             </span>
-                            <span className="s-truncate s-text-xs s-text-muted-foreground">
+                            <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
                               {space.description}
                             </span>
                           </div>
@@ -1591,10 +1593,10 @@ export function AgentBuilderView({
                           size="sm"
                         />
                         <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
                             {space.name}
                           </span>
-                          <span className="s-truncate s-text-xs s-text-muted-foreground">
+                          <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
                             {space.description}
                           </span>
                         </div>
@@ -1639,10 +1641,10 @@ export function AgentBuilderView({
                           size="sm"
                         />
                         <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
                             {space.name}
                           </span>
-                          <span className="s-truncate s-text-xs s-text-muted-foreground">
+                          <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
                             {space.description}
                           </span>
                         </div>
