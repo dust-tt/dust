@@ -16,6 +16,7 @@ import { useFieldArray } from "react-hook-form";
 
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
+  const sendNotification = useSendNotification();
   const { fields, append, remove } = useFieldArray<
     SkillBuilderFormData,
     "fileAttachments"
@@ -24,8 +25,6 @@ export function SkillBuilderFilesSection() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const sendNotification = useSendNotification();
 
   const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
     owner,
@@ -154,7 +153,11 @@ export function SkillBuilderFilesSection() {
             {sortedFields.map(({ field, originalIndex }) => (
               <ContextItem
                 key={field.id}
-                title={<span className="font-normal">{field.fileName}</span>}
+                title={
+                  <span className="text-sm font-normal">
+                    {field.fileName}
+                  </span>
+                }
                 visual={<ContextItem.Visual visual={DocumentIcon} />}
                 hoverAction
                 action={
