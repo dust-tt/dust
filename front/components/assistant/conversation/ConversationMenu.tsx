@@ -16,6 +16,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import {
+  getAgentBuilderRoute,
   getConversationRoute,
   getProjectRoute,
   setQueryParam,
@@ -23,6 +24,7 @@ import {
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
+import { isBuilder } from "@app/types/user";
 import {
   ArrowRightIcon,
   Avatar,
@@ -31,6 +33,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -39,6 +42,7 @@ import {
   LinkIcon,
   PencilSquareIcon,
   PlusCircleIcon,
+  SidekickIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -143,6 +147,12 @@ export function ConversationMenu({
   const { hasFeature } = useFeatureFlags();
 
   const router = useAppRouter();
+
+  const canTurnIntoAgent =
+    hasFeature("agent_builder_shrink_wrap") &&
+    !!conversation &&
+    !!user &&
+    isBuilder(owner);
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
@@ -335,14 +345,25 @@ export function ConversationMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               icon={ContactsUserIcon}
-              label="Participant list"
+              label="Participants"
               disabled={
                 !conversationParticipants?.users.length &&
-                !conversationParticipants?.agents.length
+                !conversationParticipants?.agents.length &&
+                !canJoin
               }
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
+                {canJoin && (
+                  <>
+                    <DropdownMenuItem
+                      label="Join"
+                      onClick={joinConversation}
+                      icon={PlusCircleIcon}
+                    />
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 {conversationParticipants?.agents.map((agent) => (
                   <DropdownMenuItem
                     key={agent.configurationId}
@@ -390,11 +411,18 @@ export function ConversationMenu({
               icon={LinkIcon}
             />
           )}
-          {canJoin && (
+          {canTurnIntoAgent && (
             <DropdownMenuItem
-              label="Join"
-              onClick={joinConversation}
-              icon={PlusCircleIcon}
+              label="Turn conversation into an agent"
+              icon={SidekickIcon}
+              onClick={() => {
+                const route = getAgentBuilderRoute(
+                  owner.sId,
+                  "new",
+                  `conversationId=${conversation.sId}`
+                );
+                void router.push(route);
+              }}
             />
           )}
           {canLeave && (
