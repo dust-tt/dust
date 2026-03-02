@@ -1,5 +1,5 @@
 import type { RegionInfo } from "@app/lib/api/regions/config";
-import type { Result, WorkspaceType } from "@dust-tt/client";
+import type { Result } from "@dust-tt/client";
 import {
   DEFAULT_DUST_API_DOMAIN,
   DUST_EU_URL,
@@ -12,11 +12,6 @@ export type StoredTokens = {
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
-};
-
-export type ConnectionDetails = {
-  connectionStrategy: SupportedEnterpriseConnectionStrategy | undefined;
-  connection?: string;
 };
 
 export type OAuthAuthorizeResponse = {
@@ -47,7 +42,6 @@ export class AuthError extends Error {
 export type LoginResult = {
   tokens: StoredTokens;
   regionInfo: RegionInfo;
-  connectionDetails: ConnectionDetails;
 };
 
 export abstract class AuthService {
@@ -92,12 +86,6 @@ export abstract class AuthService {
     return (await this.storage.get<RegionInfo>("regionInfo")) ?? null;
   }
 
-  async getConnectionDetailsFromStorage(): Promise<ConnectionDetails | null> {
-    return (
-      (await this.storage.get<ConnectionDetails>("connectionDetails")) ?? null
-    );
-  }
-
   async getSelectedWorkspace(): Promise<string | null> {
     return (await this.storage.get<string>("selectedWorkspace")) ?? null;
   }
@@ -118,8 +106,6 @@ export abstract class AuthService {
 }
 
 const REGION_CLAIM = `${WORKOS_CLAIM_NAMESPACE}region`;
-const CONNECTION_STRATEGY_CLAIM = `${WORKOS_CLAIM_NAMESPACE}connection.strategy`;
-const WORKSPACE_ID_CLAIM = `${WORKOS_CLAIM_NAMESPACE}workspaceId`;
 
 export function getRegionInfoFromClaims(
   claims: Record<string, string>
@@ -136,50 +122,6 @@ export function getRegionInfoFromClaims(
 
 export function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
-}
-
-export function getConnectionDetails(
-  claims: Record<string, string>
-): ConnectionDetails {
-  const connectionStrategy = claims[CONNECTION_STRATEGY_CLAIM];
-  const ws = claims[WORKSPACE_ID_CLAIM];
-  return {
-    connectionStrategy: isSupportedEnterpriseConnectionStrategy(
-      connectionStrategy
-    )
-      ? connectionStrategy
-      : undefined,
-    connection: ws ? makeEnterpriseConnectionName(ws) : undefined,
-  };
-}
-
-export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = ["SSO"] as const;
-export type SupportedEnterpriseConnectionStrategy =
-  (typeof SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES)[number];
-
-function isSupportedEnterpriseConnectionStrategy(
-  connectionStrategy: string
-): connectionStrategy is SupportedEnterpriseConnectionStrategy {
-  return SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES.includes(
-    connectionStrategy as SupportedEnterpriseConnectionStrategy
-  );
-}
-
-export function isValidEnterpriseConnection(
-  connectionDetails: ConnectionDetails,
-  workspace: WorkspaceType
-) {
-  if (!workspace.ssoEnforced) {
-    return true;
-  }
-
-  return (
-    connectionDetails.connectionStrategy &&
-    isSupportedEnterpriseConnectionStrategy(
-      connectionDetails.connectionStrategy
-    ) &&
-    makeEnterpriseConnectionName(workspace.sId) === connectionDetails.connection
-  );
 }
 
 const REGIONS = ["europe-west1", "us-central1"] as const;

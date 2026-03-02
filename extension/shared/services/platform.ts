@@ -115,7 +115,6 @@ export abstract class CorePlatformService {
       this.storage.delete("expiresAt"),
       this.storage.delete("refreshToken"),
       this.storage.delete("regionInfo"),
-      this.storage.delete("connectionDetails"),
       this.storage.delete("selectedWorkspace"),
     ]);
   }
