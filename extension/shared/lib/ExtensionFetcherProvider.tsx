@@ -1,10 +1,6 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
-import type {
-  ClientFetchFn,
-  FetcherFn,
-  FetcherWithBodyFn,
-} from "@app/lib/swr/fetcher";
+import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { resHandler } from "@extension/shared/lib/swr";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import type { ReactNode } from "react";
@@ -19,23 +15,18 @@ export function ExtensionFetcherProvider({
 }: ExtensionFetcherProviderProps) {
   const { token } = useExtensionAuth();
 
-  const { fetcher, fetcherWithBody, extensionClientFetch } = useMemo(() => {
+  const { fetcher, fetcherWithBody } = useMemo(() => {
     const addAuthHeaders = (headers: HeadersInit = {}): HeadersInit => ({
       ...headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     });
 
-    const extensionClientFetch: ClientFetchFn = async (url, init) => {
+    const fetcher: FetcherFn = async (url, init) => {
       const res = await clientFetch(url, {
         ...init,
         headers: addAuthHeaders(init?.headers),
         credentials: "omit", // Ensure cookies are not sent with requests from the extension
       });
-      return res;
-    };
-
-    const fetcher: FetcherFn = async (url, init) => {
-      const res = await extensionClientFetch(url, init);
       return resHandler(res);
     };
 
@@ -43,26 +34,24 @@ export function ExtensionFetcherProvider({
       [url, body, method],
       init
     ) => {
-      const res = await extensionClientFetch(url, {
+      const res = await clientFetch(url, {
         ...init,
         method,
-        headers: {
+        headers: addAuthHeaders({
+          ...init?.headers,
           "Content-Type": "application/json",
-        },
+        }),
         body: JSON.stringify(body),
+        credentials: "omit", // Ensure cookies are not sent with requests from the extension
       });
       return resHandler(res);
     };
 
-    return { fetcher, fetcherWithBody, extensionClientFetch };
+    return { fetcher, fetcherWithBody };
   }, [token]);
 
   return (
-    <FetcherProvider
-      fetcher={fetcher}
-      fetcherWithBody={fetcherWithBody}
-      clientFetch={extensionClientFetch}
-    >
+    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
       {children}
     </FetcherProvider>
   );

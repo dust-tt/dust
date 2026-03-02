@@ -1,9 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFetcher } from "@app/lib/swr/FetcherContext";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
-import { isAPIErrorResponse } from "@app/types/error";
 import type {
   FileFormatCategory,
   FileUseCase,
@@ -59,7 +59,7 @@ export function useFileUploaderService({
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [numFilesProcessing, setNumFilesProcessing] = useState(0);
-  const { clientFetch } = useFetcher();
+  const { fetcher, fetcherWithBody } = useFetcher();
 
   const isProcessingFiles = numFilesProcessing > 0;
 
@@ -188,23 +188,21 @@ export function useFileUploaderService({
       newFileBlobs,
       async (fileBlob) => {
         // Get upload URL from server.
-        let uploadResponse;
+        let uploadResponse: FileUploadRequestResponseBody;
         try {
-          uploadResponse = await clientFetch(`/api/w/${owner.sId}/files`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+          uploadResponse = await fetcherWithBody([
+            `/api/w/${owner.sId}/files`,
+            {
               contentType: fileBlob.contentType,
               fileName: fileBlob.filename,
               fileSize: fileBlob.size,
               useCase,
               useCaseMetadata,
-            }),
-          });
+            },
+            "POST",
+          ]);
         } catch (err) {
-          console.error("Error uploading files:", err);
+          logger.error("Error uploading files:", err);
 
           return new Err(
             new FileBlobUploadError(
@@ -214,38 +212,20 @@ export function useFileUploaderService({
           );
         }
 
-        if (!uploadResponse.ok) {
-          try {
-            const res = await uploadResponse.json();
-
-            return new Err(
-              new FileBlobUploadError(
-                fileBlob.file,
-                isAPIErrorResponse(res) ? res.error.message : undefined
-              )
-            );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-          } catch (err) {
-            return new Err(new FileBlobUploadError(fileBlob.file));
-          }
-        }
-
-        const { file } =
-          (await uploadResponse.json()) as FileUploadRequestResponseBody;
+        const { file } = uploadResponse;
 
         const formData = new FormData();
         formData.append("file", fileBlob.file);
 
         // Upload a file to the obtained URL.
-        let uploadResult;
+        let uploadResult: FileUploadedRequestResponseBody;
         try {
-          uploadResult = await clientFetch(file.uploadUrl, {
+          uploadResult = await fetcher(file.uploadUrl, {
             method: "POST",
             body: formData,
           });
         } catch (err) {
-          console.error("Error uploading files:", err);
+          logger.error("Error uploading files:", err);
 
           return new Err(
             new FileBlobUploadError(
@@ -255,18 +235,7 @@ export function useFileUploaderService({
           );
         }
 
-        if (!uploadResult.ok) {
-          const { error } = await uploadResult.json();
-          return new Err(
-            new FileBlobUploadError(
-              fileBlob.file,
-              error?.message ?? "An unknown error happened."
-            )
-          );
-        }
-
-        const { file: fileUploaded } =
-          (await uploadResult.json()) as FileUploadedRequestResponseBody;
+        const { file: fileUploaded } = uploadResult;
 
         return new Ok({
           ...fileBlob,
@@ -335,7 +304,7 @@ export function useFileUploaderService({
 
       // Delete from server if file has been uploaded
       if (fileBlob.fileId) {
-        void clientFetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
+        void fetcher(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",

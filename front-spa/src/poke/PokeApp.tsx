@@ -1,7 +1,6 @@
 import { RootLayout } from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary.js";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
-import { clientFetch } from "@dust-tt/front/lib/egress/client.js";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { SparkleContext } from "@dust-tt/sparkle";
@@ -19,11 +18,7 @@ export default function PokeApp() {
   return (
     <AppReadyProvider>
       <RegionProvider>
-        <FetcherProvider
-          fetcher={fetcher}
-          fetcherWithBody={fetcherWithBody}
-          clientFetch={clientFetch}
-        >
+        <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
           <SparkleContext.Provider
             value={{ components: { link: ReactRouterLinkWrapper } }}
           >
