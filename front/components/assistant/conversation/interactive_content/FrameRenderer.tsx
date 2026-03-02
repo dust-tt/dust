@@ -11,6 +11,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -67,7 +68,6 @@ function ExportContentDropdown({
 }: ExportContentDropdownProps) {
   const sendNotification = useSendNotification();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const { fetcher } = useFetcher();
 
   const exportAsPng = () => {
     if (fileContent) {
@@ -100,7 +100,8 @@ function ExportContentDropdown({
 
     setIsExportingPdf(true);
     try {
-      const response = await fetcher(
+      // Use direct fetch instead of fetcher to avoid JSON parsing of binary PDF data.
+      const response = await clientFetch(
         `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
         {
           method: "POST",
