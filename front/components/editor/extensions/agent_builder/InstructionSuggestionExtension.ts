@@ -52,9 +52,8 @@ const CLASSES = {
   add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 cursor-default",
   addDimmed:
     "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400 cursor-default",
-  blockHighlight: "suggestion-highlight rounded bg-blue-50 dark:bg-blue-900/30",
   blockHighlightDimmed:
-    "suggestion-highlight rounded bg-blue-50/50 dark:bg-blue-900/10",
+    "suggestion-highlight rounded bg-blue-50/50 dark:bg-blue-900/10 cursor-default",
 };
 
 export function diffBlockContent(
