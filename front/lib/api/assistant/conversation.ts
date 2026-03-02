@@ -6,13 +6,15 @@ import {
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
+import {
+  createAgentMessages,
+  createUserMessage,
+} from "@app/lib/api/assistant/conversation/messages";
 import {
   canAgentBeUsedInProjectConversation,
-  createAgentMessages,
-  createUserMentions,
-  createUserMessage,
   updateConversationRequirements,
-} from "@app/lib/api/assistant/conversation/mentions";
+} from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
