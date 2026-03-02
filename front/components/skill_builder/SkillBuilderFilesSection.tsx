@@ -152,7 +152,9 @@ export function SkillBuilderFilesSection() {
             {sortedFields.map(({ field, originalIndex }) => (
               <ContextItem
                 key={field.id}
-                title={field.fileName}
+                title={
+                  <span className="font-normal">{field.fileName}</span>
+                }
                 visual={<ContextItem.Visual visual={DocumentIcon} />}
                 hoverAction
                 action={
