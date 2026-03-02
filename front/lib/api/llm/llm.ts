@@ -332,7 +332,6 @@ export abstract class LLM<TPayload = unknown> {
   async *stream(
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
-    console.log('>> stream <<');
     yield* this.streamWithTracing(streamParameters);
   }
 
