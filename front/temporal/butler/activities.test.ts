@@ -1,6 +1,7 @@
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { analyzeConversationActivity } from "@app/temporal/butler/activities";
@@ -26,6 +27,11 @@ vi.mock("@app/lib/api/assistant/conversation/fetch", () => ({
   getConversation: vi.fn(),
 }));
 
+// Mock event publishing to avoid Redis dependency.
+vi.mock("@app/lib/api/assistant/streaming/events", () => ({
+  publishConversationEvent: vi.fn(),
+}));
+
 // Mock model selection to avoid plan/whitelist dependency.
 vi.mock("@app/types/assistant/assistant", async (importOriginal) => {
   const mod = await importOriginal();
@@ -37,6 +43,7 @@ vi.mock("@app/types/assistant/assistant", async (importOriginal) => {
 
 const mockGetConversation = vi.mocked(getConversation);
 const mockGetFastestModel = vi.mocked(getFastestWhitelistedModel);
+const mockPublishConversationEvent = vi.mocked(publishConversationEvent);
 const mockRenderConversation = vi.mocked(renderConversationForModel);
 const mockRunMultiActionsAgent = vi.mocked(runMultiActionsAgent);
 
@@ -127,9 +134,11 @@ describe("analyzeConversationActivity", () => {
     });
     expect(message).not.toBeNull();
 
-    // Mock getConversation to return a conversation with the real DB id for FK constraints.
+    // Mock getConversation to return a conversation with the real DB id and sId.
     mockGetConversation.mockResolvedValue(
-      new Ok(makeFakeConversation({ id: conversation.id }))
+      new Ok(
+        makeFakeConversation({ id: conversation.id, sId: conversation.sId })
+      )
     );
     setupMocksForHighConfidence();
 
@@ -150,6 +159,20 @@ describe("analyzeConversationActivity", () => {
     expect(suggestions[0].status).toBe("pending");
     expect(suggestions[0].sourceMessageId).toBe(message!.id);
     expect(suggestions[0].conversationId).toBe(conversation.id);
+
+    // Verify the event was published to the conversation channel.
+    expect(mockPublishConversationEvent).toHaveBeenCalledOnce();
+    expect(mockPublishConversationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "butler_suggestion_created",
+        suggestion: expect.objectContaining({
+          suggestionType: "rename_title",
+          metadata: { suggestedTitle: "Better Title" },
+          sourceMessageSId: message!.sId,
+        }),
+      }),
+      { conversationId: conversation.sId }
+    );
   });
 
   it("does not create suggestion when confidence is below threshold", async () => {

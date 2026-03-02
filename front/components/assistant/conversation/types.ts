@@ -16,6 +16,7 @@ import type {
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -80,6 +81,11 @@ export type VirtuosoMessageListContext = {
     skipToolsValidation?: boolean;
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
+  suggestionsByMessageSId: Map<string, ButlerSuggestionPublicType[]>;
+  handleSuggestionAction: (
+    suggestionSId: string,
+    status: "accepted" | "dismissed"
+  ) => Promise<void>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   // Project membership fields (undefined for non-project conversations)

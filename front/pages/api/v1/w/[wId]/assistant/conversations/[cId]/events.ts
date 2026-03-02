@@ -125,6 +125,11 @@ async function handler(
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
+        // Butler suggestions are internal events, not exposed via the public API.
+        if (event.data.type === "butler_suggestion_created") {
+          continue;
+        }
+
         let publicEvent: ConversationEventType | undefined;
 
         if (event.data.type === "agent_message_new") {
