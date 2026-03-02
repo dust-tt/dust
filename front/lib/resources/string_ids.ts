@@ -78,6 +78,9 @@ export const RESOURCES_PREFIX = {
   // Butler
   user_project_digest: "pje",
   conversation_butler_suggestion: "cbs",
+
+  // Conversation branches.
+  conversation_branch: "cbr",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

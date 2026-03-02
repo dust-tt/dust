@@ -7,6 +7,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type {
@@ -31,6 +32,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { Op, type WhereOptions } from "sequelize";
 
 // Helper type to map viewType to the correct message type
 type MessageTypeForView<V extends "light" | "full"> = V extends "light"
@@ -81,12 +83,52 @@ async function _getConversation<V extends "light" | "full">(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
+  let where: WhereOptions<MessageModel> = {
+    conversationId: conversation.id,
+    workspaceId: owner.id,
+  };
+
+  if (branchId) {
+    const branch = await ConversationBranchResource.fetchById(auth, branchId);
+    if (!branch) {
+      return new Err(new ConversationError("branch_not_found"));
+    }
+
+    const previousMessage = await MessageModel.findOne({
+      where: {
+        id: branch.previousMessageId,
+        workspaceId: owner.id,
+      },
+    });
+    if (!previousMessage) {
+      return new Err(new ConversationError("message_not_found"));
+    }
+
+    const branchModelId = branch.id;
+
+    // All messages before the branch and the branch itself.
+    where = {
+      ...where,
+      [Op.or]: [
+        {
+          branchId: branchModelId,
+        },
+        {
+          branchId: null,
+          rank: { [Op.lte]: previousMessage.rank },
+        },
+      ],
+    };
+  } else {
+    // All messages not part of a branch.
+    where = {
+      ...where,
+      branchId: { [Op.is]: null },
+    };
+  }
+
   const messages = await MessageModel.findAll({
-    where: {
-      conversationId: conversation.id,
-      workspaceId: owner.id,
-      branchId,
-    },
+    where,
     order: [
       ["rank", "ASC"],
       ["version", "ASC"],
@@ -216,6 +258,7 @@ async function _getConversation<V extends "light" | "full">(
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
+      branchId,
     };
 
     return new Ok(conversationType) as Result<
@@ -232,27 +275,29 @@ async function _getConversation<V extends "light" | "full">(
       | AgentMessageType[]
       | UserMessageType[]
       | ContentFragmentType[]
-    )[] = (content as MessageType[][]).map((c) => {
-      if (c.length === 0) {
-        return [];
-      } else if (
-        isArrayOf<MessageType, AgentMessageType>(c, isAgentMessageType)
-      ) {
-        return c.map((m) => m);
-      } else if (
-        isArrayOf<MessageType, UserMessageType>(c, isUserMessageType)
-      ) {
-        return c.map((m) => m);
-      } else if (
-        isArrayOf<MessageType, ContentFragmentType>(c, isContentFragmentType)
-      ) {
-        return c.map((m) => m);
-      } else {
-        throw new Error(
-          "Unexpected content type as everything should be array of same type. This should never happen."
-        );
-      }
-    });
+    )[] = removeNulls(
+      (content as MessageType[][]).map((c) => {
+        if (c.length === 0) {
+          return null;
+        } else if (
+          isArrayOf<MessageType, AgentMessageType>(c, isAgentMessageType)
+        ) {
+          return c.map((m) => m);
+        } else if (
+          isArrayOf<MessageType, UserMessageType>(c, isUserMessageType)
+        ) {
+          return c.map((m) => m);
+        } else if (
+          isArrayOf<MessageType, ContentFragmentType>(c, isContentFragmentType)
+        ) {
+          return c.map((m) => m);
+        } else {
+          throw new Error(
+            "Unexpected content type as everything should be array of same type. This should never happen."
+          );
+        }
+      })
+    );
 
     const conversationType: ConversationType = {
       id: conversation.id,
@@ -273,6 +318,7 @@ async function _getConversation<V extends "light" | "full">(
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
+      branchId,
     };
 
     return new Ok(conversationType) as Result<

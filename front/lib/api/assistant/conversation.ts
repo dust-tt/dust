@@ -57,7 +57,10 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
   getTimeframeSecondsFromLiteral,
@@ -197,6 +200,7 @@ export async function createConversation(
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,
     metadata: conversation.metadata,
+    branchId: null,
   };
 }
 
@@ -692,6 +696,9 @@ export async function postUserMessage(
         where: {
           workspaceId: owner.id,
           conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
         },
         transaction: t,
       })) ?? -1) + 1;
@@ -1059,6 +1066,9 @@ export async function editUserMessage(
               where: {
                 workspaceId: owner.id,
                 conversationId: conversation.id,
+                branchId: conversation.branchId
+                  ? getResourceIdFromSId(conversation.branchId)
+                  : null,
               },
               transaction: t,
             })) ?? -1) + 1;
@@ -1557,6 +1567,9 @@ export async function postNewContentFragment(
         where: {
           workspaceId: owner.id,
           conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
         },
         transaction: t,
       })) ?? -1) + 1;
