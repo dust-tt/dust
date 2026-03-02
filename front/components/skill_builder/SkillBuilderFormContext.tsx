@@ -13,6 +13,11 @@ export const attachedKnowledgeSchema = z.object({
   title: z.string(),
 });
 
+const fileAttachmentSchema = z.object({
+  fileId: z.string(),
+  fileName: z.string(),
+});
+
 export const skillBuilderFormSchema = z.object({
   name: z
     .string()
@@ -31,6 +36,7 @@ export const skillBuilderFormSchema = z.object({
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
   extendedSkillId: z.string().nullable(),
+  fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
 });
 
