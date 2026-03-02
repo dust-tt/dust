@@ -63,7 +63,6 @@ export default function GleanLandingPage() {
               alt={gleanConfig.comparison.competitorHeader}
               width={80}
               height={20}
-              unoptimized
             />
           }
           features={gleanConfig.comparison.features}
