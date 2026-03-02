@@ -444,14 +444,16 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
   }
 
   /**
-   * Fetches a batch of transcripts using cursor-based pagination.
-   * For use with application-level filtering (e.g., shouldExcludeByTitle).
+   * Fetches transcripts in batches for pagination.
    */
   static async fetchBatch(
     connector: ConnectorResource,
     { limit, lastId }: { limit: number; lastId?: number }
   ): Promise<GongTranscriptResource[]> {
-    const whereClause: { connectorId: number; id?: { [Op.gt]: number } } = {
+    const whereClause: {
+      connectorId: number;
+      id?: { [Op.gt]: number };
+    } = {
       connectorId: connector.id,
     };
 

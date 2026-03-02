@@ -22,6 +22,7 @@ import {
   syncStarted,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
@@ -31,7 +32,6 @@ import {
 } from "@connectors/resources/gong_resources";
 import type { ModelId } from "@connectors/types";
 import { removeNulls } from "@connectors/types/shared/utils/general";
-import { Context as ActivityContext } from "@temporalio/activity";
 
 const GARBAGE_COLLECT_BATCH_SIZE = 100;
 
@@ -295,22 +295,7 @@ export async function gongSyncTranscriptsActivity({
     configuration
   );
 
-  // Send heartbeat to show progress. If the workflow has been terminated before we start
-  // this batch, the activity will fail here. Otherwise, we'll finish processing this batch.
-  try {
-    const context = ActivityContext.current();
-    context.heartbeat();
-    await context.sleep(0);
-  } catch (err) {
-    if (err instanceof Error && err.name === "CancelledFailure") {
-      logger.info(
-        { ...loggerArgs },
-        "[Gong] Activity cancelled before processing transcript batch"
-      );
-      throw err;
-    }
-    // Not in Temporal context or other error - continue
-  }
+  await heartbeat();
 
   await concurrentExecutor(
     transcriptsToSync,
@@ -376,13 +361,7 @@ export async function gongSyncTranscriptsActivity({
     { concurrency: 10 }
   );
 
-  // Send heartbeat to show progress after processing the batch
-  try {
-    const context = ActivityContext.current();
-    context.heartbeat();
-  } catch (_err) {
-    // Not in Temporal context - continue
-  }
+  await heartbeat();
 
   return {
     nextPageCursor,
@@ -497,10 +476,7 @@ export async function gongDeleteOutdatedTranscriptsActivity({
 }
 
 /**
- * Activity to delete transcripts matching newly added exclude keywords.
- * Uses application-level filtering with shouldExcludeByTitle() for consistency
- * with sync-time filtering logic. Uses cursor-based pagination to efficiently
- * process transcripts in batches without re-processing.
+ * Deletes transcripts matching exclude keywords in batches.
  */
 export async function gongDeleteExcludedTranscriptsActivity({
   connectorId,
@@ -514,7 +490,6 @@ export async function gongDeleteExcludedTranscriptsActivity({
   const connector = await fetchGongConnector({ connectorId });
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  // Fetch a batch of transcripts using cursor-based pagination
   const transcripts = await GongTranscriptResource.fetchBatch(connector, {
     limit: GARBAGE_COLLECT_BATCH_SIZE,
     lastId,
@@ -590,4 +565,65 @@ export async function gongDeleteExcludedTranscriptsActivity({
     hasMore,
     lastId: newLastId,
   };
+}
+
+/**
+ * Pauses the Gong sync schedule.
+ */
+export async function gongPauseScheduleActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await fetchGongConnector({ connectorId });
+  const { pauseSchedule } = await import("@connectors/lib/temporal_schedules");
+  const { makeGongSyncScheduleId } = await import(
+    "@connectors/connectors/gong/index"
+  );
+
+  await pauseSchedule({
+    connector,
+    scheduleId: makeGongSyncScheduleId(connector),
+    stopReason: "Paused for keyword update",
+  });
+}
+
+/**
+ * Terminates all running Gong workflows for a connector.
+ */
+export async function gongTerminateWorkflowsActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const { terminateAllWorkflowsForConnectorId } = await import(
+    "@connectors/lib/temporal"
+  );
+
+  await terminateAllWorkflowsForConnectorId({
+    connectorId,
+    stopReason: "Terminating for keyword update",
+  });
+}
+
+/**
+ * Unpauses and triggers the Gong sync schedule.
+ */
+export async function gongUnpauseScheduleActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await fetchGongConnector({ connectorId });
+  const { unpauseAndTriggerSchedule } = await import(
+    "@connectors/lib/temporal_schedules"
+  );
+  const { makeGongSyncScheduleId } = await import(
+    "@connectors/connectors/gong/index"
+  );
+
+  await unpauseAndTriggerSchedule({
+    connector,
+    scheduleId: makeGongSyncScheduleId(connector),
+  });
 }

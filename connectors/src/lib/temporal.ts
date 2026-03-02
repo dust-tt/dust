@@ -150,11 +150,9 @@ export async function terminateWorkflow(workflowId: string, reason?: string) {
 export async function terminateAllWorkflowsForConnectorId({
   connectorId,
   stopReason,
-  waitForCompletion = false,
 }: {
   connectorId: ModelId;
   stopReason: string;
-  waitForCompletion?: boolean;
 }) {
   const client = await getTemporalClient();
 
@@ -169,14 +167,12 @@ export async function terminateAllWorkflowsForConnectorId({
     "About to terminate all workflows for connectorId"
   );
 
-  const workflowIds: string[] = [];
   for await (const handle of workflowInfos) {
     logger.info(
       { connectorId, workflowId: handle.workflowId },
       "Terminating Temporal workflow"
     );
 
-    workflowIds.push(handle.workflowId);
     const workflowHandle = client.workflow.getHandle(handle.workflowId);
     try {
       await workflowHandle.terminate(stopReason);
@@ -186,54 +182,6 @@ export async function terminateAllWorkflowsForConnectorId({
         continue;
       }
       throw err;
-    }
-  }
-
-  // Optionally wait for workflows to actually complete
-  if (waitForCompletion && workflowIds.length > 0) {
-    logger.info(
-      { connectorId, workflowCount: workflowIds.length },
-      "Waiting for terminated workflows to fully stop"
-    );
-
-    // Poll until no workflows are running for this connector
-    const maxWaitSeconds = 30;
-    const pollIntervalMs = 500;
-    const maxAttempts = (maxWaitSeconds * 1000) / pollIntervalMs;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const runningWorkflows = client.workflow.list({
-        query: `ExecutionStatus = 'Running' AND connectorId = ${connectorId}`,
-      });
-
-      let stillRunning = 0;
-      for await (const _ of runningWorkflows) {
-        stillRunning++;
-      }
-
-      if (stillRunning === 0) {
-        logger.info(
-          { connectorId, waitedMs: attempt * pollIntervalMs },
-          "All workflows stopped successfully"
-        );
-
-        // Wait for in-progress activities to complete their current batch.
-        // When a workflow is terminated, the running activity will finish processing
-        // its current batch of work (e.g., one page of transcripts from the API).
-        // This grace period allows that batch to complete before we proceed.
-        const activityGracePeriodMs = 60000; // 60 seconds
-        logger.info(
-          { connectorId, gracePeriodMs: activityGracePeriodMs },
-          "Waiting additional time for activities to fully stop"
-        );
-        await new Promise((resolve) =>
-          setTimeout(resolve, activityGracePeriodMs)
-        );
-
-        break;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
   }
 

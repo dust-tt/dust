@@ -5,13 +5,15 @@ import {
   fetchGongConfiguration,
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
-import { launchGongCleanupExcludedTranscriptsWorkflow } from "@connectors/connectors/gong/temporal/client";
 import {
   QUEUE_NAME,
   SCHEDULE_POLICIES,
   SCHEDULE_SPEC,
 } from "@connectors/connectors/gong/temporal/config";
-import { gongSyncWorkflow } from "@connectors/connectors/gong/temporal/workflows";
+import {
+  gongKeywordUpdateWorkflow,
+  gongSyncWorkflow,
+} from "@connectors/connectors/gong/temporal/workflows";
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -61,7 +63,7 @@ const EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
-function makeGongSyncScheduleId(connector: ConnectorResource): string {
+export function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
@@ -436,7 +438,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
         const oldKeywords = configuration.excludeTitleKeywords || [];
 
-        // Update configuration first
         const result = await configuration.setExcludeTitleKeywords(newKeywords);
         if (result.isErr()) {
           return result;
@@ -447,14 +448,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           "[Gong] Updated exclude title keywords"
         );
 
-        // Sync behavior notes:
-        // - Adding keywords: Triggers immediate cleanup of already-synced matching transcripts
-        // - Removing keywords: Only affects future syncs. Previously excluded transcripts are NOT
-        //   automatically re-synced (connector uses incremental sync from lastSyncTimestamp).
-        // - Exception: If retentionPeriodDays is configured, transcripts within the retention window
-        //   will be re-fetched and re-evaluated on the next sync.
-
-        // Only clean up if keywords were added (not just removed)
         const addedKeywords = newKeywords.filter(
           (kw) => !oldKeywords.includes(kw)
         );
@@ -462,80 +455,32 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         if (addedKeywords.length > 0) {
           logger.info(
             { connectorId: connector.id, addedKeywords },
-            "[Gong] New keywords added, initiating cleanup"
+            "[Gong] New keywords added, launching keyword update workflow"
           );
 
-          // Pause the schedule to prevent new workflows from starting
-          const scheduleId = makeGongSyncScheduleId(connector);
-          const pauseResult = await pauseSchedule({
-            connector,
-            scheduleId,
-            stopReason: "Paused to clean up excluded transcripts",
-          });
-
-          if (pauseResult.isErr()) {
-            logger.warn(
-              { connectorId: connector.id, error: pauseResult.error },
-              "[Gong] Failed to pause schedule, continuing with cleanup"
-            );
-          }
-
-          // Terminate any running workflows and wait for them to fully stop
           await terminateAllWorkflowsForConnectorId({
             connectorId: connector.id,
-            stopReason: "Terminating to clean up excluded transcripts",
-            waitForCompletion: true,
+            stopReason: "Excluded keywords updated",
           });
 
-          // Launch cleanup workflow
-          const cleanupResult =
-            await launchGongCleanupExcludedTranscriptsWorkflow(
-              connector,
-              addedKeywords
-            );
-
-          if (cleanupResult.isErr()) {
-            logger.error(
-              { connectorId: connector.id, error: cleanupResult.error },
-              "[Gong] Failed to launch cleanup workflow"
-            );
-          } else {
-            // Wait for cleanup to complete before resuming schedule
-            const client = await getTemporalClient();
-            const workflowHandle = client.workflow.getHandle(
-              cleanupResult.value
-            );
-
-            try {
-              await workflowHandle.result();
-              logger.info(
-                { connectorId: connector.id, workflowId: cleanupResult.value },
-                "[Gong] Cleanup workflow completed successfully"
-              );
-            } catch (err) {
-              logger.error(
-                {
-                  connectorId: connector.id,
-                  workflowId: cleanupResult.value,
-                  error: err,
-                },
-                "[Gong] Cleanup workflow failed"
-              );
-            }
-          }
-
-          // Resume the schedule after cleanup completes
-          const unpauseResult = await unpauseAndTriggerSchedule({
-            connector,
-            scheduleId,
+          const client = await getTemporalClient();
+          await client.workflow.start(gongKeywordUpdateWorkflow, {
+            args: [{ connectorId: connector.id, newKeywords }],
+            taskQueue: QUEUE_NAME,
+            workflowId: `gong-keyword-update-${connector.id}`,
+            searchAttributes: {
+              connectorId: [connector.id],
+            },
+            memo: { connectorId: connector.id },
           });
 
-          if (unpauseResult.isErr()) {
-            logger.error(
-              { connectorId: connector.id, error: unpauseResult.error },
-              "[Gong] Failed to unpause schedule after cleanup"
-            );
-          }
+          logger.info(
+            {
+              connectorId: connector.id,
+              workflowId: `gong-keyword-update-${connector.id}`,
+            },
+            "[Gong] Keyword update workflow started"
+          );
         }
 
         return new Ok(undefined);

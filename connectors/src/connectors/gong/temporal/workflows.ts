@@ -8,6 +8,7 @@ import {
   ActivityCancellationType,
   executeChild,
   proxyActivities,
+  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -143,15 +144,7 @@ export async function gongGarbageCollectWorkflow({
 }
 
 /**
- * Workflow to cleanup transcripts that match newly added exclude keywords.
- *
- * This workflow is triggered when exclude keywords are ADDED to the configuration.
- * It removes already-synced transcripts whose titles match any of the provided keywords.
- * Uses application-level filtering with shouldExcludeByTitle() for consistency with
- * sync-time filtering logic.
- *
- * Note: This is a one-way operation. Removing keywords does NOT trigger re-sync of
- * previously excluded transcripts (incremental sync only fetches new transcripts).
+ * Deletes transcripts matching exclude keywords.
  */
 export async function gongCleanupExcludedTranscriptsWorkflow({
   connectorId,
@@ -163,7 +156,6 @@ export async function gongCleanupExcludedTranscriptsWorkflow({
   let hasMore = true;
   let lastId: number | undefined = undefined;
 
-  // Loop through all transcripts using cursor-based pagination
   while (hasMore) {
     const result = await gongDeleteExcludedTranscriptsActivity({
       connectorId,
@@ -174,4 +166,44 @@ export async function gongCleanupExcludedTranscriptsWorkflow({
     hasMore = result.hasMore;
     lastId = result.lastId ?? undefined;
   }
+}
+
+/**
+ * Orchestrates the full keyword update lifecycle:
+ * 1. Pause schedule
+ * 2. Terminate running syncs
+ * 3. Wait for in-flight activities to complete
+ * 4. Clean up excluded transcripts
+ * 5. Resume schedule
+ */
+export async function gongKeywordUpdateWorkflow({
+  connectorId,
+  newKeywords,
+}: {
+  connectorId: ModelId;
+  newKeywords: string[];
+}) {
+  const {
+    gongPauseScheduleActivity,
+    gongTerminateWorkflowsActivity,
+    gongUnpauseScheduleActivity,
+  } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "5 minutes",
+  });
+
+  await gongPauseScheduleActivity({ connectorId });
+  await gongTerminateWorkflowsActivity({ connectorId });
+
+  // Wait for in-flight activities to finish
+  await sleep("60 seconds");
+
+  // Run cleanup as child workflow
+  await executeChild(gongCleanupExcludedTranscriptsWorkflow, {
+    workflowId: `${workflowInfo().workflowId}-cleanup`,
+    args: [{ connectorId, excludeKeywords: newKeywords }],
+    searchAttributes: workflowInfo().searchAttributes,
+    memo: workflowInfo().memo,
+  });
+
+  await gongUnpauseScheduleActivity({ connectorId });
 }
