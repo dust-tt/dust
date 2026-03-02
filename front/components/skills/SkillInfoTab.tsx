@@ -103,10 +103,10 @@ export function SkillInfoTab({
           />
         </div>
       )}
-      {(knowledgeItems.length > 0 || skill.fileAttachments.length > 0) && (
+      {knowledgeItems.length > 0 && (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
-            Knowledge & files
+            Knowledge
           </div>
           <div className="flex flex-wrap gap-2">
             {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
@@ -117,6 +117,15 @@ export function SkillInfoTab({
                 color="primary"
               />
             ))}
+          </div>
+        </div>
+      )}
+      {skill.fileAttachments.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Files
+          </div>
+          <div className="flex flex-wrap gap-2">
             {skill.fileAttachments.map((file) => (
               <AttachmentChip
                 key={file.fileId}
