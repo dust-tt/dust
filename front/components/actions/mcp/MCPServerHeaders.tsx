@@ -1,83 +1,67 @@
 import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
 import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
-import type { ChangeEvent } from "react";
-import { useCallback } from "react";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
-type Header = { key: string; value: string };
-
-type McpServerHeadersProps = {
-  headers: Header[];
-  onHeadersChange: (headers: Header[]) => void;
+type FormWithCustomHeaders = {
+  customHeaders: Array<{ key: string; value: string }>;
 };
 
-export function McpServerHeaders({
-  headers,
-  onHeadersChange,
-}: McpServerHeadersProps) {
-  const updateHeaderField = useCallback(
-    (index: number, field: keyof Header, value: string) => {
-      const newHeaders = [...headers];
-      newHeaders[index] = { ...newHeaders[index], [field]: value };
-      onHeadersChange(newHeaders);
-    },
-    [headers, onHeadersChange]
-  );
-
-  const getChangeHandler = useCallback(
-    (index: number, field: keyof Header) =>
-      (e: ChangeEvent<HTMLInputElement>) =>
-        updateHeaderField(index, field, e.target.value),
-    [updateHeaderField]
-  );
-
-  const removeHeader = (index: number) => {
-    onHeadersChange(headers.filter((_, i) => i !== index));
-  };
-
-  const addHeader = () => {
-    onHeadersChange([...headers, { key: "", value: "" }]);
-  };
+export function McpServerHeaders() {
+  // `register` binds inputs via DOM refs so RHF tracks values natively without triggering React re-renders on each
+  // keystroke. Using `update` instead would replace the field object (regenerating field.id), causing React to remount
+  // the input on every keystroke and lose focus.
+  const { control, register, getValues } =
+    useFormContext<FormWithCustomHeaders>();
+  const { fields, append, remove } = useFieldArray<
+    FormWithCustomHeaders,
+    "customHeaders"
+  >({
+    control,
+    name: "customHeaders",
+  });
 
   return (
     <div className="flex w-full flex-col">
       <div className="flex flex-col gap-4">
-        {headers.map((header, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <div className="grid flex-1 grid-cols-3 gap-2 px-1">
-              <div className="col-span-1">
-                <Input
-                  placeholder="Header Name"
-                  value={header.key}
-                  name="headerName"
-                  onChange={getChangeHandler(index, "key")}
-                  disabled={header.value === WebCrawlerHeaderRedactedValue}
-                  className="w-full"
-                />
+        {fields.map((field, index) => {
+          const isRedacted =
+            field.value === WebCrawlerHeaderRedactedValue ||
+            getValues(`customHeaders.${index}.value`) ===
+              WebCrawlerHeaderRedactedValue;
+          return (
+            <div key={field.id} className="flex items-center gap-2">
+              <div className="grid flex-1 grid-cols-3 gap-2 px-1">
+                <div className="col-span-1">
+                  <Input
+                    {...register(`customHeaders.${index}.key`)}
+                    placeholder="Header Name"
+                    disabled={isRedacted}
+                    className="w-full"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    {...register(`customHeaders.${index}.value`)}
+                    placeholder="Header Value"
+                    disabled={isRedacted}
+                    className="w-full"
+                  />
+                </div>
               </div>
-              <div className="col-span-2">
-                <Input
-                  name="headerValue"
-                  placeholder="Header Value"
-                  value={header.value}
-                  onChange={getChangeHandler(index, "value")}
-                  disabled={header.value === WebCrawlerHeaderRedactedValue}
-                  className="w-full"
-                />
-              </div>
+              <Button
+                variant="outline"
+                icon={XMarkIcon}
+                onClick={() => remove(index)}
+              />
             </div>
-            <Button
-              variant="outline"
-              icon={XMarkIcon}
-              onClick={() => removeHeader(index)}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
       <Button
         className="mt-4"
         variant="outline"
         label="Add Header"
-        onClick={addHeader}
+        onClick={() => append({ key: "", value: "" })}
       />
     </div>
   );
