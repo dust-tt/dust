@@ -22,10 +22,11 @@ import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/op
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import { APIError, OpenAI } from "openai";
+import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses";
 
 import { handleGenericError } from "../../types/errors";
 
-export class OpenAIResponsesLLM extends LLM {
+export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
   private client: OpenAI;
   protected modelId: OpenAIWhitelistedModelId;
 
@@ -54,30 +55,36 @@ export class OpenAIResponsesLLM extends LLM {
     });
   }
 
-  async *internalStream({
+  protected buildRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    try {
-      const promptText = systemPromptToText(prompt);
-      const reasoning = toReasoning(this.modelId, this.reasoningEffort);
-      const events = await this.client.responses.create({
-        model: this.modelId,
-        input: toInput(promptText, conversation),
-        stream: true,
-        temperature: this.temperature ?? undefined,
-        reasoning,
-        tools: specifications.map(toTool),
-        text: {
-          format: toResponseFormat(this.responseFormat, OPENAI_PROVIDER_ID),
-        },
-        // Only models supporting reasoning can do encrypted content for reasoning.
-        include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
-        tool_choice: toToolOption(specifications, forceToolCall),
-      });
+  }: LLMStreamParameters): ResponseCreateParamsStreaming {
+    const promptText = systemPromptToText(prompt);
+    const reasoning = toReasoning(this.modelId, this.reasoningEffort);
 
+    return {
+      model: this.modelId,
+      input: toInput(promptText, conversation),
+      stream: true,
+      temperature: this.temperature ?? undefined,
+      reasoning,
+      tools: specifications.map(toTool),
+      text: {
+        format: toResponseFormat(this.responseFormat, OPENAI_PROVIDER_ID),
+      },
+      // Only models supporting reasoning can do encrypted content for reasoning.
+      include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
+      tool_choice: toToolOption(specifications, forceToolCall),
+    };
+  }
+
+  protected async *sendRequest(
+    payload: ResponseCreateParamsStreaming
+  ): AsyncGenerator<LLMEvent> {
+    try {
+      const events = await this.client.responses.create(payload);
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
       if (err instanceof APIError) {

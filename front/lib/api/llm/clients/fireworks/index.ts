@@ -23,8 +23,9 @@ import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import { APIError, OpenAI } from "openai";
+import type { ChatCompletionCreateParamsStreaming } from "openai/resources/chat/completions";
 
-export class FireworksLLM extends LLM {
+export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
   private client: OpenAI;
 
   constructor(
@@ -48,30 +49,35 @@ export class FireworksLLM extends LLM {
     });
   }
 
-  protected async *internalStream({
+  protected buildRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): ChatCompletionCreateParamsStreaming {
+    const tools =
+      specifications.length > 0 ? toTools(specifications) : undefined;
+
+    return {
+      model: this.modelId,
+      messages: toMessages(systemPromptToText(prompt), conversation),
+      stream: true,
+      temperature: this.temperature ?? undefined,
+      reasoning_effort: toReasoningParam(
+        this.reasoningEffort,
+        this.modelConfig.useNativeLightReasoning
+      ),
+      tool_choice: toToolChoiceParam(specifications, forceToolCall),
+      ...(tools ? { tools } : {}),
+      response_format: toOutputFormatParam(this.responseFormat),
+    };
+  }
+
+  protected async *sendRequest(
+    payload: ChatCompletionCreateParamsStreaming
+  ): AsyncGenerator<LLMEvent> {
     try {
-      const tools =
-        specifications.length > 0 ? toTools(specifications) : undefined;
-
-      const events = await this.client.chat.completions.create({
-        model: this.modelId,
-        messages: toMessages(systemPromptToText(prompt), conversation),
-        stream: true,
-        temperature: this.temperature ?? undefined,
-        reasoning_effort: toReasoningParam(
-          this.reasoningEffort,
-          this.modelConfig.useNativeLightReasoning
-        ),
-        tool_choice: toToolChoiceParam(specifications, forceToolCall),
-        ...(tools ? { tools } : {}),
-        response_format: toOutputFormatParam(this.responseFormat),
-      });
-
+      const events = await this.client.chat.completions.create(payload);
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
       if (err instanceof APIError) {

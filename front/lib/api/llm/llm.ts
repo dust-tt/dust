@@ -58,7 +58,7 @@ function buildDefaultTraceInput(
   ];
 }
 
-export abstract class LLM {
+export abstract class LLM<TPayload = unknown> {
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
@@ -73,6 +73,7 @@ export abstract class LLM {
   protected readonly traceId: LLMTraceId;
   protected readonly getTraceInput?: LLMTraceCustomization["getTraceInput"];
   protected readonly getTraceOutput?: LLMTraceCustomization["getTraceOutput"];
+  protected actualRequestPayload: TPayload | null = null;
 
   protected constructor(
     auth: Authenticator,
@@ -178,7 +179,7 @@ export abstract class LLM {
 
     generation.updateTrace({
       name: startCase(this.context.operationType),
-      input: traceInput,
+      input: this.actualRequestPayload ?? traceInput,
       metadata: {
         dustTraceId: this.traceId,
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
@@ -372,7 +373,40 @@ export abstract class LLM {
     yield* this.streamWithTracing(streamParameters);
   }
 
-  protected abstract internalStream(
+  /**
+   * Build the request payload that will be sent to the LLM provider.
+   *
+   * Contract: Implement this method to return the provider-specific request object.
+   * The payload is automatically captured for tracing.
+   */
+  protected abstract buildRequestPayload(
     streamParameters: LLMStreamParameters
-  ): AsyncGenerator<LLMEvent>;
+  ): TPayload;
+
+  /**
+   * Send the request to the LLM provider and yield events.
+   *
+   * Contract: Implement this method as an async generator to handle
+   * provider-specific API calls and response streaming.
+   */
+  protected abstract sendRequest(payload: TPayload): AsyncGenerator<LLMEvent>;
+
+  /**
+   * Orchestrates the request lifecycle: build → capture for tracing → send.
+   *
+   * Default implementation calls buildRequestPayload() and sendRequest().
+   * Override only if you need custom streaming logic that doesn't fit the two-method pattern.
+   *
+   * Contract: Implement EITHER buildRequestPayload() + sendRequest()
+   * OR override internalStream() entirely. Do not mix approaches.
+   */
+  protected async *internalStream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
+    const payload = this.buildRequestPayload(streamParameters);
+    // Capture the actual request payload for tracing
+    this.actualRequestPayload = payload;
+    // Send the request to the provider
+    yield* this.sendRequest(payload);
+  }
 }
