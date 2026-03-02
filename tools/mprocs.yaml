@@ -3,10 +3,6 @@
 # * mprocs (`brew install mprocs`)
 # * bacon (`cargo install bacon`)
 
-# ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
-# you need to restart front-workers after sdks-js is loaded: select front-workers in the mprocs window and press r
-# ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
-
 procs:
   core:
     cwd: "<CONFIG_DIR>/../core"
@@ -31,21 +27,10 @@ procs:
       set -euo pipefail
       npm run watch
 
-  sdks-js:
-    cwd: "<CONFIG_DIR>/../sdks/js"
-    shell: |
-      set -euo pipefail
-      ./admin/dev.sh
-
   front:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
       set -euo pipefail
-      READY_FILE="../sdks/js/dist/client.esm.js.map"
-      echo "Waiting for sdks-js to compile..."
-      echo "Expecting file: $READY_FILE"
-      while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front."
       ./admin/dev.sh
 
   front-workers:
@@ -61,10 +46,6 @@ procs:
     cwd: "<CONFIG_DIR>/../connectors"
     shell: |
       set -euo pipefail
-      READY_FILE="../sdks/js/dist/client.esm.js.map"
-      echo "Waiting for sdks-js to compile..."
-      while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting connectors."
       ./admin/dev.sh
 
   front-spa:

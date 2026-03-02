@@ -7,10 +7,6 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 source ~/.nvm/nvm.sh && nvm install
 
 # Tiny script to start the dev environment using mprocs.
-# Needed to clear the dist of the sdks-js project before starting front so it waits for the sdks-js to be ready.
-
-# Clear the dist of the sdks-js project
-rm -rf "$SCRIPT_DIR"/../sdks/js/dist
 
 # Install npm workspaces dependencies
 cd "$SCRIPT_DIR"/../ && npm install

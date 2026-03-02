@@ -22,7 +22,10 @@
       }
     ],
     "paths": {
-      "@app/*": ["./*"]
+      "@app/*": ["./*"],
+      "@modelcontextprotocol/sdk/*": [
+        "../node_modules/@modelcontextprotocol/sdk/dist/esm/*"
+      ]
     }
   },
   "include": [

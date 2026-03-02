@@ -991,22 +991,19 @@ export class DustAPI {
       { type: string; message: string } | Error
     >
   > {
-    const agentMessages = conversation.content
-      .map((versions) => {
-        const m = versions[versions.length - 1];
-        return m;
-      })
-      .filter((m): m is AgentMessagePublicType => {
-        return (
-          m && m.type === "agent_message" && m.parentMessageId === userMessageId
-        );
-      });
+    const agentMessage = conversation.content
+      .map((versions) => versions[versions.length - 1])
+      .find(
+        (m): m is AgentMessagePublicType =>
+          m !== undefined &&
+          m.type === "agent_message" &&
+          m.parentMessageId === userMessageId
+      );
 
-    if (agentMessages.length === 0) {
+    if (!agentMessage) {
       return new Err(new Error("Failed to retrieve agent message"));
     }
 
-    const agentMessage = agentMessages[0];
     return this.streamAgentMessageEvents({
       conversation,
       agentMessage,

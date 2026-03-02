@@ -234,7 +234,9 @@ export class MessageStreamImpl implements MessageStream {
   }
 
   private _getString(obj: unknown, key: string, defaultValue = ""): string {
-    return hasStringProperty(obj, key) ? obj[key] : defaultValue;
+    return hasStringProperty(obj, key)
+      ? (obj[key] ?? defaultValue)
+      : defaultValue;
   }
 
   private _setErrorAndFinish(error: DustError): {
@@ -252,10 +254,9 @@ export class MessageStreamImpl implements MessageStream {
     const totalFiles = attachments.length;
     const uploadedFileIds: string[] = [];
 
-    for (let i = 0; i < attachments.length; i++) {
+    for (const [i, attachment] of attachments.entries()) {
       this._checkCancelled();
 
-      const attachment = attachments[i];
       const fileName = this._getFileName(attachment, i);
 
       const startProgress: UploadProgress = {

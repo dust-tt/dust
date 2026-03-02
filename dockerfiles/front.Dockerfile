@@ -19,10 +19,11 @@ COPY front-spa/package.json ./front-spa/
 
 RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci -w sdks/js -w sparkle -w front -w front-spa
 
-# Build SDK
+# Build SDK and point entries to dist for Node.js runtime resolution
 WORKDIR /app/sdks/js
 COPY /sdks/js/ .
-RUN npm run build
+RUN npm run build && \
+  node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.main='dist/index.js';p.types='dist/index.d.ts';p.typings='dist/index.d.ts';p.module='dist/client.esm.js';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
 
 # Build Sparkle
 WORKDIR /app/sparkle

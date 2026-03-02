@@ -19,6 +19,9 @@
     "noUncheckedIndexedAccess": true,
     "paths": {
       "@connectors/*": ["./src/*"],
+      "@modelcontextprotocol/sdk/*": [
+        "../node_modules/@modelcontextprotocol/sdk/dist/esm/*"
+      ],
       "*": ["./*"]
     }
   },
