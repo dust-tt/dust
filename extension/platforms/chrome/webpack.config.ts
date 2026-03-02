@@ -192,6 +192,14 @@ export const getConfig = async ({
             to: path.join(buildDirPath, "main.html"),
           },
           {
+            from: resolvePath("../../ui/request-mic.html"),
+            to: path.join(buildDirPath, "request-mic.html"),
+          },
+          {
+            from: resolvePath("../../ui/request-mic.js"),
+            to: path.join(buildDirPath, "request-mic.js"),
+          },
+          {
             context: resolvePath("../../ui/images"),
             from: "**/*.png",
             to: path.resolve(buildDirPath, "images"),
