@@ -168,65 +168,24 @@ export async function unpauseAndTriggerSchedule({
   try {
     // Unpause the schedule if paused.
     const scheduleDescription = await scheduleHandle.describe();
-    logger.info(
-      {
-        connectorId: connector?.id,
-        scheduleId,
-        isPaused: scheduleDescription.state.paused,
-      },
-      "[unpauseAndTriggerSchedule] Schedule exists, current state before unpause"
-    );
-
     if (scheduleDescription.state.paused) {
       await scheduleHandle.unpause();
-      logger.info(
-        {
-          connectorId: connector?.id,
-          scheduleId,
-        },
-        "[unpauseAndTriggerSchedule] Schedule unpause() called successfully"
-      );
-    } else {
-      logger.info(
-        {
-          connectorId: connector?.id,
-          scheduleId,
-        },
-        "[unpauseAndTriggerSchedule] Schedule already unpaused, skipping"
-      );
     }
 
     // Trigger the schedule to start the workflow immediately.
     await scheduleHandle.trigger();
-    logger.info(
-      {
-        connectorId: connector?.id,
-        scheduleId,
-      },
-      "[unpauseAndTriggerSchedule] Schedule trigger() called successfully"
-    );
   } catch (error) {
-    if (error instanceof ScheduleNotFoundError) {
-      logger.warn(
+    if (!(error instanceof ScheduleNotFoundError)) {
+      logger.error(
         {
           connectorId: connector?.id,
           scheduleId,
+          error,
         },
-        "[unpauseAndTriggerSchedule] Schedule not found, cannot unpause (may not be created yet)"
+        "Failed to unpause and trigger schedule."
       );
-      // Return Ok since this is not a fatal error - schedule might not exist yet
-      return new Ok(scheduleId);
+      return new Err(normalizeError(error));
     }
-
-    logger.error(
-      {
-        connectorId: connector?.id,
-        scheduleId,
-        error,
-      },
-      "[unpauseAndTriggerSchedule] Failed to unpause and trigger schedule."
-    );
-    return new Err(normalizeError(error));
   }
 
   return new Ok(scheduleId);
@@ -248,60 +207,25 @@ export async function pauseSchedule({
 
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
-    // Check if schedule exists and get its state
-    const scheduleDescription = await scheduleHandle.describe();
-    logger.info(
-      {
-        connectorId: connector.id,
-        scheduleId,
-        isPaused: scheduleDescription.state.paused,
-      },
-      "[pauseSchedule] Schedule exists, current state before pause"
-    );
-
     // Pause the schedule if running.
     await scheduleHandle.pause();
-    logger.info(
-      {
-        connectorId: connector.id,
-        scheduleId,
-      },
-      "[pauseSchedule] Schedule pause() called successfully"
-    );
 
     // Terminate the running workflows.
     await terminateWorkflowsForSchedule(scheduleHandle, client, {
       stopReason,
     });
-    logger.info(
-      {
-        connectorId: connector.id,
-        scheduleId,
-      },
-      "[pauseSchedule] Workflows terminated successfully"
-    );
   } catch (error) {
-    if (error instanceof ScheduleNotFoundError) {
-      logger.warn(
+    if (!(error instanceof ScheduleNotFoundError)) {
+      logger.error(
         {
           connectorId: connector.id,
           scheduleId,
+          error,
         },
-        "[pauseSchedule] Schedule not found, cannot pause (may not be created yet)"
+        "Failed to stop schedule and terminate workflow."
       );
-      // Return Ok since this is not a fatal error - schedule might not exist yet
-      return new Ok(undefined);
+      return new Err(normalizeError(error));
     }
-
-    logger.error(
-      {
-        connectorId: connector.id,
-        scheduleId,
-        error,
-      },
-      "[pauseSchedule] Failed to stop schedule and terminate workflow."
-    );
-    return new Err(normalizeError(error));
   }
 
   return new Ok(undefined);

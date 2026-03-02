@@ -5,15 +5,13 @@ import {
   fetchGongConfiguration,
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
+import { launchGongKeywordUpdateWorkflow } from "@connectors/connectors/gong/temporal/client";
 import {
   QUEUE_NAME,
   SCHEDULE_POLICIES,
   SCHEDULE_SPEC,
 } from "@connectors/connectors/gong/temporal/config";
-import {
-  gongKeywordUpdateWorkflow,
-  gongSyncWorkflow,
-} from "@connectors/connectors/gong/temporal/workflows";
+import { gongSyncWorkflow } from "@connectors/connectors/gong/temporal/workflows";
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -25,11 +23,7 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import {
-  connectorIdSearchAttribute,
-  getTemporalClient,
-  terminateAllWorkflowsForConnectorId,
-} from "@connectors/lib/temporal";
+import { connectorIdSearchAttribute } from "@connectors/lib/temporal";
 import {
   createSchedule,
   deleteSchedule,
@@ -458,29 +452,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
             "[Gong] New keywords added, launching keyword update workflow"
           );
 
-          await terminateAllWorkflowsForConnectorId({
-            connectorId: connector.id,
-            stopReason: "Excluded keywords updated",
-          });
-
-          const client = await getTemporalClient();
-          await client.workflow.start(gongKeywordUpdateWorkflow, {
-            args: [{ connectorId: connector.id, newKeywords }],
-            taskQueue: QUEUE_NAME,
-            workflowId: `gong-keyword-update-${connector.id}`,
-            searchAttributes: {
-              connectorId: [connector.id],
-            },
-            memo: { connectorId: connector.id },
-          });
-
-          logger.info(
-            {
-              connectorId: connector.id,
-              workflowId: `gong-keyword-update-${connector.id}`,
-            },
-            "[Gong] Keyword update workflow started"
-          );
+          await launchGongKeywordUpdateWorkflow(connector, newKeywords);
         }
 
         return new Ok(undefined);

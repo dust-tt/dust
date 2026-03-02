@@ -27,6 +27,11 @@ const {
   cancellationType: ActivityCancellationType.TRY_CANCEL,
 });
 
+const { gongPauseScheduleActivity, gongUnpauseScheduleActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "5 minutes",
+  });
+
 export async function gongSyncWorkflow({
   connectorId,
   forceResync,
@@ -182,10 +187,7 @@ export async function gongKeywordUpdateWorkflow({
   connectorId: ModelId;
   newKeywords: string[];
 }) {
-  const { gongPauseScheduleActivity, gongUnpauseScheduleActivity } =
-    proxyActivities<typeof activities>({
-      startToCloseTimeout: "5 minutes",
-    });
+  const { workflowId, searchAttributes, memo } = workflowInfo();
 
   await gongPauseScheduleActivity({ connectorId });
 
@@ -193,10 +195,10 @@ export async function gongKeywordUpdateWorkflow({
   await sleep("60 seconds");
 
   await executeChild(gongCleanupExcludedTranscriptsWorkflow, {
-    workflowId: `${workflowInfo().workflowId}-cleanup`,
+    workflowId: `${workflowId}-cleanup`,
     args: [{ connectorId, excludeKeywords: newKeywords }],
-    searchAttributes: workflowInfo().searchAttributes,
-    memo: workflowInfo().memo,
+    searchAttributes,
+    memo,
   });
 
   await gongUnpauseScheduleActivity({ connectorId });

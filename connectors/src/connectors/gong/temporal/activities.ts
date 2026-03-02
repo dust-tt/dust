@@ -250,10 +250,7 @@ export async function gongSyncTranscriptsActivity({
   }
 
   if (transcripts.length === 0) {
-    logger.info(
-      { ...loggerArgs, pageCursor },
-      "[Gong] No more transcripts found."
-    );
+    logger.info({ connectorId: connector.id }, "[Gong] Sync complete");
     return {
       nextPageCursor: null,
       processedRecords,
@@ -273,7 +270,10 @@ export async function gongSyncTranscriptsActivity({
     );
   }
   if (transcriptsToSync.length === 0) {
-    logger.info({ ...loggerArgs }, "[Gong] All transcripts are already in DB.");
+    logger.info(
+      { connectorId: connector.id, evaluated: transcripts.length },
+      "[Gong] Sync batch complete - all already in DB"
+    );
     return {
       nextPageCursor,
       processedRecords,
@@ -300,6 +300,7 @@ export async function gongSyncTranscriptsActivity({
   await concurrentExecutor(
     transcriptsToSync,
     async (transcript) => {
+      await heartbeat();
       const transcriptMetadata = callsMetadataMap.get(transcript.callId);
       if (!transcriptMetadata) {
         logger.warn(
@@ -309,16 +310,12 @@ export async function gongSyncTranscriptsActivity({
         return;
       }
 
-      const { shouldSync, reason } = shouldSyncTranscript(
+      const { shouldSync } = shouldSyncTranscript(
         transcriptMetadata,
         permissionFilter,
         configuration
       );
       if (!shouldSync) {
-        logger.info(
-          { ...loggerArgs, callId: transcript.callId, reason },
-          `[Gong] Skipping transcript.`
-        );
         return;
       }
 
@@ -362,6 +359,16 @@ export async function gongSyncTranscriptsActivity({
   );
 
   await heartbeat();
+
+  logger.info(
+    {
+      connectorId: connector.id,
+      evaluated: transcripts.length,
+      synced: transcriptsToSync.length,
+      hasMore: !!nextPageCursor,
+    },
+    "[Gong] Sync batch complete"
+  );
 
   return {
     nextPageCursor,
@@ -485,8 +492,8 @@ export async function gongDeleteExcludedTranscriptsActivity({
 }: {
   connectorId: ModelId;
   excludeKeywords: string[];
-  lastId?: number;
-}): Promise<{ hasMore: boolean; lastId: number | null }> {
+  lastId?: ModelId;
+}): Promise<{ hasMore: boolean; lastId: ModelId | null }> {
   const connector = await fetchGongConnector({ connectorId });
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -497,39 +504,16 @@ export async function gongDeleteExcludedTranscriptsActivity({
 
   if (transcripts.length === 0) {
     logger.info(
-      { connectorId: connector.id, provider: "gong" },
-      "[Gong] Cleanup: No more transcripts to process"
+      { connectorId: connector.id },
+      "[Gong] Cleanup complete - no more transcripts"
     );
     return { hasMore: false, lastId: null };
   }
 
-  logger.info(
-    {
-      connectorId: connector.id,
-      provider: "gong",
-      batchSize: transcripts.length,
-      lastId,
-    },
-    "[Gong] Cleanup: Processing batch of transcripts"
-  );
-
-  // Filter using the same logic as sync-time filtering
   const transcriptsToDelete = transcripts.filter((transcript) =>
     shouldExcludeByTitle(transcript.title, excludeKeywords)
   );
 
-  logger.info(
-    {
-      connectorId: connector.id,
-      provider: "gong",
-      totalEvaluated: transcripts.length,
-      toDelete: transcriptsToDelete.length,
-      toKeep: transcripts.length - transcriptsToDelete.length,
-    },
-    "[Gong] Cleanup: Batch evaluation complete"
-  );
-
-  // Delete from Core data source first
   for (const transcript of transcriptsToDelete) {
     await deleteDataSourceDocument(
       dataSourceConfig,
@@ -543,23 +527,21 @@ export async function gongDeleteExcludedTranscriptsActivity({
     );
   }
 
-  // Then delete from connectors DB
   await GongTranscriptResource.batchDelete(connector, transcriptsToDelete);
+
+  const lastTranscript = transcripts[transcripts.length - 1];
+  const newLastId = lastTranscript ? lastTranscript.id : null;
+  const hasMore = transcripts.length === GARBAGE_COLLECT_BATCH_SIZE;
 
   logger.info(
     {
       connectorId: connector.id,
-      provider: "gong",
-      deletedCount: transcriptsToDelete.length,
+      evaluated: transcripts.length,
+      deleted: transcriptsToDelete.length,
+      hasMore,
     },
-    "[Gong] Cleanup: Batch deletion complete"
+    "[Gong] Cleanup batch processed"
   );
-
-  // Get the last ID from the batch for cursor-based pagination
-  // Safe access since we already checked transcripts.length > 0
-  const lastTranscript = transcripts[transcripts.length - 1];
-  const newLastId = lastTranscript ? lastTranscript.id : null;
-  const hasMore = transcripts.length === GARBAGE_COLLECT_BATCH_SIZE;
 
   return {
     hasMore,
