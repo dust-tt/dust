@@ -49,6 +49,17 @@ export function isGeneralExceptionError(err: unknown): err is GraphError {
   );
 }
 
+// Identifies JSON parsing errors that may occur when Microsoft's API returns
+// malformed JSON or error responses that are not properly formatted.
+export function isJSONParsingError(err: unknown): err is Error {
+  return (
+    err instanceof SyntaxError ||
+    (err instanceof Error &&
+      err.message.includes("JSON") &&
+      (err.message.includes("parse") || err.message.includes("Expected")))
+  );
+}
+
 export class MicrosoftCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
