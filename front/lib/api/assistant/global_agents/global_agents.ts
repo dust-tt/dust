@@ -88,6 +88,7 @@ import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
+  GlobalAgentContext,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
 import {
@@ -310,6 +311,7 @@ function getGlobalAgent({
   mcpServerViews,
   copilotContext,
   hasDeepDive,
+  globalAgentContext,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -318,6 +320,7 @@ function getGlobalAgent({
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   copilotContext: CopilotContext | null;
   hasDeepDive: boolean;
+  globalAgentContext?: GlobalAgentContext;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -716,6 +719,7 @@ function getGlobalAgent({
         copilotContext,
         preFetchedDataSources,
         mcpServerViews,
+        globalAgentContext,
       });
       break;
     case GLOBAL_AGENTS_SID.COPILOT_EDGE:
@@ -771,7 +775,8 @@ const RETIRED_GLOBAL_AGENTS_SID = [
 export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[],
-  variant: AgentFetchVariant = "full"
+  variant: AgentFetchVariant = "full",
+  options?: { globalAgentContext?: GlobalAgentContext }
 ): Promise<AgentConfigurationType[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
     throw new Error("Invalid agentIds.");
@@ -897,6 +902,7 @@ export async function getGlobalAgents(
       mcpServerViews,
       copilotContext,
       hasDeepDive: !isDeepDiveDisabled,
+      globalAgentContext: options?.globalAgentContext,
     })
   );
 

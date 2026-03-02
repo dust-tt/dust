@@ -123,6 +123,10 @@ export type AgentModelConfigurationType = {
 
 export type AgentFetchVariant = "light" | "full" | "extra_light";
 
+export type GlobalAgentContext = {
+  userMessageRank: number;
+};
+
 export type LightAgentConfigurationType = {
   id: ModelId;
 

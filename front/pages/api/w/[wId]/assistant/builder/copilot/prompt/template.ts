@@ -14,6 +14,7 @@ function buildTemplateAgentInitMessage({
 }: TemplateResource): string {
   return `<dust_system>
 The user is creating a new agent based on the "${handle}" template.
+NEVER call \`get_agent_config\` in this first message.
 Here is a brief description of what the agent should do:
 
 <description>
