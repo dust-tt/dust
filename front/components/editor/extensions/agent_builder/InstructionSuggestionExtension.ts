@@ -192,20 +192,14 @@ function buildBlockDecorations({
   const changes = diffBlockContent(oldNode, newNode, schema);
   const contentStart = blockPos + 1;
 
-  // Background tint spanning the changed region (first to last change).
-  if (changes.length > 0) {
-    const highlightFrom = contentStart + Math.min(...changes.map((c) => c.fromA));
-    const highlightTo = contentStart + Math.max(...changes.map((c) => c.toA));
-    if (highlightFrom < highlightTo) {
-      decorations.push(
-        Decoration.inline(highlightFrom, highlightTo, {
-          class: isHighlighted
-            ? CLASSES.blockHighlight
-            : CLASSES.blockHighlightDimmed,
-          [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-        })
-      );
-    }
+  // Selected only: entire block gets dimmed highlight.
+  if (isHighlighted && changes.length > 0) {
+    decorations.push(
+      Decoration.node(blockPos, blockPos + oldNode.nodeSize, {
+        class: CLASSES.blockHighlightDimmed,
+        [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+      })
+    );
   }
 
   for (const change of changes) {
