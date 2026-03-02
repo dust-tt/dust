@@ -20,7 +20,7 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface BaseManageUsersPanelProps {
   isOpen: boolean;
@@ -56,10 +56,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
 
   const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
-
-  // In editors-only mode, track a map of all seen users to reconstruct
-  // full UserType[] on save.
-  const userMapRef = useRef<Map<string, UserType>>(new Map());
+  const [selectedUsers, setSelectedUsers] = useState<UserType[]>([]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when panel opens
   useEffect(() => {
@@ -73,24 +70,10 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         )
       );
     } else if (mode === "editors-only") {
-      const editorIds = new Set(props.editors.map((e) => e.sId));
-      setCurrentMembers(editorIds);
-      // Seed the user map with initial editors.
-      const map = new Map<string, UserType>();
-      for (const editor of props.editors) {
-        map.set(editor.sId, editor);
-      }
-      userMapRef.current = map;
+      setCurrentMembers(new Set(props.editors.map((e) => e.sId)));
+      setSelectedUsers(props.editors);
     }
   }, [isOpen]);
-
-  const handleMembersLoaded = useCallback((members: UserType[]) => {
-    for (const member of members) {
-      if (!userMapRef.current.has(member.sId)) {
-        userMapRef.current.set(member.sId, member);
-      }
-    }
-  }, []);
 
   const toggleEditor = useCallback(
     (userId: string) => {
@@ -150,9 +133,6 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         setIsOpen(false);
       }
     } else if (mode === "editors-only") {
-      const selectedUsers = Array.from(currentMembers)
-        .map((sId) => userMapRef.current.get(sId))
-        .filter((user): user is UserType => user !== undefined);
       props.onEditorsChange(selectedUsers);
       setIsOpen(false);
     }
@@ -164,8 +144,12 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
     setIsOpen(false);
   };
 
-  const handleSelectionChange = (newMembers: Set<string>) => {
+  const handleSelectionChange = (
+    newMembers: Set<string>,
+    users: UserType[]
+  ) => {
     setCurrentMembers(newMembers);
+    setSelectedUsers(users);
 
     if (mode === "space-members") {
       setCurrentEditors((prevEditors) => {
@@ -219,8 +203,10 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
     ];
   }, [mode, currentMembers, currentEditors, toggleEditor]);
 
+  const initialMembers = mode === "editors-only" ? props.editors : undefined;
+
   const canSave =
-    mode === "space-members" ? currentEditors.size > 0 && !isSaving : !isSaving;
+    !isSaving && (mode !== "space-members" || currentEditors.size > 0);
 
   const sheetTitle =
     mode === "space-members"
@@ -240,7 +226,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             onSelectionChange={handleSelectionChange}
             extraColumns={editorColumn}
             buildersOnly={buildersOnly}
-            onMembersLoaded={handleMembersLoaded}
+            initialMembers={initialMembers}
           />
         </SheetContainer>
         <SheetFooter

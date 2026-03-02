@@ -15,7 +15,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-import { useCallback, useContext, useMemo, useRef, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 
 type MembersManagementType = "manual" | "group";
 
@@ -51,44 +51,20 @@ export function RestrictedAccessBody({
   const confirm = useContext(ConfirmContext);
   const [searchSelectedGroups, setSearchSelectedGroups] = useState("");
 
-  // Map from sId to UserType for reconstructing UserType[] from selection set.
-  const userMapRef = useRef(
-    new Map<string, UserType>(selectedMembers.map((m) => [m.sId, m]))
-  );
-
   const selectedMemberIds = useMemo(
     () => new Set(selectedMembers.map((m) => m.sId)),
     [selectedMembers]
   );
 
-  const handleMembersLoaded = useCallback((members: UserType[]) => {
-    for (const member of members) {
-      if (!userMapRef.current.has(member.sId)) {
-        userMapRef.current.set(member.sId, member);
-      }
-    }
-  }, []);
-
-  const handleSelectionChange = useCallback(
-    (ids: Set<string>) => {
-      const users: UserType[] = [];
-      for (const sId of ids) {
-        const user = userMapRef.current.get(sId);
-        if (user) {
-          users.push(user);
-        }
-      }
-      onMembersUpdated(users);
-    },
-    [onMembersUpdated]
-  );
+  const handleSelectionChange = (_ids: Set<string>, users: UserType[]) => {
+    onMembersUpdated(users);
+  };
 
   const handleManagementTypeChange = async (newManagementType: string) => {
     if (!isMembersManagementType(newManagementType) || !planAllowsSCIM) {
       return;
     }
 
-    // If switching from manual to group mode with manually added members.
     if (
       managementType === "manual" &&
       newManagementType === "group" &&
@@ -106,9 +82,7 @@ export function RestrictedAccessBody({
       if (confirmed) {
         onManagementTypeChange("group");
       }
-    }
-    // If switching from group to manual mode with selected groups.
-    else if (
+    } else if (
       managementType === "group" &&
       newManagementType === "manual" &&
       selectedGroups.length > 0
@@ -176,7 +150,7 @@ export function RestrictedAccessBody({
           owner={owner}
           selectedMemberIds={selectedMemberIds}
           onSelectionChange={handleSelectionChange}
-          onMembersLoaded={handleMembersLoaded}
+          initialMembers={selectedMembers}
         />
       )}
 

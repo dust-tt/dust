@@ -10,7 +10,7 @@ import type {
   ColumnDef,
   RowSelectionState,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface MemberRowData {
   sId: string;
@@ -34,10 +34,10 @@ function getMemberTableRows(
 interface MemberSelectionTableProps {
   owner: LightWorkspaceType;
   selectedMemberIds: Set<string>;
-  onSelectionChange: (ids: Set<string>) => void;
+  onSelectionChange: (ids: Set<string>, users: UserType[]) => void;
   extraColumns?: ColumnDef<MemberRowData>[];
   buildersOnly?: boolean;
-  onMembersLoaded?: (members: UserType[]) => void;
+  initialMembers?: UserType[];
 }
 
 export function MemberSelectionTable({
@@ -46,7 +46,7 @@ export function MemberSelectionTable({
   onSelectionChange,
   extraColumns,
   buildersOnly,
-  onMembersLoaded,
+  initialMembers,
 }: MemberSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
 
@@ -58,11 +58,19 @@ export function MemberSelectionTable({
     buildersOnly,
   });
 
+  // Internal map to resolve sId -> UserType, seeded with initialMembers and
+  // updated as search results come in.
+  const userMapRef = useRef(
+    new Map<string, UserType>((initialMembers ?? []).map((m) => [m.sId, m]))
+  );
+
   useEffect(() => {
-    if (members.length > 0) {
-      onMembersLoaded?.(members);
+    for (const member of members) {
+      if (!userMapRef.current.has(member.sId)) {
+        userMapRef.current.set(member.sId, member);
+      }
     }
-  }, [members, onMembersLoaded]);
+  }, [members]);
 
   const rows = useMemo(() => getMemberTableRows(members), [members]);
 
@@ -78,7 +86,16 @@ export function MemberSelectionTable({
         .filter(([, selected]) => selected)
         .map(([sId]) => sId)
     );
-    onSelectionChange(newIds);
+
+    const users: UserType[] = [];
+    for (const sId of newIds) {
+      const user = userMapRef.current.get(sId);
+      if (user) {
+        users.push(user);
+      }
+    }
+
+    onSelectionChange(newIds, users);
   };
 
   const columns: ColumnDef<MemberRowData>[] = useMemo(() => {
