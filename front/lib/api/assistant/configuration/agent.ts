@@ -58,6 +58,7 @@ import type {
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -431,6 +432,15 @@ export async function createAgentConfiguration(
     await isSelfHostedImageWithValidContentType(pictureUrl);
   if (!isValidPictureUrl) {
     return new Err(new Error("Invalid picture url."));
+  }
+
+  if (model.responseFormat) {
+    const formatValidation = validateResponseFormat(model.responseFormat);
+    if (!formatValidation.isValid) {
+      return new Err(
+        new Error(`Invalid response format: ${formatValidation.errorMessage}`)
+      );
+    }
   }
 
   let version = 0;
