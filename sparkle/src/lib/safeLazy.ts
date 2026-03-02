@@ -1,22 +1,9 @@
 import { type ComponentType, lazy } from "react";
 
+import { reportToDatadog } from "./reportToDatadog";
+
 export const FORCE_RELOAD_SESSION_KEY = "force_reload_at";
 export const FORCE_RELOAD_INTERVAL_MS = 10_000;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DDRum = { addError?: (error: unknown, context?: any) => void };
-
-/**
- * Send an error to Datadog RUM if available (never throws).
- */
-function reportToDatadog(error: unknown, context: Record<string, unknown>) {
-  try {
-    const ddRum = (window as unknown as { DD_RUM?: DDRum }).DD_RUM;
-    ddRum?.addError?.(error, context);
-  } catch {
-    // Fail-safe: Datadog may not be loaded yet.
-  }
-}
 
 /**
  * Try to extract the chunk URL from the dynamic import error message.
