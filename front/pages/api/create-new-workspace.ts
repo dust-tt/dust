@@ -4,6 +4,8 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { ServerSideTracking } from "@app/lib/tracking/server";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -58,11 +60,18 @@ async function handler(
     });
   }
 
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
   await createAndLogMembership({
     user: u,
-    workspace,
+    workspace: lightWorkspace,
     role: "admin",
     origin: "invited",
+  });
+
+  void ServerSideTracking.trackWorkspaceCreated({
+    user: u.toJSON(),
+    workspace: lightWorkspace,
   });
 
   res.status(200).json({ sId: workspace.sId });

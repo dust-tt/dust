@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
-import type { UserType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { PostHog } from "posthog-node";
 
 const POSTHOG_HOST = "https://eu.i.posthog.com";
@@ -72,6 +72,48 @@ export class PostHogServerSideTracking {
       logger.error(
         { userId: user.sId, err },
         "Failed to track signup on PostHog"
+      );
+    }
+  }
+
+  static trackWorkspaceCreated({
+    user,
+    workspace,
+    utmParams,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    utmParams?: UTMParams;
+  }): void {
+    const client = getClient();
+    if (!client) {
+      return;
+    }
+
+    try {
+      const utmProperties: Record<string, string> = {};
+      if (utmParams) {
+        for (const [key, value] of Object.entries(utmParams)) {
+          if (value) {
+            utmProperties[key] = value;
+          }
+        }
+      }
+
+      client.capture({
+        distinctId: user.sId,
+        event: "workspace_created",
+        properties: {
+          workspace_sId: workspace.sId,
+          workspace_name: workspace.name,
+          ...utmProperties,
+        },
+        groups: { workspace: workspace.sId },
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track workspace_created on PostHog"
       );
     }
   }
