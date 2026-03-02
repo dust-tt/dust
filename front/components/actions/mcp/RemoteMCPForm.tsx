@@ -1,5 +1,5 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -21,7 +21,7 @@ import {
   PopoverTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
-import { useController, useFieldArray, useFormContext } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -39,10 +39,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   const { url, lastError, lastSyncAt } = mcpServer;
 
-  const { fields: headerFields, replace } = useFieldArray<
-    MCPServerFormValues,
-    "customHeaders"
-  >({
+  const headerFields = useWatch<MCPServerFormValues, "customHeaders">({
     name: "customHeaders",
   });
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
@@ -163,15 +160,12 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       <Collapsible>
         <CollapsibleTrigger>
           <div className="heading-lg">
-            Networking & Headers ({headerFields.length})
+            Networking & Headers ({(headerFields ?? []).length})
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2">
-            <McpServerHeaders
-              headers={headerFields.map(({ key, value }) => ({ key, value }))}
-              onHeadersChange={(rows) => replace(rows)}
-            />
+            <MCPServerHeaders />
           </div>
         </CollapsibleContent>
       </Collapsible>

@@ -1,5 +1,5 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import {
   Collapsible,
@@ -7,7 +7,7 @@ import {
   CollapsibleTrigger,
   Input,
 } from "@dust-tt/sparkle";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 interface InternalMCPBearerTokenFormProps {
   serverName?: string;
@@ -17,10 +17,7 @@ export function InternalMCPBearerTokenForm({
   serverName,
 }: InternalMCPBearerTokenFormProps) {
   const form = useFormContext<MCPServerFormValues>();
-  const { fields, replace } = useFieldArray<
-    MCPServerFormValues,
-    "customHeaders"
-  >({
+  const customHeaders = useWatch<MCPServerFormValues, "customHeaders">({
     name: "customHeaders",
   });
 
@@ -49,14 +46,13 @@ export function InternalMCPBearerTokenForm({
       </Collapsible>
       <Collapsible>
         <CollapsibleTrigger className="pb-2">
-          <div className="heading-lg">Headers ({fields.length})</div>
+          <div className="heading-lg">
+            Headers ({(customHeaders ?? []).length})
+          </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2">
-            <McpServerHeaders
-              headers={fields.map(({ key, value }) => ({ key, value }))}
-              onHeadersChange={(rows) => replace(rows)}
-            />
+            <MCPServerHeaders />
           </div>
         </CollapsibleContent>
       </Collapsible>

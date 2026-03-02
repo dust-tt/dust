@@ -1,5 +1,5 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -10,7 +10,7 @@ import {
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useController, useFieldArray, useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 interface CustomHeadersConfigurationSectionProps {
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
@@ -26,11 +26,6 @@ export function CustomHeadersConfigurationSection({
     control: form.control,
     name: "useCustomHeaders",
   });
-  const { fields: customHeaders, replace: replaceCustomHeaders } =
-    useFieldArray({
-      control: form.control,
-      name: "customHeaders",
-    });
 
   const useCustomHeaders = useCustomHeadersField.value;
 
@@ -65,12 +60,7 @@ export function CustomHeadersConfigurationSection({
         </div>
       )}
 
-      {useCustomHeaders && (
-        <McpServerHeaders
-          headers={customHeaders}
-          onHeadersChange={replaceCustomHeaders}
-        />
-      )}
+      {useCustomHeaders && <MCPServerHeaders />}
     </>
   );
 }
