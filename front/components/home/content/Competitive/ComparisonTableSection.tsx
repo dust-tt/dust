@@ -18,7 +18,7 @@ interface ComparisonTableSectionProps {
   title?: string;
   dustHeader: string;
   competitorHeader: string;
-  competitorLogo?: string;
+  competitorLogo?: ReactNode;
   features: ComparisonFeature[];
 }
 
@@ -87,15 +87,7 @@ export function ComparisonTableSection({
             />
           </div>
           <div className="flex items-center justify-center rounded-tr-xl bg-gray-100 p-4">
-            {competitorLogo ? (
-              <Image
-                src={competitorLogo}
-                alt={competitorHeader}
-                width={80}
-                height={20}
-                unoptimized
-              />
-            ) : (
+            {competitorLogo ?? (
               <span className="text-sm font-medium lowercase tracking-wider text-gray-500">
                 {competitorHeader}
               </span>
