@@ -5,7 +5,7 @@ import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { createTypeGuard, isErrnoException } from "./errors";
-import { FORWARDER_PORTS } from "./forwarderConfig";
+import { FORWARDER_MAPPINGS, FORWARDER_PORTS } from "./forwarderConfig";
 import { fileExists } from "./fs";
 import { logger } from "./logger";
 import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
@@ -228,7 +228,12 @@ export async function startForwarder(basePort: number, envName: string): Promise
     updatedAt: new Date().toISOString(),
   });
 
-  logger.success(`Forwarding ports ${FORWARDER_PORTS.join(", ")} → ${envName} (base ${basePort})`);
+  logger.success(`Forwarding ports → ${envName} (base ${basePort})`);
+  for (const m of FORWARDER_MAPPINGS) {
+    console.log(
+      `  ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → ${basePort + m.targetOffset}`
+    );
+  }
 }
 
 // Get forwarder status info
