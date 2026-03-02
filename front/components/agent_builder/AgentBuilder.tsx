@@ -138,11 +138,13 @@ export default function AgentBuilder({
 
   const agentConfigurationIdForSkills =
     duplicateAgentId ?? agentConfiguration?.sId ?? null;
-  const { skills, isSkillsLoading } = useAgentConfigurationSkills({
-    owner,
-    agentConfigurationId: agentConfigurationIdForSkills ?? "",
-    disabled: !agentConfigurationIdForSkills,
-  });
+  const { skills, isSkillsLoading, mutateSkills } = useAgentConfigurationSkills(
+    {
+      owner,
+      agentConfigurationId: agentConfigurationIdForSkills ?? "",
+      disabled: !agentConfigurationIdForSkills,
+    }
+  );
 
   const { editors } = useEditors({
     owner,
@@ -438,7 +440,7 @@ export default function AgentBuilder({
       }
 
       // Mutate triggers and actions to refresh from backend
-      await Promise.all([mutateTriggers(), mutateActions()]);
+      await Promise.all([mutateTriggers(), mutateActions(), mutateSkills()]);
       onSaved?.();
 
       if (isCreatingNew && createdAgent.sId) {
