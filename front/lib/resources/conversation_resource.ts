@@ -1474,7 +1474,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversationId: this.id,
       workspaceId: auth.getNonNullableWorkspace().id,
       contentFragmentId: { [Op.is]: null },
-      branchId: { [Op.is]: null },
     };
 
     if (lastRank !== null && lastRank !== undefined) {

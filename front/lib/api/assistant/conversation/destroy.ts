@@ -8,7 +8,6 @@ import {
   MessageReactionModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
@@ -178,14 +177,6 @@ export async function destroyConversation(
   }
 
   const conversation = conversationRes.value;
-
-  // Clean up all branches attached to this conversation before deleting messages.
-  await ConversationBranchModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-  });
 
   const messages = await MessageModel.findAll({
     attributes: [
