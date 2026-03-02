@@ -86,7 +86,7 @@ export function SkillInfoTab({
       {skill.instructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
-            Instructions
+            Guidelines
           </div>
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
