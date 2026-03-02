@@ -1641,16 +1641,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
 
-      if (fileAttachments) {
-        await this.setFileAttachments(auth, fileAttachments, { transaction });
-      }
-
       await this.updateActiveAgentsRequirements(
         auth,
         { previousRequestedSpaceIds },
         { transaction }
       );
     });
+
+    if (fileAttachments) {
+      await this.setFileAttachments(auth, fileAttachments);
+    }
   }
 
   /**
@@ -1848,8 +1848,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private async setFileAttachments(
     auth: Authenticator,
-    fileAttachments: FileResource[],
-    { transaction }: { transaction?: Transaction } = {}
+    fileAttachments: FileResource[]
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -1858,7 +1857,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         skillConfigurationId: this.id,
         workspaceId: workspace.id,
       },
-      transaction,
     });
 
     const desiredFileModelIds = new Set(fileAttachments.map((f) => f.id));
@@ -1880,7 +1878,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           id: { [Op.in]: toRemove.map((a) => a.id) },
           workspaceId: workspace.id,
         },
-        transaction,
       });
       for (const file of filesToDelete) {
         await file.delete(auth);
@@ -1898,8 +1895,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           skillConfigurationId: this.id,
           fileId: file.id,
           fileName: file.fileName,
-        })),
-        { transaction }
+        }))
       );
     }
 
