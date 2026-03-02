@@ -390,6 +390,7 @@ export async function createSpaceAndGroup(
   }
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
+  const { name: rawName, isRestricted, spaceKind, managementMode } = params;
 
   const result = await withTransaction(async (t) => {
     await getWorkspaceAdministrationVersionLock(owner, t);
@@ -400,7 +401,7 @@ export async function createSpaceAndGroup(
       plan
     );
 
-    if (isLimitReached && !ignoreWorkspaceLimit) {
+    if (isLimitReached && !ignoreWorkspaceLimit && spaceKind !== "project") {
       return new Err(
         new DustError(
           "limit_reached",
@@ -409,7 +410,6 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const { name: rawName, isRestricted, spaceKind, managementMode } = params;
     // Trim the name to prevent issues with leading/trailing whitespace
     const name = rawName.trim();
 
