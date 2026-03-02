@@ -59,6 +59,7 @@ const PatchSkillRequestBodySchema = t.intersection([
     ),
     attachedKnowledge: t.array(AttachedKnowledgeSchema),
   }),
+  // TODO(2026-03-02): make mandatory once always sent by the client.
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
   }),
@@ -260,7 +261,10 @@ async function handler(
         const featureFlags = await getFeatureFlags(
           auth.getNonNullableWorkspace()
         );
-        if (!featureFlags.includes("sandbox_tools")) {
+        if (
+          !featureFlags.includes("sandbox_tools") &&
+          fileAttachments.length > 0
+        ) {
           return apiError(req, res, {
             status_code: 403,
             api_error: {

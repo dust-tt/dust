@@ -275,7 +275,10 @@ async function handler(
         const featureFlags = await getFeatureFlags(
           auth.getNonNullableWorkspace()
         );
-        if (!featureFlags.includes("sandbox_tools")) {
+        if (
+          !featureFlags.includes("sandbox_tools") &&
+          fileAttachments.length > 0
+        ) {
           return apiError(req, res, {
             status_code: 403,
             api_error: {
@@ -347,6 +350,13 @@ async function handler(
           fileAttachments: files,
         }
       );
+
+      // Update file useCaseMetadata with the newly created skill's sId.
+      if (files) {
+        await FileResource.batchSetUseCaseMetadata(auth, files, {
+          skillId: skillResource.sId,
+        });
+      }
 
       return res.status(200).json({
         skill: skillResource.toJSON(auth),
