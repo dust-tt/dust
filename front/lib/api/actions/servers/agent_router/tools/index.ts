@@ -21,7 +21,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     if (!user) {
       logger.warn(
         { workspaceId: owner },
-        "No user available in auth to call Front API from server 'agent_router/tools'"
+        "No user available in auth to call Front API from server 'agent_router/list_all_published_agents'"
       );
     }
     const requestedGroupIds = auth.groupIds();
@@ -72,6 +72,12 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
   suggest_agents_for_content: async ({ userMessage }, { auth }) => {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
+    if (!user) {
+      logger.warn(
+        { workspaceId: owner },
+        "No user available in auth to call Front API from server 'agent_router/suggest_agents_for_content'"
+      );
+    }
     const requestedGroupIds = auth.groupIds();
 
     const prodCredentials = await prodAPICredentialsForOwner(owner);
