@@ -461,22 +461,12 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
         if (addedKeywords.length > 0) {
           logger.info(
-            {
-              connectorId: connector.id,
-              addedKeywords,
-              oldKeywords,
-              newKeywords,
-            },
+            { connectorId: connector.id, addedKeywords },
             "[Gong] New keywords added, initiating cleanup"
           );
 
           // Pause the schedule to prevent new workflows from starting
           const scheduleId = makeGongSyncScheduleId(connector);
-          logger.info(
-            { connectorId: connector.id, scheduleId },
-            "[Gong] Pausing schedule for cleanup"
-          );
-
           const pauseResult = await pauseSchedule({
             connector,
             scheduleId,
@@ -485,17 +475,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
           if (pauseResult.isErr()) {
             logger.warn(
-              {
-                connectorId: connector.id,
-                scheduleId,
-                error: pauseResult.error,
-              },
+              { connectorId: connector.id, error: pauseResult.error },
               "[Gong] Failed to pause schedule, continuing with cleanup"
-            );
-          } else {
-            logger.info(
-              { connectorId: connector.id, scheduleId },
-              "[Gong] Schedule paused successfully"
             );
           }
 
@@ -544,11 +525,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           }
 
           // Resume the schedule after cleanup completes
-          logger.info(
-            { connectorId: connector.id, scheduleId },
-            "[Gong] Resuming schedule after cleanup"
-          );
-
           const unpauseResult = await unpauseAndTriggerSchedule({
             connector,
             scheduleId,
@@ -556,17 +532,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
           if (unpauseResult.isErr()) {
             logger.error(
-              {
-                connectorId: connector.id,
-                scheduleId,
-                error: unpauseResult.error,
-              },
+              { connectorId: connector.id, error: unpauseResult.error },
               "[Gong] Failed to unpause schedule after cleanup"
-            );
-          } else {
-            logger.info(
-              { connectorId: connector.id, scheduleId },
-              "[Gong] Schedule resumed successfully"
             );
           }
         }

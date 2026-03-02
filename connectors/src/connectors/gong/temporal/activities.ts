@@ -534,30 +534,14 @@ export async function gongDeleteExcludedTranscriptsActivity({
       provider: "gong",
       batchSize: transcripts.length,
       lastId,
-      excludeKeywords,
     },
     "[Gong] Cleanup: Processing batch of transcripts"
   );
 
   // Filter using the same logic as sync-time filtering
-  const transcriptsToDelete = transcripts.filter((transcript) => {
-    const shouldDelete = shouldExcludeByTitle(
-      transcript.title,
-      excludeKeywords
-    );
-    logger.info(
-      {
-        connectorId: connector.id,
-        provider: "gong",
-        callId: transcript.callId,
-        title: transcript.title,
-        shouldDelete,
-        excludeKeywords,
-      },
-      `[Gong] Cleanup: Evaluated transcript - ${shouldDelete ? "WILL DELETE" : "keeping"}`
-    );
-    return shouldDelete;
-  });
+  const transcriptsToDelete = transcripts.filter((transcript) =>
+    shouldExcludeByTitle(transcript.title, excludeKeywords)
+  );
 
   logger.info(
     {
@@ -572,16 +556,6 @@ export async function gongDeleteExcludedTranscriptsActivity({
 
   // Delete from Core data source first
   for (const transcript of transcriptsToDelete) {
-    logger.info(
-      {
-        connectorId: connector.id,
-        provider: "gong",
-        callId: transcript.callId,
-        title: transcript.title,
-      },
-      "[Gong] Cleanup: Deleting transcript"
-    );
-
     await deleteDataSourceDocument(
       dataSourceConfig,
       makeGongTranscriptInternalId(connector, transcript.callId),
