@@ -270,7 +270,8 @@ async function handler(
       }
 
       // Validate file attachments if provided (gated behind sandbox_tools).
-      if (fileAttachments && fileAttachments.length > 0) {
+      let files: FileResource[] | undefined;
+      if (fileAttachments) {
         const featureFlags = await getFeatureFlags(
           auth.getNonNullableWorkspace()
         );
@@ -283,29 +284,29 @@ async function handler(
             },
           });
         }
-      }
 
-      const fileAttachmentIds = fileAttachments?.map((f) => f.fileId) ?? [];
-      const files = await FileResource.fetchByIds(auth, fileAttachmentIds);
-      if (files.length !== fileAttachmentIds.length) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "invalid_request_error",
-            message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
-          },
-        });
-      }
-
-      for (const file of files) {
-        if (!file.isReady || file.useCase !== "skill_attachment") {
+        const fileAttachmentIds = fileAttachments.map((f) => f.fileId);
+        files = await FileResource.fetchByIds(auth, fileAttachmentIds);
+        if (files.length !== fileAttachmentIds.length) {
           return apiError(req, res, {
-            status_code: 400,
+            status_code: 404,
             api_error: {
               type: "invalid_request_error",
-              message: `File ${file.sId} is not ready or not a skill_attachment.`,
+              message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
             },
           });
+        }
+
+        for (const file of files) {
+          if (!file.isReady || file.useCase !== "skill_attachment") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `File ${file.sId} is not ready or not a skill_attachment.`,
+              },
+            });
+          }
         }
       }
 
