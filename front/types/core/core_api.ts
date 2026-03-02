@@ -531,7 +531,7 @@ export class CoreAPI {
           "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
-          ...(userId ? { "X-Dust-User-Id": userId } : {}),
+          "X-Dust-User-Id": userId,
         },
         body: JSON.stringify({
           run_type: runType,
@@ -555,7 +555,6 @@ export class CoreAPI {
     featureFlags: WhitelistableFeature[],
     // TODO(x-dust-group-ids): remove once all receivers use X-Dust-User-Id.
     groupIds: string[],
-    userId?: string,
     {
       projectId,
       runType,
@@ -568,7 +567,8 @@ export class CoreAPI {
       secrets,
       isSystemKey,
       storeBlocksResults = true,
-    }: CoreAPICreateRunParams
+    }: CoreAPICreateRunParams,
+    userId?: string
   ): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;

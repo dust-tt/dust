@@ -329,7 +329,6 @@ async function handler(
         owner,
         keyWorkspaceFlags,
         auth.groupIds(),
-        auth.user()?.sId,
         {
           projectId: app.dustAPIProjectId,
           runType: "deploy",
@@ -340,7 +339,8 @@ async function handler(
           secrets,
           isSystemKey: auth.isSystemKey(),
           storeBlocksResults,
-        }
+        },
+        auth.user()?.sId
       );
 
       if (runRes.isErr()) {

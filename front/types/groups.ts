@@ -162,6 +162,17 @@ export function getHeaderFromUserId(userId: string | undefined) {
   };
 }
 
+const DustUserEmailHeader = "X-Api-User-Email";
+
+export function getHeaderFromUserEmail(email: string | undefined) {
+  if (!email) {
+    return undefined;
+  }
+  return {
+    [DustUserEmailHeader]: email,
+  };
+}
+
 export const AGENT_GROUP_PREFIX = "Group for Agent";
 export const SKILL_GROUP_PREFIX = "Group for Skill";
 export const SPACE_GROUP_PREFIX = "Group for space";

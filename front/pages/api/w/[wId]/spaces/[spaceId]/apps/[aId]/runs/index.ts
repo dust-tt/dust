@@ -133,7 +133,7 @@ async function handler(
         owner,
         keyWorkspaceFlags,
         auth.groupIds(),
-        auth.user().sId,
+        user.sId,
         {
           projectId: app.dustAPIProjectId,
           runType: "local",

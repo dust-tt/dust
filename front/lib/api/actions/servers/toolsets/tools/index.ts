@@ -12,7 +12,11 @@ import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds, getHeaderFromUserId } from "@app/types/groups";
+import {
+  getHeaderFromGroupIds,
+  getHeaderFromUserEmail,
+  getHeaderFromUserId,
+} from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
