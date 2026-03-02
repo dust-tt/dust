@@ -841,6 +841,7 @@ export async function postUserMessage(
       void signalButlerComplete({
         authType: auth.toJSON(),
         conversationId: conversation.sId,
+        messageId: userMessage.sId,
       });
     }
   }
@@ -1171,6 +1172,7 @@ export async function editUserMessage(
       void signalButlerComplete({
         authType: auth.toJSON(),
         conversationId: conversation.sId,
+        messageId: userMessage.sId,
       });
     }
   }
@@ -1603,6 +1605,7 @@ export async function postNewContentFragment(
     void signalButlerComplete({
       authType: auth.toJSON(),
       conversationId: conversation.sId,
+      messageId,
     });
   }
 

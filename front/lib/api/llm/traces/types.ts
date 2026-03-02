@@ -13,6 +13,7 @@ interface LLMTraceContextBase {
   /** Type of operation that triggered the LLM call */
   operationType:
     | "agent_builder_description_suggestion"
+    | "butler_rename_title"
     | "agent_builder_emoji_suggestion"
     | "agent_builder_instruction_suggestion"
     | "agent_builder_name_suggestion"

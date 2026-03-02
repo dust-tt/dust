@@ -24,28 +24,44 @@ export async function butlerWorkflow({
 }): Promise<void> {
   let needsAnalysis = true;
   let complete = false;
+  let latestMessageId: string | null = null;
 
-  setHandler(butlerRefreshSignal, () => {
+  setHandler(butlerRefreshSignal, (messageId: string) => {
     needsAnalysis = true;
+    latestMessageId = messageId;
   });
 
-  setHandler(butlerCompleteSignal, () => {
+  setHandler(butlerCompleteSignal, (messageId: string) => {
     needsAnalysis = true;
     complete = true;
+    latestMessageId = messageId;
   });
 
   while (!complete) {
     await condition(() => needsAnalysis);
     needsAnalysis = false;
+    const messageId = latestMessageId;
     await sleep(DEBOUNCE_DELAY_MS);
 
     if (needsAnalysis) {
       continue;
     }
 
-    await analyzeConversationActivity({ authType, conversationId, messageId });
+    if (messageId) {
+      await analyzeConversationActivity({
+        conversationId,
+        authType,
+        messageId,
+      });
+    }
   }
 
   // Final analysis after completion signal.
-  await analyzeConversationActivity({ authType, conversationId, messageId });
+  if (latestMessageId) {
+    await analyzeConversationActivity({
+      conversationId,
+      authType,
+      messageId: latestMessageId,
+    });
+  }
 }
