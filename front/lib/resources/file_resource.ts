@@ -744,7 +744,7 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ useCaseMetadata: metadata });
   }
 
-  static async batchSetUseCaseMetadata(
+  static async bulkSetUseCaseMetadata(
     auth: Authenticator,
     files: FileResource[],
     metadata: FileUseCaseMetadata
