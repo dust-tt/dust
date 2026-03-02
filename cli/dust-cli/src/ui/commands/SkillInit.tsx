@@ -15,7 +15,7 @@ description: Call a Dust agent to get information, perform actions, or answer qu
 
 ## What is Dust?
 
-Dust (https://dust.tt) is an AI assistant platform that connects to a company's internal tools and knowledge bases (Slack, Notion, Google Drive, GitHub, etc.). It provides specialized AI agents that have context on the company's data and can perform actions on behalf of users. The Dust CLI allows you to interact with these agents programmatically.
+Dust (https://dust.tt) is an AI agent platform that connects to a company's internal tools and knowledge bases (Slack, Notion, Google Drive, GitHub, etc.). It provides specialized AI agents that have context on the company's data and can perform actions on behalf of users. The Dust CLI allows you to interact with these agents programmatically.
 
 ## Non-interactive usage
 
