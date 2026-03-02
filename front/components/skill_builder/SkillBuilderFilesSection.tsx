@@ -154,9 +154,7 @@ export function SkillBuilderFilesSection() {
               <ContextItem
                 key={field.id}
                 title={
-                  <span className="text-sm font-normal">
-                    {field.fileName}
-                  </span>
+                  <span className="text-sm font-normal">{field.fileName}</span>
                 }
                 visual={<ContextItem.Visual visual={DocumentIcon} />}
                 hoverAction
