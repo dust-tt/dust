@@ -92,8 +92,8 @@ async function handler(
     });
   }
 
-  const skillResource = await SkillResource.fetchById(auth, sId);
-  if (!skillResource) {
+  const skill = await SkillResource.fetchById(auth, sId);
+  if (!skill) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -107,18 +107,18 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const skill = skillResource.toJSON(auth);
+      const serializedSkill = skill.toJSON(auth);
 
       if (withRelations === "true") {
-        const usage = await skillResource.fetchUsage(auth);
-        const editors = await skillResource.listEditors(auth);
-        const editedByUser = await skillResource.fetchEditedByUser(auth);
-        const extendedSkill = skill.extendedSkillId
-          ? await SkillResource.fetchById(auth, skill.extendedSkillId)
+        const usage = await skill.fetchUsage(auth);
+        const editors = await skill.listEditors(auth);
+        const editedByUser = await skill.fetchEditedByUser(auth);
+        const extendedSkill = serializedSkill.extendedSkillId
+          ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
           : null;
 
         const skillWithRelations: SkillWithRelationsType = {
-          ...skill,
+          ...serializedSkill,
           relations: {
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
@@ -131,7 +131,7 @@ async function handler(
           skill: skillWithRelations,
         });
       }
-      return res.status(200).json({ skill });
+      return res.status(200).json({ skill: serializedSkill });
     }
 
     case "PATCH": {
@@ -162,7 +162,7 @@ async function handler(
       }
 
       // Check if user can write.
-      if (!skillResource.canWrite(auth)) {
+      if (!skill.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -175,7 +175,7 @@ async function handler(
       // Check for existing active skill with the same name (excluding current skill).
       const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
-      if (existingSkill && existingSkill.id !== skillResource.id) {
+      if (existingSkill && existingSkill.id !== skill.id) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -300,19 +300,19 @@ async function handler(
       }
 
       // When saving a suggested skill, automatically activate it.
-      const shouldActivate = skillResource.status === "suggested";
+      const shouldActivate = skill.status === "suggested";
 
       if (shouldActivate) {
         logger.info(
           {
-            skillId: skillResource.sId,
+            skillId: skill.sId,
             workspaceId: owner.sId,
           },
           "Suggested skill accepted"
         );
       }
 
-      await skillResource.updateSkill(auth, {
+      await skill.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
@@ -326,13 +326,13 @@ async function handler(
       });
 
       return res.status(200).json({
-        skill: skillResource.toJSON(auth),
+        skill: skill.toJSON(auth),
       });
     }
 
     case "DELETE": {
       // Check if user can write.
-      if (!skillResource.canWrite(auth)) {
+      if (!skill.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -342,17 +342,17 @@ async function handler(
         });
       }
 
-      if (skillResource.status === "suggested") {
+      if (skill.status === "suggested") {
         logger.info(
           {
-            skillId: skillResource.sId,
+            skillId: skill.sId,
             workspaceId: owner.sId,
           },
           "Suggested skill rejected"
         );
       }
 
-      await skillResource.archive(auth);
+      await skill.archive(auth);
 
       return res.status(200).json({ success: true });
     }

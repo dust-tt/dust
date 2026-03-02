@@ -331,7 +331,7 @@ async function handler(
         }
       }
 
-      const skillResource = await SkillResource.makeNew(
+      const skill = await SkillResource.makeNew(
         auth,
         {
           status: "active",
@@ -354,12 +354,12 @@ async function handler(
       // Update file useCaseMetadata with the newly created skill's sId.
       if (files) {
         await FileResource.bulkSetUseCaseMetadata(auth, files, {
-          skillId: skillResource.sId,
+          skillId: skill.sId,
         });
       }
 
       return res.status(200).json({
-        skill: skillResource.toJSON(auth),
+        skill: skill.toJSON(auth),
       });
     }
 
