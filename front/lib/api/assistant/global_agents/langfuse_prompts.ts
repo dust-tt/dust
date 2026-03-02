@@ -13,7 +13,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 type LangfuseFirstMessagePromptName =
-  | "copilot-edge-first-message-new"
   | "copilot-edge-first-message-existing"
   | "copilot-edge-first-message-template"
   | "copilot-edge-first-message-shrink-wrap";
