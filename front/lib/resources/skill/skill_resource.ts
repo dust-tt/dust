@@ -1907,10 +1907,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.fileAttachments = fileAttachments;
   }
 
-  async delete(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<number, Error>> {
+  async delete(auth: Authenticator): Promise<Result<number, Error>> {
     try {
       assert(
         this.canWrite(auth),
@@ -1919,71 +1916,76 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       const workspace = auth.getNonNullableWorkspace();
 
-      // Delete agent-skill associations.
-      await AgentSkillModel.destroy({
-        where: {
-          customSkillId: this.id,
-          workspaceId: workspace.id,
-        },
-        transaction,
-      });
-
       const whereWorkspaceIdAndSkillId = {
         skillConfigurationId: this.id,
         workspaceId: workspace.id,
       };
 
-      // Delete the GroupSkillModel entry and the associated editor group.
-      await GroupSkillModel.destroy({
+      // Collect files to delete before the transaction removes the join table rows.
+      const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
         where: whereWorkspaceIdAndSkillId,
-        transaction,
       });
+      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
+        auth,
+        fileAttachmentRows.map((a) => a.fileId)
+      );
 
-      if (this.editorGroup) {
-        await this.editorGroup.delete(auth, { transaction });
-      }
+      const affectedCount = await withTransaction(async (transaction) => {
+        // Delete agent-skill associations.
+        await AgentSkillModel.destroy({
+          where: {
+            customSkillId: this.id,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        });
 
-      // Delete file attachments and their underlying files.
-      const fileAttachments = await SkillFileAttachmentModel.findAll({
-        where: whereWorkspaceIdAndSkillId,
-        transaction,
-      });
-      if (fileAttachments.length > 0) {
-        const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-          auth,
-          fileAttachments.map((a) => a.fileId)
-        );
+        // Delete the GroupSkillModel entry and the associated editor group.
+        await GroupSkillModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        if (this.editorGroup) {
+          await this.editorGroup.delete(auth, { transaction });
+        }
+
         await SkillFileAttachmentModel.destroy({
           where: whereWorkspaceIdAndSkillId,
           transaction,
         });
-        for (const file of filesToDelete) {
-          await file.delete(auth);
+
+        await SkillDataSourceConfigurationModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        await SkillMCPServerConfigurationModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        await SkillVersionModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        return this.model.destroy({
+          where: {
+            id: this.id,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        });
+      });
+
+      // Delete files from cloud storage outside the transaction (I/O with GCS).
+      for (const file of filesToDelete) {
+        const res = await file.delete(auth);
+        if (res.isErr()) {
+          return res;
         }
       }
-
-      await SkillDataSourceConfigurationModel.destroy({
-        where: whereWorkspaceIdAndSkillId,
-        transaction,
-      });
-
-      await SkillMCPServerConfigurationModel.destroy({
-        where: whereWorkspaceIdAndSkillId,
-        transaction,
-      });
-
-      await SkillVersionModel.destroy({
-        where: whereWorkspaceIdAndSkillId,
-        transaction,
-      });
-
-      const affectedCount = await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: workspace.id,
-        },
-        transaction,
-      });
 
       return new Ok(affectedCount);
     } catch (error) {
