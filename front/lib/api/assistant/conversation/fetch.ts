@@ -42,22 +42,19 @@ type MessageTypeForView<V extends "light" | "full"> = V extends "light"
 export const getConversation = async (
   auth: Authenticator,
   conversationId: string,
-  includeDeleted: boolean = false,
-  branchId: string | null = null
-) => _getConversation(auth, conversationId, includeDeleted, branchId, "full");
+  includeDeleted: boolean = false
+) => _getConversation(auth, conversationId, includeDeleted, "full");
 
 export const getLightConversation = async (
   auth: Authenticator,
   conversationId: string,
-  includeDeleted: boolean = false,
-  branchId: string | null = null
-) => _getConversation(auth, conversationId, includeDeleted, branchId, "light");
+  includeDeleted: boolean = false
+) => _getConversation(auth, conversationId, includeDeleted, "light");
 
 async function _getConversation<V extends "light" | "full">(
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  branchId: string | null = null,
   viewType: V = "full" as V
 ): Promise<
   Result<
@@ -85,7 +82,6 @@ async function _getConversation<V extends "light" | "full">(
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
-      branchId,
     },
     order: [
       ["rank", "ASC"],

@@ -5,9 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
   MessageModel,
-  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -3685,84 +3683,6 @@ describe("Space Handling", () => {
       ).length;
       expect(nonCfCount).toBe(2);
     });
-
-    it("should exclude branch messages from pagination and allow duplicate ranks across branches", async () => {
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      assert(conversationResource, "Conversation resource not found");
-
-      const workspace = auth.getNonNullableWorkspace();
-      const user = auth.getNonNullableUser();
-
-      // Create a main-thread user message at rank 0
-      const mainUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        workspaceId: workspace.id,
-        content: "Main thread message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      const mainMessage = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: mainUserMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      // Create a branch from that message
-      const branch = await ConversationBranchModel.create({
-        state: "open",
-        previousMessageId: mainMessage.id,
-        conversationId: conversationResource.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-      });
-
-      // Create a branch user message at the same rank, attached to the branch
-      const branchUserMessageRow = await UserMessageModel.create({
-        userId: user.id,
-        workspaceId: workspace.id,
-        content: "Branch message",
-        userContextUsername: "testuser",
-        userContextTimezone: "UTC",
-        userContextFullName: "Test User",
-        userContextEmail: "test@example.com",
-        userContextProfilePictureUrl: null,
-        userContextOrigin: "web",
-        clientSideMCPServerIds: [],
-      });
-
-      await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: conversationResource.id,
-        parentId: null,
-        userMessageId: branchUserMessageRow.id,
-        workspaceId: workspace.id,
-        branchId: branch.id,
-      });
-
-      const page = await conversationResource.fetchMessagesForPage(auth, {
-        limit: 10,
-      });
-
-      // Only the main-thread message should be included in pagination
-      expect(page.hasMore).toBe(false);
-      expect(page.messages).toHaveLength(1);
-      expect(page.messages[0].id).toBe(mainMessage.id);
-      expect(page.messages[0].rank).toBe(0);
-      expect(page.messages[0].branchId).toBeNull();
-    });
   });
 });
 
@@ -4863,7 +4783,6 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_skills",
   "agent_message_feedback",
-  "conversation_branch",
   "conversation_mcp_server_view",
   "conversation_participant",
   "conversation_skills",
