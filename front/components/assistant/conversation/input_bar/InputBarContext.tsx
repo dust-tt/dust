@@ -1,6 +1,6 @@
 import type { ClientMessageOrigin } from "@app/types/assistant/conversation";
 import type { RichAgentMention } from "@app/types/assistant/mentions";
-import { createContext, useCallback, useState } from "react";
+import { createContext, useCallback, useMemo, useState } from "react";
 
 export const InputBarContext = createContext<{
   animate: boolean;
@@ -51,16 +51,19 @@ export function InputBarProvider({
     return previousSelectedAgent;
   }, [selectedAgent, setSelectedAgent]);
 
+  const value = useMemo(
+    () => ({
+      animate,
+      origin,
+      setAnimate,
+      getAndClearSelectedAgent,
+      setSelectedAgent: setSelectedAgentOuter,
+    }),
+    [animate, origin, getAndClearSelectedAgent, setSelectedAgentOuter]
+  );
+
   return (
-    <InputBarContext.Provider
-      value={{
-        animate,
-        origin,
-        setAnimate,
-        getAndClearSelectedAgent,
-        setSelectedAgent: setSelectedAgentOuter,
-      }}
-    >
+    <InputBarContext.Provider value={value}>
       {children}
     </InputBarContext.Provider>
   );
