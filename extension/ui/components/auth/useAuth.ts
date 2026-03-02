@@ -1,3 +1,4 @@
+import { setDefaultInitResolver } from "@app/lib/api/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -26,6 +27,25 @@ export const useAuthHook = () => {
   >();
   const [featureFlags, setFeatureFlags] = useState<WhitelistableFeature[]>([]);
   const { setRegionInfo } = useRegionContext();
+
+  // Set default fetch init for the extension (overrides RegionContext's credentials: "include").
+  // Must be declared before any fetch effects so it's active when they run.
+  useEffect(() => {
+    if (tokens?.accessToken) {
+      setDefaultInitResolver(() => ({
+        credentials: "omit",
+        headers: { Authorization: `Bearer ${tokens.accessToken}` },
+      }));
+    } else {
+      setDefaultInitResolver(() => ({
+        credentials: "omit",
+      }));
+    }
+
+    return () => {
+      setDefaultInitResolver(null);
+    };
+  }, [tokens?.accessToken]);
 
   const isAuthenticated = useMemo(
     () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
@@ -100,10 +120,7 @@ export const useAuthHook = () => {
 
     void (async () => {
       try {
-        const res = await clientFetch("/api/user", {
-          headers: { Authorization: `Bearer ${tokens.accessToken}` },
-          credentials: "omit", // Ensure cookies are not sent with requests from the extension
-        });
+        const res = await clientFetch("/api/user");
         if (res.ok) {
           const data = await res.json();
           const fetchedUser = data.user as UserTypeWithWorkspaces;
@@ -161,12 +178,7 @@ export const useAuthHook = () => {
     }
 
     void (async () => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/feature-flags`, {
-        headers: {
-          Authorization: `Bearer ${tokens.accessToken}`,
-          credentials: "omit", // Ensure cookies are not sent with requests from the extension
-        },
-      });
+      const res = await clientFetch(`/api/w/${workspace.sId}/feature-flags`);
       if (res.ok) {
         const { feature_flags } = await res.json();
         setFeatureFlags(feature_flags ?? []);
