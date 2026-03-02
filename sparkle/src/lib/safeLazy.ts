@@ -3,6 +3,21 @@ import { type ComponentType, lazy } from "react";
 export const FORCE_RELOAD_SESSION_KEY = "force_reload_at";
 export const FORCE_RELOAD_INTERVAL_MS = 10_000;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DDRum = { addError?: (error: unknown, context?: any) => void };
+
+/**
+ * Send an error to Datadog RUM if available (never throws).
+ */
+function reportToDatadog(error: unknown, context: Record<string, unknown>) {
+  try {
+    const ddRum = (window as unknown as { DD_RUM?: DDRum }).DD_RUM;
+    ddRum?.addError?.(error, context);
+  } catch {
+    // Fail-safe: Datadog may not be loaded yet.
+  }
+}
+
 /**
  * Try to extract the chunk URL from the dynamic import error message.
  * Vite typically produces messages like:
@@ -56,8 +71,7 @@ export function safeLazy<T extends ComponentType<any>>(
 ) {
   return lazy(async () => {
     // In Next.js (detected via __NEXT_DATA__), let the framework handle errors.
-    const isNextJs =
-      typeof window !== "undefined" && "__NEXT_DATA__" in window;
+    const isNextJs = typeof window !== "undefined" && "__NEXT_DATA__" in window;
 
     let lastError: unknown;
 
@@ -73,10 +87,12 @@ export function safeLazy<T extends ComponentType<any>>(
         }
 
         if (attempt < MAX_RETRIES) {
-          console.warn(
-            `[safeLazy] import failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in ${RETRY_DELAY_MS}ms…`,
-            error instanceof Error ? error.message : String(error)
-          );
+          reportToDatadog(error, {
+            source: "safeLazy",
+            event: "retry",
+            attempt: attempt + 1,
+            maxAttempts: MAX_RETRIES + 1,
+          });
           await delay(RETRY_DELAY_MS);
         }
       }
@@ -100,7 +116,11 @@ export function safeLazy<T extends ComponentType<any>>(
     }
 
     // In SPA (Vite), reload to fetch fresh assets.
-    console.warn(diagnostic + " | reloading page");
+    reportToDatadog(lastError, {
+      source: "safeLazy",
+      event: "reload",
+      diagnostic,
+    });
     sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
     window.location.reload();
     return new Promise<never>(() => {});
