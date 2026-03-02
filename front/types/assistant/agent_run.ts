@@ -8,7 +8,10 @@ import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  GlobalAgentContext,
+} from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
@@ -277,6 +280,10 @@ export async function getAgentLoopDataWithAuth(
 
   const agentId = agentMessage.configuration.sId;
 
+  const globalAgentContext: GlobalAgentContext = {
+    userMessageRank: userMessage.rank,
+  };
+
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.
   // The key will be different for a new message or a new version of the same message (retries).
   const agentConfiguration = await cacheWithRedis<
@@ -296,6 +303,7 @@ export async function getAgentLoopDataWithAuth(
       ? undefined
       : agentMessage.configuration.version,
     variant: "full" as const,
+    globalAgentContext,
   });
 
   if (!agentConfiguration) {

@@ -7,12 +7,18 @@ import type {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  GlobalAgentContext,
+} from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
   GLOBAL_AGENTS_SID,
   getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
 } from "@app/types/assistant/assistant";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
 
@@ -461,10 +467,12 @@ export function _getCopilotGlobalAgent(
     copilotContext,
     preFetchedDataSources,
     mcpServerViews,
+    globalAgentContext,
   }: {
     copilotContext: CopilotContext | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    globalAgentContext?: GlobalAgentContext;
   }
 ): AgentConfigurationType {
   const owner = auth.getNonNullableWorkspace();
@@ -485,7 +493,16 @@ export function _getCopilotGlobalAgent(
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 
-  const modelConfiguration = getLargeWhitelistedModel(owner);
+  // Use a fast model for the very first turn (when the conversation has no
+  // prior exchanges) and the full model for all follow-ups.
+  // Prefer Haiku on the first turn; fall back to the workspace's small model if
+  // Anthropic is not whitelisted.
+  const isFirstTurn = globalAgentContext?.userMessageRank === 0;
+  const modelConfiguration = isFirstTurn
+    ? isProviderWhitelisted(owner, "anthropic")
+      ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+      : getSmallWhitelistedModel(owner)
+    : getLargeWhitelistedModel(owner);
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,

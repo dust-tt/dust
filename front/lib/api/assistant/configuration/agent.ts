@@ -53,6 +53,7 @@ import type {
   AgentFetchVariant,
   AgentModelConfigurationType,
   AgentStatus,
+  GlobalAgentContext,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
@@ -242,9 +243,11 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
   {
     agentIds,
     variant,
+    globalAgentContext,
   }: {
     agentIds: string[];
     variant: V;
+    globalAgentContext?: GlobalAgentContext;
   }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
@@ -262,7 +265,9 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let globalAgents: AgentConfigurationType[] = [];
     if (globalAgentIds.length > 0) {
-      globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+      globalAgents = await getGlobalAgents(auth, globalAgentIds, variant, {
+        globalAgentContext,
+      });
     }
 
     const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
@@ -325,7 +330,13 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     agentId,
     agentVersion,
     variant,
-  }: { agentId: string; agentVersion?: number; variant: V }
+    globalAgentContext,
+  }: {
+    agentId: string;
+    agentVersion?: number;
+    variant: V;
+    globalAgentContext?: GlobalAgentContext;
+  }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
   | null
@@ -348,6 +359,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
       variant,
+      globalAgentContext,
     });
     return (
       (agent as V extends "light"
