@@ -26,7 +26,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { startObservation } from "@langfuse/tracing";
+import { type LangfuseGeneration, startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
@@ -45,7 +45,7 @@ export abstract class LLM<TPayload = unknown> {
   protected readonly context?: LLMTraceContext;
   protected readonly traceId: LLMTraceId;
   protected readonly getTraceOutput?: LLMTraceCustomization["getTraceOutput"];
-  protected actualRequestPayload: TPayload | null = null;
+  protected generation: LangfuseGeneration | null = null;
 
   protected constructor(
     auth: Authenticator,
@@ -123,7 +123,7 @@ export abstract class LLM<TPayload = unknown> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
-    const generation = startObservation(
+    this.generation = startObservation(
       "llm-completion",
       {
         input: undefined,
@@ -140,9 +140,8 @@ export abstract class LLM<TPayload = unknown> {
       { asType: "generation" }
     );
 
-    generation.updateTrace({
+    this.generation.updateTrace({
       name: startCase(this.context.operationType),
-      input: this.actualRequestPayload,
       metadata: {
         dustTraceId: this.traceId,
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
@@ -197,7 +196,7 @@ export abstract class LLM<TPayload = unknown> {
 
       if (currentEvent.type === "interaction_id") {
         buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
-        generation.updateTrace({
+        this.generation.updateTrace({
           metadata: {
             modelInteractionId: currentEvent.content.modelInteractionId,
           },
@@ -213,7 +212,7 @@ export abstract class LLM<TPayload = unknown> {
       if (currentEvent.type === "error") {
         // Temporary: track LLM error metric
         statsDClient.increment("llm_error.count", 1, metricTags);
-        generation.updateTrace({
+        this.generation.updateTrace({
           tags: ["isError:true", `errorType:${currentEvent.content.type}`],
         });
 
@@ -251,7 +250,7 @@ export abstract class LLM<TPayload = unknown> {
 
       const { tokenUsage, ...rest } = buffer.currentOutput;
 
-      generation.update({
+      this.generation.update({
         output: { ...rest },
       });
 
@@ -259,14 +258,14 @@ export abstract class LLM<TPayload = unknown> {
       if (this.getTraceOutput) {
         const traceOutput = this.getTraceOutput(rest);
         if (traceOutput) {
-          generation.updateTrace({ output: traceOutput });
+          this.generation.updateTrace({ output: traceOutput });
         }
       } else {
-        generation.updateTrace({ output: { ...rest } });
+        this.generation.updateTrace({ output: { ...rest } });
       }
 
       if (tokenUsage) {
-        generation.update({
+        this.generation.update({
           usageDetails: {
             // Report the uncached input tokens if provider supports it.
             input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
@@ -280,7 +279,7 @@ export abstract class LLM<TPayload = unknown> {
       }
 
       if (buffer.error) {
-        generation.update({
+        this.generation.update({
           level: "ERROR",
           statusMessage: buffer.error.message,
           metadata: {
@@ -290,7 +289,7 @@ export abstract class LLM<TPayload = unknown> {
         });
       }
 
-      generation.end();
+      this.generation.end();
 
       const run = await RunResource.makeNew({
         appId: null,
@@ -333,6 +332,7 @@ export abstract class LLM<TPayload = unknown> {
   async *stream(
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
+    console.log('>> stream <<');
     yield* this.streamWithTracing(streamParameters);
   }
 
@@ -361,9 +361,11 @@ export abstract class LLM<TPayload = unknown> {
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
     const payload = this.buildRequestPayload(streamParameters);
-    // Capture the actual request payload for tracing
-    this.actualRequestPayload = payload;
-    // Send the request to the provider
+
+    // Update trace with the actual payload.
+    this.generation?.updateTrace({ input: payload });
+
+    // Send the request to the provider.
     yield* this.sendRequest(payload);
   }
 }
