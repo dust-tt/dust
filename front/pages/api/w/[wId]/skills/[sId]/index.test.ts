@@ -1,8 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
-import { SkillVersionModel } from "@app/lib/models/skill";
+import {
+  SkillFileAttachmentModel,
+  SkillVersionModel,
+} from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -548,6 +553,172 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
     });
     expect(versions).toHaveLength(1);
     expect(versions[0].editedBy).toBeNull();
+  });
+});
+
+describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
+  it("should update file attachments when sandbox_tools is enabled", async () => {
+    const { req, res, skill, workspace, requestUser, requestUserAuth } =
+      await setupTest({
+        skillOwnerRole: "builder",
+        requestUserRole: "builder",
+        method: "PATCH",
+      });
+
+    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+
+    const file = await FileFactory.create(workspace, requestUser, {
+      contentType: "text/plain",
+      fileName: "template.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      fileAttachments: [{ fileId: file.sId }],
+    };
+
+    await handler(req, res);
+
+    const data = res._getJSONData();
+    expect(data).not.toHaveProperty("error");
+    expect(res._getStatusCode()).toBe(200);
+    expect(data.skill.fileAttachments).toHaveLength(1);
+    expect(data.skill.fileAttachments[0].fileName).toBe("template.txt");
+
+    // Verify persistence.
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill!.toJSON(requestUserAuth).fileAttachments).toHaveLength(
+      1
+    );
+  });
+
+  // Test that checks the retro-compatibility.
+  it("should succeed without file attachments when sandbox_tools is not enabled", async () => {
+    const { req, res, skill } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+      method: "PATCH",
+    });
+
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: "Updated description",
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  // Test that checks the retro-compatibility.
+  it("should succeed without file attachments", async () => {
+    const { req, res, skill } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+      method: "PATCH",
+    });
+
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: "Updated description",
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should remove file attachments when updating with empty array", async () => {
+    const { req, res, skill, workspace, requestUser, requestUserAuth } =
+      await setupTest({
+        skillOwnerRole: "builder",
+        requestUserRole: "builder",
+        method: "PATCH",
+      });
+
+    await FeatureFlagFactory.basic("sandbox_tools", workspace);
+
+    // Add a file attachment via the resource directly.
+    const file = await FileFactory.create(workspace, requestUser, {
+      contentType: "text/plain",
+      fileName: "to-remove.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+
+    await skill.updateSkill(requestUserAuth, {
+      agentFacingDescription: skill.agentFacingDescription,
+      attachedKnowledge: [],
+      fileAttachments: [file],
+      icon: null,
+      instructions: skill.instructions,
+      mcpServerViews: [],
+      name: skill.name,
+      requestedSpaceIds: [],
+      userFacingDescription: skill.userFacingDescription,
+    });
+
+    // Verify the file was added.
+    const skillAfterAdd = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillAfterAdd!.toJSON(requestUserAuth).fileAttachments).toHaveLength(
+      1
+    );
+
+    // Now remove via the API.
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      fileAttachments: [],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().skill.fileAttachments).toHaveLength(0);
+
+    // Verify persistence.
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill!.toJSON(requestUserAuth).fileAttachments).toHaveLength(
+      0
+    );
+
+    // Verify the join table row was deleted.
+    const remainingAttachments = await SkillFileAttachmentModel.findAll({
+      where: { skillConfigurationId: skill.id, workspaceId: workspace.id },
+    });
+    expect(remainingAttachments).toHaveLength(0);
   });
 });
 
