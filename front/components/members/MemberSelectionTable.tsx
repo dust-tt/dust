@@ -8,6 +8,7 @@ import {
 import type {
   CellContext,
   ColumnDef,
+  PaginationState,
   RowSelectionState,
 } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -49,12 +50,21 @@ export function MemberSelectionTable({
   initialMembers,
 }: MemberSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
 
-  const { members, isLoading } = useSearchMembers({
+  const handleSearchChange = (value: string) => {
+    setSearchText(value);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  };
+
+  const { members, totalMembersCount, isLoading } = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm: searchText,
-    pageIndex: 0,
-    pageSize: 100,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
     buildersOnly,
   });
 
@@ -128,7 +138,7 @@ export function MemberSelectionTable({
       <SearchInput
         name="member-search"
         value={searchText}
-        onChange={setSearchText}
+        onChange={handleSearchChange}
         placeholder="Search users..."
         className="mt-2"
       />
@@ -143,12 +153,13 @@ export function MemberSelectionTable({
           <DataTable
             data={rows}
             columns={columns}
+            pagination={pagination}
+            setPagination={setPagination}
+            totalRowCount={totalMembersCount}
             rowSelection={rowSelectionState}
             setRowSelection={handleRowSelectionChange}
             enableRowSelection
             getRowId={(row) => row.sId}
-            filter={searchText}
-            filterColumn="fullName"
           />
         )}
       </div>
