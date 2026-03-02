@@ -91,10 +91,11 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       "Post a message to a public channel, private channel, or DM. You MUST ONLY post to channels or users that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
       to: z
-        .string()
+        .union([z.string(), z.string().array().min(2)])
         .describe(
-          "The channel or user to post the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `search_user` tool. " +
-            "Messages sent to a user will be sent as a direct message."
+          "Use a string to post to a channel (name or ID) or a single user (user ID for DM). " +
+            "Use an array of at least 2 user IDs to create a group DM (e.g. ['U123', 'U456']). " +
+            "Arrays only support user IDs, not channel names or IDs."
         ),
       message: z
         .string()

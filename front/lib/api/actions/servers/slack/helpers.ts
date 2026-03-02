@@ -797,13 +797,30 @@ export async function executePostMessage(
     fileId,
   }: {
     accessToken: string;
-    to: string;
+    to: string | string[];
     message: string;
     threadTs: string | undefined;
     fileId: string | undefined;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
+
+  // If `to` is an array of user IDs, open or create a group DM (idempotent).
+  const resolvedTo = Array.isArray(to)
+    ? await (async () => {
+        const openResp = await slackClient.conversations.open({
+          users: to.join(","),
+        });
+        if (!openResp.ok || !openResp.channel?.id) {
+          return null;
+        }
+        return openResp.channel.id;
+      })()
+    : to;
+  if (resolvedTo === null) {
+    return new Err(new MCPError("Failed to open group DM"));
+  }
+
   const originalMessage = message;
 
   const agentUrl = getConversationRoute(
@@ -831,13 +848,13 @@ export async function executePostMessage(
 
     // Resolve channel id using the shared helper function.
     const channelId = await resolveChannelId({
-      channelNameOrId: to,
+      channelNameOrId: resolvedTo,
       accessToken,
     });
     if (!channelId) {
       return new Err(
         new MCPError(
-          `Unable to resolve channel id for "${to}". Please use a channel id, user id, or a valid channel name.`,
+          `Unable to resolve channel id for "${resolvedTo}". Please use a channel id, user id, or a valid channel name.`,
           {
             tracked: false,
           }
@@ -882,7 +899,7 @@ export async function executePostMessage(
 
   // No file provided: regular message.
   const response = await slackClient.chat.postMessage({
-    channel: to,
+    channel: resolvedTo,
     text: message,
     mrkdwn: true,
     thread_ts: threadTs,
@@ -893,7 +910,7 @@ export async function executePostMessage(
   }
 
   return new Ok([
-    { type: "text" as const, text: `Message posted to ${to}` },
+    { type: "text" as const, text: `Message posted to ${resolvedTo}` },
     { type: "text" as const, text: JSON.stringify(response, null, 2) },
   ]);
 }
