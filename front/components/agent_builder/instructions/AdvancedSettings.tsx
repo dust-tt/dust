@@ -120,7 +120,15 @@ export function AdvancedSettings() {
               Structured response format
             </DialogTitle>
             <DialogDescription>
-              Specify a JSON schema to get responses in a consistent structure
+              Specify a JSON schema to get responses in a consistent structure.{" "}
+              <a
+                href="https://docs.dust.tt/docs/structured-output-format"
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                See documentation
+              </a>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
