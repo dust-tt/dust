@@ -86,6 +86,7 @@ export function SkillBuilderFilesSection() {
     [handleFilesUpload, append, existingFileNames, sendNotification]
   );
 
+  // We need to have a skill ID to upload files in order to attach them properly (useCaseMetadata).
   const canUpload = !!skillId;
 
   const uploadDisabled = !canUpload || isProcessingFiles;
