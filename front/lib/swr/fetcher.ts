@@ -68,6 +68,11 @@ export type FetcherWithBodyFn = (
   init?: RequestInit
 ) => Promise<any>;
 
+export type ClientFetchFn = (
+  input: URL | RequestInfo,
+  init?: RequestInit
+) => Promise<Response>;
+
 export const fetcher: FetcherFn = async (url, init) => {
   const res = await clientFetch(url, {
     ...init,

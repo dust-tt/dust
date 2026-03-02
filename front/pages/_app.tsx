@@ -21,6 +21,7 @@ const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 const CONSOLE_MESSAGE_SHOWN_KEY = "dust_console_message_shown";
 
 import { PostHogTracker } from "@app/components/app/PostHogTracker";
+import { clientFetch } from "@app/lib/egress/client";
 import { NextLinkWrapper } from "@app/lib/platform/NextLinkWrapper";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
@@ -129,7 +130,11 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
-    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+    <FetcherProvider
+      fetcher={fetcher}
+      fetcherWithBody={fetcherWithBody}
+      clientFetch={clientFetch}
+    >
       <PostHogTracker>
         <SparkleContext.Provider
           value={{ components: { link: NextLinkWrapper } }}

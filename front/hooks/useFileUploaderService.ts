@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher } from "@app/lib/swr/FetcherContext";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
@@ -59,6 +59,7 @@ export function useFileUploaderService({
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [numFilesProcessing, setNumFilesProcessing] = useState(0);
+  const { clientFetch } = useFetcher();
 
   const isProcessingFiles = numFilesProcessing > 0;
 

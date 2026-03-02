@@ -2,6 +2,7 @@ import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBou
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { clientFetch } from "@dust-tt/front/lib/egress/client.js";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
@@ -35,7 +36,11 @@ const router = createBrowserRouter(
 export default function ShareApp() {
   return (
     <RegionProvider>
-      <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+      <FetcherProvider
+        fetcher={fetcher}
+        fetcherWithBody={fetcherWithBody}
+        clientFetch={clientFetch}
+      >
         <ErrorBoundary fallback={<GlobalErrorFallback />}>
           <RouterProvider router={router} />
         </ErrorBoundary>
