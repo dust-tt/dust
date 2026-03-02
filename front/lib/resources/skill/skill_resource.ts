@@ -369,6 +369,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           workspaceId: owner.id,
           skillConfigurationId: skill.id,
           fileId: file.id,
+          fileName: file.fileName,
         })),
         { transaction }
       );
@@ -1899,6 +1900,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           workspaceId: workspace.id,
           skillConfigurationId: this.id,
           fileId: file.id,
+          fileName: file.fileName,
         })),
         { transaction }
       );
