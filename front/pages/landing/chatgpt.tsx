@@ -3,7 +3,6 @@ import { CompetitiveCustomersSection } from "@app/components/home/content/Compet
 import { CompetitiveHeroSection } from "@app/components/home/content/Competitive/CompetitiveHeroSection";
 import { chatgptConfig } from "@app/components/home/content/Competitive/config/chatgptConfig";
 import { DifferentiatorsSection } from "@app/components/home/content/Competitive/DifferentiatorsSection";
-import { OpenaiLogo } from "@dust-tt/sparkle";
 import { EmailCTASection } from "@app/components/home/content/Competitive/EmailCTASection";
 import { SalesAnimationWidget } from "@app/components/home/content/Competitive/SalesAnimationWidget";
 import { StatsSection } from "@app/components/home/content/Competitive/StatsSection";
@@ -12,6 +11,7 @@ import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import { OpenaiLogo } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 
 export async function getStaticProps() {
@@ -22,7 +22,7 @@ export async function getStaticProps() {
       hideNavigation: true,
     },
   };
-}
+} 
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function ChatGPTLandingPage() {
