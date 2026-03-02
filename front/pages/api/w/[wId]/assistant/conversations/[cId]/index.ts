@@ -1,8 +1,6 @@
-import {
-  deleteOrLeaveConversation,
-  updateConversationTitle,
-} from "@app/lib/api/assistant/conversation";
+import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { moveConversationToProject } from "@app/lib/api/projects/conversations";
 import type { Authenticator } from "@app/lib/auth";
