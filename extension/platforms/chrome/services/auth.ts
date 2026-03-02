@@ -10,7 +10,6 @@ import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getConnectionDetails,
   getRegionInfoFromClaims,
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
@@ -58,7 +57,7 @@ export class ChromeAuthService extends AuthService {
   }
 
   // Login sends a message to the background script to call the workos login endpoint.
-  // It saves the tokens and auth metadata (regionInfo, connectionDetails).
+  // It saves the tokens and auth metadata (regionInfo).
   async login({
     forcedConnection,
     organizationId,
@@ -81,20 +80,10 @@ export class ChromeAuthService extends AuthService {
       const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
 
       const regionInfo = getRegionInfoFromClaims(claims);
-      const connectionDetails = getConnectionDetails(claims);
 
-      if (
-        response.authentication_method === "SSO" &&
-        !connectionDetails.connectionStrategy
-      ) {
-        connectionDetails.connectionStrategy = response.authentication_method;
-      }
-
-      // Store regionInfo and connectionDetails separately.
       await this.storage.set("regionInfo", regionInfo);
-      await this.storage.set("connectionDetails", connectionDetails);
 
-      return new Ok({ tokens, regionInfo, connectionDetails });
+      return new Ok({ tokens, regionInfo });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }

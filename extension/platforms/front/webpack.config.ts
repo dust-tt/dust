@@ -1,9 +1,20 @@
 import type { Environment } from "@extension/config/env";
+import { execSync } from "child_process";
 import Dotenv from "dotenv-webpack";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
 import webpack from "webpack";
+
+// Get git commit hash
+const getCommitHash = () => {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch (e) {
+    console.error(e);
+    return "development";
+  }
+};
 
 export const getConfig = ({ env }: { env: Environment }) => {
   const isDevelopment = env === "development";
@@ -87,9 +98,20 @@ export const getConfig = ({ env }: { env: Environment }) => {
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
       }),
+
       new webpack.EnvironmentPlugin({
+        COMMIT_HASH: getCommitHash(),
+        DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
+        DATADOG_ENV: isDevelopment ? "dev" : "prod",
         NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
           process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
+          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
+        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
+          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
       }),
       new Dotenv({
         path: isDevelopment

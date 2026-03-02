@@ -6,7 +6,6 @@ import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getConnectionDetails,
   getRegionInfoFromClaims,
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
@@ -175,20 +174,10 @@ export class FrontAuthService extends AuthService {
       const claims = jwtDecode<Record<string, string>>(data.access_token);
 
       const regionInfo = getRegionInfoFromClaims(claims);
-      const connectionDetails = getConnectionDetails(claims);
 
-      if (
-        data.authentication_method === "SSO" &&
-        !connectionDetails.connectionStrategy
-      ) {
-        connectionDetails.connectionStrategy = data.authentication_method;
-      }
-
-      // Store regionInfo and connectionDetails separately.
       await this.storage.set("regionInfo", regionInfo);
-      await this.storage.set("connectionDetails", connectionDetails);
 
-      return new Ok({ tokens, regionInfo, connectionDetails });
+      return new Ok({ tokens, regionInfo });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
