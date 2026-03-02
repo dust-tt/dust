@@ -1865,6 +1865,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Delete removed attachments and their underlying files.
+    // Delete from cloud storage first, then remove the join table rows.
     const toRemove = existingAttachments.filter(
       (a) => !desiredFileModelIds.has(a.fileId)
     );
@@ -1873,15 +1874,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         auth,
         toRemove.map((a) => a.fileId)
       );
+      for (const file of filesToDelete) {
+        const res = await file.delete(auth);
+        if (res.isErr()) {
+          throw res.error;
+        }
+      }
       await SkillFileAttachmentModel.destroy({
         where: {
           id: { [Op.in]: toRemove.map((a) => a.id) },
           workspaceId: workspace.id,
         },
       });
-      for (const file of filesToDelete) {
-        await file.delete(auth);
-      }
     }
 
     // Create new attachments.
