@@ -729,6 +729,13 @@ MessageModel.init(
         unique: true,
         fields: ["sId"],
       },
+      // Index when the branchId criteria is not set in queries.
+      // No uniqueness constraint as uniqueness is enforced by the branchId null/not null indexes below.
+      {
+        fields: ["workspaceId", "conversationId", "rank", "version"],
+        name: "messages_workspace_id_conversation_id_rank_version",
+        concurrently: true,
+      },
       // We need two separate indexes for the different cases of branchId being null or not.
       // Because a null value is not considered distinct in an unique index.
       {
@@ -739,6 +746,7 @@ MessageModel.init(
             [Op.is]: null,
           },
         },
+        name: "messages_workspace_id_conversation_id_rank_version_branch_null",
         concurrently: true,
       },
       {
@@ -755,6 +763,7 @@ MessageModel.init(
             [Op.ne]: null,
           },
         },
+        name: "messages_workspace_id_conversation_id_rank_version_branch_id",
         concurrently: true,
       },
       {
