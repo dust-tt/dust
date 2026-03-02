@@ -11,7 +11,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
+import type {
+  ButlerSuggestionPublicType,
+  ButlerSuggestionType,
+} from "@app/types/conversation_butler_suggestion";
 import { parseButlerSuggestionData } from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
@@ -152,6 +155,29 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
     return results[0] ?? null;
   }
 
+  /**
+   * Fetch the most recent suggestion for a conversation filtered by type.
+   * Returns null if no suggestion of that type exists.
+   */
+  static async fetchLatestByConversationAndType(
+    auth: Authenticator,
+    {
+      conversationId,
+      suggestionType,
+    }: {
+      conversationId: ModelId;
+      suggestionType: ButlerSuggestionType;
+    }
+  ): Promise<ConversationButlerSuggestionResource | null> {
+    const results = await this.baseFetch(auth, {
+      where: { conversationId, suggestionType },
+      order: [["createdAt", "DESC"]],
+      limit: 1,
+    });
+
+    return results[0] ?? null;
+  }
+
   private async checkAccess(
     auth: Authenticator,
     transaction?: Transaction
@@ -217,6 +243,14 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
 
     await this.update({ status: "dismissed" as const }, transaction);
     return new Ok(this);
+  }
+
+  /**
+   * System-level dismissal that bypasses user access checks.
+   * Used by the butler to auto-dismiss stale pending suggestions.
+   */
+  async autoDismiss(transaction?: Transaction): Promise<void> {
+    await this.update({ status: "dismissed" as const }, transaction);
   }
 
   async delete(

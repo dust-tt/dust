@@ -52,7 +52,8 @@ export async function acceptSuggestion(
       break;
     }
     case "call_agent":
-      // No side-effect for call_agent yet.
+      // No server-side side-effect: the frontend handles call_agent acceptance
+      // by submitting a message with the suggested prompt and agent mention.
       break;
     default:
       assertNever(suggestion.suggestionType);

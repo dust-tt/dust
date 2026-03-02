@@ -31,6 +31,7 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
+import { serializeMention } from "@app/lib/mentions/format";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
@@ -319,8 +320,29 @@ export const ConversationViewer = ({
       suggestionSId: string,
       status: "accepted" | "dismissed"
     ): Promise<void> => {
+      // Look up the suggestion before removing it so we can act on acceptance.
+      let matchedSuggestion: ButlerSuggestionPublicType | undefined;
+      for (const suggestions of suggestionsByMessageSId.values()) {
+        matchedSuggestion = suggestions.find((s) => s.sId === suggestionSId);
+        if (matchedSuggestion) {
+          break;
+        }
+      }
+
+      // If accepting a call_agent suggestion, submit the message with the agent mention.
+      if (
+        status === "accepted" &&
+        matchedSuggestion?.suggestionType === "call_agent"
+      ) {
+        const { agentSId, agentName, prompt } = matchedSuggestion.metadata;
+        void submitMessage({
+          input: `${serializeMention({ name: agentName, sId: agentSId })} ${prompt}`,
+          mentions: [{ configurationId: agentSId }],
+          contentFragments: { uploaded: [], contentNodes: [] },
+        });
+      }
+
       // Optimistic update: remove the suggestion from local state.
-      // The update of the title is handled backend, so we don't need to do it here.
       setSuggestionsByMessageSId((prev) => {
         const next = new Map<string, ButlerSuggestionPublicType[]>();
         for (const [msgSId, suggestions] of prev) {
@@ -341,7 +363,7 @@ export const ConversationViewer = ({
         }
       );
     },
-    [conversationId, owner.sId]
+    [conversationId, owner.sId, suggestionsByMessageSId, submitMessage]
   );
 
   // Hooks related to conversation events streaming.
