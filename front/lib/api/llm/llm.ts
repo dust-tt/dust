@@ -13,17 +13,13 @@ import type {
   LLMClientMetadata,
   LLMParameters,
   LLMStreamParameters,
-  SystemPromptInput,
 } from "@app/lib/api/llm/types/options";
-import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import type { Content } from "@app/types/assistant/generation";
-import { isTextContent } from "@app/types/assistant/generation";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -35,28 +31,6 @@ import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
 
-function contentToText(contents: Content[]): string {
-  return contents
-    .filter(isTextContent)
-    .map((c) => c.text)
-    .join("\n");
-}
-
-function buildDefaultTraceInput(
-  prompt: SystemPromptInput,
-  conversation: LLMStreamParameters["conversation"]
-): unknown[] {
-  return [
-    { role: "system", content: systemPromptToText(prompt) },
-    ...conversation.messages.map((message): unknown => {
-      if (message.role !== "user") {
-        return message;
-      }
-
-      return { ...message, content: contentToText(message.content) };
-    }),
-  ];
-}
 
 export abstract class LLM<TPayload = unknown> {
   protected modelId: ModelIdType;
@@ -71,7 +45,6 @@ export abstract class LLM<TPayload = unknown> {
   protected readonly authenticator: Authenticator;
   protected readonly context?: LLMTraceContext;
   protected readonly traceId: LLMTraceId;
-  protected readonly getTraceInput?: LLMTraceCustomization["getTraceInput"];
   protected readonly getTraceOutput?: LLMTraceCustomization["getTraceOutput"];
   protected actualRequestPayload: TPayload | null = null;
 
@@ -81,7 +54,6 @@ export abstract class LLM<TPayload = unknown> {
     {
       bypassFeatureFlag = false,
       context,
-      getTraceInput,
       getTraceOutput,
       modelId,
       reasoningEffort = "none",
@@ -111,7 +83,6 @@ export abstract class LLM<TPayload = unknown> {
     this.authenticator = auth;
     this.context = context;
     this.traceId = createLLMTraceId(randomUUID());
-    this.getTraceInput = getTraceInput;
     this.getTraceOutput = getTraceOutput;
   }
 
@@ -153,17 +124,10 @@ export abstract class LLM<TPayload = unknown> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
-    // Use custom trace input if provided, otherwise use the full conversation.
-    // Full conversation with system prompt for observation (actual LLM call details).
-    const observationInput = buildDefaultTraceInput(prompt, conversation);
-
-    // Simplified input for trace if custom getter provided.
-    const traceInput = this.getTraceInput?.(conversation) ?? observationInput;
-
     const generation = startObservation(
       "llm-completion",
       {
-        input: observationInput,
+        input: undefined,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -179,7 +143,7 @@ export abstract class LLM<TPayload = unknown> {
 
     generation.updateTrace({
       name: startCase(this.context.operationType),
-      input: this.actualRequestPayload ?? traceInput,
+      input: this.actualRequestPayload,
       metadata: {
         dustTraceId: this.traceId,
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
@@ -392,13 +356,7 @@ export abstract class LLM<TPayload = unknown> {
   protected abstract sendRequest(payload: TPayload): AsyncGenerator<LLMEvent>;
 
   /**
-   * Orchestrates the request lifecycle: build → capture for tracing → send.
-   *
-   * Default implementation calls buildRequestPayload() and sendRequest().
-   * Override only if you need custom streaming logic that doesn't fit the two-method pattern.
-   *
-   * Contract: Implement EITHER buildRequestPayload() + sendRequest()
-   * OR override internalStream() entirely. Do not mix approaches.
+   * Orchestrates the request lifecycle: build -> capture for tracing -> send.
    */
   protected async *internalStream(
     streamParameters: LLMStreamParameters
