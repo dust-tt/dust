@@ -38,6 +38,14 @@ export function SkillBuilderFilesSection() {
     [fields]
   );
 
+  const sortedFields = useMemo(
+    () =>
+      fields
+        .map((field, index) => ({ field, originalIndex: index }))
+        .sort((a, b) => a.field.fileName.localeCompare(b.field.fileName)),
+    [fields]
+  );
+
   const onUploadClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -141,7 +149,7 @@ export function SkillBuilderFilesSection() {
           )
         ) : (
           <ContextItem.List>
-            {fields.map((field, index) => (
+            {sortedFields.map(({ field, originalIndex }) => (
               <ContextItem
                 key={field.id}
                 title={field.fileName}
@@ -154,7 +162,7 @@ export function SkillBuilderFilesSection() {
                     variant="ghost"
                     icon={XMarkIcon}
                     size="xs"
-                    onClick={() => remove(index)}
+                    onClick={() => remove(originalIndex)}
                   />
                 }
               />
