@@ -1,9 +1,12 @@
 import config from "@app/lib/api/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import { SANDBOX_TOKEN_PREFIX } from "@app/lib/api/sandbox/access_tokens";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -14,6 +17,7 @@ import {
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -57,17 +61,22 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
+const SANDBOX_TOKEN_AUTH_METHOD = "sandbox_token" as const;
+
 export type AuthMethodType =
   | "system_api_key"
   | "api_key"
   | "oauth"
   | "session"
+  | typeof SANDBOX_TOKEN_AUTH_METHOD
   | "internal";
 
-// Any token which do not start with sk- is considered an OAuth token.
-export const isOAuthToken = (token: string): boolean => {
-  return !token.startsWith(SECRET_KEY_PREFIX);
-};
+export const isSandboxTokenPrefix = (token: string): boolean =>
+  token.startsWith(SANDBOX_TOKEN_PREFIX);
+
+// Any token which does not start with sk- or sbt- is considered an OAuth token.
+export const isOAuthToken = (token: string): boolean =>
+  !token.startsWith(SECRET_KEY_PREFIX) && !isSandboxTokenPrefix(token);
 
 export interface AuthenticatorType {
   authMethod: AuthMethodType;
@@ -399,6 +408,114 @@ export class Authenticator {
         subscription: authData.subscription,
       })
     );
+  }
+
+  static async fromSandboxToken(
+    claims: SandboxExecTokenPayload,
+    wId: string
+  ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+    if (claims.wId !== wId) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The sandbox token workspace does not match the request.",
+        },
+      });
+    }
+
+    const [workspace, user] = await Promise.all([
+      WorkspaceResource.fetchById(wId),
+      UserResource.fetchById(claims.uId),
+    ]);
+
+    if (!workspace) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: "The workspace was not found.",
+        },
+      });
+    }
+
+    if (!user) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The user referenced by the sandbox token was not found.",
+        },
+      });
+    }
+
+    const authData = await this.fetchRoleGroupsAndSubscription({
+      user,
+      workspace,
+    });
+
+    if (authData.role === "none") {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The user is not a member of this workspace.",
+        },
+      });
+    }
+
+    // Restrict groups to the conversation's spaces so the sandbox auth can only
+    // access resources visible to the conversation, not everything the user can.
+    const groupModelIds = await this.restrictGroupsToConversationSpaces(
+      authData.groupModelIds,
+      claims.cId,
+      workspace.id
+    );
+
+    return new Ok(
+      new Authenticator({
+        authMethod: SANDBOX_TOKEN_AUTH_METHOD,
+        workspace,
+        user,
+        role: authData.role,
+        groupModelIds,
+        subscription: authData.subscription,
+      })
+    );
+  }
+
+  /**
+   * Given a user's full group IDs, restricts them to only the groups associated
+   * with the conversation's requested spaces. Falls back to the full set if the
+   * conversation is not found or has no requested spaces.
+   */
+  private static async restrictGroupsToConversationSpaces(
+    userGroupIds: ModelId[],
+    conversationId: string,
+    workspaceId: ModelId
+  ): Promise<ModelId[]> {
+    const conversation = await ConversationModel.findOne({
+      where: { sId: conversationId, workspaceId: workspaceId },
+      attributes: ["requestedSpaceIds"],
+    });
+
+    if (!conversation || conversation.requestedSpaceIds.length === 0) {
+      return userGroupIds;
+    }
+
+    const spaceGroups = await GroupSpaceModel.findAll({
+      where: {
+        vaultId: conversation.requestedSpaceIds,
+        workspaceId: workspaceId,
+      },
+      attributes: ["groupId"],
+    });
+
+    const allowedGroupIds = new Set(
+      spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
+    );
+
+    return userGroupIds.filter((id) => allowedGroupIds.has(id));
   }
 
   /**
@@ -740,6 +857,10 @@ export class Authenticator {
 
   isKey(): boolean {
     return !!this._key;
+  }
+
+  isSandboxToken(): boolean {
+    return this._authMethod === SANDBOX_TOKEN_AUTH_METHOD;
   }
 
   authMethod(): AuthMethodType {

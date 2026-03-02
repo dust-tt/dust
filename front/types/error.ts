@@ -19,6 +19,7 @@ const API_ERROR_TYPES = [
   "invalid_oauth_token_error",
   "expired_oauth_token_error",
   "invalid_api_key_error",
+  "invalid_sandbox_token_error",
   "internal_server_error",
   "invalid_request_error",
   "invalid_rows_request_error",

@@ -1,5 +1,8 @@
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -17,30 +20,30 @@ export type SandboxExecTokenPayload = z.infer<
   typeof SandboxExecTokenPayloadSchema
 >;
 
-export function generateSandboxExecToken({
-  workspaceId,
-  conversationId,
-  userId,
-  sandboxId,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  userId: string;
-  sandboxId: string;
-}): string {
+export function generateSandboxExecToken(
+  auth: Authenticator,
+  {
+    conversation,
+    sandbox,
+    expiryMs = 2 * 60 * 1000, // Default to 2 minutes
+  }: {
+    conversation: ConversationType;
+    sandbox: SandboxResource;
+    expiryMs?: number;
+  }
+): string {
   const payload: SandboxExecTokenPayload = {
-    wId: workspaceId,
-    cId: conversationId,
-    uId: userId,
-    sbId: sandboxId,
+    wId: auth.getNonNullableWorkspace().sId,
+    cId: conversation.sId,
+    uId: auth.getNonNullableUser().sId,
+    sbId: sandbox.sId,
   };
 
   const secret = config.getSandboxJwtSecret();
 
-  // Sign JWT with HS256 algorithm, valid for 2 minutes.
   const token = jwt.sign(payload, secret, {
     algorithm: "HS256",
-    expiresIn: "2m",
+    expiresIn: expiryMs / 1000, // expiresIn is in seconds
   });
 
   return `${SANDBOX_TOKEN_PREFIX}${token}`;
