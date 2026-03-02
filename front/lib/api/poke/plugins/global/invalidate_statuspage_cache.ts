@@ -5,6 +5,7 @@ import {
   invalidateProviderStatusCacheForRegion,
 } from "@app/lib/api/status";
 import { Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const invalidateStatuspageCachePlugin = createPlugin({
   manifest: {
@@ -26,7 +27,7 @@ export const invalidateStatuspageCachePlugin = createPlugin({
         results.push(`✓ Invalidated providers status cache for ${region}`);
       } catch (err) {
         errors.push(
-          `✗ Failed to invalidate providers status cache for ${region}: ${err}`
+          `✗ Failed to invalidate providers status cache for ${region}: ${normalizeError(err).message}`
         );
       }
 
@@ -35,7 +36,7 @@ export const invalidateStatuspageCachePlugin = createPlugin({
         results.push(`✓ Invalidated dust status cache for ${region}`);
       } catch (err) {
         errors.push(
-          `✗ Failed to invalidate dust status cache for ${region}: ${err}`
+          `✗ Failed to invalidate dust status cache for ${region}: ${normalizeError(err).message}`
         );
       }
     }
