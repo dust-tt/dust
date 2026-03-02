@@ -947,15 +947,20 @@ function AgentMessageContent({
   );
 
   // References logic.
-  function updateActiveReferences(
-    document: MCPReferenceCitation,
-    index: number
-  ) {
-    const existingIndex = activeReferences.find((r) => r.index === index);
-    if (!existingIndex) {
-      setActiveReferences([...activeReferences, { index, document }]);
-    }
-  }
+  const updateActiveReferences = useCallback(
+    (document: MCPReferenceCitation, index: number) => {
+      const existingIndex = activeReferences.find((r) => r.index === index);
+      if (!existingIndex) {
+        setActiveReferences([...activeReferences, { index, document }]);
+      }
+    },
+    [activeReferences, setActiveReferences]
+  );
+
+  const citationsContextValue = useMemo(
+    () => ({ references, updateActiveReferences }),
+    [references, updateActiveReferences]
+  );
 
   const handleToolSetupComplete = React.useCallback(
     (toolId: string) => {
@@ -1127,12 +1132,7 @@ function AgentMessageContent({
 
       {agentMessage.content !== null && (
         <div>
-          <CitationsContext.Provider
-            value={{
-              references,
-              updateActiveReferences,
-            }}
-          >
+          <CitationsContext.Provider value={citationsContextValue}>
             <AgentMessageMarkdown
               content={sanitizeVisualizationContent(agentMessage.content)}
               owner={owner}

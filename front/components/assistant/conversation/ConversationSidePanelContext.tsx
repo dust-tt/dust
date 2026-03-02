@@ -7,7 +7,7 @@ import {
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
 type OpenPanelParams =
@@ -132,20 +132,23 @@ export function ConversationSidePanelProvider({
     }
   }, [data, currentPanel, setCurrentPanel, closePanel]);
 
+  const value = useMemo(
+    () => ({
+      currentPanel: isSupportedPanelType(currentPanel)
+        ? currentPanel
+        : undefined,
+      openPanel,
+      closePanel,
+      onPanelClosed,
+      setPanelRef,
+      panelRef,
+      data,
+    }),
+    [currentPanel, openPanel, closePanel, onPanelClosed, setPanelRef, data]
+  );
+
   return (
-    <ConversationSidePanelContext.Provider
-      value={{
-        currentPanel: isSupportedPanelType(currentPanel)
-          ? currentPanel
-          : undefined,
-        openPanel,
-        closePanel,
-        onPanelClosed,
-        setPanelRef,
-        panelRef,
-        data,
-      }}
-    >
+    <ConversationSidePanelContext.Provider value={value}>
       {children}
     </ConversationSidePanelContext.Provider>
   );
