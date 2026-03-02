@@ -98,41 +98,31 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Paths served by Next.js pages — do not redirect these.
-  if (isNextJsPagePath(url)) {
-    return NextResponse.next();
-  }
-
-  // Redirect all other paths to the main SPA app.
-  const appUrl = process.env.NEXT_PUBLIC_DUST_APP_URL;
-  if (appUrl) {
-    const queryString = request.nextUrl.search; // includes leading '?' or empty
-    return NextResponse.redirect(`${appUrl}${url}${queryString}`, 302);
+  // Redirect SPA paths to the main SPA app.
+  if (isSpaPath(url)) {
+    const appUrl = process.env.NEXT_PUBLIC_DUST_APP_URL;
+    if (appUrl) {
+      const queryString = request.nextUrl.search; // includes leading '?' or empty
+      return NextResponse.redirect(`${appUrl}${url}${queryString}`, 302);
+    }
   }
 
   return NextResponse.next();
 }
 
-// Path prefixes served by Next.js (pages, API, static assets) — should not be redirected.
-const NEXTJS_PATH_PREFIXES = [
-  "/api",
-  "/home",
-  "/blog",
-  "/customers",
-  "/academy",
-  "/landing",
-  "/email",
-  "/_next",
-  "/static",
+// Paths served by the SPA app (front-spa) — redirect these to the SPA origin.
+const SPA_PATH_PREFIXES = [
+  "/w",
+  "/invite-choose",
+  "/no-workspace",
+  "/sso-enforced",
+  "/logout",
+  "/login-error",
+  "/maintenance",
 ];
 
-function isNextJsPagePath(pathname: string): boolean {
-  if (process.env.NODE_ENV !== "development" && pathname === "/") {
-    // In production, serve the index page from Next.js, that shows the home page for unlogged users
-    // In development, always redirect to SPA to have a quick redirect.
-    return true;
-  }
-  return NEXTJS_PATH_PREFIXES.some(
+function isSpaPath(pathname: string): boolean {
+  return SPA_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
