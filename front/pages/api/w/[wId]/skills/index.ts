@@ -280,7 +280,7 @@ async function handler(
             status_code: 403,
             api_error: {
               type: "invalid_request_error",
-              message: "File attachments require the sandbox_tools feature.",
+              message: "File attachments are not supported.",
             },
           });
         }

@@ -187,7 +187,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-  private readonly fileAttachments: FileResource[];
+  private fileAttachments: FileResource[];
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
@@ -1902,6 +1902,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
     }
+
+    // Update instance to avoid stale data.
+    this.fileAttachments = fileAttachments;
   }
 
   async delete(
