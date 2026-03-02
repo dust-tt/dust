@@ -119,6 +119,8 @@ const SPA_PATH_PREFIXES = [
   "/logout",
   "/login-error",
   "/maintenance",
+  "/oauth",
+  "/share",
 ];
 
 function isSpaPath(pathname: string): boolean {
