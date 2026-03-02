@@ -5,6 +5,7 @@ import {
 import type * as activities from "@connectors/connectors/gong/temporal/activities";
 import type { ModelId } from "@connectors/types";
 import {
+  ActivityCancellationType,
   executeChild,
   proxyActivities,
   workflowInfo,
@@ -21,6 +22,8 @@ const {
   gongSyncTranscriptsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+  heartbeatTimeout: "5 minutes",
+  cancellationType: ActivityCancellationType.TRY_CANCEL,
 });
 
 export async function gongSyncWorkflow({

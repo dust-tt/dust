@@ -31,6 +31,7 @@ import {
 } from "@connectors/resources/gong_resources";
 import type { ModelId } from "@connectors/types";
 import { removeNulls } from "@connectors/types/shared/utils/general";
+import { Context as ActivityContext } from "@temporalio/activity";
 
 const GARBAGE_COLLECT_BATCH_SIZE = 100;
 
@@ -294,6 +295,23 @@ export async function gongSyncTranscriptsActivity({
     configuration
   );
 
+  // Send heartbeat to show progress. If the workflow has been terminated before we start
+  // this batch, the activity will fail here. Otherwise, we'll finish processing this batch.
+  try {
+    const context = ActivityContext.current();
+    context.heartbeat();
+    await context.sleep(0);
+  } catch (err) {
+    if (err instanceof Error && err.name === "CancelledFailure") {
+      logger.info(
+        { ...loggerArgs },
+        "[Gong] Activity cancelled before processing transcript batch"
+      );
+      throw err;
+    }
+    // Not in Temporal context or other error - continue
+  }
+
   await concurrentExecutor(
     transcriptsToSync,
     async (transcript) => {
@@ -357,6 +375,14 @@ export async function gongSyncTranscriptsActivity({
     },
     { concurrency: 10 }
   );
+
+  // Send heartbeat to show progress after processing the batch
+  try {
+    const context = ActivityContext.current();
+    context.heartbeat();
+  } catch (_err) {
+    // Not in Temporal context - continue
+  }
 
   return {
     nextPageCursor,
@@ -515,7 +541,10 @@ export async function gongDeleteExcludedTranscriptsActivity({
 
   // Filter using the same logic as sync-time filtering
   const transcriptsToDelete = transcripts.filter((transcript) => {
-    const shouldDelete = shouldExcludeByTitle(transcript.title, excludeKeywords);
+    const shouldDelete = shouldExcludeByTitle(
+      transcript.title,
+      excludeKeywords
+    );
     logger.info(
       {
         connectorId: connector.id,

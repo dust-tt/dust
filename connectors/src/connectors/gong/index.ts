@@ -485,7 +485,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
           if (pauseResult.isErr()) {
             logger.warn(
-              { connectorId: connector.id, scheduleId, error: pauseResult.error },
+              {
+                connectorId: connector.id,
+                scheduleId,
+                error: pauseResult.error,
+              },
               "[Gong] Failed to pause schedule, continuing with cleanup"
             );
           } else {
@@ -495,10 +499,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
             );
           }
 
-          // Terminate any running workflows before cleanup
+          // Terminate any running workflows and wait for them to fully stop
           await terminateAllWorkflowsForConnectorId({
             connectorId: connector.id,
             stopReason: "Terminating to clean up excluded transcripts",
+            waitForCompletion: true,
           });
 
           // Launch cleanup workflow
@@ -538,29 +543,32 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
             }
           }
 
-          // TEMPORARILY COMMENTED OUT TO VERIFY WORKFLOW TERMINATION
           // Resume the schedule after cleanup completes
-          // logger.info(
-          //   { connectorId: connector.id, scheduleId },
-          //   "[Gong] Resuming schedule after cleanup"
-          // );
+          logger.info(
+            { connectorId: connector.id, scheduleId },
+            "[Gong] Resuming schedule after cleanup"
+          );
 
-          // const unpauseResult = await unpauseAndTriggerSchedule({
-          //   connector,
-          //   scheduleId,
-          // });
+          const unpauseResult = await unpauseAndTriggerSchedule({
+            connector,
+            scheduleId,
+          });
 
-          // if (unpauseResult.isErr()) {
-          //   logger.error(
-          //     { connectorId: connector.id, scheduleId, error: unpauseResult.error },
-          //     "[Gong] Failed to unpause schedule after cleanup"
-          //   );
-          // } else {
-          //   logger.info(
-          //     { connectorId: connector.id, scheduleId },
-          //     "[Gong] Schedule resumed successfully"
-          //   );
-          // }
+          if (unpauseResult.isErr()) {
+            logger.error(
+              {
+                connectorId: connector.id,
+                scheduleId,
+                error: unpauseResult.error,
+              },
+              "[Gong] Failed to unpause schedule after cleanup"
+            );
+          } else {
+            logger.info(
+              { connectorId: connector.id, scheduleId },
+              "[Gong] Schedule resumed successfully"
+            );
+          }
         }
 
         return new Ok(undefined);
