@@ -688,6 +688,7 @@ export async function postUserMessage(
     let nextMessageRank =
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
+          workspaceId: owner.id,
           conversationId: conversation.id,
         },
         transaction: t,
@@ -1053,6 +1054,7 @@ export async function editUserMessage(
           const nextMessageRank =
             ((await MessageModel.max<number | null, MessageModel>("rank", {
               where: {
+                workspaceId: owner.id,
                 conversationId: conversation.id,
               },
               transaction: t,
@@ -1549,6 +1551,7 @@ export async function postNewContentFragment(
     const nextMessageRank =
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
+          workspaceId: owner.id,
           conversationId: conversation.id,
         },
         transaction: t,

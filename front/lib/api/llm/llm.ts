@@ -355,6 +355,10 @@ export abstract class LLM {
     return this.traceId;
   }
 
+  getResponseFormat(): string | null {
+    return this.responseFormat;
+  }
+
   /**
    * Get the metadata for this LLM instance
    */

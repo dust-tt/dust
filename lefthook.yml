@@ -94,5 +94,7 @@ pre-commit:
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss,md}"
+      # Rust projects' .md files are not covered by biome.
+      exclude: "{core,cli/dust-sandbox}/**"
       run: npm run biome:lefthook -- {staged_files}
       stage_fixed: true

@@ -52,6 +52,8 @@ const CLASSES = {
   add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 cursor-default",
   addDimmed:
     "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400 cursor-default",
+  blockHighlightDimmed:
+    "suggestion-highlight rounded bg-blue-50/50 dark:bg-blue-900/10 cursor-default",
 };
 
 export function diffBlockContent(
@@ -188,6 +190,16 @@ function buildBlockDecorations({
 }): void {
   const changes = diffBlockContent(oldNode, newNode, schema);
   const contentStart = blockPos + 1;
+
+  // Selected only: entire block gets dimmed highlight.
+  if (isHighlighted && changes.length > 0) {
+    decorations.push(
+      Decoration.node(blockPos, blockPos + oldNode.nodeSize, {
+        class: CLASSES.blockHighlightDimmed,
+        [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+      })
+    );
+  }
 
   for (const change of changes) {
     if (change.fromA !== change.toA) {

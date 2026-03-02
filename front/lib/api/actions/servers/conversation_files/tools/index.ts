@@ -47,7 +47,6 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: Ok for internal mime types
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.

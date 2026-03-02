@@ -50,10 +50,14 @@ const { syncFiles } = proxyActivities<typeof activities>({
   heartbeatTimeout: "5 minutes",
 });
 
-const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
-  proxyActivities<typeof sync_status>({
-    startToCloseTimeout: "10 minutes",
-  });
+const {
+  clearInitialSyncProgress,
+  reportInitialSyncProgress,
+  syncSucceeded,
+  syncStarted,
+} = proxyActivities<typeof sync_status>({
+  startToCloseTimeout: "10 minutes",
+});
 
 /**
  * The Google Drive full sync workflow first generates a list of initial folders to explore for synchronization.
@@ -81,6 +85,7 @@ export async function googleDriveFullSync({
   if (!startSyncTs) {
     await syncStarted(connectorId);
     startSyncTs = new Date().getTime();
+    await clearInitialSyncProgress(connectorId);
   }
 
   // Running the incremental sync workflow before the full sync to populate the
@@ -161,6 +166,7 @@ export async function googleDriveFullSync({
     foldersToBrowse = uniq(foldersToBrowse);
   }
   await syncSucceeded(connectorId);
+  await clearInitialSyncProgress(connectorId);
 
   if (garbageCollect) {
     await executeChild(googleDriveGarbageCollectorWorkflow, {
@@ -432,6 +438,7 @@ export async function googleDriveFullSyncV2({
   if (!startSyncTs) {
     await syncStarted(connectorId);
     startSyncTs = new Date().getTime();
+    await clearInitialSyncProgress(connectorId);
   }
 
   // Populate sync tokens before starting
@@ -584,12 +591,11 @@ export async function googleDriveFullSyncV2({
   await progressReportingTask;
 
   const finalFilesSynced = await getFilesCountForSync(connectorId, startSyncTs);
-  await reportInitialSyncProgress(
-    connectorId,
-    `Synced ${finalFilesSynced} files`
-  );
-
   await syncSucceeded(connectorId);
+  await clearInitialSyncProgress(
+    connectorId,
+    `googleDriveFullSyncV2 completed with ${finalFilesSynced} files`
+  );
 
   if (garbageCollect) {
     await executeChild(googleDriveGarbageCollectorWorkflow, {

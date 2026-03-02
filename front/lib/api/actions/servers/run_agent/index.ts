@@ -61,10 +61,8 @@ import { getHeaderFromUserEmail } from "@app/types/user";
 import type {
   AgentMessagePublicType,
   ConversationPublicType,
-  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
 
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";

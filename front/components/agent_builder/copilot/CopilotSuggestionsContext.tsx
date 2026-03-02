@@ -130,6 +130,7 @@ function CopilotSuggestionsProviderContent({
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
+  const prevSuggestionCountRef = useRef(0);
 
   // Local state for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
   const [processedSuggestions, setProcessedSuggestions] = useState<
@@ -482,7 +483,7 @@ function CopilotSuggestionsProviderContent({
   );
 
   const scrollToNextSuggestion = useCallback(
-    (acceptedSuggestionId: string) => {
+    (acceptedSuggestionId?: string) => {
       const editor = editorRef.current;
       const pendingInstructions = getPendingSuggestions().filter(
         (s) => s.kind === "instructions" && s.sId !== acceptedSuggestionId
@@ -685,6 +686,25 @@ function CopilotSuggestionsProviderContent({
     // Get HTML and strip styling attributes while preserving data-block-id.
     return stripHtmlAttributes(editor.getHTML());
   }, []);
+
+  // Auto-scroll to the first suggestion when new suggestions are applied
+  useEffect(() => {
+    const pendingInstructions = suggestions.filter(
+      (s) =>
+        s.state === "pending" &&
+        s.kind === "instructions" &&
+        appliedSuggestionsRef.current.has(s.sId)
+    );
+
+    const currentCount = pendingInstructions.length;
+    const prevCount = prevSuggestionCountRef.current;
+
+    // Only auto-scroll when we transition from 0 to >0 suggestions (new batch arrived)
+    if (prevCount === 0 && currentCount > 0) {
+      scrollToNextSuggestion();
+    }
+    prevSuggestionCountRef.current = currentCount;
+  }, [scrollToNextSuggestion, suggestions]);
 
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({

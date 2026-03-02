@@ -53,8 +53,9 @@ export async function seedAgent(
       scope: "visible",
       model: {
         providerId: "anthropic",
-        modelId: "claude-4-sonnet-20250514",
+        modelId: "claude-sonnet-4-6",
         temperature: 0.7,
+        responseFormat: agentAsset.responseFormat,
       },
       templateId: null,
       requestedSpaceIds: [],

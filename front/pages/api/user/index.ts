@@ -55,16 +55,6 @@ async function handler(
     });
   }
 
-  // Set selectedWorkspace from the organization ID.
-  if (session.organizationId) {
-    const workspace = user.workspaces.find(
-      (w) => w.workOSOrganizationId === session.organizationId
-    );
-    if (workspace) {
-      user.selectedWorkspace = workspace.sId;
-    }
-  }
-
   switch (req.method) {
     case "GET":
       ServerSideTracking.trackGetUser({ user }).catch((err) => {

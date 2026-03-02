@@ -15,7 +15,7 @@ import { z } from "zod";
 
 const DimensionSchema = z.object({
   magnitude: z.number(),
-  unit: z.enum(["EMU", "PT"]),
+  unit: z.enum(["UNIT_UNSPECIFIED", "EMU", "PT"]),
 });
 
 const SizeSchema = z.object({
@@ -65,7 +65,7 @@ const AffineTransformSchema = z.object({
   shearY: z.number().optional(),
   translateX: z.number().optional(),
   translateY: z.number().optional(),
-  unit: z.enum(["EMU", "PT"]).optional(),
+  unit: z.enum(["UNIT_UNSPECIFIED", "EMU", "PT"]).optional(),
 });
 
 const PageElementPropertiesSchema = z.object({
@@ -75,7 +75,6 @@ const PageElementPropertiesSchema = z.object({
 });
 
 const TableCellLocationSchema = z.object({
-  tableObjectId: z.string(),
   rowIndex: z.number().int(),
   columnIndex: z.number().int(),
 });
@@ -99,6 +98,7 @@ const CreateImageSchema = z.object({
 const CreateLineSchema = z.object({
   objectId: z.string().optional(),
   elementProperties: PageElementPropertiesSchema,
+  category: z.enum(["STRAIGHT", "BENT", "CURVED"]).optional(),
   lineCategory: z
     .enum([
       "LINE",
@@ -134,12 +134,12 @@ const CreateParagraphBulletsSchema = z.object({
       "BULLET_LEFTTRIANGLE_DIAMOND_DISC",
       "BULLET_DIAMONDX_HOLLOWDIAMOND_SQUARE",
       "BULLET_DIAMOND_CIRCLE_SQUARE",
-      "NUMBERED_DECIMAL_ALPHA_ROMAN",
-      "NUMBERED_DECIMAL_ALPHA_ROMAN_PARENS",
-      "NUMBERED_DECIMAL_NESTED",
+      "NUMBERED_DIGIT_ALPHA_ROMAN",
+      "NUMBERED_DIGIT_ALPHA_ROMAN_PARENS",
+      "NUMBERED_DIGIT_NESTED",
       "NUMBERED_UPPERALPHA_ALPHA_ROMAN",
-      "NUMBERED_UPPERROMAN_UPPERALPHA_DECIMAL",
-      "NUMBERED_ZERODECIMAL_ALPHA_ROMAN",
+      "NUMBERED_UPPERROMAN_UPPERALPHA_DIGIT",
+      "NUMBERED_ZERODIGIT_ALPHA_ROMAN",
     ])
     .optional(),
   cellLocation: TableCellLocationSchema.optional(),
@@ -334,7 +334,8 @@ const CreateSlideSchema = z.object({
   placeholderIdMappings: z
     .array(
       z.object({
-        layoutPlaceholder: z.record(z.unknown()),
+        layoutPlaceholder: z.record(z.unknown()).optional(),
+        layoutPlaceholderObjectId: z.string().optional(),
         objectId: z.string(),
       })
     )
