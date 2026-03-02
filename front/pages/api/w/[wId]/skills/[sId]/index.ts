@@ -1,6 +1,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
@@ -43,20 +44,25 @@ export type DeleteSkillResponseBody = {
   success: boolean;
 };
 
-// Request body schema for PATCH
-const PatchSkillRequestBodySchema = t.type({
-  name: t.string,
-  agentFacingDescription: t.string,
-  userFacingDescription: t.string,
-  instructions: t.string,
-  icon: t.union([t.string, t.null]),
-  tools: t.array(
-    t.type({
-      mcpServerViewId: t.string,
-    })
-  ),
-  attachedKnowledge: t.array(AttachedKnowledgeSchema),
-});
+// Request body schema for PATCH.
+const PatchSkillRequestBodySchema = t.intersection([
+  t.type({
+    name: t.string,
+    agentFacingDescription: t.string,
+    userFacingDescription: t.string,
+    instructions: t.string,
+    icon: t.union([t.string, t.null]),
+    tools: t.array(
+      t.type({
+        mcpServerViewId: t.string,
+      })
+    ),
+    attachedKnowledge: t.array(AttachedKnowledgeSchema),
+  }),
+  t.partial({
+    fileAttachments: t.array(t.type({ fileId: t.string })),
+  }),
+]);
 
 type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
 
@@ -208,8 +214,9 @@ async function handler(
         });
       }
 
+      const { attachedKnowledge, fileAttachments } = body;
+
       // Validate all data source views from attached knowledge exist and user has access.
-      const { attachedKnowledge } = body;
       const dataSourceViewIds = uniq(
         attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
       );
@@ -247,6 +254,47 @@ async function handler(
         }
       );
 
+      // Validate file attachments if provided (gated behind sandbox_tools).
+      let files: FileResource[] | undefined;
+      if (fileAttachments) {
+        const featureFlags = await getFeatureFlags(
+          auth.getNonNullableWorkspace()
+        );
+        if (!featureFlags.includes("sandbox_tools")) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: "File attachments are not supported.",
+            },
+          });
+        }
+
+        const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
+        files = await FileResource.fetchByIds(auth, fileAttachmentIds);
+        if (files.length !== fileAttachmentIds.length) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invalid_request_error",
+              message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
+            },
+          });
+        }
+
+        for (const file of files) {
+          if (!file.isReady || file.useCase !== "skill_attachment") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `File ${file.sId} is not ready or not a skill_attachment.`,
+              },
+            });
+          }
+        }
+      }
+
       // When saving a suggested skill, automatically activate it.
       const shouldActivate = skillResource.status === "suggested";
 
@@ -263,6 +311,7 @@ async function handler(
       await skillResource.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        fileAttachments: files,
         icon: body.icon,
         instructions: body.instructions,
         mcpServerViews,

@@ -18,6 +18,10 @@ export type SkillType = {
   icon: string | null;
   requestedSpaceIds: string[];
   tools: MCPServerViewType[];
+  fileAttachments: {
+    fileId: string;
+    fileName: string;
+  }[];
   canWrite: boolean;
   isExtendable: boolean;
   extendedSkillId: string | null;
