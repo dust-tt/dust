@@ -1865,7 +1865,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Delete removed attachments and their underlying files.
-    // Delete from cloud storage first, then remove the join table rows.
+    // Deleting the files first, then remove the join table rows.
     const toRemove = existingAttachments.filter(
       (a) => !desiredFileModelIds.has(a.fileId)
     );
