@@ -15,9 +15,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import * as React from "react";
-import { useCallback, useContext, useRef, useState } from "react";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
 type MembersManagementType = "manual" | "group";
 
@@ -58,7 +56,10 @@ export function RestrictedAccessBody({
     new Map<string, UserType>(selectedMembers.map((m) => [m.sId, m]))
   );
 
-  const selectedMemberIds = new Set(selectedMembers.map((m) => m.sId));
+  const selectedMemberIds = useMemo(
+    () => new Set(selectedMembers.map((m) => m.sId)),
+    [selectedMembers]
+  );
 
   const handleMembersLoaded = useCallback((members: UserType[]) => {
     for (const member of members) {
@@ -82,63 +83,52 @@ export function RestrictedAccessBody({
     [onMembersUpdated]
   );
 
-  const handleManagementTypeChange = useCallback(
-    async (newManagementType: string) => {
-      if (!isMembersManagementType(newManagementType) || !planAllowsSCIM) {
-        return;
-      }
+  const handleManagementTypeChange = async (newManagementType: string) => {
+    if (!isMembersManagementType(newManagementType) || !planAllowsSCIM) {
+      return;
+    }
 
-      // If switching from manual to group mode with manually added members.
-      if (
-        managementType === "manual" &&
-        newManagementType === "group" &&
-        selectedMembers.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to groups",
-          message:
-            "This switches from manual member to group-based access. " +
-            "Your current member list will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
+    // If switching from manual to group mode with manually added members.
+    if (
+      managementType === "manual" &&
+      newManagementType === "group" &&
+      selectedMembers.length > 0
+    ) {
+      const confirmed = await confirm({
+        title: "Switch to groups",
+        message:
+          "This switches from manual member to group-based access. " +
+          "Your current member list will be saved but no longer active.",
+        validateLabel: "Confirm",
+        validateVariant: "primary",
+      });
 
-        if (confirmed) {
-          onManagementTypeChange("group");
-        }
+      if (confirmed) {
+        onManagementTypeChange("group");
       }
-      // If switching from group to manual mode with selected groups.
-      else if (
-        managementType === "group" &&
-        newManagementType === "manual" &&
-        selectedGroups.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to members",
-          message:
-            "This switches from group-based access to manual member management. " +
-            "Your current group settings will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
+    }
+    // If switching from group to manual mode with selected groups.
+    else if (
+      managementType === "group" &&
+      newManagementType === "manual" &&
+      selectedGroups.length > 0
+    ) {
+      const confirmed = await confirm({
+        title: "Switch to members",
+        message:
+          "This switches from group-based access to manual member management. " +
+          "Your current group settings will be saved but no longer active.",
+        validateLabel: "Confirm",
+        validateVariant: "primary",
+      });
 
-        if (confirmed) {
-          onManagementTypeChange("manual");
-        }
-      } else {
-        // For direct switches without selections, clear everything and let the user start fresh.
-        onManagementTypeChange(newManagementType);
+      if (confirmed) {
+        onManagementTypeChange("manual");
       }
-    },
-    [
-      confirm,
-      managementType,
-      selectedMembers.length,
-      selectedGroups.length,
-      planAllowsSCIM,
-      onManagementTypeChange,
-    ]
-  );
+    } else {
+      onManagementTypeChange(newManagementType);
+    }
+  };
 
   return (
     <>
@@ -240,12 +230,9 @@ function GroupsTable({
     pageSize: 50,
   });
 
-  const removeGroup = useCallback(
-    (group: GroupType) => {
-      onGroupsUpdated(selectedGroups.filter((g) => g.sId !== group.sId));
-    },
-    [onGroupsUpdated, selectedGroups]
-  );
+  const removeGroup = (group: GroupType) => {
+    onGroupsUpdated(selectedGroups.filter((g) => g.sId !== group.sId));
+  };
 
   return (
     <GroupsList

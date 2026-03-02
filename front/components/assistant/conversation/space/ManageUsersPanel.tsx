@@ -19,7 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface BaseManageUsersPanelProps {
@@ -191,7 +191,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         meta: {
           className: "w-28",
         },
-        cell: (info: { row: { original: MemberRowData } }) => {
+        cell: (info: CellContext<MemberRowData, unknown>) => {
           const { sId } = info.row.original;
           const isMember = currentMembers.has(sId);
           const isEditor = currentEditors.has(sId);

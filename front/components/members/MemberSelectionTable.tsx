@@ -5,7 +5,11 @@ import {
   DataTable,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  RowSelectionState,
+} from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
 
 export interface MemberRowData {
@@ -14,10 +18,6 @@ export interface MemberRowData {
   email: string;
   image: string;
   onClick?: () => void;
-}
-
-interface MemberRowInfo {
-  row: { original: MemberRowData };
 }
 
 function getMemberTableRows(
@@ -82,7 +82,7 @@ export function MemberSelectionTable({
   };
 
   const columns: ColumnDef<MemberRowData>[] = useMemo(() => {
-    const baseColumns: ColumnDef<MemberRowData>[] = [
+    return [
       createSelectionColumn<MemberRowData>(),
       {
         accessorKey: "fullName",
@@ -92,7 +92,7 @@ export function MemberSelectionTable({
         meta: {
           className: "w-full",
         },
-        cell: (info: MemberRowInfo) => (
+        cell: (info: CellContext<MemberRowData, unknown>) => (
           <DataTable.CellContent
             avatarUrl={info.row.original.image}
             roundedAvatar
@@ -102,13 +102,8 @@ export function MemberSelectionTable({
           </DataTable.CellContent>
         ),
       },
+      ...(extraColumns ?? []),
     ];
-
-    if (extraColumns) {
-      baseColumns.push(...extraColumns);
-    }
-
-    return baseColumns;
   }, [extraColumns]);
 
   return (
