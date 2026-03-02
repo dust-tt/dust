@@ -215,12 +215,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Sandbox MCP tool for executing code in isolated Linux containers",
     stage: "dust_only",
   },
-  run_agent_child_stream: {
-    description:
-      "Subscribe directly to child agent EventSource in run_agent action " +
-      "details (potential optimization undergoing tests)",
-    stage: "dust_only",
-  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
