@@ -11,7 +11,7 @@ import {
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/CopilotSuggestionCard";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 /**
@@ -78,7 +78,7 @@ interface CopilotSuggestionPluginProps {
  * in ReactMarkdown to render the copilot suggestion HTML elements.
  */
 export function getCopilotSuggestionPlugin() {
-  const CopilotSuggestionPlugin = ({
+  const CopilotSuggestionPlugin = memo(({
     sId,
     kind,
   }: CopilotSuggestionPluginProps) => {
@@ -131,7 +131,10 @@ export function getCopilotSuggestionPlugin() {
         <CopilotSuggestionCard agentSuggestion={suggestion} />
       </div>
     );
-  };
+  },
+  // Only check sId/kind — the other props (node, children) are new object references on every
+  // ReactMarkdown parse. Context values (from useCopilotSuggestions) bypass memo automatically.
+  (prev, next) => prev.sId === next.sId && prev.kind === next.kind);
 
   return CopilotSuggestionPlugin;
 }
