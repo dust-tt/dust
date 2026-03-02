@@ -285,7 +285,7 @@ async function handler(
           });
         }
 
-        const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
+        const fileAttachmentIds = fileAttachments.map((f) => f.fileId);
         files = await FileResource.fetchByIds(auth, fileAttachmentIds);
         if (files.length !== fileAttachmentIds.length) {
           return apiError(req, res, {
