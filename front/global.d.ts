@@ -56,15 +56,10 @@ type DataLayer =
       utm_term: string | undefined;
     };
 
-interface Signals {
-  identify: (data: { email: string; name: string }) => void;
-}
-
 declare global {
   interface Window {
     gtag: (command: string, action: string, params: object) => void;
     dataLayer?: DataLayer[];
-    signals?: Signals;
     DD_RUM: {
       clearUser: () => void;
       onReady: (callback: () => void) => void;
