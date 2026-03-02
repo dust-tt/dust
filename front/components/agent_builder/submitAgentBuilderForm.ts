@@ -386,6 +386,8 @@ export async function submitAgentBuilderForm({
   isDraft = false,
   areSlackChannelsChanged,
   fetcherWithBody,
+  agentBuilderCopilotSession,
+  copilotConversationId,
 }: {
   user: UserType;
   formData: AgentBuilderFormData;
@@ -394,6 +396,8 @@ export async function submitAgentBuilderForm({
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
   fetcherWithBody: FetcherWithBodyFn;
+  agentBuilderCopilotSession?: string;
+  copilotConversationId?: string | null;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -562,6 +566,21 @@ export async function submitAgentBuilderForm({
           has_instructions: !!formData.instructions,
           model_id: formData.generationSettings.modelSettings.modelId,
           model_provider: formData.generationSettings.modelSettings.providerId,
+        },
+      });
+    }
+
+    // Track agent save actions.
+    if (!isDraft && agentBuilderCopilotSession) {
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "agent_builder",
+        action: TRACKING_ACTIONS.SUBMIT,
+        extra: {
+          agent_builder_copilot_session: agentBuilderCopilotSession,
+          copilot_conversation_id: copilotConversationId ?? "",
+          agent_id: agentConfiguration.sId,
+          is_new_agent: !agentConfigurationId,
         },
       });
     }

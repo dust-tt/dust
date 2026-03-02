@@ -1,9 +1,15 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useAgentBuilderSessionContext } from "@app/components/agent_builder/AgentBuilderSessionContext";
 import { useCopilotFirstMessage } from "@app/hooks/useCopilotFirstMessage";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSearchParam } from "@app/lib/platform";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TemplateInfo } from "@app/types/assistant/templates";
@@ -68,6 +74,8 @@ export const CopilotPanelProvider = ({
   const copilotAgentId = isCopilotEdge
     ? GLOBAL_AGENTS_SID.COPILOT_EDGE
     : GLOBAL_AGENTS_SID.COPILOT;
+  const { sessionId, setCopilotConversationId } =
+    useAgentBuilderSessionContext();
 
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
@@ -138,6 +146,18 @@ export const CopilotPanelProvider = ({
 
     if (result.isOk()) {
       setConversation(result.value);
+      setCopilotConversationId(result.value.sId);
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "copilot_conversation",
+        action: TRACKING_ACTIONS.CREATE,
+        extra: {
+          agent_builder_copilot_session: sessionId,
+          copilot_conversation_id: result.value.sId,
+          agent_id: targetAgentConfigurationId ?? "",
+          is_new_agent: isNewAgent,
+        },
+      });
     } else {
       setCreationFailed(true);
       sendNotification({
@@ -153,8 +173,11 @@ export const CopilotPanelProvider = ({
     copilotAgentId,
     createConversationWithMessage,
     getFirstMessage,
+    isNewAgent,
     useCase,
     sendNotification,
+    sessionId,
+    setCopilotConversationId,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
   ]);
