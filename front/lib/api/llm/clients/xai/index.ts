@@ -21,8 +21,9 @@ import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/op
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import OpenAI, { APIError } from "openai";
+import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses";
 
-export class XaiLLM extends LLM {
+export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
   private client: OpenAI;
 
   constructor(
@@ -46,25 +47,30 @@ export class XaiLLM extends LLM {
     });
   }
 
-  protected async *internalStream({
+  protected buildRequestPayload({
     conversation,
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    try {
-      const events = await this.client.responses.create({
-        model: this.modelId,
-        input: toInput(systemPromptToText(prompt), conversation, "system"),
-        stream: true,
-        // Reasoning not supported by xai responses api yet
-        // Using default value for reasoning models
-        temperature: this.temperature,
-        tools: specifications.map(toTool),
-        include: ["reasoning.encrypted_content"],
-        tool_choice: toToolOption(specifications, forceToolCall),
-      });
+  }: LLMStreamParameters): ResponseCreateParamsStreaming {
+    return {
+      model: this.modelId,
+      input: toInput(systemPromptToText(prompt), conversation, "system"),
+      stream: true,
+      // Reasoning not supported by xai responses api yet
+      // Using default value for reasoning models
+      temperature: this.temperature,
+      tools: specifications.map(toTool),
+      include: ["reasoning.encrypted_content"],
+      tool_choice: toToolOption(specifications, forceToolCall),
+    };
+  }
 
+  protected async *sendRequest(
+    payload: ResponseCreateParamsStreaming
+  ): AsyncGenerator<LLMEvent> {
+    try {
+      const events = await this.client.responses.create(payload);
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
       if (err instanceof APIError) {
