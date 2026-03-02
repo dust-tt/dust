@@ -10,17 +10,62 @@ const SKILL_NAME = "dust";
 
 const SKILL_CONTENT = `---
 name: ${SKILL_NAME}
-description: Call a Dust agent to get information (read a slack thread, a notion URL, a google drive document...), perform an action (post a message to slack, create a calendar event, ...), provide context on any topic regarding Dust (the company, current discussions, customers...) or in general have the Dust agent perform a given task.
+description: Call a Dust agent to get information, perform actions, or answer questions using the company's connected tools and knowledge bases.
 ---
 
-Access Dust agents that have context on all the company, e.g. recent projects, engineering, sales, marketing, etc., via the Dust CLI non-interactively, e.g.:
-\`$ dust chat -a issueBot -m "create an issue for this: ..."\`
-\`$ dust chat -a dust -m "Research all the info we have on Kubernetes probe failures in recent weeks.\`
+## What is Dust?
 
-A conversation with an agent can be continued after the first message using the argument \`-c CONVERSATION_STRING_ID\`. The conversation id will be returned in the JSON result from the initial call.
-\`$ dust chat -a issueBot -c 'TdWyn4aDt1' -m "also add a subsequent issue about this: ..."\`
+Dust (https://dust.tt) is an AI assistant platform that connects to a company's internal tools and knowledge bases (Slack, Notion, Google Drive, GitHub, etc.). It provides specialized AI agents that have context on the company's data and can perform actions on behalf of users. The Dust CLI allows you to interact with these agents programmatically.
 
-If the tool errors because login is needed, ask the user to perform it manually.
+## Non-interactive usage
+
+Send a message to a Dust agent and get a JSON response:
+
+\`\`\`bash
+dust chat -a <agent-name> -m "<message>"
+\`\`\`
+
+If no specific agent is needed, route the question to the default \`dust\` agent. Otherwise, use the agent name given by the user.
+
+\`\`\`bash
+# Use the default "dust" agent for general questions
+dust chat -a dust -m "What are the main topics discussed in #engineering this week?"
+
+# Use a specific agent when one is specified
+dust chat -a issueBot -m "Create an issue for: login page returns 500 on Safari"
+\`\`\`
+
+### JSON output format
+
+Non-interactive calls output JSON to stdout:
+
+\`\`\`json
+{
+  "agentId": "agent_sId",
+  "agentAnswer": "The agent's full text response",
+  "conversationId": "convId123",
+  "messageId": "msgId456"
+}
+\`\`\`
+
+Parse the output with jq or your language's JSON parser to extract the answer.
+
+### Multi-turn conversations
+
+Continue an existing conversation by passing \`-c <conversationId>\` (returned in the JSON from the initial call):
+
+\`\`\`bash
+dust chat -a issueBot -c "convId123" -m "Also add a follow-up issue about the fix"
+\`\`\`
+
+### Additional flags
+
+- \`-d, --details\`: Include detailed event history and full agent message object in the JSON output.
+- \`--messageId <id>\` with \`-c <conversationId>\`: Fetch a specific agent message from an existing conversation (read-only, no new message sent).
+
+### Authentication
+
+The CLI must be authenticated before use. If you encounter a login or authentication error, explain to the user that they need to run \`dust login\` (interactive browser-based flow) or set environment variables \`DUST_API_KEY\` and \`DUST_WORKSPACE_ID\` for headless environments.
 `;
 
 const CLI_TARGETS = [
