@@ -11,8 +11,12 @@ import type {
   ButlerSuggestionCreatedEvent,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 const RENAME_TITLE_FUNCTION_NAME = "rename_title_decision";
+
+// Minimum number of messages (by rank distance) between two rename_title suggestions.
+const RENAME_TITLE_COOLDOWN_MESSAGES = 10;
 
 const renameTitleSpecifications: AgentActionSpecification[] = [
   {
@@ -49,6 +53,72 @@ const RENAME_TITLE_PROMPT =
   "or the difference is just stylistic.\n" +
   "- Be conservative — most auto-generated titles are adequate.\n" +
   "- You MUST call the tool. Always call it.";
+
+/**
+ * Determine whether a new rename_title suggestion should be proposed.
+ *
+ * Rules:
+ * - If the most recent rename_title suggestion is still pending and was
+ *   created within the last RENAME_TITLE_COOLDOWN_MESSAGES messages → skip
+ *   (the user can still see it).
+ * - If the most recent rename_title suggestion is still pending but is older
+ *   than RENAME_TITLE_COOLDOWN_MESSAGES messages → auto-dismiss it (it's
+ *   far up off-screen) and allow a new one.
+ * - If the most recent rename_title suggestion was dismissed/accepted within
+ *   the last RENAME_TITLE_COOLDOWN_MESSAGES messages → skip (respect cooldown).
+ * - Otherwise → allow.
+ */
+async function shouldProposeRenameTitle(
+  auth: Authenticator,
+  {
+    conversationId,
+    currentMessageRank,
+  }: {
+    conversationId: ModelId;
+    currentMessageRank: number;
+  }
+): Promise<boolean> {
+  const latest =
+    await ConversationButlerSuggestionResource.fetchLatestByConversationAndType(
+      auth,
+      { conversationId, suggestionType: "rename_title" }
+    );
+
+  if (!latest) {
+    return true;
+  }
+
+  // Resolve the rank of the message that triggered the previous suggestion.
+  const previousSourceMessage = await MessageModel.findOne({
+    attributes: ["rank"],
+    where: {
+      id: latest.sourceMessageId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      visibility: "public", // to check for deletion
+    },
+  });
+
+  // If the source message was deleted/not existing, allow a new suggestion.
+  if (!previousSourceMessage) {
+    return true;
+  }
+
+  const rankDistance = currentMessageRank - previousSourceMessage.rank;
+  const withinCooldown = rankDistance < RENAME_TITLE_COOLDOWN_MESSAGES;
+
+  if (latest.status === "pending") {
+    if (withinCooldown) {
+      // Still visible — skip.
+      return false;
+    }
+    // Stale pending suggestion scrolled off-screen — auto-dismiss it.
+    await latest.autoDismiss();
+    return true;
+  }
+
+  // Dismissed or accepted — respect cooldown.
+  return !withinCooldown;
+}
 
 /**
  * Evaluate whether a conversation title should be renamed using an LLM.
@@ -181,6 +251,16 @@ export async function evaluateRenameTitleSuggestion(
   });
 
   if (!sourceMessage) {
+    return;
+  }
+
+  // Process rename title suggestion with throttling.
+  const shouldPropose = await shouldProposeRenameTitle(auth, {
+    conversationId: conversation.id,
+    currentMessageRank: sourceMessage.rank,
+  });
+
+  if (!shouldPropose) {
     return;
   }
 
