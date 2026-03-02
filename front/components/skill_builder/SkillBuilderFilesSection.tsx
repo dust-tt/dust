@@ -58,14 +58,16 @@ export function SkillBuilderFilesSection() {
 
   const canUpload = !!skillId;
 
+  const uploadDisabled = !canUpload || isProcessingFiles;
+
   const headerActions = fields.length > 0 && (
     <Button
       type="button"
       onClick={onUploadClick}
       label="Upload files"
-      icon={PlusIcon}
+      icon={isProcessingFiles ? Spinner : PlusIcon}
       variant="outline"
-      disabled={!canUpload}
+      disabled={uploadDisabled}
     />
   );
 
@@ -93,24 +95,26 @@ export function SkillBuilderFilesSection() {
       />
 
       <div className="flex-1">
-        {isProcessingFiles ? (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ) : fields.length === 0 ? (
-          <EmptyCTA
-            action={
-              <Button
-                type="button"
-                onClick={onUploadClick}
-                label="Upload files"
-                icon={PlusIcon}
-                variant="outline"
-                disabled={!canUpload}
-              />
-            }
-            className="py-8"
-          />
+        {fields.length === 0 ? (
+          isProcessingFiles ? (
+            <div className="flex h-40 w-full items-center justify-center">
+              <Spinner />
+            </div>
+          ) : (
+            <EmptyCTA
+              action={
+                <Button
+                  type="button"
+                  onClick={onUploadClick}
+                  label="Upload files"
+                  icon={PlusIcon}
+                  variant="outline"
+                  disabled={!canUpload}
+                />
+              }
+              className="py-8"
+            />
+          )
         ) : (
           <ContextItem.List>
             {fields.map((field, index) => (
