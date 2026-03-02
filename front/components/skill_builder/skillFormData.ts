@@ -17,6 +17,7 @@ export function transformSkillTypeToFormData(
     instructions: skill.instructions ?? "",
     editors: [], // Will be populated reactively from useEditors hook
     tools: skill.tools.map(getDefaultMCPAction),
+    fileAttachments: skill.fileAttachments,
     icon: skill.icon ?? null,
     extendedSkillId: skill.extendedSkillId,
   };
@@ -39,6 +40,7 @@ export function getDefaultSkillFormData({
     instructions: "",
     editors: [user],
     tools: [],
+    fileAttachments: [],
     icon: null,
     extendedSkillId,
   };
