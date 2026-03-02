@@ -66,7 +66,9 @@ export function SalesAnimationWidget() {
               </span>
               <span className="text-sm text-gray-500">Enterprise Corp</span>
             </div>
-            <span className="text-sm font-bold text-emerald-600">$500K ARR</span>
+            <span className="text-sm font-bold text-emerald-600">
+              $500K ARR
+            </span>
           </div>
           <div className="mb-3 flex items-center gap-2.5">
             <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">
@@ -93,7 +95,9 @@ export function SalesAnimationWidget() {
                 d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 7V5z"
               />
             </svg>
-            <span className="text-sm text-gray-500">Sales call just ended...</span>
+            <span className="text-sm text-gray-500">
+              Sales call just ended...
+            </span>
           </div>
         </div>
 

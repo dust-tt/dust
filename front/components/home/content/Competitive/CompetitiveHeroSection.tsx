@@ -134,7 +134,6 @@ export function CompetitiveHeroSection({
               </div>
             ))}
           </div>
-
         </div>
       </div>
     </section>
