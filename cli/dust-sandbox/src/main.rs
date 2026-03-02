@@ -1,3 +1,4 @@
+mod auth;
 mod commands;
 
 use clap::{Parser, Subcommand};
@@ -13,6 +14,8 @@ struct Cli {
 enum Commands {
     /// Print version information
     Version,
+    /// Show sandbox login status
+    Status,
 }
 
 #[tokio::main]
@@ -21,6 +24,7 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Version => commands::cmd_version(),
+        Commands::Status => commands::cmd_status()?,
     }
 
     Ok(())
