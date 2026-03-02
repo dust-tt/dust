@@ -284,6 +284,7 @@ async function handler(
           });
         }
       }
+
       const fileAttachmentIds = fileAttachments?.map((f) => f.fileId) ?? [];
       const files = await FileResource.fetchByIds(auth, fileAttachmentIds);
       if (files.length !== fileAttachmentIds.length) {
@@ -295,6 +296,7 @@ async function handler(
           },
         });
       }
+
       for (const file of files) {
         if (!file.isReady || file.useCase !== "skill_attachment") {
           return apiError(req, res, {
