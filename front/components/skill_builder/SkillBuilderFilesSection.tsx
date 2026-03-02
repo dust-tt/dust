@@ -92,6 +92,7 @@ export function SkillBuilderFilesSection() {
       label="Upload files"
       icon={isProcessingFiles ? Spinner : PlusIcon}
       variant="outline"
+      disabled={isProcessingFiles}
     />
   );
 
@@ -133,6 +134,7 @@ export function SkillBuilderFilesSection() {
                   label="Upload files"
                   icon={PlusIcon}
                   variant="outline"
+                  disabled={isProcessingFiles}
                 />
               }
               className="py-8"
