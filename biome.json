@@ -5,7 +5,6 @@
     "./biome-plugins/noRawSql.grit",
     "./biome-plugins/noBulkLodash.grit",
     "./biome-plugins/noDirectSparkleNotification.grit",
-    "./biome-plugins/noNextImports.grit",
     "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
     "./biome-plugins/noMcpServerInstructions.grit",
     "./biome-plugins/enforceClientTypesInPublicApi.grit",
@@ -80,6 +79,10 @@
     }
   },
   "overrides": [
+    {
+      "includes": ["**", "!front/pages/**"],
+      "plugins": ["./biome-plugins/noNextImports.grit"]
+    },
     {
       "includes": ["cli/dust-cli/**", "sparkle/**"],
       "javascript": {
