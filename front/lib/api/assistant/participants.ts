@@ -19,6 +19,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { formatUserFullName } from "@app/types/user";
+import { Op } from "sequelize";
 
 async function fetchAllUsersById(userIds: ModelId[]) {
   const users = await UserResource.fetchByModelIds(userIds);
@@ -62,6 +63,7 @@ export async function fetchConversationParticipants(
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
+      branchId: { [Op.is]: null },
     },
     attributes: [
       [
