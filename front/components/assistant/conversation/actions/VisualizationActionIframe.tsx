@@ -1,6 +1,6 @@
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFetcher } from "@app/lib/swr/FetcherContext";
+import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
   CommandResultMap,
@@ -254,7 +254,6 @@ export const VisualizationActionIframe = forwardRef<
   const [retryClicked, setRetryClicked] = useState(false);
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const { fetcher } = useFetcher();
 
   // Combine internal ref with forwarded ref.
   const combinedRef = useCallback(
@@ -282,7 +281,7 @@ export const VisualizationActionIframe = forwardRef<
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
-      const response = await fetcher(
+      const response = await clientFetch(
         `/api/w/${workspaceId}/files/${fileId}?action=view`
       );
       if (!response.ok) {
@@ -295,7 +294,7 @@ export const VisualizationActionIframe = forwardRef<
         type: response.headers.get("Content-Type") ?? undefined,
       });
     },
-    [workspaceId, fetcher]
+    [workspaceId]
   );
 
   useVisualizationDataHandler({
