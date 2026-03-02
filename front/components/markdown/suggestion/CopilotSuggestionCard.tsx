@@ -60,7 +60,7 @@ function mapSuggestionStateToCardState(
 
 interface InstructionsSuggestionCardProps {
   agentSuggestion: AgentInstructionsSuggestionType;
-  focusOnSuggestion: (id: string) => void;
+  focusOnSuggestion: (suggestion: AgentInstructionsSuggestionType) => void;
   getCommittedInstructionsHtml: () => string;
 }
 
@@ -122,7 +122,7 @@ const InstructionsSuggestionCard = memo(
                 size="xs"
                 icon={EyeIcon}
                 tooltip="Review in instructions"
-                onClick={() => focusOnSuggestion(sId)}
+                onClick={() => focusOnSuggestion(agentSuggestion)}
               />
             ) : undefined
           }
@@ -173,7 +173,7 @@ interface ToolSuggestionCardProps {
 }
 
 function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
-  const { suggestion, relations, state, sId, analysis } = agentSuggestion;
+  const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
@@ -182,7 +182,7 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
   const tool = relations.tool;
 
   const handleAccept = useCallback(async () => {
-    const success = await acceptSuggestion(sId);
+    const success = await acceptSuggestion(agentSuggestion);
     if (success) {
       if (isAddition) {
         const currentActions = getValues("actions");
@@ -200,11 +200,11 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
         setValue("actions", filteredActions, { shouldDirty: true });
       }
     }
-  }, [acceptSuggestion, sId, getValues, setValue, isAddition, tool]);
+  }, [acceptSuggestion, agentSuggestion, getValues, setValue, isAddition, tool]);
 
   const handleReject = useCallback(() => {
-    void rejectSuggestion(sId);
-  }, [rejectSuggestion, sId]);
+    void rejectSuggestion(agentSuggestion);
+  }, [rejectSuggestion, agentSuggestion]);
 
   const displayName = getMcpServerViewDisplayName(tool);
 
@@ -241,7 +241,7 @@ interface SubAgentSuggestionCardProps {
 function SubAgentSuggestionCard({
   agentSuggestion,
 }: SubAgentSuggestionCardProps) {
-  const { suggestion, relations, state, sId, analysis } = agentSuggestion;
+  const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
@@ -264,7 +264,7 @@ function SubAgentSuggestionCard({
   }, [childAgentId, agentConfigurations]);
 
   const handleAccept = useCallback(async () => {
-    const success = await acceptSuggestion(sId);
+    const success = await acceptSuggestion(agentSuggestion);
     if (success) {
       if (isAddition) {
         const currentActions = getValues("actions");
@@ -288,7 +288,7 @@ function SubAgentSuggestionCard({
     }
   }, [
     acceptSuggestion,
-    sId,
+    agentSuggestion,
     getValues,
     setValue,
     isAddition,
@@ -298,8 +298,8 @@ function SubAgentSuggestionCard({
   ]);
 
   const handleReject = useCallback(() => {
-    void rejectSuggestion(sId);
-  }, [rejectSuggestion, sId]);
+    void rejectSuggestion(agentSuggestion);
+  }, [rejectSuggestion, agentSuggestion]);
 
   const displayName = childAgentName
     ? `Run ${childAgentName}`
@@ -336,7 +336,7 @@ interface SkillSuggestionCardProps {
 }
 
 function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
-  const { suggestion, relations, state, sId, analysis } = agentSuggestion;
+  const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
@@ -345,7 +345,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   const skill = relations.skill;
 
   const handleAccept = useCallback(async () => {
-    const success = await acceptSuggestion(sId);
+    const success = await acceptSuggestion(agentSuggestion);
     if (success) {
       if (isAddition) {
         const currentSkills = getValues("skills");
@@ -367,11 +367,11 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
         setValue("skills", filteredSkills, { shouldDirty: true });
       }
     }
-  }, [acceptSuggestion, sId, getValues, setValue, isAddition, skill]);
+  }, [acceptSuggestion, agentSuggestion, getValues, setValue, isAddition, skill]);
 
   const handleReject = useCallback(() => {
-    void rejectSuggestion(sId);
-  }, [rejectSuggestion, sId]);
+    void rejectSuggestion(agentSuggestion);
+  }, [rejectSuggestion, agentSuggestion]);
 
   const labels = isAddition
     ? {
@@ -404,7 +404,7 @@ interface ModelSuggestionCardProps {
 }
 
 function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
-  const { relations, suggestion, state, sId, analysis } = agentSuggestion;
+  const { relations, suggestion, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const modelName =
     relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
@@ -422,7 +422,7 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   });
 
   const handleAccept = useCallback(async () => {
-    const success = await acceptSuggestion(sId);
+    const success = await acceptSuggestion(agentSuggestion);
     if (success && relations.model) {
       modelSettingsField.onChange({
         modelId: relations.model.modelId,
@@ -433,7 +433,7 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
       );
     }
   }, [
-    sId,
+    agentSuggestion,
     acceptSuggestion,
     relations.model,
     suggestion.reasoningEffort,
@@ -442,8 +442,8 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   ]);
 
   const handleReject = useCallback(() => {
-    void rejectSuggestion(sId);
-  }, [sId, rejectSuggestion]);
+    void rejectSuggestion(agentSuggestion);
+  }, [agentSuggestion, rejectSuggestion]);
 
   return (
     <ActionCardBlock
@@ -467,7 +467,7 @@ interface KnowledgeSuggestionCardProps {
 function KnowledgeSuggestionCard({
   agentSuggestion,
 }: KnowledgeSuggestionCardProps) {
-  const { suggestion, relations, state, sId, analysis } = agentSuggestion;
+  const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
@@ -477,7 +477,7 @@ function KnowledgeSuggestionCard({
   const displayName = getDisplayNameForDataSource(dataSourceView.dataSource);
 
   const handleAccept = useCallback(async () => {
-    const success = await acceptSuggestion(sId);
+    const success = await acceptSuggestion(agentSuggestion);
     if (!success) {
       return;
     }
@@ -512,7 +512,7 @@ function KnowledgeSuggestionCard({
     }
   }, [
     acceptSuggestion,
-    sId,
+    agentSuggestion,
     isAddition,
     relations.searchServerView,
     getValues,
@@ -523,8 +523,8 @@ function KnowledgeSuggestionCard({
   ]);
 
   const handleReject = useCallback(() => {
-    void rejectSuggestion(sId);
-  }, [rejectSuggestion, sId]);
+    void rejectSuggestion(agentSuggestion);
+  }, [rejectSuggestion, agentSuggestion]);
 
   const icon = dataSourceView.dataSource.connectorProvider
     ? CONNECTOR_UI_CONFIGURATIONS[

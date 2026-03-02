@@ -29,7 +29,8 @@ export function SuggestionBubbleMenu({
   editor,
   containerRef,
 }: SuggestionBubbleMenuProps) {
-  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { acceptSuggestion, rejectSuggestion, getSuggestionWithRelations } =
+    useCopilotSuggestions();
   const {
     highlightSuggestion,
     highlightedSuggestionId,
@@ -238,17 +239,35 @@ export function SuggestionBubbleMenu({
     if (!highlightedSuggestionId) {
       return;
     }
+    const suggestion = getSuggestionWithRelations(highlightedSuggestionId);
+    if (!suggestion) {
+      return;
+    }
     highlightSuggestion(null);
-    void acceptSuggestion(highlightedSuggestionId);
-  }, [highlightedSuggestionId, acceptSuggestion, highlightSuggestion]);
+    void acceptSuggestion(suggestion);
+  }, [
+    highlightedSuggestionId,
+    getSuggestionWithRelations,
+    acceptSuggestion,
+    highlightSuggestion,
+  ]);
 
   const handleReject = useCallback(() => {
     if (!highlightedSuggestionId) {
       return;
     }
-    void rejectSuggestion(highlightedSuggestionId);
+    const suggestion = getSuggestionWithRelations(highlightedSuggestionId);
+    if (!suggestion) {
+      return;
+    }
+    void rejectSuggestion(suggestion);
     highlightSuggestion(null);
-  }, [highlightedSuggestionId, rejectSuggestion, highlightSuggestion]);
+  }, [
+    highlightedSuggestionId,
+    getSuggestionWithRelations,
+    rejectSuggestion,
+    highlightSuggestion,
+  ]);
 
   const show = !!activeMenu && activeMenu.sId === highlightedSuggestionId;
   const ready = show && activeMenu.measured;

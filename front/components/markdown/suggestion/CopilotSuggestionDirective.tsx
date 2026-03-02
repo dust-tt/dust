@@ -11,7 +11,7 @@ import {
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/CopilotSuggestionCard";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 /**
@@ -89,7 +89,10 @@ export function getCopilotSuggestionPlugin() {
       hasAttemptedRefetch,
     } = useCopilotSuggestions();
 
-    const suggestion = sId ? getSuggestionWithRelations(sId) : null;
+    const suggestion = useMemo(
+      () => (sId ? getSuggestionWithRelations(sId) : null),
+      [sId, getSuggestionWithRelations]
+    );
 
     // Trigger refetch when suggestion not found and not currently fetching.
     // triggerRefetch queues the sId and marks it as attempted after fetch completes.

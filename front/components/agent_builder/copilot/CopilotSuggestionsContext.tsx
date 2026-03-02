@@ -41,7 +41,7 @@ export interface CopilotSuggestionsContextType {
   getSuggestionWithRelations: (
     sId: string
   ) => AgentSuggestionWithRelationsType | null;
-  getPendingSuggestions: () => AgentSuggestionType[];
+  pendingSuggestions: AgentSuggestionType[];
   triggerRefetch: (sId: string) => void;
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
@@ -54,12 +54,12 @@ export interface CopilotSuggestionsContextType {
   getCommittedInstructionsHtml: () => string;
 
   // Actions on suggestions. Returns true on success, false on failure.
-  acceptSuggestion: (sId: string) => Promise<boolean>;
-  rejectSuggestion: (sId: string) => Promise<boolean>;
+  acceptSuggestion: (suggestion: AgentSuggestionType) => Promise<boolean>;
+  rejectSuggestion: (suggestion: AgentSuggestionType) => Promise<boolean>;
   acceptAllInstructionSuggestions: () => Promise<boolean>;
   rejectAllInstructionSuggestions: () => Promise<boolean>;
 
-  focusOnSuggestion: (suggestionId: string) => void;
+  focusOnSuggestion: (suggestion: AgentSuggestionType) => void;
 
   // Scroll both panels to bring the next pending suggestion into view after accept.
   scrollToNextSuggestion: (acceptedSuggestionId: string) => void;
@@ -132,10 +132,11 @@ function CopilotSuggestionsProviderContent({
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
   const prevSuggestionCountRef = useRef(0);
 
-  // Local state for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
-  const [processedSuggestions, setProcessedSuggestions] = useState<
-    Map<string, AgentSuggestionType>
-  >(new Map());
+  // Ref for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
+  // without causing re-render cascades. Visual updates go through SWR optimistic mutations.
+  const processedSuggestionsRef = useRef<Map<string, AgentSuggestionType>>(
+    new Map()
+  );
 
   const hasAttemptedRefetch = useCallback(
     (sId: string) => refetchAttemptedRef.current.has(sId),
@@ -202,23 +203,12 @@ function CopilotSuggestionsProviderContent({
     await Promise.all([mutatePending(), mutateOutdated()]);
   }, [mutatePending, mutateOutdated]);
 
-  // Get suggestion: check local state first, then backend (n is small, .find is fine)
-  const getSuggestion = useCallback(
-    (sId: string) =>
-      processedSuggestions.get(sId) ?? suggestions.find((s) => s.sId === sId),
-    [processedSuggestions, suggestions]
-  );
-
-  // Get pending suggestions: backend suggestions not yet processed locally
-  const getPendingSuggestions = useCallback(
-    () => suggestions.filter((s) => !processedSuggestions.has(s.sId)),
-    [suggestions, processedSuggestions]
-  );
-
   // Resolve a suggestion with its relations from context.
   const getSuggestionWithRelations = useCallback(
     (sId: string): AgentSuggestionWithRelationsType | null => {
-      const suggestion = getSuggestion(sId);
+      const suggestion =
+        processedSuggestionsRef.current.get(sId) ??
+        suggestions.find((s) => s.sId === sId);
 
       if (!suggestion) {
         return null;
@@ -275,7 +265,7 @@ function CopilotSuggestionsProviderContent({
       }
     },
     [
-      getSuggestion,
+      suggestions,
       skillsMap,
       mcpServerViewsMap,
       dataSourceViewsMap,
@@ -353,22 +343,21 @@ function CopilotSuggestionsProviderContent({
       return;
     }
 
-    // Pending = from API with state pending, excluding those we've locally processed as rejected/approved.
-    // This prevents re-application when SWR cache hasn't updated yet after reject/accept.
+    // Pending = from SWR cache with state pending, excluding those the ref marks as rejected/approved.
     const currentPendingIds = new Set(
       suggestions
         .filter((s) => s.state === "pending" && s.kind === "instructions")
         .filter((s) => {
-          const processed = processedSuggestions.get(s.sId);
+          const processed = processedSuggestionsRef.current.get(s.sId);
           return !processed || processed.state === "pending";
         })
         .map((s) => s.sId)
     );
 
     // Remove marks for suggestions that were applied but are no longer pending.
-    // Skip IDs we've marked approved (optimistic or confirmed) so we don't reject during accept.
+    // Skip IDs the ref marks as approved so we don't reject during accept.
     for (const appliedId of appliedSuggestionsRef.current) {
-      const processed = processedSuggestions.get(appliedId);
+      const processed = processedSuggestionsRef.current.get(appliedId);
       if (
         !currentPendingIds.has(appliedId) &&
         processed?.state !== "approved"
@@ -378,7 +367,7 @@ function CopilotSuggestionsProviderContent({
       }
     }
 
-    const outdatedSuggestions: AgentInstructionsSuggestionType[] = [];
+    const outdatedInstructions: AgentInstructionsSuggestionType[] = [];
 
     for (const suggestion of suggestions) {
       // Only apply pending instruction suggestions.
@@ -404,48 +393,42 @@ function CopilotSuggestionsProviderContent({
         appliedSuggestionsRef.current.add(suggestion.sId);
       } else {
         // If block not found, mark suggestion as outdated.
-        outdatedSuggestions.push(suggestion);
+        outdatedInstructions.push(suggestion);
       }
     }
 
-    if (outdatedSuggestions.length > 0) {
-      const outdatedSuggestionIds = outdatedSuggestions.map((s) => s.sId);
+    if (outdatedInstructions.length > 0) {
+      const outdatedIds = outdatedInstructions.map((s) => s.sId);
+      const idSet = new Set(outdatedIds);
 
-      void patchSuggestions(outdatedSuggestionIds, "outdated");
+      // Persist in ref.
+      for (const s of outdatedInstructions) {
+        processedSuggestionsRef.current.set(s.sId, { ...s, state: "outdated" });
+      }
 
-      setProcessedSuggestions((prev) =>
-        outdatedSuggestions.reduce(
-          (map, s) => map.set(s.sId, { ...s, state: "outdated" }),
-          new Map(prev)
-        )
+      // SWR optimistic update — remove from pending cache.
+      void mutatePending(
+        (current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            suggestions: current.suggestions.filter((s) => !idSet.has(s.sId)),
+          };
+        },
+        { revalidate: false }
       );
+
+      void patchSuggestions(outdatedIds, "outdated");
     }
   }, [
     suggestions,
     isSuggestionsLoading,
     isEditorReady,
     patchSuggestions,
-    processedSuggestions,
+    mutatePending,
   ]);
-
-  useEffect(() => {
-    if (isSuggestionsLoading) {
-      return;
-    }
-
-    const serverOutdatedSuggestions = suggestions.filter(
-      (s) => s.state === "outdated" && !processedSuggestions.has(s.sId)
-    );
-
-    if (serverOutdatedSuggestions.length > 0) {
-      setProcessedSuggestions((prev) =>
-        serverOutdatedSuggestions.reduce(
-          (map, s) => map.set(s.sId, s),
-          new Map(prev)
-        )
-      );
-    }
-  }, [suggestions, isSuggestionsLoading, processedSuggestions]);
 
   const scrollCopilotToSuggestion = useCallback((sId: string) => {
     requestAnimationFrame(() => {
@@ -457,16 +440,12 @@ function CopilotSuggestionsProviderContent({
   }, []);
 
   const focusOnSuggestion = useCallback(
-    (suggestionId: string) => {
+    (suggestion: AgentSuggestionType) => {
       const editor = editorRef.current;
-      if (!editor) {
+      if (!editor || suggestion.kind !== "instructions") {
         return;
       }
-      const suggestion = getSuggestion(suggestionId);
-      if (!suggestion || suggestion.kind !== "instructions") {
-        return;
-      }
-      const position = getSuggestionPosition(editor, suggestionId);
+      const position = getSuggestionPosition(editor, suggestion.sId);
 
       if (position !== null) {
         editor
@@ -476,16 +455,16 @@ function CopilotSuggestionsProviderContent({
           .scrollIntoView()
           .run();
 
-        highlightSuggestion(suggestionId, true);
+        highlightSuggestion(suggestion.sId, true);
       }
     },
-    [getSuggestion, highlightSuggestion]
+    [highlightSuggestion]
   );
 
   const scrollToNextSuggestion = useCallback(
     (acceptedSuggestionId?: string) => {
       const editor = editorRef.current;
-      const pendingInstructions = getPendingSuggestions().filter(
+      const pendingInstructions = pendingSuggestions.filter(
         (s) => s.kind === "instructions" && s.sId !== acceptedSuggestionId
       );
       if (pendingInstructions.length === 0) {
@@ -509,32 +488,52 @@ function CopilotSuggestionsProviderContent({
           : pendingInstructions;
 
       const next = sorted[0];
-      focusOnSuggestion(next.sId);
+      focusOnSuggestion(next);
       scrollCopilotToSuggestion(next.sId);
     },
-    [getPendingSuggestions, focusOnSuggestion, scrollCopilotToSuggestion]
+    [pendingSuggestions, focusOnSuggestion, scrollCopilotToSuggestion]
   );
 
   const acceptSuggestion = useCallback(
-    async (sId: string): Promise<boolean> => {
+    async (suggestion: AgentSuggestionType): Promise<boolean> => {
       const editor = editorRef.current;
       if (!editor) {
         return false;
       }
 
-      const suggestion = getSuggestion(sId);
-      if (!suggestion) {
-        return false;
-      }
+      const { sId } = suggestion;
 
-      // Optimistic update for snappy card disappearance
-      setProcessedSuggestions((prev) =>
-        new Map(prev).set(sId, { ...suggestion, state: "approved" })
+      // Persist in ref so getSuggestion() still finds the approved card after
+      // SWR revalidation removes it from the pending response.
+      processedSuggestionsRef.current.set(sId, {
+        ...suggestion,
+        state: "approved",
+      });
+
+      // Optimistic update: remove from the pending SWR cache so the card
+      // disappears instantly without waiting for the API round-trip.
+      // `revalidate: false` — don't refetch yet, the API call below will
+      // confirm or rollback.
+      void mutatePending(
+        (current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            suggestions: current.suggestions.filter((s) => s.sId !== sId),
+          };
+        },
+        { revalidate: false }
       );
 
+      // Send the state change to the server.
       const result = await patchSuggestions([sId], "approved");
       if (!result || result.suggestions.length === 0) {
-        setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
+        // API failed — undo the optimistic update: clear the ref entry and
+        // refetch from server to restore the real pending list.
+        processedSuggestionsRef.current.delete(sId);
+        void mutateSuggestions();
         return false;
       }
 
@@ -545,48 +544,70 @@ function CopilotSuggestionsProviderContent({
         scrollToNextSuggestion(sId);
       }
 
+      // Refetch both pending and outdated caches so our local state converges
+      // with the server (e.g. picks up changes from other tabs).
+      void mutateSuggestions();
       return true;
     },
     [
       patchSuggestions,
-      getSuggestion,
+      mutatePending,
+      mutateSuggestions,
       dispatchDelayedBlur,
       scrollToNextSuggestion,
     ]
   );
 
   const rejectSuggestion = useCallback(
-    async (sId: string): Promise<boolean> => {
+    async (suggestion: AgentSuggestionType): Promise<boolean> => {
       const editor = editorRef.current;
       if (!editor) {
         return false;
       }
 
-      const suggestion = getSuggestion(sId);
-      if (!suggestion) {
-        return false;
-      }
+      const { sId } = suggestion;
 
-      // Optimistic update for card state
-      setProcessedSuggestions((prev) =>
-        new Map(prev).set(sId, { ...suggestion, state: "rejected" })
+      // Persist in ref so getSuggestion() still finds the rejected card after
+      // SWR revalidation removes it from the pending response.
+      processedSuggestionsRef.current.set(sId, {
+        ...suggestion,
+        state: "rejected",
+      });
+
+      // Optimistic update: remove from the pending SWR cache instantly.
+      // `revalidate: false` — wait for the API call to confirm or rollback.
+      void mutatePending(
+        (current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            suggestions: current.suggestions.filter((s) => s.sId !== sId),
+          };
+        },
+        { revalidate: false }
       );
 
+      // Send the state change to the server.
       const result = await patchSuggestions([sId], "rejected");
       if (!result || result.suggestions.length === 0) {
-        setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
+        // API failed — undo optimistic update and refetch real state.
+        processedSuggestionsRef.current.delete(sId);
+        void mutateSuggestions();
         return false;
       }
 
-      // Update editor only on success
       if (suggestion.kind === "instructions") {
         editor.commands.rejectSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
 
+      // Refetch to converge with server state.
+      void mutateSuggestions();
       return true;
     },
-    [patchSuggestions, getSuggestion]
+    [patchSuggestions, mutatePending, mutateSuggestions]
   );
 
   const acceptAllInstructionSuggestions =
@@ -596,8 +617,8 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const instructionSuggestions = getPendingSuggestions().filter(
-        (s) => s.kind === "instructions"
+      const instructionSuggestions = suggestions.filter(
+        (s) => s.kind === "instructions" && s.state === "pending"
       );
 
       if (instructionSuggestions.length === 0) {
@@ -605,20 +626,44 @@ function CopilotSuggestionsProviderContent({
       }
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
+      const idSet = new Set(instructionSuggestionIds);
+
+      // Persist in ref so getSuggestion() still finds approved cards.
+      for (const s of instructionSuggestions) {
+        processedSuggestionsRef.current.set(s.sId, {
+          ...s,
+          state: "approved",
+        });
+      }
+
+      // Optimistic update: remove from the pending SWR cache instantly.
+      // `revalidate: false` — wait for the API call to confirm or rollback.
+      void mutatePending(
+        (current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            suggestions: current.suggestions.filter((s) => !idSet.has(s.sId)),
+          };
+        },
+        { revalidate: false }
+      );
+
+      // Send the state change to the server.
       const result = await patchSuggestions(
         instructionSuggestionIds,
         "approved"
       );
       if (!result) {
+        // API failed — undo optimistic update and refetch real state.
+        for (const sId of instructionSuggestionIds) {
+          processedSuggestionsRef.current.delete(sId);
+        }
+        void mutateSuggestions();
         return false;
       }
-
-      setProcessedSuggestions((prev) =>
-        instructionSuggestions.reduce(
-          (map, s) => map.set(s.sId, { ...s, state: "approved" }),
-          new Map(prev)
-        )
-      );
 
       editor.commands.acceptAllSuggestions();
       for (const sId of instructionSuggestionIds) {
@@ -628,10 +673,14 @@ function CopilotSuggestionsProviderContent({
       highlightSuggestion(null);
       dispatchDelayedBlur();
 
+      // Refetch to converge with server state.
+      void mutateSuggestions();
       return true;
     }, [
+      suggestions,
       patchSuggestions,
-      getPendingSuggestions,
+      mutatePending,
+      mutateSuggestions,
       dispatchDelayedBlur,
       highlightSuggestion,
     ]);
@@ -643,8 +692,8 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const instructionSuggestions = getPendingSuggestions().filter(
-        (s) => s.kind === "instructions"
+      const instructionSuggestions = suggestions.filter(
+        (s) => s.kind === "instructions" && s.state === "pending"
       );
 
       if (instructionSuggestions.length === 0) {
@@ -652,20 +701,44 @@ function CopilotSuggestionsProviderContent({
       }
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
+      const idSet = new Set(instructionSuggestionIds);
+
+      // Persist in ref so getSuggestion() still finds rejected cards.
+      for (const s of instructionSuggestions) {
+        processedSuggestionsRef.current.set(s.sId, {
+          ...s,
+          state: "rejected",
+        });
+      }
+
+      // Optimistic update: remove from the pending SWR cache instantly.
+      // `revalidate: false` — wait for the API call to confirm or rollback.
+      void mutatePending(
+        (current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            suggestions: current.suggestions.filter((s) => !idSet.has(s.sId)),
+          };
+        },
+        { revalidate: false }
+      );
+
+      // Send the state change to the server.
       const result = await patchSuggestions(
         instructionSuggestionIds,
         "rejected"
       );
       if (!result) {
+        // API failed — undo optimistic update and refetch real state.
+        for (const sId of instructionSuggestionIds) {
+          processedSuggestionsRef.current.delete(sId);
+        }
+        void mutateSuggestions();
         return false;
       }
-
-      setProcessedSuggestions((prev) =>
-        instructionSuggestions.reduce(
-          (map, s) => map.set(s.sId, { ...s, state: "rejected" }),
-          new Map(prev)
-        )
-      );
 
       editor.commands.rejectAllSuggestions();
       for (const sId of instructionSuggestionIds) {
@@ -674,8 +747,16 @@ function CopilotSuggestionsProviderContent({
 
       highlightSuggestion(null);
 
+      // Refetch to converge with server state.
+      void mutateSuggestions();
       return true;
-    }, [patchSuggestions, getPendingSuggestions, highlightSuggestion]);
+    }, [
+      suggestions,
+      patchSuggestions,
+      mutatePending,
+      mutateSuggestions,
+      highlightSuggestion,
+    ]);
 
   const getCommittedInstructionsHtml = useCallback(() => {
     const editor = editorRef.current;
@@ -712,7 +793,7 @@ function CopilotSuggestionsProviderContent({
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
-      getPendingSuggestions,
+      pendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
       isSuggestionsLoading,
@@ -728,7 +809,7 @@ function CopilotSuggestionsProviderContent({
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
-      getPendingSuggestions,
+      pendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
       isSuggestionsLoading,
