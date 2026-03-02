@@ -22,7 +22,7 @@ export async function getStaticProps() {
       hideNavigation: true,
     },
   };
-} 
+}
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function ChatGPTLandingPage() {
