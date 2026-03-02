@@ -1,5 +1,5 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -60,7 +60,7 @@ export function CustomHeadersConfigurationSection({
         </div>
       )}
 
-      {useCustomHeaders && <McpServerHeaders />}
+      {useCustomHeaders && <MCPServerHeaders />}
     </>
   );
 }

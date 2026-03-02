@@ -1,5 +1,5 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import {
   Collapsible,
@@ -52,7 +52,7 @@ export function InternalMCPBearerTokenForm({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2">
-            <McpServerHeaders />
+            <MCPServerHeaders />
           </div>
         </CollapsibleContent>
       </Collapsible>

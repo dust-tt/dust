@@ -1,5 +1,5 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -165,7 +165,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2">
-            <McpServerHeaders />
+            <MCPServerHeaders />
           </div>
         </CollapsibleContent>
       </Collapsible>

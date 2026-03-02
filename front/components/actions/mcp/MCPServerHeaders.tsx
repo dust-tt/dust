@@ -6,7 +6,7 @@ type FormWithCustomHeaders = {
   customHeaders: Array<{ key: string; value: string }>;
 };
 
-export function McpServerHeaders() {
+export function MCPServerHeaders() {
   // `register` binds inputs via DOM refs so RHF tracks values natively without triggering React re-renders on each
   // keystroke. Using `update` instead would replace the field object (regenerating field.id), causing React to remount
   // the input on every keystroke and lose focus.
