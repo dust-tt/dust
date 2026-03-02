@@ -589,24 +589,6 @@ export async function gongPauseScheduleActivity({
 }
 
 /**
- * Terminates all running Gong workflows for a connector.
- */
-export async function gongTerminateWorkflowsActivity({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
-  const { terminateAllWorkflowsForConnectorId } = await import(
-    "@connectors/lib/temporal"
-  );
-
-  await terminateAllWorkflowsForConnectorId({
-    connectorId,
-    stopReason: "Terminating for keyword update",
-  });
-}
-
-/**
  * Unpauses and triggers the Gong sync schedule.
  */
 export async function gongUnpauseScheduleActivity({

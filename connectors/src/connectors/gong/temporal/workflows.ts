@@ -170,11 +170,10 @@ export async function gongCleanupExcludedTranscriptsWorkflow({
 
 /**
  * Orchestrates the full keyword update lifecycle:
- * 1. Pause schedule
- * 2. Terminate running syncs
- * 3. Wait for in-flight activities to complete
- * 4. Clean up excluded transcripts
- * 5. Resume schedule
+ * 1. Pause schedule (kills any managed sync workflows)
+ * 2. Wait for in-flight activities to complete
+ * 3. Clean up excluded transcripts
+ * 4. Resume schedule
  */
 export async function gongKeywordUpdateWorkflow({
   connectorId,
@@ -183,21 +182,16 @@ export async function gongKeywordUpdateWorkflow({
   connectorId: ModelId;
   newKeywords: string[];
 }) {
-  const {
-    gongPauseScheduleActivity,
-    gongTerminateWorkflowsActivity,
-    gongUnpauseScheduleActivity,
-  } = proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
-  });
+  const { gongPauseScheduleActivity, gongUnpauseScheduleActivity } =
+    proxyActivities<typeof activities>({
+      startToCloseTimeout: "5 minutes",
+    });
 
   await gongPauseScheduleActivity({ connectorId });
-  await gongTerminateWorkflowsActivity({ connectorId });
 
   // Wait for in-flight activities to finish
   await sleep("60 seconds");
 
-  // Run cleanup as child workflow
   await executeChild(gongCleanupExcludedTranscriptsWorkflow, {
     workflowId: `${workflowInfo().workflowId}-cleanup`,
     args: [{ connectorId, excludeKeywords: newKeywords }],
