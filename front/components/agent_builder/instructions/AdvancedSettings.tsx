@@ -2,11 +2,11 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
 import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
-import { isInvalidJson } from "@app/components/agent_builder/utils";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
+import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import {
   Button,
   cn,
@@ -25,6 +25,14 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 import { useController } from "react-hook-form";
+
+function getResponseFormatError(value: string): string | null {
+  if (value.trim() === "") {
+    return null;
+  }
+  const result = validateResponseFormat(value);
+  return result.isValid ? null : result.errorMessage;
+}
 
 const RESPONSE_FORMAT_PLACEHOLDER =
   "Example:\n\n" +
@@ -71,6 +79,9 @@ export function AdvancedSettings() {
     return null;
   }
 
+  const currentValue = tempResponseFormat ?? responseFormatField.value ?? "";
+  const validationError = getResponseFormatError(currentValue);
+
   const supportsResponseFormat = isSupportingResponseFormat(
     modelSettingsField.value.modelId
   );
@@ -109,22 +120,28 @@ export function AdvancedSettings() {
               Structured response format
             </DialogTitle>
             <DialogDescription>
-              Specify a JSON schema to get responses in a consistent structure
+              Specify a JSON schema to get responses in a consistent structure.{" "}
+              <a
+                href="https://docs.dust.tt/docs/structured-output-format"
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                See documentation
+              </a>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <SuspensedCodeEditor
               data-color-mode={isDark ? "dark" : "light"}
-              value={tempResponseFormat ?? responseFormatField.value ?? ""}
+              value={currentValue}
               placeholder={RESPONSE_FORMAT_PLACEHOLDER}
               name="responseFormat"
               onChange={(e) => setTempResponseFormat(e.target.value)}
-              minHeight={450}
+              minHeight={400}
               className={cn(
                 "rounded-lg bg-slate-100 dark:bg-slate-100-night",
-                isInvalidJson(
-                  tempResponseFormat ?? responseFormatField.value
-                ) &&
+                validationError &&
                   "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
               )}
               style={{
@@ -135,6 +152,9 @@ export function AdvancedSettings() {
               }}
               language="json"
             />
+            {validationError && (
+              <p className="text-sm text-red-500">{validationError}</p>
+            )}
           </DialogContainer>
           <DialogFooter
             className="pt-2"
@@ -148,6 +168,7 @@ export function AdvancedSettings() {
             }}
             rightButtonProps={{
               label: "Save",
+              disabled: !!validationError,
               onClick: () => {
                 if (tempResponseFormat !== null) {
                   responseFormatField.onChange(tempResponseFormat);
