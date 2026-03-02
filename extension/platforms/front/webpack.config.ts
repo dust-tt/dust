@@ -98,7 +98,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
       }),
     ].filter(Boolean),
     devServer: {
-      port: 3010,
+      port: 3012,
       hot: true,
       static: {
         directory: path.resolve(__dirname, "./build"),
