@@ -399,7 +399,6 @@ function CopilotSuggestionsProviderContent({
 
     if (outdatedSuggestions.length > 0) {
       const outdatedSuggestionIds = outdatedSuggestions.map((s) => s.sId);
-      const idSet = new Set(outdatedSuggestionIds);
 
       // Persist in ref.
       for (const s of outdatedSuggestions) {
@@ -414,7 +413,9 @@ function CopilotSuggestionsProviderContent({
           }
           return {
             ...current,
-            suggestions: current.suggestions.filter((s) => !idSet.has(s.sId)),
+            suggestions: current.suggestions.filter(
+              (s) => !outdatedSuggestionIds.includes(s.sId)
+            ),
           };
         },
         { revalidate: false }
@@ -653,7 +654,6 @@ function CopilotSuggestionsProviderContent({
       }
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
-      const idSet = new Set(instructionSuggestionIds);
 
       // Persist in ref so approved cards are still found after SWR revalidation.
       for (const s of instructionSuggestions) {
@@ -672,7 +672,9 @@ function CopilotSuggestionsProviderContent({
           }
           return {
             ...current,
-            suggestions: current.suggestions.filter((s) => !idSet.has(s.sId)),
+            suggestions: current.suggestions.filter(
+              (s) => !instructionSuggestionIds.includes(s.sId)
+            ),
           };
         },
         { revalidate: false }
@@ -696,10 +698,7 @@ function CopilotSuggestionsProviderContent({
             }
             return {
               ...current,
-              suggestions: [
-                ...current.suggestions,
-                ...instructionSuggestions,
-              ],
+              suggestions: [...current.suggestions, ...instructionSuggestions],
             };
           },
           { revalidate: true }
@@ -743,7 +742,6 @@ function CopilotSuggestionsProviderContent({
       }
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
-      const idSet = new Set(instructionSuggestionIds);
 
       // Persist in ref so rejected cards are still found after SWR revalidation.
       for (const s of instructionSuggestions) {
@@ -762,13 +760,17 @@ function CopilotSuggestionsProviderContent({
           }
           return {
             ...current,
-            suggestions: current.suggestions.filter((s) => !idSet.has(s.sId)),
+            suggestions: current.suggestions.filter(
+              (s) => !instructionSuggestionIds.includes(s.sId)
+            ),
           };
         },
         { revalidate: false }
       );
 
       // Send the state change to the server.
+      // The API updates all suggestions in a single SQL statement, so it's
+      // all-or-nothing — no partial failures. Safe to revert everything on error.
       const result = await patchSuggestions(
         instructionSuggestionIds,
         "rejected"
@@ -786,10 +788,7 @@ function CopilotSuggestionsProviderContent({
             }
             return {
               ...current,
-              suggestions: [
-                ...current.suggestions,
-                ...instructionSuggestions,
-              ],
+              suggestions: [...current.suggestions, ...instructionSuggestions],
             };
           },
           { revalidate: true }
