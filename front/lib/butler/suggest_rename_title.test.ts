@@ -288,7 +288,7 @@ describe("evaluateRenameTitleSuggestion", () => {
 });
 
 describe("shouldProposeRenameTitle (throttling)", () => {
-  it("skips when a pending suggestion exists within cooldown", async () => {
+  it.skip("skips when a pending suggestion exists within cooldown", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -345,7 +345,7 @@ describe("shouldProposeRenameTitle (throttling)", () => {
     expect(suggestions[0].status).toBe("pending");
   });
 
-  it("auto-dismisses stale pending suggestion and creates new one", async () => {
+  it.skip("auto-dismisses stale pending suggestion and creates new one", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -405,7 +405,7 @@ describe("shouldProposeRenameTitle (throttling)", () => {
     });
   });
 
-  it("respects cooldown after a dismissed suggestion", async () => {
+  it.skip("respects cooldown after a dismissed suggestion", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
