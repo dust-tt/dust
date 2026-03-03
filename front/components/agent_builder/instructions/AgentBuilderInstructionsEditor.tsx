@@ -209,6 +209,7 @@ export function AgentBuilderInstructionsEditor({
     height: number;
   } | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: owner.sId is intentional — owner is a SWR-deserialized object that gets a new reference on every revalidation (revalidateOnFocus). Using owner.sId (a stable primitive) prevents extensions from changing identity and the editor from being needlessly recreated.
   const extensions = useMemo(() => {
     const extensions: Extensions = [
       ...buildAgentInstructionsReadOnlyExtensions(),
@@ -261,7 +262,7 @@ export function AgentBuilderInstructionsEditor({
     ];
 
     return extensions;
-  }, [owner, suggestionHandler]);
+  }, [owner.sId, suggestionHandler]);
 
   // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(
@@ -305,10 +306,14 @@ export function AgentBuilderInstructionsEditor({
 
   // Set initial content after editor is created, then focus
   // This is separated from useEditor() to avoid Safari race conditions
-  // Only runs once when editor is first created
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
-    if (!editor || editor.isDestroyed || initialContentSetRef.current) {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    // Skip if this exact editor instance was already initialized.
+    if (initialContentSetRef.current && editorRef.current === editor) {
       return;
     }
 
