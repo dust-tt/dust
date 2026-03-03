@@ -16,6 +16,7 @@ import type {
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageNewEvent,
+  ButlerSuggestionCreatedEvent,
   UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
@@ -34,7 +35,8 @@ export async function* getConversationEvents({
     data:
       | UserMessageNewEvent
       | AgentMessageNewEvent
-      | AgentGenerationCancelledEvent;
+      | AgentGenerationCancelledEvent
+      | ButlerSuggestionCreatedEvent;
   },
   void
 > {

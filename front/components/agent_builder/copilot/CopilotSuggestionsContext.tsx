@@ -466,17 +466,19 @@ function CopilotSuggestionsProviderContent({
       if (!suggestion || suggestion.kind !== "instructions") {
         return;
       }
-      const position = getSuggestionPosition(editor, suggestionId);
 
-      if (position !== null) {
-        editor
-          .chain()
-          .focus()
-          .setTextSelection(position)
-          .scrollIntoView()
-          .run();
+      // Find the suggestion element in the DOM and scroll to it
+      const suggestionElement = editor.view.dom.querySelector(
+        `[data-suggestion-id="${suggestionId}"]`
+      );
 
-        highlightSuggestion(suggestionId, true);
+      if (suggestionElement) {
+        suggestionElement.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+
+        highlightSuggestion(suggestionId);
       }
     },
     [getSuggestion, highlightSuggestion]

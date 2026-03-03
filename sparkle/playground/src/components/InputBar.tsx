@@ -166,10 +166,10 @@ export function InputBar({
       onDrop={handleDrop}
       className={cn(
         "s-relative s-w-full s-max-w-4xl s-z-10",
-        "s-rounded-3xl s-border s-bg-primary-50/70 s-backdrop-blur-md s-transition-all",
+        "s-rounded-3xl s-border s-bg-primary-50/70 dark:s-bg-primary-900/70 s-backdrop-blur-md s-transition-all",
         showFocusStyle
-          ? "s-border-highlight-300 s-ring-2 s-ring-highlight-300/50"
-          : "s-border-border",
+          ? "s-border-highlight-300 dark:s-border-highlight-300-night s-ring-2 s-ring-highlight-300/50 dark:s-ring-highlight-700/60"
+          : "s-border-border dark:s-border-border-night",
         className
       )}
     >
@@ -210,7 +210,7 @@ export function InputBar({
           variant="compact"
           showFormattingMenu
           showAskCopilotMenu={false}
-          className="s-placeholder:s-text-muted-foreground"
+          className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
         />
         <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
           <Button

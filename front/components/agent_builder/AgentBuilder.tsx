@@ -612,7 +612,7 @@ function AgentBuilderContent({
   const isCopilotEnabled = useIsAgentBuilderCopilotEnabled();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
-  const { pendingSuggestions, getCommittedInstructionsHtml } =
+  const { getPendingSuggestions, getCommittedInstructionsHtml } =
     useCopilotSuggestions();
 
   const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
@@ -625,7 +625,7 @@ function AgentBuilderContent({
   );
 
   const handleSaveWithValidation = useCallback(async () => {
-    const pendingInstructionSuggestions = pendingSuggestions.filter(
+    const pendingInstructionSuggestions = getPendingSuggestions().filter(
       (s) => s.kind === "instructions"
     );
     const committedInstructions = getCommittedInstructionsHtml();
@@ -660,7 +660,7 @@ function AgentBuilderContent({
 
     handleSave();
   }, [
-    pendingSuggestions,
+    getPendingSuggestions,
     getCommittedInstructionsHtml,
     confirm,
     sendNotification,

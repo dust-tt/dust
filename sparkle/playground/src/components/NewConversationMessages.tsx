@@ -3,7 +3,6 @@ import {
   Avatar,
   Button,
   ButtonGroup,
-  DataEmojiMart,
   EmojiPicker,
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +25,8 @@ import {
   TrashIcon,
   cn,
 } from "@dust-tt/sparkle";
+import type { EmojiMartData } from "@emoji-mart/data";
+import emojiMartData from "@emoji-mart/data";
 import { cva } from "class-variance-authority";
 import React from "react";
 
@@ -556,6 +557,13 @@ export const NewConversationUserMessage = React.forwardRef<
     };
 
     const canEdit = resolvedType === "locutor" && !!onEdit;
+    // @emoji-mart/data exports JSON directly; align it with EmojiPicker expected data shape.
+    const emojiPickerData = emojiMartData as unknown as EmojiMartData;
+    const emojiPickerTheme =
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark")
+        ? "dark"
+        : "light";
 
     const userCollapsible = shouldAutoCollapse && isCollapsible;
     const hasReactions = reactions && reactions.length > 0;
@@ -575,9 +583,9 @@ export const NewConversationUserMessage = React.forwardRef<
             </PopoverTrigger>
             <PopoverContent fullWidth>
               <EmojiPicker
-                theme="light"
+                theme={emojiPickerTheme}
                 previewPosition="none"
-                data={DataEmojiMart}
+                data={emojiPickerData}
                 onEmojiSelect={handleEmojiSelect ?? (() => undefined)}
               />
             </PopoverContent>
@@ -657,7 +665,7 @@ export const NewConversationUserMessage = React.forwardRef<
                   messageVariants({ type: resolvedType, className }),
                   userCollapsible && "s-flex-col",
                   isEditing &&
-                    "s-w-full s-mt-3 s-flex-col s-border s-border-highlight-300 s-ring-2 s-ring-highlight-300/50"
+                    "s-w-full s-mt-3 s-flex-col s-border s-border-highlight-300 dark:s-border-highlight-300-night s-ring-2 s-ring-highlight-300/50 dark:s-ring-highlight-700/60"
                 )}
                 {...props}
               >
@@ -878,7 +886,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                   />
                   <div
                     className={cn(
-                      "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
+                      "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border dark:s-border-border-night s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
                       isExpanded
                         ? "s-opacity-0"
                         : "s-to-background/80 dark:s-to-background-night/80 s-opacity-100"

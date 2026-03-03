@@ -28,14 +28,27 @@ const checkboxStyles = cva(
           "data-[state=indeterminate]:s-bg-primary dark:data-[state=indeterminate]:s-bg-primary-night data-[state=indeterminate]:s-text-white data-[state=indeterminate]:s-border-primary",
         false: "",
       },
+      isMutedAfterCheck: {
+        true: "",
+        false: "",
+      },
       size: {
         xs: "s-h-4 s-w-4 s-rounded",
         sm: "s-h-5 s-w-5 s-rounded-md",
       },
     },
+    compoundVariants: [
+      {
+        checked: true,
+        isMutedAfterCheck: true,
+        className:
+          "data-[state=checked]:s-bg-faint/50 data-[state=checked]:dark:s-bg-faint-night data-[state=checked]:s-border-transparent",
+      },
+    ],
     defaultVariants: {
       size: "sm",
       checked: false,
+      isMutedAfterCheck: false,
     },
   }
 );
@@ -55,33 +68,41 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, id, tooltip, ...props }, ref) => {
-  const checkbox = (
-    <CheckboxPrimitive.Root
-      ref={ref}
-      id={id}
-      className={cn(checkboxStyles({ checked, size }), className)}
-      checked={checked === "partial" ? "indeterminate" : checked}
-      {...props}
-    >
-      <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
-        <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
-          <Icon
-            size="xs"
-            visual={checked === "partial" ? DashIcon : CheckIcon}
-            className="s-text-background dark:s-text-background-night"
-          />
-        </span>
-      </CheckboxPrimitive.Indicator>
-    </CheckboxPrimitive.Root>
-  );
+>(
+  (
+    { className, size, checked, id, tooltip, isMutedAfterCheck, ...props },
+    ref
+  ) => {
+    const checkbox = (
+      <CheckboxPrimitive.Root
+        ref={ref}
+        id={id}
+        className={cn(
+          checkboxStyles({ checked, size, isMutedAfterCheck }),
+          className
+        )}
+        checked={checked === "partial" ? "indeterminate" : checked}
+        {...props}
+      >
+        <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
+          <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
+            <Icon
+              size="xs"
+              visual={checked === "partial" ? DashIcon : CheckIcon}
+              className="s-text-background dark:s-text-background-night"
+            />
+          </span>
+        </CheckboxPrimitive.Indicator>
+      </CheckboxPrimitive.Root>
+    );
 
-  return tooltip ? (
-    <Tooltip label={tooltip} trigger={checkbox} tooltipTriggerAsChild />
-  ) : (
-    checkbox
-  );
-});
+    return tooltip ? (
+      <Tooltip label={tooltip} trigger={checkbox} tooltipTriggerAsChild />
+    ) : (
+      checkbox
+    );
+  }
+);
 
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 

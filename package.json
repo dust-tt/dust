@@ -43,6 +43,7 @@
       "zod-validation-error": "^4.0.0"
     },
     "@types/react": "^18.3.18",
-    "@modelcontextprotocol/sdk": "^1.27.0"
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "dd-trace": "^5.87.0"
   }
 }

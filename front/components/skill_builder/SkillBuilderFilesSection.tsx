@@ -85,12 +85,6 @@ export function SkillBuilderFilesSection() {
     [handleFilesUpload, append, existingFileNames, sendNotification]
   );
 
-  // We need to have a skill ID to upload files in order to attach them properly (useCaseMetadata).
-  const uploadDisabled = skillId === null || isProcessingFiles;
-
-  const disabledTooltip =
-    skillId === null ? "Save the skill first to upload files." : undefined;
-
   const headerActions = fields.length > 0 && (
     <Button
       type="button"
@@ -98,8 +92,7 @@ export function SkillBuilderFilesSection() {
       label="Upload files"
       icon={isProcessingFiles ? Spinner : PlusIcon}
       variant="outline"
-      disabled={uploadDisabled}
-      tooltip={disabledTooltip}
+      disabled={isProcessingFiles}
     />
   );
 
@@ -141,8 +134,7 @@ export function SkillBuilderFilesSection() {
                   label="Upload files"
                   icon={PlusIcon}
                   variant="outline"
-                  disabled={uploadDisabled}
-                  tooltip={disabledTooltip}
+                  disabled={isProcessingFiles}
                 />
               }
               className="py-8"

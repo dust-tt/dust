@@ -15,7 +15,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { getErrorFromResponse, useFetcher } from "@app/lib/swr/swr";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -213,7 +213,6 @@ export function FrameRenderer({
   const [isLoading, setIsLoading] = useState(false);
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
   const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
-  const { fetcher } = useFetcher();
 
   const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -385,7 +384,7 @@ export function FrameRenderer({
     }
     setIsSavingToProject(true);
     try {
-      const res = await fetcher(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/files/${fileId}/save-in-project`,
         {
           method: "POST",
@@ -426,7 +425,6 @@ export function FrameRenderer({
     owner.sId,
     projectInfo?.name,
     sendNotification,
-    fetcher,
   ]);
 
   if (error) {

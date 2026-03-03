@@ -744,6 +744,26 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ useCaseMetadata: metadata });
   }
 
+  static async bulkSetUseCaseMetadata(
+    auth: Authenticator,
+    files: FileResource[],
+    metadata: FileUseCaseMetadata
+  ): Promise<void> {
+    if (files.length === 0) {
+      return;
+    }
+    const workspace = auth.getNonNullableWorkspace();
+    await this.model.update(
+      { useCaseMetadata: metadata },
+      {
+        where: {
+          id: { [Op.in]: files.map((f) => f.id) },
+          workspaceId: workspace.id,
+        },
+      }
+    );
+  }
+
   /**
    * Move a conversation frame file to a project (change use case to project_context).
    * Preserves existing metadata and sets spaceId and sourceConversationId.
