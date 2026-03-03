@@ -117,6 +117,7 @@ export default function AgentBuilder({
   const { mcpServerViews } = useMCPServerViewsContext();
   const { hasFeature } = useFeatureFlags();
   const { fetcherWithBody } = useFetcher();
+  const hasCopilot = useIsAgentBuilderCopilotEnabled();
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
@@ -250,6 +251,7 @@ export default function AgentBuilder({
     return getDefaultAgentFormData({
       owner,
       user,
+      hasCopilot,
     });
   }, [
     agentConfiguration,
@@ -258,6 +260,7 @@ export default function AgentBuilder({
     user,
     owner,
     hasFeature,
+    hasCopilot,
   ]);
 
   const form = useForm<AgentBuilderFormData>({
