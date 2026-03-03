@@ -1,8 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import {
-  invalidateDustStatusCacheForRegion,
-  invalidateProviderStatusCacheForRegion,
+  invalidateDustStatus,
+  invalidateProviderStatus,
 } from "@app/lib/api/status";
 import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -23,7 +23,7 @@ export const invalidateStatuspageCachePlugin = createPlugin({
 
     for (const region of SUPPORTED_REGIONS) {
       try {
-        await invalidateProviderStatusCacheForRegion(region);
+        await invalidateProviderStatus(region);
         results.push(`✓ Invalidated providers status cache for ${region}`);
       } catch (err) {
         errors.push(
@@ -32,7 +32,7 @@ export const invalidateStatuspageCachePlugin = createPlugin({
       }
 
       try {
-        await invalidateDustStatusCacheForRegion(region);
+        await invalidateDustStatus(region);
         results.push(`✓ Invalidated dust status cache for ${region}`);
       } catch (err) {
         errors.push(

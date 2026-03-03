@@ -1,3 +1,4 @@
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { AppStatus } from "@app/lib/api/status";
 import {
   getDustStatusMemoized,
@@ -21,9 +22,10 @@ async function handler(
     });
   }
 
+  const currentRegion = regionConfig.getCurrentRegion();
   const [providersStatus, dustStatus] = await Promise.all([
-    getProviderStatusMemoized(),
-    getDustStatusMemoized(),
+    getProviderStatusMemoized(currentRegion),
+    getDustStatusMemoized(currentRegion),
   ]);
 
   res.setHeader(

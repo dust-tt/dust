@@ -1,10 +1,9 @@
 import config from "@app/lib/api/config";
-import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { StatusPageIncidentType } from "@app/lib/api/status/status_page";
 import { getUnresolvedIncidents } from "@app/lib/api/status/status_page";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { isDevelopment } from "@app/types/shared/env";
 
 interface AppStatusComponent {
@@ -93,46 +92,38 @@ async function getDustStatus(): Promise<AppStatusComponent | null> {
   return null;
 }
 
-export const getProviderStatusMemoized = cacheWithRedis(
-  getProvidersStatus,
-  () => {
-    return `provider-status-${regionConfig.getCurrentRegion()}`;
-  },
-  // Caches data for 2 minutes to limit frequent API calls.
-  // Status page rate limit is pretty aggressive.
-  {
-    ttlMs: 2 * 60 * 1000,
-  }
-);
+export const getProviderStatusMemoized = (region: RegionType) =>
+  cacheWithRedis(
+    getProvidersStatus,
+    () => {
+      return `provider-status-${region}`;
+    },
+    // Caches data for 2 minutes to limit frequent API calls.
+    // Status page rate limit is pretty aggressive.
+    {
+      ttlMs: 2 * 60 * 1000,
+    }
+  )();
 
-export const getDustStatusMemoized = cacheWithRedis(
-  getDustStatus,
-  () => {
-    return `dust-status-${regionConfig.getCurrentRegion()}`;
-  },
-  // Caches data for 2 minutes to limit frequent API calls.
-  // Status page rate limit is pretty aggressive.
-  {
-    ttlMs: 2 * 60 * 1000,
-  }
-);
+export const getDustStatusMemoized = (region: RegionType) =>
+  cacheWithRedis(
+    getDustStatus,
+    () => {
+      return `dust-status-${region}`;
+    },
+    // Caches data for 2 minutes to limit frequent API calls.
+    // Status page rate limit is pretty aggressive.
+    {
+      ttlMs: 2 * 60 * 1000,
+    }
+  )();
 
-export async function invalidateProviderStatusCacheForRegion(
-  region: RegionType
-): Promise<void> {
-  const redisCli = await getRedisCacheClient({
-    origin: "cache_with_redis",
-  });
-  const cacheKey = `cacheWithRedis-${getProvidersStatus.name}-provider-status-${region}`;
-  await redisCli.del(cacheKey);
-}
+export const invalidateProviderStatus = (region: RegionType) =>
+  invalidateCacheWithRedis(getProvidersStatus, () => {
+    return `provider-status-${region}`;
+  })();
 
-export async function invalidateDustStatusCacheForRegion(
-  region: RegionType
-): Promise<void> {
-  const redisCli = await getRedisCacheClient({
-    origin: "cache_with_redis",
-  });
-  const cacheKey = `cacheWithRedis-${getDustStatus.name}-dust-status-${region}`;
-  await redisCli.del(cacheKey);
-}
+export const invalidateDustStatus = (region: RegionType) =>
+  invalidateCacheWithRedis(getDustStatus, () => {
+    return `dust-status-${region}`;
+  })();
