@@ -150,7 +150,7 @@ const browseUrlFirecrawl = async (
   const binaryCheck = await checkForBinaryContent(url);
   if (!binaryCheck) {
     return {
-      error: `[Firecrawl] Unable to check url's content type before scraping, skipping.`,
+      error: `Unable to check url's content type before scraping, skipping.`,
       status: 500,
       url,
     };
@@ -165,7 +165,7 @@ const browseUrlFirecrawl = async (
     );
 
     return {
-      error: `[Firecrawl] Binary content detected (Content-Type: ${binaryCheck.contentType}). Cannot scrape non-text content.`,
+      error: `Scrapping: Binary content detected (Content-Type: ${binaryCheck.contentType}), not supported.`,
       status: binaryCheck.status,
       url,
     };
