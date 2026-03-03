@@ -1,7 +1,6 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -42,8 +41,15 @@ import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   Button,
+  CameraIcon,
   Chip,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  GlobeAltIcon,
+  PlusIcon,
   TextIcon,
   Toolbar,
   VoicePicker,
@@ -59,6 +65,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { InputBarContext } from "./InputBarContext";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -537,7 +544,7 @@ const InputBarContainer = ({
 
   // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
-  const { animate } = useContext(InputBarContext);
+  const { animate, captureActions } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
       // Schedule focus to avoid flushing during render lifecycle.
@@ -814,6 +821,38 @@ const InputBarContainer = ({
                       showStopLabel={!isMobile}
                     />
                   )}
+                {captureActions && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost-secondary"
+                        icon={PlusIcon}
+                        size={buttonSize}
+                        disabled={disableInput}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        icon={GlobeAltIcon}
+                        label="Attach page content"
+                        disabled={
+                          captureActions.isCapturing ||
+                          fileUploaderService.isProcessingFiles
+                        }
+                        onClick={() => captureActions.onCapture("text")}
+                      />
+                      <DropdownMenuItem
+                        icon={CameraIcon}
+                        label="Take screenshot"
+                        disabled={
+                          captureActions.isCapturing ||
+                          fileUploaderService.isProcessingFiles
+                        }
+                        onClick={() => captureActions.onCapture("screenshot")}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 <Button
                   size={buttonSize}
                   isLoading={

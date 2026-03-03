@@ -12,7 +12,7 @@ export const RunPage = () => {
   const location = useLocation();
   const { user, workspace } = useExtensionAuth();
 
-  const fileUploaderService = useFileUploaderService(platform.capture);
+  const fileUploaderService = useFileUploaderService(platform.capture, null);
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner: workspace!,
@@ -32,7 +32,6 @@ export const RunPage = () => {
         includeContent: params.includeContent,
         includeCapture: params.includeCapture,
         includeSelectionOnly: params.includeSelectionOnly,
-        updateBlobs: false,
       });
 
       const conversationRes = await createConversationWithMessage({

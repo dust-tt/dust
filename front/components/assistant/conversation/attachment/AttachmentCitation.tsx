@@ -132,7 +132,6 @@ export function AttachmentCitation({
           setViewerOpen={setViewerOpen}
           viewerOpen={viewerOpen}
           attachmentCitation={attachmentCitation}
-          conversationId={conversationId}
           owner={owner}
         />
       )}
