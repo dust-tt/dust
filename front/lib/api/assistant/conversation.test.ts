@@ -61,10 +61,12 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
   getContentFragmentBlob: vi.fn(),
 }));
 
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId, makeSId } from "@app/lib/resources/string_ids";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 
 describe("retryAgentMessage", () => {
   let auth: Authenticator;
@@ -1029,7 +1031,7 @@ describe("softDeleteAgentMessage", () => {
 
     const result = await softDeleteAgentMessage(auth, {
       message: agentMessage,
-      conversation: conversationResource.toJSON(),
+      conversation,
     });
 
     expect(result.isOk()).toBe(true);
@@ -1074,7 +1076,7 @@ describe("softDeleteAgentMessage", () => {
 
     const result = await softDeleteAgentMessage(auth, {
       message: nonExistentMessage,
-      conversation: conversationResource.toJSON(),
+      conversation,
     });
 
     expect(result.isErr()).toBe(true);
@@ -1124,7 +1126,7 @@ describe("softDeleteAgentMessage", () => {
 
     const result = await softDeleteAgentMessage(otherAuth, {
       message: messageToDelete,
-      conversation: fetchedConversationResource.toJSON(),
+      conversation: fetchedConversation,
     });
 
     expect(result.isErr()).toBe(true);
@@ -1616,6 +1618,307 @@ describe("postUserMessage", () => {
           "Hello from a non-member to regular conversation"
         );
       }
+    });
+  });
+
+  describe("restricted agent branch creation", () => {
+    let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+    let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+    let projectConversation: ConversationType;
+    let agentWithDifferentSpace: LightAgentConfigurationType;
+
+    async function setupProjectWithRestrictedAgent() {
+      projectSpace = await SpaceFactory.project(workspace);
+      anotherProjectSpace = await SpaceFactory.project(workspace);
+
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const user = auth.getNonNullableUser();
+
+      const projectSpaceGroup = projectSpace.groups.find(
+        (g) => g.kind === "regular"
+      );
+      const anotherProjectSpaceGroup = anotherProjectSpace.groups.find(
+        (g) => g.kind === "regular"
+      );
+
+      if (projectSpaceGroup) {
+        const addRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: user.toJSON() }
+        );
+        if (addRes.isErr()) {
+          throw new Error(
+            `Failed to add user to project space: ${addRes.error.message}`
+          );
+        }
+      }
+      if (anotherProjectSpaceGroup) {
+        const addRes = await anotherProjectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: user.toJSON() }
+        );
+        if (addRes.isErr()) {
+          throw new Error(
+            `Failed to add user to another project space: ${addRes.error.message}`
+          );
+        }
+      }
+
+      await auth.refresh();
+
+      agentWithDifferentSpace = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Restricted Space Agent",
+          description: "Agent that uses a different project space",
+        }
+      );
+
+      const { AgentConfigurationModel } = await import(
+        "@app/lib/models/agent/agent"
+      );
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [anotherProjectSpace.id] },
+        {
+          where: {
+            sId: agentWithDifferentSpace.sId,
+            workspaceId: workspace.id,
+          },
+          hooks: false,
+          silent: true,
+        }
+      );
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentWithDifferentSpace.sId,
+          messagesCreatedAt: [new Date()],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      projectConversation = fetchedConversationResult.value;
+    }
+
+    describe("with conversation_branches feature flag enabled", () => {
+      beforeEach(async () => {
+        await setupProjectWithRestrictedAgent();
+        await FeatureFlagFactory.basic("conversation_branches", workspace);
+      });
+
+      it("should create a branch and put first message in branch when posting with restricted agent", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        const branchesBefore =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesBefore.length).toBe(0);
+
+        const result = await postUserMessage(auth, {
+          conversation: projectConversation,
+          content: `Hello @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (!result.isOk()) {
+          return;
+        }
+
+        const branchesAfter =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesAfter.length).toBe(1);
+        const branch = branchesAfter[0];
+        expect(projectConversation.branchId).toBe(branch.sId);
+
+        const newUserMessageId = result.value.userMessage.id;
+        const newUserMessageRow = await MessageModel.findOne({
+          where: {
+            id: newUserMessageId,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(newUserMessageRow).not.toBeNull();
+        expect(newUserMessageRow!.branchId).toBe(branch.id);
+
+        const agentMessages = result.value.agentMessages;
+        expect(agentMessages.length).toBe(1);
+        const agentMessageRow = await MessageModel.findOne({
+          where: {
+            id: agentMessages[0].id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(agentMessageRow).not.toBeNull();
+        expect(agentMessageRow!.branchId).toBe(branch.id);
+
+        rateLimiterSpy.mockRestore();
+      });
+
+      it("should put subsequent messages in branch when conversation has branchId", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        const firstPost = await postUserMessage(auth, {
+          conversation: projectConversation,
+          content: `First message @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(firstPost.isOk()).toBe(true);
+        if (!firstPost.isOk()) {
+          return;
+        }
+
+        expect(projectConversation.branchId).toBeDefined();
+        const branchSId = projectConversation.branchId!;
+
+        const conversationWithBranch = await getConversation(
+          auth,
+          projectConversation.sId,
+          false,
+          branchSId
+        );
+        expect(conversationWithBranch.isOk()).toBe(true);
+        if (conversationWithBranch.isErr()) {
+          return;
+        }
+        const convInBranch = conversationWithBranch.value;
+
+        const secondPost = await postUserMessage(auth, {
+          conversation: convInBranch,
+          content: "Second message in branch",
+          mentions: [],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(secondPost.isOk()).toBe(true);
+        if (!secondPost.isOk()) {
+          return;
+        }
+
+        const secondUserMessageRow = await MessageModel.findOne({
+          where: {
+            id: secondPost.value.userMessage.id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(secondUserMessageRow).not.toBeNull();
+        const branchRow = await ConversationBranchResource.fetchById(
+          auth,
+          branchSId
+        );
+        expect(branchRow).not.toBeNull();
+        expect(secondUserMessageRow!.branchId).toBe(branchRow!.id);
+
+        rateLimiterSpy.mockRestore();
+      });
+    });
+
+    describe("with conversation_branches feature flag disabled", () => {
+      beforeEach(async () => {
+        await setupProjectWithRestrictedAgent();
+      });
+
+      it("should not create a branch when posting with restricted agent", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        const result = await postUserMessage(auth, {
+          conversation: projectConversation,
+          content: `Hello @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (!result.isOk()) {
+          return;
+        }
+
+        const branchesAfter =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesAfter.length).toBe(0);
+
+        expect(projectConversation.branchId).toBeNull();
+
+        // When the agent is restricted and we don't create a branch, no agent message is created
+        // but the mention is stored with status agent_restricted_by_space_usage
+        const agentMessages = result.value.agentMessages;
+        expect(agentMessages.length).toBe(0);
+        const richMention = result.value.userMessage.richMentions.find(
+          (m) => m.type === "agent" && m.id === agentWithDifferentSpace.sId
+        );
+        expect(richMention).toBeDefined();
+        expect(richMention!.status).toBe("agent_restricted_by_space_usage");
+
+        rateLimiterSpy.mockRestore();
+      });
     });
   });
 });
