@@ -216,6 +216,10 @@ const ProductMenuConfig: MenuConfig = {
       title: "Frames",
       href: "/home/frames",
     },
+    {
+      title: "Integrations",
+      href: "/integrations",
+    },
   ],
 };
 
