@@ -8,8 +8,12 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { isTextContent } from "@app/types/assistant/generation";
+
+const STATIC_RESPONSE_REGEX =
+  /<static_response>([\s\S]*?)<\/static_response>/;
 
 const metadata = {
   clientId: "noop" as const,
@@ -19,6 +23,7 @@ const metadata = {
 interface NoopRequest {
   type: "noop_request";
   lastUserMessage: string;
+  staticResponse?: string;
 }
 
 // NoopLLM is a dummy LLM that can respond to special commands.
@@ -32,7 +37,19 @@ export class NoopLLM extends LLM<NoopRequest> {
 
   protected buildRequestPayload({
     conversation,
+    prompt,
   }: LLMStreamParameters): NoopRequest {
+    // Check for a static response embedded in the system prompt.
+    const promptText = systemPromptToText(prompt);
+    const staticMatch = promptText.match(STATIC_RESPONSE_REGEX);
+    if (staticMatch) {
+      return {
+        type: "noop_request",
+        lastUserMessage: "",
+        staticResponse: staticMatch[1].trim(),
+      };
+    }
+
     const lastUserMessage =
       conversation.messages
         .slice()
@@ -51,7 +68,9 @@ export class NoopLLM extends LLM<NoopRequest> {
     let responseText: string;
 
     // Determine response based on the message content.
-    if (payload.lastUserMessage === "long message") {
+    if (payload.staticResponse) {
+      responseText = payload.staticResponse;
+    } else if (payload.lastUserMessage === "long message") {
       // Generate a very long message.
       responseText = "This is a very long message. ".repeat(100);
     } else if (payload.lastUserMessage === "help") {

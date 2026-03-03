@@ -15,7 +15,7 @@ const COPILOT_USE_CASES = [
 type CopilotUseCase = (typeof COPILOT_USE_CASES)[number];
 
 const NEW_AGENT_FIRST_MESSAGE = `<dust_system>
-This is a new agent. To start the conversation, you should NOT call any tools. 
+This is a new agent. To start the conversation, you should NOT call any tools.
 Just ask a very simple question, such as "What would you like to build?"
 </dust_system>`;
 

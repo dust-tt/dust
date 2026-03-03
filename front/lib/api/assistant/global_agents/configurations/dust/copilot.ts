@@ -18,6 +18,7 @@ import {
   getSmallWhitelistedModel,
 } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
@@ -493,16 +494,19 @@ export function _getCopilotGlobalAgent(
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 
-  // Use a fast model for the very first turn (when the conversation has no
-  // prior exchanges) and the full model for all follow-ups.
-  // Prefer Haiku on the first turn; fall back to the workspace's small model if
-  // Anthropic is not whitelisted.
+  // Use noop model for the first turn of a new agent copilot conversation
+  // (static "What would you like to build?" response without calling a real LLM).
+  // Use a fast model for other first turns and the full model for follow-ups.
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
-  const modelConfiguration = isFirstTurn
-    ? isProviderWhitelisted(owner, "anthropic")
-      ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-      : getSmallWhitelistedModel(owner)
-    : getLargeWhitelistedModel(owner);
+  const isNewAgentFirstTurn =
+    isFirstTurn && globalAgentContext?.isNewAgentCopilot;
+  const modelConfiguration = isNewAgentFirstTurn
+    ? NOOP_MODEL_CONFIG
+    : isFirstTurn
+      ? isProviderWhitelisted(owner, "anthropic")
+        ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+        : getSmallWhitelistedModel(owner)
+      : getLargeWhitelistedModel(owner);
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
@@ -514,7 +518,9 @@ export function _getCopilotGlobalAgent(
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
 
-  const instructions = buildCopilotInstructions(copilotContext);
+  const instructions = isNewAgentFirstTurn
+    ? "<static_response>What would you like to build?</static_response>"
+    : buildCopilotInstructions(copilotContext);
 
   return {
     id: -1,

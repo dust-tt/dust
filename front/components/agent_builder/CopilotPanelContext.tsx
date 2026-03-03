@@ -132,6 +132,7 @@ export const CopilotPanelProvider = ({
       metadata: {
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
+        copilotIsNewAgent: isNewAgent,
       },
       skipToolsValidation: true,
     });
@@ -153,6 +154,7 @@ export const CopilotPanelProvider = ({
     copilotAgentId,
     createConversationWithMessage,
     getFirstMessage,
+    isNewAgent,
     useCase,
     sendNotification,
     targetAgentConfigurationId,

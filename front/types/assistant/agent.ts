@@ -125,6 +125,7 @@ export type AgentFetchVariant = "light" | "full" | "extra_light";
 
 export type GlobalAgentContext = {
   userMessageRank: number;
+  isNewAgentCopilot?: boolean;
 };
 
 export type LightAgentConfigurationType = {
