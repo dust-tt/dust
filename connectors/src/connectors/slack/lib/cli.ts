@@ -35,7 +35,7 @@ import type {
   AdminSuccessResponseType,
   SlackCheckChannelResponseType,
   SlackCommandType,
-  SlackJoinResponseType as SlackJoinResponseType,
+  SlackJoinResponseType,
 } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
@@ -274,10 +274,6 @@ export const slack = async ({
         throw new Error("Missing --botName argument");
       }
 
-      if (!groupId) {
-        throw new Error("Missing --groupId argument");
-      }
-
       if (!providerType || !["slack", "slack_bot"].includes(providerType)) {
         throw new Error(
           "--providerType argument must be set to 'slack' or 'slack_bot'"
@@ -324,10 +320,16 @@ export const slack = async ({
         );
       }
 
-      // Handle groupId as either a single string or comma-separated string of group IDs
-      const groupIds = groupId.includes(",")
-        ? groupId.split(",").map((id) => id.trim())
-        : [groupId];
+      let groupIds: string[] = [];
+      if (whitelistType === "summon_agent") {
+        if (!groupId) {
+          throw new Error(
+            "Missing --groupId argument (required for summon_agent)"
+          );
+        }
+        groupIds = groupId.split(",").map((id) => id.trim());
+      }
+
       await slackConfig.whitelistBot(botName, groupIds, whitelistType);
 
       return { success: true };
