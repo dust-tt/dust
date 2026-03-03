@@ -1255,6 +1255,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         icon: def.icon,
         extendedSkillId: null,
+        source: null,
+        sourceMetadata: null,
       },
       {
         // Global skills do not have data source configurations.
@@ -1463,6 +1465,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           icon: versionModel.icon,
           requestedSpaceIds: versionModel.requestedSpaceIds,
           extendedSkillId: versionModel.extendedSkillId,
+          source: versionModel.source,
+          sourceMetadata: versionModel.sourceMetadata,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -2200,6 +2204,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.globalSId ? null : this.instructions,
       requestedSpaceIds,
       icon: this.icon ?? null,
+      source: this.source,
+      sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {
         const serializedView = view.toJSON();
         const server = serializedView.server;
@@ -2273,6 +2279,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds: this.requestedSpaceIds,
       editedBy: this.editedBy,
       mcpServerViewIds,
+      source: this.source,
+      sourceMetadata: this.sourceMetadata,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
