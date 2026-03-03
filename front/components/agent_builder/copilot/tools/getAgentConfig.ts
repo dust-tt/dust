@@ -39,7 +39,10 @@ The response includes:
 
       // Detect timing issue: markdown instructions exist but HTML is empty/stub.
       const markdownInstructions = formData.instructions?.trim() ?? "";
-      if (markdownInstructions && !instructionsHtml.replace(/<[^>]*>/g, "").trim()) {
+      if (
+        markdownInstructions &&
+        !instructionsHtml.replace(/<[^>]*>/g, "").trim()
+      ) {
         datadogLogger.error(
           {
             instructionsHtmlLength: instructionsHtml.length,
