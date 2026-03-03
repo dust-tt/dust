@@ -4,6 +4,15 @@ import type { UserType } from "@app/types/user";
 
 export type SkillStatus = "active" | "archived" | "suggested";
 
+export const SKILL_SOURCES = ["web_app", "github", "local_file"] as const;
+
+export type SkillSourceType = (typeof SKILL_SOURCES)[number];
+
+export interface SkillSourceMetadata {
+  repoUrl: string;
+  filePath: string;
+}
+
 export type SkillType = {
   id: number;
   sId: string;
@@ -16,6 +25,8 @@ export type SkillType = {
   userFacingDescription: string;
   instructions: string | null;
   icon: string | null;
+  source: SkillSourceType | null;
+  sourceMetadata: SkillSourceMetadata | null;
   requestedSpaceIds: string[];
   tools: MCPServerViewType[];
   fileAttachments: {
