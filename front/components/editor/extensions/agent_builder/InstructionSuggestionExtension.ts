@@ -766,10 +766,12 @@ export const InstructionSuggestionExtension = Extension.create({
           // the plugin meta, so only the last suggestion would be removed
           // from plugin state. We fix this by overwriting the meta with all
           // IDs after the loop.
-          ids.forEach((id) => commands.acceptSuggestion(id));
+          const allSucceeded = ids
+            .map((id) => commands.acceptSuggestion(id))
+            .every(Boolean);
           tr.setMeta(pluginKey, { type: "removeAll", ids });
 
-          return true;
+          return allSucceeded;
         },
 
       rejectAllSuggestions:
