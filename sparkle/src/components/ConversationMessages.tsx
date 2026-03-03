@@ -1,6 +1,5 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Avatar, CitationGrid } from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
+import { CitationGrid } from "@sparkle/components/Citation";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";

@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import React, { useCallback, useState } from "react";
 
 import { Button } from "./Button";

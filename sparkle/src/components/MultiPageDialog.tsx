@@ -1,6 +1,5 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Avatar, Button, ScrollArea, Separator } from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
 import {
   Dialog,
   DialogClose,
@@ -10,6 +9,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@sparkle/components/Dialog";
+import { ScrollArea } from "@sparkle/components/ScrollArea";
+import { Separator } from "@sparkle/components/Separator";
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";

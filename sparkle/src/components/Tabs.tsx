@@ -1,9 +1,7 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { ScrollArea, ScrollBar } from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
 import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";

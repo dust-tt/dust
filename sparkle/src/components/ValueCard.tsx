@@ -1,6 +1,5 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Card, Spinner } from "@sparkle/components";
+import { Card } from "@sparkle/components/Card";
+import { Spinner } from "@sparkle/components/Spinner";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
