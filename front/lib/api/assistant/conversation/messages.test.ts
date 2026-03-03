@@ -35,7 +35,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
-  ConversationWithoutContentType,
+  ConversationType,
   UserMessageContext,
 } from "@app/types/assistant/conversation";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
@@ -45,7 +45,7 @@ import type { WorkspaceType } from "@app/types/user";
 describe("createAgentMessages", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
-  let conversation: ConversationWithoutContentType;
+  let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
   let agentConfig2: LightAgentConfigurationType;
 
@@ -1484,7 +1484,7 @@ describe("createAgentMessages", () => {
 describe("createUserMessage", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
-  let conversation: ConversationWithoutContentType;
+  let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
 
   beforeEach(async () => {

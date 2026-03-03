@@ -51,6 +51,7 @@ import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/pr
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -553,7 +554,10 @@ export async function postUserMessage(
     });
   }
 
-  if (isProjectConversation(conversation)) {
+  const featureFlags = await getFeatureFlags(owner);
+  const isPartOfProject = isProjectConversation(conversation);
+
+  if (isPartOfProject) {
     // Check if the user is a member of the space.
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
@@ -607,6 +611,7 @@ export async function postUserMessage(
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
+  let shouldCreateBranch = false;
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
@@ -634,7 +639,6 @@ export async function postUserMessage(
       });
     }
 
-    const featureFlags = await getFeatureFlags(owner);
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
       supportedModelConfig?.featureFlag &&
@@ -648,6 +652,17 @@ export async function postUserMessage(
         },
       });
     }
+
+    // If the conversation is part of a project and the conversation branches feature flag is enabled.
+    // When the agent is not usable, we will create a branch.
+    if (isPartOfProject && featureFlags.includes("conversation_branches")) {
+      const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+        configuration: agentConfig,
+        conversation,
+      });
+
+      shouldCreateBranch = shouldCreateBranch || !canAgentBeUsed;
+    }
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
@@ -656,6 +671,48 @@ export async function postUserMessage(
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
+
+    // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
+    // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
+    // - Message has user mentions, we don't support multiple users in a branch yet.
+    // - Conversation has no content, we cannot create a branch as the start of the conversation.
+    // - Last message in conversation has no content should never happen, but we will log an error and continue.
+    // If we do not create a branch, the user will receive a notification that the agent is not usable.
+    if (shouldCreateBranch) {
+      if (user === null) {
+        // Should never happen, but we will log an error and continue.
+        logger.error("User is null, cannot create branch without a user.");
+      } else if (mentions.some(isUserMention)) {
+        logger.info(
+          "Message has user mentions, for now we do not support branching with user mentions."
+        );
+      } else if (conversation.content.length === 0) {
+        logger.info(
+          "Conversation has no content, cannot create branch as the start of the conversation."
+        );
+      } else if (
+        conversation.content[conversation.content.length - 1].length === 0
+      ) {
+        logger.error(
+          "Last message in conversation has no content, cannot create branch."
+        );
+      } else {
+        const branch = await ConversationBranchResource.makeNew(
+          auth,
+          {
+            conversationId: conversation.id,
+            previousMessageId:
+              conversation.content[conversation.content.length - 1].at(-1)!.id,
+            state: "open",
+            userId: user.id,
+          },
+          t
+        );
+
+        // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+        conversation.branchId = branch.sId;
+      }
+    }
 
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
@@ -809,11 +866,7 @@ export async function postUserMessage(
       : Promise.resolve(undefined),
   ]);
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (
-    featureFlags.includes("conversation_butler") &&
-    isProjectConversation(conversation)
-  ) {
+  if (featureFlags.includes("conversation_butler") && isPartOfProject) {
     // Fire-and-forget: butler failures must not block message posting.
     void launchOrSignalButlerWorkflow({
       authType: auth.toJSON(),
@@ -1555,6 +1608,9 @@ export async function postNewContentFragment(
         sId: messageId,
         rank: nextMessageRank,
         conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
         contentFragmentId: contentFragment.id,
         workspaceId: owner.id,
       },
@@ -1692,7 +1748,7 @@ export async function softDeleteAgentMessage(
     conversation,
   }: {
     message: AgentMessageType;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationType;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
