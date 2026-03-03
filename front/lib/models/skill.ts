@@ -5,7 +5,11 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillSourceMetadata,
+  SkillSourceType,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 import { DataTypes } from "sequelize";
@@ -53,6 +57,15 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  source: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: "manual",
+  },
+  sourceMetadata: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
 } as const satisfies ModelAttributes;
 
 /**
@@ -88,6 +101,9 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare editedBy: ForeignKey<UserModel["id"]> | null;
   // Not a foreign key, only global skills can be extended.
   declare extendedSkillId: string | null;
+
+  declare source: SkillSourceType;
+  declare sourceMetadata: SkillSourceMetadata | null;
 
   declare requestedSpaceIds: number[];
 }
