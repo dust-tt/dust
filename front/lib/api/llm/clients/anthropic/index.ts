@@ -140,6 +140,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       tool_choice: toToolChoiceParam(specifications, forceToolCall),
       betas,
       output_format: toOutputFormatParam(this.responseFormat),
+      cache_control: { type: "ephemeral" },
     };
   }
 
