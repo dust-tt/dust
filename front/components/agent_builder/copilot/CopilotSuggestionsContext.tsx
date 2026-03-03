@@ -584,7 +584,7 @@ function CopilotSuggestionsProviderContent({
         ...suggestion,
         state: "rejected",
       });
- 
+
       void mutatePending(
         (current) => {
           if (!current) {
