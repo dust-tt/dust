@@ -82,6 +82,7 @@ ConversationMCPServerViewModel.init(
         fields: ["workspaceId", "conversationId", "mcpServerViewId"],
         name: "idx_conversation_mcp_server_views_workspace_conv_mcp_view_null_agent",
         where: { agentConfigurationId: null },
+        concurrently: true,
       },
       {
         unique: true,
@@ -93,6 +94,7 @@ ConversationMCPServerViewModel.init(
         ],
         name: "idx_conversation_mcp_server_views_workspace_conv_mcp_view_agent",
         where: { agentConfigurationId: { [Op.ne]: null } },
+        concurrently: true,
       },
       {
         fields: ["workspaceId", "conversationId"],
