@@ -375,8 +375,6 @@ export const ZendeskSearchCountResponseSchema = z.object({
 });
 
 // Tags schemas
-export const ZENDESK_TAG_REGEX = /^[a-z0-9_\-/]+$/;
-
 export const ZendeskTagsResponseSchema = z.object({
   tags: z.array(z.string()),
 });
