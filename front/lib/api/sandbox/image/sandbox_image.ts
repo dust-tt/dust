@@ -33,6 +33,7 @@ export class SandboxImage {
   readonly resources: SandboxResources;
   readonly network: NetworkPolicy;
   readonly workdir: string;
+  readonly startupScript?: string;
 
   private constructor(state: SandboxImageState) {
     this.baseImage = state.baseImage;

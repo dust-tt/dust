@@ -17,7 +17,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { TemplateBuilder } from "e2b";
+import type { TemplateBuilder, TemplateClass } from "e2b";
 import { defaultBuildLogger, Template as E2BTemplate } from "e2b";
 
 interface E2BBuildConfig {
@@ -45,7 +45,7 @@ function applyOperation(e2b: TemplateBuilder, op: Operation): TemplateBuilder {
   }
 }
 
-function toE2BTemplate(image: SandboxImage): TemplateBuilder {
+function toE2BTemplate(image: SandboxImage): TemplateClass {
   const baseImage = image.baseImage;
   let e2b: TemplateBuilder;
 
