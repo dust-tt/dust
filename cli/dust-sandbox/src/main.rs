@@ -1,3 +1,4 @@
+mod api;
 mod auth;
 mod commands;
 
@@ -25,6 +26,13 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Version => commands::cmd_version(),
         Commands::Status => commands::cmd_status()?,
+        cmd => {
+            /// let client = api::DustApiClient::from_env()?;
+            /// TODO(adrien): register other commands with the client here
+            match cmd {
+                Commands::Version | Commands::Status => unreachable!(),
+            }
+        }
     }
 
     Ok(())
