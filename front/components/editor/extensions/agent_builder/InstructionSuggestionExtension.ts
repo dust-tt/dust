@@ -456,6 +456,14 @@ function createPlugin(getHighlightedId: () => string | null) {
           dirty = true;
         }
 
+        if (meta?.type === "removeAll") {
+          suggestions = new Map(suggestions);
+          for (const id of meta.ids) {
+            suggestions.delete(id);
+          }
+          dirty = true;
+        }
+
         if (meta?.type === "highlight") {
           highlightedId = meta.id;
           dirty = true;
@@ -747,20 +755,71 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptAllSuggestions:
         () =>
-        ({ commands, editor }) => {
-          const ids = getActiveSuggestionIds(editor.state);
+        ({ state, tr, dispatch }) => {
+          const pluginState = pluginKey.getState(state);
+          if (!pluginState || pluginState.suggestions.size === 0) {
+            return false;
+          }
 
-          // Process all suggestions even if some fail, return true only if all succeeded.
-          return ids.map((id) => commands.acceptSuggestion(id)).every(Boolean);
+          if (dispatch) {
+            const schema = state.schema;
+            const ids: string[] = [];
+
+            for (const [suggestionId, suggestion] of pluginState.suggestions) {
+              ids.push(suggestionId);
+
+              for (const op of suggestion.operations) {
+                const found = findBlockByBlockId(tr.doc, op.targetBlockId);
+                if (!found) {
+                  continue;
+                }
+
+                const { node: blockNode, pos: blockPos } = found;
+                const newNode = parseHTMLToBlock(
+                  op.newContent,
+                  schema,
+                  op.targetBlockId
+                );
+                if (!newNode) {
+                  continue;
+                }
+
+                if (blockNode.type === newNode.type) {
+                  const from = blockPos + 1;
+                  const to = blockPos + blockNode.nodeSize - 1;
+                  tr.replaceWith(from, to, newNode.content);
+                } else {
+                  tr.replaceWith(
+                    blockPos,
+                    blockPos + blockNode.nodeSize,
+                    newNode
+                  );
+                }
+              }
+            }
+
+            tr.setMeta(pluginKey, { type: "removeAll", ids });
+            dispatch(tr);
+          }
+
+          return true;
         },
 
       rejectAllSuggestions:
         () =>
-        ({ commands, editor }) => {
-          const ids = getActiveSuggestionIds(editor.state);
+        ({ state, tr, dispatch }) => {
+          const pluginState = pluginKey.getState(state);
+          if (!pluginState || pluginState.suggestions.size === 0) {
+            return false;
+          }
 
-          // Process all suggestions even if some fail, return true only if all succeeded.
-          return ids.map((id) => commands.rejectSuggestion(id)).every(Boolean);
+          if (dispatch) {
+            const ids = Array.from(pluginState.suggestions.keys());
+            tr.setMeta(pluginKey, { type: "removeAll", ids });
+            dispatch(tr);
+          }
+
+          return true;
         },
 
       setHighlightedSuggestion:
