@@ -53,6 +53,7 @@ const LOGO_SETS = {
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -83,6 +84,7 @@ const LOGO_SETS = {
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -180,6 +182,7 @@ const LOGO_SETS = {
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
     ],
     eu: [
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
