@@ -211,6 +211,7 @@ export async function runModel(
     mcpActions,
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
+    console.log("conversation", conversation);
     const attachments = await listAttachments(auth, { conversation });
     const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
       auth,
