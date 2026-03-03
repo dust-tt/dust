@@ -31,16 +31,12 @@ type SnowflakeKeypairFormValues = z.infer<typeof snowflakeKeypairFormSchema>;
 interface SnowflakeKeypairCredentialFormProps {
   owner: LightWorkspaceType;
   onValidityChange: (isValid: boolean) => void;
-  onCredentialCreated: (credentialId: string) => void;
 }
 
 export const SnowflakeKeypairCredentialForm = forwardRef<
   StaticCredentialFormHandle,
   SnowflakeKeypairCredentialFormProps
->(function SnowflakeKeypairCredentialForm(
-  { owner, onValidityChange, onCredentialCreated },
-  ref
-) {
+>(function SnowflakeKeypairCredentialForm({ owner, onValidityChange }, ref) {
   const sendNotification = useSendNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const lastReportedValidity = useRef<boolean | null>(null);
@@ -69,7 +65,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
 
   const handleSave = async (
     values: SnowflakeKeypairFormValues
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     setIsSubmitting(true);
 
     try {
@@ -101,11 +97,10 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
             ? result.error.message
             : "An error occurred.",
         });
-        return false;
+        return null;
       }
 
-      onCredentialCreated(result.credentials.id);
-      return true;
+      return result.credentials.id;
     } finally {
       setIsSubmitting(false);
     }
@@ -113,11 +108,11 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
 
   useImperativeHandle(ref, () => ({
     submit: async () => {
-      let success = false;
+      let credentialId: string | null = null;
       await form.handleSubmit(async (values) => {
-        success = await handleSave(values);
+        credentialId = await handleSave(values);
       })();
-      return success;
+      return credentialId;
     },
   }));
 

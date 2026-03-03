@@ -45,7 +45,7 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 function getSubmitButtonLabel(
@@ -121,8 +121,6 @@ export function CreateMCPServerDialog({
     setRemoteMCPServerOAuthDiscoveryDone,
   ] = useState(false);
 
-  const createdServerRef = useRef<MCPServerType | null>(null);
-
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
@@ -151,7 +149,6 @@ export function CreateMCPServerDialog({
     setAuthorization(null);
     setRemoteMCPServerOAuthDiscoveryDone(false);
     setIsStaticFormValid(false);
-    createdServerRef.current = null;
     // Reset form state.
     form.reset(defaultValues);
   };
@@ -236,48 +233,30 @@ export function CreateMCPServerDialog({
     return DEFAULT_MCP_SERVER_ICON;
   }, [internalMCPServer, defaultServerConfig]);
 
-  const handleStaticCredentialCreated = useCallback(
-    async (credentialId: string) => {
-      const createdServer = createdServerRef.current;
-      if (!authorization || !useCase || !createdServer) {
-        return;
-      }
+  const staticFormRef = useRef<StaticCredentialFormHandle>(null);
+  const [isStaticFormValid, setIsStaticFormValid] = useState(false);
 
-      const connectionCreationRes = await createMCPServerConnection({
-        credentialId,
-        mcpServerId: createdServer.sId,
-        mcpServerDisplayName: getMcpServerDisplayName(createdServer),
-        provider: authorization.provider,
-      });
-      if (!connectionCreationRes) {
-        setIsLoading(false);
-        setExternalIsLoading(false);
-        return;
-      }
+  const staticFormComponent =
+    authorization && useCase
+      ? getStaticCredentialForm(authorization.provider, useCase)
+      : null;
+  const hasStaticForm = !!staticFormComponent;
 
-      sendNotification({
-        title: "Success",
-        type: "success",
-        description: `${getMcpServerDisplayName(createdServer)} added successfully.`,
-      });
-      setMCPServerToShow(createdServer);
-      setExternalIsLoading(false);
-      setIsLoading(false);
-      setIsOpen(false);
-    },
-    [
-      authorization,
-      useCase,
-      setIsOpen,
-      setExternalIsLoading,
-      setMCPServerToShow,
-      createMCPServerConnection,
-      sendNotification,
-    ]
-  );
+  const staticCredentialConfig: StaticCredentialConfig | undefined =
+    useMemo(() => {
+      if (!staticFormComponent) {
+        return undefined;
+      }
+      return {
+        owner,
+        formRef: staticFormRef,
+        onValidityChange: setIsStaticFormValid,
+        FormComponent: staticFormComponent,
+      };
+    }, [owner, staticFormComponent]);
 
   const handleCreateServerAndSubmitStaticCredentials = async () => {
-    if (!internalMCPServer || !useCase) {
+    if (!internalMCPServer || !authorization || !useCase) {
       return;
     }
 
@@ -302,39 +281,38 @@ export function CreateMCPServerDialog({
       return;
     }
 
-    // Store created server so handleStaticCredentialCreated can use it.
-    createdServerRef.current = createRes.value.server;
+    const createdServer = createRes.value.server;
 
-    // Trigger the static form submission (creates credential, calls onCredentialCreated).
-    const success = await staticFormRef.current?.submit();
-    if (!success) {
+    // Submit the static credential form — returns credentialId or null.
+    const credentialId = await staticFormRef.current?.submit();
+    if (!credentialId) {
       setIsLoading(false);
       setExternalIsLoading(false);
+      return;
     }
+
+    const connectionCreationRes = await createMCPServerConnection({
+      credentialId,
+      mcpServerId: createdServer.sId,
+      mcpServerDisplayName: getMcpServerDisplayName(createdServer),
+      provider: authorization.provider,
+    });
+    if (!connectionCreationRes) {
+      setIsLoading(false);
+      setExternalIsLoading(false);
+      return;
+    }
+
+    sendNotification({
+      title: "Success",
+      type: "success",
+      description: `${getMcpServerDisplayName(createdServer)} added successfully.`,
+    });
+    setMCPServerToShow(createdServer);
+    setExternalIsLoading(false);
+    setIsLoading(false);
+    setIsOpen(false);
   };
-
-  const staticFormRef = useRef<StaticCredentialFormHandle>(null);
-  const [isStaticFormValid, setIsStaticFormValid] = useState(false);
-
-  const staticFormComponent =
-    authorization && useCase
-      ? getStaticCredentialForm(authorization.provider, useCase)
-      : null;
-  const hasStaticForm = !!staticFormComponent;
-
-  const staticCredentialConfig: StaticCredentialConfig | undefined =
-    useMemo(() => {
-      if (!staticFormComponent) {
-        return undefined;
-      }
-      return {
-        owner,
-        formRef: staticFormRef,
-        onValidityChange: setIsStaticFormValid,
-        onCredentialCreated: handleStaticCredentialCreated,
-        FormComponent: staticFormComponent,
-      };
-    }, [owner, handleStaticCredentialCreated, staticFormComponent]);
 
   // When OAuth is required (authorization is set), form is valid when:
   // - use case is selected AND either static form or OAuth credentials are valid.

@@ -70,18 +70,16 @@ export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
 export interface StaticCredentialFormProps {
   owner: LightWorkspaceType;
   onValidityChange: (isValid: boolean) => void;
-  onCredentialCreated: (credentialId: string) => void;
 }
 
 export interface StaticCredentialFormHandle {
-  submit: () => Promise<boolean>;
+  submit: () => Promise<string | null>;
 }
 
 export interface StaticCredentialConfig {
   owner: LightWorkspaceType;
   formRef: RefObject<StaticCredentialFormHandle>;
   onValidityChange: (isValid: boolean) => void;
-  onCredentialCreated: (credentialId: string) => void;
   FormComponent: ForwardRefExoticComponent<
     StaticCredentialFormProps & RefAttributes<StaticCredentialFormHandle>
   >;
@@ -268,7 +266,6 @@ export function MCPServerAuthConnection({
           ref={staticCredentialConfig.formRef}
           owner={staticCredentialConfig.owner}
           onValidityChange={staticCredentialConfig.onValidityChange}
-          onCredentialCreated={staticCredentialConfig.onCredentialCreated}
         />
       ) : (
         <OAuthCredentialFields
