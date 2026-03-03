@@ -550,27 +550,6 @@ export async function gongDeleteExcludedTranscriptsActivity({
 }
 
 /**
- * Pauses the Gong sync schedule.
- */
-export async function gongPauseScheduleActivity({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
-  const connector = await fetchGongConnector({ connectorId });
-  const { pauseSchedule } = await import("@connectors/lib/temporal_schedules");
-  const { makeGongSyncScheduleId } = await import(
-    "@connectors/connectors/gong/index"
-  );
-
-  await pauseSchedule({
-    connector,
-    scheduleId: makeGongSyncScheduleId(connector),
-    stopReason: "Paused for keyword update",
-  });
-}
-
-/**
  * Unpauses and triggers the Gong sync schedule.
  */
 export async function gongUnpauseScheduleActivity({

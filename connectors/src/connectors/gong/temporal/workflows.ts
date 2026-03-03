@@ -27,10 +27,9 @@ const {
   cancellationType: ActivityCancellationType.TRY_CANCEL,
 });
 
-const { gongPauseScheduleActivity, gongUnpauseScheduleActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
-  });
+const { gongUnpauseScheduleActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
 
 export async function gongSyncWorkflow({
   connectorId,
@@ -174,11 +173,12 @@ export async function gongCleanupExcludedTranscriptsWorkflow({
 }
 
 /**
- * Orchestrates the full keyword update lifecycle:
- * 1. Pause schedule (kills any managed sync workflows)
- * 2. Wait for in-flight activities to complete
- * 3. Clean up excluded transcripts
- * 4. Resume schedule
+ * Orchestrates keyword update cleanup after schedule is paused:
+ * 1. Wait for in-flight activities to complete
+ * 2. Clean up excluded transcripts
+ * 3. Resume schedule
+ *
+ * Note: Schedule pause happens in the API handler before this workflow starts.
  */
 export async function gongKeywordUpdateWorkflow({
   connectorId,
@@ -188,8 +188,6 @@ export async function gongKeywordUpdateWorkflow({
   newKeywords: string[];
 }) {
   const { workflowId, searchAttributes, memo } = workflowInfo();
-
-  await gongPauseScheduleActivity({ connectorId });
 
   // Wait for in-flight activities to finish
   await sleep("60 seconds");
