@@ -18,14 +18,14 @@ export async function processDataSourceFolders({
   dataPath,
   destRegion,
   sourceRegion,
-  sourceRegionDustFacingUrl,
+  sourceRegionApiBaseUrl,
   workspaceId,
 }: {
   destIds: CreateDataSourceProjectResult;
   dataPath: string;
   destRegion: RegionType;
   sourceRegion: RegionType;
-  sourceRegionDustFacingUrl: string;
+  sourceRegionApiBaseUrl: string;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
@@ -41,18 +41,15 @@ export async function processDataSourceFolders({
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
-  const destRegionDustFacingUrl = config.getApiBaseUrl();
+  const destRegionApiBaseUrl = config.getApiBaseUrl();
 
   const res = await concurrentExecutor(
     data.blobs.folders,
     async (d) => {
       // If the source URL starts with the source region Dust URL, replace it with the destination region Dust URL.
       const sourceUrl =
-        d.source_url && d.source_url.startsWith(sourceRegionDustFacingUrl)
-          ? d.source_url.replace(
-              sourceRegionDustFacingUrl,
-              destRegionDustFacingUrl
-            )
+        d.source_url && d.source_url.startsWith(sourceRegionApiBaseUrl)
+          ? d.source_url.replace(sourceRegionApiBaseUrl, destRegionApiBaseUrl)
           : d.source_url;
 
       return coreAPI.upsertDataSourceFolder({
