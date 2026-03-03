@@ -71,6 +71,15 @@ export function resolveTag(label: string): TemplateTagCodeType {
 
 type CsvRecord = Record<string, string | undefined>;
 
+function isCsvRecord(row: unknown): row is CsvRecord {
+  if (row === null || typeof row !== "object" || Array.isArray(row)) {
+    return false;
+  }
+  return Object.values(row as object).every(
+    (v) => v === undefined || typeof v === "string"
+  );
+}
+
 interface TemplateRow {
   handle: string;
   agentFacingDescription: string;
@@ -83,12 +92,22 @@ interface TemplateRow {
 
 export function parseCsvRows(csvPath: string, logger?: Logger): TemplateRow[] {
   const content = readFileSync(csvPath, "utf-8");
-  const records = parse(content, {
+  const raw = parse(content, {
     columns: true,
     skip_empty_lines: true,
     trim: true,
     relax_column_count: true,
-  }) as CsvRecord[];
+  });
+
+  const records: CsvRecord[] = [];
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  for (const row of raw) {
+    if (isCsvRecord(row)) {
+      records.push(row);
+    }
+  }
 
   const rowMap = new Map<string, TemplateRow>();
 

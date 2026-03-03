@@ -173,7 +173,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       tags: this.tags,
       visibility: this.visibility,
       hasCopilotInstructions: this.copilotInstructions !== null,
-      hasPresetInstructions: this.presetInstructions != null,
+      hasPresetInstructions: this.presetInstructions !== null,
     };
   }
 
