@@ -16,6 +16,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
@@ -202,30 +203,6 @@ export async function createConversation(
     metadata: conversation.metadata,
     branchId: null,
   };
-}
-
-export async function updateConversationTitle(
-  auth: Authenticator,
-  {
-    conversationId,
-    title,
-  }: {
-    conversationId: string;
-    title: string;
-  }
-): Promise<Result<undefined, ConversationError>> {
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  await conversation.updateTitle(title);
-
-  return new Ok(undefined);
 }
 
 /**

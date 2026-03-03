@@ -1,5 +1,4 @@
-import { updateConversationTitle } from "@app/lib/api/assistant/conversation";
-import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
@@ -39,16 +38,6 @@ export async function acceptSuggestion(
           )
         );
       }
-
-      // Publish the title change event so the UI updates in real-time.
-      await publishConversationEvent(
-        {
-          type: "conversation_title",
-          created: Date.now(),
-          title: metadata.suggestedTitle,
-        },
-        { conversationId }
-      );
       break;
     }
     case "call_agent":

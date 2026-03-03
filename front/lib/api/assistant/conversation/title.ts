@@ -16,6 +16,7 @@ import type {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -24,6 +25,39 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
+
+export async function updateConversationTitle(
+  auth: Authenticator,
+  {
+    conversationId,
+    title,
+  }: {
+    conversationId: string;
+    title: string;
+  }
+): Promise<Result<undefined, ConversationError>> {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (!conversation) {
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  await conversation.updateTitle(title);
+
+  await publishConversationEvent(
+    {
+      type: "conversation_title",
+      created: Date.now(),
+      title,
+    },
+    { conversationId }
+  );
+
+  return new Ok(undefined);
+}
 
 export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
@@ -86,19 +120,20 @@ export async function ensureConversationTitle(
   }
 
   const title = (conversation.triggerId ? "Triggered - " : "") + titleRes.value;
-  await ConversationResource.updateTitle(auth, conversation.sId, title);
-
-  // Enqueue the conversation_title event in Redis.
-  await publishConversationEvent(
-    {
-      type: "conversation_title",
-      created: Date.now(),
-      title,
-    },
-    {
-      conversationId: conversation.sId,
-    }
-  );
+  const updateRes = await updateConversationTitle(auth, {
+    conversationId: conversation.sId,
+    title,
+  });
+  if (updateRes.isErr()) {
+    logger.error(
+      {
+        conversationId: conversation.sId,
+        error: updateRes.error,
+      },
+      "Failed to update conversation title"
+    );
+    return null;
+  }
 
   return title;
 }
