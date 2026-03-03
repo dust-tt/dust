@@ -8,11 +8,12 @@ import "@dust-tt/front/styles/components.css";
 import "@spa/index.css";
 
 import App from "@spa/app/App";
-import { initDatadogRUM } from "@spa/lib/initDatadog";
+import { initDatadogLogs, initDatadogRUM } from "@spa/lib/initDatadog";
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-// Initialize Datadog RUM before rendering
+// Initialize Datadog before rendering
+initDatadogLogs();
 initDatadogRUM();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
