@@ -16,9 +16,6 @@ interface ConversationContext {
   includeCurrentPage: boolean;
 }
 
-export type Theme = "light" | "dark" | "system";
-export const DEFAULT_THEME: Theme = "system";
-
 export interface CaptureActionsProps {
   owner: WorkspaceType;
   isBlinking: boolean;
@@ -88,16 +85,6 @@ export abstract class CorePlatformService {
         "conversationContext"
       )) || {};
     await this.storage.set("conversationContext", { ...existing, ...contexts });
-  }
-
-  // Theme.
-  async getTheme(): Promise<Theme> {
-    const result = await this.storage.get<Theme>("theme");
-    return result ?? DEFAULT_THEME;
-  }
-
-  async saveTheme(theme: Theme): Promise<void> {
-    await this.storage.set("theme", theme);
   }
 
   // Workspace.
