@@ -15,13 +15,22 @@ const credentials = dustManagedCredentials();
 
 const SPIDER_API_BASE_URL = "https://api.spider.cloud";
 
-const TEXT_CONTENT_TYPES = [
-  "text/",
-  "application/json",
-  "application/xml",
-  "application/xhtml+xml",
-  "application/javascript",
-  "application/ld+json",
+const BINARY_CONTENT_TYPE_PREFIXES = [
+  "image/",
+  "audio/",
+  "video/",
+  "font/",
+  "application/zip",
+  "application/gzip",
+  "application/x-tar",
+  "application/octet-stream",
+  "application/vnd.ms-",
+  "application/vnd.openxmlformats-",
+  "application/x-rar",
+  "application/x-7z",
+  "application/x-bzip",
+  "application/epub",
+  "application/wasm",
 ];
 
 /**
@@ -32,9 +41,9 @@ const isBinaryContent = (contentType: string | null): boolean => {
     return false;
   }
 
-  return !TEXT_CONTENT_TYPES.some((type) => {
-    return contentType.toLowerCase().startsWith(type);
-  });
+  return BINARY_CONTENT_TYPE_PREFIXES.some((type) =>
+    contentType.toLowerCase().startsWith(type)
+  );
 };
 
 const HEAD_FETCH_TIMEOUT_MS = 5000;
