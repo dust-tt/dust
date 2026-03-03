@@ -246,7 +246,7 @@ export default function IntegrationsPageNextJS({
             },
             secondaryCTA: {
               label: "Talk to sales",
-              href: "/home/booking",
+              href: "/home/contact",
             },
             trustText: "14-day free trial. No credit card required.",
           }}
