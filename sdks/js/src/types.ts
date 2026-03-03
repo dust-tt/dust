@@ -3242,6 +3242,30 @@ export type GetMCPServerViewsQueryType = z.infer<
   typeof GetMCPServerViewsQuerySchema
 >;
 
+export const CallMCPToolRequestBodySchema = z.object({
+  toolName: z.string(),
+  arguments: z.record(z.unknown()).optional(),
+});
+
+export type CallMCPToolRequestBodyType = z.infer<
+  typeof CallMCPToolRequestBodySchema
+>;
+
+const CallMCPToolContentBlockSchema = z.object({
+  type: z.string(),
+  text: z.string().optional(),
+});
+
+export const CallMCPToolResponseSchema = z.object({
+  success: z.literal(true),
+  result: z.object({
+    content: z.array(CallMCPToolContentBlockSchema),
+    isError: z.boolean(),
+  }),
+});
+
+export type CallMCPToolResponseType = z.infer<typeof CallMCPToolResponseSchema>;
+
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
   spaceIds: z.array(z.string()),
