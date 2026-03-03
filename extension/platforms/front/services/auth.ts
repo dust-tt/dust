@@ -73,7 +73,7 @@ export class FrontAuthService extends AuthService {
     options: Record<string, string>
   ): Promise<{ code: string }> {
     const queryString = new URLSearchParams(options).toString();
-    const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
+    const authUrl = `${DUST_US_URL}/api/workos/login?${queryString}`;
 
     const result = await openAndWaitForPopup<{
       code: string;
@@ -168,7 +168,7 @@ export class FrontAuthService extends AuthService {
         success: true,
         accessToken: data.accessToken,
         refreshToken: data.refreshToken || "",
-        expiresIn: DEFAULT_TOKEN_EXPIRY,
+        expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY,
       });
 
       const claims = jwtDecode<Record<string, string>>(data.accessToken);
@@ -201,7 +201,7 @@ export class FrontAuthService extends AuthService {
       return true;
     }
 
-    const logoutUrl = `${regionInfo.url}/api/v1/auth/logout?${new URLSearchParams(
+    const logoutUrl = `${regionInfo.url}/api/workos/logout?${new URLSearchParams(
       queryParams
     )}`;
 

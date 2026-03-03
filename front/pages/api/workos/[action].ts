@@ -62,6 +62,8 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       returnTo,
       redirect_uri,
       workspaceId,
+      code_challenge,
+      code_challenge_method,
     } = req.query;
 
     const redirectUri =
@@ -139,6 +141,10 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
           : undefined,
       ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
       ...(isString(loginHint) ? { loginHint } : {}),
+      ...(isString(code_challenge) ? { codeChallenge: code_challenge } : {}),
+      ...(isString(code_challenge_method) && code_challenge_method === "S256"
+        ? { codeChallengeMethod: code_challenge_method }
+        : {}),
     });
 
     res.redirect(authorizationUrl);
@@ -185,7 +191,15 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
             clientId: config.getWorkOSClientId(),
           })
         : await authenticate(code);
-    return res.status(200).json(authResult);
+
+    const jwtPayload = JSON.parse(
+      Buffer.from(authResult.accessToken.split(".")[1], "base64").toString()
+    );
+    const expiresIn = jwtPayload.exp
+      ? jwtPayload.exp - Math.floor(Date.now() / 1000)
+      : undefined;
+
+    return res.status(200).json({ ...authResult, expiresIn });
   } catch (error) {
     logger.error({ error }, "Error during WorkOS authentication");
     return res.status(500).json({ error: "Authentication failed" });
