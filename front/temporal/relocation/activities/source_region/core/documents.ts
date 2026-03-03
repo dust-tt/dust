@@ -171,5 +171,5 @@ export async function getDataSourceDocuments({
 }
 
 export async function getRegionDustFacingUrl() {
-  return config.getClientFacingUrl();
+  return config.getApiBaseUrl();
 }

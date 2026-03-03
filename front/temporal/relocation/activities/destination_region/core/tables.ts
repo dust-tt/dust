@@ -42,7 +42,7 @@ export async function processDataSourceTables({
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
-  const destRegionDustFacingUrl = config.getClientFacingUrl();
+  const destRegionDustFacingUrl = config.getApiBaseUrl();
 
   const res = await concurrentExecutor(
     data.blobs.tables,

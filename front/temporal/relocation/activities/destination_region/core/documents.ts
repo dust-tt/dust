@@ -44,7 +44,7 @@ export async function processDataSourceDocuments({
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
   const credentials = dustManagedCredentials();
-  const destRegionDustFacingUrl = config.getClientFacingUrl();
+  const destRegionDustFacingUrl = config.getApiBaseUrl();
 
   const res = await concurrentExecutor(
     data.blobs.documents,

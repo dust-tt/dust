@@ -321,7 +321,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       sanitizedReturnTo &&
       sanitizedReturnTo.startsWith("/api/login?inviteToken=")
     ) {
-      const inviteUrl = new URL(sanitizedReturnTo, config.getClientFacingUrl());
+      const inviteUrl = new URL(sanitizedReturnTo, config.getApiBaseUrl());
       const inviteToken = inviteUrl.searchParams.get("inviteToken");
       if (inviteToken) {
         const inviteRes =
@@ -485,7 +485,7 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const validatedReturnTo = validateRelativePath(returnTo);
   const sanitizedReturnTo = validatedReturnTo.valid
     ? validatedReturnTo.sanitizedPath
-    : config.getClientFacingUrl();
+    : config.getStaticWebsiteUrl();
 
   redirectTo(res, sanitizedReturnTo);
 }

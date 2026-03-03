@@ -142,7 +142,7 @@ async function handler(
       );
       if (result.isErr()) {
         return res.status(400).json({
-          redirectUrl: `${config.getClientFacingUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${result.error.code}`)}`,
+          redirectUrl: `${config.getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${result.error.code}`)}`,
         });
       }
 

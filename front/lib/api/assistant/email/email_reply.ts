@@ -244,7 +244,7 @@ export async function sendEmailReplyOnCompletion(
       context.workspaceId,
       conversation.sId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     );
     const fullHtmlContent = `<div><div>${htmlContent}</div><br/><a href="${conversationLink}">Open in Dust</a></div>`;
 

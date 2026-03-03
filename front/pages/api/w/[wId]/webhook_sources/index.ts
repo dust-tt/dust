@@ -199,7 +199,7 @@ async function handler(
       if (provider && connectionId && remoteMetadata) {
         // Allow redirection to public URL in local dev for webhook registrations.
         const baseUrl =
-          process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getClientFacingUrl();
+          process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getApiBaseUrl();
         const webhookUrl = buildWebhookUrl({
           apiBaseUrl: baseUrl,
           workspaceId: workspace.sId,
