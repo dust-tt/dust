@@ -73,7 +73,7 @@ export class FrontAuthService extends AuthService {
     options: Record<string, string>
   ): Promise<{ code: string }> {
     const queryString = new URLSearchParams(options).toString();
-    const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
+    const authUrl = `${DUST_US_URL}/api/workos/login?${queryString}`;
 
     const result = await openAndWaitForPopup<{
       code: string;
@@ -139,7 +139,7 @@ export class FrontAuthService extends AuthService {
         code: result.code,
         redirect_uri: FRONT_EXTENSION_URL,
       });
-      const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
+      const response = await fetch(`${DUST_US_URL}/api/workos/authenticate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -166,12 +166,12 @@ export class FrontAuthService extends AuthService {
       // Store tokens
       const tokens = await this.saveTokens({
         success: true,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || "",
-        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken || "",
+        expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY,
       });
 
-      const claims = jwtDecode<Record<string, string>>(data.access_token);
+      const claims = jwtDecode<Record<string, string>>(data.accessToken);
 
       const regionInfo = getRegionInfoFromClaims(claims);
 
@@ -201,7 +201,7 @@ export class FrontAuthService extends AuthService {
       return true;
     }
 
-    const logoutUrl = `${regionInfo.url}/api/v1/auth/logout?${new URLSearchParams(
+    const logoutUrl = `${regionInfo.url}/api/workos/logout?${new URLSearchParams(
       queryParams
     )}`;
 
@@ -263,7 +263,7 @@ export class FrontAuthService extends AuthService {
       }
 
       const response = await fetch(
-        `${regionInfo.url}/api/v1/auth/authenticate`,
+        `${regionInfo.url}/api/workos/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },

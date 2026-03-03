@@ -617,7 +617,7 @@ const refreshToken = async (
           success: true,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken || refreshToken,
-          expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
           authentication_method: data.authenticationMethod,
         });
       });
@@ -667,7 +667,7 @@ const exchangeCodeForTokens = async (
       success: true,
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
-      expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
       authentication_method: data.authenticationMethod,
     };
   } catch (error) {
