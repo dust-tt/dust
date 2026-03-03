@@ -16,8 +16,13 @@ const metadata = {
   modelId: "noop" as const,
 };
 
+interface NoopRequest {
+  type: "noop_request";
+  lastUserMessage: string;
+}
+
 // NoopLLM is a dummy LLM that can respond to special commands.
-export class NoopLLM extends LLM {
+export class NoopLLM extends LLM<NoopRequest> {
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: "noop" }
@@ -25,10 +30,9 @@ export class NoopLLM extends LLM {
     super(auth, "noop", llmParameters);
   }
 
-  async *internalStream({
+  protected buildRequestPayload({
     conversation,
-    prompt: _prompt,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): NoopRequest {
     const lastUserMessage =
       conversation.messages
         .slice()
@@ -40,13 +44,17 @@ export class NoopLLM extends LLM {
         .split("@noop")[1]
         ?.trim() ?? "";
 
+    return { type: "noop_request", lastUserMessage };
+  }
+
+  protected async *sendRequest(payload: NoopRequest): AsyncGenerator<LLMEvent> {
     let responseText: string;
 
     // Determine response based on the message content.
-    if (lastUserMessage === "long message") {
+    if (payload.lastUserMessage === "long message") {
       // Generate a very long message.
       responseText = "This is a very long message. ".repeat(100);
-    } else if (lastUserMessage === "help") {
+    } else if (payload.lastUserMessage === "help") {
       // Display usage instructions.
       responseText =
         "Noop agent usage:\n" +
