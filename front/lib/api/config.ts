@@ -1,3 +1,7 @@
+import {
+  DUST_SANDBOX_IMAGE_ID,
+  type SandboxImageId,
+} from "@app/lib/api/sandbox/image/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
@@ -473,18 +477,15 @@ const config = {
     );
   },
   // E2B Sandbox.
-  getE2BSandboxConfig: ():
-    | { apiKey: string; templateId: string; domain: string | undefined }
-    | undefined => {
-    const apiKey = EnvironmentConfig.getOptionalEnvVariable("E2B_API_KEY");
-    const templateId =
-      EnvironmentConfig.getOptionalEnvVariable("E2B_TEMPLATE_ID");
-    if (!apiKey || !templateId) {
-      return undefined;
-    }
+  getE2BSandboxConfig: (): {
+    apiKey: string;
+    imageId: SandboxImageId;
+    domain: string | undefined;
+  } => {
+    const apiKey = EnvironmentConfig.getEnvVariable("E2B_API_KEY");
     return {
       apiKey,
-      templateId,
+      imageId: DUST_SANDBOX_IMAGE_ID,
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
