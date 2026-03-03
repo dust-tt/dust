@@ -132,8 +132,8 @@ function CopilotSuggestionsProviderContent({
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
   const prevSuggestionCountRef = useRef(0);
 
-  // Ref for processed (accepted/rejected/outdated) suggestions - prevents card "blink"
-  // without causing re-render cascades. Visual updates go through SWR optimistic mutations.
+  // We need to keep track of the suggestions that have been processed locally (accepted/rejected/outdated),
+  // and put in ref to prevent re-render cascades.
   const processedSuggestionsRef = useRef<Map<string, AgentSuggestionType>>(
     new Map()
   );
@@ -343,7 +343,7 @@ function CopilotSuggestionsProviderContent({
       return;
     }
 
-    // Pending = from SWR cache with state pending, excluding those the ref marks as rejected/approved.
+    // Pending = from SWR cache with state pending, excluding those already processed.
     const currentPendingIds = new Set(
       suggestions
         .filter((s) => s.state === "pending" && s.kind === "instructions")
@@ -400,7 +400,6 @@ function CopilotSuggestionsProviderContent({
     if (outdatedSuggestions.length > 0) {
       const outdatedSuggestionIds = outdatedSuggestions.map((s) => s.sId);
 
-      // Persist in ref.
       for (const s of outdatedSuggestions) {
         processedSuggestionsRef.current.set(s.sId, { ...s, state: "outdated" });
       }
@@ -507,8 +506,6 @@ function CopilotSuggestionsProviderContent({
 
       const { sId } = suggestion;
 
-      // Persist in ref so the suggestion is still found after
-      // SWR revalidation removes it from the pending response.
       processedSuggestionsRef.current.set(sId, {
         ...suggestion,
         state: "approved",
@@ -582,15 +579,12 @@ function CopilotSuggestionsProviderContent({
 
       const { sId } = suggestion;
 
-      // Persist in ref so the suggestion is still found after
-      // SWR revalidation removes it from the pending response.
+      // Optimistic update: add it to processedSuggestionsRef and remove from the pending SWR cache instantly.
       processedSuggestionsRef.current.set(sId, {
         ...suggestion,
         state: "rejected",
       });
-
-      // Optimistic update: remove from the pending SWR cache instantly.
-      // `revalidate: false` — wait for the API call to confirm or rollback.
+ 
       void mutatePending(
         (current) => {
           if (!current) {
@@ -601,7 +595,7 @@ function CopilotSuggestionsProviderContent({
             suggestions: current.suggestions.filter((s) => s.sId !== sId),
           };
         },
-        { revalidate: false }
+        { revalidate: false } // `revalidate: false` — wait for the API call to confirm or rollback.
       );
 
       // Send the state change to the server.
@@ -655,7 +649,6 @@ function CopilotSuggestionsProviderContent({
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
 
-      // Persist in ref so approved cards are still found after SWR revalidation.
       for (const s of instructionSuggestions) {
         processedSuggestionsRef.current.set(s.sId, {
           ...s,
@@ -743,16 +736,14 @@ function CopilotSuggestionsProviderContent({
 
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
 
-      // Persist in ref so rejected cards are still found after SWR revalidation.
       for (const s of instructionSuggestions) {
+        // Optimistic update: add it to processedSuggestionsRef and remove from the pending SWR cache instantly.
         processedSuggestionsRef.current.set(s.sId, {
           ...s,
           state: "rejected",
         });
       }
 
-      // Optimistic update: remove from the pending SWR cache instantly.
-      // `revalidate: false` — wait for the API call to confirm or rollback.
       void mutatePending(
         (current) => {
           if (!current) {
@@ -765,12 +756,9 @@ function CopilotSuggestionsProviderContent({
             ),
           };
         },
-        { revalidate: false }
+        { revalidate: false } // `revalidate: false` — wait for the API call to confirm or rollback.
       );
 
-      // Send the state change to the server.
-      // The API updates all suggestions in a single SQL statement, so it's
-      // all-or-nothing — no partial failures. Safe to revert everything on error.
       const result = await patchSuggestions(
         instructionSuggestionIds,
         "rejected"
