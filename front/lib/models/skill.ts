@@ -59,8 +59,7 @@ const SKILL_MODEL_ATTRIBUTES = {
   },
   source: {
     type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: "manual",
+    allowNull: true,
   },
   sourceMetadata: {
     type: DataTypes.JSONB,
