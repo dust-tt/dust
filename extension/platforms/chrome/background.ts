@@ -18,6 +18,16 @@ import { jwtDecode } from "jwt-decode";
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
+// URL prefixes that are restricted for content script injection
+const RESTRICTED_URL_PREFIXES = [
+  "chrome://",
+  "chrome-extension://",
+  "edge://",
+  "about:",
+  "brave://",
+  "opera://",
+] as const;
+
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
 
@@ -34,6 +44,132 @@ const state: {
 };
 
 /**
+ * Helper function to check if the browser supports the Side Panel API.
+ */
+const isSidePanelSupported = (): boolean => {
+  return typeof chrome.sidePanel !== "undefined";
+};
+
+// In-memory cache (valid for this service worker's lifetime). Persisted to
+// storage so detection survives service worker restarts.
+let nativeSidePanelCache: boolean | null = null;
+
+// Tracks whether we are currently inside the first-time native side panel
+// probe. While true the persistent onConnect handler must not update
+// nativeSidePanelCache, because the probe may be seeing a phantom connection
+// from Arc and will set the correct value itself after the probe resolves.
+let isProbing = false;
+
+// Keeps a reference to the active native side panel port so we can send a
+// close request when the user clicks the toolbar button again. Null when the
+// panel is closed (or after a service-worker restart).
+let activeSidePanelPort: chrome.runtime.Port | null = null;
+
+/**
+ * Opens the native side panel if supported and actually functional.
+ *
+ * On first call, opens the panel and waits up to 800 ms to see whether the
+ * side panel UI connects back via the "sidepanel-connection" port. Arc exposes
+ * the chrome.sidePanel API but resolves open() without ever showing a UI, so
+ * this probe reliably distinguishes Chrome (connects) from Arc (times out).
+ *
+ * The result is cached in memory for the lifetime of this service worker
+ * instance. The probe runs once per SW start.
+ *
+ * Returns true if the native side panel was opened, false to fall back to the
+ * content script sidebar.
+ */
+const tryOpenNativeSidePanel = async (windowId: number): Promise<boolean> => {
+  if (!isSidePanelSupported()) {
+    return false;
+  }
+
+  // Use in-memory cache when available (valid for this service worker's
+  // lifetime). The probe runs once per SW start; the cost (~800 ms worst-case)
+  // is acceptable on the first toolbar click after each SW restart.
+  if (nativeSidePanelCache !== null) {
+    if (nativeSidePanelCache) {
+      void chrome.sidePanel.open({ windowId });
+    }
+    return nativeSidePanelCache;
+  }
+
+  // First-time detection: open the panel and verify the connection persists.
+  //
+  // Some browsers (e.g. Arc) expose chrome.sidePanel but load the panel
+  // invisibly, causing a sidepanel-connection port to fire and then immediately
+  // disconnect. A real side panel (Chrome) stays connected for as long as the
+  // panel is open. We use a two-phase check:
+  //   1. Wait up to 800 ms for a sidepanel-connection port.
+  //   2. If one arrives, wait 300 ms to see if it stays connected.
+  // Only if both conditions are met do we consider the native panel functional.
+  //
+  // isProbing prevents the persistent onConnect handler from treating the
+  // phantom Arc connection as a real native side panel.
+  isProbing = true;
+  void chrome.sidePanel.open({ windowId });
+  const { connected, port: probePort } = await new Promise<{
+    connected: boolean;
+    port: chrome.runtime.Port | null;
+  }>((resolve) => {
+    const timeoutTimer = setTimeout(() => {
+      chrome.runtime.onConnect.removeListener(portListener);
+      resolve({ connected: false, port: null });
+    }, 800);
+
+    const portListener = (port: chrome.runtime.Port) => {
+      if (port.name === "sidepanel-connection") {
+        clearTimeout(timeoutTimer);
+        chrome.runtime.onConnect.removeListener(portListener);
+
+        // Panel connected — check that it stays connected (real UI) vs
+        // disconnects immediately (invisible/phantom panel in Arc).
+        const persistTimer = setTimeout(() => {
+          port.onDisconnect.removeListener(onEarlyDisconnect);
+          resolve({ connected: true, port });
+        }, 300);
+
+        const onEarlyDisconnect = () => {
+          clearTimeout(persistTimer);
+          resolve({ connected: false, port: null });
+        };
+        port.onDisconnect.addListener(onEarlyDisconnect);
+      }
+    };
+
+    chrome.runtime.onConnect.addListener(portListener);
+  });
+  isProbing = false;
+
+  // For Chrome (connected = true), track the open port so the action handler
+  // can toggle the panel closed later.
+  if (connected && probePort) {
+    activeSidePanelPort = probePort;
+    void platform.storage.set("extensionReady", true);
+    probePort.onDisconnect.addListener(async () => {
+      activeSidePanelPort = null;
+      await platform.storage.set("extensionReady", false);
+      state.lastHandler = undefined;
+    });
+  }
+
+  nativeSidePanelCache = connected;
+  return connected;
+};
+
+/**
+ * Helper function to check if we can inject content script into a URL or open the side panel
+ */
+const canOpenExtension = (url: string | undefined): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  // Block restricted URLs (browser-specific and extension URLs)
+  return !RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix));
+};
+
+/**
  * Listener for force update mechanism.
  */
 chrome.runtime.onUpdateAvailable.addListener(async (details) => {
@@ -46,11 +182,19 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
 });
 
 /**
- * Listener to open/close the side panel when the user clicks on the extension icon.
+ * Listener to set up context menus when the extension is installed.
  */
+// Always keep openPanelOnActionClick false so chrome.action.onClicked fires
+// in every browser. We open the side panel (or content script sidebar) manually
+// inside that handler, using a try-catch to detect browsers like Arc that expose
+// the chrome.sidePanel API but don't implement the native side panel UI.
+if (isSidePanelSupported()) {
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void platform.storage.set("extensionReady", false);
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  nativeSidePanelCache = null;
   chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
@@ -70,12 +214,80 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 /**
+ * Inject content script programmatically if not already loaded
+ */
+const ensureContentScriptLoaded = async (tabId: number): Promise<boolean> => {
+  try {
+    // Try to send a ping message to check if content script is loaded
+    await chrome.tabs.sendMessage(tabId, { action: "ping" });
+    return true;
+  } catch (_error) {
+    // Content script not loaded, inject it now
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content-script.js"],
+      });
+      // Wait a bit for the script to initialize
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return true;
+    } catch (injectError) {
+      console.error("Failed to inject content script:", injectError);
+      return false;
+    }
+  }
+};
+
+/**
+ * Listener to toggle the sidebar when the user clicks on the extension icon.
+ */
+chrome.action.onClicked.addListener(async (tab) => {
+  // Fast path for Chrome (native side panel already confirmed): toggle it.
+  // If the panel is open, ask it to close itself; otherwise open it.
+  if (nativeSidePanelCache === true) {
+    if (!tab.id || !canOpenExtension(tab.url)) {
+      console.log("Cannot open extension on this tab:", tab.url);
+      return;
+    }
+    if (activeSidePanelPort) {
+      activeSidePanelPort.postMessage({ type: "CLOSE_SIDE_PANEL" });
+    } else {
+      void chrome.sidePanel.open({ windowId: tab.windowId });
+    }
+    return;
+  }
+
+  // For the first click, go through the full detection flow.
+  if (await tryOpenNativeSidePanel(tab.windowId)) {
+    return;
+  }
+
+  if (!tab.id || !canOpenExtension(tab.url)) {
+    console.log("Cannot open extension on this tab:", tab.url);
+    return;
+  }
+
+  const loaded = await ensureContentScriptLoaded(tab.id);
+  if (!loaded) {
+    console.error("Failed to load content script");
+    return;
+  }
+
+  try {
+    await chrome.tabs.sendMessage(tab.id, { action: "toggleSidebar" });
+  } catch (error) {
+    console.error("Failed to toggle sidebar:", error);
+  }
+});
+
+/**
  * Util & listeners to disable context menu items based on the domain.
  */
 const shouldDisableContextMenuForDomain = async (
   url: string
 ): Promise<boolean> => {
-  if (url.startsWith("chrome://")) {
+  // Disable context menu for restricted URLs
+  if (RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix))) {
     return true;
   }
 
@@ -133,11 +345,27 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
 chrome.runtime.onConnect.addListener(async (port) => {
   if (port.name === "sidepanel-connection") {
+    // Skip connections that arrive during the first-time probe — those are
+    // handled (and may be phantom Arc connections) by the probe's own listener.
+    if (isProbing) {
+      return;
+    }
     console.log("Sidepanel is there");
+    nativeSidePanelCache = true;
+    activeSidePanelPort = port;
     void platform.storage.set("extensionReady", true);
     port.onDisconnect.addListener(async () => {
       // This fires when sidepanel closes
       console.log("Sidepanel was closed");
+      activeSidePanelPort = null;
+      await platform.storage.set("extensionReady", false);
+      state.lastHandler = undefined;
+    });
+  } else if (port.name === "content-script-connection") {
+    // Content-script sidebar (Arc and similar browsers). Only manage
+    // extensionReady — do NOT touch nativeSidePanelCache.
+    void platform.storage.set("extensionReady", true);
+    port.onDisconnect.addListener(async () => {
       await platform.storage.set("extensionReady", false);
       state.lastHandler = undefined;
     });
@@ -204,9 +432,19 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
   if (!isExtensionReady && tab) {
     // Store the handler for later use when the extension is ready.
     state.lastHandler = handler;
-    void chrome.sidePanel.open({
-      windowId: tab.windowId,
-    });
+    if (await tryOpenNativeSidePanel(tab.windowId)) {
+      // Native side panel opened — it will fire INPUT_BAR_STATUS when ready.
+    } else if (tab.id && canOpenExtension(tab.url)) {
+      // Open the sidebar via content script
+      const loaded = await ensureContentScriptLoaded(tab.id);
+      if (loaded) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, { action: "openSidebar" });
+        } catch (error) {
+          console.error("Failed to open sidebar:", error);
+        }
+      }
+    }
   } else {
     void handler();
   }
@@ -408,75 +646,92 @@ chrome.runtime.onMessageExternal.addListener((request) => {
     return true;
   }
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      void chrome.sidePanel
-        .open({
-          windowId: tabs[0].windowId,
-        })
-        .then(() => {
-          chrome.storage.local.get(
-            ["extensionReady", "selectedWorkspace"],
-            ({ extensionReady, selectedWorkspace }) => {
-              if (request.workspaceId != selectedWorkspace) {
-                log("[onMessageExternal] User selected another workspace.");
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const tab = tabs[0];
+    if (!tab) {
+      log("[onMessageExternal] No active tab found");
+      return;
+    }
+
+    const openSidebar = async () => {
+      if (await tryOpenNativeSidePanel(tab.windowId)) {
+        return;
+      }
+      if (!tab.id || !canOpenExtension(tab.url)) {
+        log("[onMessageExternal] Cannot inject content script in this tab");
+        return;
+      }
+      const loaded = await ensureContentScriptLoaded(tab.id);
+      if (!loaded) {
+        log("[onMessageExternal] Failed to load content script");
+        return;
+      }
+      await chrome.tabs.sendMessage(tab.id, { action: "openSidebar" });
+    };
+
+    try {
+      await openSidebar();
+
+      chrome.storage.local.get(
+        ["extensionReady", "selectedWorkspace"],
+        ({ extensionReady, selectedWorkspace }) => {
+          if (request.workspaceId != selectedWorkspace) {
+            log("[onMessageExternal] User selected another workspace.");
+            return;
+          }
+
+          const sendMessage = () => {
+            const params = JSON.stringify({
+              conversationId: request.conversationId,
+            });
+            void chrome.runtime.sendMessage({
+              type: "EXT_ROUTE_CHANGE",
+              pathname: "/run",
+              search: `?${params}`,
+            });
+          };
+
+          if (!extensionReady) {
+            let retries = 0;
+            const MAX_RETRIES = 15;
+            const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
+
+            const checkReady = () => {
+              if (retries >= MAX_RETRIES) {
+                log(
+                  "[onMessageExternal] Max retries reached waiting for extension ready."
+                );
                 return;
               }
 
-              const sendMessage = () => {
-                const params = JSON.stringify({
-                  conversationId: request.conversationId,
-                });
-                void chrome.runtime.sendMessage({
-                  type: "EXT_ROUTE_CHANGE",
-                  pathname: "/run",
-                  search: `?${params}`,
-                });
-              };
-
-              if (!extensionReady) {
-                let retries = 0;
-                const MAX_RETRIES = 15;
-                const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
-
-                const checkReady = () => {
-                  if (retries >= MAX_RETRIES) {
+              chrome.storage.local.get(
+                ["extensionReady"],
+                ({ extensionReady }) => {
+                  if (chrome.runtime.lastError) {
                     log(
-                      "[onMessageExternal] Max retries reached waiting for extension ready."
+                      "[onMessageExternal] Error checking extension ready:",
+                      chrome.runtime.lastError
                     );
                     return;
                   }
 
-                  chrome.storage.local.get(
-                    ["extensionReady"],
-                    ({ extensionReady }) => {
-                      if (chrome.runtime.lastError) {
-                        log(
-                          "[onMessageExternal] Error checking extension ready:",
-                          chrome.runtime.lastError
-                        );
-                        return;
-                      }
-
-                      if (extensionReady) {
-                        sendMessage();
-                      } else {
-                        retries++;
-                        setTimeout(checkReady, RETRY_INTERVAL);
-                      }
-                    }
-                  );
-                };
-                checkReady();
-              } else {
-                sendMessage();
-              }
-            }
-          );
-        })
-        .catch((err) => {
-          log("[onMessageExternal] Error opening side panel:", err);
-        });
+                  if (extensionReady) {
+                    sendMessage();
+                  } else {
+                    retries++;
+                    setTimeout(checkReady, RETRY_INTERVAL);
+                  }
+                }
+              );
+            };
+            checkReady();
+          } else {
+            sendMessage();
+          }
+        }
+      );
+    } catch (err) {
+      log("[onMessageExternal] Error opening sidebar:", err);
     }
   });
 
