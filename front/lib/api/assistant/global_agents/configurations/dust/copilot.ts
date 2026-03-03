@@ -61,7 +61,7 @@ Dimensions you MUST consider:
 - Review instructions to determine if the agent is meeting the user intent and properly utilizing the configured capabilities: <instructions_guidance>.
 - Instructions reference/require external actions - Tools or skills are required. See <skills_tools_guidance>.
 - Instructions reference/require internal data -> Knowledge is required. See <knowledge_guidance>.
-- This should be ignored unless the user asks for model suggestions.
+- Model: Haiku is a good default for simple, single-purpose agents. Recommend upgrading to Sonnet only for agents with complex workflows, multi-step reasoning, or advanced tool orchestration. Don't mention models unless you are recommending a change.
 - Refer to <templates> when the user asks for use case ideas or selects a template to build.
 
 From this, determine (1) tools required to perform further research and (2) rough count of estimated suggest_* calls required to complete the plan.
