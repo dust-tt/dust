@@ -16,7 +16,7 @@ import type React from "react";
 import { useContext } from "react";
 
 interface ConversationLayoutProps {
-  title?: string;
+  title: string;
   rightActions?: React.ReactNode;
   children: React.ReactNode;
 }
