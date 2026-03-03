@@ -243,17 +243,14 @@ export function CreateMCPServerDialog({
   const hasStaticForm = !!staticFormComponent;
 
   const staticCredentialConfig: StaticCredentialConfig | undefined =
-    useMemo(() => {
-      if (!staticFormComponent) {
-        return undefined;
-      }
-      return {
-        owner,
-        formRef: staticFormRef,
-        onValidityChange: setIsStaticFormValid,
-        FormComponent: staticFormComponent,
-      };
-    }, [owner, staticFormComponent]);
+    staticFormComponent
+      ? {
+          owner,
+          formRef: staticFormRef,
+          onValidityChange: setIsStaticFormValid,
+          FormComponent: staticFormComponent,
+        }
+      : undefined;
 
   const handleCreateServerAndSubmitStaticCredentials = async () => {
     if (!internalMCPServer || !authorization || !useCase) {
@@ -263,55 +260,52 @@ export function CreateMCPServerDialog({
     setIsLoading(true);
     setExternalIsLoading(true);
 
-    // Create the internal server without an OAuth connection.
-    const createRes = await createInternalMCPServer({
-      name: internalMCPServer.name,
-      useCase,
-      includeGlobal: true,
-    });
-
-    if (createRes.isErr()) {
-      sendNotification({
-        type: "error",
-        title: "Failed to create server",
-        description: createRes.error.message,
+    try {
+      // Create the internal server without an OAuth connection.
+      const createRes = await createInternalMCPServer({
+        name: internalMCPServer.name,
+        useCase,
+        includeGlobal: true,
       });
+
+      if (createRes.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to create server",
+          description: createRes.error.message,
+        });
+        return;
+      }
+
+      const createdServer = createRes.value.server;
+
+      // Submit the static credential form — returns credentialId or null.
+      const credentialId = await staticFormRef.current?.submit();
+      if (!credentialId) {
+        return;
+      }
+
+      const connectionCreationRes = await createMCPServerConnection({
+        credentialId,
+        mcpServerId: createdServer.sId,
+        mcpServerDisplayName: getMcpServerDisplayName(createdServer),
+        provider: authorization.provider,
+      });
+      if (!connectionCreationRes) {
+        return;
+      }
+
+      sendNotification({
+        title: "Success",
+        type: "success",
+        description: `${getMcpServerDisplayName(createdServer)} added successfully.`,
+      });
+      setMCPServerToShow(createdServer);
+      setIsOpen(false);
+    } finally {
       setIsLoading(false);
       setExternalIsLoading(false);
-      return;
     }
-
-    const createdServer = createRes.value.server;
-
-    // Submit the static credential form — returns credentialId or null.
-    const credentialId = await staticFormRef.current?.submit();
-    if (!credentialId) {
-      setIsLoading(false);
-      setExternalIsLoading(false);
-      return;
-    }
-
-    const connectionCreationRes = await createMCPServerConnection({
-      credentialId,
-      mcpServerId: createdServer.sId,
-      mcpServerDisplayName: getMcpServerDisplayName(createdServer),
-      provider: authorization.provider,
-    });
-    if (!connectionCreationRes) {
-      setIsLoading(false);
-      setExternalIsLoading(false);
-      return;
-    }
-
-    sendNotification({
-      title: "Success",
-      type: "success",
-      description: `${getMcpServerDisplayName(createdServer)} added successfully.`,
-    });
-    setMCPServerToShow(createdServer);
-    setExternalIsLoading(false);
-    setIsLoading(false);
-    setIsOpen(false);
   };
 
   // When OAuth is required (authorization is set), form is valid when:

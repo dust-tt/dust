@@ -227,17 +227,14 @@ export function ConnectMCPServerDialog({
   const hasStaticForm = !!staticFormComponent;
 
   const staticCredentialConfig: StaticCredentialConfig | undefined =
-    useMemo(() => {
-      if (!staticFormComponent) {
-        return undefined;
-      }
-      return {
-        owner,
-        formRef: staticFormRef,
-        onValidityChange: setIsStaticFormValid,
-        FormComponent: staticFormComponent,
-      };
-    }, [owner, staticFormComponent]);
+    staticFormComponent
+      ? {
+          owner,
+          formRef: staticFormRef,
+          onValidityChange: setIsStaticFormValid,
+          FormComponent: staticFormComponent,
+        }
+      : undefined;
 
   // Form is valid when: use case selected AND either OAuth or static form is valid.
   const isFormValid =
@@ -251,37 +248,34 @@ export function ConnectMCPServerDialog({
     setIsLoading(true);
     setExternalIsLoading(true);
 
-    const credentialId = await staticFormRef.current?.submit();
-    if (!credentialId) {
+    try {
+      const credentialId = await staticFormRef.current?.submit();
+      if (!credentialId) {
+        return;
+      }
+
+      const connectionCreationRes = await createMCPServerConnection({
+        credentialId,
+        mcpServerId: mcpServerView.server.sId,
+        mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
+        provider: authorization.provider,
+      });
+      if (!connectionCreationRes) {
+        return;
+      }
+
+      const updateServerViewRes = await updateServerView({
+        oAuthUseCase: useCase,
+      });
+      if (!updateServerViewRes) {
+        return;
+      }
+
+      setIsOpen(false);
+    } finally {
       setIsLoading(false);
       setExternalIsLoading(false);
-      return;
     }
-
-    const connectionCreationRes = await createMCPServerConnection({
-      credentialId,
-      mcpServerId: mcpServerView.server.sId,
-      mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
-      provider: authorization.provider,
-    });
-    if (!connectionCreationRes) {
-      setIsLoading(false);
-      setExternalIsLoading(false);
-      return;
-    }
-
-    const updateServerViewRes = await updateServerView({
-      oAuthUseCase: useCase,
-    });
-    if (!updateServerViewRes) {
-      setIsLoading(false);
-      setExternalIsLoading(false);
-      return;
-    }
-
-    setExternalIsLoading(false);
-    setIsLoading(false);
-    setIsOpen(false);
   };
 
   const handleRightButtonClick = (e: React.MouseEvent) => {
