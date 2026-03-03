@@ -92,7 +92,11 @@ export async function retryBlockedActions(
     messageId: string;
   }
 ): Promise<Result<void, Error | DustError<"agent_loop_already_running">>> {
-  const { sId: conversationId, title: conversationTitle } = conversation;
+  const {
+    sId: conversationId,
+    title: conversationTitle,
+    branchId: conversationBranchId,
+  } = conversation;
 
   const getUserMessageIdRes = await findUserMessageForRetry(
     auth,
@@ -121,6 +125,7 @@ export async function retryBlockedActions(
       agentMessageVersion,
       conversationId,
       conversationTitle,
+      conversationBranchId,
       userMessageId,
       userMessageVersion,
     },

@@ -96,6 +96,19 @@ export type VirtuosoMessageListContext = {
   projectSpaceName?: string;
 };
 
+export const areSameRankAndBranch = (
+  a: VirtuosoMessage,
+  b: VirtuosoMessage
+): boolean => {
+  return a.rank === b.rank && a.branchId === b.branchId;
+};
+
+export const getPredicateForRankAndBranch = (
+  m: VirtuosoMessage
+): ((m: VirtuosoMessage) => boolean) => {
+  return (m2: VirtuosoMessage) => areSameRankAndBranch(m, m2);
+};
+
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
   return (
     origin && (origin === "triggered" || origin === "triggered_programmatic")

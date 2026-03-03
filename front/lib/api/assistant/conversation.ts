@@ -674,6 +674,8 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
+    let nextMessageRank: number | undefined;
+
     // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
     // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
     // - Message has user mentions, we don't support multiple users in a branch yet.
@@ -692,27 +694,32 @@ export async function postUserMessage(
         logger.info(
           "Conversation has no content, cannot create branch as the start of the conversation."
         );
-      } else if (
-        conversation.content[conversation.content.length - 1].length === 0
-      ) {
-        logger.error(
-          "Last message in conversation has no content, cannot create branch."
-        );
       } else {
-        const branch = await ConversationBranchResource.makeNew(
-          auth,
-          {
-            conversationId: conversation.id,
-            previousMessageId:
-              conversation.content[conversation.content.length - 1].at(-1)!.id,
-            state: "open",
-            userId: user.id,
-          },
-          t
-        );
+        // Get the last message in the conversation.
+        const previousMessage =
+          conversation.content[conversation.content.length - 1].at(-1);
+        if (!previousMessage) {
+          logger.error(
+            "Last message in conversation has no content, cannot create branch."
+          );
+        } else {
+          // Create a new branch for the conversation.
+          const branch = await ConversationBranchResource.makeNew(
+            auth,
+            {
+              conversationId: conversation.id,
+              previousMessageId: previousMessage.id,
+              state: "open",
+              userId: user.id,
+            },
+            t
+          );
 
-        // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
-        conversation.branchId = branch.sId;
+          // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+          conversation.branchId = branch.sId;
+          // Set the next message rank to the rank of the previous message plus one.
+          nextMessageRank = previousMessage.rank + 1;
+        }
       }
     }
 
@@ -727,7 +734,7 @@ export async function postUserMessage(
       );
     }
 
-    let nextMessageRank =
+    nextMessageRank ??=
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
           workspaceId: owner.id,
@@ -1474,6 +1481,7 @@ export async function retryAgentMessage(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
+      conversationBranchId: conversation.branchId,
       userMessageId: userMessage.sId,
       userMessageVersion: userMessage.version,
       userMessageOrigin: userMessage.context.origin,

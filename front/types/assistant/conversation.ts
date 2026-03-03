@@ -162,6 +162,7 @@ export type UserMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
+  branchId: string | null;
   user: UserType | null;
   mentions: MentionType[];
   richMentions: RichMentionWithStatus[];
@@ -226,6 +227,7 @@ export type BaseAgentMessageType = {
   sId: string;
   version: number;
   rank: number;
+  branchId: string | null;
   created: number;
   completedTs: number | null;
   parentMessageId: string;

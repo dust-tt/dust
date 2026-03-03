@@ -46,6 +46,7 @@ export type BaseContentFragmentType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
+  branchId: string | null;
   sourceUrl: string | null;
   title: string;
   contentType: SupportedContentFragmentType;

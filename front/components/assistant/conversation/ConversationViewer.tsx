@@ -11,6 +11,8 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
+  areSameRankAndBranch,
+  getPredicateForRankAndBranch,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -112,11 +114,55 @@ function customSmoothScroll() {
     easing: easeOutQuint,
   };
 }
-/**
- *
- * @param isInModal is the conversation happening in a side modal, i.e. when testing an agent?
- * @returns
- */
+
+export function getBranchedInsertIndex(
+  data: VirtuosoMessage[],
+  newMessage: VirtuosoMessage
+): number {
+  // Branches (other than the new message's branch) that already contain
+  // a message with the same rank. We want to keep *all* messages from
+  // those branches contiguous and insert after their last message.
+  const blockingBranches = new Set<string>();
+  for (const m of data) {
+    if (
+      m.rank === newMessage.rank &&
+      m.branchId !== null &&
+      m.branchId !== undefined &&
+      m.branchId !== newMessage.branchId
+    ) {
+      blockingBranches.add(m.branchId);
+    }
+  }
+
+  let insertIndex = 0;
+
+  for (let i = 0; i < data.length; i += 1) {
+    const m = data[i];
+    const branchId = m.branchId;
+
+    const isBlockingBranchMessage =
+      branchId !== null &&
+      branchId !== undefined &&
+      blockingBranches.has(branchId);
+
+    const isSameBranchPriorOrEqualRank =
+      branchId === newMessage.branchId && m.rank <= newMessage.rank;
+
+    if (isBlockingBranchMessage || isSameBranchPriorOrEqualRank) {
+      insertIndex = i + 1;
+    }
+  }
+
+  if (insertIndex > 0) {
+    return insertIndex;
+  }
+
+  // Fallback: original behavior – insert before the first message
+  // with a strictly greater rank, or append if none.
+  const rankOffset = data.findIndex((m) => m.rank > newMessage.rank);
+  return rankOffset === -1 ? data.length : rankOffset;
+}
+
 export const ConversationViewer = ({
   owner,
   user,
@@ -412,8 +458,7 @@ export const ConversationViewer = ({
           case "user_message_new":
             if (ref.current) {
               const userMessage = event.message;
-              const predicate = (m: VirtuosoMessage) =>
-                m.rank === userMessage.rank;
+              const predicate = getPredicateForRankAndBranch(userMessage);
 
               const exists = ref.current.data.find(predicate);
 
@@ -422,11 +467,10 @@ export const ConversationViewer = ({
                 // Can happen with fake user messages (like handover messages).
                 const scroll = userMessage.user?.sId !== user.sId;
 
-                // Find the first message with a rank greater than the user message to insert the new message at the correct position.
-                const offset = ref.current.data.findIndex(
-                  (m) => m.rank > userMessage.rank
-                );
-                if (offset !== -1) {
+                const currentData = ref.current.data.get();
+                const offset = getBranchedInsertIndex(currentData, userMessage);
+
+                if (offset < currentData.length) {
                   ref.current.data.insert([userMessage], offset, scroll);
                 } else {
                   ref.current.data.append([userMessage], scroll);
@@ -436,7 +480,7 @@ export const ConversationViewer = ({
                 // We only update if the version is greater or equals than the existing version.
                 if (exists.version <= event.message.version) {
                   ref.current.data.map((m) =>
-                    m.rank === userMessage.rank ? userMessage : m
+                    areSameRankAndBranch(m, userMessage) ? userMessage : m
                   );
                 }
               }
@@ -474,18 +518,19 @@ export const ConversationViewer = ({
               );
 
               // Replace the message in the exist list data, or append.
-              const predicate = (m: VirtuosoMessage) =>
-                m.rank === agentMessage.rank;
+              const predicate = getPredicateForRankAndBranch(agentMessage);
               const exists = ref.current.data.find(predicate);
 
               if (exists) {
                 ref.current.data.map((m) => (predicate(m) ? agentMessage : m));
               } else {
-                // Find the first message with a rank greater than the agent message to insert the new message at the correct position.
-                const offset = ref.current.data.findIndex(
-                  (m) => m.rank > agentMessage.rank
+                const currentData = ref.current.data.get();
+                const offset = getBranchedInsertIndex(
+                  currentData,
+                  agentMessage
                 );
-                if (offset !== -1) {
+
+                if (offset < currentData.length) {
                   ref.current.data.insert([agentMessage], offset);
                 } else {
                   ref.current.data.append([agentMessage]);
@@ -644,6 +689,7 @@ export const ConversationViewer = ({
             input,
             mentions,
             user,
+            branchId: null, // We can't know the branch id yet, it will be set when the message is created.
             rank,
             contentFragments,
           });
@@ -658,6 +704,7 @@ export const ConversationViewer = ({
                 userMessage: placeholderUserMsg,
                 mention,
                 rank,
+                branchId: null, // We can't know the branch id yet, it will be set when the message is created.
               })
             );
           }
@@ -718,9 +765,20 @@ export const ConversationViewer = ({
           contentFragments: contentFragmentsFromBackend,
         } = result.value;
 
+        // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
+        if (messageFromBackend.branchId) {
+          const placeHolderSids = [
+            placeholderUserMsg.sId,
+            ...placeholderAgentMessages.map((m) => m.sId),
+          ];
+          ref.current.data.findAndDelete((m) =>
+            placeHolderSids.includes(m.sId)
+          );
+        }
+
         // map() is how we update the state of virtuoso messages.
         ref.current.data.map((m) =>
-          m.rank === placeholderUserMsg.rank
+          areSameRankAndBranch(m, placeholderUserMsg)
             ? {
                 ...messageFromBackend,
                 contentFragments: contentFragmentsFromBackend,
@@ -788,13 +846,13 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
-      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}`;
+      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}-message-branchId-${data.branchId}`;
     },
     []
   );
 
   const itemIdentity = useCallback((item: VirtuosoMessage) => {
-    return `message-rank-${item.rank}`;
+    return `message-rank-${item.rank}-message-branchId-${item.branchId}`;
   }, []);
 
   const feedbacksByMessageId = useMemo(() => {
