@@ -126,7 +126,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       "By default (override=false), adds the provided tags to the existing ones without affecting them. " +
       "When override=true, all existing tags on the ticket are replaced by the provided list — " +
       "any tag not included in the list will be permanently removed. " +
-      "This is the only way to remove a tag: set override=true and omit the tag from the list.",
+      "To remove a tag: first retrieve the current tags on the ticket, then call this tool with override=true, omitting the tag to remove from the list.",
     schema: {
       ticketId: z
         .number()

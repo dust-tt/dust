@@ -14,7 +14,7 @@ import {
   renderTicketMetrics,
 } from "@app/lib/api/actions/servers/zendesk/rendering";
 import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
-import { ZendeskTagSchema } from "@app/lib/api/actions/servers/zendesk/types";
+import { ZENDESK_TAG_REGEX } from "@app/lib/api/actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -243,7 +243,7 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     const client = clientResult.value;
 
     const invalidTags = tags.filter(
-      (tag) => !ZendeskTagSchema.safeParse(tag).success
+      (tag) => tag.length > 255 || !ZENDESK_TAG_REGEX.test(tag)
     );
     if (invalidTags.length > 0) {
       return new Err(
