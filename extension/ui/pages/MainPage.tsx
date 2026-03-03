@@ -47,7 +47,8 @@ export const MainPage = () => {
     }
     const match = params["*"].match(/conversation\/([^/]+)/);
     const isNewConversation = match && match[1] === "new";
-    if (isNewConversation) {
+    const isSpaceConversation = match && match[1] === "space";
+    if (isNewConversation || isSpaceConversation) {
       return null;
     }
     return match ? match[1] : null;
