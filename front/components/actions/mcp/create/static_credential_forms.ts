@@ -2,7 +2,7 @@ import { SnowflakeKeypairCredentialForm } from "@app/components/actions/mcp/crea
 import type {
   StaticCredentialFormHandle,
   StaticCredentialFormProps,
-} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+} from "@app/components/actions/mcp/MCPServerAuthConnection";
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 

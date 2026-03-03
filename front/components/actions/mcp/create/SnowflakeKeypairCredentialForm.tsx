@@ -1,4 +1,4 @@
-import type { StaticCredentialFormHandle } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import type { StaticCredentialFormHandle } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostCredentialsResponseBody } from "@app/pages/api/w/[wId]/credentials";

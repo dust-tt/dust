@@ -87,7 +87,7 @@ export interface StaticCredentialConfig {
   >;
 }
 
-interface MCPServerOAuthConnexionProps {
+interface MCPServerAuthConnectionProps {
   toolName: string;
   // Authorization is always passed as a prop from the parent dialog.
   // It's managed via useState in the dialog (workflow state), not in form state.
@@ -99,12 +99,12 @@ interface MCPServerOAuthConnexionProps {
   staticCredentialConfig?: StaticCredentialConfig;
 }
 
-export function MCPServerOAuthConnexion({
+export function MCPServerAuthConnection({
   toolName,
   authorization,
   documentationUrl,
   staticCredentialConfig,
-}: MCPServerOAuthConnexionProps) {
+}: MCPServerAuthConnectionProps) {
   const { setError, clearErrors, setValue, control } =
     useFormContext<MCPServerOAuthFormValues>();
 
@@ -271,106 +271,13 @@ export function MCPServerOAuthConnexion({
           onCredentialCreated={staticCredentialConfig.onCredentialCreated}
         />
       ) : (
-        <>
-          <ProviderSetupInstructions
-            provider={authorization.provider}
-            useCase={useCase}
-          />
-
-          {inputs && (
-            <div className="w-full space-y-4 pt-4">
-              {Object.entries(inputs).map(([key, inputData]) => {
-                if (key === TOKEN_ENDPOINT_AUTH_METHOD_KEY) {
-                  return null;
-                }
-
-                if (inputData.value || !isSupportedOAuthCredential(key)) {
-                  return null; // Skip pre-filled or unsupported credentials.
-                }
-
-                const value = authCredentials?.[key] ?? "";
-                const hasValidationError =
-                  value.length > 0 &&
-                  inputData.validator &&
-                  !inputData.validator(value);
-
-                return (
-                  <div key={key} className="w-full space-y-1">
-                    <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                      {inputData.label}
-                    </Label>
-                    <Input
-                      id={key}
-                      value={value}
-                      onChange={(e) =>
-                        handleCredentialChange(key, e.target.value)
-                      }
-                      message={inputData.helpMessage}
-                      messageStatus={hasValidationError ? "error" : undefined}
-                    />
-                  </div>
-                );
-              })}
-              {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY] && (
-                <div className="w-full space-y-2">
-                  <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                    {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
-                  </Label>
-                  <div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          isSelect
-                          label={
-                            TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.find(
-                              (option) =>
-                                option.value ===
-                                (authCredentials?.[
-                                  TOKEN_ENDPOINT_AUTH_METHOD_KEY
-                                ] ??
-                                  TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value)
-                            )?.label ??
-                            TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].label
-                          }
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuRadioGroup
-                          value={
-                            authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
-                            TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value
-                          }
-                        >
-                          {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => (
-                            <DropdownMenuRadioItem
-                              key={option.value}
-                              value={option.value}
-                              label={option.label}
-                              onClick={() =>
-                                handleCredentialChange(
-                                  TOKEN_ENDPOINT_AUTH_METHOD_KEY,
-                                  option.value
-                                )
-                              }
-                            />
-                          ))}
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <ProviderAuthNote provider={authorization.provider} />
-        </>
+        <OAuthCredentialFields
+          authorization={authorization}
+          useCase={useCase}
+          inputs={inputs}
+          authCredentials={authCredentials}
+          onCredentialChange={handleCredentialChange}
+        />
       )}
 
       {documentationUrl && (
@@ -383,6 +290,121 @@ export function MCPServerOAuthConnexion({
         </div>
       )}
     </div>
+  );
+}
+
+interface OAuthCredentialFieldsProps {
+  authorization: AuthorizationInfo;
+  useCase: MCPOAuthUseCase | null;
+  inputs: OAuthCredentialInputs | null;
+  authCredentials: OAuthCredentials | null;
+  onCredentialChange: (key: string, value: string) => void;
+}
+
+function OAuthCredentialFields({
+  authorization,
+  useCase,
+  inputs,
+  authCredentials,
+  onCredentialChange,
+}: OAuthCredentialFieldsProps) {
+  return (
+    <>
+      <ProviderSetupInstructions
+        provider={authorization.provider}
+        useCase={useCase}
+      />
+
+      {inputs && (
+        <div className="w-full space-y-4 pt-4">
+          {Object.entries(inputs).map(([key, inputData]) => {
+            if (key === TOKEN_ENDPOINT_AUTH_METHOD_KEY) {
+              return null;
+            }
+
+            if (inputData.value || !isSupportedOAuthCredential(key)) {
+              return null; // Skip pre-filled or unsupported credentials.
+            }
+
+            const value = authCredentials?.[key] ?? "";
+            const hasValidationError =
+              value.length > 0 &&
+              inputData.validator &&
+              !inputData.validator(value);
+
+            return (
+              <div key={key} className="w-full space-y-1">
+                <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  {inputData.label}
+                </Label>
+                <Input
+                  id={key}
+                  value={value}
+                  onChange={(e) => onCredentialChange(key, e.target.value)}
+                  message={inputData.helpMessage}
+                  messageStatus={hasValidationError ? "error" : undefined}
+                />
+              </div>
+            );
+          })}
+          {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY] && (
+            <div className="w-full space-y-2">
+              <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
+              </Label>
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      isSelect
+                      label={
+                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.find(
+                          (option) =>
+                            option.value ===
+                            (authCredentials?.[
+                              TOKEN_ENDPOINT_AUTH_METHOD_KEY
+                            ] ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value)
+                        )?.label ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].label
+                      }
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuRadioGroup
+                      value={
+                        authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
+                        TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value
+                      }
+                    >
+                      {TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.map((option) => (
+                        <DropdownMenuRadioItem
+                          key={option.value}
+                          value={option.value}
+                          label={option.label}
+                          onClick={() =>
+                            onCredentialChange(
+                              TOKEN_ENDPOINT_AUTH_METHOD_KEY,
+                              option.value
+                            )
+                          }
+                        />
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <ProviderAuthNote provider={authorization.provider} />
+    </>
   );
 }
 

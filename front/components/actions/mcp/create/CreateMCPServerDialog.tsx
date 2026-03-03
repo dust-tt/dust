@@ -12,11 +12,11 @@ import {
 import type {
   StaticCredentialConfig,
   StaticCredentialFormHandle,
-} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+} from "@app/components/actions/mcp/MCPServerAuthConnection";
 import {
   AUTH_CREDENTIALS_ERROR_KEY,
-  MCPServerOAuthConnexion,
-} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+  MCPServerAuthConnection,
+} from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -99,7 +99,7 @@ export function CreateMCPServerDialog({
     shouldUnregister: false,
   });
 
-  // Check for credential validation errors set by MCPServerOAuthConnexion.
+  // Check for credential validation errors set by MCPServerAuthConnection.
   const hasCredentialErrors =
     !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
 
@@ -370,7 +370,7 @@ export function CreateMCPServerDialog({
                 )}
 
               {authorization && (
-                <MCPServerOAuthConnexion
+                <MCPServerAuthConnection
                   toolName={toolName}
                   authorization={authorization}
                   documentationUrl={
