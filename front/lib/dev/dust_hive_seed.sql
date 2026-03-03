@@ -65,7 +65,7 @@ inserted_workspace AS (
     NULL,
     NULL,
     false,
-    NULL,
+    'org_01KEF5MMN72N50JA89BDD5TQ4T',
     '{"isBusiness": false}'::jsonb,
     NOW(),
     NOW()
