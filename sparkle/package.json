@@ -2,7 +2,7 @@
   "name": "@dust-tt/sparkle",
   "version": "0.7.7",
   "engines": {
-    "node": "22.22.0"
+    "node": ">=22.22.0"
   },
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
