@@ -1,4 +1,5 @@
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   usePokeCacheLookup,
   usePokeCacheResourceLookup,
@@ -15,12 +16,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  Label,
   Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { JsonViewer } from "@textea/json-viewer";
 import { useState } from "react";
 
 function formatTtl(ttlSeconds: number): string {
@@ -51,6 +54,7 @@ function CacheResults({
   isError,
   submitted,
 }: CacheResultsProps) {
+  const { isDark } = useTheme();
   if (!submitted) {
     return (
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -82,29 +86,27 @@ function CacheResults({
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-          Redis Key
-        </label>
+        <Label isMuted>Redis Key</Label>
         <code className="mt-1 block break-all rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
           {data.key}
         </code>
       </div>
       <div>
-        <label className="block text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-          TTL
-        </label>
+        <Label isMuted>TTL</Label>
         <p className="mt-1 text-sm text-foreground dark:text-foreground-night">
           {formatTtl(data.ttlSeconds)}
         </p>
       </div>
       <div>
-        <label className="block text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-          Value
-        </label>
+        <Label isMuted>Value</Label>
         {data.value !== null ? (
-          <pre className="mt-1 max-h-[60vh] overflow-auto rounded bg-muted-background p-3 text-xs text-foreground dark:bg-muted-background-night dark:text-foreground-night">
-            {JSON.stringify(data.value, null, 2)}
-          </pre>
+          <JsonViewer
+            theme={isDark ? "dark" : "light"}
+            value={data.value}
+            rootName={false}
+            defaultInspectDepth={2}
+            className="mt-1"
+          />
         ) : (
           <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
             Key not found
@@ -162,9 +164,7 @@ function ResourceLookupTab() {
       {/* Left: Query */}
       <div className="w-80 shrink-0 space-y-4 rounded-lg bg-background p-5 dark:bg-background-night">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground dark:text-foreground-night">
-            Resource Type
-          </label>
+          <Label className="mb-1">Resource Type</Label>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -191,9 +191,7 @@ function ResourceLookupTab() {
           <>
             {selectedResource.params.map((param) => (
               <div key={param.key}>
-                <label className="mb-1 block text-sm font-medium text-foreground dark:text-foreground-night">
-                  {param.label}
-                </label>
+                <Label className="mb-1">{param.label}</Label>
                 <Input
                   placeholder={param.placeholder}
                   value={paramValues[param.key] ?? ""}
@@ -206,9 +204,7 @@ function ResourceLookupTab() {
 
             {computedKey && (
               <div>
-                <label className="block text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-                  Computed Key
-                </label>
+                <Label isMuted>Computed Key</Label>
                 <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
                   {computedKey}
                 </code>
@@ -264,9 +260,7 @@ function RawKeyTab() {
       {/* Left: Query */}
       <div className="w-80 shrink-0 space-y-4 rounded-lg bg-background p-5 dark:bg-background-night">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground dark:text-foreground-night">
-            Redis Key
-          </label>
+          <Label className="mb-1">Redis Key</Label>
           <Input
             placeholder="e.g. cacheWithRedis-_fetchByIdUncached-workspace:sid:abc123"
             value={rawKey}
