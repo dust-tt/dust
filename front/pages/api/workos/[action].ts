@@ -150,7 +150,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
-  const { code, grant_type, refresh_token } = req.body;
+  const { code, grant_type, refresh_token, code_verifier } = req.body;
 
   if (grant_type && !isString(grant_type)) {
     return res.status(400).json({ error: "Invalid grant_type" });
@@ -177,7 +177,14 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: "Invalid code" });
   }
   try {
-    const authResult = await authenticate(code);
+    const authResult =
+      code_verifier && isString(code_verifier)
+        ? await getWorkOS().userManagement.authenticateWithCodeAndVerifier({
+            code,
+            codeVerifier: code_verifier,
+            clientId: config.getWorkOSClientId(),
+          })
+        : await authenticate(code);
     return res.status(200).json(authResult);
   } catch (error) {
     logger.error({ error }, "Error during WorkOS authentication");
