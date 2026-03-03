@@ -937,6 +937,7 @@ async function handleDeleteWorkOSUser(
   const membershipRevokeResult = await MembershipResource.revokeMembership({
     user,
     workspace,
+    allowLastAdminRevocation: true,
   });
 
   if (membershipRevokeResult.isErr()) {
