@@ -1,6 +1,5 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
@@ -591,9 +590,9 @@ async function handler(
         ?.substring(6)
         ?.trim();
 
-      // Use titleInTags if no title is provided.
+      // Use titleInTags if no title is provided, then documentId as last resort (same behavior as uploading in the web app).
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const title = r.data.title?.trim() || titleInTags || UNTITLED_TITLE;
+      const title = r.data.title?.trim() || titleInTags || documentId;
 
       if (!titleInTags) {
         tags.push(`title:${title}`);
