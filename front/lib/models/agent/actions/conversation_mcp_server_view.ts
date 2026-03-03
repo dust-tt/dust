@@ -80,7 +80,7 @@ ConversationMCPServerViewModel.init(
       {
         unique: true,
         fields: ["workspaceId", "conversationId", "mcpServerViewId"],
-        name: "idx_conversation_mcp_server_views_workspace_conv_mcp_view_null_agent",
+        name: "idx_conv_mcp_srv_views_wid_cid_msvi_null_agent",
         where: { agentConfigurationId: null },
         concurrently: true,
       },
@@ -92,7 +92,7 @@ ConversationMCPServerViewModel.init(
           "mcpServerViewId",
           "agentConfigurationId",
         ],
-        name: "idx_conversation_mcp_server_views_workspace_conv_mcp_view_agent",
+        name: "idx_conv_mcp_srv_views_wid_cid_msvi_agent",
         where: { agentConfigurationId: { [Op.ne]: null } },
         concurrently: true,
       },
