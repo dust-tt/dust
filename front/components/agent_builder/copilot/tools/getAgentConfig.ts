@@ -1,4 +1,5 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -35,6 +36,19 @@ The response includes:
 
       // HTML instructions with block IDs for targeting specific blocks.
       const instructionsHtml = getCommittedInstructionsHtml?.() ?? "";
+
+      // Detect timing issue: markdown instructions exist but HTML is empty/stub.
+      const markdownInstructions = formData.instructions?.trim() ?? "";
+      if (markdownInstructions && !instructionsHtml.replace(/<[^>]*>/g, "").trim()) {
+        datadogLogger.error(
+          {
+            instructionsHtmlLength: instructionsHtml.length,
+            markdownInstructionsLength: markdownInstructions.length,
+            instructionsHtml,
+          },
+          "get_agent_config: instructionsHtml is empty but markdown instructions exist"
+        );
+      }
 
       const pendingSuggestions = getPendingSuggestions?.() ?? [];
 
