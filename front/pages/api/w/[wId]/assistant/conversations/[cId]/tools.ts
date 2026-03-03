@@ -115,6 +115,8 @@ async function handler(
           conversation: conversationWithoutContent,
           mcpServerViews: [mcpServerView],
           enabled: action === "add",
+          source: "conversation",
+          agentConfigurationId: null,
         }
       );
       if (upsertResult.isErr()) {
