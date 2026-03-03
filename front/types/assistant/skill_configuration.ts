@@ -8,10 +8,10 @@ export const SKILL_SOURCES = ["web_app", "github", "local_file"] as const;
 
 export type SkillSourceType = (typeof SKILL_SOURCES)[number];
 
-export interface SkillSourceMetadata {
+export type SkillSourceMetadata = {
   repoUrl: string;
   filePath: string;
-}
+};
 
 export type SkillType = {
   id: number;
