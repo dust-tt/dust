@@ -13,8 +13,11 @@ import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
   MentionModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -58,6 +61,8 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
   getContentFragmentBlob: vi.fn(),
 }));
 
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { generateRandomModelSId, makeSId } from "@app/lib/resources/string_ids";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 
@@ -792,6 +797,179 @@ describe("retryAgentMessage", () => {
 
       rateLimiterSpy.mockRestore();
     });
+  });
+});
+
+describe("getConversation with branches", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversationSId: string;
+  let branchSId: string;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    const user = setup.user;
+
+    const conversation = await ConversationModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      title: "Branching conversation",
+      requestedSpaceIds: [],
+    });
+    conversationSId = conversation.sId;
+
+    const beforeBranchUserMessage = await UserMessageModel.create({
+      userId: user.id,
+      workspaceId: workspace.id,
+      content: "before branch",
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "web",
+      clientSideMCPServerIds: [],
+    });
+    await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: beforeBranchUserMessage.id,
+      agentMessageId: null,
+      contentFragmentId: null,
+    });
+
+    const atBranchUserMessage = await UserMessageModel.create({
+      userId: user.id,
+      workspaceId: workspace.id,
+      content: "at branch",
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "web",
+      clientSideMCPServerIds: [],
+    });
+    const atBranchMessage = await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 1,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: atBranchUserMessage.id,
+      agentMessageId: null,
+      contentFragmentId: null,
+    });
+
+    const afterBranchUserMessage = await UserMessageModel.create({
+      userId: user.id,
+      workspaceId: workspace.id,
+      content: "after branch main",
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "web",
+      clientSideMCPServerIds: [],
+    });
+    await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 2,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: afterBranchUserMessage.id,
+      agentMessageId: null,
+      contentFragmentId: null,
+    });
+
+    const branch = await ConversationBranchModel.create({
+      workspaceId: workspace.id,
+      state: "open",
+      previousMessageId: atBranchMessage.id,
+      conversationId: conversation.id,
+      userId: user.id,
+    });
+    branchSId = makeSId("conversation_branch", {
+      id: branch.id,
+      workspaceId: workspace.id,
+    });
+
+    const branchUserMessage = await UserMessageModel.create({
+      userId: user.id,
+      workspaceId: workspace.id,
+      content: "branch message",
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "web",
+      clientSideMCPServerIds: [],
+    });
+    await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 3,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: branchUserMessage.id,
+      agentMessageId: null,
+      contentFragmentId: null,
+      branchId: branch.id,
+    });
+  });
+
+  it("returns only main-thread messages when branchId is not provided", async () => {
+    const result = await getConversation(auth, conversationSId);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const conv = result.value;
+      expect(conv.branchId).toBeNull();
+
+      const userMessages = conv.content.flat().filter(isUserMessageType);
+      const contents = userMessages.map((m) => m.content);
+
+      expect(contents).toEqual(
+        expect.arrayContaining([
+          "before branch",
+          "at branch",
+          "after branch main",
+        ])
+      );
+      expect(contents).not.toContain("branch message");
+    }
+  });
+
+  it("returns messages up to the branch point plus branch messages when branchId is provided, and sets branchId on the conversation", async () => {
+    const result = await getConversation(
+      auth,
+      conversationSId,
+      false,
+      branchSId
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const conv = result.value;
+      expect(conv.branchId).toBe(branchSId);
+
+      const userMessages = conv.content.flat().filter(isUserMessageType);
+      const contents = userMessages.map((m) => m.content);
+
+      expect(contents).toEqual(
+        expect.arrayContaining(["before branch", "at branch", "branch message"])
+      );
+      expect(contents).not.toContain("after branch main");
+    }
   });
 });
 

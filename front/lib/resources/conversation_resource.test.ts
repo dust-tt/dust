@@ -621,6 +621,73 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     expect(adminConvoIds).toContain(conversations.restricted[0]);
   });
 
+  it("fetchById should respect space-based permissions", async () => {
+    // Regular user can access conversations in global space
+    const userAccessibleConversation = await ConversationResource.fetchById(
+      userAuth,
+      conversations.accessible[0]
+    );
+    expect(userAccessibleConversation).not.toBeNull();
+    expect(userAccessibleConversation?.sId).toBe(conversations.accessible[0]);
+
+    // Regular user cannot access conversations restricted to admin-only space
+    const userRestrictedConversation = await ConversationResource.fetchById(
+      userAuth,
+      conversations.restricted[0]
+    );
+    expect(userRestrictedConversation).toBeNull();
+
+    // Admin can access both conversations
+    const adminAccessibleConversation = await ConversationResource.fetchById(
+      adminAuth,
+      conversations.accessible[0]
+    );
+    const adminRestrictedConversation = await ConversationResource.fetchById(
+      adminAuth,
+      conversations.restricted[0]
+    );
+
+    expect(adminAccessibleConversation).not.toBeNull();
+    expect(adminAccessibleConversation?.sId).toBe(conversations.accessible[0]);
+    expect(adminRestrictedConversation).not.toBeNull();
+    expect(adminRestrictedConversation?.sId).toBe(conversations.restricted[0]);
+  });
+
+  it("fetchByIds should respect space-based permissions", async () => {
+    const sIds = [conversations.accessible[0], conversations.restricted[0]];
+
+    // Regular user should only get back accessible conversations
+    const userConversations = await ConversationResource.fetchByIds(
+      userAuth,
+      sIds
+    );
+    const userConvoIds = userConversations.map((c) => c.sId);
+    expect(userConvoIds).toContain(conversations.accessible[0]);
+    expect(userConvoIds).not.toContain(conversations.restricted[0]);
+
+    // Admin should get back all conversations
+    const adminConversations = await ConversationResource.fetchByIds(
+      adminAuth,
+      sIds
+    );
+    const adminConvoIds = adminConversations.map((c) => c.sId);
+    expect(adminConvoIds).toContain(conversations.accessible[0]);
+    expect(adminConvoIds).toContain(conversations.restricted[0]);
+  });
+
+  it("fetchByIds should bypass permission checks when dangerouslySkipPermissionFiltering is true", async () => {
+    const sIds = [conversations.accessible[0], conversations.restricted[0]];
+
+    const conversationsWithoutPermissions =
+      await ConversationResource.fetchByIds(userAuth, sIds, {
+        dangerouslySkipPermissionFiltering: true,
+      });
+
+    const convoIds = conversationsWithoutPermissions.map((c) => c.sId);
+    expect(convoIds).toContain(conversations.accessible[0]);
+    expect(convoIds).toContain(conversations.restricted[0]);
+  });
+
   it("should handle conversations with no requested spaces", async () => {
     const emptySpaceConvo = await ConversationFactory.create(adminAuth, {
       agentConfigurationId: agents[0].sId,

@@ -35,7 +35,8 @@
       "!!extension/shared/lib/swr.ts",
       "!!extension/packages",
       "!!**/package-lock.json",
-      "!!**/__snapshots__"
+      "!!**/__snapshots__",
+      "!!**/.git"
     ]
   },
   "formatter": {
