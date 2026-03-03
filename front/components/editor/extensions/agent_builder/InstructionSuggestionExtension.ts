@@ -755,52 +755,19 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptAllSuggestions:
         () =>
-        ({ state, tr, dispatch }) => {
-          const pluginState = pluginKey.getState(state);
-          if (!pluginState || pluginState.suggestions.size === 0) {
+        ({ commands, state, tr }) => {
+          const ids = getActiveSuggestionIds(state);
+          if (ids.length === 0) {
             return false;
           }
 
-          if (dispatch) {
-            const schema = state.schema;
-            const ids: string[] = [];
-
-            for (const [suggestionId, suggestion] of pluginState.suggestions) {
-              ids.push(suggestionId);
-
-              for (const op of suggestion.operations) {
-                const found = findBlockByBlockId(tr.doc, op.targetBlockId);
-                if (!found) {
-                  continue;
-                }
-
-                const { node: blockNode, pos: blockPos } = found;
-                const newNode = parseHTMLToBlock(
-                  op.newContent,
-                  schema,
-                  op.targetBlockId
-                );
-                if (!newNode) {
-                  continue;
-                }
-
-                if (blockNode.type === newNode.type) {
-                  const from = blockPos + 1;
-                  const to = blockPos + blockNode.nodeSize - 1;
-                  tr.replaceWith(from, to, newNode.content);
-                } else {
-                  tr.replaceWith(
-                    blockPos,
-                    blockPos + blockNode.nodeSize,
-                    newNode
-                  );
-                }
-              }
-            }
-
-            tr.setMeta(pluginKey, { type: "removeAll", ids });
-            dispatch(tr);
-          }
+          // commands.acceptSuggestion shares the same tr, so content
+          // replacements accumulate correctly. However each call overwrites
+          // the plugin meta, so only the last suggestion would be removed
+          // from plugin state. We fix this by overwriting the meta with all
+          // IDs after the loop.
+          ids.forEach((id) => commands.acceptSuggestion(id));
+          tr.setMeta(pluginKey, { type: "removeAll", ids });
 
           return true;
         },
@@ -808,13 +775,12 @@ export const InstructionSuggestionExtension = Extension.create({
       rejectAllSuggestions:
         () =>
         ({ state, tr, dispatch }) => {
-          const pluginState = pluginKey.getState(state);
-          if (!pluginState || pluginState.suggestions.size === 0) {
+          const ids = getActiveSuggestionIds(state);
+          if (ids.length === 0) {
             return false;
           }
 
           if (dispatch) {
-            const ids = Array.from(pluginState.suggestions.keys());
             tr.setMeta(pluginKey, { type: "removeAll", ids });
             dispatch(tr);
           }
