@@ -8,11 +8,8 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { isTextContent } from "@app/types/assistant/generation";
-
-const STATIC_RESPONSE_REGEX = /<static_response>([\s\S]*?)<\/static_response>/;
 
 const metadata = {
   clientId: "noop" as const,
@@ -27,25 +24,25 @@ interface NoopRequest {
 
 // NoopLLM is a dummy LLM that can respond to special commands.
 export class NoopLLM extends LLM<NoopRequest> {
+  private readonly metaData?: Record<string, unknown>;
+
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: "noop" }
   ) {
     super(auth, "noop", llmParameters);
+    this.metaData = llmParameters.metaData;
   }
 
   protected buildRequestPayload({
     conversation,
-    prompt,
   }: LLMStreamParameters): NoopRequest {
-    // Check for a static response embedded in the system prompt.
-    const promptText = systemPromptToText(prompt);
-    const staticMatch = promptText.match(STATIC_RESPONSE_REGEX);
-    if (staticMatch) {
+    const staticResponse = this.metaData?.staticResponse;
+    if (typeof staticResponse === "string") {
       return {
         type: "noop_request",
         lastUserMessage: "",
-        staticResponse: staticMatch[1].trim(),
+        staticResponse,
       };
     }
 

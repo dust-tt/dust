@@ -462,6 +462,8 @@ export function buildCopilotInstructions(
   return parts.join("\n\n");
 }
 
+const COPILOT_NEW_AGENT_STATIC_RESPONSE = "What would you like to build?";
+
 export function _getCopilotGlobalAgent(
   auth: Authenticator,
   {
@@ -513,14 +515,15 @@ export function _getCopilotGlobalAgent(
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
+        ...(isNewAgentFirstTurn && {
+          metaData: { staticResponse: COPILOT_NEW_AGENT_STATIC_RESPONSE },
+        }),
       }
     : dummyModelConfiguration;
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
 
-  const instructions = isNewAgentFirstTurn
-    ? "<static_response>What would you like to build?</static_response>"
-    : buildCopilotInstructions(copilotContext);
+  const instructions = buildCopilotInstructions(copilotContext);
 
   return {
     id: -1,

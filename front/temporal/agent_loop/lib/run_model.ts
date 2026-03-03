@@ -479,6 +479,7 @@ export async function runModel(
     temperature: agentConfiguration.model.temperature,
     reasoningEffort: agentConfiguration.model.reasoningEffort,
     responseFormat: agentConfiguration.model.responseFormat,
+    metaData: agentConfiguration.model.metaData,
     context: traceContext,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
