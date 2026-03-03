@@ -101,7 +101,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   // Not a foreign key, only global skills can be extended.
   declare extendedSkillId: string | null;
 
-  declare source: SkillSourceType;
+  declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
 
   declare requestedSpaceIds: number[];
