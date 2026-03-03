@@ -1,4 +1,5 @@
-import { getBaseUrlFromResolver } from "@app/lib/api/config";
+import { getBaseUrl, getDefaultInit } from "@app/lib/api/config";
+import { isString } from "@app/types/shared/utils/general";
 
 // Client-side fetch helper. This is a simple alias for the global fetch, used to satisfy
 // the linter rule that discourages direct use of `fetch`. On the client, we cannot route
@@ -9,18 +10,32 @@ export function clientFetch(
 ): Promise<Response> {
   // Only rewrite URLs when a base URL resolver is active (SPA context).
   // In Next.js, relative URLs work fine and should not be rewritten.
-  const baseUrl = getBaseUrlFromResolver();
+  const baseUrl = getBaseUrl();
 
-  if (baseUrl && typeof input === "string") {
-    if (input.startsWith("/")) {
-      input = `${baseUrl}${input}`;
-    }
+  if (baseUrl && isString(input) && input.startsWith("/")) {
+    input = `${baseUrl}${input}`;
+  }
 
-    // Include credentials for all requests targeting the API (needed for
-    // cross-origin requests from the SPA on app.dust.tt to the API on dust.tt).
-    if (input.startsWith(baseUrl) && init?.credentials === undefined) {
-      init = { ...init, credentials: "include" };
-    }
+  // Merge default RequestInit from the resolver (caller's init takes precedence,
+  // headers are shallow-merged).
+  // When no resolver is set but a baseUrlResolver is active (SPA context),
+  // default to credentials: "include" for cross-origin cookie auth.
+  const defaults =
+    getDefaultInit() ?? (baseUrl ? { credentials: "include" } : null);
+  if (defaults) {
+    const mergedHeaders =
+      defaults.headers || init?.headers
+        ? {
+            ...defaults.headers,
+            ...init?.headers,
+          }
+        : undefined;
+
+    init = {
+      ...defaults,
+      ...init,
+      ...(mergedHeaders && { headers: mergedHeaders }),
+    };
   }
 
   // eslint-disable-next-line no-restricted-globals

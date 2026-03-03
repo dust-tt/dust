@@ -12,8 +12,19 @@ export function setBaseUrlResolver(fn: (() => string) | null): void {
 
 // Returns the resolver's URL if set, or empty string.
 // Used by clientFetch to decide whether to rewrite relative URLs (SPA cross-origin only).
-export function getBaseUrlFromResolver(): string {
+export function getBaseUrl(): string {
   return baseUrlResolver?.() || "";
+}
+
+// Pluggable default RequestInit resolver (e.g. credentials/headers per context).
+let defaultInitResolver: (() => RequestInit) | null = null;
+
+export function setDefaultInitResolver(fn: (() => RequestInit) | null): void {
+  defaultInitResolver = fn;
+}
+
+export function getDefaultInit(): RequestInit | null {
+  return defaultInitResolver?.() ?? null;
 }
 
 const config = {
