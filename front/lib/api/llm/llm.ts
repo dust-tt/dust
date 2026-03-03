@@ -361,10 +361,9 @@ export abstract class LLM<TPayload = unknown> {
   ): AsyncGenerator<LLMEvent> {
     const payload = this.buildRequestPayload(streamParameters);
 
-    // Update trace with the actual payload.
-    this.generation?.updateTrace({ input: payload });
+    // Update the generation span with the actual payload.
+    this.generation?.update({ input: payload });
 
-    // Send the request to the provider.
     yield* this.sendRequest(payload);
   }
 }
