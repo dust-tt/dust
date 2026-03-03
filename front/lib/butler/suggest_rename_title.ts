@@ -94,7 +94,7 @@ async function shouldProposeRenameTitle(
     where: {
       id: latest.sourceMessageId,
       workspaceId: auth.getNonNullableWorkspace().id,
-      visibility: "public", // to check for deletion
+      visibility: "visible", // to check for deletion
     },
   });
 
