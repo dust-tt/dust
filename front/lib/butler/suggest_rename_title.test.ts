@@ -3,6 +3,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { evaluateRenameTitleSuggestion } from "@app/lib/butler/suggest_rename_title";
 import { MessageModel } from "@app/lib/models/agent/conversation";
+import { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -283,5 +284,239 @@ describe("evaluateRenameTitleSuggestion", () => {
       where: { workspaceId: workspace.id },
     });
     expect(suggestions).toHaveLength(0);
+  });
+});
+
+describe("shouldProposeRenameTitle (throttling)", () => {
+  it("skips when a pending suggestion exists within cooldown", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Create additional messages at known ranks for the trigger message.
+    // The factory creates ranks 0 (user) and 1 (agent). Add a user message at rank 2.
+    const triggerMessage = await ConversationFactory.createUserMessageWithRank({
+      auth: authenticator,
+      workspace,
+      conversationId: conversation.id,
+      rank: 2,
+      content: "trigger",
+    });
+
+    // Create a pending suggestion sourced from the rank-0 message.
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        rank: 0,
+      },
+    });
+    await ConversationButlerSuggestionResource.makeNew(authenticator, {
+      conversationId: conversation.id,
+      sourceMessageId: sourceMessage!.id,
+      suggestionType: "rename_title",
+      metadata: { suggestedTitle: "Old Suggestion" },
+      status: "pending",
+    });
+
+    // Set up mocks for high confidence — the LLM would suggest a rename.
+    setupMocksForHighConfidence();
+
+    await evaluateRenameTitleSuggestion(authenticator, {
+      conversation: makeFakeConversation({
+        id: conversation.id,
+        sId: conversation.sId,
+      }),
+      messageId: triggerMessage.sId,
+    });
+
+    // Should still have only the original suggestion (throttled).
+    const suggestions = await ConversationButlerSuggestionModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0].status).toBe("pending");
+  });
+
+  it("auto-dismisses stale pending suggestion and creates new one", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Create a trigger message far away (rank 22, distance > 10 from rank 0).
+    const triggerMessage = await ConversationFactory.createUserMessageWithRank({
+      auth: authenticator,
+      workspace,
+      conversationId: conversation.id,
+      rank: 22,
+      content: "trigger",
+    });
+
+    // Create a pending suggestion sourced from the rank-0 message.
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        rank: 0,
+      },
+    });
+    await ConversationButlerSuggestionResource.makeNew(authenticator, {
+      conversationId: conversation.id,
+      sourceMessageId: sourceMessage!.id,
+      suggestionType: "rename_title",
+      metadata: { suggestedTitle: "Old Suggestion" },
+      status: "pending",
+    });
+
+    setupMocksForHighConfidence();
+
+    await evaluateRenameTitleSuggestion(authenticator, {
+      conversation: makeFakeConversation({
+        id: conversation.id,
+        sId: conversation.sId,
+      }),
+      messageId: triggerMessage.sId,
+    });
+
+    // Should have 2 suggestions: old one auto-dismissed, new one pending.
+    const suggestions = await ConversationButlerSuggestionModel.findAll({
+      where: { workspaceId: workspace.id },
+      order: [["createdAt", "ASC"]],
+    });
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0].status).toBe("dismissed");
+    expect(suggestions[1].status).toBe("pending");
+    expect(suggestions[1].metadata).toEqual({
+      suggestedTitle: "Better Title",
+    });
+  });
+
+  it("respects cooldown after a dismissed suggestion", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Trigger message at rank 4 (distance 4 from rank 0, within cooldown of 10).
+    const triggerMessage = await ConversationFactory.createUserMessageWithRank({
+      auth: authenticator,
+      workspace,
+      conversationId: conversation.id,
+      rank: 4,
+      content: "trigger",
+    });
+
+    // Create a dismissed suggestion sourced from the rank-0 message.
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        rank: 0,
+      },
+    });
+    await ConversationButlerSuggestionResource.makeNew(authenticator, {
+      conversationId: conversation.id,
+      sourceMessageId: sourceMessage!.id,
+      suggestionType: "rename_title",
+      metadata: { suggestedTitle: "Dismissed Suggestion" },
+      status: "dismissed",
+    });
+
+    setupMocksForHighConfidence();
+
+    await evaluateRenameTitleSuggestion(authenticator, {
+      conversation: makeFakeConversation({
+        id: conversation.id,
+        sId: conversation.sId,
+      }),
+      messageId: triggerMessage.sId,
+    });
+
+    // Should still have only the dismissed suggestion (cooldown respected).
+    const suggestions = await ConversationButlerSuggestionModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0].status).toBe("dismissed");
+  });
+
+  it("allows new suggestion after cooldown expires for dismissed suggestion", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Trigger message at rank 20 (distance 20 from rank 0, beyond cooldown of 10).
+    const triggerMessage = await ConversationFactory.createUserMessageWithRank({
+      auth: authenticator,
+      workspace,
+      conversationId: conversation.id,
+      rank: 20,
+      content: "trigger",
+    });
+
+    // Create a dismissed suggestion sourced from the rank-0 message.
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        rank: 0,
+      },
+    });
+    await ConversationButlerSuggestionResource.makeNew(authenticator, {
+      conversationId: conversation.id,
+      sourceMessageId: sourceMessage!.id,
+      suggestionType: "rename_title",
+      metadata: { suggestedTitle: "Old Dismissed" },
+      status: "dismissed",
+    });
+
+    setupMocksForHighConfidence();
+
+    await evaluateRenameTitleSuggestion(authenticator, {
+      conversation: makeFakeConversation({
+        id: conversation.id,
+        sId: conversation.sId,
+      }),
+      messageId: triggerMessage.sId,
+    });
+
+    // Should have 2: old dismissed + new pending.
+    const suggestions = await ConversationButlerSuggestionModel.findAll({
+      where: { workspaceId: workspace.id },
+      order: [["createdAt", "ASC"]],
+    });
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0].status).toBe("dismissed");
+    expect(suggestions[1].status).toBe("pending");
+    expect(suggestions[1].metadata).toEqual({
+      suggestedTitle: "Better Title",
+    });
   });
 });
