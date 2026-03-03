@@ -33,6 +33,11 @@ export async function analyzeConversationActivity({
 
   const conversation = conversationRes.value;
 
+  // Skip test conversations (created when users test agents via the "test" button).
+  if (conversation.visibility === "test") {
+    return;
+  }
+
   // Skip conversations without a title (title generation handles those).
   if (!conversation.title) {
     return;
