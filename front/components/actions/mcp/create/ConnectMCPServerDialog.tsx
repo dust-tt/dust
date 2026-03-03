@@ -272,6 +272,7 @@ export function ConnectMCPServerDialog({
       }
 
       setIsOpen(false);
+      resetState();
     } finally {
       setIsLoading(false);
       setExternalIsLoading(false);

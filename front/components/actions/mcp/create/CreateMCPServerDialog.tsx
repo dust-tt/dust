@@ -302,6 +302,7 @@ export function CreateMCPServerDialog({
       });
       setMCPServerToShow(createdServer);
       setIsOpen(false);
+      resetState();
     } finally {
       setIsLoading(false);
       setExternalIsLoading(false);
