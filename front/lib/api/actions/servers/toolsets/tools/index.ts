@@ -106,10 +106,14 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       config.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
+    const agentConfigurationId =
+      agentLoopContext?.runContext?.agentConfiguration.sId;
+
     const res = await api.postConversationTools({
       conversationId,
       action: "add",
       mcpServerViewId: toolsetId,
+      agentConfigurationId,
     });
 
     if (res.isErr() || !res.value.success) {
