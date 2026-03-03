@@ -287,18 +287,14 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     customHeaders,
   }: {
     name: string;
-    oauthConnection?: MCPConnectionType;
-    useCase?: MCPOAuthUseCase;
     includeGlobal: boolean;
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
-  }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
-    if (oauthConnection && useCase) {
-      throw new Error(
-        "Only one of oauthConnection or useCase should be provided."
-      );
-    }
-
+  } & (
+    | { oauthConnection: MCPConnectionType; useCase?: never }
+    | { oauthConnection?: never; useCase: MCPOAuthUseCase }
+    | { oauthConnection?: never; useCase?: never }
+  )): Promise<Result<CreateMCPServerResponseBody, Error>> => {
     const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
