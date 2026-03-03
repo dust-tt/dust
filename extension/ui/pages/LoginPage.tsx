@@ -33,7 +33,7 @@ export const LoginPage = () => {
   const TERMS_OF_USE_URL =
     "https://dust-tt.notion.site/Website-Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb";
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && isUserSetup)) {
     return (
       <div
         className={cn(
@@ -42,7 +42,7 @@ export const LoginPage = () => {
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <Spinner />
+        <Spinner size="sm" />
       </div>
     );
   }

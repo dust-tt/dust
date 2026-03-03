@@ -1,3 +1,4 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import {
   Avatar,
@@ -15,11 +16,10 @@ import {
   LogoutIcon,
 } from "@dust-tt/sparkle";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
-import { useTheme } from "@extension/ui/hooks/useTheme";
 import { useMemo } from "react";
 
 export const UserDropdownMenu = () => {
-  const { theme, updateTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { user, workspace, handleLogout, handleSelectOrganization } =
     useExtensionAuth();
 
@@ -69,17 +69,17 @@ export const UserDropdownMenu = () => {
               <DropdownMenuRadioItem
                 value="light"
                 label="Light"
-                onClick={() => void updateTheme("light")}
+                onClick={() => setTheme("light")}
               />
               <DropdownMenuRadioItem
                 value="dark"
                 label="Dark"
-                onClick={() => void updateTheme("dark")}
+                onClick={() => setTheme("dark")}
               />
               <DropdownMenuRadioItem
                 value="system"
                 label="System"
-                onClick={() => void updateTheme("system")}
+                onClick={() => setTheme("system")}
               />
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
