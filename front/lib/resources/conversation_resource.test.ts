@@ -375,11 +375,15 @@ describe("fetchMCPServerViews", () => {
       conversation: conversation,
       mcpServerViews: [mcpServerView1],
       enabled: true,
+      source: "conversation",
+      agentConfigurationId: null,
     });
     await ConversationResource.upsertMCPServerViews(authenticator, {
       conversation: conversation,
       mcpServerViews: [mcpServerView2],
       enabled: false,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     const results = await ConversationResource.fetchMCPServerViews(
@@ -422,6 +426,8 @@ describe("fetchMCPServerViews", () => {
       conversation: conversation,
       mcpServerViews: [mcpServerView],
       enabled: true,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     const remoteMCPServer2 = await RemoteMCPServerFactory.create(workspace);
@@ -440,6 +446,8 @@ describe("fetchMCPServerViews", () => {
       conversation: conversation,
       mcpServerViews: [mcpServerView2],
       enabled: false,
+      source: "conversation",
+      agentConfigurationId: null,
     });
 
     const allResults = await ConversationResource.fetchMCPServerViews(
