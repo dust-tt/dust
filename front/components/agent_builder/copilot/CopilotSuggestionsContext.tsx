@@ -41,7 +41,7 @@ export interface CopilotSuggestionsContextType {
   getSuggestionWithRelations: (
     sId: string
   ) => AgentSuggestionWithRelationsType | null;
-  getPendingSuggestions: () => AgentSuggestionType[];
+  pendingSuggestions: AgentSuggestionType[];
   triggerRefetch: (sId: string) => void;
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
@@ -209,8 +209,8 @@ function CopilotSuggestionsProviderContent({
     [processedSuggestions, suggestions]
   );
 
-  // Get pending suggestions: backend suggestions not yet processed locally
-  const getPendingSuggestions = useCallback(
+  // Pending suggestions: backend suggestions not yet processed locally
+  const filteredPendingSuggestions = useMemo(
     () => suggestions.filter((s) => !processedSuggestions.has(s.sId)),
     [suggestions, processedSuggestions]
   );
@@ -487,7 +487,7 @@ function CopilotSuggestionsProviderContent({
   const scrollToNextSuggestion = useCallback(
     (acceptedSuggestionId?: string) => {
       const editor = editorRef.current;
-      const pendingInstructions = getPendingSuggestions().filter(
+      const pendingInstructions = filteredPendingSuggestions.filter(
         (s) => s.kind === "instructions" && s.sId !== acceptedSuggestionId
       );
       if (pendingInstructions.length === 0) {
@@ -514,7 +514,7 @@ function CopilotSuggestionsProviderContent({
       focusOnSuggestion(next.sId);
       scrollCopilotToSuggestion(next.sId);
     },
-    [getPendingSuggestions, focusOnSuggestion, scrollCopilotToSuggestion]
+    [filteredPendingSuggestions, focusOnSuggestion, scrollCopilotToSuggestion]
   );
 
   const acceptSuggestion = useCallback(
@@ -598,7 +598,7 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const instructionSuggestions = getPendingSuggestions().filter(
+      const instructionSuggestions = filteredPendingSuggestions.filter(
         (s) => s.kind === "instructions"
       );
 
@@ -633,7 +633,7 @@ function CopilotSuggestionsProviderContent({
       return true;
     }, [
       patchSuggestions,
-      getPendingSuggestions,
+      filteredPendingSuggestions,
       dispatchDelayedBlur,
       highlightSuggestion,
     ]);
@@ -645,7 +645,7 @@ function CopilotSuggestionsProviderContent({
         return false;
       }
 
-      const instructionSuggestions = getPendingSuggestions().filter(
+      const instructionSuggestions = filteredPendingSuggestions.filter(
         (s) => s.kind === "instructions"
       );
 
@@ -677,7 +677,7 @@ function CopilotSuggestionsProviderContent({
       highlightSuggestion(null);
 
       return true;
-    }, [patchSuggestions, getPendingSuggestions, highlightSuggestion]);
+    }, [patchSuggestions, filteredPendingSuggestions, highlightSuggestion]);
 
   const getCommittedInstructionsHtml = useCallback(() => {
     const editor = editorRef.current;
@@ -714,7 +714,7 @@ function CopilotSuggestionsProviderContent({
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
-      getPendingSuggestions,
+      pendingSuggestions: filteredPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
       isSuggestionsLoading,
@@ -730,7 +730,7 @@ function CopilotSuggestionsProviderContent({
       acceptSuggestion,
       focusOnSuggestion,
       getCommittedInstructionsHtml,
-      getPendingSuggestions,
+      filteredPendingSuggestions,
       getSuggestionWithRelations,
       hasAttemptedRefetch,
       isSuggestionsLoading,

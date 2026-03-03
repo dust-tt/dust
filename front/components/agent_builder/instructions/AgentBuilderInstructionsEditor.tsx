@@ -476,9 +476,9 @@ export function AgentBuilderInstructionsEditor({
     )?.props?.children ?? null;
 
   const pendingInstructionSuggestions = suggestionsContext
-    ? suggestionsContext
-        .getPendingSuggestions()
-        .filter((s) => s.kind === "instructions")
+    ? suggestionsContext.pendingSuggestions.filter(
+        (s) => s.kind === "instructions"
+      )
     : [];
   const hasPendingInstructionSuggestions =
     pendingInstructionSuggestions.length > 0;
