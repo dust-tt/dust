@@ -1,4 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types/api/credentials";
@@ -13,6 +14,63 @@ import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
 const credentials = dustManagedCredentials();
 
 const SPIDER_API_BASE_URL = "https://api.spider.cloud";
+
+const TEXT_CONTENT_TYPES = [
+  "text/",
+  "application/json",
+  "application/xml",
+  "application/xhtml+xml",
+  "application/javascript",
+  "application/ld+json",
+];
+
+/**
+ * Checks if a content type represents binary (non-text) content
+ */
+const isBinaryContent = (contentType: string | null): boolean => {
+  if (!contentType) {
+    return false;
+  }
+
+  return !TEXT_CONTENT_TYPES.some((type) => {
+    return contentType.toLowerCase().startsWith(type);
+  });
+};
+
+const HEAD_FETCH_TIMEOUT_MS = 5000;
+
+/**
+ * Makes a HEAD request to check if the URL points to binary content
+ * Returns null if the check fails (to allow proceeding with scraping)
+ */
+const checkForBinaryContent = async (
+  url: string
+): Promise<{
+  isBinary: boolean;
+  contentType: string | null;
+  status: number;
+} | null> => {
+  try {
+    const response = await untrustedFetch(url, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(HEAD_FETCH_TIMEOUT_MS),
+    });
+
+    const contentType = response.headers.get("content-type");
+    return {
+      isBinary: isBinaryContent(contentType),
+      contentType,
+      status: response.status,
+    };
+  } catch (error) {
+    logger.warn(
+      { error, url },
+      "Failed to check for binary content with HEAD request"
+    );
+    // Return null to allow proceeding with scraping if HEAD request fails
+    return null;
+  }
+};
 
 // Firecrawl scrape options we use locally: require formats only
 type ScrapeOptionsMinimal = Required<Pick<ScrapeParams, "formats">>;
@@ -86,6 +144,31 @@ const browseUrlFirecrawl = async (
     throw new Error(
       "util/webbrowse: a DUST_MANAGED_FIRECRAWL_API_KEY is required"
     );
+  }
+
+  // Check if the URL points to binary content before attempting to scrape
+  const binaryCheck = await checkForBinaryContent(url);
+  if (!binaryCheck) {
+    return {
+      error: `[Firecrawl] Unable to check url's content type before scraping, skipping.`,
+      status: 500,
+      url,
+    };
+  }
+  if (binaryCheck.isBinary) {
+    logger.info(
+      {
+        url,
+        binaryCheck,
+      },
+      "[Firecrawl] Skipping binary content"
+    );
+
+    return {
+      error: `[Firecrawl] Binary content detected (Content-Type: ${binaryCheck.contentType}). Cannot scrape non-text content.`,
+      status: binaryCheck.status,
+      url,
+    };
   }
 
   const fc = new FirecrawlApp({
