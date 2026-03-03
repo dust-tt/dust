@@ -10,6 +10,7 @@ import type {
 import {
   isValidZendeskSubdomain,
   ZendeskSearchResponseSchema,
+  ZendeskTagsResponseSchema,
   ZendeskTicketCommentsResponseSchema,
   ZendeskTicketFieldsResponseSchema,
   ZendeskTicketMetricsResponseSchema,
@@ -307,6 +308,40 @@ class ZendeskClient {
     }
 
     return new Ok(result.value.comments);
+  }
+
+  async addTicketTags(
+    ticketId: number,
+    tags: string[]
+  ): Promise<Result<string[], Error>> {
+    const result = await this.request(
+      `tickets/${ticketId}/tags`,
+      ZendeskTagsResponseSchema,
+      { method: "PUT", body: { tags } } // PUT = additive
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.tags);
+  }
+
+  async setTicketTags(
+    ticketId: number,
+    tags: string[]
+  ): Promise<Result<string[], Error>> {
+    const result = await this.request(
+      `tickets/${ticketId}/tags`,
+      ZendeskTagsResponseSchema,
+      { method: "POST", body: { tags } } // POST = full replacement
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.tags);
   }
 
   async getUsersByIds(

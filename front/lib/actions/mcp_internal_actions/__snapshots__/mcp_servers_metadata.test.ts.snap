@@ -572,6 +572,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_ticket_fields": "never_ask",
     "post_reply": "high",
     "search_tickets": "never_ask",
+    "update_ticket_tags": "low",
   },
 }
 `;

@@ -373,3 +373,18 @@ export const ZendeskTicketCommentsResponseSchema =
 export const ZendeskSearchCountResponseSchema = z.object({
   count: z.string(),
 });
+
+// Tags schemas
+export const ZendeskTagSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .regex(/^[a-z0-9_\-/]+$/);
+
+export type ZendeskTag = z.infer<typeof ZendeskTagSchema>;
+
+export const ZendeskTagsResponseSchema = z.object({
+  tags: z.array(z.string()),
+});
+
+export type ZendeskTagsResponse = z.infer<typeof ZendeskTagsResponseSchema>;
