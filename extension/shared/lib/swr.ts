@@ -96,30 +96,40 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   }
 }
 
+export class APIError extends Error {
+  type: string;
+
+  constructor(type: string, message: string) {
+    super(message);
+    this.type = type;
+  }
+}
+
 export const resHandler = async (res: Response) => {
   if (res.status < 300) {
     return res.json();
   }
 
-  let error;
+  let errorType = "unknown";
+  let errorMessage = "Unknown error";
 
   try {
     const resJson = await res.json();
-    error = resJson.error;
-
-    if (error?.type === "not_authenticated") {
-      error = error.message;
+    const error = resJson.error;
+    if (error?.type) {
+      errorType = error.type;
     }
+    errorMessage = error?.message ?? JSON.stringify(error);
   } catch (e) {
     console.error("Error parsing response: ", e);
-    error = await res.text();
+    errorMessage = await res.text();
   }
 
   console.error(
     "Error returned by the front API: ",
     res.status,
     res.headers,
-    error
+    errorMessage
   );
-  throw new Error(error);
+  throw new APIError(errorType, errorMessage);
 };
