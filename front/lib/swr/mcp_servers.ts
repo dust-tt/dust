@@ -293,13 +293,19 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
   }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
+    if (oauthConnection && useCase) {
+      throw new Error(
+        "Only one of oauthConnection or useCase should be provided."
+      );
+    }
+
     const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
         serverType: "internal",
-        useCase: useCase ?? oauthConnection?.useCase,
+        useCase: oauthConnection?.useCase ?? useCase,
         connectionId: oauthConnection?.connectionId,
         includeGlobal,
         ...(sharedSecret !== undefined ? { sharedSecret } : {}),
@@ -668,19 +674,13 @@ export function useCreateMCPServerConnection({
     mcpServerDisplayName,
     provider,
   }: {
-    connectionId?: string;
-    credentialId?: string;
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
-  }): Promise<PostConnectionResponseBody | null> => {
-    if (!connectionId && !credentialId) {
-      throw new Error("Missing connectionId or credentialId.");
-    }
-    if (connectionId && credentialId) {
-      throw new Error("Only one of connectionId or credentialId must be set.");
-    }
-
+  } & (
+    | { connectionId: string; credentialId?: never }
+    | { connectionId?: never; credentialId: string }
+  )): Promise<PostConnectionResponseBody | null> => {
     const response = await clientFetch(
       `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
       {
