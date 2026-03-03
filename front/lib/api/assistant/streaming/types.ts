@@ -14,7 +14,9 @@ import type {
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageNewEvent,
+  ButlerDoneEvent,
   ButlerSuggestionCreatedEvent,
+  ButlerThinkingEvent,
   ConversationTitleEvent,
   UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
@@ -33,7 +35,9 @@ export type AgentMessageEvents =
   | ToolPersonalAuthRequiredEvent;
 
 export type ConversationEvents =
+  | ButlerDoneEvent
   | ButlerSuggestionCreatedEvent
+  | ButlerThinkingEvent
   | ConversationTitleEvent
   | AgentMessageNewEvent
   | UserMessageNewEvent

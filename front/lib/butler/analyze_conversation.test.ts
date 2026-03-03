@@ -153,8 +153,8 @@ describe("analyzeConversation", () => {
     expect(suggestions[0].sourceMessageId).toBe(message!.id);
     expect(suggestions[0].conversationId).toBe(conversation.id);
 
-    // Verify the event was published to the conversation channel.
-    expect(mockPublishConversationEvent).toHaveBeenCalledOnce();
+    // Verify the events were published: butler_thinking + suggestion + butler_done.
+    expect(mockPublishConversationEvent).toHaveBeenCalledTimes(3);
     expect(mockPublishConversationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "butler_suggestion_created",
@@ -393,7 +393,8 @@ describe("analyzeConversation", () => {
 
     const types = suggestions.map((s) => s.suggestionType).sort();
     expect(types).toEqual(["call_agent", "rename_title"]);
-    expect(mockPublishConversationEvent).toHaveBeenCalledTimes(2);
+    // butler_thinking + 2 suggestions + butler_done.
+    expect(mockPublishConversationEvent).toHaveBeenCalledTimes(4);
   });
 
   it("skips call_agent suggestion when agent name does not match", async () => {
