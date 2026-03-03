@@ -170,7 +170,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description:
     "Anthropic's Claude 4.5 Haiku model, cost effective and high throughput (200k context).",
-  shortDescription: "Anthropic's super-fast model.",
+  shortDescription: "Anthropic's latest super-fast model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 64_000,
