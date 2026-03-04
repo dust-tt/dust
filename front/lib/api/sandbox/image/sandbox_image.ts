@@ -31,6 +31,8 @@ interface SandboxImageState {
   resources: SandboxResources;
   network: NetworkPolicy;
   workdir: string;
+  runEnv: Readonly<Record<string, string>>;
+  imageId?: SandboxImageId;
 }
 
 export class SandboxImage {
@@ -40,7 +42,9 @@ export class SandboxImage {
   readonly resources: SandboxResources;
   readonly network: NetworkPolicy;
   readonly workdir: string;
+  readonly runEnv: Readonly<Record<string, string>>;
   readonly startupScript?: string;
+  readonly imageId?: SandboxImageId;
 
   private constructor(state: SandboxImageState) {
     this.baseImage = state.baseImage;
@@ -49,6 +53,8 @@ export class SandboxImage {
     this.resources = state.resources;
     this.network = state.network;
     this.workdir = state.workdir;
+    this.runEnv = state.runEnv;
+    this.imageId = state.imageId;
   }
 
   private clone(updates: Partial<SandboxImageState>): SandboxImage {
@@ -59,28 +65,20 @@ export class SandboxImage {
       resources: updates.resources ?? this.resources,
       network: updates.network ?? this.network,
       workdir: updates.workdir ?? this.workdir,
+      runEnv: updates.runEnv ?? this.runEnv,
+      imageId: updates.imageId ?? this.imageId,
     });
   }
 
-  static fromUbuntu(version: string = "22.04"): SandboxImage {
+  static fromSandbox(id: SandboxImageId): SandboxImage {
     return new SandboxImage({
-      baseImage: { type: "ubuntu", version },
+      baseImage: { type: "sandbox", id },
       operations: [],
       tools: [],
       resources: DEFAULT_RESOURCES,
       network: DEFAULT_NETWORK,
       workdir: "/home/user",
-    });
-  }
-
-  static fromTemplate(id: SandboxImageId): SandboxImage {
-    return new SandboxImage({
-      baseImage: { type: "template", id },
-      operations: [],
-      tools: [],
-      resources: DEFAULT_RESOURCES,
-      network: DEFAULT_NETWORK,
-      workdir: "/home/user",
+      runEnv: {},
     });
   }
 
@@ -92,6 +90,7 @@ export class SandboxImage {
       resources: DEFAULT_RESOURCES,
       network: DEFAULT_NETWORK,
       workdir: "/home/user",
+      runEnv: {},
     });
   }
 
@@ -156,7 +155,7 @@ export class SandboxImage {
     });
   }
 
-  setEnv(vars: Record<string, string>): SandboxImage {
+  setBuildEnv(vars: Record<string, string>): SandboxImage {
     const operation: Operation = {
       type: "env",
       vars,
@@ -167,12 +166,22 @@ export class SandboxImage {
     });
   }
 
+  setRunEnv(vars: Record<string, string>): SandboxImage {
+    return this.clone({
+      runEnv: { ...this.runEnv, ...vars },
+    });
+  }
+
   withResources(resources: SandboxResources): SandboxImage {
     return this.clone({ resources });
   }
 
   withNetwork(policy: NetworkPolicy): SandboxImage {
     return this.clone({ network: policy });
+  }
+
+  register(imageId: SandboxImageId): SandboxImage {
+    return this.clone({ imageId });
   }
 
   withToolManifest(options?: {
@@ -194,5 +203,20 @@ export class SandboxImage {
     };
 
     return this.copy(getContent, destPath);
+  }
+
+  toCreateConfig(): {
+    imageId?: SandboxImageId;
+    envVars?: Record<string, string>;
+    network: NetworkPolicy;
+    resources: SandboxResources;
+  } {
+    return {
+      imageId: this.imageId,
+      envVars:
+        Object.keys(this.runEnv).length > 0 ? { ...this.runEnv } : undefined,
+      network: this.network,
+      resources: this.resources,
+    };
   }
 }

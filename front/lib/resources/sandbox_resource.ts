@@ -1,4 +1,5 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
+import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type {
   ExecOptions,
   ExecResult,
@@ -286,7 +287,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       );
 
       if (!existing) {
-        const createResult = await provider.create({});
+        const image = getSandboxImage(auth);
+        const createResult = await provider.create(image.toCreateConfig());
         if (createResult.isErr()) {
           return createResult;
         }
@@ -336,7 +338,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         // Falls through to recreation when wake fails.
 
         case "deleted": {
-          const createResult = await provider.create({});
+          const image = getSandboxImage(auth);
+          const createResult = await provider.create(image.toCreateConfig());
           if (createResult.isErr()) {
             return createResult;
           }
