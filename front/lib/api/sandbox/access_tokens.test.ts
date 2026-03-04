@@ -45,14 +45,18 @@ async function setupTest() {
     status: "running",
   });
 
-  return { auth, conversation, sandbox };
+  return { auth, agentConfig, conversation, sandbox };
 }
 
 describe("sandbox access tokens", () => {
   it("round-trip: generate → verify → check claims", async () => {
-    const { auth, conversation, sandbox } = await setupTest();
+    const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, { conversation, sandbox });
+    const token = generateSandboxExecToken(auth, {
+      agentConfiguration: agentConfig,
+      conversation,
+      sandbox,
+    });
 
     expect(token.startsWith(SANDBOX_TOKEN_PREFIX)).toBe(true);
 
@@ -62,13 +66,18 @@ describe("sandbox access tokens", () => {
     expect(payload!.wId).toBe(auth.getNonNullableWorkspace().sId);
     expect(payload!.cId).toBe(conversation.sId);
     expect(payload!.uId).toBe(auth.getNonNullableUser().sId);
+    expect(payload!.aId).toBe(agentConfig.sId);
     expect(payload!.sbId).toBe(sandbox.sId);
   });
 
   it("tampered token is rejected", async () => {
-    const { auth, conversation, sandbox } = await setupTest();
+    const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, { conversation, sandbox });
+    const token = generateSandboxExecToken(auth, {
+      agentConfiguration: agentConfig,
+      conversation,
+      sandbox,
+    });
 
     // Decode, modify, re-sign with a wrong secret.
     const jwtPart = token.slice(SANDBOX_TOKEN_PREFIX.length);
@@ -84,9 +93,13 @@ describe("sandbox access tokens", () => {
   });
 
   it("token without sbt- prefix is rejected", async () => {
-    const { auth, conversation, sandbox } = await setupTest();
+    const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, { conversation, sandbox });
+    const token = generateSandboxExecToken(auth, {
+      agentConfiguration: agentConfig,
+      conversation,
+      sandbox,
+    });
     const raw = token.slice(SANDBOX_TOKEN_PREFIX.length);
 
     expect(verifySandboxExecToken(raw)).toBeNull();

@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
@@ -13,6 +14,7 @@ const SandboxExecTokenPayloadSchema = z.object({
   wId: z.string(),
   cId: z.string(),
   uId: z.string(),
+  aId: z.string(),
   sbId: z.string(),
 });
 
@@ -23,10 +25,12 @@ export type SandboxExecTokenPayload = z.infer<
 export function generateSandboxExecToken(
   auth: Authenticator,
   {
+    agentConfiguration,
     conversation,
     sandbox,
     expiryMs = 2 * 60 * 1000, // Default to 2 minutes
   }: {
+    agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     sandbox: SandboxResource;
     expiryMs?: number;
@@ -36,6 +40,7 @@ export function generateSandboxExecToken(
     wId: auth.getNonNullableWorkspace().sId,
     cId: conversation.sId,
     uId: auth.getNonNullableUser().sId,
+    aId: agentConfiguration.sId,
     sbId: sandbox.sId,
   };
 
