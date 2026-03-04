@@ -313,6 +313,11 @@ function CopilotSuggestionsProviderContent({
   });
 
   const registerEditor = useCallback((editor: Editor) => {
+    if (editorRef.current !== editor) {
+      appliedSuggestionsRef.current.clear();
+      setIsEditorReady(false);
+    }
+
     editorRef.current = editor;
 
     // Wait for the editor content to be set.

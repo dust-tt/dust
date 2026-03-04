@@ -495,6 +495,7 @@ const authenticate = async (
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
 
+  // TODO(chris): Remove this condition if no log
   const workspaceId =
     connection && connection.startsWith("workspace-")
       ? connection.split("workspace-")[1]
@@ -616,7 +617,7 @@ const refreshToken = async (
           success: true,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken || refreshToken,
-          expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
           authentication_method: data.authenticationMethod,
         });
       });
@@ -666,7 +667,7 @@ const exchangeCodeForTokens = async (
       success: true,
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
-      expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
       authentication_method: data.authenticationMethod,
     };
   } catch (error) {

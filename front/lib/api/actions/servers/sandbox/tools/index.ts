@@ -74,7 +74,9 @@ export function createSandboxTools(
       { auth, agentLoopContext }
     ) => {
       const conversation = agentLoopContext?.runContext?.conversation;
-      if (!conversation) {
+      const agentConfiguration =
+        agentLoopContext?.runContext?.agentConfiguration;
+      if (!conversation || !agentConfiguration) {
         return new Err(new MCPError("No conversation context available."));
       }
 
@@ -89,6 +91,7 @@ export function createSandboxTools(
       const { sandbox } = ensureResult.value;
 
       const sandboxToken = generateSandboxExecToken(auth, {
+        agentConfiguration,
         conversation,
         sandbox,
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,

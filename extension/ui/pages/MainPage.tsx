@@ -5,7 +5,6 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversation } from "@app/hooks/conversations/useConversation";
 import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -107,16 +106,14 @@ export const MainPage = () => {
         <BlockedActionsProvider owner={workspace} conversation={conversation}>
           <ConversationSidePanelProvider>
             <GenerationContextProvider>
-              <InputBarProvider origin="extension">
-                <ConversationContainer
-                  workspace={workspace}
-                  user={user}
-                  subscription={subscription}
-                  conversationId={conversationId}
-                  conversation={conversation}
-                  serverId={serverId}
-                />
-              </InputBarProvider>
+              <ConversationContainer
+                workspace={workspace}
+                user={user}
+                subscription={subscription}
+                conversationId={conversationId}
+                conversation={conversation}
+                serverId={serverId}
+              />
             </GenerationContextProvider>
           </ConversationSidePanelProvider>
         </BlockedActionsProvider>

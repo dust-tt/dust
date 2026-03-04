@@ -1,11 +1,9 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
+import { Button } from "@sparkle/components/Button";
+import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import {
-  Button,
   ContentBlockWrapper,
   type GetContentToDownloadFunction,
-} from "@sparkle/components";
-import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
+} from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import {
   type JsonValueType,

@@ -301,7 +301,7 @@ export function withSessionAuthenticationForWorkspace<T>(
           status_code: 401,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only users of the workspace can access this route.",
+            message: "Only users of the workspace can access this content.",
           },
         });
       }
@@ -405,7 +405,7 @@ export function withPublicAPIAuthentication<T>(
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
-              message: "Only users of the workspace can access this route.",
+              message: "Only users of the workspace can access this content.",
             },
           });
         }
@@ -452,7 +452,7 @@ export function withPublicAPIAuthentication<T>(
           status_code: 401,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only users of the workspace can access this route.",
+            message: "Only users of the workspace can access this content.",
           },
         });
       }

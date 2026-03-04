@@ -201,23 +201,20 @@ Query parameter accepts:
 - Channel ID (e.g., 'C01234ABCD') - instant lookup
 - Channel name or keywords (e.g., 'marketing') - searches channel names, topics, and descriptions, returns top ${MAX_CHANNEL_SEARCH_RESULTS} matches
 
-Scope parameter (applies only to text searches):
-- 'auto' (default) - searches joined channels first, then falls back to all public channels if no results
-- 'joined' - searches only joined channels
-- 'all' - searches only all public channels
-
-Use 'auto' scope by default unless searching for a specific channel subset.`,
+By default, searches only joined channels (public, private, IMs, group DMs).
+Set search_all=true only if the user explicitly requests to search all public workspace channels.`,
     schema: {
       query: z
         .string()
         .describe(
           "Channel ID (e.g., 'C01234ABCD'), channel name, or search keywords. Channel IDs are automatically detected."
         ),
-      scope: z
-        .enum(["auto", "joined", "all"])
-        .default("auto")
+      search_all: z
+        .boolean()
+        .optional()
+        .default(false)
         .describe(
-          "'auto' (default, always use this unless user specifies), 'joined' (only joined channels), 'all' (only public channels). Ignored when query is a channel ID."
+          "Only set to true if the user explicitly requests searching all public workspace channels. By default, searches only joined channels. Ignored when query is a channel ID."
         ),
     },
     stake: "never_ask",

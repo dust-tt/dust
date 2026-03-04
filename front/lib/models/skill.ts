@@ -5,7 +5,11 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillSourceMetadata,
+  SkillSourceType,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 import { DataTypes } from "sequelize";
@@ -53,6 +57,14 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  source: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  sourceMetadata: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
 } as const satisfies ModelAttributes;
 
 /**
@@ -89,6 +101,9 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   // Not a foreign key, only global skills can be extended.
   declare extendedSkillId: string | null;
 
+  declare source: SkillSourceType | null;
+  declare sourceMetadata: SkillSourceMetadata | null;
+
   declare requestedSpaceIds: number[];
 }
 
@@ -115,6 +130,7 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
 export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
   declare mcpServerViewIds: number[];
+  declare fileAttachmentIds: number[];
   declare version: number;
 }
 
@@ -128,6 +144,11 @@ SkillVersionModel.init(
     mcpServerViewIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
+    },
+    fileAttachmentIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+      defaultValue: [],
     },
     version: {
       type: DataTypes.INTEGER,

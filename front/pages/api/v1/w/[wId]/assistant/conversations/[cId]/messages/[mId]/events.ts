@@ -188,7 +188,7 @@ async function handler(
           if (isRunAgentQueryProgressOutput(originalOutput)) {
             const wId = auth.getNonNullableWorkspace().sId;
             const { conversationId, agentMessageId } = originalOutput;
-            const childConversationUrl = `${config.getClientFacingUrl()}/api/v1/w/${wId}/assistant/conversations/${conversationId}`;
+            const childConversationUrl = `${config.getApiBaseUrl()}/api/v1/w/${wId}/assistant/conversations/${conversationId}`;
             output = {
               ...originalOutput,
               childConversationUrl,

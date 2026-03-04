@@ -1,3 +1,7 @@
+import {
+  DUST_SANDBOX_IMAGE_ID,
+  type SandboxImageId,
+} from "@app/lib/api/sandbox/image/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
@@ -34,6 +38,7 @@ const config = {
     return baseUrlResolver?.() || config.getClientFacingUrl();
   },
 
+  // Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
@@ -50,6 +55,9 @@ const config = {
       throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+  },
+  getStaticWebsiteUrl: (): string => {
+    return config.getClientFacingUrl();
   },
   // URL for the main app pages (/w/..., /share/..., etc.).
   // Use this for page URLs, not API endpoints.
@@ -70,7 +78,7 @@ const config = {
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
-      config.getClientFacingUrl()
+      config.getApiBaseUrl()
     );
   },
   getDustApiAudience: (): string => {
@@ -469,18 +477,15 @@ const config = {
     );
   },
   // E2B Sandbox.
-  getE2BSandboxConfig: ():
-    | { apiKey: string; templateId: string; domain: string | undefined }
-    | undefined => {
-    const apiKey = EnvironmentConfig.getOptionalEnvVariable("E2B_API_KEY");
-    const templateId =
-      EnvironmentConfig.getOptionalEnvVariable("E2B_TEMPLATE_ID");
-    if (!apiKey || !templateId) {
-      return undefined;
-    }
+  getE2BSandboxConfig: (): {
+    apiKey: string;
+    imageId: SandboxImageId;
+    domain: string | undefined;
+  } => {
+    const apiKey = EnvironmentConfig.getEnvVariable("E2B_API_KEY");
     return {
       apiKey,
-      templateId,
+      imageId: DUST_SANDBOX_IMAGE_ID,
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },

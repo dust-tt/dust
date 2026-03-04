@@ -1,6 +1,4 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { ContentBlockWrapper } from "@sparkle/components";
+import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
 import { cva } from "class-variance-authority";
 import React from "react";
 

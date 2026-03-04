@@ -27,6 +27,7 @@ interface SnowflakeQueryTagMetadata {
   agent_name: string;
   conversation_id: string;
   user_id: string | null;
+  user_email: string | null;
 }
 
 // Builds Snowflake query tag for agent-level usage tracking.
@@ -49,6 +50,7 @@ function buildQueryTagMetadata(
     agent_name: agentConfiguration.name,
     conversation_id: conversation.sId,
     user_id: user?.sId ?? null,
+    user_email: user?.email ?? null,
   };
 
   return JSON.stringify(metadata);

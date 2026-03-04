@@ -2,8 +2,10 @@ import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { getIcon } from "@app/components/resources/resources_icons";
 import {
   useAgentMessageSkills,
+  useAgentMessageTools,
   useConversationMessage,
 } from "@app/hooks/conversations";
 import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
@@ -58,6 +60,12 @@ function AgentActionsPanelContent({
     messageId,
   });
 
+  const { tools, mutateTools } = useAgentMessageTools({
+    owner,
+    conversation,
+    agentConfigurationId: fullAgentMessage.configuration.sId,
+  });
+
   const { messageStreamState, shouldStream, isFreshMountWithContent } =
     useAgentMessageStreamLegacy({
       message: getLightAgentMessageFromAgentMessage(fullAgentMessage),
@@ -91,8 +99,9 @@ function AgentActionsPanelContent({
       isFreshMountWithContent.current = true;
     } else if (fullAgentMessage.status === "succeeded") {
       void mutateSkills();
+      void mutateTools();
     }
-  }, [fullAgentMessage, isFreshMountWithContent, mutateSkills]);
+  }, [fullAgentMessage, isFreshMountWithContent, mutateSkills, mutateTools]);
 
   const [steps, setSteps] = useState<Record<number, ParsedContentItem[]>>({});
 
@@ -330,16 +339,25 @@ function AgentActionsPanelContent({
           <div>&nbsp;</div>
         </div>
       </div>
-      {skills.length > 0 && (
+      {(skills.length > 0 || tools.length > 0) && (
         <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
-          <span className="text-semibold text-sm">Skills used</span>
+          <span className="text-semibold text-sm">Enabled capabilities</span>
           <div className="flex flex-wrap items-center gap-1">
             {skills.map((skill) => (
               <Chip
                 key={skill.sId}
                 size="xs"
+                color="blue"
                 label={skill.name}
                 icon={getSkillIcon(skill.icon)}
+              />
+            ))}
+            {tools.map((tool) => (
+              <Chip
+                key={tool.sId}
+                size="xs"
+                label={tool.name ?? tool.server.name}
+                icon={getIcon(tool.server.icon)}
               />
             ))}
           </div>

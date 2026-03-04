@@ -799,11 +799,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     endAt = new Date(),
     transaction,
+    allowLastAdminRevocation = false,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     endAt?: Date;
     transaction?: Transaction;
+    allowLastAdminRevocation?: boolean;
   }): Promise<
     Result<
       { role: MembershipRoleType; startAt: Date; endAt: Date },
@@ -828,7 +830,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Prevent revoking the last admin of a workspace.
-    if (membership.role === "admin") {
+    if (membership.role === "admin" && !allowLastAdminRevocation) {
       const adminsCount = await this.getMembersCountForWorkspace({
         workspace,
         activeOnly: true,

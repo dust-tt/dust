@@ -456,6 +456,14 @@ function createPlugin(getHighlightedId: () => string | null) {
           dirty = true;
         }
 
+        if (meta?.type === "removeAll") {
+          suggestions = new Map(suggestions);
+          for (const id of meta.ids) {
+            suggestions.delete(id);
+          }
+          dirty = true;
+        }
+
         if (meta?.type === "highlight") {
           highlightedId = meta.id;
           dirty = true;
@@ -747,20 +755,39 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptAllSuggestions:
         () =>
-        ({ commands, editor }) => {
-          const ids = getActiveSuggestionIds(editor.state);
+        ({ commands, state, tr }) => {
+          const ids = getActiveSuggestionIds(state);
+          if (ids.length === 0) {
+            return false;
+          }
 
-          // Process all suggestions even if some fail, return true only if all succeeded.
-          return ids.map((id) => commands.acceptSuggestion(id)).every(Boolean);
+          // commands.acceptSuggestion shares the same tr, so content
+          // replacements accumulate correctly. However each call overwrites
+          // the plugin meta, so only the last suggestion would be removed
+          // from plugin state. We fix this by overwriting the meta with all
+          // IDs after the loop.
+          const allSucceeded = ids
+            .map((id) => commands.acceptSuggestion(id))
+            .every(Boolean);
+          tr.setMeta(pluginKey, { type: "removeAll", ids });
+
+          return allSucceeded;
         },
 
       rejectAllSuggestions:
         () =>
-        ({ commands, editor }) => {
-          const ids = getActiveSuggestionIds(editor.state);
+        ({ state, tr, dispatch }) => {
+          const ids = getActiveSuggestionIds(state);
+          if (ids.length === 0) {
+            return false;
+          }
 
-          // Process all suggestions even if some fail, return true only if all succeeded.
-          return ids.map((id) => commands.rejectSuggestion(id)).every(Boolean);
+          if (dispatch) {
+            tr.setMeta(pluginKey, { type: "removeAll", ids });
+            dispatch(tr);
+          }
+
+          return true;
         },
 
       setHighlightedSuggestion:

@@ -75,6 +75,27 @@ export const useAuthHook = () => {
     setIsLoading(false);
   }, []);
 
+  const scheduleRefresh = useCallback(
+    (expiresAt: number) => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+
+      // Refresh 1 minute before expiry, but at least 1 second from now.
+      const delayMs = Math.max(
+        expiresAt - Date.now() - PROACTIVE_REFRESH_WINDOW_MS,
+        1000
+      );
+
+      refreshTimerRef.current = setTimeout(() => {
+        void handleRefreshToken();
+      }, delayMs);
+    },
+    // handleRefreshToken is stable (useCallback with []), safe to reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const handleRefreshToken = useCallback(async () => {
     const newAccessToken = await platform.auth.getAccessToken(true);
     if (!newAccessToken) {
@@ -86,6 +107,9 @@ export const useAuthHook = () => {
     }
 
     const storedTokens = await platform.auth.getStoredTokens();
+    if (storedTokens) {
+      scheduleRefresh(storedTokens.expiresAt);
+    }
     setTokens((prev) => {
       if (!prev) {
         return null;
@@ -97,7 +121,7 @@ export const useAuthHook = () => {
       };
     });
     setAuthError(null);
-  }, []);
+  }, [scheduleRefresh]);
 
   // Listen for changes in storage to make sure we always have the latest tokens.
   useEffect(() => {
@@ -155,9 +179,11 @@ export const useAuthHook = () => {
       }
       setTokens(storedTokens);
 
-      // Token refresh.
+      // Token refresh: refresh now if about to expire, otherwise schedule.
       if (storedTokens.expiresAt < Date.now() + PROACTIVE_REFRESH_WINDOW_MS) {
         await handleRefreshToken();
+      } else {
+        scheduleRefresh(storedTokens.expiresAt);
       }
 
       // isLoading stays true — the user fetch effect will clear it.

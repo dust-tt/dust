@@ -13,6 +13,7 @@ import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
 } from "@app/types/oauth/lib";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Card,
@@ -30,6 +31,11 @@ import {
   Tooltip,
   UserIcon,
 } from "@dust-tt/sparkle";
+import type {
+  ForwardRefExoticComponent,
+  RefAttributes,
+  RefObject,
+} from "react";
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -61,19 +67,42 @@ const TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS = [
 // Parent components can check formState.errors[AUTH_CREDENTIALS_ERROR_KEY].
 export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
 
-interface MCPServerOAuthConnexionProps {
+export interface StaticCredentialFormProps {
+  owner: LightWorkspaceType;
+  onValidityChange: (isValid: boolean) => void;
+}
+
+export interface StaticCredentialFormHandle {
+  submit: () => Promise<string | null>;
+}
+
+export interface StaticCredentialConfig {
+  owner: LightWorkspaceType;
+  formRef: RefObject<StaticCredentialFormHandle>;
+  onValidityChange: (isValid: boolean) => void;
+  FormComponent: ForwardRefExoticComponent<
+    StaticCredentialFormProps & RefAttributes<StaticCredentialFormHandle>
+  >;
+}
+
+interface MCPServerAuthConnectionProps {
   toolName: string;
   // Authorization is always passed as a prop from the parent dialog.
   // It's managed via useState in the dialog (workflow state), not in form state.
   authorization: AuthorizationInfo;
   documentationUrl?: string;
+  // When provided, renders the FormComponent from this config in place of the
+  // OAuth credential inputs. The parent resolves the component (e.g. via a
+  // registry) and passes it here — no provider-specific logic in this file.
+  staticCredentialConfig?: StaticCredentialConfig;
 }
 
-export function MCPServerOAuthConnexion({
+export function MCPServerAuthConnection({
   toolName,
   authorization,
   documentationUrl,
-}: MCPServerOAuthConnexionProps) {
+  staticCredentialConfig,
+}: MCPServerAuthConnectionProps) {
   const { setError, clearErrors, setValue, control } =
     useFormContext<MCPServerOAuthFormValues>();
 
@@ -205,6 +234,9 @@ export function MCPServerOAuthConnexion({
     authorization.supported_use_cases.includes("platform_actions");
   const supportsBoth = supportsPersonalActions && supportsPlatformActions;
 
+  // The parent resolves the form component and includes it in the config.
+  const StaticFormComp = staticCredentialConfig?.FormComponent ?? null;
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="w-full space-y-4">
@@ -229,6 +261,52 @@ export function MCPServerOAuthConnexion({
         </div>
       </div>
 
+      {StaticFormComp && staticCredentialConfig ? (
+        <StaticFormComp
+          ref={staticCredentialConfig.formRef}
+          owner={staticCredentialConfig.owner}
+          onValidityChange={staticCredentialConfig.onValidityChange}
+        />
+      ) : (
+        <OAuthCredentialFields
+          authorization={authorization}
+          useCase={useCase}
+          inputs={inputs}
+          authCredentials={authCredentials}
+          onCredentialChange={handleCredentialChange}
+        />
+      )}
+
+      {documentationUrl && (
+        <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Questions ? Read{" "}
+          <Hoverable href={documentationUrl} target="_blank" variant="primary">
+            our guide
+          </Hoverable>{" "}
+          on {toolName}.
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface OAuthCredentialFieldsProps {
+  authorization: AuthorizationInfo;
+  useCase: MCPOAuthUseCase | null;
+  inputs: OAuthCredentialInputs | null;
+  authCredentials: OAuthCredentials | null;
+  onCredentialChange: (key: string, value: string) => void;
+}
+
+function OAuthCredentialFields({
+  authorization,
+  useCase,
+  inputs,
+  authCredentials,
+  onCredentialChange,
+}: OAuthCredentialFieldsProps) {
+  return (
+    <>
       <ProviderSetupInstructions
         provider={authorization.provider}
         useCase={useCase}
@@ -259,7 +337,7 @@ export function MCPServerOAuthConnexion({
                 <Input
                   id={key}
                   value={value}
-                  onChange={(e) => handleCredentialChange(key, e.target.value)}
+                  onChange={(e) => onCredentialChange(key, e.target.value)}
                   message={inputData.helpMessage}
                   messageStatus={hasValidationError ? "error" : undefined}
                 />
@@ -301,7 +379,7 @@ export function MCPServerOAuthConnexion({
                           value={option.value}
                           label={option.label}
                           onClick={() =>
-                            handleCredentialChange(
+                            onCredentialChange(
                               TOKEN_ENDPOINT_AUTH_METHOD_KEY,
                               option.value
                             )
@@ -323,17 +401,7 @@ export function MCPServerOAuthConnexion({
       )}
 
       <ProviderAuthNote provider={authorization.provider} />
-
-      {documentationUrl && (
-        <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Questions ? Read{" "}
-          <Hoverable href={documentationUrl} target="_blank" variant="primary">
-            our guide
-          </Hoverable>{" "}
-          on {toolName}.
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 

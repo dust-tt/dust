@@ -46,6 +46,7 @@ export type RedisUsageTagsType =
   | "mentions_count"
   | "message_events"
   | "notion_url_sync"
+  | "poke_cache_invalidation"
   | "poke_cache_lookup"
   | "public_api_limits"
   | "rate_limiter"

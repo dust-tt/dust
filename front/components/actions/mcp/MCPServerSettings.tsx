@@ -2,7 +2,7 @@ import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/Conne
 import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
-} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+} from "@app/components/actions/mcp/MCPServerAuthConnection";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServerConnection,

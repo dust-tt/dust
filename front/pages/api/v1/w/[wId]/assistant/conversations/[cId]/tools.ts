@@ -18,6 +18,7 @@ type FetchConversationToolsResponse = GetMCPServerViewsResponseType;
 const ConversationToolActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
   mcp_server_view_id: z.string(),
+  agent_configuration_id: z.string().optional(),
 });
 
 export type ConversationToolActionRequest = z.infer<
@@ -86,7 +87,8 @@ async function handler(
         });
       }
 
-      const { action, mcp_server_view_id } = parseResult.data;
+      const { action, mcp_server_view_id, agent_configuration_id } =
+        parseResult.data;
 
       const mcpServerViewRes = await MCPServerViewResource.fetchById(
         auth,
@@ -107,6 +109,15 @@ async function handler(
         conversation: conversationWithoutContent,
         mcpServerViews: [mcpServerViewRes],
         enabled: action === "add",
+        ...(agent_configuration_id
+          ? {
+              source: "agent_enabled",
+              agentConfigurationId: agent_configuration_id,
+            }
+          : {
+              source: "conversation",
+              agentConfigurationId: null,
+            }),
       });
       if (r.isErr()) {
         return apiError(req, res, {

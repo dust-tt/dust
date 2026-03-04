@@ -1,4 +1,4 @@
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type {
@@ -10,7 +10,7 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { useCallback, useContext } from "react";
+import { useCallback } from "react";
 
 export function useSubmitMessage({
   owner,
@@ -21,7 +21,7 @@ export function useSubmitMessage({
   user: UserType;
   conversationId: string | null;
 }) {
-  const { origin: contextOrigin } = useContext(InputBarContext);
+  const contextOrigin = useClientType();
 
   return useCallback(
     async (messageData: {

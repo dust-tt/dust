@@ -106,7 +106,7 @@ async function handler(
         workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
         extensionConfig: extensionConfig?.toJSON() ?? null,
         programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
-        baseUrl: config.getClientFacingUrl(),
+        baseUrl: config.getApiBaseUrl(),
         workosEnvironmentId: config.getWorkOSEnvironmentId(),
       });
 

@@ -67,6 +67,16 @@ const PostSkillRequestBodySchema = t.intersection([
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
   }),
+  t.union([
+    t.type({
+      source: t.literal("github"),
+      sourceMetadata: t.type({ repoUrl: t.string, filePath: t.string }),
+    }),
+    t.partial({
+      source: t.union([t.literal("web_app"), t.literal("local_file")]),
+      sourceMetadata: t.null,
+    }),
+  ]),
 ]);
 
 type PostSkillRequestBody = t.TypeOf<typeof PostSkillRequestBodySchema>;
@@ -343,6 +353,8 @@ async function handler(
           requestedSpaceIds,
           extendedSkillId: body.extendedSkillId,
           icon,
+          source: body.source ?? "web_app",
+          sourceMetadata: body.sourceMetadata ?? null,
         },
         {
           mcpServerViews,

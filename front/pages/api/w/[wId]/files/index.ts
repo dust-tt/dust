@@ -70,9 +70,7 @@ const FileUploadUrlRequestSchema = t.union([
     fileName: t.string,
     fileSize: t.number,
     useCase: t.literal("skill_attachment"),
-    useCaseMetadata: t.type({
-      skillId: t.string,
-    }),
+    useCaseMetadata: t.union([t.type({ skillId: t.string }), t.undefined]),
   }),
 ]);
 

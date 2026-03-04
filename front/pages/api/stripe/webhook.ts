@@ -1103,14 +1103,10 @@ async function handler(
             });
             const adminEmails = members.map((u) => u.email);
             if (adminEmails.length === 0) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message:
-                    "[Stripe Webhook] canceling subscription: Error getting admin emails.",
-                },
-              });
+              logger.warn(
+                { workspaceId: workspace.sId, stripeError: true },
+                "[Stripe Webhook] No active admins found, skipping cancel/reactivate email."
+              );
             }
             // send email to admins
             for (const adminEmail of adminEmails) {

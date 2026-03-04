@@ -445,13 +445,13 @@ export class FileResource extends BaseResource<FileModel> {
   getPrivateUrl(auth: Authenticator): string {
     const owner = auth.getNonNullableWorkspace();
 
-    return `${config.getClientFacingUrl()}/api/w/${owner.sId}/files/${this.sId}`;
+    return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
   getPublicUrl(auth: Authenticator): string {
     const owner = auth.getNonNullableWorkspace();
 
-    return `${config.getClientFacingUrl()}/api/v1/w/${owner.sId}/files/${this.sId}`;
+    return `${config.getApiBaseUrl()}/api/v1/w/${owner.sId}/files/${this.sId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {

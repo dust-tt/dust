@@ -151,9 +151,11 @@ export async function connectToMCPServer(
   {
     params,
     agentLoopContext,
+    allowDirectToolExecution,
   }: {
     params: MCPConnectionParams;
     agentLoopContext?: AgentLoopContextType;
+    allowDirectToolExecution?: boolean;
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
@@ -183,7 +185,7 @@ export async function connectToMCPServer(
           await mcpClient.connect(client);
 
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
-          if (agentLoopContext?.runContext) {
+          if (agentLoopContext?.runContext || allowDirectToolExecution) {
             const bearerTokenCredentials =
               await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
                 auth,
@@ -366,7 +368,7 @@ export async function connectToMCPServer(
             // Otherwise, for listing tools etc.., we use the workspace token.
             oauthConnectionType =
               params.oAuthUseCase === "personal_actions" &&
-              agentLoopContext?.runContext
+              (agentLoopContext?.runContext || allowDirectToolExecution)
                 ? "personal"
                 : "workspace";
 
