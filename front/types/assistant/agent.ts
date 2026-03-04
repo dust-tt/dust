@@ -119,7 +119,6 @@ export type AgentModelConfigurationType = {
   temperature: number;
   reasoningEffort?: AgentReasoningEffort;
   responseFormat?: string;
-  // Optional metadata passed through to the LLM client
   metaData?: Record<string, unknown>;
 };
 
