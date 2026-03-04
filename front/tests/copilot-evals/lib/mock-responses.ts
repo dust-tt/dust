@@ -98,12 +98,14 @@ export function getMockToolResponse(
               displayName: "Connected data",
               dataSources: [
                 {
-                  sId: "dsv_notion_1",
+                  dataSourceViewId: "dsv_notion_1",
+                  nodeId: "datasource_node_id-notion_ds_1",
                   name: "Notion",
                   connectorProvider: "notion",
                 },
                 {
-                  sId: "dsv_slack_1",
+                  dataSourceViewId: "dsv_slack_1",
+                  nodeId: "datasource_node_id-slack_ds_1",
                   name: "Slack",
                   connectorProvider: "slack",
                 },
@@ -114,7 +116,8 @@ export function getMockToolResponse(
               displayName: "Folders",
               dataSources: [
                 {
-                  sId: "dsv_folder_1",
+                  dataSourceViewId: "dsv_folder_1",
+                  nodeId: "datasource_node_id-folder_ds_1",
                   name: "Product Requirements",
                   connectorProvider: null,
                 },
@@ -132,7 +135,8 @@ export function getMockToolResponse(
               displayName: "Websites",
               dataSources: [
                 {
-                  sId: "dsv_website_1",
+                  dataSourceViewId: "dsv_website_1",
+                  nodeId: "datasource_node_id-website_ds_1",
                   name: "Company Blog",
                   connectorProvider: "webcrawler",
                 },
@@ -150,12 +154,14 @@ export function getMockToolResponse(
               displayName: "Connected data",
               dataSources: [
                 {
-                  sId: "dsv_snowflake_1",
+                  dataSourceViewId: "dsv_snowflake_1",
+                  nodeId: "datasource_node_id-snowflake_ds_1",
                   name: "Snowflake",
                   connectorProvider: "snowflake",
                 },
                 {
-                  sId: "dsv_github_1",
+                  dataSourceViewId: "dsv_github_1",
+                  nodeId: "datasource_node_id-github_ds_1",
                   name: "GitHub",
                   connectorProvider: "github",
                 },

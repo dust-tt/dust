@@ -98,7 +98,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     description:
       "List available knowledge data source views grouped by space and category. " +
       "Returns spaces, each with categories (managed, folder, website) containing data source views. " +
-      "Use each data source view's sId as dataSourceViewId when calling suggest_knowledge. " +
+      "Use dataSourceViewId when calling suggest_knowledge. " +
+      "Use nodeId for list/find/cat on company_data. " +
       "Optionally filter by spaceId or category.",
     schema: {
       spaceId: z

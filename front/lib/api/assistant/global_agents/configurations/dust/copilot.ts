@@ -278,7 +278,7 @@ Finding the right sources:
 Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
 You will need to select a knowledge method:
 - \'Search\' should be your default and is best for open-ended retreival.
-- \'Query Tables\' should be selected for warehouses/spreadsheets. It will ignore text documents and files in your selection. Create a separated knowledge tools if you need both.
+- \'Query Tables\' should be selected for structured data (i.e. warehouses/spreadsheets/tables). It will ignore text documents and files in your selection. Create a separated knowledge tools if you need both.
 - \'Include\' should only only be selected for small-reference documents (i.e. templates, style guides)
 - \'Extract\' should only be selected if you have a large amount of unstructured data that you need to extract structured information from.
 

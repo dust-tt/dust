@@ -50,6 +50,7 @@ import { isAgentMention } from "@app/types/assistant/mentions";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isJobType } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
@@ -87,7 +88,8 @@ type LimitedSuggestionKind =
   | "knowledge";
 
 interface KnowledgeDataSource {
-  sId: string;
+  dataSourceViewId: string;
+  nodeId: string;
   name: string;
   connectorProvider: string | null;
 }
@@ -243,7 +245,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
             .map((dsv) => {
               const json = dsv.toJSON();
               return {
-                sId: json.sId,
+                dataSourceViewId: json.sId,
+                nodeId: `${DATA_SOURCE_NODE_ID}-${json.dataSource.dustAPIDataSourceId}`,
                 name: getDisplayNameForDataSource(json.dataSource),
                 connectorProvider: json.dataSource.connectorProvider,
               };
