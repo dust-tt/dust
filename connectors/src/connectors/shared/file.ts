@@ -157,10 +157,17 @@ export async function handleTextExtraction(
   const pages = pageRes.value;
   const prefix = pagePrefixesPerMimeType[mimeType];
 
+  const fileSizeBytes = data.byteLength;
+  const pagesCount = pages.length;
+  const kbPerPage =
+    pagesCount > 0 ? Math.round(fileSizeBytes / 1024 / pagesCount) : 0;
+
   localLogger.info(
     {
-      mimeType: mimeType,
-      pagesCount: pages.length,
+      mimeType,
+      pagesCount,
+      fileSizeBytes,
+      kbPerPage,
     },
     "Successfully converted file to text"
   );
