@@ -1444,23 +1444,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       allMcpServerViews.map((view) => [view.id, view])
     );
 
-    // Build map to cache FileResource instances.
-    const allFileAttachmentIds = uniq(
-      sortedVersionModels.flatMap((model) => model.fileAttachmentIds)
-    );
-    const allFiles = await FileResource.fetchByModelIdsWithAuth(
-      auth,
-      allFileAttachmentIds
-    );
-    const fileMap = new Map(allFiles.map((file) => [file.id, file]));
-
     // Convert version models to SkillResource instances.
     return sortedVersionModels.map((versionModel) => {
       const mcpServerViews = removeNulls(
         versionModel.mcpServerViewIds.map((id) => mcpServerViewMap.get(id))
-      );
-      const fileAttachments = removeNulls(
-        versionModel.fileAttachmentIds.map((id) => fileMap.get(id))
       );
 
       const skill = new SkillResource(
@@ -1487,7 +1474,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           // As when the user saves we re-compute those from the nodes.
           dataSourceConfigurations: [],
           editorGroup: this.editorGroup ?? undefined,
-          fileAttachments,
           mcpServerConfigurations: mcpServerViews.map((view) => ({
             view,
           })),
