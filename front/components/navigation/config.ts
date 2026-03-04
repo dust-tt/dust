@@ -292,6 +292,7 @@ export const subNavigationAdmin = ({
           icon: ShapesIcon,
           href: `/w/${owner.sId}/developers/providers`,
           current: isCurrent("providers"),
+          featureFlag: "legacy_dust_apps",
         },
         {
           id: "dev_secrets",
