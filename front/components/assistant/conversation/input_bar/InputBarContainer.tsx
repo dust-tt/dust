@@ -22,6 +22,7 @@ import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import { isChromeExtension } from "@app/lib/utils/extension";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -608,6 +609,8 @@ const InputBarContainer = ({
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const isRecording = voiceTranscriberService.status === "recording";
 
+  const displayCaptureActionsDropdown = captureActions && isChromeExtension();
+
   return (
     <div
       id="InputBarContainer"
@@ -821,7 +824,7 @@ const InputBarContainer = ({
                       showStopLabel={!isMobile}
                     />
                   )}
-                {captureActions && (
+                {displayCaptureActionsDropdown && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

@@ -51,7 +51,7 @@ export const ConversationContainer = ({
     [fileUploaderService.uploadContentTab]
   );
 
-  const capureActions = useMemo(
+  const captureActions = useMemo(
     () => ({
       onCapture: handleCapture,
       isCapturing: fileUploaderService.isCapturing,
@@ -76,7 +76,7 @@ export const ConversationContainer = ({
   return (
     <InputBarContextProvider
       origin="extension"
-      captureActions={capureActions}
+      captureActions={captureActions}
       fileUploaderService={fileUploaderService}
     >
       <div className={currentPanel ? "hidden" : "flex flex-col h-full w-full"}>

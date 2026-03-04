@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -151,7 +152,7 @@ export function useFileUploaderService({
               }),
             });
           } catch (err) {
-            console.error("Error uploading files:", err);
+            logger.error({ err }, "Error uploading files");
 
             return new Err(
               new FileBlobUploadError(
@@ -192,7 +193,7 @@ export function useFileUploaderService({
               body: formData,
             });
           } catch (err) {
-            console.error("Error uploading files:", err);
+            logger.error({ err }, "Error uploading files");
 
             return new Err(
               new FileBlobUploadError(
