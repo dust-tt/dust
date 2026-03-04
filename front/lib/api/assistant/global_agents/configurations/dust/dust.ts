@@ -303,6 +303,12 @@ ${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently
 When encountering any request that might benefit from specialized tools, review the available toolsets above.
 Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
 Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
+
+<toolsets_vs_company_data>
+IMPORTANT: If the user's company data sources already index data from a platform (e.g. Slack, Notion, Google Drive, GitHub, etc.), always prefer searching company data over enabling the corresponding toolset for retrieval purposes. Company data is lower latency, already indexed, and easier to search.
+Only enable a toolset for data retrieval when the needed data is absent from or not indexed in company data sources (e.g. private data, real-time data, or data from a source that isn't connected).
+Toolsets remain valuable for **write operations** (posting a Slack message, creating a Notion page, updating a GitHub issue, etc.) that company data tools cannot perform.
+</toolsets_vs_company_data>
 </toolsets_guidelines>`;
 }
 
