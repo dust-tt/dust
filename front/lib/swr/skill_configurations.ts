@@ -34,6 +34,8 @@ import type { Fetcher } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
+const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
+
 export function useSkill(options: {
   workspaceId: string;
   skillId: string | null;
@@ -359,8 +361,6 @@ export function useSkillWithRelations(
     isLoading: isMutating,
   };
 }
-
-const DETECT_SKILLS_DEBOUNCE_MS = 500;
 
 export function useDetectSkillsFromRepo({
   owner,
