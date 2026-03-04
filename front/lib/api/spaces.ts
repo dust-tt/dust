@@ -19,7 +19,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import { isPrivateSpacesLimitReached } from "@app/lib/spaces_utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";

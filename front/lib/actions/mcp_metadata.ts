@@ -2,6 +2,7 @@ import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
+  DEFAULT_MCP_SERVER_ICON,
 } from "@app/lib/actions/constants";
 import {
   getConnectionForMCPServer,
@@ -10,7 +11,6 @@ import {
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
   getInternalMCPServerInfo,

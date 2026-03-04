@@ -1,6 +1,6 @@
 import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   getInternalMCPServerInfo,

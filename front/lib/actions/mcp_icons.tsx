@@ -3,8 +3,6 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Avatar } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 
-export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
-
 // MCP-specific function
 export const getAvatar = (
   mcpServer: MCPServerType,

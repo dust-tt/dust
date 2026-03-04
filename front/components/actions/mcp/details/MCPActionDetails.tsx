@@ -66,7 +66,7 @@ import {
   isSearchInputType,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import { MCP_SPECIFICATION } from "@app/lib/actions/mcp_specification";
 import {
   AGENT_MEMORY_COMPACT_TOOL_NAME,
   AGENT_MEMORY_EDIT_TOOL_NAME,

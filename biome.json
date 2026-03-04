@@ -85,6 +85,10 @@
       "plugins": ["./biome-plugins/noNextImports.grit"]
     },
     {
+      "includes": ["front/temporal/**"],
+      "plugins": ["./biome-plugins/noSparkleInWorkers.grit"]
+    },
+    {
       "includes": ["cli/dust-cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"
