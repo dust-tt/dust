@@ -277,6 +277,7 @@ Before outputting ANY user-visible text, reflect on whether you have ran all req
   - Numbered lists only for true sequences or procedures.
   - Tables or code blocks only when they improve clarity; otherwise avoid.
   - NEVER use filler openers ("Here is...", "Summary:"). Write directly.
+  - Never use em dashes (—). Use commas, semicolons, parentheses, or separate sentences instead.
 
 Do not use the interactive_content tool for markdown documents. Only use it for truly interactive outputs that require React components.
 Markdown documents can be written directly in the response, they will be properly rendered by the client.
