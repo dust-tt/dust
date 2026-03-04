@@ -4,9 +4,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::auth::{decode_jwt_claims, SandboxClaims, SANDBOX_TOKEN_ENV};
 
-use super::types::{
-    CallToolRequest, CallToolResponse, MCPServerView, MCPServerViewsResponse, Space, SpacesResponse,
-};
+use super::types::{CallToolRequest, CallToolResponse, MCPServerView, SandboxToolsResponse};
 
 const DEFAULT_API_URL: &str = "https://dust.tt";
 const API_URL_ENV: &str = "DUST_API_URL";
@@ -15,13 +13,6 @@ pub struct DustApiClient {
     client: reqwest::Client,
     base_url: String,
     claims: SandboxClaims,
-}
-
-/// A resolved server: the view sId, the space sId, and the server metadata.
-pub struct ResolvedServer {
-    pub view_s_id: String,
-    pub space_s_id: String,
-    pub server: super::types::MCPServer,
 }
 
 impl DustApiClient {
@@ -104,17 +95,8 @@ impl DustApiClient {
             .context(format!("failed to parse response from POST {url}"))
     }
 
-    pub async fn list_spaces(&self) -> anyhow::Result<Vec<Space>> {
-        let resp: SpacesResponse = self.get("spaces").await?;
-        Ok(resp.spaces)
-    }
-
-    pub async fn list_server_views(&self, space_id: &str) -> anyhow::Result<Vec<MCPServerView>> {
-        let resp: MCPServerViewsResponse = self
-            .get(&format!(
-                "spaces/{space_id}/mcp_server_views?includeAuto=true"
-            ))
-            .await?;
+    pub async fn list_tools(&self) -> anyhow::Result<Vec<MCPServerView>> {
+        let resp: SandboxToolsResponse = self.get("sandbox/tools").await?;
         Ok(resp.server_views)
     }
 
@@ -134,26 +116,5 @@ impl DustApiClient {
             &body,
         )
         .await
-    }
-
-    /// Find a server by name across all spaces. Returns the view sId, space sId,
-    /// and the server metadata.
-    pub async fn find_server(&self, name: &str) -> anyhow::Result<ResolvedServer> {
-        let spaces = self.list_spaces().await?;
-
-        for space in &spaces {
-            let views = self.list_server_views(&space.s_id).await?;
-            for view in views {
-                if view.server.name == name {
-                    return Ok(ResolvedServer {
-                        view_s_id: view.s_id,
-                        space_s_id: space.s_id.clone(),
-                        server: view.server,
-                    });
-                }
-            }
-        }
-
-        bail!("server '{name}' not found")
     }
 }

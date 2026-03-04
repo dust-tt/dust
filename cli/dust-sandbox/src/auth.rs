@@ -12,6 +12,8 @@ pub struct SandboxClaims {
     pub c_id: String,
     #[serde(rename = "uId")]
     pub u_id: String,
+    #[serde(rename = "aId")]
+    pub a_id: String,
     #[serde(rename = "sbId")]
     pub sb_id: String,
     #[serde(default)]
@@ -43,6 +45,7 @@ mod tests {
                 "wId": "ws-123",
                 "cId": "conv-456",
                 "uId": "user-789",
+                "aId": "agent-42",
                 "sbId": "sb-abc",
                 "exp": 9999999999u64
             })
@@ -55,6 +58,7 @@ mod tests {
         assert_eq!(claims.w_id, "ws-123");
         assert_eq!(claims.c_id, "conv-456");
         assert_eq!(claims.u_id, "user-789");
+        assert_eq!(claims.a_id, "agent-42");
         assert_eq!(claims.sb_id, "sb-abc");
         assert_eq!(claims.exp, Some(9999999999));
     }

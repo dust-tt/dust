@@ -1,21 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-pub struct SpacesResponse {
-    pub spaces: Vec<Space>,
-}
-
-#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Space {
-    #[serde(rename = "sId")]
-    pub s_id: String,
-    pub name: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MCPServerViewsResponse {
+pub struct SandboxToolsResponse {
     pub server_views: Vec<MCPServerView>,
 }
 
@@ -24,6 +11,7 @@ pub struct MCPServerViewsResponse {
 pub struct MCPServerView {
     #[serde(rename = "sId")]
     pub s_id: String,
+    pub space_id: String,
     pub server: MCPServer,
 }
 
