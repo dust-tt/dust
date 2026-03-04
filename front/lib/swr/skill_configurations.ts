@@ -419,6 +419,7 @@ export function useDetectSkillsFromRepo({
 
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
+  const [isImporting, setIsImporting] = useState(false);
   const { mutateSkillsWithRelations: mutateActiveSkills } =
     useSkillsWithRelations({
       owner,
@@ -428,50 +429,55 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
   const importSkills = useCallback(
     async (repoUrl: string, names: string[]) => {
-      const res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoUrl, names }),
-      });
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Import failed",
-          description: errorData.message,
+      setIsImporting(true);
+      try {
+        const res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoUrl, names }),
         });
-        return { successCount: 0, errors: [errorData.message] };
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: "Import failed",
+            description: errorData.message,
+          });
+          return { successCount: 0, errors: [errorData.message] };
+        }
+
+        const data: ImportSkillsResponseBody = await res.json();
+
+        void mutateActiveSkills();
+
+        const successCount = data.imported.length;
+        const errors = data.errors.map((e) => `${e.name}: ${e.message}`);
+
+        if (successCount > 0) {
+          sendNotification({
+            type: "success",
+            title: `Imported ${successCount} skill${pluralize(successCount)}`,
+            description:
+              errors.length > 0
+                ? `${errors.length} skill${pluralize(errors.length)} failed to import.`
+                : `All skills were imported successfully.`,
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Import failed",
+            description: errors[0] ?? "Failed to import skills.",
+          });
+        }
+
+        return { successCount, errors };
+      } finally {
+        setIsImporting(false);
       }
-
-      const data: ImportSkillsResponseBody = await res.json();
-
-      void mutateActiveSkills();
-
-      const successCount = data.imported.length;
-      const errors = data.errors.map((e) => `${e.name}: ${e.message}`);
-
-      if (successCount > 0) {
-        sendNotification({
-          type: "success",
-          title: `Imported ${successCount} skill${pluralize(successCount)}`,
-          description:
-            errors.length > 0
-              ? `${errors.length} skill${pluralize(errors.length)} failed to import.`
-              : `All skills were imported successfully.`,
-        });
-      } else {
-        sendNotification({
-          type: "error",
-          title: "Import failed",
-          description: errors[0] ?? "Failed to import skills.",
-        });
-      }
-
-      return { successCount, errors };
     },
     [owner.sId, mutateActiveSkills, sendNotification]
   );
 
-  return { importSkills };
+  return { importSkills, isImporting };
 }
