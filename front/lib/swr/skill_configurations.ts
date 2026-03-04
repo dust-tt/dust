@@ -25,8 +25,8 @@ import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
@@ -400,8 +400,9 @@ export function useDetectSkillsFromRepo({
             return;
           }
           setDetectError(
-            normalizeError(err).message ||
-              "Failed to detect skills from this repository."
+            isAPIErrorResponse(err)
+              ? err.error.message
+              : "Failed to detect skills from this repository."
           );
         } finally {
           if (!signal.aborted) {
