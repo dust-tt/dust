@@ -4,6 +4,8 @@
 # OAuth routes - must be before the catch-all
 /oauth/*  /_oauth/  200
 /w/:wId/oauth/*  /_oauth/ 200
+# Email routes - must be before the catch-all
+/email/* /_email/ 200
 
 # SPA fallback for main app
 /* /index.html 200

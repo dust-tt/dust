@@ -8,11 +8,13 @@ const apps = {
     assets: [
       ["share.html", "_share/index.html"],
       ["oauth.html", "_oauth/index.html"],
+      ["email.html", "_email/index.html"],
     ], // underscore prefix avoids Pretty URLs conflict
     inputs: {
       main: path.resolve(__dirname, "index.html"),
       share: path.resolve(__dirname, "share.html"),
       oauth: path.resolve(__dirname, "oauth.html"),
+      email: path.resolve(__dirname, "email.html"),
     },
     serveMapping: (url: string | undefined) => {
       if (url?.startsWith("/share")) {
@@ -20,6 +22,9 @@ const apps = {
       }
       if (url?.startsWith("/oauth/") || url?.match(/^\/w\/[^/]+\/oauth\//)) {
         return "/oauth.html";
+      }
+      if (url?.startsWith("/email")) {
+        return "/email.html";
       }
       return "/index.html";
     },

@@ -1,7 +1,6 @@
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { Button, DustLogoSquare, Icon, Page, Spinner } from "@dust-tt/sparkle";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 const VALIDATION_STATUSES = [
@@ -19,8 +18,7 @@ function isValidationStatus(value: string): value is ValidationStatus {
   return VALIDATION_STATUSES.includes(value as ValidationStatus);
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
-export default function Validation() {
+export function ValidationPage() {
   const token = useSearchParam("token");
   const rawStatus = useSearchParam("status");
   const conversationId = useSearchParam("conversationId");
@@ -212,9 +210,9 @@ function ErrorView({ errorType }: ErrorViewProps) {
               />
               <p className="text-base text-primary-100">{message}</p>
             </div>
-            <Link href="/">
+            <a href="/">
               <Button variant="outline" label="Back to Dust" size="sm" />
-            </Link>
+            </a>
           </div>
         </div>
       </main>
