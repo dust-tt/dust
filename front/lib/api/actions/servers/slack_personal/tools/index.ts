@@ -642,15 +642,16 @@ export function createSlackPersonalTools(
       }
     },
 
-    search_channels: async ({ query, scope }, { authInfo }) => {
+    search_channels: async ({ query, search_all }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
       }
 
       try {
-        return await executeSearchChannels(query, scope, {
+        return await executeSearchChannels(query, search_all, {
           accessToken,
+          mcpServerId,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
