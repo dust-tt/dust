@@ -12,6 +12,7 @@ import type { PendingUpdate } from "@extension/platforms/chrome/services/core_pl
 import { ChromeCorePlatformService } from "@extension/platforms/chrome/services/core_platform";
 import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
+import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
@@ -487,23 +488,19 @@ chrome.runtime.onMessageExternal.addListener((request) => {
  * Authenticate the user using WorkOS.
  */
 const authenticate = async (
-  { connection, organizationId }: AuthBackgroundMessage,
+  { organizationId }: AuthBackgroundMessage,
   sendResponse: (
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
-
-  // TODO(chris): Remove this condition if no log
-  const workspaceId =
-    connection && connection.startsWith("workspace-")
-      ? connection.split("workspace-")[1]
-      : "";
+  const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
     redirect_uri: redirectUrl,
-    workspaceId: workspaceId,
+    code_challenge_method: "S256",
+    code_challenge: codeChallenge,
     ...(organizationId ? { organizationId } : {}),
   };
 
@@ -547,7 +544,10 @@ const authenticate = async (
       }
 
       if (authorizationCode) {
-        const data = await exchangeCodeForTokens(authorizationCode);
+        const data = await exchangeCodeForTokens(
+          authorizationCode,
+          codeVerifier
+        );
         sendResponse(data);
       } else {
         log(`Missing authorization code: ${redirectUrl}`);
@@ -641,10 +641,12 @@ const refreshToken = async (
  *  Exchange authorization code for tokens
  */
 const exchangeCodeForTokens = async (
-  code: string
+  code: string,
+  codeVerifier: string
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   try {
     const tokenParams: Record<string, string> = {
+      code_verifier: codeVerifier,
       code,
     };
 

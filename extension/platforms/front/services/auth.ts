@@ -113,11 +113,9 @@ export class FrontAuthService extends AuthService {
 
     try {
       const options: Record<string, string> = {
-        response_type: "code",
         redirect_uri: FRONT_EXTENSION_URL,
         code_challenge_method: "S256",
         code_challenge: codeChallenge,
-        provider: "authkit",
         connection: forcedConnection ?? "",
         ...(organizationId ? { organizationId } : {}),
       };
@@ -134,10 +132,8 @@ export class FrontAuthService extends AuthService {
       }
 
       const tokenParams = new URLSearchParams({
-        grant_type: "authorization_code",
         code_verifier: storedCodeVerifier,
         code: result.code,
-        redirect_uri: FRONT_EXTENSION_URL,
       });
       const response = await fetch(`${DUST_US_URL}/api/workos/authenticate`, {
         method: "POST",
