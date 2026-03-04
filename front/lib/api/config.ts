@@ -40,7 +40,7 @@ const config = {
 
   // Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
   getClientFacingUrl: (): string => {
-    // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
+    // We override the DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
     // public API URL.
     const override = EnvironmentConfig.getOptionalEnvVariable(
@@ -50,11 +50,7 @@ const config = {
       return override;
     }
 
-    // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
-      throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
-    }
-    return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+    return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
   },
   getStaticWebsiteUrl: (): string => {
     return config.getClientFacingUrl();
@@ -74,7 +70,7 @@ const config = {
     return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
-  // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
+  // from DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
