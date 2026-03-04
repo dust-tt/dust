@@ -22,8 +22,8 @@ const MAX_AGENTS_IN_PROMPT = 50;
 const RENAME_CONFIDENCE_THRESHOLD = 70;
 const AGENT_CONFIDENCE_THRESHOLD = 70;
 
-// Minimum number of messages (by rank distance) between two rename_title suggestions.
-const RENAME_TITLE_COOLDOWN_MESSAGES = 10;
+// Minimum number of messages (by rank distance) between two suggestions of the same type.
+const SUGGESTION_COOLDOWN_MESSAGES = 10;
 
 function buildAnalyzeConversationSpecifications(
   hasAgents: boolean
@@ -155,33 +155,35 @@ function getParticipantAgentSIds(conversation: ConversationType): Set<string> {
 }
 
 /*
- * Determine whether a new rename_title suggestion should be proposed.
+ * Determine whether a new suggestion of the given type should be proposed.
  *
  * Rules:
- * - If the most recent rename_title suggestion is still pending and was
- *   created within the last RENAME_TITLE_COOLDOWN_MESSAGES messages → skip
+ * - If the most recent suggestion of this type is still pending and was
+ *   created within the last SUGGESTION_COOLDOWN_MESSAGES messages → skip
  *   (the user can still see it).
- * - If the most recent rename_title suggestion is still pending but is older
- *   than RENAME_TITLE_COOLDOWN_MESSAGES messages → auto-dismiss it (it's
- *   scrolled off-screen) and allow a new one.
- * - If the most recent rename_title suggestion was dismissed/accepted within
- *   the last RENAME_TITLE_COOLDOWN_MESSAGES messages → skip (respect cooldown).
+ * - If the most recent suggestion is still pending but is older than
+ *   SUGGESTION_COOLDOWN_MESSAGES messages → auto-dismiss it (it's scrolled
+ *   off-screen) and allow a new one.
+ * - If the most recent suggestion was dismissed/accepted within the last
+ *   SUGGESTION_COOLDOWN_MESSAGES messages → skip (respect cooldown).
  * - Otherwise → allow.
  */
-async function shouldProposeRenameTitle(
+async function shouldProposeSuggestion(
   auth: Authenticator,
   {
     conversationId,
     currentMessageRank,
+    suggestionType,
   }: {
     conversationId: ModelId;
     currentMessageRank: number;
+    suggestionType: "rename_title" | "call_agent";
   }
 ): Promise<boolean> {
   const latest =
     await ConversationButlerSuggestionResource.fetchLatestByConversationAndType(
       auth,
-      { conversationId, suggestionType: "rename_title" }
+      { conversationId, suggestionType }
     );
 
   if (!latest) {
@@ -204,7 +206,7 @@ async function shouldProposeRenameTitle(
   }
 
   const rankDistance = currentMessageRank - previousSourceMessage.rank;
-  const withinCooldown = rankDistance < RENAME_TITLE_COOLDOWN_MESSAGES;
+  const withinCooldown = rankDistance < SUGGESTION_COOLDOWN_MESSAGES;
 
   if (latest.status === "pending") {
     if (withinCooldown) {
@@ -246,7 +248,8 @@ export async function analyzeConversation(
     return;
   }
 
-  // Fetch available agents and filter out those already in the conversation.
+  // Fetch available agents, filtering out global (platform-provided) agents
+  // and those already participating in the conversation.
   const participantSIds = getParticipantAgentSIds(conversation);
   const allAgents = await getAgentConfigurationsForView({
     auth,
@@ -255,7 +258,7 @@ export async function analyzeConversation(
     sort: "priority",
   });
   const availableAgents = allAgents
-    .filter((a) => !participantSIds.has(a.sId))
+    .filter((a) => a.scope !== "global" && !participantSIds.has(a.sId))
     .slice(0, MAX_AGENTS_IN_PROMPT);
 
   const currentTitle = conversation.title ?? "";
@@ -375,9 +378,10 @@ export async function analyzeConversation(
     new_title &&
     new_title.trim().toLowerCase() !== currentTitle.trim().toLowerCase()
   ) {
-    const shouldPropose = await shouldProposeRenameTitle(auth, {
+    const shouldPropose = await shouldProposeSuggestion(auth, {
       conversationId: conversation.id,
       currentMessageRank: sourceMessage.rank,
+      suggestionType: "rename_title",
     });
 
     if (shouldPropose) {
@@ -421,7 +425,7 @@ export async function analyzeConversation(
     }
   }
 
-  // Process agent suggestion.
+  // Process agent suggestion with throttling.
   if (
     agent_confidence >= AGENT_CONFIDENCE_THRESHOLD &&
     agent_name &&
@@ -433,40 +437,57 @@ export async function analyzeConversation(
     );
 
     if (matchedAgent) {
-      const suggestion = await ConversationButlerSuggestionResource.makeNew(
-        auth,
-        {
-          conversationId: conversation.id,
-          sourceMessageId: sourceMessage.id,
-          suggestionType: "call_agent",
-          metadata: {
-            agentSId: matchedAgent.sId,
-            agentName: matchedAgent.name,
-            prompt: agent_prompt,
-          },
-          status: "pending",
-        }
-      );
-
-      const event: ButlerSuggestionCreatedEvent = {
-        type: "butler_suggestion_created",
-        created: Date.now(),
-        suggestion: suggestion.toJSON(),
-      };
-
-      await publishConversationEvent(event, {
-        conversationId: conversation.sId,
+      const shouldPropose = await shouldProposeSuggestion(auth, {
+        conversationId: conversation.id,
+        currentMessageRank: sourceMessage.rank,
+        suggestionType: "call_agent",
       });
 
-      logger.info(
-        {
-          conversationId: conversation.id,
-          agentName: matchedAgent.name,
-          agentSId: matchedAgent.sId,
-          confidence: agent_confidence,
-        },
-        "Butler: created call_agent suggestion"
-      );
+      if (shouldPropose) {
+        const suggestion = await ConversationButlerSuggestionResource.makeNew(
+          auth,
+          {
+            conversationId: conversation.id,
+            sourceMessageId: sourceMessage.id,
+            suggestionType: "call_agent",
+            metadata: {
+              agentSId: matchedAgent.sId,
+              agentName: matchedAgent.name,
+              prompt: agent_prompt,
+            },
+            status: "pending",
+          }
+        );
+
+        const event: ButlerSuggestionCreatedEvent = {
+          type: "butler_suggestion_created",
+          created: Date.now(),
+          suggestion: suggestion.toJSON(),
+        };
+
+        await publishConversationEvent(event, {
+          conversationId: conversation.sId,
+        });
+
+        logger.info(
+          {
+            conversationId: conversation.id,
+            agentName: matchedAgent.name,
+            agentSId: matchedAgent.sId,
+            confidence: agent_confidence,
+          },
+          "Butler: created call_agent suggestion"
+        );
+      } else {
+        logger.info(
+          {
+            conversationId: conversation.id,
+            agentName: matchedAgent.name,
+            confidence: agent_confidence,
+          },
+          "Butler: skipped call_agent suggestion (throttled)"
+        );
+      }
     } else {
       logger.info(
         {
