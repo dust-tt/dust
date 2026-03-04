@@ -1,12 +1,13 @@
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import {
   areCredentialOverridesValid,
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   useCreatePersonalConnection,
   useMCPServer,
@@ -22,8 +23,9 @@ interface MCPServerPersonalAuthenticationRequiredProps {
   mcpServerId: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
-  retryHandler: () => void;
   scope?: string;
+  blockedAction: BlockedToolExecution;
+  retryHandler: () => void;
 }
 
 export function MCPServerPersonalAuthenticationRequired({
@@ -31,8 +33,9 @@ export function MCPServerPersonalAuthenticationRequired({
   mcpServerId,
   owner,
   provider,
-  retryHandler,
   scope,
+  blockedAction,
+  retryHandler,
 }: MCPServerPersonalAuthenticationRequiredProps) {
   const { user } = useAuth();
   const { server: mcpServer } = useMCPServer({
@@ -42,7 +45,7 @@ export function MCPServerPersonalAuthenticationRequired({
 
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
-  const { submit: retry } = useSubmitFunction(async () => retryHandler());
+  const { removeCompletedAction } = useBlockedActionsContext();
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
@@ -92,7 +95,8 @@ export function MCPServerPersonalAuthenticationRequired({
         }
       } else {
         setIsConnected(true);
-        await retry();
+        removeCompletedAction(blockedAction.actionId);
+        retryHandler();
       }
     } finally {
       setIsConnecting(false);
