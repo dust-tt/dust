@@ -22,7 +22,7 @@ export function GleanPricingSection({
   rows,
 }: GleanPricingSectionProps) {
   return (
-    <section className="w-full py-12 md:py-6">
+    <section className="w-full py-3 md:py-6">
       <div className="mb-12 text-center">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto mb-6 max-w-3xl text-muted-foreground">
