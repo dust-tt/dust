@@ -126,6 +126,17 @@ export const getConfig = ({ env }: { env: Environment }) => {
         directory: path.resolve(__dirname, "./build"),
       },
       historyApiFallback: true,
+      client: {
+        overlay: {
+          // Disable the runtime error overlay. The ResizeObserver "loop
+          // completed with undelivered notifications" error is benign but
+          // fires constantly in the Frontapp iframe context, and the overlay
+          // can't be filtered selectively here because webpack-dev-server
+          // reconstructs filter functions via `new Function`, which Frontapp's
+          // parent-page CSP blocks. Runtime errors still appear in the console.
+          runtimeErrors: false,
+        },
+      },
     },
   };
 };
