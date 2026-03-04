@@ -497,7 +497,7 @@ export function _getCopilotGlobalAgent(
   ];
 
   // Use noop model for the first turn of a new agent copilot conversation
-  // (static "What would you like to build?" response without calling a real LLM).
+  // (static response without calling a real LLM).
   // Use a fast model for other first turns and the full model for follow-ups.
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
   const isNewAgentFirstTurn =
