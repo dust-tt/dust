@@ -445,6 +445,66 @@ describe("analyzeConversation", () => {
     expect(suggestions).toHaveLength(0);
   });
 
+  it("includes dismissed suggestion history in the prompt", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    // Create a conversation with enough messages for rank distance > cooldown.
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: Array.from({ length: 8 }, () => new Date()),
+    });
+
+    const messages = await MessageModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+      },
+      order: [["rank", "ASC"]],
+    });
+
+    // First call: creates a rename_title suggestion from early message.
+    setupMocksForHighConfidenceRename();
+    await analyzeConversation(authenticator, {
+      conversation,
+      messageId: messages[0].sId,
+    });
+
+    // Manually dismiss the suggestion.
+    await ConversationButlerSuggestionModel.update(
+      { status: "dismissed" },
+      {
+        where: {
+          workspaceId: workspace.id,
+          suggestionType: "rename_title",
+        },
+      }
+    );
+
+    // Second call from a high-rank message (beyond cooldown).
+    const lastMessage = messages[messages.length - 1];
+    expect(lastMessage.rank).toBeGreaterThanOrEqual(10);
+
+    vi.clearAllMocks();
+    mockGetAgentConfigurations.mockResolvedValue([] as never);
+    setupMocksForHighConfidenceRename();
+
+    await analyzeConversation(authenticator, {
+      conversation,
+      messageId: lastMessage.sId,
+    });
+
+    // Verify the prompt passed to renderConversationForModel contains the history.
+    expect(mockRenderConversation).toHaveBeenCalledOnce();
+    const promptArg = mockRenderConversation.mock.calls[0][1].prompt;
+    expect(promptArg).toContain("DISMISSED");
+    expect(promptArg).toContain("Better Title");
+    expect(promptArg).toContain("Do NOT re-suggest titles that were DISMISSED");
+  });
+
   describe("rename_title throttling", () => {
     it("skips rename when a pending suggestion exists within cooldown", async () => {
       const { authenticator, workspace } = await createResourceTest({
