@@ -66,7 +66,7 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     props: {
       lesson,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       preview: context.preview ?? false,
     },

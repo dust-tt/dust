@@ -34,7 +34,7 @@ export const getServerSideProps: GetServerSideProps<
     return {
       props: {
         posts: [],
-        gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+        gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       },
     };
   }
@@ -42,7 +42,7 @@ export const getServerSideProps: GetServerSideProps<
   return {
     props: {
       posts: postsResult.value,
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
     },
   };
 };

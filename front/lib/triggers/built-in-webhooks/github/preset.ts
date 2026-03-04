@@ -102,7 +102,7 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
   description:
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
   filterGenerationInstructions: null,
-  webhookPageUrl: `https://github.com/settings/connections/applications/${process.env.NEXT_PUBLIC_OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID}`,
+  webhookPageUrl: `https://github.com/settings/connections/applications/${process.env.OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID}`,
   webhookService: new GitHubWebhookService(),
   components: {
     detailsComponent: WebhookSourceGithubDetails,

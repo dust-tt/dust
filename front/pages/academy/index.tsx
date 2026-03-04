@@ -44,7 +44,7 @@ export const getServerSideProps: GetServerSideProps<
       props: {
         courses: [],
         searchableItems: [],
-        gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+        gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
         academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       },
     };
@@ -54,7 +54,7 @@ export const getServerSideProps: GetServerSideProps<
     props: {
       courses: coursesResult.value,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
     },
   };

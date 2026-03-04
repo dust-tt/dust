@@ -824,7 +824,7 @@ export const ConversationViewer = ({
         />
       )}
       <VirtuosoMessageListLicense
-        licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+        licenseKey={process.env.VIRTUOSO_LICENSE_KEY ?? ""}
       >
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           data={{
