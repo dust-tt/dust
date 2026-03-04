@@ -14,7 +14,7 @@ import {
   PopoverTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 
 const STATIC_TIPS = [
@@ -41,88 +41,66 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
   const [shouldPulse, setShouldPulse] = useState(false);
   const lastInstructionsRef = useRef("");
 
-  // Reset pulse after animation completes so it can trigger again
   useEffect(() => {
     if (shouldPulse) {
-      const timer = setTimeout(() => {
-        setShouldPulse(false);
-      }, 1500);
-
+      const timer = setTimeout(() => setShouldPulse(false), 1500);
       return () => clearTimeout(timer);
     }
   }, [shouldPulse]);
 
-  const fetchTips = useCallback(
-    async (currentInstructions: string) => {
-      if (!currentInstructions.trim()) {
-        setTips(STATIC_TIPS);
-        setStatus("loaded");
-        return;
-      }
-
-      setStatus("loading");
-      setError(null);
-
-      const result = await getRankedSuggestions({
-        owner,
-        currentInstructions,
-        formerSuggestions: [],
-      });
-
-      if (result.isErr()) {
-        setError(result.error);
-        setStatus("error");
-        return;
-      }
-
-      if (result.value.status === "ok" && result.value.suggestions?.length) {
-        const newTips = result.value.suggestions.slice(0, 3);
-        setTips(newTips);
-
-        // Pulse if we got new suggestions and instructions changed
-        const shouldTriggerPulse =
-          lastInstructionsRef.current !== currentInstructions &&
-          newTips.some((tip) => !STATIC_TIPS.includes(tip));
-
-        if (shouldTriggerPulse) {
-          setShouldPulse(true);
-        }
-      } else {
-        // Fallback to static tips
-        setTips(STATIC_TIPS);
-      }
-
-      lastInstructionsRef.current = currentInstructions;
-      setStatus("loaded");
-    },
-    [owner]
-  );
-
-  function onOpenChange(isOpen: boolean) {
-    setIsOpen(isOpen);
-    if (isOpen) {
-      setShouldPulse(false); // Reset pulse when popover opens
-    }
-  }
-
-  // Debounced fetch tips when instructions change
+  // Pulse when instructions change to hint new tips are available.
   useEffect(() => {
-    const currentInstructions = instructions || "";
+    const current = instructions || "";
+    if (current.length >= 10 && current !== lastInstructionsRef.current) {
+      setShouldPulse(true);
+    }
+  }, [instructions]);
 
-    // Skip if too short or same as last
-    if (
-      currentInstructions.length < 10 ||
-      currentInstructions === lastInstructionsRef.current
-    ) {
+  async function fetchTips(currentInstructions: string) {
+    if (!currentInstructions.trim()) {
+      setTips(STATIC_TIPS);
+      setStatus("loaded");
       return;
     }
 
-    const timer = setTimeout(() => {
-      void fetchTips(currentInstructions);
-    }, 500);
+    setStatus("loading");
+    setError(null);
 
-    return () => clearTimeout(timer);
-  }, [instructions, fetchTips]);
+    const result = await getRankedSuggestions({
+      owner,
+      currentInstructions,
+      formerSuggestions: [],
+    });
+
+    if (result.isErr()) {
+      setError(result.error);
+      setStatus("error");
+      return;
+    }
+
+    if (result.value.status === "ok" && result.value.suggestions?.length) {
+      setTips(result.value.suggestions.slice(0, 3));
+    } else {
+      setTips(STATIC_TIPS);
+    }
+
+    lastInstructionsRef.current = currentInstructions;
+    setStatus("loaded");
+  }
+
+  function onOpenChange(open: boolean) {
+    setIsOpen(open);
+    if (open) {
+      setShouldPulse(false);
+      const currentInstructions = instructions || "";
+      if (
+        currentInstructions.length >= 10 &&
+        currentInstructions !== lastInstructionsRef.current
+      ) {
+        void fetchTips(currentInstructions);
+      }
+    }
+  }
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={onOpenChange}>
