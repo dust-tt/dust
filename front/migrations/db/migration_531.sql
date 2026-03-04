@@ -3,6 +3,9 @@ ALTER TABLE "conversation_mcp_server_views"
     ADD COLUMN IF NOT EXISTS "source" VARCHAR(255) NOT NULL DEFAULT 'conversation',
     ADD COLUMN IF NOT EXISTS "agentConfigurationId" VARCHAR(255);
 
+-- Drop the old unique index (was over all rows regardless of agentConfigurationId)
+DROP INDEX CONCURRENTLY IF EXISTS "conversation_mcp_server_views_conversation_mcp_server_view_id";
+
 -- Partial unique index for conversation-scope tools (agentConfigurationId IS NULL)
 CREATE UNIQUE INDEX CONCURRENTLY "idx_conv_mcp_srv_views_wid_cid_msvi_null_agent"
     ON "conversation_mcp_server_views" ("workspaceId", "conversationId", "mcpServerViewId")
