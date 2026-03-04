@@ -56,12 +56,17 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      const { agent_configuration_id: agentConfigurationId } = req.query;
+
       // Fetch enabled conversation MCP server views.
       const conversationMCPServerViews =
         await ConversationResource.fetchMCPServerViews(
           auth,
           conversationWithoutContent,
-          { onlyEnabled: true }
+          {
+            onlyEnabled: true,
+            ...(isString(agentConfigurationId) ? { agentConfigurationId } : {}),
+          }
         );
 
       // Batch-fetch all MCP server view details in a single query.
