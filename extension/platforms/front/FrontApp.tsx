@@ -12,7 +12,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 // Create a router instance outside the component to avoid recreation.
 // Use memory router to avoid interfering with the parent page.
 const router = createMemoryRouter(routes, {
-  initialEntries: ["/"],
+  initialEntries: [window.location.pathname + window.location.search],
   initialIndex: 0,
 });
 
