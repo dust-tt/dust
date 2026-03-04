@@ -102,7 +102,7 @@ function TestimonialSlider({
 
 export function GleanDeepDive({ pros, testimonials }: GleanDeepDiveProps) {
   return (
-    <section id="dust-deep-dive" className="w-full pt-4 pb-12 md:pt-8 md:pb-24">
+    <section id="dust-deep-dive" className="w-full pt-2 pb-4 md:pt-8 md:pb-24">
       <div className="mx-auto max-w-5xl">
         <div className="overflow-hidden rounded-3xl border-2 border-[#1C91FF] bg-white shadow-2xl shadow-[#1C91FF]/10">
           {/* Blue header */}
@@ -172,7 +172,7 @@ export function GleanDeepDive({ pros, testimonials }: GleanDeepDiveProps) {
           </div>
 
           {/* Body */}
-          <div className="p-8 md:p-12">
+          <div className="p-5 md:p-12">
             <p className="mb-10 text-xl font-medium leading-relaxed text-gray-700">
               <span className="text-[#1C91FF]">
                 Not just a search interface,
@@ -245,7 +245,7 @@ export function GleanDeepDive({ pros, testimonials }: GleanDeepDiveProps) {
             </div>
 
             {/* Testimonial slider */}
-            <div className="mt-16 border-t border-gray-100 pt-12">
+            <div className="mt-8 border-t border-gray-100 pt-6 md:mt-16 md:pt-12">
               <TestimonialSlider testimonials={testimonials} />
             </div>
           </div>
