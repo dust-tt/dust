@@ -55,8 +55,10 @@ export function CreateAgentPage() {
   });
 
   const { hasFeature } = useFeatureFlags();
-  const { isAdmin } = useAuth();
-  const hasCopilot = hasFeature("agent_builder_copilot") && isAdmin;
+  const { isAdmin, isBuilder } = useAuth();
+  const hasCopilot =
+    hasFeature("agent_builder_copilot") &&
+    (isAdmin || (hasFeature("agent_builder_copilot_builders") && isBuilder));
   const { assistantTemplates } = useAssistantTemplates();
 
   const { filteredTemplates, availableTags } = useMemo(() => {
