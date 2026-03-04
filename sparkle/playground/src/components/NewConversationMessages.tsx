@@ -213,6 +213,7 @@ interface NewConversationMessageGroupProps
   timestamp?: string;
   infoChip?: React.ReactNode;
   completionStatus?: React.ReactNode;
+  onCompletionStatusClick?: () => void;
   renderName?: (name: string | null) => React.ReactNode;
   hideCompletionStatus?: boolean;
 }
@@ -231,6 +232,7 @@ export const NewConversationMessageGroup = React.forwardRef<
       timestamp,
       infoChip,
       completionStatus,
+      onCompletionStatusClick,
       hideCompletionStatus = false,
       renderName = (value) => <span>{value}</span>,
       ...props
@@ -258,6 +260,7 @@ export const NewConversationMessageGroup = React.forwardRef<
             timestamp={timestamp}
             infoChip={infoChip}
             completionStatus={hideCompletionStatus ? null : completionStatus}
+            onCompletionStatusClick={onCompletionStatusClick}
             renderName={renderName}
           />
           {children}
@@ -278,6 +281,7 @@ interface NewConversationMessageGroupHeaderProps
   timestamp?: string;
   infoChip?: React.ReactNode;
   completionStatus?: React.ReactNode;
+  onCompletionStatusClick?: () => void;
   renderName: (name: string | null) => React.ReactNode;
 }
 
@@ -294,6 +298,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
       timestamp,
       infoChip,
       completionStatus,
+      onCompletionStatusClick,
       renderName,
       className,
       ...props
@@ -336,6 +341,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
               icon={ChevronRightIcon}
               size="sm"
               variant="ghost"
+              onClick={onCompletionStatusClick}
             />
           ) : null}
         </div>

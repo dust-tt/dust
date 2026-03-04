@@ -8,6 +8,7 @@ import {
   BoltIcon,
   Breadcrumbs,
   Button,
+  ChevronRightIcon,
   ButtonsSwitch,
   ButtonsSwitchList,
   Dialog,
@@ -78,6 +79,9 @@ interface ConversationViewProps {
   onBack?: () => void;
   conversationTitle?: string;
   projectTitle?: string;
+  inputBar?: React.ReactNode;
+  thinkingNode?: React.ReactNode;
+  onCompletionStatusClick?: () => void;
 }
 
 export function ConversationView({
@@ -90,6 +94,9 @@ export function ConversationView({
   onBack,
   conversationTitle,
   projectTitle,
+  inputBar,
+  thinkingNode,
+  onCompletionStatusClick,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -453,7 +460,11 @@ export function ConversationView({
 
     if (message.markdown) {
       blocks.push(
-        <Markdown key={`${message.id}-markdown`} content={message.markdown} />
+        <Markdown
+          key={`${message.id}-markdown`}
+          content={message.markdown}
+          isStreaming={message.isStreaming ?? false}
+        />
       );
     }
 
@@ -547,11 +558,11 @@ export function ConversationView({
       deletedMessages.has(message.id)
     );
     const completionStatus =
-      currentGroup.completionStatus && !groupHasDeletedMessage ? (
-        <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-          {currentGroup.completionStatus}
-        </span>
-      ) : undefined;
+      currentGroup.completionStatus &&
+      !groupHasDeletedMessage &&
+      currentGroup.type === "agent"
+        ? currentGroup.completionStatus
+        : undefined;
 
     conversationBlocks.push(
       <NewConversationMessageGroup
@@ -565,10 +576,18 @@ export function ConversationView({
         name={currentGroup.name}
         timestamp={currentGroup.timestamp}
         infoChip={infoChip}
-        completionStatus={completionStatus}
-        hideCompletionStatus={groupHasDeletedMessage}
         renderName={(name) => <span>{name}</span>}
       >
+        {/* Completion status — indented to text level, matching agent name */}
+        {completionStatus && (
+          <button
+            className="s-flex s-cursor-pointer s-items-center s-gap-1 s-pl-9 s-text-left s-text-muted-foreground s-transition-colors hover:s-text-foreground dark:s-text-muted-foreground-night dark:hover:s-text-foreground-night"
+            onClick={onCompletionStatusClick}
+          >
+            <span className="s-text-sm s-font-medium">{completionStatus}</span>
+            <Icon visual={ChevronRightIcon} size="xs" className="s-mt-px" />
+          </button>
+        )}
         {currentGroupMessages.map((message) => {
           const isDeleted = deletedMessages.has(message.id);
           const reactionsOverride = reactionOverrides.get(message.id);
@@ -753,12 +772,15 @@ export function ConversationView({
           <NewConversationContainer>
             <div ref={messagesEndRef} className="s-h-12 s-shrink-0" />
             {conversationBlocks}
+            {thinkingNode}
             <div ref={messagesEndRef} className="s-h-32 s-shrink-0" />
           </NewConversationContainer>
         </div>
         <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
           <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
-            <InputBar placeholder="Ask a question" className="s-shadow-xl" />
+            {inputBar ?? (
+              <InputBar placeholder="Ask a question" className="s-shadow-xl" />
+            )}
           </div>
         </div>
       </div>

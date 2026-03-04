@@ -29,6 +29,8 @@ interface InputBarProps {
   className?: string;
   instructionReference?: { start: number; end: number } | null;
   onInstructionInserted?: () => void;
+  onSend?: (text: string) => void;
+  defaultValue?: string;
 }
 
 export function InputBar({
@@ -36,8 +38,11 @@ export function InputBar({
   className,
   instructionReference,
   onInstructionInserted,
+  onSend,
+  defaultValue,
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [currentText, setCurrentText] = useState(defaultValue ?? "");
   const [isDragOver, setIsDragOver] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [selectedDroppedFile, setSelectedDroppedFile] =
@@ -211,6 +216,8 @@ export function InputBar({
           showFormattingMenu
           showAskCopilotMenu={false}
           className="s-placeholder:s-text-muted-foreground"
+          defaultValue={defaultValue}
+          onTextChange={setCurrentText}
         />
         <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
           <Button
@@ -254,6 +261,14 @@ export function InputBar({
               size="xs"
               tooltip="Send message"
               isRounded
+              disabled={!currentText.trim()}
+              onClick={() => {
+                const text = currentText.trim();
+                if (!text) return;
+                onSend?.(text);
+                richTextAreaRef.current?.setContent("");
+                setCurrentText("");
+              }}
             />
           </div>
         </div>

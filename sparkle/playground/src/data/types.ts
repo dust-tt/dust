@@ -79,6 +79,7 @@ export interface ConversationMessage {
   id: string;
   content?: string;
   markdown?: string;
+  isStreaming?: boolean;
   attachments?: MessageAttachmentData[];
   actionCards?: MessageActionCardData[];
   citations?: MessageCitationData[];
