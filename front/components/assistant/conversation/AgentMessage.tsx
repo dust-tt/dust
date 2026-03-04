@@ -909,10 +909,13 @@ function AgentMessageContent({
 
   const retryHandlerWithResetState = useCallback(
     // Conversation and message might be different than the current ones in case of subagents.
-    async (conversationAndMessage: {
-      conversationId: string;
-      messageId: string;
-    }) => {
+    async (
+      conversationAndMessage: {
+        conversationId: string;
+        messageId: string;
+      },
+      { blockedOnly = true }: { blockedOnly?: boolean } = {}
+    ) => {
       methods.data.map((m) =>
         isMessageTemporayState(m) && m.sId === sId
           ? {
@@ -931,7 +934,7 @@ function AgentMessageContent({
       // Retry on the event's conversationId, which may be coming from a subagent.
       if (conversationAndMessage.conversationId !== conversationId) {
         await retryHandler({
-          blockedOnly: true,
+          blockedOnly,
           conversationId: conversationAndMessage.conversationId,
           messageId: conversationAndMessage.messageId,
         });
@@ -939,7 +942,7 @@ function AgentMessageContent({
       // Retry on the main conversation.
       await retryHandler({
         conversationId,
-        blockedOnly: true,
+        blockedOnly,
         messageId: sId,
       });
     },
@@ -1023,11 +1026,18 @@ function AgentMessageContent({
             mcpServerId={blockedAction.metadata.mcpServerId}
             provider={blockedAction.authorizationInfo.provider}
             scope={blockedAction.authorizationInfo.scope}
+            blockedAction={blockedAction}
             retryHandler={() =>
-              retryHandlerWithResetState({
-                conversationId: blockedAction.conversationId,
-                messageId: blockedAction.messageId,
-              })
+              // Auth-blocked workflows have EXITED (unlike validation-blocked
+              // which are PAUSED). A full retry re-runs the message fresh so
+              // the tool picks up the newly connected OAuth credentials.
+              retryHandlerWithResetState(
+                {
+                  conversationId: blockedAction.conversationId,
+                  messageId: blockedAction.messageId,
+                },
+                { blockedOnly: false }
+              )
             }
           />
         );
@@ -1045,6 +1055,7 @@ function AgentMessageContent({
                 messageId: blockedAction.messageId,
               })
             }
+            blockedAction={blockedAction}
           />
         );
     }
