@@ -17,15 +17,25 @@ export interface RedisCacheResult {
   ttlSeconds: number;
 }
 
+export type RedisInstance = "cache" | "stream";
+
 export type GetPokeCacheResponseBody = {
   key: string;
   cacheRedis: RedisCacheResult;
   streamRedis: RedisCacheResult;
 };
 
+export type DeletePokeCacheResponseBody = {
+  key: string;
+  redisInstance: RedisInstance;
+  deleted: true;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetPokeCacheResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetPokeCacheResponseBody | DeletePokeCacheResponseBody>
+  >,
   session: SessionWithUser
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(session, null);
@@ -40,71 +50,76 @@ async function handler(
     });
   }
 
-  switch (req.method) {
-    case "GET": {
-      const { rawKey, resourceId, params } = req.query;
+  const { rawKey, resourceId, params } = req.query;
 
-      let cacheKey: string;
-
-      if (isString(resourceId)) {
-        const resource = getCacheResourceById(resourceId);
-        if (!resource) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Unknown resource ID: '${resourceId}'.`,
-            },
-          });
-        }
-
-        let parsedParams: Record<string, string>;
-        try {
-          parsedParams = JSON.parse(isString(params) ? params : "{}") as Record<
-            string,
-            string
-          >;
-        } catch {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "The 'params' query parameter must be valid JSON.",
-            },
-          });
-        }
-
-        const missingKeys = resource.params
-          .filter((p) => !parsedParams[p.key])
-          .map((p) => p.key);
-
-        if (missingKeys.length > 0) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Missing required params: ${missingKeys.join(", ")}.`,
-            },
-          });
-        }
-
-        cacheKey = buildCacheKey(resource, parsedParams);
-      } else if (isString(rawKey)) {
-        cacheKey = rawKey;
-      } else {
+  function resolveCacheKey(): string | void {
+    if (isString(resourceId)) {
+      const resource = getCacheResourceById(resourceId);
+      if (!resource) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "Either 'rawKey' or 'resourceId' query parameter must be provided.",
+            message: `Unknown resource ID: '${resourceId}'.`,
           },
         });
       }
 
-      async function lookupKey(
+      let parsedParams: Record<string, string>;
+      try {
+        parsedParams = JSON.parse(isString(params) ? params : "{}") as Record<
+          string,
+          string
+        >;
+      } catch {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The 'params' query parameter must be valid JSON.",
+          },
+        });
+      }
+
+      const missingKeys = resource.params
+        .filter((p) => !parsedParams[p.key])
+        .map((p) => p.key);
+
+      if (missingKeys.length > 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Missing required params: ${missingKeys.join(", ")}.`,
+          },
+        });
+      }
+
+      return buildCacheKey(resource, parsedParams);
+    } else if (isString(rawKey)) {
+      return rawKey;
+    } else {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Either 'rawKey' or 'resourceId' query parameter must be provided.",
+        },
+      });
+    }
+  }
+
+  switch (req.method) {
+    case "GET": {
+      const cacheKey = resolveCacheKey();
+      if (!cacheKey) {
+        return;
+      }
+
+      const lookupKey = async (
         runFn: typeof runOnRedisCache
-      ): Promise<RedisCacheResult> {
+      ): Promise<RedisCacheResult> => {
         return runFn({ origin: "poke_cache_lookup" }, async (client) => {
           const [rawValue, ttl] = await Promise.all([
             client.get(cacheKey),
@@ -122,7 +137,7 @@ async function handler(
 
           return { value: parsed, ttlSeconds: ttl };
         });
-      }
+      };
 
       const [cacheRedis, streamRedis] = await Promise.all([
         lookupKey(runOnRedisCache).catch(() => ({
@@ -151,12 +166,49 @@ async function handler(
       });
     }
 
+    case "DELETE": {
+      const cacheKey = resolveCacheKey();
+      if (!cacheKey) {
+        return;
+      }
+
+      const { redisInstance } = req.query;
+      if (redisInstance !== "cache" && redisInstance !== "stream") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The 'redisInstance' query parameter must be 'cache' or 'stream'.",
+          },
+        });
+      }
+
+      const runFn = redisInstance === "cache" ? runOnRedisCache : runOnRedis;
+
+      await runFn({ origin: "poke_cache_invalidation" }, async (client) => {
+        await client.del(cacheKey);
+      });
+
+      logger.info(
+        { redisKey: cacheKey, redisInstance },
+        "Poke cache invalidation performed"
+      );
+
+      return res.status(200).json({
+        key: cacheKey,
+        redisInstance,
+        deleted: true,
+      });
+    }
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or DELETE is expected.",
         },
       });
   }

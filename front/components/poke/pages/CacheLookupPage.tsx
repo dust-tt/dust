@@ -1,9 +1,12 @@
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { RedisCacheResult } from "@app/pages/api/poke/cache";
+import type {
+  RedisCacheResult,
+  RedisInstance,
+} from "@app/pages/api/poke/cache";
 import {
+  usePokeCacheInvalidate,
   usePokeCacheLookup,
-  usePokeCacheResourceLookup,
 } from "@app/poke/swr/cache";
 import type { CacheResourceDefinition } from "@app/types/shared/cache_resource_registry";
 import {
@@ -13,6 +16,12 @@ import {
 import {
   Button,
   ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,7 +35,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 function formatTtl(ttlSeconds: number): string {
   if (ttlSeconds === -2) {
@@ -46,10 +55,18 @@ function formatTtl(ttlSeconds: number): string {
 interface RedisInstanceResultProps {
   label: string;
   result: RedisCacheResult;
+  onInvalidate: () => Promise<void>;
+  isInvalidating: boolean;
 }
 
-function RedisInstanceResult({ label, result }: RedisInstanceResultProps) {
+function RedisInstanceResult({
+  label,
+  result,
+  onInvalidate,
+  isInvalidating,
+}: RedisInstanceResultProps) {
   const { isDark } = useTheme();
+  const [showConfirm, setShowConfirm] = useState(false);
   const found = result.value !== null;
 
   return (
@@ -86,6 +103,48 @@ function RedisInstanceResult({ label, result }: RedisInstanceResultProps) {
               className="mt-1"
             />
           </div>
+          <Button
+            label={isInvalidating ? "Invalidating..." : "Invalidate"}
+            variant="warning"
+            size="sm"
+            disabled={isInvalidating}
+            onClick={() => setShowConfirm(true)}
+          />
+          <Dialog
+            open={showConfirm}
+            onOpenChange={(open) => {
+              if (!open) {
+                setShowConfirm(false);
+              }
+            }}
+          >
+            <DialogContent size="md" isAlertDialog>
+              <DialogHeader hideButton>
+                <DialogTitle>Invalidate cache key?</DialogTitle>
+              </DialogHeader>
+              <DialogContainer>
+                <p>
+                  This will delete the key from{" "}
+                  <span className="font-bold">{label}</span>. This action cannot
+                  be undone.
+                </p>
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                }}
+                rightButtonProps={{
+                  label: "Invalidate",
+                  variant: "warning",
+                  onClick: async () => {
+                    await onInvalidate();
+                    setShowConfirm(false);
+                  },
+                }}
+              />
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
@@ -101,6 +160,8 @@ interface CacheResultsProps {
   isLoading: boolean;
   isError: unknown;
   submitted: boolean;
+  onInvalidate: (redisInstance: RedisInstance) => Promise<void>;
+  isInvalidating: boolean;
 }
 
 function CacheResults({
@@ -108,6 +169,8 @@ function CacheResults({
   isLoading,
   isError,
   submitted,
+  onInvalidate,
+  isInvalidating,
 }: CacheResultsProps) {
   if (!submitted) {
     return (
@@ -166,37 +229,47 @@ function CacheResults({
           {data.key}
         </code>
       </div>
-      {foundInCache && foundInStream ? (
+      {(foundInCache || foundInStream) && (
         <div className="grid grid-cols-2 gap-6">
-          <RedisInstanceResult
-            label="Cache Redis (REDIS_CACHE_URI)"
-            result={data.cacheRedis}
-          />
-          <RedisInstanceResult
-            label="Stream Redis (REDIS_URI)"
-            result={data.streamRedis}
-          />
+          {foundInCache && (
+            <RedisInstanceResult
+              label="Cache Redis (REDIS_CACHE_URI)"
+              result={data.cacheRedis}
+              onInvalidate={() => onInvalidate("cache")}
+              isInvalidating={isInvalidating}
+            />
+          )}
+          {foundInStream && (
+            <RedisInstanceResult
+              label="Stream Redis (REDIS_URI)"
+              result={data.streamRedis}
+              onInvalidate={() => onInvalidate("stream")}
+              isInvalidating={isInvalidating}
+            />
+          )}
         </div>
-      ) : foundInCache ? (
-        <RedisInstanceResult
-          label="Cache Redis (REDIS_CACHE_URI)"
-          result={data.cacheRedis}
-        />
-      ) : foundInStream ? (
-        <RedisInstanceResult
-          label="Stream Redis (REDIS_URI)"
-          result={data.streamRedis}
-        />
-      ) : null}
+      )}
     </div>
   );
 }
 
-function ResourceLookupTab() {
+// Lookup query: either a raw key or a resource with params.
+type LookupQuery =
+  | { type: "raw"; rawKey: string }
+  | {
+      type: "resource";
+      resourceId: string;
+      params: Record<string, string>;
+    };
+
+interface ResourceLookupFormProps {
+  onSubmit: (query: LookupQuery) => void;
+}
+
+function ResourceLookupForm({ onSubmit }: ResourceLookupFormProps) {
   const [selectedResource, setSelectedResource] =
     useState<CacheResourceDefinition | null>(null);
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
 
   const allParamsFilled =
     selectedResource !== null &&
@@ -207,25 +280,23 @@ function ResourceLookupTab() {
       ? buildCacheKey(selectedResource, paramValues)
       : null;
 
-  const { data, isCacheLoading, isCacheError } = usePokeCacheResourceLookup({
-    resourceId: selectedResource?.id,
-    params: paramValues,
-    disabled: !submitted || !allParamsFilled,
-  });
-
   function handleSelectResource(resource: CacheResourceDefinition) {
     setSelectedResource(resource);
     setParamValues({});
-    setSubmitted(false);
   }
 
   function handleParamChange(key: string, value: string) {
     setParamValues((prev) => ({ ...prev, [key]: value }));
-    setSubmitted(false);
   }
 
   function handleLookup() {
-    setSubmitted(true);
+    if (selectedResource && allParamsFilled) {
+      onSubmit({
+        type: "resource",
+        resourceId: selectedResource.id,
+        params: paramValues,
+      });
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -235,93 +306,80 @@ function ResourceLookupTab() {
   }
 
   return (
-    <div className="flex gap-6">
-      {/* Left: Query */}
-      <div className="w-80 shrink-0 space-y-4 rounded-lg bg-background p-5 dark:bg-background-night">
-        <div>
-          <Label className="mb-1 block">Resource Type</Label>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                label={selectedResource?.label ?? "Select a resource..."}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-72">
-              {CACHE_RESOURCE_REGISTRY.map((resource) => (
-                <DropdownMenuItem
-                  key={resource.id}
-                  onClick={() => handleSelectResource(resource)}
-                >
-                  {resource.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {selectedResource && (
-          <>
-            {selectedResource.params.map((param) => (
-              <div key={param.key}>
-                <Label className="mb-1">{param.label}</Label>
-                <Input
-                  placeholder={param.placeholder}
-                  value={paramValues[param.key] ?? ""}
-                  onChange={(e) => handleParamChange(param.key, e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  name={param.key}
-                />
-              </div>
-            ))}
-
-            {computedKey && (
-              <div>
-                <Label isMuted>Computed Key</Label>
-                <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
-                  {computedKey}
-                </code>
-              </div>
-            )}
-
+    <div className="space-y-4 py-4">
+      <div>
+        <Label className="mb-1 block">Resource Type</Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
-              label="Lookup"
-              onClick={handleLookup}
-              disabled={!allParamsFilled}
-              variant="primary"
+              variant="outline"
+              size="sm"
+              isSelect
+              label={selectedResource?.label ?? "Select a resource..."}
             />
-          </>
-        )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-72">
+            {CACHE_RESOURCE_REGISTRY.map((resource) => (
+              <DropdownMenuItem
+                key={resource.id}
+                onClick={() => handleSelectResource(resource)}
+              >
+                {resource.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Right: Results */}
-      <div className="min-w-0 flex-1 rounded-lg bg-background p-5 dark:bg-background-night">
-        <CacheResults
-          data={data}
-          isLoading={isCacheLoading}
-          isError={isCacheError}
-          submitted={submitted && allParamsFilled}
-        />
-      </div>
+      {selectedResource && (
+        <>
+          {selectedResource.params.map((param) => (
+            <div key={param.key}>
+              <Label className="mb-1">{param.label}</Label>
+              <Input
+                placeholder={param.placeholder}
+                value={paramValues[param.key] ?? ""}
+                onChange={(e) => handleParamChange(param.key, e.target.value)}
+                onKeyDown={handleKeyDown}
+                name={param.key}
+              />
+            </div>
+          ))}
+
+          {computedKey && (
+            <div>
+              <Label isMuted>Computed Key</Label>
+              <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
+                {computedKey}
+              </code>
+            </div>
+          )}
+
+          <Button
+            label="Lookup"
+            onClick={handleLookup}
+            disabled={!allParamsFilled}
+            variant="primary"
+          />
+        </>
+      )}
     </div>
   );
 }
 
-function RawKeyTab() {
+interface RawKeyFormProps {
+  onSubmit: (query: LookupQuery) => void;
+}
+
+function RawKeyForm({ onSubmit }: RawKeyFormProps) {
   const [rawKey, setRawKey] = useState("");
-  const [submitted, setSubmitted] = useState(false);
 
   const canLookup = rawKey.trim().length > 0;
 
-  const { data, isCacheLoading, isCacheError } = usePokeCacheLookup({
-    rawKey: rawKey.trim(),
-    disabled: !submitted || !canLookup,
-  });
-
   function handleLookup() {
-    setSubmitted(true);
+    if (canLookup) {
+      onSubmit({ type: "raw", rawKey: rawKey.trim() });
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -331,46 +389,60 @@ function RawKeyTab() {
   }
 
   return (
-    <div className="flex gap-6">
-      {/* Left: Query */}
-      <div className="w-80 shrink-0 space-y-4 rounded-lg bg-background p-5 dark:bg-background-night">
-        <div>
-          <Label className="mb-1">Redis Key</Label>
-          <Input
-            placeholder="e.g. cacheWithRedis-_fetchByIdUncached-workspace:sid:abc123"
-            value={rawKey}
-            onChange={(e) => {
-              setRawKey(e.target.value);
-              setSubmitted(false);
-            }}
-            onKeyDown={handleKeyDown}
-            name="rawKey"
-          />
-        </div>
-
-        <Button
-          label="Lookup"
-          onClick={handleLookup}
-          disabled={!canLookup}
-          variant="primary"
+    <div className="space-y-4 py-4">
+      <div>
+        <Label className="mb-1">Redis Key</Label>
+        <Input
+          placeholder="cacheWithRedis-_fetchByIdUncached-workspace:sid:abc123"
+          value={rawKey}
+          onChange={(e) => setRawKey(e.target.value)}
+          onKeyDown={handleKeyDown}
+          name="rawKey"
         />
       </div>
 
-      {/* Right: Results */}
-      <div className="min-w-0 flex-1 rounded-lg bg-background p-5 dark:bg-background-night">
-        <CacheResults
-          data={data}
-          isLoading={isCacheLoading}
-          isError={isCacheError}
-          submitted={submitted && canLookup}
-        />
-      </div>
+      <Button
+        label="Lookup"
+        onClick={handleLookup}
+        disabled={!canLookup}
+        variant="primary"
+      />
     </div>
   );
 }
 
 export function CacheLookupPage() {
   useSetPokePageTitle("Cache Lookup");
+
+  const [query, setQuery] = useState<LookupQuery | null>(null);
+
+  const { data, isCacheLoading, isCacheError, mutateCache } =
+    usePokeCacheLookup({
+      rawKey: query?.type === "raw" ? query.rawKey : undefined,
+      resourceId: query?.type === "resource" ? query.resourceId : undefined,
+      params: query?.type === "resource" ? query.params : undefined,
+      disabled: !query,
+    });
+
+  const { doInvalidate, isInvalidating } = usePokeCacheInvalidate();
+
+  const handleInvalidate = useCallback(
+    async (redisInstance: RedisInstance) => {
+      if (!query) {
+        return;
+      }
+      const success = await doInvalidate({
+        rawKey: query.type === "raw" ? query.rawKey : undefined,
+        resourceId: query.type === "resource" ? query.resourceId : undefined,
+        params: query.type === "resource" ? query.params : undefined,
+        redisInstance,
+      });
+      if (success) {
+        await mutateCache();
+      }
+    },
+    [query, doInvalidate, mutateCache]
+  );
 
   return (
     <main className="px-4 sm:px-6 lg:px-8">
@@ -384,20 +456,35 @@ export function CacheLookupPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="resource">
-          <TabsList>
-            <TabsTrigger value="resource" label="Resource Lookup" />
-            <TabsTrigger value="raw" label="Raw Key" />
-          </TabsList>
+        <div className="flex gap-6">
+          <div className="w-80 shrink-0 rounded-lg bg-background p-4 dark:bg-background-night">
+            <Tabs defaultValue="resource">
+              <TabsList>
+                <TabsTrigger value="resource" label="Resource Lookup" />
+                <TabsTrigger value="raw" label="Raw Key" />
+              </TabsList>
 
-          <TabsContent value="resource">
-            <ResourceLookupTab />
-          </TabsContent>
+              <TabsContent value="resource">
+                <ResourceLookupForm onSubmit={setQuery} />
+              </TabsContent>
 
-          <TabsContent value="raw">
-            <RawKeyTab />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="raw">
+                <RawKeyForm onSubmit={setQuery} />
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <div className="min-w-0 flex-1 rounded-lg bg-background p-4 dark:bg-background-night">
+            <CacheResults
+              data={data}
+              isLoading={isCacheLoading}
+              isError={isCacheError}
+              submitted={query !== null}
+              onInvalidate={handleInvalidate}
+              isInvalidating={isInvalidating}
+            />
+          </div>
+        </div>
       </div>
     </main>
   );
