@@ -4,11 +4,7 @@ import type {
   TemplateTagCodeType,
   TemplateTagsType,
 } from "@app/types/assistant/templates";
-import {
-  CardGrid,
-  ContextItem,
-  LargeAssistantCard,
-} from "@dust-tt/sparkle";
+import { CardGrid, ContextItem, LargeAssistantCard } from "@dust-tt/sparkle";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
