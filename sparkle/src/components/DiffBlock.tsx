@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import { cva } from "class-variance-authority";
 import type { ReactElement } from "react";
 import React, { useLayoutEffect, useRef, useState } from "react";

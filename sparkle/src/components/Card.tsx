@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
 import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";

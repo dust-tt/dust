@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import { Separator } from "@sparkle/components/Separator";
 import { cn } from "@sparkle/lib/utils";
 import React, { type ComponentType } from "react";
