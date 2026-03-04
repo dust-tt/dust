@@ -115,7 +115,7 @@ const ICON_MAP = {
 
 export function GleanWhySection({ title, subtitle, reasons }: WhySectionProps) {
   return (
-    <section className="w-full pt-4 pb-12 md:pt-2 md:pb-6">
+    <section className="w-full pt-1 pb-3 md:pt-2 md:pb-6">
       <div className="mb-16 text-center">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto max-w-2xl text-muted-foreground">
