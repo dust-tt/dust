@@ -1,11 +1,13 @@
-# /share routes - must be before the catch-all
+# /share routes
 /share /_share/ 200
 /share/* /_share/ 200
-# OAuth routes - must be before the catch-all
+# OAuth routes
 /oauth/*  /_oauth/  200
 /w/:wId/oauth/*  /_oauth/ 200
-# Email routes - must be before the catch-all
+# Email routes
 /email/* /_email/ 200
 
-# SPA fallback for main app
-/* /index.html 200
+# SPA fallback is handled by 404.html (copied from index.html at build time).
+# This avoids the catch-all /* rewrite which intermittently intercepts static
+# asset requests (/assets/*.js) on some Cloudflare edge nodes, returning HTML
+# instead of JS and breaking dynamic imports.
