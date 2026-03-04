@@ -479,10 +479,11 @@ const config = {
   },
   webpack(config, { dev, isServer }) {
     if (process.env.BUILD_WITH_SOURCE_MAPS === "true" && !dev) {
-      // Force webpack to generate source maps for both client and server code
-      // This is used in production builds to upload source maps to Datadog for error tracking
-      // Note: Next.js normally only generates source maps for client code in development
-      config.devtool = "source-map";
+      // Generate source maps for Datadog error tracking (uploaded during Docker build).
+      // Client needs full "source-map" for RUM browser error deobfuscation.
+      // Server uses "cheap-module-source-map" (line-level only, no column mapping) which is
+      // significantly faster to generate while still providing useful stack traces in APM.
+      config.devtool = isServer ? "cheap-module-source-map" : "source-map";
     }
 
     if (isServer) {
