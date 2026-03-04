@@ -1,15 +1,17 @@
-import { ComparisonTableSection } from "@app/components/home/content/Competitive/ComparisonTableSection";
-import { CompetitiveHeroSection } from "@app/components/home/content/Competitive/CompetitiveHeroSection";
-import { gleanConfig } from "@app/components/home/content/Competitive/config/gleanConfig";
-import { DifferentiatorsSection } from "@app/components/home/content/Competitive/DifferentiatorsSection";
-import { EmailCTASection } from "@app/components/home/content/Competitive/EmailCTASection";
-import { StatsSection } from "@app/components/home/content/Competitive/StatsSection";
-import { TestimonialsGridSection } from "@app/components/home/content/Competitive/TestimonialsGridSection";
+import { gleanLandingConfig } from "@app/components/home/content/Glean/config/gleanConfig";
+import { GleanComparisonTable } from "@app/components/home/content/Glean/GleanComparisonTable";
+import { GleanDeepDive } from "@app/components/home/content/Glean/GleanDeepDive";
+import { GleanHeroSection } from "@app/components/home/content/Glean/GleanHeroSection";
+import { GleanLogoBar } from "@app/components/home/content/Glean/GleanLogoBar";
+import { GleanPricingSection } from "@app/components/home/content/Glean/GleanPricingSection";
+import {
+  GleanWhatSection,
+  GleanWhySection,
+} from "@app/components/home/content/Glean/GleanWhatSection";
 import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import { Image } from "@app/lib/platform";
 import type { ReactElement } from "react";
 
 export async function getStaticProps() {
@@ -27,77 +29,64 @@ export default function GleanLandingPage() {
   return (
     <>
       <PageMetadata
-        title="Dust vs Glean: AI Agents That Work, Not Just Search"
-        description="Compare Dust and Glean. While Glean focuses on search, Dust builds AI agents that execute tasks, automate workflows, and work alongside your team."
+        title="The Best Glean Alternatives for Enterprise Teams in 2026 | Dust"
+        description="Compare Glean pricing, competitors, and alternatives for enterprise AI. See why teams like G2, Vanta, and WhatNot picked Dust over Glean to scale AI agents at their company."
         pathname="/landing/glean"
       />
 
       {/* Hero Section */}
-      <CompetitiveHeroSection
-        chip={gleanConfig.hero.chip}
-        headline={gleanConfig.hero.headline}
-        postItText={gleanConfig.hero.postItText}
-        valuePropTitle={gleanConfig.hero.valuePropTitle}
-        valueProps={gleanConfig.hero.valueProps}
-        ctaButtonText={gleanConfig.hero.ctaButtonText}
-        trustBadges={gleanConfig.hero.trustBadges}
-        trackingObject="glean_hero"
+      <GleanHeroSection
+        headline={gleanLandingConfig.hero.headline}
+        subtitle={gleanLandingConfig.hero.subtitle}
+        ctaButtonText={gleanLandingConfig.hero.ctaButtonText}
+        ctaButtonLink={gleanLandingConfig.hero.ctaButtonLink}
+        secondaryButtonText={gleanLandingConfig.hero.secondaryButtonText}
+        secondaryButtonLink={gleanLandingConfig.hero.secondaryButtonLink}
       />
 
-      {/* Testimonials */}
-      <div className="mt-8">
-        <TestimonialsGridSection
-          testimonials={gleanConfig.testimonials}
-          title="What teams are saying"
-        />
-      </div>
+      {/* Logo Bar */}
+      <GleanLogoBar title={gleanLandingConfig.logoBarTitle} />
+
+      {/* Dust Deep Dive */}
+      <GleanDeepDive
+        pros={gleanLandingConfig.dustDeepDive.pros}
+        testimonials={gleanLandingConfig.dustDeepDive.testimonials}
+      />
+
+      {/* What is Glean? */}
+      <GleanWhatSection
+        title={gleanLandingConfig.whatIs.title}
+        description={gleanLandingConfig.whatIs.description}
+        catchLine={gleanLandingConfig.whatIs.catchLine}
+        approaches={gleanLandingConfig.whatIs.approaches}
+      />
+
+      {/* Why teams look for alternatives */}
+      <GleanWhySection
+        title={gleanLandingConfig.whyEvaluate.title}
+        subtitle={gleanLandingConfig.whyEvaluate.subtitle}
+        reasons={gleanLandingConfig.whyEvaluate.reasons}
+      />
+
+      {/* Pricing */}
+      <GleanPricingSection
+        title={gleanLandingConfig.pricing.title}
+        subtitle={gleanLandingConfig.pricing.subtitle}
+        gleanDescription={gleanLandingConfig.pricing.gleanDescription}
+        rows={gleanLandingConfig.pricing.rows}
+      />
 
       {/* Comparison Table */}
-      <div className="mt-8">
-        <ComparisonTableSection
-          dustHeader={gleanConfig.comparison.dustHeader}
-          competitorHeader={gleanConfig.comparison.competitorHeader}
-          competitorLogo={
-            <Image
-              src="/static/landing/logos/gray/glean.svg"
-              alt={gleanConfig.comparison.competitorHeader}
-              width={80}
-              height={20}
-            />
-          }
-          features={gleanConfig.comparison.features}
-        />
-      </div>
-
-      {/* Differentiators */}
-      <div className="mt-8">
-        <DifferentiatorsSection
-          differentiators={gleanConfig.differentiators}
-          title="What makes Dust different"
-        />
-      </div>
-
-      {/* Stats */}
-      <div className="mt-8">
-        <StatsSection
-          stats={gleanConfig.stats}
-          title="Results that speak for themselves"
-        />
-      </div>
+      <GleanComparisonTable
+        title={gleanLandingConfig.comparisonTable.title}
+        rows={gleanLandingConfig.comparisonTable.rows}
+      />
 
       {/* FAQ */}
       <div className="mt-8">
-        <FAQ items={gleanConfig.faq} title="Frequently asked questions" />
-      </div>
-
-      {/* Bottom CTA */}
-      <div className="mt-8">
-        <EmailCTASection
-          title={gleanConfig.cta.title}
-          subtitle={gleanConfig.cta.subtitle}
-          buttonText={gleanConfig.cta.buttonText}
-          trustBadges={gleanConfig.cta.trustBadges}
-          trackingObject="glean_cta_bottom"
+        <FAQ
+          items={gleanLandingConfig.faq}
+          title="Frequently asked questions"
         />
       </div>
     </>
