@@ -111,12 +111,14 @@ export const ConversationContainer = ({
           clientSideMCPServerIds={clientSideMCPServerIds}
         />
       </div>
-      {conversation && (
-        <ConversationSidePanelContent
-          owner={workspace}
-          conversation={conversation}
-          currentPanel={currentPanel}
-        />
+      {conversation && currentPanel && (
+        <div className="flex h-full w-full flex-col">
+          <ConversationSidePanelContent
+            owner={workspace}
+            conversation={conversation}
+            currentPanel={currentPanel}
+          />
+        </div>
       )}
     </InputBarContextProvider>
   );
