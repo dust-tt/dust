@@ -1,7 +1,5 @@
-import {
-  DUST_BASE_IMAGE,
-  type SandboxImageId,
-} from "@app/lib/api/sandbox/image";
+import type { SandboxImageId } from "@app/lib/api/sandbox/image";
+import { DUST_BASE_IMAGE } from "@app/lib/api/sandbox/image/dust-base";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { buildSandboxImage } from "./e2b_template";
