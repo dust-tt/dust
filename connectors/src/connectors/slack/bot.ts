@@ -621,7 +621,6 @@ async function answerMessage(
     });
   }
 
-  // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
@@ -886,7 +885,6 @@ async function answerMessage(
     if (!agentConfig) {
       return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
-    // Removing all previous mentions.
     if (mentionCandidate) {
       message = message.replace(mentionCandidate, "");
     }
@@ -1066,7 +1064,6 @@ async function answerMessage(
     skipToolsValidation,
   };
 
-  // Await the promise to get the content fragment.
   const buildContentFragmentRes = await buildContentFragmentPromise;
 
   if (buildContentFragmentRes.isErr()) {
@@ -1155,6 +1152,7 @@ async function answerMessage(
       slackChannelId: slackChannel,
       slackClient,
       slackMessageTs,
+      slackTeamId,
       slackUserInfo,
       slackUserId,
     },
@@ -1250,7 +1248,6 @@ async function makeContentFragments(
   if (supportedFiles.length > 0) {
     logger.info({ conversationId }, "Found supported files, uploading them.");
 
-    // Download the files and upload them to the conversation.
     const proxyFetch = createProxyAwareFetch();
     for (const f of supportedFiles) {
       const response = await proxyFetch(f.url_private_download!, {
@@ -1461,60 +1458,35 @@ async function isAgentAccessingRestrictedSpace(
   activeAgentConfigurations: LightAgentConfigurationType[],
   agentId: string
 ): Promise<Result<boolean, Error>> {
-  try {
-    const agent = activeAgentConfigurations.find((ac) => ac.sId === agentId);
-    if (!agent) {
-      logger.warn(
-        { agentId },
-        "Agent not found when checking for restricted space"
-      );
-      return new Err(new Error(`Agent ${agentId} not found`));
-    }
-
-    // If the agent has no requestedSpaceIds, it's not from a restricted space
-    if (!agent.requestedSpaceIds || agent.requestedSpaceIds.length === 0) {
-      return new Ok(false);
-    }
-
-    const agentSpaceIds = agent.requestedSpaceIds.flat();
-
-    const spacesRes = await dustAPI.getSpaces();
-    if (spacesRes.isErr()) {
-      logger.error(
-        { error: spacesRes.error, agentId },
-        "Error fetching spaces when checking for restricted space"
-      );
-      return new Err(
-        new Error(`Error fetching spaces: ${spacesRes.error.message}`)
-      );
-    }
-
-    // Check if any of the agent's group IDs match with groups from restricted spaces
-    const restrictedSpaces = spacesRes.value.filter(
-      (space) => space.isRestricted
+  const agent = activeAgentConfigurations.find((ac) => ac.sId === agentId);
+  if (!agent) {
+    logger.warn(
+      { agentId },
+      "Agent not found when checking for restricted space"
     );
-    const isFromRestrictedSpace = restrictedSpaces.some((space) =>
-      agentSpaceIds.includes(space.sId)
-    );
+    return new Err(new Error(`Agent ${agentId} not found`));
+  }
 
-    logger.info(
-      {
-        agentId,
-        isRestricted: isFromRestrictedSpace,
-      },
-      "Checked if agent is from restricted space"
-    );
+  if (!agent.requestedSpaceIds || agent.requestedSpaceIds.length === 0) {
+    return new Ok(false);
+  }
 
-    return new Ok(isFromRestrictedSpace);
-  } catch (error) {
+  const agentSpaceIds = agent.requestedSpaceIds.flat();
+
+  const spacesRes = await dustAPI.getSpaces();
+  if (spacesRes.isErr()) {
     logger.error(
-      { error, agentId },
-      "Error checking if agent is from restricted space"
+      { error: spacesRes.error, agentId },
+      "Error fetching spaces when checking for restricted space"
     );
     return new Err(
-      new Error(
-        `Error checking if agent ${agentId} is from restricted space: ${error}`
-      )
+      new Error(`Error fetching spaces: ${spacesRes.error.message}`)
     );
   }
+
+  const isFromRestrictedSpace = spacesRes.value
+    .filter((space) => space.isRestricted)
+    .some((space) => agentSpaceIds.includes(space.sId));
+
+  return new Ok(isFromRestrictedSpace);
 }
