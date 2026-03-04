@@ -19,6 +19,7 @@ import type {
 } from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
 import { parse as parseCSV } from "csv-parse/sync";
+import { endOfDay } from "date-fns/endOfDay";
 import { endOfMonth } from "date-fns/endOfMonth";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -248,7 +249,7 @@ function resolveDates(query: GetWorkspaceUsageRequestType) {
     case "range":
       return {
         startDate: parseDate(query.start),
-        endDate: parseDate(query.end),
+        endDate: endOfDay(parseDate(query.end)),
       };
     default:
       assertNever(query);
