@@ -1,6 +1,5 @@
 import { useFileUploaderService as useFrontFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import type { ConversationPublicType } from "@dust-tt/client";
 // biome-ignore lint/plugin/noDirectSparkleNotification: existing usage
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -62,15 +61,10 @@ export function useFileUploaderService(
 
   const uploadContentTab = useCallback(
     async ({
-      conversation,
       includeContent,
       includeSelectionOnly,
       includeCapture,
-      onUpload,
-    }: {
-      conversation?: ConversationPublicType;
-      onUpload?: () => void;
-    } & CaptureOptions) => {
+    }: CaptureOptions) => {
       setIsCapturing(includeCapture ?? false);
 
       try {
@@ -116,25 +110,10 @@ export function useFileUploaderService(
             existingTitles
           );
 
-          // Check if the content is already uploaded - compare the title and the size of the content.
-          const messages =
-            conversation?.content.map((m) => m[m.length - 1]) || [];
-          const alreadyUploaded = messages.some(
-            (m) =>
-              m.type === "content_fragment" &&
-              m.contentFragmentType === "file" &&
-              m.title === title &&
-              m.textBytes === new Blob([tabContent.content ?? ""]).size
-          );
-
-          if (tabContent && tabContent.content && !alreadyUploaded) {
+          if (tabContent && tabContent.content) {
             const file = new File([tabContent.content], title, {
               type: "text/plain",
             });
-
-            if (onUpload) {
-              onUpload();
-            }
 
             const fragments = await handleFilesUpload([file]);
             if (fragments) {
@@ -178,10 +157,6 @@ export function useFileUploaderService(
                 }
               )
           );
-
-          if (onUpload) {
-            onUpload();
-          }
 
           return await handleFilesUpload(files);
         }

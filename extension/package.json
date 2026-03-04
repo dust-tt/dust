@@ -50,7 +50,6 @@
   },
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
-    "@dust-tt/client": "^1.2.4",
     "@dust-tt/sparkle": "^0.7.7",
     "@frontapp/plugin-sdk": "^1.8.1",
     "@modelcontextprotocol/sdk": "^1.27.0",

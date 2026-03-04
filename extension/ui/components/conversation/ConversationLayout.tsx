@@ -10,7 +10,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { ActionValidationProvider } from "@extension/ui/components/conversation/ActionValidationProvider";
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import type React from "react";
 import { useContext } from "react";
@@ -31,35 +30,33 @@ export const ConversationLayout = ({
 
   return (
     <FileDropProvider>
-      <ActionValidationProvider>
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent
-            side="left"
-            className="flex w-full max-w-72 flex-1 bg-muted-background dark:bg-muted-background-night"
-          >
-            <SheetHeader className="bg-muted-background p-0" hideButton>
-              <SheetTitle className="hidden" />
-            </SheetHeader>
-            <div className="flex flex-col grow p-1">
-              <AgentSidebarMenu owner={owner} hideActions hideInAppBanner />
-            </div>
-          </SheetContent>
-        </Sheet>
-        <BarHeader
-          title={title}
-          tooltip={title}
-          className="justify-between"
-          leftActions={
-            <Button
-              variant="ghost"
-              icon={MenuIcon}
-              onClick={() => setSidebarOpen(true)}
-            />
-          }
-          rightActions={rightActions}
-        />
-        <div className="h-full w-full pt-16">{children}</div>
-      </ActionValidationProvider>
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent
+          side="left"
+          className="flex w-full max-w-72 flex-1 bg-muted-background dark:bg-muted-background-night"
+        >
+          <SheetHeader className="bg-muted-background p-0" hideButton>
+            <SheetTitle className="hidden" />
+          </SheetHeader>
+          <div className="flex flex-col grow p-1">
+            <AgentSidebarMenu owner={owner} hideActions hideInAppBanner />
+          </div>
+        </SheetContent>
+      </Sheet>
+      <BarHeader
+        title={title}
+        tooltip={title}
+        className="justify-between"
+        leftActions={
+          <Button
+            variant="ghost"
+            icon={MenuIcon}
+            onClick={() => setSidebarOpen(true)}
+          />
+        }
+        rightActions={rightActions}
+      />
+      <div className="h-full w-full pt-16">{children}</div>
     </FileDropProvider>
   );
 };
