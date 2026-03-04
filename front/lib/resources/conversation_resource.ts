@@ -1653,27 +1653,59 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchMCPServerViews(
     auth: Authenticator,
     conversation: ConversationWithoutContentType,
-    { onlyEnabled }: { onlyEnabled?: boolean } = {}
+    {
+      onlyEnabled,
+      agentConfigurationId,
+    }: { onlyEnabled?: boolean; agentConfigurationId?: string | null } = {}
   ): Promise<ConversationMCPServerViewType[]> {
+    // Build the agentConfigurationId filter:
+    // - undefined (no agent context, e.g. UI listing): only conversation-scope rows (null).
+    // - string or null explicitly provided: return both agent-specific and conversation-wide rows.
+    const agentConfigFilter =
+      agentConfigurationId !== undefined
+        ? {
+            [Op.or]: [{ agentConfigurationId }, { agentConfigurationId: null }],
+          }
+        : { agentConfigurationId: null };
+
     const conversationMCPServerViews =
       await ConversationMCPServerViewModel.findAll({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           conversationId: conversation.id,
           ...(onlyEnabled ? { enabled: true } : {}),
+          ...agentConfigFilter,
         },
       });
 
-    return conversationMCPServerViews.map((view) => ({
-      id: view.id,
-      workspaceId: view.workspaceId,
-      conversationId: view.conversationId,
-      mcpServerViewId: view.mcpServerViewId,
-      userId: view.userId,
-      enabled: view.enabled,
-      createdAt: view.createdAt,
-      updatedAt: view.updatedAt,
-    }));
+    return conversationMCPServerViews.map(
+      (view): ConversationMCPServerViewType => {
+        const base = {
+          id: view.id,
+          workspaceId: view.workspaceId,
+          conversationId: view.conversationId,
+          mcpServerViewId: view.mcpServerViewId,
+          userId: view.userId,
+          enabled: view.enabled,
+          createdAt: view.createdAt,
+          updatedAt: view.updatedAt,
+        };
+
+        if (view.source === "agent_enabled" && view.agentConfigurationId) {
+          return {
+            ...base,
+            source: "agent_enabled",
+            agentConfigurationId: view.agentConfigurationId,
+          };
+        }
+
+        return {
+          ...base,
+          source: "conversation",
+          agentConfigurationId: null,
+        };
+      }
+    );
   }
 
   static async upsertMCPServerViews(
@@ -1682,11 +1714,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversation,
       mcpServerViews,
       enabled,
+      source,
+      agentConfigurationId,
     }: {
       conversation: ConversationWithoutContentType;
       mcpServerViews: MCPServerViewResource[];
       enabled: boolean;
-    }
+    } & (
+      | { source: "agent_enabled"; agentConfigurationId: string }
+      | { source: "conversation"; agentConfigurationId: null }
+    )
   ): Promise<Result<undefined, Error>> {
     // For now we only allow MCP server views from the Company Space.
     // It's blocked in the UI but it's a last line of defense.
@@ -1703,10 +1740,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
-    const existingConversationMCPServerViews = await this.fetchMCPServerViews(
-      auth,
-      conversation
-    );
+    // Query directly with an exact agentConfigurationId match. fetchMCPServerViews
+    // uses Op.or (agent-specific + conversation-wide) which is the wrong semantic here.
+    const existingConversationMCPServerViews =
+      await ConversationMCPServerViewModel.findAll({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          agentConfigurationId: agentConfigurationId ?? null,
+        },
+      });
 
     // Cycle through the mcpServerViewIds and create or update the conversationMCPServerView
     for (const mcpServerView of mcpServerViews) {
@@ -1718,6 +1761,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         await ConversationMCPServerViewModel.update(
           {
             enabled,
+            source,
             userId: auth.getNonNullableUser().id,
             updatedAt: new Date(),
           },
@@ -1736,6 +1780,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           mcpServerViewId: mcpServerView.id,
           userId: auth.getNonNullableUser().id,
           enabled,
+          source,
+          agentConfigurationId,
         });
       }
     }
