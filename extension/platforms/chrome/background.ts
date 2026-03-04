@@ -26,11 +26,9 @@ const state: {
   refreshRequests: ((
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void)[];
-  lastHandler: (() => void) | undefined;
 } = {
   refreshingToken: false,
   refreshRequests: [],
-  lastHandler: undefined,
 };
 
 /**
@@ -139,7 +137,6 @@ chrome.runtime.onConnect.addListener(async (port) => {
       // This fires when sidepanel closes
       console.log("Sidepanel was closed");
       await platform.storage.set("extensionReady", false);
-      state.lastHandler = undefined;
     });
   }
 });
@@ -198,15 +195,19 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
     return;
   }
 
+  // chrome.sidePanel.open() must be called synchronously within the user gesture
+  // context. Any await before this call would break the gesture chain and throw:
+  // "sidePanel.open() may only be called in response to a user gesture".
+  if (tab) {
+    void chrome.sidePanel.open({ windowId: tab.windowId });
+  }
+
   const isExtensionReady =
     await platform.storage.get<boolean>("extensionReady");
 
-  if (!isExtensionReady && tab) {
-    // Store the handler for later use when the extension is ready.
-    state.lastHandler = handler;
-    void chrome.sidePanel.open({
-      windowId: tab.windowId,
-    });
+  if (!isExtensionReady) {
+    // Store the pending action for later use when the extension is ready.
+    await platform.storage.set("pendingAction", event.menuItemId);
   } else {
     void handler();
   }
@@ -377,11 +378,16 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "INPUT_BAR_STATUS":
-        // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
-        if (state.lastHandler && message.available) {
-          state.lastHandler();
-          state.lastHandler = undefined;
-        }
+        void (async () => {
+          if (message.available) {
+            const pendingAction =
+              await platform.storage.get<string>("pendingAction");
+            if (pendingAction) {
+              getActionHandler(pendingAction)?.();
+            }
+          }
+          await platform.storage.delete("pendingAction");
+        })();
         return false;
 
       default:
