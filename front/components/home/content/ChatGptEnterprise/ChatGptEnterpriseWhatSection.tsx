@@ -35,7 +35,7 @@ export function ChatGptEnterpriseWhatSection({
   approaches,
 }: WhatSectionProps) {
   return (
-    <section className="w-full py-12 md:py-24">
+    <section className="w-full py-12 md:py-6">
       <div className="mb-16 text-center">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto mb-6 max-w-3xl text-muted-foreground">
@@ -124,7 +124,7 @@ export function ChatGptEnterpriseWhySection({
   reasons,
 }: WhySectionProps) {
   return (
-    <section className="w-full py-12 md:py-24">
+    <section className="w-full pt-4 pb-12 md:pt-2 md:pb-6">
       <div className="mb-16 text-center">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto max-w-2xl text-muted-foreground">
