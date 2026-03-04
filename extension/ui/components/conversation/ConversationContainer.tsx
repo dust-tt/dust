@@ -5,9 +5,10 @@ import { InputBarContextProvider } from "@app/components/assistant/conversation/
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface ConversationContainerProps {
   workspace: LightWorkspaceType;
@@ -72,6 +73,29 @@ export const ConversationContainer = ({
     setPrevConversationId(conversationId);
     fileUploaderService.resetUpload();
   }
+
+  useEffect(() => {
+    void platform.messaging?.sendMessage({
+      type: "INPUT_BAR_STATUS",
+      available: true,
+    });
+
+    const cleanup = platform.messaging?.addMessageListener(
+      async (message: AttachSelectionMessage) => {
+        if (message.type === "EXT_ATTACH_TAB") {
+          void fileUploaderService.uploadContentTab(message);
+        }
+      }
+    );
+
+    return () => {
+      void platform.messaging?.sendMessage({
+        type: "INPUT_BAR_STATUS",
+        available: false,
+      });
+      cleanup?.();
+    };
+  }, [platform.messaging, fileUploaderService.uploadContentTab]);
 
   return (
     <InputBarContextProvider
