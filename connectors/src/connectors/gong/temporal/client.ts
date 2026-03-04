@@ -16,7 +16,8 @@ export function makeGongKeywordUpdateWorkflowId(
 
 export async function launchGongKeywordUpdateWorkflow(
   connector: ConnectorResource,
-  newKeywords: string[]
+  newKeywords: string[],
+  maxTranscriptId: number
 ): Promise<Result<string, Error>> {
   await terminateAllWorkflowsForConnectorId({
     connectorId: connector.id,
@@ -27,9 +28,10 @@ export async function launchGongKeywordUpdateWorkflow(
   const workflowId = makeGongKeywordUpdateWorkflowId(connector);
 
   await client.workflow.start(gongKeywordUpdateWorkflow, {
-    args: [{ connectorId: connector.id, newKeywords }],
+    args: [{ connectorId: connector.id, newKeywords, maxTranscriptId }],
     taskQueue: QUEUE_NAME,
     workflowId,
+    startDelay: "90 seconds",
     searchAttributes: {
       connectorId: [connector.id],
     },

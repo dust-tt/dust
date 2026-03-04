@@ -448,7 +448,15 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
    */
   static async fetchBatch(
     connector: ConnectorResource,
-    { limit, lastId }: { limit: number; lastId?: number }
+    {
+      limit,
+      lastId,
+      orderBy = "ASC",
+    }: {
+      limit: number;
+      lastId?: number;
+      orderBy?: "ASC" | "DESC";
+    }
   ): Promise<GongTranscriptResource[]> {
     const whereClause: {
       connectorId: number;
@@ -463,7 +471,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
 
     const transcripts = await GongTranscriptModel.findAll({
       where: whereClause,
-      order: [["id", "ASC"]],
+      order: [["id", orderBy]],
       limit,
     });
 

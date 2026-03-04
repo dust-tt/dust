@@ -33,6 +33,7 @@ import {
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
@@ -459,7 +460,33 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
             return stopResult;
           }
 
-          await launchGongKeywordUpdateWorkflow(connector, newKeywords);
+          // Capture max transcript ID before launching workflow
+          const maxTranscript = await GongTranscriptResource.fetchBatch(
+            connector,
+            {
+              limit: 1,
+              orderBy: "DESC",
+            }
+          );
+          const currentMaxId = maxTranscript[0]?.id || 0;
+          const GONG_TRANSCRIPT_PAGE_SIZE = 100;
+          const maxTranscriptId = currentMaxId + GONG_TRANSCRIPT_PAGE_SIZE;
+
+          await launchGongKeywordUpdateWorkflow(
+            connector,
+            newKeywords,
+            maxTranscriptId
+          );
+
+          // Resume the schedule with new keywords excluded
+          const resumeResult = await this.resume();
+          if (resumeResult.isErr()) {
+            logger.error(
+              { connectorId: connector.id, error: resumeResult.error },
+              "[Gong] Failed to resume schedule after keyword update"
+            );
+            return resumeResult;
+          }
         }
 
         return new Ok(undefined);

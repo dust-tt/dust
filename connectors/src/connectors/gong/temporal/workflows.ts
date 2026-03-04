@@ -8,7 +8,6 @@ import {
   ActivityCancellationType,
   executeChild,
   proxyActivities,
-  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -25,10 +24,6 @@ const {
   startToCloseTimeout: "30 minutes",
   heartbeatTimeout: "5 minutes",
   cancellationType: ActivityCancellationType.TRY_CANCEL,
-});
-
-const { gongUnpauseScheduleActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minutes",
 });
 
 export async function gongSyncWorkflow({
@@ -148,56 +143,34 @@ export async function gongGarbageCollectWorkflow({
 }
 
 /**
- * Deletes transcripts matching exclude keywords.
+ * Orchestrates keyword update cleanup after schedule is paused.
+ * Cleans up excluded transcripts in batches.
+ *
+ * Note: Schedule pause, maxTranscriptId capture, and 90-second delay happen
+ * before this workflow starts. The schedule is resumed after completion.
  */
-export async function gongCleanupExcludedTranscriptsWorkflow({
+export async function gongKeywordUpdateWorkflow({
   connectorId,
-  excludeKeywords,
+  newKeywords,
+  maxTranscriptId,
 }: {
   connectorId: ModelId;
-  excludeKeywords: string[];
+  newKeywords: string[];
+  maxTranscriptId: ModelId;
 }) {
+  // Clean up excluded transcripts in batches
   let hasMore = true;
   let lastId: number | undefined = undefined;
 
   while (hasMore) {
     const result = await gongDeleteExcludedTranscriptsActivity({
       connectorId,
-      excludeKeywords,
+      excludeKeywords: newKeywords,
       lastId,
+      maxTranscriptId,
     });
 
     hasMore = result.hasMore;
     lastId = result.lastId ?? undefined;
   }
-}
-
-/**
- * Orchestrates keyword update cleanup after schedule is paused:
- * 1. Wait for in-flight activities to complete
- * 2. Clean up excluded transcripts
- * 3. Resume schedule
- *
- * Note: Schedule pause happens in the API handler before this workflow starts.
- */
-export async function gongKeywordUpdateWorkflow({
-  connectorId,
-  newKeywords,
-}: {
-  connectorId: ModelId;
-  newKeywords: string[];
-}) {
-  const { workflowId, searchAttributes, memo } = workflowInfo();
-
-  // Wait for in-flight activities to finish
-  await sleep("60 seconds");
-
-  await executeChild(gongCleanupExcludedTranscriptsWorkflow, {
-    workflowId: `${workflowId}-cleanup`,
-    args: [{ connectorId, excludeKeywords: newKeywords }],
-    searchAttributes,
-    memo,
-  });
-
-  await gongUnpauseScheduleActivity({ connectorId });
 }

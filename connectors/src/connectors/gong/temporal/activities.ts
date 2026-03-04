@@ -1,4 +1,3 @@
-import { makeGongSyncScheduleId } from "@connectors/connectors/gong/index";
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import type {
   GongCallTranscript,
@@ -24,7 +23,6 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
-import { unpauseAndTriggerSchedule } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
@@ -485,10 +483,12 @@ export async function gongDeleteExcludedTranscriptsActivity({
   connectorId,
   excludeKeywords,
   lastId,
+  maxTranscriptId,
 }: {
   connectorId: ModelId;
   excludeKeywords: string[];
   lastId?: ModelId;
+  maxTranscriptId: ModelId;
 }): Promise<{ hasMore: boolean; lastId: ModelId | null }> {
   const connector = await fetchGongConnector({ connectorId });
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -527,26 +527,25 @@ export async function gongDeleteExcludedTranscriptsActivity({
 
   const lastTranscript = transcripts[transcripts.length - 1];
   const newLastId = lastTranscript ? lastTranscript.id : null;
+
+  // Check if we've hit the maxId ceiling - stop immediately
+  if (lastTranscript && lastTranscript.id > maxTranscriptId) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        lastProcessedId: lastTranscript.id,
+        maxTranscriptId,
+        deletedInBatch: transcriptsToDelete.length,
+      },
+      "[Gong] Cleanup complete - remaining transcripts were synced with current config"
+    );
+    return { hasMore: false, lastId: null };
+  }
+
   const hasMore = transcripts.length === GARBAGE_COLLECT_BATCH_SIZE;
 
   return {
     hasMore,
     lastId: newLastId,
   };
-}
-
-/**
- * Unpauses and triggers the Gong sync schedule.
- */
-export async function gongUnpauseScheduleActivity({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
-  const connector = await fetchGongConnector({ connectorId });
-
-  await unpauseAndTriggerSchedule({
-    connector,
-    scheduleId: makeGongSyncScheduleId(connector),
-  });
 }
