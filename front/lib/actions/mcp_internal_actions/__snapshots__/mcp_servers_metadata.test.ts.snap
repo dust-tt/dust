@@ -495,6 +495,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "retrieve_slideshow_file": "never_ask",
   },
   "snowflake": {
+    "describe_semantic_view": "never_ask",
     "describe_table": "never_ask",
     "list_databases": "never_ask",
     "list_schemas": "never_ask",
