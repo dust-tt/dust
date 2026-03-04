@@ -107,6 +107,7 @@ type SkillVersionCreationAttributes =
     skillConfigurationId: ModelId;
     version: number;
     mcpServerViewIds: ModelId[];
+    fileAttachmentIds: ModelId[];
   };
 
 type ConversationSkillCreationAttributes =
@@ -1868,28 +1869,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       existingAttachments.map((a) => a.fileId)
     );
 
-    // Delete removed attachments and their underlying files.
-    // Remove join table rows first (FK constraint), then delete the files.
+    // Remove join table rows for detached files (keep the files for version history).
     const toRemove = existingAttachments.filter(
       (a) => !desiredFileModelIds.has(a.fileId)
     );
     if (toRemove.length > 0) {
-      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        toRemove.map((a) => a.fileId)
-      );
       await SkillFileAttachmentModel.destroy({
         where: {
           id: { [Op.in]: toRemove.map((a) => a.id) },
           workspaceId: workspace.id,
         },
       });
-      for (const file of filesToDelete) {
-        const res = await file.delete(auth);
-        if (res.isErr()) {
-          throw res.error;
-        }
-      }
     }
 
     // Create new attachments.
@@ -1925,13 +1915,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         workspaceId: workspace.id,
       };
 
-      // Collect files to delete before the transaction removes the join table rows.
+      // Collect file IDs from current attachments and all version snapshots.
       const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
         where: whereWorkspaceIdAndSkillId,
       });
+      const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
+
+      const versionRows = await SkillVersionModel.findAll({
+        where: whereWorkspaceIdAndSkillId,
+        attributes: ["fileAttachmentIds"],
+      });
+      const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
+
+      const allFileIds = [...new Set([...currentFileIds, ...versionFileIds])];
       const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
         auth,
-        fileAttachmentRows.map((a) => a.fileId)
+        allFileIds
       );
 
       const affectedCount = await withTransaction(async (transaction) => {
@@ -2253,6 +2252,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (config) => config.mcpServerViewId
     );
 
+    // Fetch current file attachment IDs for this skill.
+    const fileAttachments = await SkillFileAttachmentModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        skillConfigurationId: this.id,
+      },
+      transaction,
+    });
+
+    const fileAttachmentIds = fileAttachments.map((a) => a.fileId);
+
     // Calculate the next version number by counting existing versions.
     const where: WhereOptions<SkillVersionModel> = {
       workspaceId: this.workspaceId,
@@ -2279,6 +2289,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds: this.requestedSpaceIds,
       editedBy: this.editedBy,
       mcpServerViewIds,
+      fileAttachmentIds,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       createdAt: this.createdAt,
