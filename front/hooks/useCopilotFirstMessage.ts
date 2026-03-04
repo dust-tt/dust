@@ -9,6 +9,7 @@ import { useMemo } from "react";
 const COPILOT_USE_CASES = [
   "new",
   "existing",
+  "duplicate",
   "template",
   "shrink-wrap",
 ] as const;
@@ -17,6 +18,11 @@ type CopilotUseCase = (typeof COPILOT_USE_CASES)[number];
 const NEW_AGENT_FIRST_MESSAGE = `<dust_system>
 This is a new agent. To start the conversation, you should NOT call any tools. 
 Just ask a very simple question, such as "What would you like to build?"
+</dust_system>`;
+
+const DUPLICATE_AGENT_FIRST_MESSAGE = `<dust_system>
+This is a new agent created by duplicating an existing one.
+Call \`get_agent_config\` to retrieve the current configuration, then ask what they'd like to change or add.
 </dust_system>`;
 
 async function fetchFirstMessage(
@@ -40,6 +46,7 @@ async function fetchFirstMessage(
 function getCopilotScenario({
   workspaceId,
   isNewAgent,
+  isDuplicate,
   templateInfo,
   conversationId,
   agentConfigurationId,
@@ -47,6 +54,7 @@ function getCopilotScenario({
 }: {
   workspaceId: string;
   isNewAgent: boolean;
+  isDuplicate?: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
@@ -61,6 +69,13 @@ function getCopilotScenario({
   if (templateInfo && templateInfo.copilotInstructions) {
     useCase = "template";
     params.set("templateId", templateInfo.templateId);
+  } else if (isDuplicate) {
+    useCase = "duplicate";
+    return {
+      getFirstMessage: () =>
+        Promise.resolve(new Ok(DUPLICATE_AGENT_FIRST_MESSAGE)),
+      useCase,
+    };
   } else if (!isNewAgent && agentConfigurationId) {
     useCase = "existing";
     params.set("agentConfigurationId", agentConfigurationId);
@@ -92,6 +107,7 @@ function getCopilotScenario({
 export function useCopilotFirstMessage({
   owner,
   isNewAgent,
+  isDuplicate = false,
   templateInfo,
   conversationId,
   agentConfigurationId,
@@ -99,6 +115,7 @@ export function useCopilotFirstMessage({
 }: {
   owner: WorkspaceType;
   isNewAgent: boolean;
+  isDuplicate?: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
@@ -109,6 +126,7 @@ export function useCopilotFirstMessage({
       getCopilotScenario({
         workspaceId: owner.sId,
         isNewAgent,
+        isDuplicate,
         templateInfo,
         conversationId,
         agentConfigurationId,
@@ -117,6 +135,7 @@ export function useCopilotFirstMessage({
     [
       owner.sId,
       isNewAgent,
+      isDuplicate,
       templateInfo,
       conversationId,
       agentConfigurationId,

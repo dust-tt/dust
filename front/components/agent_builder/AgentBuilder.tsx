@@ -552,6 +552,7 @@ export default function AgentBuilder({
             isCreatedDialogOpen={isCreatedDialogOpen}
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
+            isDuplicate={!!duplicateAgentId}
             templateInfo={
               assistantTemplate
                 ? {
@@ -591,6 +592,7 @@ interface AgentBuilderContentProps {
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
   isNewAgent: boolean;
+  isDuplicate: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
 }
@@ -608,6 +610,7 @@ function AgentBuilderContent({
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
   isNewAgent,
+  isDuplicate,
   templateInfo,
   conversationId,
 }: AgentBuilderContentProps) {
@@ -717,6 +720,7 @@ function AgentBuilderContent({
             targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
             clientSideMCPServerIds={clientSideMCPServerIds}
             isNewAgent={isNewAgent}
+            isDuplicate={isDuplicate}
             templateInfo={templateInfo}
             conversationId={conversationId}
           >
