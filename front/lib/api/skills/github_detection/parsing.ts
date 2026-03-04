@@ -5,6 +5,8 @@ import type {
 } from "@app/lib/api/skills/github_detection/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import * as yaml from "js-yaml";
+import { z } from "zod";
 
 const SKILL_MD_FILENAME = "skill.md";
 
@@ -62,49 +64,75 @@ export function parseGitHubRepoUrl(
   return new Ok({ owner: segments[0], repo: segments[1] });
 }
 
+const SkillFrontmatterSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+});
+
 /**
- * Extracts the first non-empty paragraph from a markdown string,
- * skipping YAML frontmatter (--- delimited) and headings.
+ * Parses a SKILL.md file per the Agent Skills spec
+ * (https://agentskills.io/specification). Extracts required `name` and
+ * `description` from YAML frontmatter; returns the body as instructions.
+ * Empty `name`/`description` means the frontmatter is missing or invalid.
  */
-export function extractDescription(markdown: string): string {
-  let content = markdown;
+export function parseSkillMarkdown(markdown: string): {
+  name: string;
+  description: string;
+  instructions: string;
+} {
+  const frontmatter = extractFrontmatter(markdown);
 
-  // Strip YAML frontmatter.
-  if (content.startsWith("---")) {
-    const endIndex = content.indexOf("---", 3);
-    if (endIndex !== -1) {
-      content = content.slice(endIndex + 3);
+  if (!frontmatter) {
+    return { name: "", description: "", instructions: markdown };
+  }
+
+  let raw: unknown;
+  try {
+    raw = yaml.load(frontmatter.yaml);
+  } catch {
+    // The lib throws on malformed YAML.
+    return { name: "", description: "", instructions: frontmatter.body };
+  }
+
+  const parsed = SkillFrontmatterSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { name: "", description: "", instructions: frontmatter.body };
+  }
+
+  return {
+    name: parsed.data.name.trim(),
+    description: parsed.data.description.trim(),
+    instructions: frontmatter.body,
+  };
+}
+
+/**
+ * Extracts YAML frontmatter (between `---` markers) and the remaining body.
+ * Returns null if the file doesn't start with a `---` line. The closing `---`
+ * must also be on its own line (not embedded in other content).
+ */
+function extractFrontmatter(
+  markdown: string
+): { yaml: string; body: string } | null {
+  const lines = markdown.split("\n");
+
+  if (!lines[0] || lines[0].trim() !== "---") {
+    return null;
+  }
+
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "---") {
+      return {
+        yaml: lines.slice(1, i).join("\n").trim(),
+        body: lines
+          .slice(i + 1)
+          .join("\n")
+          .trimStart(),
+      };
     }
   }
 
-  const lines = content.split("\n");
-  const paragraphLines: string[] = [];
-  let inParagraph = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Skip empty lines before a paragraph starts.
-    if (!trimmed) {
-      if (inParagraph) {
-        break;
-      }
-      continue;
-    }
-
-    // Skip headings.
-    if (trimmed.startsWith("#")) {
-      if (inParagraph) {
-        break;
-      }
-      continue;
-    }
-
-    inParagraph = true;
-    paragraphLines.push(trimmed);
-  }
-
-  return paragraphLines.join(" ");
+  return null;
 }
 
 /**
