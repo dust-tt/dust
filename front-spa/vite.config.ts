@@ -1,7 +1,10 @@
 import react from "@vitejs/plugin-react";
+import { createRequire } from "module";
 import path from "path";
 import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
+
+const require = createRequire(import.meta.url);
 
 const apps = {
   app: {
@@ -260,15 +263,14 @@ export default defineConfig(({ mode }) => {
         // Resolve SDK dependencies from root node_modules (hoisted by npm workspaces)
         {
           find: "eventsource-parser",
-          replacement: path.resolve(
-            __dirname,
-            "../node_modules/eventsource-parser"
+          replacement: path.dirname(
+            require.resolve("eventsource-parser/package.json")
           ),
         },
         // Handle zod and its subpath imports (e.g., zod/v3)
         {
           find: /^zod(\/.*)?$/,
-          replacement: path.resolve(__dirname, "../node_modules/zod$1"),
+          replacement: path.dirname(require.resolve("zod/package.json")) + "$1",
         },
       ],
       dedupe: ["react", "react-dom"],
