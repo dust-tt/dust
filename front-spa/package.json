@@ -1,6 +1,9 @@
 {
   "name": "@dust-tt/front-spa",
   "version": "0.1.0",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "type": "module",
   "scripts": {
     "dev:poke": "VITE_APP_NAME=poke VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",

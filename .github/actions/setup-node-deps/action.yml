@@ -39,9 +39,9 @@ runs:
           extension/node_modules
           viz/node_modules
           sdks/js/node_modules
-        key: workspaces-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        key: workspaces-node-modules-${{ runner.os }}-node${{ inputs.node-version }}-${{ hashFiles('package-lock.json') }}
         restore-keys: |
-          workspaces-node-modules-${{ runner.os }}-
+          workspaces-node-modules-${{ runner.os }}-node${{ inputs.node-version }}-
 
     - name: Install workspaces dependencies
       if: steps.cache-node-modules.outputs.cache-hit != 'true'

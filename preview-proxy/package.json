@@ -1,5 +1,8 @@
 {
   "name": "spa-preview-proxy",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",

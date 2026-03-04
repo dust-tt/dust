@@ -1,6 +1,9 @@
 {
   "name": "@dust-tt/front",
   "version": "0.1.0",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "exports": {
     "./components/*": "./components/*",
     "./lib/*": "./lib/*",

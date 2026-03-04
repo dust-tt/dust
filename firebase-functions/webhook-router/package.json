@@ -1,6 +1,9 @@
 {
   "name": "webhook-router",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "description": "Webhook router for multi-region deployment.",
   "type": "module",
   "main": "dist/firebase.js",
