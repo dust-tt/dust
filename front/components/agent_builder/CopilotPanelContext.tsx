@@ -132,6 +132,7 @@ export const CopilotPanelProvider = ({
       metadata: {
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
+        copilotIsNewAgentFromScratch: useCase === "new",
       },
       skipToolsValidation: true,
     });
