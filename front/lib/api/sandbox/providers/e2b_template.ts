@@ -25,10 +25,23 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
+export type DockerRegistryFactory = (imageRef: string) => TemplateBuilder;
+
+export function createGCPRegistryFactory(
+  registry: string,
+  serviceAccountPath: string
+): DockerRegistryFactory {
+  return (imageRef: string) =>
+    E2BTemplate().fromGCPRegistry(`${registry}/${imageRef}`, {
+      serviceAccountJSON: serviceAccountPath,
+    });
+}
+
 interface E2BBuildConfig {
   apiKey?: string;
   domain?: string;
   skipCache?: boolean;
+  dockerRegistryFactory?: DockerRegistryFactory;
 }
 
 class ContentMaterializer {
@@ -66,7 +79,10 @@ class E2BTemplateBuilder {
     this.builder = builder;
   }
 
-  static fromSandboxImage(image: SandboxImage): E2BTemplateBuilder {
+  static fromSandboxImage(
+    image: SandboxImage,
+    options?: { dockerRegistryFactory?: DockerRegistryFactory }
+  ): E2BTemplateBuilder {
     const baseImage = image.baseImage;
     let builder: TemplateBuilder;
 
@@ -78,6 +94,12 @@ class E2BTemplateBuilder {
         builder = E2BTemplate().fromTemplate(
           formatSandboxImageId(baseImage.id)
         );
+        break;
+      case "docker":
+        if (!options?.dockerRegistryFactory) {
+          throw new Error("dockerRegistryFactory is required for docker images");
+        }
+        builder = options.dockerRegistryFactory(baseImage.imageRef);
         break;
       default:
         return assertNever(baseImage);
@@ -170,7 +192,9 @@ export async function buildSandboxImage(
   );
 
   try {
-    const e2bBuilder = E2BTemplateBuilder.fromSandboxImage(image);
+    const e2bBuilder = E2BTemplateBuilder.fromSandboxImage(image, {
+      dockerRegistryFactory: buildConfig?.dockerRegistryFactory,
+    });
 
     const result = await e2bBuilder.build(imageId, {
       apiKey,
