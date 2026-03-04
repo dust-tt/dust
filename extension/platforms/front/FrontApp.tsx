@@ -1,5 +1,6 @@
 import { RootLayout } from "@app/components/app/RootLayout";
 import { RegionProvider } from "@app/lib/auth/RegionContext";
+import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
 import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
@@ -41,18 +42,20 @@ export const FrontApp = () => {
   }
 
   return (
-    <FrontContextProvider>
-      <FrontPlatformProvider>
-        <RegionProvider>
-          <ExtensionAuthProvider>
-            <ExtensionFetcherProvider>
-              <RootLayout>
-                <RouterProvider router={router} key="front-router" />
-              </RootLayout>
-            </ExtensionFetcherProvider>
-          </ExtensionAuthProvider>
-        </RegionProvider>
-      </FrontPlatformProvider>
-    </FrontContextProvider>
+    <ClientTypeProvider value="extension">
+      <FrontContextProvider>
+        <FrontPlatformProvider>
+          <RegionProvider>
+            <ExtensionAuthProvider>
+              <ExtensionFetcherProvider>
+                <RootLayout>
+                  <RouterProvider router={router} key="front-router" />
+                </RootLayout>
+              </ExtensionFetcherProvider>
+            </ExtensionAuthProvider>
+          </RegionProvider>
+        </FrontPlatformProvider>
+      </FrontContextProvider>
+    </ClientTypeProvider>
   );
 };
