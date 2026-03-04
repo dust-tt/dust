@@ -14,7 +14,9 @@ import type {
   ButlerSuggestionCreatedEvent,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import type { ButlerSuggestionData } from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SUGGEST_ACTIONS_FUNCTION_NAME = "suggest_actions";
 
@@ -83,7 +85,8 @@ function buildAnalyzeConversationSpecifications(
 
 function buildPrompt(
   currentTitle: string,
-  agents: LightAgentConfigurationType[]
+  agents: LightAgentConfigurationType[],
+  suggestionHistory: ButlerSuggestionData[]
 ): string {
   const shouldBuildPromptForAgentSuggestion = agents.length > 0;
 
@@ -130,6 +133,35 @@ function buildPrompt(
     prompt +=
       "No agents are available, so set agent_confidence to 0, agent_name to empty string, " +
       "and agent_prompt to empty string.\n\n";
+  }
+
+  if (suggestionHistory.length > 0) {
+    prompt += "Previous suggestion history (most recent first):\n";
+    for (const suggestion of suggestionHistory) {
+      const outcome =
+        suggestion.status === "accepted" ? "ACCEPTED" : "DISMISSED";
+
+      switch (suggestion.suggestionType) {
+        case "rename_title": {
+          const { suggestedTitle } = suggestion.metadata;
+          prompt += `- [${outcome}] Title rename: "${suggestedTitle}"\n`;
+          break;
+        }
+        case "call_agent": {
+          if (!shouldBuildPromptForAgentSuggestion) {
+            break;
+          }
+          const { agentName } = suggestion.metadata;
+          prompt += `- [${outcome}] Agent suggestion: ${agentName}\n`;
+          break;
+        }
+        default:
+          assertNever(suggestion);
+      }
+    }
+    prompt +=
+      "\nDo NOT re-suggest titles that were DISMISSED. " +
+      "Learn from accepted suggestions to understand user preferences.\n\n";
   }
 
   prompt +=
@@ -261,8 +293,14 @@ export async function analyzeConversation(
     .filter((a) => a.scope !== "global" && !participantSIds.has(a.sId))
     .slice(0, MAX_AGENTS_IN_PROMPT);
 
+  const suggestionHistory =
+    await ConversationButlerSuggestionResource.fetchResolvedByConversation(
+      auth,
+      { conversationId: conversation.id, limit: 10 }
+    );
+
   const currentTitle = conversation.title ?? "";
-  const prompt = buildPrompt(currentTitle, availableAgents);
+  const prompt = buildPrompt(currentTitle, availableAgents, suggestionHistory);
 
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
