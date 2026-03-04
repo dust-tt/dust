@@ -1,7 +1,7 @@
 import {
-  extractDescription,
   findSkillDirectories,
   parseGitHubRepoUrl,
+  parseSkillMarkdown,
 } from "@app/lib/api/skills/github_detection/parsing";
 import type {
   DetectedSkill,
@@ -122,10 +122,8 @@ async function fetchBlobContent(
 }
 
 /**
- * Detects skills in a GitHub repository by fetching its tree and looking for
- * directories containing skill.md or SKILL.md files.
- *
- * Uses the GitHub Git Trees API for lightweight access.
+ * Detects Agent Skills (https://agentskills.io/specification) in a GitHub
+ * repository by scanning for SKILL.md files via the Git Trees API.
  */
 export async function detectSkillsFromGitHubRepo({
   repoUrl,
@@ -161,10 +159,17 @@ export async function detectSkillsFromGitHubRepo({
   );
 
   const detectedSkills: DetectedSkill[] = [];
+  const seenNames = new Set<string>();
   for (const result of skills) {
-    if (result.isOk()) {
-      detectedSkills.push(result.value);
+    if (result.isErr()) {
+      continue;
     }
+    const skill = result.value;
+    if (!skill.name || seenNames.has(skill.name)) {
+      continue;
+    }
+    seenNames.add(skill.name);
+    detectedSkills.push(skill);
   }
 
   return new Ok(detectedSkills);
@@ -200,12 +205,11 @@ async function buildDetectedSkill({
     );
     return blobResult;
   }
-  const instructions = blobResult.value;
-
-  const description = extractDescription(instructions);
+  const parsed = parseSkillMarkdown(blobResult.value);
 
   const attachments: DetectedSkillAttachment[] = [];
-  const dirPrefix = skillDir.dirPath ? `${skillDir.dirPath}/` : "";
+  const lastSlash = skillDir.skillMdPath.lastIndexOf("/");
+  const dirPrefix = skillDir.skillMdPath.slice(0, lastSlash + 1);
 
   for (const entry of tree) {
     if (entry.type !== "blob") {
@@ -227,9 +231,10 @@ async function buildDetectedSkill({
   }
 
   return new Ok({
-    dirPath: skillDir.dirPath,
-    description,
-    instructions,
+    name: parsed.name,
+    skillMdPath: skillDir.skillMdPath,
+    description: parsed.description,
+    instructions: parsed.instructions,
     attachments,
   });
 }
