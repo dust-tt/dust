@@ -112,7 +112,7 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
       totalPages,
       totalPosts: remainingPosts.length,
       allTags,
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
     },
     revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };

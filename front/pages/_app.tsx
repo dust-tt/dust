@@ -10,12 +10,12 @@ import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 
 // Important: avoid destructuring process.env on the client.
-// Next.js replaces direct property access (process.env.NEXT_PUBLIC_*) at build time,
+// Build tools replace direct property access (process.env.VAR) at build time,
 // but destructuring `process.env` does not get inlined.
 const NODE_ENV = process.env.NODE_ENV;
-const DATADOG_CLIENT_TOKEN = process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN;
-const DATADOG_SERVICE = process.env.NEXT_PUBLIC_DATADOG_SERVICE;
-const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
+const DATADOG_CLIENT_TOKEN = process.env.DATADOG_CLIENT_TOKEN;
+const DATADOG_SERVICE = process.env.DATADOG_SERVICE;
+const COMMIT_HASH = process.env.COMMIT_HASH;
 
 const CONSOLE_MESSAGE_SHOWN_KEY = "dust_console_message_shown";
 

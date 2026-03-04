@@ -13,7 +13,7 @@ import type { ReactElement } from "react";
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       shape: 0,
     },
   };

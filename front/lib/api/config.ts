@@ -59,11 +59,11 @@ const config = {
   // Use this for page URLs, not API endpoints.
   getAppUrl: (): string => {
     // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
-      throw new Error("NEXT_PUBLIC_DUST_APP_URL is required");
+    if (!process.env.DUST_APP_URL) {
+      throw new Error("DUST_APP_URL is required");
     }
 
-    return process.env.NEXT_PUBLIC_DUST_APP_URL;
+    return process.env.DUST_APP_URL;
   },
   // URL for the poke app (front-spa). Falls back to getClientFacingUrl()/poke when not set.
   getPokeAppUrl: (): string => {
@@ -129,7 +129,7 @@ const config = {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
   },
   getPostHogApiKey: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("NEXT_PUBLIC_POSTHOG_KEY");
+    return EnvironmentConfig.getOptionalEnvVariable("POSTHOG_KEY");
   },
   getCustomerIoSiteId: (): string => {
     return EnvironmentConfig.getEnvVariable("CUSTOMERIO_SITE_ID");
