@@ -1,12 +1,6 @@
 import { H2, P } from "@app/components/home/ContentComponents";
 import { cn } from "@dust-tt/sparkle";
-import {
-  AlertTriangle,
-  Check,
-  Cpu,
-  Lock,
-  Settings,
-} from "lucide-react";
+import { AlertTriangle, Check, Cpu, Lock, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 
 // ─── "What is ChatGPT Enterprise?" ────────────────────────────────────
@@ -41,7 +35,10 @@ export function ChatGptEnterpriseWhatSection({
         <P size="md" className="mx-auto mb-6 max-w-3xl text-muted-foreground">
           {description}
         </P>
-        <P size="md" className="mx-auto max-w-3xl font-medium text-muted-foreground">
+        <P
+          size="md"
+          className="mx-auto max-w-3xl font-medium text-muted-foreground"
+        >
           {catchLine}
         </P>
       </div>
@@ -83,9 +80,7 @@ function ApproachCard({ title, items, variant }: ComparisonApproach) {
             )}
             <span
               className={cn(
-                isPositive
-                  ? "font-medium text-gray-800"
-                  : "text-gray-600"
+                isPositive ? "font-medium text-gray-800" : "text-gray-600"
               )}
             >
               {item.text}

@@ -17,9 +17,7 @@ export function ChatGptEnterpriseCTA({
 }: ChatGptEnterpriseCTAProps) {
   return (
     <section className="w-full">
-      <div
-        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen overflow-hidden bg-[#111418] px-6 py-16 text-white md:py-24"
-      >
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen overflow-hidden bg-[#111418] px-6 py-16 text-white md:py-24">
         {/* Background glow */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -right-[10%] -top-[50%] h-[150%] w-[70%] rounded-full bg-[#1C91FF]/20 blur-[120px]" />

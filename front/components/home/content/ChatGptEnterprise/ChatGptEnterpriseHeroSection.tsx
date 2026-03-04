@@ -116,15 +116,7 @@ export function ChatGptEnterpriseHeroSection({
                 className="pointer-events-none absolute z-30 hidden md:block"
                 style={{ x: "-50%", y: "-50%" }}
                 animate={{
-                  left: [
-                    "15%",
-                    "85%",
-                    "105%",
-                    "85%",
-                    "15%",
-                    "-5%",
-                    "15%",
-                  ],
+                  left: ["15%", "85%", "105%", "85%", "15%", "-5%", "15%"],
                   top: ["0%", "0%", "50%", "100%", "100%", "50%", "0%"],
                   rotate: [0, 0, 90, 180, 180, 270, 360],
                 }}
