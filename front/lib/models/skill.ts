@@ -130,6 +130,7 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
 export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
   declare mcpServerViewIds: number[];
+  declare fileAttachmentIds: number[];
   declare version: number;
 }
 
@@ -143,6 +144,11 @@ SkillVersionModel.init(
     mcpServerViewIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
+    },
+    fileAttachmentIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+      defaultValue: [],
     },
     version: {
       type: DataTypes.INTEGER,
