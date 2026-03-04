@@ -1248,7 +1248,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Validate that the data source view exists and is accessible.
-    const { action, dataSourceViewId, description } = params.suggestion;
+    const { action, method, dataSourceViewId, description } = params.suggestion;
     const view = await DataSourceViewResource.fetchById(auth, dataSourceViewId);
 
     if (!view) {
@@ -1303,6 +1303,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     const suggestion: KnowledgeSuggestionType = {
       action,
+      method,
       dataSourceViewId,
       description,
     };

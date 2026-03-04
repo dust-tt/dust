@@ -53,12 +53,26 @@ const SkillsSuggestionSchema = z.object({
   skillId: z.string().describe("The skill identifier"),
 });
 
+const KNOWLEDGE_SUGGESTION_METHODS_METADATA = [
+  "search",
+  "query_tables",
+  "include",
+  "extract",
+] as const;
+
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]).describe("The action to perform"),
+  method: z
+    .enum(KNOWLEDGE_SUGGESTION_METHODS_METADATA)
+    .optional()
+    .default("search")
+    .describe(
+      "search: semantic search on unstructured data. include: full document content in context. query_tables: SQL-like queries on structured data. extract: structured output from unstructured data."
+    ),
   dataSourceViewId: z
     .string()
     .describe(
-      "The string id of the data source view to add or remove as knowledge"
+      "The string id of the data source view to add or remove as knowledge (for method 'search', from get_available_knowledge/search_knowledge)"
     ),
   description: z
     .string()
@@ -82,22 +96,19 @@ const ModelSuggestionSchema = z.object({
 export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   get_available_knowledge: {
     description:
-      "Get the list of available knowledge sources that can be added to an agent. " +
-      "Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. " +
-      "Only includes sources accessible to the current user.",
+      "List available knowledge data source views grouped by space and category. " +
+      "Returns spaces, each with categories (managed, folder, website) containing data source views. " +
+      "Use each data source view's sId as dataSourceViewId when calling suggest_knowledge. " +
+      "Optionally filter by spaceId or category.",
     schema: {
       spaceId: z
         .string()
         .optional()
-        .describe(
-          "Optional space ID to filter results to a specific space. If not provided, returns knowledge from all accessible spaces."
-        ),
+        .describe("Optional space ID to filter results to a specific space."),
       category: z
         .enum(KNOWLEDGE_CATEGORIES)
         .optional()
-        .describe(
-          "Optional category to filter results. Options: 'managed' (connected data sources like Notion, Slack), 'folder' (custom folders), 'website' (crawled websites). If not provided, returns all categories."
-        ),
+        .describe("Optional category to filter: managed, folder, or website."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -344,9 +355,9 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   search_knowledge: {
     description:
-      "Perform a semantic search across all workspace data sources to identify which ones contain content relevant to a given query. " +
-      "Returns matching data sources with hit counts and document titles. " +
-      "Use this to determine which knowledge sources to suggest for the agent.",
+      "Semantic search across workspace **search** knowledge sources (documents, folders, websites) to find which contain content relevant to a query. " +
+      "Returns matching data source views with hit counts and document titles. Use for suggesting search knowledge (method 'search'). " +
+      "For warehouses/SQL sources, use the sources from get_available_knowledge that have knowledgeMethod 'query_tables'.",
     schema: {
       query: z
         .string()
@@ -372,8 +383,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_knowledge: {
     description:
-      "Suggest adding or removing a knowledge source (data source) from the agent's configuration. " +
-      "Use `search_knowledge` first to identify relevant data sources, then suggest them here. " +
+      "Suggest adding or removing knowledge. Get sources from \`get_available_knowledge\` (one call returns all); each source has a knowledgeMethod field — use that as the method here. " +
+      "method 'search': semantic search over documents, folders, websites. method 'query_tables': SQL over Snowflake/BigQuery warehouses. " +
       "If a pending suggestion for the same data source already exists, it will be automatically marked as outdated. " +
       `There can't be more than ${MAX_PENDING_KNOWLEDGE_SUGGESTIONS} pending knowledge suggestions. ` +
       "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",

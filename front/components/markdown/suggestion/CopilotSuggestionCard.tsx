@@ -15,6 +15,7 @@ import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentInstructionsSuggestionType,
@@ -474,9 +475,22 @@ function KnowledgeSuggestionCard({
 
   const isAddition = suggestion.action === "add";
   const dataSourceView = relations.dataSourceView;
+  const method = suggestion.method ?? "search";
+  const isQueryTables = method === "query_tables";
   const displayName = getDisplayNameForDataSource(dataSourceView.dataSource);
+  const serverView =
+    method === "query_tables"
+      ? relations.tablesQueryServerView
+      : method === "include"
+        ? relations.includeServerView
+        : method === "extract"
+          ? relations.extractServerView
+          : relations.searchServerView;
 
   const handleAccept = useCallback(async () => {
+    if (!serverView) {
+      return;
+    }
     const success = await acceptSuggestion(sId);
     if (!success) {
       return;
@@ -484,27 +498,52 @@ function KnowledgeSuggestionCard({
 
     const currentActions = getValues("actions");
     if (isAddition) {
-      const newAction = getDefaultMCPAction(relations.searchServerView);
-      newAction.name = generateUniqueActionName({
-        baseName: nameToStorageFormat(`search ${displayName}`),
-        existingActions: currentActions,
-      });
-      newAction.description = suggestion.description ?? `Search ${displayName}`;
-      newAction.configuration.dataSourceConfigurations = {
-        [dataSourceView.sId]: {
-          dataSourceView: dataSourceView,
-          selectedResources: [],
-          excludedResources: [],
-          isSelectAll: true,
-          tagsFilter: null,
-        },
-      };
-
+      const newAction = getDefaultMCPAction(serverView);
+      if (isQueryTables) {
+        newAction.name = generateUniqueActionName({
+          baseName: nameToStorageFormat(`query ${displayName}`),
+          existingActions: currentActions,
+        });
+        newAction.description =
+          suggestion.description ?? `Query tables in ${displayName}`;
+        const tableConfig = defaultSelectionConfiguration(dataSourceView);
+        newAction.configuration.tablesConfigurations = {
+          [dataSourceView.sId]: { ...tableConfig, isSelectAll: true },
+        };
+      } else {
+        const actionVerb =
+          method === "include"
+            ? "Include"
+            : method === "extract"
+              ? "Extract"
+              : "Search";
+        newAction.name = generateUniqueActionName({
+          baseName: nameToStorageFormat(
+            `${actionVerb.toLowerCase()} ${displayName}`
+          ),
+          existingActions: currentActions,
+        });
+        newAction.description =
+          suggestion.description ?? `${actionVerb} ${displayName}`;
+        newAction.configuration.dataSourceConfigurations = {
+          [dataSourceView.sId]: {
+            dataSourceView,
+            selectedResources: [],
+            excludedResources: [],
+            isSelectAll: true,
+            tagsFilter: null,
+          },
+        };
+      }
       setValue("actions", [...currentActions, newAction], {
         shouldDirty: true,
       });
     } else {
       const filteredActions = currentActions.filter((action) => {
+        if (isQueryTables) {
+          const tableConfigs = action.configuration.tablesConfigurations;
+          return !tableConfigs || !(dataSourceView.sId in tableConfigs);
+        }
         const dsConfigs = action.configuration.dataSourceConfigurations;
         return !dsConfigs || !(dataSourceView.sId in dsConfigs);
       });
@@ -514,12 +553,14 @@ function KnowledgeSuggestionCard({
     acceptSuggestion,
     sId,
     isAddition,
-    relations.searchServerView,
+    isQueryTables,
+    serverView,
     getValues,
     setValue,
     dataSourceView,
     displayName,
     suggestion.description,
+    method,
   ]);
 
   const handleReject = useCallback(() => {
@@ -534,12 +575,12 @@ function KnowledgeSuggestionCard({
 
   const labels = isAddition
     ? {
-        title: `Add ${displayName} as knowledge source`,
+        title: `Add ${displayName} knowledge`,
         applyLabel: "Add",
         acceptedTitle: `${displayName} knowledge added`,
       }
     : {
-        title: `Remove ${displayName} knowledge source`,
+        title: `Remove ${displayName} knowledge`,
         applyLabel: "Remove",
         acceptedTitle: `${displayName} knowledge removed`,
       };

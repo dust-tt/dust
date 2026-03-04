@@ -166,6 +166,27 @@ function CopilotSuggestionsProviderContent({
       null,
     [mcpServerViewsWithKnowledge]
   );
+  const includeServerView = useMemo(
+    () =>
+      mcpServerViewsWithKnowledge.find(
+        (v) => v.server.name === "include_data"
+      ) ?? null,
+    [mcpServerViewsWithKnowledge]
+  );
+  const extractServerView = useMemo(
+    () =>
+      mcpServerViewsWithKnowledge.find(
+        (v) => v.server.name === "extract_data"
+      ) ?? null,
+    [mcpServerViewsWithKnowledge]
+  );
+  const tablesQueryServerView = useMemo(
+    () =>
+      mcpServerViewsWithKnowledge.find(
+        (v) => v.server.name === "query_tables_v2"
+      ) ?? null,
+    [mcpServerViewsWithKnowledge]
+  );
 
   const {
     suggestions: pendingSuggestions,
@@ -257,13 +278,19 @@ function CopilotSuggestionsProviderContent({
           const dataSourceView = dataSourceViewsMap.get(
             suggestion.suggestion.dataSourceViewId
           );
-          if (!dataSourceView || !searchServerView) {
+          if (!dataSourceView) {
             return null;
           }
 
           return {
             ...suggestion,
-            relations: { dataSourceView, searchServerView },
+            relations: {
+              dataSourceView,
+              searchServerView: searchServerView ?? undefined,
+              includeServerView: includeServerView ?? undefined,
+              extractServerView: extractServerView ?? undefined,
+              tablesQueryServerView: tablesQueryServerView ?? undefined,
+            },
           };
         }
 
@@ -280,6 +307,9 @@ function CopilotSuggestionsProviderContent({
       mcpServerViewsMap,
       dataSourceViewsMap,
       searchServerView,
+      includeServerView,
+      extractServerView,
+      tablesQueryServerView,
     ]
   );
 
