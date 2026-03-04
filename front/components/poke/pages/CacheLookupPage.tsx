@@ -1,5 +1,6 @@
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { RedisCacheResult } from "@app/pages/api/poke/cache";
 import {
   usePokeCacheLookup,
   usePokeCacheResourceLookup,
@@ -11,6 +12,7 @@ import {
 } from "@app/types/shared/cache_resource_registry";
 import {
   Button,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,8 +43,61 @@ function formatTtl(ttlSeconds: number): string {
   return `${seconds} sec`;
 }
 
+interface RedisInstanceResultProps {
+  label: string;
+  result: RedisCacheResult;
+}
+
+function RedisInstanceResult({ label, result }: RedisInstanceResultProps) {
+  const { isDark } = useTheme();
+  const found = result.value !== null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-foreground dark:text-foreground-night">
+          {label}
+        </h3>
+        <span
+          className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+            found
+              ? "bg-success-100 text-success-800 dark:bg-success-100-night dark:text-success-800-night"
+              : "bg-muted-background text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night"
+          }`}
+        >
+          {found ? "Found" : "Not found"}
+        </span>
+      </div>
+      {found && (
+        <>
+          <div>
+            <Label isMuted>TTL</Label>
+            <p className="mt-1 text-sm text-foreground dark:text-foreground-night">
+              {formatTtl(result.ttlSeconds)}
+            </p>
+          </div>
+          <div>
+            <Label isMuted>Value</Label>
+            <JsonViewer
+              theme={isDark ? "dark" : "light"}
+              value={result.value}
+              rootName={false}
+              defaultInspectDepth={2}
+              className="mt-1"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface CacheResultsProps {
-  data: { key: string; value: unknown | null; ttlSeconds: number } | null;
+  data: {
+    key: string;
+    cacheRedis: RedisCacheResult;
+    streamRedis: RedisCacheResult;
+  } | null;
   isLoading: boolean;
   isError: unknown;
   submitted: boolean;
@@ -54,7 +109,6 @@ function CacheResults({
   isError,
   submitted,
 }: CacheResultsProps) {
-  const { isDark } = useTheme();
   if (!submitted) {
     return (
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -83,36 +137,57 @@ function CacheResults({
     return null;
   }
 
+  const foundInCache = data.cacheRedis.value !== null;
+  const foundInStream = data.streamRedis.value !== null;
+
+  const summaryMessage = (() => {
+    if (foundInCache && foundInStream) {
+      return "Found in both Cache Redis (REDIS_CACHE_URI) and Stream Redis (REDIS_URI).";
+    }
+    if (foundInCache) {
+      return "Found in Cache Redis (REDIS_CACHE_URI).";
+    }
+    if (foundInStream) {
+      return "Found in Stream Redis (REDIS_URI).";
+    }
+    return "Did not find any result across Cache Redis and Stream Redis.";
+  })();
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <ContentMessage
+        variant={foundInCache || foundInStream ? "success" : "warning"}
+        size="lg"
+        title={summaryMessage}
+      />
       <div>
         <Label isMuted>Redis Key</Label>
         <code className="mt-1 block break-all rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
           {data.key}
         </code>
       </div>
-      <div>
-        <Label isMuted>TTL</Label>
-        <p className="mt-1 text-sm text-foreground dark:text-foreground-night">
-          {formatTtl(data.ttlSeconds)}
-        </p>
-      </div>
-      <div>
-        <Label isMuted>Value</Label>
-        {data.value !== null ? (
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={data.value}
-            rootName={false}
-            defaultInspectDepth={2}
-            className="mt-1"
+      {foundInCache && foundInStream ? (
+        <div className="grid grid-cols-2 gap-6">
+          <RedisInstanceResult
+            label="Cache Redis (REDIS_CACHE_URI)"
+            result={data.cacheRedis}
           />
-        ) : (
-          <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Key not found
-          </p>
-        )}
-      </div>
+          <RedisInstanceResult
+            label="Stream Redis (REDIS_URI)"
+            result={data.streamRedis}
+          />
+        </div>
+      ) : foundInCache ? (
+        <RedisInstanceResult
+          label="Cache Redis (REDIS_CACHE_URI)"
+          result={data.cacheRedis}
+        />
+      ) : foundInStream ? (
+        <RedisInstanceResult
+          label="Stream Redis (REDIS_URI)"
+          result={data.streamRedis}
+        />
+      ) : null}
     </div>
   );
 }
@@ -164,7 +239,7 @@ function ResourceLookupTab() {
       {/* Left: Query */}
       <div className="w-80 shrink-0 space-y-4 rounded-lg bg-background p-5 dark:bg-background-night">
         <div>
-          <Label className="mb-1">Resource Type</Label>
+          <Label className="mb-1 block">Resource Type</Label>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

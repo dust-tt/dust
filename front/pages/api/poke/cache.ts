@@ -1,5 +1,5 @@
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { runOnRedisCache } from "@app/lib/api/redis";
+import { runOnRedis, runOnRedisCache } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
@@ -12,10 +12,15 @@ import {
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetPokeCacheResponseBody = {
-  key: string;
+export interface RedisCacheResult {
   value: unknown | null;
   ttlSeconds: number;
+}
+
+export type GetPokeCacheResponseBody = {
+  key: string;
+  cacheRedis: RedisCacheResult;
+  streamRedis: RedisCacheResult;
 };
 
 async function handler(
@@ -97,9 +102,10 @@ async function handler(
         });
       }
 
-      const { value, ttlSeconds } = await runOnRedisCache(
-        { origin: "poke_cache_lookup" },
-        async (client) => {
+      async function lookupKey(
+        runFn: typeof runOnRedisCache
+      ): Promise<RedisCacheResult> {
+        return runFn({ origin: "poke_cache_lookup" }, async (client) => {
           const [rawValue, ttl] = await Promise.all([
             client.get(cacheKey),
             client.ttl(cacheKey),
@@ -115,18 +121,33 @@ async function handler(
           }
 
           return { value: parsed, ttlSeconds: ttl };
-        }
-      );
+        });
+      }
+
+      const [cacheRedis, streamRedis] = await Promise.all([
+        lookupKey(runOnRedisCache).catch(() => ({
+          value: null,
+          ttlSeconds: -1,
+        })),
+        lookupKey(runOnRedis).catch(() => ({
+          value: null,
+          ttlSeconds: -1,
+        })),
+      ]);
 
       logger.info(
-        { redisKey: cacheKey, found: value !== null },
+        {
+          redisKey: cacheKey,
+          foundInCache: cacheRedis.value !== null,
+          foundInStream: streamRedis.value !== null,
+        },
         "Poke cache lookup performed"
       );
 
       return res.status(200).json({
         key: cacheKey,
-        value,
-        ttlSeconds,
+        cacheRedis,
+        streamRedis,
       });
     }
 
