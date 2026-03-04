@@ -1,10 +1,4 @@
-import {
-  isSupportedFileContentType,
-  isSupportedImageContentType,
-  isSupportedPlainTextContentType,
-  supportedImageFileFormats,
-  supportedOtherFileFormats,
-} from "@dust-tt/client";
+import { getFileFormat, isSupportedFileContentType } from "@app/types/files";
 import { DropzoneOverlay, useSendNotification } from "@dust-tt/sparkle";
 import { useFileDrop } from "@extension/ui/components/conversation/FileUploaderContext";
 import { useEffect } from "react";
@@ -19,12 +13,8 @@ interface DropzoneContainerProps {
 const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 const generateFileName = (blob: Blob) => {
-  const extensions =
-    (isSupportedImageContentType(blob.type) &&
-      supportedImageFileFormats[blob.type]) ||
-    (isSupportedPlainTextContentType(blob.type) &&
-      supportedOtherFileFormats[blob.type]);
-  const extension = extensions ? extensions[0] : "";
+  const format = getFileFormat(blob.type);
+  const extension = format?.exts[0] ?? "";
   const name = Array(12)
     .fill(null)
     .map(() => chars[Math.floor(Math.random() * chars.length)])

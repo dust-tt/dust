@@ -2,8 +2,7 @@ import { setDefaultInitResolver } from "@app/lib/api/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
-import type { WorkspaceType } from "@dust-tt/client";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {

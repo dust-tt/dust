@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { DUST_US_URL, FRONT_EXTENSION_URL } from "@extension/shared/lib/config";
 import { generatePKCE } from "@extension/shared/lib/utils";
 import type { StoredTokens } from "@extension/shared/services/auth";
