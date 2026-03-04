@@ -278,7 +278,7 @@ describe("InstructionSuggestionExtension", () => {
       expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
 
-    it("should correctly map positions when accepting multiple suggestions", () => {
+    it("should correctly map positions when accepting multiple suggestions individually", () => {
       // Create two paragraphs.
       editor.commands.setContent("First paragraph\n\nSecond paragraph", {
         contentType: "markdown",
@@ -310,6 +310,38 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).toContain("New second");
       expect(text).not.toContain("First paragraph");
       expect(text).not.toContain("Second paragraph");
+    });
+
+    it("should accept all suggestions at once and remove all from plugin state", () => {
+      editor.commands.setContent("First paragraph\n\nSecond paragraph", {
+        contentType: "markdown",
+      });
+
+      const [blockId1, blockId2] = getBlockIds(editor);
+
+      editor.commands.applySuggestion({
+        id: "batch-1",
+        targetBlockId: blockId1,
+        content: "<p>Updated first</p>",
+      });
+
+      editor.commands.applySuggestion({
+        id: "batch-2",
+        targetBlockId: blockId2,
+        content: "<p>Updated second</p>",
+      });
+
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(2);
+
+      editor.commands.acceptAllSuggestions();
+
+      const text = editor.getText();
+      expect(text).toContain("Updated first");
+      expect(text).toContain("Updated second");
+      expect(text).not.toContain("First paragraph");
+      expect(text).not.toContain("Second paragraph");
+
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
   });
 
