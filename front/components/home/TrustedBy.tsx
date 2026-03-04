@@ -8,6 +8,7 @@ import { appendUTMParams } from "@app/lib/utils/utm";
 import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const CASE_STUDIES: Record<string, string> = {
@@ -210,6 +211,7 @@ export default function TrustedBy({
   showTitle = true,
 }: TrustedByProps) {
   const { geoData } = useGeolocation();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -220,10 +222,13 @@ export default function TrustedBy({
     return () => cancelAnimationFrame(frameId);
   }, []);
 
+  const regionParam = searchParams?.get("region");
   const region =
-    mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
-      ? "eu"
-      : "us";
+    regionParam === "us" || regionParam === "eu"
+      ? regionParam
+      : mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
+        ? "eu"
+        : "us";
 
   const logos = LOGO_SETS[logoSet][region];
 
