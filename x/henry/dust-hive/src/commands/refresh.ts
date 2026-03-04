@@ -1,16 +1,14 @@
 // Refresh command - restore node_modules links in a worktree
 
-import { rm } from "node:fs/promises";
+import { lstat, rm, unlink } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
-import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { Ok } from "../lib/result";
 import { installAllDependencies } from "../lib/setup";
 
-// Directories that have node_modules to refresh
-const NODE_MODULES_DIRS = [
-  "",
+// Workspace directories that have symlinked node_modules
+const WORKSPACE_DIRS = [
   "sdks/js",
   "front",
   "connectors",
@@ -20,22 +18,38 @@ const NODE_MODULES_DIRS = [
   "viz",
 ];
 
+// Remove a path whether it's a symlink, real directory, or doesn't exist
+async function removePath(path: string): Promise<boolean> {
+  try {
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) {
+      await unlink(path);
+    } else {
+      await rm(path, { recursive: true });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const refreshCommand = withEnvironment("refresh", async (env) => {
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const repoRoot = env.metadata.repoRoot;
 
   logger.info(`Refreshing node_modules for '${env.name}'...`);
   console.log();
 
-  // Remove existing node_modules directories
+  // Remove root node_modules (real dir with @dust-tt overrides)
   logger.step("Removing existing node_modules...");
-  for (const dir of NODE_MODULES_DIRS) {
-    const nodeModulesPath = dir
-      ? `${worktreePath}/${dir}/node_modules`
-      : `${worktreePath}/node_modules`;
-    if (await directoryExists(nodeModulesPath)) {
-      await rm(nodeModulesPath, { recursive: true });
-      logger.info(`  Removed ${dir || "root"}/node_modules`);
+  if (await removePath(`${worktreePath}/node_modules`)) {
+    logger.info("  Removed root/node_modules");
+  }
+
+  // Remove workspace node_modules (symlinks to main repo)
+  for (const dir of WORKSPACE_DIRS) {
+    if (await removePath(`${worktreePath}/${dir}/node_modules`)) {
+      logger.info(`  Removed ${dir}/node_modules`);
     }
   }
   console.log();

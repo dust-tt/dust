@@ -304,7 +304,7 @@ async function initAllPostgres(env: Environment): Promise<void> {
 // Initialize Qdrant (runs after qdrant is healthy)
 async function initAllQdrant(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const envVars = await loadEnvVars(envShPath);
 
   const result = await initQdrant(worktreePath, envVars);
@@ -317,7 +317,7 @@ async function initAllQdrant(env: Environment): Promise<void> {
 // Initialize Elasticsearch (runs after ES is healthy)
 async function initAllElasticsearch(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const envVars = await loadEnvVars(envShPath);
   envVars["__ENV_SH_PATH__"] = envShPath;
 
@@ -339,7 +339,7 @@ async function initAllElasticsearch(env: Environment): Promise<void> {
 // Run core database init
 async function runCoreDbInit(env: Environment): Promise<{ success: boolean; usedCache: boolean }> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const envVars = await loadEnvVars(envShPath);
 
   const result = await runBinary("init_db", [], {
@@ -360,7 +360,7 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
 // Run front database init
 async function runFrontDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
 
   // Commands and their expected completion markers
   // Both init_db.sh and init_plans.sh print "Done" when they complete successfully
@@ -414,7 +414,7 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
 // Run connectors database init
 async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
 
   const command = buildShell({
     sourceEnv: envShPath,

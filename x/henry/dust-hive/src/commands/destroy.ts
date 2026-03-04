@@ -116,7 +116,7 @@ async function destroySingleEnvironment(
   options: DestroyOptions,
   settings: Settings
 ): Promise<Result<void>> {
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
 
   // Check for uncommitted changes (unless --force)
   if (!options.force) {

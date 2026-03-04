@@ -1,11 +1,14 @@
 // Environment setup operations
-// NOTE: node_modules uses shallow copy from main repo for speed (with SDK override).
-// To run `npm install` in a worktree, first delete node_modules manually.
-// NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
+// Hives live under {repoRoot}/.hives/{name}/ so Node module resolution
+// naturally walks up to find {repoRoot}/node_modules/. We only need:
+// 1. A small node_modules/@dust-tt/ override so workspace packages resolve
+//    from the hive (not the main repo).
+// 2. Shallow copies of workspace-level node_modules (version overrides).
+// NOTE: cargo target is symlinked to share Rust compilation cache.
 
-import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, readdirSync, readlinkSync, symlinkSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
 import { directoryExists } from "./fs";
@@ -15,80 +18,40 @@ import { logger } from "./logger";
 // These are personal/local files that aren't tracked in git
 const USER_CONFIG_DIRS = [".claude"];
 
-// @dust-tt packages mapping: npm scope name -> workspace directory relative to repo root
-// These are workspace packages that need to be overridden to point to the worktree
-const DUST_TT_PACKAGES: Record<string, string> = {
-  client: "sdks/js",
-  "dust-cli": "cli",
-  extension: "extension",
-  sparkle: "sparkle",
-};
-
 // Configuration for how to install each dependency type
 export interface DependencyConfig {
   rust: "symlink" | "build";
-  sdks: "symlink" | "install";
-  front: "symlink" | "install";
-  connectors: "symlink" | "install";
-  sparkle: "symlink" | "install";
-  frontspa: "symlink" | "install";
-  extension: "symlink" | "install";
-  viz: "symlink" | "install";
 }
 
-// Symlink node_modules from source to destination
-async function symlinkNodeModules(srcDir: string, destDir: string): Promise<boolean> {
-  const srcNodeModules = `${srcDir}/node_modules`;
-  const destNodeModules = `${destDir}/node_modules`;
-
-  // Check if source node_modules exists
-  if (!(await directoryExists(srcNodeModules))) {
-    return false;
-  }
-
-  // Create symlink
-  const proc = Bun.spawn(["ln", "-s", srcNodeModules, destNodeModules], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await proc.exited;
-  return proc.exitCode === 0;
-}
-
-// Setup root node_modules with workspace package overrides
-// Creates a real node_modules directory with symlinks to main repo packages,
-// but overrides @dust-tt/* packages to point to the worktree's workspaces.
-// This ensures TypeScript and runtime resolve workspace packages from the worktree,
-// not the main repo (which may have stale types).
-function setupRootNodeModules(mainNodeModules: string, worktreePath: string): void {
-  const target = join(worktreePath, "node_modules");
-
-  // Create target/node_modules/@dust-tt directory
-  mkdirSync(join(target, "@dust-tt"), { recursive: true });
-
-  // Symlink all top-level packages except @dust-tt
-  for (const item of readdirSync(mainNodeModules)) {
-    if (item !== "@dust-tt") {
-      symlinkSync(join(mainNodeModules, item), join(target, item));
-    }
-  }
-
-  // Override @dust-tt packages to point to worktree's workspaces
-  for (const [pkgName, workspaceDir] of Object.entries(DUST_TT_PACKAGES)) {
-    symlinkSync(join(worktreePath, workspaceDir), join(target, "@dust-tt", pkgName));
-  }
-}
-
-// Setup shallow node_modules for workspace packages (front, connectors)
-// Creates a real node_modules directory with symlinks to main repo packages.
-// With npm workspaces, @dust-tt packages are in root node_modules, not here.
-function setupShallowNodeModules(mainNodeModules: string, targetDir: string): void {
-  const target = join(targetDir, "node_modules");
+// Setup a shallow copy of node_modules: a real directory with symlinks to
+// each package from the source. Unlike a direct symlink, this keeps module
+// resolution anchored to the hive path (no symlink target walk-up issues).
+function setupShallowNodeModules(srcNodeModules: string, destDir: string): void {
+  const target = join(destDir, "node_modules");
   mkdirSync(target, { recursive: true });
 
-  // Symlink all packages from main repo
-  for (const item of readdirSync(mainNodeModules)) {
-    symlinkSync(join(mainNodeModules, item), join(target, item));
+  for (const item of readdirSync(srcNodeModules)) {
+    symlinkSync(join(srcNodeModules, item), join(target, item));
+  }
+}
+
+// Setup @dust-tt workspace overrides in hive's node_modules.
+// Since hives are under the repo root, Node resolution walks up to find
+// {repoRoot}/node_modules/ for all packages. But @dust-tt/* packages in
+// the root node_modules point to the main repo's workspaces via relative
+// symlinks. We override them here to point to the hive's workspaces instead,
+// so TypeScript and runtime resolve the hive's types (not the main repo's).
+function setupDustTtOverrides(repoRoot: string, worktreePath: string): void {
+  const mainDustTt = join(repoRoot, "node_modules", "@dust-tt");
+  const hiveDustTt = join(worktreePath, "node_modules", "@dust-tt");
+
+  mkdirSync(hiveDustTt, { recursive: true });
+
+  for (const pkg of readdirSync(mainDustTt)) {
+    const linkTarget = readlinkSync(join(mainDustTt, pkg));
+    const absoluteTarget = resolve(mainDustTt, linkTarget);
+    const workspaceRelative = absoluteTarget.slice(repoRoot.length + 1);
+    symlinkSync(join(worktreePath, workspaceRelative), join(hiveDustTt, pkg));
   }
 }
 
@@ -130,6 +93,9 @@ async function findAgentsFiles(srcDir: string, filename: string): Promise<string
       "-o",
       "-name",
       ".turbo",
+      "-o",
+      "-name",
+      ".hives",
       ")",
       "-prune",
       "-o",
@@ -214,18 +180,49 @@ async function buildRustInWorktree(worktreePath: string): Promise<boolean> {
 // Default config: symlink everything from cache
 const DEFAULT_CONFIG: DependencyConfig = {
   rust: "symlink",
-  sdks: "symlink",
-  front: "symlink",
-  connectors: "symlink",
-  sparkle: "symlink",
-  frontspa: "symlink",
-  extension: "symlink",
-  viz: "symlink",
 };
 
+// Workspace directories that have their own node_modules (version overrides)
+const WORKSPACE_NODE_MODULES = [
+  { name: "sdks/js", dir: "sdks/js" },
+  { name: "front", dir: "front" },
+  { name: "connectors", dir: "connectors" },
+  { name: "sparkle", dir: "sparkle" },
+  { name: "front-spa", dir: "front-spa" },
+  { name: "extension", dir: "extension" },
+  { name: "viz", dir: "viz" },
+];
+
+// Link workspace-level node_modules using shallow copies.
+// Returns names of workspaces that failed.
+async function linkWorkspaceNodeModules(worktreePath: string, repoRoot: string): Promise<string[]> {
+  const failed: string[] = [];
+
+  for (const { name, dir } of WORKSPACE_NODE_MODULES) {
+    const srcNodeModules = `${repoRoot}/${dir}/node_modules`;
+    if (await directoryExists(srcNodeModules)) {
+      logger.step(`${name}: Linking node_modules...`);
+      try {
+        setupShallowNodeModules(srcNodeModules, `${worktreePath}/${dir}`);
+        logger.success(`${name}: Linked`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`${name}: Failed to link - ${message}`);
+        failed.push(name);
+      }
+    } else {
+      logger.info(`${name}: No node_modules to link (all deps hoisted)`);
+    }
+  }
+
+  return failed;
+}
+
 // Install all dependencies for a worktree
-// With config, can either symlink from cache or install/build in worktree
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: handles multiple dependency types with different modes
+// Since hives are under the repo root, Node module resolution walks up to
+// find {repoRoot}/node_modules/ automatically. We only need to:
+// 1. Override @dust-tt/* packages to point to the hive's workspaces
+// 2. Shallow-copy workspace-level node_modules (version overrides)
 export async function installAllDependencies(
   worktreePath: string,
   repoRoot: string,
@@ -248,102 +245,22 @@ export async function installAllDependencies(
     }
   }
 
-  // Handle root node_modules (npm workspaces hoists deps here)
-  // Override @dust-tt/* packages to point to worktree's workspaces
-  logger.step("root: Linking from cache (with workspace overrides)...");
+  // Setup @dust-tt/* overrides (small node_modules/@dust-tt/ directory).
+  // Everything else resolves by walking up to {repoRoot}/node_modules/.
+  logger.step("Setting up @dust-tt workspace overrides...");
   try {
-    setupRootNodeModules(`${repoRoot}/node_modules`, worktreePath);
-    logger.success("root: Linked");
+    setupDustTtOverrides(repoRoot, worktreePath);
+    logger.success("@dust-tt overrides: Linked");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error(`root: Failed to link - ${message}`);
-    failed.push("root");
+    logger.error(`@dust-tt overrides: Failed - ${message}`);
+    failed.push("@dust-tt");
   }
 
-  // Handle node_modules for sdks/js (simple symlink, it IS the SDK)
-  if (config.sdks === "symlink") {
-    logger.step("sdks/js: Linking from cache...");
-    const success = await symlinkNodeModules(`${repoRoot}/sdks/js`, `${worktreePath}/sdks/js`);
-    if (!success) {
-      failed.push("sdks/js");
-    } else {
-      logger.success("sdks/js: Linked");
-    }
-  } else {
-    logger.step("sdks/js: Installing dependencies...");
-    const success = await runNpmInstall(`${worktreePath}/sdks/js`, {
-      preferOffline: true,
-    });
-    if (!success) {
-      failed.push("sdks/js");
-    } else {
-      logger.success("sdks/js: Installed");
-    }
-  }
-
-  // Handle node_modules for front, connectors, sparkle, front-spa, extension, and viz
-  // With npm workspaces, most deps are hoisted to root. These only have local overrides.
-  const workspaceProjects = [
-    {
-      key: "front" as const,
-      name: "front",
-      mainNodeModules: `${repoRoot}/front/node_modules`,
-      dest: `${worktreePath}/front`,
-    },
-    {
-      key: "connectors" as const,
-      name: "connectors",
-      mainNodeModules: `${repoRoot}/connectors/node_modules`,
-      dest: `${worktreePath}/connectors`,
-    },
-    {
-      key: "sparkle" as const, // Uses same config as front
-      name: "sparkle",
-      mainNodeModules: `${repoRoot}/sparkle/node_modules`,
-      dest: `${worktreePath}/sparkle`,
-    },
-    {
-      key: "frontspa" as const, // Uses same config as front
-      name: "front-spa",
-      mainNodeModules: `${repoRoot}/front-spa/node_modules`,
-      dest: `${worktreePath}/front-spa`,
-    },
-    {
-      key: "extension" as const, // Uses same config as front
-      name: "extension",
-      mainNodeModules: `${repoRoot}/extension/node_modules`,
-      dest: `${worktreePath}/extension`,
-    },
-    {
-      key: "viz" as const, // Uses same config as front
-      name: "viz",
-      mainNodeModules: `${repoRoot}/viz/node_modules`,
-      dest: `${worktreePath}/viz`,
-    },
-  ];
-
-  for (const { key, name, mainNodeModules, dest } of workspaceProjects) {
-    const mode = config[key];
-    if (mode === "symlink") {
-      logger.step(`${name}: Linking from cache...`);
-      try {
-        setupShallowNodeModules(mainNodeModules, dest);
-        logger.success(`${name}: Linked`);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        logger.error(`${name}: Failed to link - ${message}`);
-        failed.push(name);
-      }
-    } else {
-      logger.step(`${name}: Installing dependencies...`);
-      const success = await runNpmInstall(dest, { preferOffline: true });
-      if (!success) {
-        failed.push(name);
-      } else {
-        logger.success(`${name}: Installed`);
-      }
-    }
-  }
+  // Shallow-copy workspace-level node_modules (real dirs with per-package symlinks).
+  // This avoids symlink target walk-up issues with TypeScript resolution.
+  const workspaceFailed = await linkWorkspaceNodeModules(worktreePath, repoRoot);
+  failed.push(...workspaceFailed);
 
   if (failed.length > 0) {
     throw new Error(`Failed to install dependencies for: ${failed.join(", ")}`);
