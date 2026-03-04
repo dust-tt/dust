@@ -88,7 +88,7 @@ type SkillResourceConstructorOptions =
       // For global skills, there is no editor group.
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
-      fileAttachments?: FileResource[];
+      fileAttachments: FileResource[];
       globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
@@ -96,7 +96,7 @@ type SkillResourceConstructorOptions =
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: GroupResource;
-      fileAttachments?: FileResource[];
+      fileAttachments: FileResource[];
       globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
@@ -1264,6 +1264,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         dataSourceConfigurations: [],
         globalSId: def.sId,
         mcpServerConfigurations,
+        fileAttachments: [],
       }
     );
   }
