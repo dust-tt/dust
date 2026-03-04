@@ -545,19 +545,31 @@ export async function googleDriveFullSyncV2({
         folderId
       );
 
-      const handle = await startChild(googleDriveFolderSync, {
-        workflowId: childWorkflowId,
-        searchAttributes: { connectorId: [connectorId] },
-        args: [
-          {
-            connectorId,
-            rootFolderId: folderId,
-            startSyncTs,
-            mimeTypeFilter,
-          },
-        ],
-        memo: workflowInfo().memo,
-      });
+      let handle: ChildWorkflowHandle<typeof googleDriveFolderSync>;
+      try {
+        handle = await startChild(googleDriveFolderSync, {
+          workflowId: childWorkflowId,
+          searchAttributes: { connectorId: [connectorId] },
+          args: [
+            {
+              connectorId,
+              rootFolderId: folderId,
+              startSyncTs,
+              mimeTypeFilter,
+            },
+          ],
+          memo: workflowInfo().memo,
+        });
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          err.name === "WorkflowExecutionAlreadyStartedError"
+        ) {
+          // Workflow already running for this folder, it will be synced by that execution
+          return;
+        }
+        throw err;
+      }
 
       runningFolderWorkflows[folderId] = {
         handle,
