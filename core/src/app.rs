@@ -737,6 +737,8 @@ impl App {
                 .await?;
 
             info!(
+                project_id = project.project_id(),
+                run_id = run_id.as_str(),
                 block_type = block.block_type().to_string(),
                 block_name = name.as_str(),
                 successes = success,
