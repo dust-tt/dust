@@ -65,7 +65,9 @@ export function CreateAgentPage() {
     const validTemplates = assistantTemplates.filter(
       (template) =>
         isTemplateTagCodeArray(template.tags) &&
-        (!hasCopilot || template.hasCopilotInstructions)
+        (hasCopilot
+          ? template.hasCopilotInstructions
+          : template.hasPresetInstructions)
     );
 
     const filtered = validTemplates.filter((template) => {
