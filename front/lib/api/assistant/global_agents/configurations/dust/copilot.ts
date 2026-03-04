@@ -500,9 +500,9 @@ export function _getCopilotGlobalAgent(
   // (static response without calling a real LLM).
   // Use a fast model for other first turns and the full model for follow-ups.
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
-  const isNewAgentFirstTurn =
-    isFirstTurn && globalAgentContext?.isNewAgentCopilot;
-  const modelConfiguration = isNewAgentFirstTurn
+  const isNewAgentFromScratchFirstTurn =
+    isFirstTurn && globalAgentContext?.isNewAgentFromScratchCopilot;
+  const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
       ? isProviderWhitelisted(owner, "anthropic")
@@ -515,7 +515,7 @@ export function _getCopilotGlobalAgent(
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
-        ...(isNewAgentFirstTurn && {
+        ...(isNewAgentFromScratchFirstTurn && {
           metaData: { staticResponse: COPILOT_NEW_AGENT_STATIC_RESPONSE },
         }),
       }
