@@ -29,8 +29,8 @@ export function GleanWhatSection({
   approaches,
 }: WhatSectionProps) {
   return (
-    <section className="w-full py-12 md:py-6">
-      <div className="mb-16 text-center">
+    <section className="w-full py-3 md:py-6">
+      <div className="mb-6 text-center md:mb-16">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto mb-6 max-w-3xl text-muted-foreground">
           {description}
@@ -43,7 +43,7 @@ export function GleanWhatSection({
         </P>
       </div>
 
-      <div className="mt-12 grid gap-8 md:grid-cols-2">
+      <div className="mt-4 grid gap-4 md:mt-12 md:gap-8 md:grid-cols-2">
         {approaches.map((approach) => (
           <ApproachCard key={approach.title} {...approach} />
         ))}
@@ -116,20 +116,20 @@ const ICON_MAP = {
 export function GleanWhySection({ title, subtitle, reasons }: WhySectionProps) {
   return (
     <section className="w-full pt-1 pb-3 md:pt-2 md:pb-6">
-      <div className="mb-16 text-center">
+      <div className="mb-6 text-center md:mb-16">
         <H2 className="mb-4 text-center">{title}</H2>
         <P size="md" className="mx-auto max-w-2xl text-muted-foreground">
           {subtitle}
         </P>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
+      <div className="grid gap-4 md:gap-8 md:grid-cols-2">
         {reasons.map((reason) => (
           <div
             key={reason.title}
-            className="rounded-2xl border border-gray-100 bg-gray-50 p-8 transition-all hover:shadow-lg"
+            className="rounded-2xl border border-gray-100 bg-gray-50 p-5 transition-all hover:shadow-lg md:p-8"
           >
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm md:mb-6">
               {ICON_MAP[reason.iconColor]}
             </div>
             <h3 className="mb-3 text-xl font-bold text-[#111418]">

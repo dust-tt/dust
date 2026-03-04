@@ -22,7 +22,7 @@ const LOGOS = [
 export function GleanLogoBar({ title }: GleanLogoBarProps) {
   return (
     <section className="w-full">
-      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen border-y border-gray-100 bg-gray-50/50 py-2 md:py-10">
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen border-y border-gray-100 bg-gray-50/50 py-1 md:py-10">
         <div className="mx-auto max-w-7xl px-6">
           <p className="mb-2 text-center text-sm font-semibold uppercase tracking-wider text-gray-500 md:mb-8">
             {title}

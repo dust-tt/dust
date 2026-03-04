@@ -90,9 +90,19 @@ Example pattern: see `ChatGptEnterpriseLogoBar.tsx`
 
 ### Padding & Spacing Preferences
 
-- Keep desktop section padding tight — prefer `md:py-6` over `md:py-24` for content sections
-- Mobile padding can be more generous (e.g. `py-12`) since vertical space is less constrained
-- Between sections, keep gaps minimal on desktop to create a denser, more cohesive feel
+**Desktop:**
+- Keep section padding tight — prefer `md:py-6` over `md:py-24` for content sections
+- Between sections, keep gaps minimal to create a denser, more cohesive feel
+
+**Mobile:**
+- Keep mobile padding tight too — prefer `py-1` to `py-3` for section top/bottom padding
+- Logo bar: `py-1` with `mb-2` on the title text
+- Section header bottom margin: `mb-6` on mobile (use `md:mb-16` for desktop)
+- Card grids: `gap-4` on mobile, `gap-8` on desktop
+- Card internal padding: `p-5` on mobile, `md:p-8` on desktop
+- Testimonial/divider spacing: `mt-8 pt-6` on mobile, `md:mt-16 md:pt-12` on desktop
+- Body content padding inside cards: `p-5` on mobile, `md:p-12` on desktop
+- General rule: reduce default Tailwind spacing by ~75% on mobile to minimize scrolling
 
 ### 5. Create Page File
 

@@ -286,16 +286,16 @@ export const gleanLandingConfig: GleanLandingConfig = {
       },
       {
         quote:
-          "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
-        company: "Doctolib",
-        author: "Matthieu Birach, Chief People Officer",
+          "We use Dust to query our internal API documentation instantly. It's magic.",
+        company: "Vanta",
+        author: "Daniel Baralt, Head of AI Solutions",
         image: "/static/landing/chatgpt-enterprise/martin.png",
       },
       {
         quote:
-          "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
-        company: "Kyriba",
-        author: "Boris Lipiainen, Chief Product Officer",
+          "The AI assistants feel like having expert teammates available 24/7.",
+        company: "WhatNot",
+        author: "Martin Perrin, Head of Trust & Safety",
         image: "/static/landing/chatgpt-enterprise/daniel.png",
       },
     ],
