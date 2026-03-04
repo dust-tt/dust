@@ -1,6 +1,9 @@
 {
   "name": "connectors",
   "version": "0.1.0",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "scripts": {
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",

@@ -105,6 +105,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
+          node-version: "22.22.0"
           build-sdks: "true"
           build-sparkle: "true"
 
