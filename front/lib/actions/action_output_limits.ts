@@ -10,7 +10,7 @@ export const MAX_TEXT_CONTENT_SIZE = BASELINE_CONTEXT_WINDOW_SIZE / 4;
 export const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
 export const MAX_RESOURCE_CONTENT_SIZE = 20 * 1024 * 1024; // 20MB.
 
-export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 64_000; // Approximately 16K tokens.
+export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 
 export function computeTextByteSize(text: string): number {
   return text.length * 2; // UTF-8 approximate
