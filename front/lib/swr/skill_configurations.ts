@@ -452,7 +452,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
         void mutateActiveSkills();
 
         const successCount = data.imported.length;
-        const errors = data.errors.map((e) => `${e.name}: ${e.message}`);
+        const errors = data.errors.map((e) => e.message);
 
         if (successCount > 0) {
           sendNotification({

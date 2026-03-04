@@ -9,6 +9,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Checkbox,
   Chip,
+  ContentMessage,
   ContextItem,
   Dialog,
   DialogContainer,
@@ -17,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  InformationCircleIcon,
   Input,
   PuzzleIcon,
   Spinner,
@@ -41,12 +43,11 @@ export function ImportSkillsDialog({
   owner,
 }: ImportSkillsDialogProps) {
   const [repoUrl, setRepoUrl] = useState("");
-  const [isImporting, setIsImporting] = useState(false);
   const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
 
   const { detectedSkills, isDetecting, detectError, triggerDetect } =
     useDetectSkillsFromRepo({ owner });
-  const { importSkills } = useImportSkills({ owner });
+  const { importSkills, isImporting } = useImportSkills({ owner });
 
   // Pre-select all "ready" skills when detection completes.
   useEffect(() => {
@@ -66,9 +67,7 @@ export function ImportSkillsDialog({
         return;
       }
 
-      setIsImporting(true);
       await importSkills(repoUrl, [...selectedNames]);
-      setIsImporting(false);
       onClose();
     },
     [repoUrl, selectedNames, importSkills, onClose]
@@ -121,10 +120,17 @@ export function ImportSkillsDialog({
             }}
             name="repoUrl"
             disabled={isImporting}
-            message={detectError}
-            messageStatus="error"
-            isError={!!detectError}
           />
+          {detectError && (
+            <ContentMessage
+              title="Detection failed"
+              icon={InformationCircleIcon}
+              variant="rose"
+              size="lg"
+            >
+              {detectError}
+            </ContentMessage>
+          )}
           {isDetecting && (
             <div className="flex items-center justify-center py-4">
               <Spinner size="md" />
