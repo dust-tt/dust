@@ -150,7 +150,7 @@ function CacheResults({
     if (foundInStream) {
       return "Found in Stream Redis (REDIS_URI).";
     }
-    return "Did not find any result across Cache Redis and Stream Redis.";
+    return "Did not find any result across Cache Redis and Stream Redis. Are you looking in the right region? Change region in the top-right corner.";
   })();
 
   return (
