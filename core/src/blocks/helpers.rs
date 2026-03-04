@@ -51,6 +51,8 @@ pub async fn get_data_source_project_and_view_filter(
     };
 
     info!(
+        project_id = env.project.project_id(),
+        run_id = env.run_id.as_str(),
         workspace_id = workspace_id.as_str(),
         data_source_id = data_source_id.as_str(),
         is_system_run = is_system_run,
