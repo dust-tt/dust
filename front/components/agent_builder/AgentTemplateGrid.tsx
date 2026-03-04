@@ -5,7 +5,6 @@ import type {
   TemplateTagsType,
 } from "@app/types/assistant/templates";
 import {
-  AssistantCard,
   CardGrid,
   ContextItem,
   LargeAssistantCard,
