@@ -37,8 +37,7 @@ function TestimonialSlider({
     setCurrentIndex((current) => (current + 1) % testimonials.length);
   const prev = () =>
     setCurrentIndex(
-      (current) =>
-        (current - 1 + testimonials.length) % testimonials.length
+      (current) => (current - 1 + testimonials.length) % testimonials.length
     );
 
   return (
@@ -74,9 +73,7 @@ function TestimonialSlider({
                 key={idx}
                 className={cn(
                   "h-2 rounded-full transition-all duration-300",
-                  idx === currentIndex
-                    ? "w-6 bg-[#1C91FF]"
-                    : "w-2 bg-gray-200"
+                  idx === currentIndex ? "w-6 bg-[#1C91FF]" : "w-2 bg-gray-200"
                 )}
               />
             ))}
@@ -180,22 +177,17 @@ export function ChatGptEnterpriseDeepDive({
           {/* Body */}
           <div className="p-8 md:p-12">
             <p className="mb-10 text-xl font-medium leading-relaxed text-gray-700">
-              <span className="text-[#1C91FF]">
-                Not just a chat interface,
-              </span>{" "}
+              <span className="text-[#1C91FF]">Not just a chat interface,</span>{" "}
               Dust is an AI platform purpose-built for team collaboration at
-              scale, with specialized agents, deep company data integration,
-              and multi-model flexibility.
+              scale, with specialized agents, deep company data integration, and
+              multi-model flexibility.
             </p>
 
             <div className="grid gap-12 md:grid-cols-2">
               {/* Pros */}
               <div>
                 <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#111418]">
-                  <Icon
-                    visual={CheckIcon}
-                    className="h-6 w-6 text-green-500"
-                  />
+                  <Icon visual={CheckIcon} className="h-6 w-6 text-green-500" />
                   Why Dust Wins
                 </h3>
                 <ul className="space-y-4">

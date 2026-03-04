@@ -43,9 +43,7 @@ export default function ChatGptEnterpriseLandingPage() {
       />
 
       {/* Logo Bar */}
-      <ChatGptEnterpriseLogoBar
-        title={chatGptEnterpriseConfig.logoBarTitle}
-      />
+      <ChatGptEnterpriseLogoBar title={chatGptEnterpriseConfig.logoBarTitle} />
 
       {/* Dust Deep Dive */}
       <ChatGptEnterpriseDeepDive
