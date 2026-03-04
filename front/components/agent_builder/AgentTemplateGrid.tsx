@@ -56,7 +56,7 @@ export function AgentTemplateGrid({
               {hasCopilot ? (
                 <CardGrid>
                   {templatesForTag.map((template) => (
-                    <AssistantCard
+                    <LargeAssistantCard
                       key={template.sId}
                       title={template.handle}
                       pictureUrl={template.pictureUrl}
