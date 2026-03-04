@@ -1,0 +1,27 @@
+front/scripts/sync_scim_custom_attributes.ts
+  b67139274e23e60a 57,79
+front/lib/api/poke/plugins/workspaces/reset_provisioned_members_not_in_directory.ts
+  b67139274e23e60a 35
+front/lib/api/workos/webhook_helpers.ts
+  b67139274e23e60a 6,49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "6ab0d3fe159ce8075e7dce702a11bed93c4b165f",
+  "prompts": {
+    "b67139274e23e60a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba1c334b-1528-4d9b-bdf5-69dc38b02dfa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 4,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}

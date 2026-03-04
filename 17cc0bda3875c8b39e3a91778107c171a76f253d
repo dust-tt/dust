@@ -1,0 +1,41 @@
+front/pages/api/w/[wId]/keys/index.ts
+  fa2921d7d7801773 6-7,172,174
+front/pages/api/w/[wId]/analytics/users-export.ts
+  fa2921d7d7801773 10-11,206,208
+front/pages/api/w/[wId]/index.ts
+  fa2921d7d7801773 8-9,153-154,172-173,196-197,230-231,252-253,280-281,306-307,311
+front/lib/api/analytics/programmatic_cost_export.ts
+  fa2921d7d7801773 7-8,251,253
+front/lib/api/poke/plugins/workspaces/rename_workspace.ts
+  fa2921d7d7801773 2-3,46
+front/pages/api/w/[wId]/keys/[id]/disable.ts
+  fa2921d7d7801773 4-5,68,70
+front/pages/api/w/[wId]/analytics/agents-export.ts
+  fa2921d7d7801773 10-11,216,218
+front/pages/api/w/[wId]/credits/purchase.ts
+  fa2921d7d7801773 8-9,264,266,272,305,307,311-314
+front/pages/api/w/[wId]/workspace-usage.ts
+  fa2921d7d7801773 9-10,123-124
+front/lib/api/poke/plugins/workspaces/manage_authorized_domains.ts
+  fa2921d7d7801773 2-3,77-78,119-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "17cc0bda3875c8b39e3a91778107c171a76f253d",
+  "prompts": {
+    "fa2921d7d7801773": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7d8f99f-a2e0-4795-887c-77f6ebafb87d",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 61,
+      "overriden_lines": 0
+    }
+  }
+}

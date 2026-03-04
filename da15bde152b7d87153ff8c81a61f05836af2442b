@@ -1,0 +1,41 @@
+front/pages/api/w/[wId]/mcp/connections/[connectionType]/index.ts
+  fa2921d7d7801773 8-9,302,304
+front/pages/api/w/[wId]/spaces/[spaceId]/members.ts
+  fa2921d7d7801773 7-8,207,209,214,216
+front/pages/api/w/[wId]/files/index.ts
+  fa2921d7d7801773 7,165
+front/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]/index.ts
+  fa2921d7d7801773 6-7,168,170
+front/pages/api/w/[wId]/files/[fileId]/index.ts
+  fa2921d7d7801773 4,215
+front/pages/api/w/[wId]/spaces/index.ts
+  fa2921d7d7801773 7,175,182
+front/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tId]/index.ts
+  fa2921d7d7801773 5-6,283,285
+front/lib/api/assistant/conversation/mentions.ts
+  fa2921d7d7801773 19,1110,1133
+front/pages/api/w/[wId]/mcp/connections/[connectionType]/[cId]/index.ts
+  fa2921d7d7801773 4-5,62,64
+front/pages/api/w/[wId]/spaces/[spaceId]/index.ts
+  fa2921d7d7801773 8,301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "da15bde152b7d87153ff8c81a61f05836af2442b",
+  "prompts": {
+    "fa2921d7d7801773": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7d8f99f-a2e0-4795-887c-77f6ebafb87d",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 95,
+      "overriden_lines": 0
+    }
+  }
+}
