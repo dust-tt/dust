@@ -2,11 +2,7 @@ import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  getIcon,
-  isCustomResourceIconType,
-  isInternalAllowedIcon,
-} from "@app/components/resources/resources_icons";
+import { getIcon } from "@app/components/resources/resources_icons";
 import {
   useAgentMessageSkills,
   useAgentMessageTools,
@@ -345,7 +341,7 @@ function AgentActionsPanelContent({
       </div>
       {(skills.length > 0 || tools.length > 0) && (
         <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
-          <span className="text-semibold text-sm">Skills & tools enabled</span>
+          <span className="text-semibold text-sm">Enabled capabilities</span>
           <div className="flex flex-wrap items-center gap-1">
             {skills.map((skill) => (
               <Chip
@@ -356,22 +352,14 @@ function AgentActionsPanelContent({
                 icon={getSkillIcon(skill.icon)}
               />
             ))}
-            {tools.map((tool) => {
-              const iconStr = tool.server.icon;
-              const icon =
-                isCustomResourceIconType(iconStr) ||
-                isInternalAllowedIcon(iconStr)
-                  ? getIcon(iconStr)
-                  : undefined;
-              return (
-                <Chip
-                  key={tool.sId}
-                  size="xs"
-                  label={tool.name ?? tool.server.name}
-                  icon={icon}
-                />
-              );
-            })}
+            {tools.map((tool) => (
+              <Chip
+                key={tool.sId}
+                size="xs"
+                label={tool.name ?? tool.server.name}
+                icon={getIcon(tool.server.icon)}
+              />
+            ))}
           </div>
         </div>
       )}
