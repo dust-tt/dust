@@ -387,7 +387,7 @@ export function getProviderRequiredOAuthCredentialInputs({
       }
       return null;
     case "snowflake":
-      if (useCase === "personal_actions" || useCase === "platform_actions") {
+      if (useCase === "personal_actions") {
         const result: OAuthCredentialInputs = {
           snowflake_account: {
             label: "Snowflake Account",
@@ -414,9 +414,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              useCase === "platform_actions"
-                ? "The Snowflake role for all users (e.g., ANALYST)."
-                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
+              "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",
@@ -432,6 +430,7 @@ export function getProviderRequiredOAuthCredentialInputs({
         };
         return result;
       }
+      // platform_actions uses static credentials via the registry.
       return null;
     default:
       assertNever(provider);

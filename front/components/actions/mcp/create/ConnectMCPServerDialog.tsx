@@ -1,11 +1,16 @@
+import { getStaticCredentialForm } from "@app/components/actions/mcp/create/static_credential_forms";
 import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
 import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
+import type {
+  StaticCredentialConfig,
+  StaticCredentialFormHandle,
+} from "@app/components/actions/mcp/MCPServerAuthConnection";
 import {
   AUTH_CREDENTIALS_ERROR_KEY,
-  MCPServerOAuthConnexion,
-} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+  MCPServerAuthConnection,
+} from "@app/components/actions/mcp/MCPServerAuthConnection";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -38,7 +43,7 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 interface ConnectMCPServerDialogProps {
@@ -67,7 +72,7 @@ export function ConnectMCPServerDialog({
     shouldUnregister: false,
   });
 
-  // Check for credential validation errors set by MCPServerOAuthConnexion.
+  // Check for credential validation errors set by MCPServerAuthConnection.
   const hasCredentialErrors =
     !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
 
@@ -84,6 +89,7 @@ export function ConnectMCPServerDialog({
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
+
   const { createMCPServerConnection } = useCreateMCPServerConnection({
     owner,
     connectionType: "workspace",
@@ -173,11 +179,12 @@ export function ConnectMCPServerDialog({
     setExternalIsLoading(false);
     form.reset(defaultValues);
     setIsLoading(false);
+    setIsStaticFormValid(false);
     setRemoteMCPServerOAuthDiscoveryDone(false);
     setAuthorization(null);
   };
 
-  const handleSave = async (values: MCPServerOAuthFormValues) => {
+  const handleOAuthSave = async (values: MCPServerOAuthFormValues) => {
     if (!authorization) {
       return;
     }
@@ -210,8 +217,77 @@ export function ConnectMCPServerDialog({
     resetState();
   };
 
-  // Form is valid when: use case selected AND no credential validation errors.
-  const isFormValid = !!useCase && !hasCredentialErrors;
+  const staticFormRef = useRef<StaticCredentialFormHandle>(null);
+  const [isStaticFormValid, setIsStaticFormValid] = useState(false);
+
+  const staticFormComponent =
+    authorization && useCase
+      ? getStaticCredentialForm(authorization.provider, useCase)
+      : null;
+  const hasStaticForm = !!staticFormComponent;
+
+  const staticCredentialConfig: StaticCredentialConfig | undefined =
+    staticFormComponent
+      ? {
+          owner,
+          formRef: staticFormRef,
+          onValidityChange: setIsStaticFormValid,
+          FormComponent: staticFormComponent,
+        }
+      : undefined;
+
+  // Form is valid when: use case selected AND either OAuth or static form is valid.
+  const isFormValid =
+    !!useCase && (hasStaticForm ? isStaticFormValid : !hasCredentialErrors);
+
+  const handleStaticCredentialSave = async () => {
+    if (!authorization || !useCase) {
+      return;
+    }
+
+    setIsLoading(true);
+    setExternalIsLoading(true);
+
+    try {
+      const credentialId = await staticFormRef.current?.submit();
+      if (!credentialId) {
+        return;
+      }
+
+      const connectionCreationRes = await createMCPServerConnection({
+        credentialId,
+        mcpServerId: mcpServerView.server.sId,
+        mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
+        provider: authorization.provider,
+      });
+      if (!connectionCreationRes) {
+        return;
+      }
+
+      const updateServerViewRes = await updateServerView({
+        oAuthUseCase: useCase,
+      });
+      if (!updateServerViewRes) {
+        return;
+      }
+
+      setIsOpen(false);
+      resetState();
+    } finally {
+      setIsLoading(false);
+      setExternalIsLoading(false);
+    }
+  };
+
+  const handleRightButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (hasStaticForm) {
+      void handleStaticCredentialSave();
+    } else {
+      void form.handleSubmit(handleOAuthSave)();
+    }
+  };
 
   return (
     <Dialog
@@ -230,12 +306,13 @@ export function ConnectMCPServerDialog({
           </DialogHeader>
           <DialogContainer>
             {authorization && (
-              <MCPServerOAuthConnexion
+              <MCPServerAuthConnection
                 toolName={toolName}
                 authorization={authorization}
                 documentationUrl={
                   mcpServerView.server?.documentationUrl ?? undefined
                 }
+                staticCredentialConfig={staticCredentialConfig}
               />
             )}
           </DialogContainer>
@@ -249,14 +326,9 @@ export function ConnectMCPServerDialog({
               authorization
                 ? {
                     isLoading: isLoading,
-                    label: "Setup connection",
+                    label: hasStaticForm ? "Connect" : "Setup connection",
                     variant: "primary",
-                    onClick: (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // handleSubmit gates on form validity (including errors set via setError).
-                      void form.handleSubmit(handleSave)();
-                    },
+                    onClick: handleRightButtonClick,
                     disabled: !isFormValid || isLoading,
                   }
                 : undefined
