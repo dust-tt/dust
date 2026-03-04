@@ -501,7 +501,7 @@ export function _getCopilotGlobalAgent(
   // Use a fast model for other first turns and the full model for follow-ups.
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
   const isNewAgentFromScratchFirstTurn =
-    isFirstTurn && globalAgentContext?.isNewAgentFromScratchCopilot;
+    isFirstTurn && globalAgentContext?.copilotIsNewAgentFromScratch;
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn

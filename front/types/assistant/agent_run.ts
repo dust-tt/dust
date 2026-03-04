@@ -282,7 +282,7 @@ export async function getAgentLoopDataWithAuth(
 
   const globalAgentContext: GlobalAgentContext = {
     userMessageRank: userMessage.rank,
-    isNewAgentFromScratchCopilot:
+    copilotIsNewAgentFromScratch:
       conversation.metadata?.copilotIsNewAgentFromScratch === true || undefined,
   };
 
