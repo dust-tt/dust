@@ -120,7 +120,7 @@ export function ImportSkillsDialog({
               }
             }}
             name="repoUrl"
-            disabled={isDetecting}
+            disabled={isImporting}
             message={detectError}
             messageStatus="error"
             isError={!!detectError}
@@ -169,7 +169,7 @@ export function ImportSkillsDialog({
             disabled: isDetecting || isImporting,
           }}
           rightButtonProps={{
-            label: `Import${pluralize(selectedCount)}`,
+            label: `Import`,
             disabled: isImporting || selectedCount === 0,
             onClick: handleImport,
           }}
