@@ -124,7 +124,10 @@ export function transformTemplateToFormData(
   hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
 ): AgentBuilderFormData {
   const hasCopilotAccess =
-    hasFeature("agent_builder_copilot") && owner.role === "admin";
+    hasFeature("agent_builder_copilot") &&
+    (owner.role === "admin" ||
+      (hasFeature("agent_builder_copilot_builders") &&
+        owner.role === "builder"));
   const defaultFormData = getDefaultAgentFormData({
     user,
     owner,
