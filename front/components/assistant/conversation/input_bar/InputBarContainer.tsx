@@ -142,6 +142,7 @@ const InputBarContainer = ({
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -749,36 +750,38 @@ const InputBarContainer = ({
                     className="flex sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {actions.includes("attachment") && (
-                    <>
-                      <input
-                        accept={getSupportedFileExtensions().join(",")}
-                        onChange={async (e) => {
-                          await fileUploaderService.handleFileChange(e);
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                          editorService.focusEnd();
-                        }}
-                        ref={fileInputRef}
-                        style={{ display: "none" }}
-                        type="file"
-                        multiple={true}
-                      />
-                      <InputBarAttachmentsPicker
-                        fileUploaderService={fileUploaderService}
-                        owner={owner}
-                        isLoading={false}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        attachedNodes={attachedNodes}
-                        disabled={disableInput}
-                        buttonSize={buttonSize}
-                        conversation={conversation}
-                        space={space}
-                      />
-                    </>
-                  )}
+                  {actions.includes("attachment") &&
+                    !displayCaptureActionsDropdown && (
+                      <>
+                        <input
+                          accept={getSupportedFileExtensions().join(",")}
+                          onChange={async (e) => {
+                            await fileUploaderService.handleFileChange(e);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                            editorService.focusEnd();
+                          }}
+                          ref={fileInputRef}
+                          style={{ display: "none" }}
+                          type="file"
+                          multiple={true}
+                        />
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="dropdown"
+                        />
+                      </>
+                    )}
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
@@ -825,7 +828,10 @@ const InputBarContainer = ({
                     />
                   )}
                 {displayCaptureActionsDropdown && (
-                  <DropdownMenu>
+                  <DropdownMenu
+                    open={isCaptureDropdownOpen}
+                    onOpenChange={setIsCaptureDropdownOpen}
+                  >
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost-secondary"
@@ -835,6 +841,22 @@ const InputBarContainer = ({
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                      {actions.includes("attachment") && (
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="subdropdown"
+                          onFileChange={() => setIsCaptureDropdownOpen(false)}
+                        />
+                      )}
                       <DropdownMenuItem
                         icon={GlobeAltIcon}
                         label="Attach page content"
