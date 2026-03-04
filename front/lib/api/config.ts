@@ -34,6 +34,7 @@ const config = {
     return baseUrlResolver?.() || config.getClientFacingUrl();
   },
 
+  // Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
@@ -50,6 +51,9 @@ const config = {
       throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+  },
+  getStaticWebsiteUrl: (): string => {
+    return config.getClientFacingUrl();
   },
   // URL for the main app pages (/w/..., /share/..., etc.).
   // Use this for page URLs, not API endpoints.
@@ -70,7 +74,7 @@ const config = {
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
-      config.getClientFacingUrl()
+      config.getApiBaseUrl()
     );
   },
   getDustApiAudience: (): string => {

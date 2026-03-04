@@ -86,7 +86,7 @@ const handlers: ToolHandlers<typeof AGENT_MANAGEMENT_TOOLS_METADATA> = {
     }
 
     const { agentConfiguration: agent, subAgentConfiguration } = result.value;
-    const agentUrl = `${apiConfig.getClientFacingUrl()}/w/${owner.sId}/builder/agents/${agent.sId}`;
+    const agentUrl = `${apiConfig.getAppUrl()}/w/${owner.sId}/builder/agents/${agent.sId}`;
 
     // Prepare the structured output resource
     const agentCreationResource: AgentCreationResultResourceType = {
@@ -106,7 +106,7 @@ const handlers: ToolHandlers<typeof AGENT_MANAGEMENT_TOOLS_METADATA> = {
             name: subAgentConfiguration.name,
             description: subAgentConfiguration.description,
             pictureUrl: subAgentConfiguration.pictureUrl,
-            url: `${apiConfig.getClientFacingUrl()}/w/${owner.sId}/builder/agents/${subAgentConfiguration.sId}`,
+            url: `${apiConfig.getAppUrl()}/w/${owner.sId}/builder/agents/${subAgentConfiguration.sId}`,
           }
         : undefined,
     };

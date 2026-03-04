@@ -495,7 +495,7 @@ export function fileAttachmentLocation({
   return {
     filePath,
     internalUrl: `https://storage.googleapis.com/${getPrivateUploadBucket().name}/${filePath}`,
-    downloadUrl: `${appConfig.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
+    downloadUrl: `${appConfig.getApiBaseUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
 }
 
