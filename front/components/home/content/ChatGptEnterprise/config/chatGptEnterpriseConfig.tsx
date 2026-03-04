@@ -147,7 +147,7 @@ export const chatGptEnterpriseConfig: ChatGptEnterpriseConfig = {
         variant: "positive",
         items: [
           { text: "Shared AI agents acting as team infrastructure" },
-          { text: "Model-agnostic (GPT-5, Claude, Gemini 3, Mistral)" },
+          { text: "Model-agnostic (GPT-5, Claude, Gemini)" },
           {
             text: "Deep, continuous sync with 50+ data sources via MCP",
           },
@@ -164,7 +164,7 @@ export const chatGptEnterpriseConfig: ChatGptEnterpriseConfig = {
       {
         title: "Single-model dependency creates risk",
         description:
-          "OpenAI-only access means no Claude for coding, no Gemini 3 for Google integration, and vulnerability to one vendor's roadmap.",
+          "OpenAI-only access means no Claude for coding, no Gemini for Google integration, and vulnerability to one vendor's roadmap.",
         iconColor: "amber",
       },
       {
@@ -194,10 +194,10 @@ export const chatGptEnterpriseConfig: ChatGptEnterpriseConfig = {
       {
         name: "Starting price",
         dust: "$29/user/month",
-        ms: "$18/user/month",
+        ms: "$21/user/month",
         google: "$14/user/month",
         claude: "Custom",
-        perplexity: "$34/user/month",
+        perplexity: "$40/user/month",
       },
       {
         name: "Best for",
@@ -220,7 +220,7 @@ export const chatGptEnterpriseConfig: ChatGptEnterpriseConfig = {
 
   dustDeepDive: {
     pros: [
-      "Model-agnostic prevents vendor lock-in (GPT-5, Sonnet 4.6, Gemini 3)",
+      "Model-agnostic prevents vendor lock-in (GPT-5, Sonnet 4.6, Gemini)",
       "Build domain expert AI agents in minutes without an engineer",
       "Team collaboration that scales with shared agent instructions",
       "Agents execute actions across systems via MCP protocol",

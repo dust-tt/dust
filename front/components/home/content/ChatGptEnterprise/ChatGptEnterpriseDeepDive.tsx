@@ -222,7 +222,7 @@ export function ChatGptEnterpriseDeepDive({
                       70-90% team usage
                     </span>{" "}
                     vs. the 20-40% typically seen with standard enterprise AI
-                    chat tools.
+                    platforms.
                   </P>
                 </div>
 
