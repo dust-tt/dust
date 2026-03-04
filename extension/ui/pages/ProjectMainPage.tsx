@@ -16,7 +16,7 @@ export const ProjectMainPage = () => {
 
   return (
     <ConversationLayout title={spaceInfo?.name ?? ""}>
-      <InputBarProvider origin="extension">
+      <InputBarProvider>
         <SpaceConversationsPage />
       </InputBarProvider>
     </ConversationLayout>
