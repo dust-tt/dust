@@ -4,7 +4,6 @@ import {
   useFileUploaderService,
 } from "@app/hooks/useFileUploaderService";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import type { ClientMessageOrigin } from "@app/types/assistant/conversation";
 import type { RichAgentMention } from "@app/types/assistant/mentions";
 import {
   createContext,
@@ -17,7 +16,6 @@ import {
 export const InputBarContext = createContext<{
   animate: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
-  origin: ClientMessageOrigin;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   fileUploaderService: FileUploaderService;
@@ -30,7 +28,6 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
-  origin: "web",
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -46,7 +43,6 @@ export const InputBarContext = createContext<{
 
 interface InputBarContextProviderProps {
   children: ReactNode;
-  origin: ClientMessageOrigin;
   fileUploaderService: FileUploaderService;
   captureActions?: {
     onCapture: (type: "text" | "screenshot") => void;
@@ -56,7 +52,6 @@ interface InputBarContextProviderProps {
 
 export function InputBarContextProvider({
   children,
-  origin,
   fileUploaderService,
   captureActions,
 }: InputBarContextProviderProps) {
@@ -91,7 +86,6 @@ export function InputBarContextProvider({
   const value = useMemo(
     () => ({
       animate,
-      origin,
       setAnimate,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
@@ -100,7 +94,6 @@ export function InputBarContextProvider({
     }),
     [
       animate,
-      origin,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
       captureActions,
@@ -116,10 +109,9 @@ export function InputBarContextProvider({
 }
 interface InputBarProviderProps {
   children: ReactNode;
-  origin: ClientMessageOrigin;
 }
 
-export function InputBarProvider({ children, origin }: InputBarProviderProps) {
+export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
@@ -150,10 +142,7 @@ export function InputBarProvider({ children, origin }: InputBarProviderProps) {
   }
 
   return (
-    <InputBarContextProvider
-      origin={origin}
-      fileUploaderService={fileUploaderService}
-    >
+    <InputBarContextProvider fileUploaderService={fileUploaderService}>
       {children}
     </InputBarContextProvider>
   );

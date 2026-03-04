@@ -1,4 +1,4 @@
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useFetcher } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
@@ -20,7 +20,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type * as t from "io-ts";
-import { useCallback, useContext } from "react";
+import { useCallback } from "react";
 
 export function useCreateConversationWithMessage({
   owner,
@@ -30,7 +30,7 @@ export function useCreateConversationWithMessage({
   user: UserType | null;
 }) {
   const { fetcher } = useFetcher();
-  const { origin: contextOrigin } = useContext(InputBarContext);
+  const contextOrigin = useClientType();
 
   return useCallback(
     async ({

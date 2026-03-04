@@ -75,7 +75,6 @@ export const ConversationContainer = ({
 
   return (
     <InputBarContextProvider
-      origin="extension"
       captureActions={captureActions}
       fileUploaderService={fileUploaderService}
     >
