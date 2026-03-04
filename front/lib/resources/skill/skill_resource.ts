@@ -107,6 +107,7 @@ type SkillVersionCreationAttributes =
     skillConfigurationId: ModelId;
     version: number;
     mcpServerViewIds: ModelId[];
+    fileAttachmentIds: ModelId[];
   };
 
 type ConversationSkillCreationAttributes =
@@ -1868,8 +1869,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       existingAttachments.map((a) => a.fileId)
     );
 
-    // Delete removed attachments and their underlying files.
-    // Remove join table rows first (FK constraint), then delete the files.
+    // Remove join table rows for detached files (keep the files for version history).
     const toRemove = existingAttachments.filter(
       (a) => !desiredFileModelIds.has(a.fileId)
     );
@@ -2253,6 +2253,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (config) => config.mcpServerViewId
     );
 
+    // Fetch current file attachment IDs for this skill.
+    const fileAttachments = await SkillFileAttachmentModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        skillConfigurationId: this.id,
+      },
+      transaction,
+    });
+
+    const fileAttachmentIds = fileAttachments.map((a) => a.fileId);
+
     // Calculate the next version number by counting existing versions.
     const where: WhereOptions<SkillVersionModel> = {
       workspaceId: this.workspaceId,
@@ -2279,6 +2290,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds: this.requestedSpaceIds,
       editedBy: this.editedBy,
       mcpServerViewIds,
+      fileAttachmentIds,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       createdAt: this.createdAt,
