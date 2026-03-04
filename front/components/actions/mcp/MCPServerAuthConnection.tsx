@@ -63,10 +63,6 @@ const TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS = [
   },
 ] as const;
 
-// Error key used for credential validation errors.
-// Parent components can check formState.errors[AUTH_CREDENTIALS_ERROR_KEY].
-export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
-
 export interface StaticCredentialFormProps {
   owner: LightWorkspaceType;
   onValidityChange: (isValid: boolean) => void;
@@ -103,8 +99,7 @@ export function MCPServerAuthConnection({
   documentationUrl,
   staticCredentialConfig,
 }: MCPServerAuthConnectionProps) {
-  const { setError, clearErrors, setValue, control } =
-    useFormContext<MCPServerOAuthFormValues>();
+  const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
   const { field: useCaseField } = useController({
     name: "useCase",
@@ -171,51 +166,6 @@ export function MCPServerAuthConnection({
       setValue("authCredentials", nextCredentials);
     }
   }, [authorization, useCase, setValue]);
-
-  // Validate credentials based on dynamic requirements.
-  // Runs when credentials or inputs change, uses setError/clearErrors.
-  useEffect(() => {
-    if (!inputs) {
-      clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
-      return;
-    }
-
-    if (!authCredentials) {
-      setError(AUTH_CREDENTIALS_ERROR_KEY, {
-        type: "manual",
-        message: "Credentials required",
-      });
-      return;
-    }
-
-    // Find first invalid credential.
-    let errorMessage: string | null = null;
-    for (const [key, inputData] of Object.entries(inputs)) {
-      if (!isSupportedOAuthCredential(key) || inputData.value) {
-        continue; // Skip unsupported or pre-filled values.
-      }
-
-      const value = authCredentials[key] ?? "";
-      if (inputData.validator) {
-        if (!inputData.validator(value)) {
-          errorMessage = `Invalid ${inputData.label}`;
-          break;
-        }
-      } else if (!value) {
-        errorMessage = `${inputData.label} is required`;
-        break;
-      }
-    }
-
-    if (errorMessage) {
-      setError(AUTH_CREDENTIALS_ERROR_KEY, {
-        type: "manual",
-        message: errorMessage,
-      });
-    } else {
-      clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
-    }
-  }, [authCredentials, inputs, setError, clearErrors]);
 
   const handleCredentialChange = (key: string, value: string) => {
     if (!isSupportedOAuthCredential(key)) {

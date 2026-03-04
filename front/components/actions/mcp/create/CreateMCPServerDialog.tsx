@@ -13,10 +13,7 @@ import type {
   StaticCredentialConfig,
   StaticCredentialFormHandle,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import {
-  AUTH_CREDENTIALS_ERROR_KEY,
-  MCPServerAuthConnection,
-} from "@app/components/actions/mcp/MCPServerAuthConnection";
+import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -35,6 +32,7 @@ import {
   useCreateRemoteMCPServer,
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
+import { validateOAuthCredentials } from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -99,13 +97,14 @@ export function CreateMCPServerDialog({
     shouldUnregister: false,
   });
 
-  // Check for credential validation errors set by MCPServerAuthConnection.
-  const hasCredentialErrors =
-    !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
-
   const useCase = useWatch({
     control: form.control,
     name: "useCase",
+  });
+
+  const authCredentials = useWatch({
+    control: form.control,
+    name: "authCredentials",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -154,6 +153,11 @@ export function CreateMCPServerDialog({
   };
 
   const handleSave = async (values: CreateMCPServerDialogFormValues) => {
+    // Guard: handleSubmit only checks Zod schema errors, not manual setError errors.
+    if (credentialError) {
+      return;
+    }
+
     setIsLoading(true);
 
     const submitRes = await submitCreateMCPServerDialogForm({
@@ -252,6 +256,19 @@ export function CreateMCPServerDialog({
         }
       : undefined;
 
+  // Synchronous validation — no race condition with useEffect.
+  const credentialError = useMemo(
+    () =>
+      authorization
+        ? validateOAuthCredentials({
+            provider: authorization.provider,
+            useCase: useCase ?? null,
+            authCredentials: authCredentials ?? null,
+          })
+        : null,
+    [authorization, useCase, authCredentials]
+  );
+
   const handleCreateServerAndSubmitStaticCredentials = async () => {
     if (!internalMCPServer || !authorization || !useCase) {
       return;
@@ -313,7 +330,7 @@ export function CreateMCPServerDialog({
   // - use case is selected AND either static form or OAuth credentials are valid.
   // When no OAuth needed (no authorization), form is always valid for OAuth fields.
   const isOAuthValid = authorization
-    ? !!useCase && (hasStaticForm ? isStaticFormValid : !hasCredentialErrors)
+    ? !!useCase && (hasStaticForm ? isStaticFormValid : !credentialError)
     : true;
   const isSubmitDisabled = !isOAuthValid || isLoading;
 
@@ -392,7 +409,6 @@ export function CreateMCPServerDialog({
                 if (hasStaticForm) {
                   void handleCreateServerAndSubmitStaticCredentials();
                 } else {
-                  // handleSubmit gates on form validity (including errors set via setError).
                   void form.handleSubmit(handleSave)();
                 }
               },

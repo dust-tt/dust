@@ -7,10 +7,7 @@ import type {
   StaticCredentialConfig,
   StaticCredentialFormHandle,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import {
-  AUTH_CREDENTIALS_ERROR_KEY,
-  MCPServerAuthConnection,
-} from "@app/components/actions/mcp/MCPServerAuthConnection";
+import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -32,7 +29,10 @@ import {
   useDiscoverOAuthMetadata,
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
-import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
+import {
+  OAUTH_PROVIDER_NAMES,
+  validateOAuthCredentials,
+} from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -72,13 +72,14 @@ export function ConnectMCPServerDialog({
     shouldUnregister: false,
   });
 
-  // Check for credential validation errors set by MCPServerAuthConnection.
-  const hasCredentialErrors =
-    !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
-
   const useCase = useWatch({
     control: form.control,
     name: "useCase",
+  });
+
+  const authCredentials = useWatch({
+    control: form.control,
+    name: "authCredentials",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -184,8 +185,26 @@ export function ConnectMCPServerDialog({
     setAuthorization(null);
   };
 
+  // Synchronous validation — no race condition with useEffect.
+  const credentialError = useMemo(
+    () =>
+      authorization
+        ? validateOAuthCredentials({
+            provider: authorization.provider,
+            useCase: useCase ?? null,
+            authCredentials: authCredentials ?? null,
+          })
+        : null,
+    [authorization, useCase, authCredentials]
+  );
+
   const handleOAuthSave = async (values: MCPServerOAuthFormValues) => {
     if (!authorization) {
+      return;
+    }
+
+    // Guard: handleSubmit only checks Zod schema errors, not manual setError errors.
+    if (credentialError) {
       return;
     }
 
@@ -238,7 +257,7 @@ export function ConnectMCPServerDialog({
 
   // Form is valid when: use case selected AND either OAuth or static form is valid.
   const isFormValid =
-    !!useCase && (hasStaticForm ? isStaticFormValid : !hasCredentialErrors);
+    !!useCase && (hasStaticForm ? isStaticFormValid : !credentialError);
 
   const handleStaticCredentialSave = async () => {
     if (!authorization || !useCase) {

@@ -568,6 +568,56 @@ export function isValidSnowflakeWarehouse(s: unknown): s is string {
   );
 }
 
+/**
+ * Pure validation function for OAuth credential inputs.
+ * Returns null if all credentials are valid, or the first error message string.
+ */
+export function validateOAuthCredentials({
+  provider,
+  useCase,
+  authCredentials,
+}: {
+  provider: OAuthProvider;
+  useCase: OAuthUseCase | null;
+  authCredentials: OAuthCredentials | null;
+}): string | null {
+  if (!useCase) {
+    return null;
+  }
+
+  const inputs = getProviderRequiredOAuthCredentialInputs({
+    provider,
+    useCase,
+  });
+
+  if (!inputs) {
+    return null;
+  }
+
+  if (!authCredentials) {
+    return "Credentials required";
+  }
+
+  for (const [key, inputData] of Object.entries(inputs)) {
+    if (!isSupportedOAuthCredential(key) || inputData.value) {
+      continue; // Skip unsupported or pre-filled values.
+    }
+
+    const value = authCredentials[key] ?? "";
+    if (inputData.validator) {
+      if (!inputData.validator(value)) {
+        return value.length === 0
+          ? `${inputData.label} is required`
+          : `Invalid ${inputData.label}`;
+      }
+    } else if (!value) {
+      return `${inputData.label} is required`;
+    }
+  }
+
+  return null;
+}
+
 // Credentials Providers
 
 export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
