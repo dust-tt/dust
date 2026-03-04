@@ -78,6 +78,7 @@ export async function generateUserProjectDigest(
       spaceId: space.sId,
       options: {
         updatedSince: cutoffDate.getTime(),
+        excludeTest: true,
       },
     });
 
