@@ -102,6 +102,14 @@ export async function generateUserProjectDigest(
         )
       : `No unread conversations found in project "${space.name}" from the last ${DAYS_BACK} days.`;
 
+  // Build caller identity for the prompt so the LLM knows who "you" is.
+  const user = auth.getNonNullableUser();
+  const callerInfo = [
+    `Name: ${user.fullName}`,
+    `Username: @${user.fullName()}`,
+    `Email: ${user.email}`,
+  ].join("\n");
+
   // Call the LLM directly.
   const model = getLargeWhitelistedModel(owner);
   if (!model) {
@@ -120,7 +128,12 @@ export async function generateUserProjectDigest(
         messages: [
           {
             role: "user" as const,
-            content: [{ type: "text" as const, text: formattedConversations }],
+            content: [
+              {
+                type: "text" as const,
+                text: `## Current User (the person reading this digest)\n${callerInfo}\n\n## Unread Conversations\n${formattedConversations}`,
+              },
+            ],
             name: "",
           },
         ],
