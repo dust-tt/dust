@@ -452,14 +452,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
             "[Gong] New keywords added, launching keyword update workflow"
           );
 
-          const scheduleId = makeGongSyncScheduleId(connector);
-          const pauseResult = await pauseSchedule({
-            connector,
-            scheduleId,
-            stopReason: "Excluded keywords updated",
+          const stopResult = await this.stop({
+            reason: "Excluded keywords updated",
           });
-          if (pauseResult.isErr()) {
-            return pauseResult;
+          if (stopResult.isErr()) {
+            return stopResult;
           }
 
           await launchGongKeywordUpdateWorkflow(connector, newKeywords);
