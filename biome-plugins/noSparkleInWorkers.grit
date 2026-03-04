@@ -1,0 +1,19 @@
+engine biome(1.0)
+language js
+
+// Prevents imports from '@dust-tt/sparkle' in Temporal worker code.
+// Workers have no UI and should not bundle Sparkle/React dependencies.
+or {
+    `import $_ from "$source"`,
+    `import { $_ } from "$source"`,
+    `import type $_ from "$source"`,
+    `import type { $_ } from "$source"`,
+    `import * as $_ from "$source"`,
+} where {
+    $source <: includes "@dust-tt/sparkle",
+    register_diagnostic(
+        span = $source,
+        message = "Importing from '@dust-tt/sparkle' is not allowed in Temporal worker code. Workers have no UI — extract pure logic into a separate file.",
+        severity = "error"
+    )
+}

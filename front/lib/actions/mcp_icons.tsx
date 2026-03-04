@@ -4,8 +4,6 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Avatar } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 
-export { DEFAULT_MCP_SERVER_ICON };
-
 // MCP-specific function
 export const getAvatar = (
   mcpServer: MCPServerType,

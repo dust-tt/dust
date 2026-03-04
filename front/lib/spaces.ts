@@ -1,4 +1,4 @@
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
+import { MCP_SPECIFICATION } from "@app/lib/actions/mcp_specification";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
@@ -17,7 +17,6 @@ import {
 import type React from "react";
 
 export type { SpaceSectionGroupType } from "@app/lib/spaces_utils";
-// Re-export non-UI utilities for backward compatibility.
 export {
   dustAppsListUrl,
   getSpaceName,
