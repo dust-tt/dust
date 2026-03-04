@@ -3,12 +3,14 @@ const PROJECTS = {
   poke: "poke-dust-tt",
 };
 
+const WORKERS_SUBDOMAIN = "dust-account.workers.dev";
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
     // Expected formats:
-    //   branch--app.preview.dust.tt  → branch.app-dust-tt.pages.dev
-    //   branch--poke.preview.dust.tt → branch.poke-dust-tt.pages.dev
+    //   branch--app.preview.dust.tt  → app-dust-tt-preview-branch.dust-account.workers.dev
+    //   branch--poke.preview.dust.tt → poke-dust-tt-preview-branch.dust-account.workers.dev
     const prefix = url.hostname.split(".preview.dust.tt")[0];
     const separatorIndex = prefix.lastIndexOf("--");
 
@@ -21,21 +23,21 @@ export default {
 
     const branch = prefix.slice(0, separatorIndex);
     const project = prefix.slice(separatorIndex + 2);
-    const pagesProject = PROJECTS[project];
+    const workersProject = PROJECTS[project];
 
-    if (!pagesProject) {
+    if (!workersProject) {
       return new Response(`Unknown project: ${project}. Use "app" or "poke".`, {
         status: 400,
       });
     }
 
-    const pagesUrl = new URL(url);
-    pagesUrl.hostname = `${branch}.${pagesProject}.pages.dev`;
+    const workersUrl = new URL(url);
+    workersUrl.hostname = `${workersProject}-preview-${branch}.${WORKERS_SUBDOMAIN}`;
 
     const headers = new Headers(request.headers);
-    headers.set("Host", pagesUrl.hostname);
+    headers.set("Host", workersUrl.hostname);
 
-    return fetch(pagesUrl.toString(), {
+    return fetch(workersUrl.toString(), {
       method: request.method,
       headers,
       body: request.body,

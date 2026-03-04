@@ -1,4 +1,4 @@
-name: Deploy SPA to Cloudflare Pages
+name: Deploy SPA to Cloudflare Workers
 
 on:
   workflow_dispatch:
@@ -119,11 +119,10 @@ jobs:
           set -a
           source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
           # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches.
-          # Apply the same sanitization Cloudflare Pages uses for branch aliases:
-          # lowercase, replace non-alphanumeric with '-', collapse multiple '-', trim '-', truncate to 28 chars.
+          # Sanitize branch name for use in Workers name: lowercase, replace non-alphanumeric with '-', collapse, trim.
           if [ "${{ github.ref_name }}" != "main" ]; then
-            CF_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
-            export NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt
+            SANITIZED_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+            export NEXT_PUBLIC_DUST_APP_URL=https://${SANITIZED_BRANCH}--app.preview.dust.tt
           fi
           export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
           # Map all NEXT_PUBLIC_* to VITE_* for SPA
@@ -151,26 +150,38 @@ jobs:
             --release-version=${{ github.sha }} \
             --service=${{ inputs.app }}-spa-browser
 
-      - name: Deploy to preview branch
+      - name: Sanitize branch name
+        id: branch
+        if: ${{ github.ref_name != 'main' }}
+        run: |
+          SANITIZED=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+          echo "sanitized=${SANITIZED}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Cloudflare Workers
         id: cf_deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
-          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt --branch=${{ github.ref_name == 'main' && format('staging-{0}', github.sha) || github.ref_name }}
+          command: >-
+            deploy
+            --config wrangler-${{ inputs.app }}.toml
+            ${{ github.ref_name != 'main'
+              && format('--name {0}-dust-tt-preview-{1}',
+                inputs.app,
+                steps.branch.outputs.sanitized)
+              || '' }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive preview URL from Cloudflare deployment URL
+      - name: Derive preview URL
         id: preview_url
         run: |
-          # Cloudflare deployment URL looks like: https://<branch-alias>.<project>.pages.dev
-          # We extract the branch alias and transform to our proxy: https://<branch-alias>--<app>.preview.dust.tt
-          CF_URL="${{ steps.cf_deploy.outputs.deployment-url }}"
-          # Extract the branch alias (everything before .<project>.pages.dev)
-          BRANCH_ALIAS=$(echo "$CF_URL" | sed -E 's|https://([^.]+)\..+\.pages\.dev|\1|')
-          PREVIEW_URL="https://${BRANCH_ALIAS}--${{ inputs.app }}.preview.dust.tt"
-          echo "url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "url=https://${{ inputs.app }}.dust.tt" >> $GITHUB_OUTPUT
+          else
+            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}.preview.dust.tt" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
