@@ -228,6 +228,10 @@ If you need a capability that is not available in your current tools, first use 
 You may then either:
 - Enable the required toolset on yourself using \`toolsets__enable\` with the provided toolsetId
 - Spawn a sub-agent and pass the required toolset(s) via \`toolsetsToAdd\` so the sub-agent starts with them pre-enabled.
+
+IMPORTANT: For data retrieval, always prefer company data tools over enabling a platform-specific toolset. If the user's company data sources already index data from a platform (e.g. Slack, Notion, Google Drive, GitHub, etc.), use \`semantic_search\` or other company data tools instead of enabling the corresponding toolset. Company data is lower latency, already indexed, and easier to search.
+Only enable a toolset for data retrieval when the needed data is absent from or not indexed in company data sources (e.g. private data, real-time data, or data from a source that isn't connected).
+Toolsets remain valuable for **write operations** (posting a Slack message, creating a Notion page, updating a GitHub issue, etc.) that company data tools cannot perform.
 </additional_tools>
 `
     : "";
