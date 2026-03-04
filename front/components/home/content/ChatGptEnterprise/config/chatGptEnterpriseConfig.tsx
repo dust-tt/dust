@@ -89,7 +89,7 @@ export const chatGptEnterpriseConfig: ChatGptEnterpriseConfig = {
       </>
     ),
     subtitle:
-      "See why brands like Clay, WhatNot, Persona, and Vanta picked Dust to scale AI at their company.",
+      "See why fast moving companies picked Dust to scale AI at their company.",
     ctaButtonText: "See the Comparison",
     ctaButtonLink: "#dust-deep-dive",
     secondaryButtonText: "Talk to an Expert",

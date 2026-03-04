@@ -21,7 +21,7 @@ export function ChatGptEnterpriseComparisonTable({
 }: ChatGptEnterpriseComparisonTableProps) {
   return (
     <section className="w-full">
-      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen border-y border-gray-100 bg-gray-50/50 py-12 md:py-24">
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen border-y border-gray-100 bg-gray-50/50 py-12 md:py-6">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-16 text-center">
             <H2 className="text-center">{title}</H2>

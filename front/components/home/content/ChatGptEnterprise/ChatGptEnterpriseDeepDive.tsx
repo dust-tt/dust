@@ -108,7 +108,7 @@ export function ChatGptEnterpriseDeepDive({
   testimonials,
 }: ChatGptEnterpriseDeepDiveProps) {
   return (
-    <section id="dust-deep-dive" className="w-full py-12 md:py-24">
+    <section id="dust-deep-dive" className="w-full pt-4 pb-12 md:pt-8 md:pb-24">
       <div className="mx-auto max-w-5xl">
         <div className="overflow-hidden rounded-3xl border-2 border-[#1C91FF] bg-white shadow-2xl shadow-[#1C91FF]/10">
           {/* Blue header */}

@@ -1,5 +1,4 @@
 import { ChatGptEnterpriseComparisonTable } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseComparisonTable";
-import { ChatGptEnterpriseCTA } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseCTA";
 import { ChatGptEnterpriseDeepDive } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseDeepDive";
 import { ChatGptEnterpriseHeroSection } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseHeroSection";
 import { ChatGptEnterpriseLogoBar } from "@app/components/home/content/ChatGptEnterprise/ChatGptEnterpriseLogoBar";
@@ -73,14 +72,6 @@ export default function ChatGptEnterpriseLandingPage() {
       <ChatGptEnterpriseComparisonTable
         title={chatGptEnterpriseConfig.comparisonTable.title}
         rows={chatGptEnterpriseConfig.comparisonTable.rows}
-      />
-
-      {/* CTA */}
-      <ChatGptEnterpriseCTA
-        title={chatGptEnterpriseConfig.cta.title}
-        subtitle={chatGptEnterpriseConfig.cta.subtitle}
-        buttonText={chatGptEnterpriseConfig.cta.buttonText}
-        buttonLink={chatGptEnterpriseConfig.cta.buttonLink}
       />
     </>
   );
