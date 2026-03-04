@@ -1,3 +1,4 @@
+import { makeGongSyncScheduleId } from "@connectors/connectors/gong/index";
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import type {
   GongCallTranscript,
@@ -23,6 +24,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
+import { unpauseAndTriggerSchedule } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
@@ -250,7 +252,10 @@ export async function gongSyncTranscriptsActivity({
   }
 
   if (transcripts.length === 0) {
-    logger.info({ connectorId: connector.id }, "[Gong] Sync complete");
+    logger.info(
+      { ...loggerArgs, pageCursor },
+      "[Gong] No more transcripts found."
+    );
     return {
       nextPageCursor: null,
       processedRecords,
@@ -270,10 +275,7 @@ export async function gongSyncTranscriptsActivity({
     );
   }
   if (transcriptsToSync.length === 0) {
-    logger.info(
-      { connectorId: connector.id, evaluated: transcripts.length },
-      "[Gong] Sync batch complete - all already in DB"
-    );
+    logger.info({ ...loggerArgs }, "[Gong] All transcripts are already in DB.");
     return {
       nextPageCursor,
       processedRecords,
@@ -310,12 +312,16 @@ export async function gongSyncTranscriptsActivity({
         return;
       }
 
-      const { shouldSync } = shouldSyncTranscript(
+      const { shouldSync, reason } = shouldSyncTranscript(
         transcriptMetadata,
         permissionFilter,
         configuration
       );
       if (!shouldSync) {
+        logger.info(
+          { ...loggerArgs, callId: transcript.callId, reason },
+          `[Gong] Skipping transcript.`
+        );
         return;
       }
 
@@ -359,16 +365,6 @@ export async function gongSyncTranscriptsActivity({
   );
 
   await heartbeat();
-
-  logger.info(
-    {
-      connectorId: connector.id,
-      evaluated: transcripts.length,
-      synced: transcriptsToSync.length,
-      hasMore: !!nextPageCursor,
-    },
-    "[Gong] Sync batch complete"
-  );
 
   return {
     nextPageCursor,
@@ -533,16 +529,6 @@ export async function gongDeleteExcludedTranscriptsActivity({
   const newLastId = lastTranscript ? lastTranscript.id : null;
   const hasMore = transcripts.length === GARBAGE_COLLECT_BATCH_SIZE;
 
-  logger.info(
-    {
-      connectorId: connector.id,
-      evaluated: transcripts.length,
-      deleted: transcriptsToDelete.length,
-      hasMore,
-    },
-    "[Gong] Cleanup batch processed"
-  );
-
   return {
     hasMore,
     lastId: newLastId,
@@ -558,12 +544,6 @@ export async function gongUnpauseScheduleActivity({
   connectorId: ModelId;
 }) {
   const connector = await fetchGongConnector({ connectorId });
-  const { unpauseAndTriggerSchedule } = await import(
-    "@connectors/lib/temporal_schedules"
-  );
-  const { makeGongSyncScheduleId } = await import(
-    "@connectors/connectors/gong/index"
-  );
 
   await unpauseAndTriggerSchedule({
     connector,
