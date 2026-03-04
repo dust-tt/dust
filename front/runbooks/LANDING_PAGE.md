@@ -63,12 +63,36 @@ Rules:
 - Use Sparkle `Button` (variant `"highlight"` / `"outline"`) instead of shadcn Button
 - Use `cn()` from `@dust-tt/sparkle` for conditional classNames
 - Use `withTracking(TRACKING_AREAS.COMPETITIVE, "tracking_id", callback)` on all CTAs
-- Use `appendUTMParams()` from `@app/lib/utils/utm` for external links
+- Use `appendUTMParams()` from `@app/lib/utils/utm` for external links — this is critical for
+  paid search pages where UTM params and `gclid` must carry through to `/home/contact`
 - `framer-motion` is available — fine to use for animations
 - `lucide-react` icons are available
 - Add `// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file` at top if using
   `next/image` or `next/router`
 - Each component should define a `Props` interface (per CODING_RULES [REACT1])
+
+### Logo Bar
+
+Use individual SVGs from `/static/landing/logos/gray/` — do NOT use composite PNG images.
+Available logos: blueground, clay, assembled, laurel, patch, persona, photoroom, vanta, qonto,
+watershed, whatnot.
+
+- Use `next/image` with `unoptimized` and generous `width`/`height` hints (e.g. `width={200}
+  height={70}`) — CSS handles actual sizing via `h-[70px] w-auto`. Small width hints cause
+  truncation on wide SVGs.
+- Use the existing `animate-marquee` Tailwind class for continuous auto-scrolling
+- Duplicate the logo set for a seamless loop (`translateX(-50%)`)
+- Add fade gradients on left/right edges
+- Size logos `h-[70px]` on mobile, `h-14` on desktop
+- Use `shrink-0` on each logo to prevent flex shrinking
+
+Example pattern: see `ChatGptEnterpriseLogoBar.tsx`
+
+### Padding & Spacing Preferences
+
+- Keep desktop section padding tight — prefer `md:py-6` over `md:py-24` for content sections
+- Mobile padding can be more generous (e.g. `py-12`) since vertical space is less constrained
+- Between sections, keep gaps minimal on desktop to create a denser, more cohesive feel
 
 ### 5. Create Page File
 
@@ -128,14 +152,43 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/landing/<page-name>
 # Should return 200
 ```
 
+### 6. Run Checks Before PR
+
+```bash
+# Type check
+npx tsgo --noEmit
+
+# Biome lint + format (run from repo root)
+npx @biomejs/biome check --error-on-warnings front/components/home/content/<PageName>/ front/pages/landing/<page-name>.tsx
+
+# Auto-fix biome issues if needed
+npx @biomejs/biome check --write front/components/home/content/<PageName>/ front/pages/landing/<page-name>.tsx
+```
+
+### 7. Verify
+
+```bash
+# If you see phantom errors about missing files, clear the cache:
+rm -rf .next
+
+# Start dev server and verify
+./admin/dev.sh
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/landing/<page-name>
+# Should return 200
+```
+
 ## Common Pitfalls
 
 - **Stale `.next` cache**: If you see errors about missing files that don't exist in source,
   `rm -rf .next` and restart the dev server
 - **Unused imports**: Clean up imports that were in the Replit code but aren't needed after
-  conversion (e.g. shadcn components replaced by Sparkle)
+  conversion (e.g. shadcn components replaced by Sparkle). Biome will catch these.
 - **Full-width sections**: The `LandingLayout` wraps children in a `container` class. Use
   `relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen` to break out for full-bleed
   backgrounds
 - **Image sizing**: `next/image` requires `width` and `height` props. Use `unoptimized` for
   external or non-optimized images
+- **SVG logo truncation**: `next/image` can truncate SVG logos if `width`/`height` hints are too
+  small. Use generous values (e.g. `width={200}`) and let CSS handle actual sizing.
+- **Biome formatting**: Always run `biome check --write` before committing — it will auto-fix
+  formatting issues that will otherwise fail CI

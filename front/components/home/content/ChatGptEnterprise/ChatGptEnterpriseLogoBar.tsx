@@ -1,3 +1,6 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import Image from "next/image";
+
 interface ChatGptEnterpriseLogoBarProps {
   title: string;
 }
@@ -32,19 +35,25 @@ export function ChatGptEnterpriseLogoBar({
 
             <div className="flex w-max animate-marquee items-center gap-x-12">
               {LOGOS.map((name) => (
-                <img
+                <Image
                   key={name}
                   src={`/static/landing/logos/gray/${name}.svg`}
                   alt={name}
+                  width={200}
+                  height={70}
                   className="h-[70px] w-auto shrink-0 md:h-14"
+                  unoptimized
                 />
               ))}
               {LOGOS.map((name) => (
-                <img
+                <Image
                   key={`${name}-dup`}
                   src={`/static/landing/logos/gray/${name}.svg`}
                   alt=""
+                  width={200}
+                  height={70}
                   className="h-[70px] w-auto shrink-0 md:h-14"
+                  unoptimized
                 />
               ))}
             </div>
