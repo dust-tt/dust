@@ -1,0 +1,23 @@
+front/tests/copilot-evals/lib/config.ts
+  1f5b4239bd65f114 55-86,169-173,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "6393e934e77e9daeeaafd37ce96cafb101d2ba3c",
+  "prompts": {
+    "1f5b4239bd65f114": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc2f9916-18db-460e-afa8-4bba8a2aaf90",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 38,
+      "total_deletions": 1,
+      "accepted_lines": 38,
+      "overriden_lines": 0
+    }
+  }
+}
