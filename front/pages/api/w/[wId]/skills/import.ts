@@ -110,7 +110,7 @@ async function handler(
             if (!isSkillFromSameGitHubRepo(existing, { repoUrl })) {
               errors.push({
                 name: skill.name,
-                message: `A skill named "${skill.name}" already exists from a different source.`,
+                message: `A different skill named "${skill.name}" already exists.`,
               });
               return;
             }
