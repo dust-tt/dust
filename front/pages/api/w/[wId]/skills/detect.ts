@@ -3,7 +3,7 @@ import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/github_detection
 import {
   isSkillFromSameGitHubRepo,
   type DetectedSkillSummary,
-} from "@app/lib/api/skills/github_detection/import_types";
+} from "@app/lib/skill";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
