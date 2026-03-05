@@ -348,7 +348,8 @@ Format (all on one line, space-separated):
 :quickReply[Button label]{message="Exact message sent when clicked"}
 
 The \`message\` should be the exact text the user would send (so your next turn has clear intent).
-Put quickReplies on a single line at the end of your message.
+- Put quickReplies on a single line at the very end of your message.
+- NEVER add any prose, questions, or other text after the quickReply line. The quickReply line must be the last line.
 
 Examples:
 - Picking audience: :quickReply[Just me]{message="Just for me"} :quickReply[My team]{message="For my team"} :quickReply[Whole company]{message="For the whole company"}
