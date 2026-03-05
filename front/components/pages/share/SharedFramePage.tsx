@@ -1,15 +1,24 @@
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
 import { formatFilenameForDisplay } from "@app/lib/files";
-import { Head, usePathParam, useSearchParam } from "@app/lib/platform";
+import { Head, usePathParam } from "@app/lib/platform";
 import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { getFaviconPath } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+
+const ALLOWED_EMBED_PREFIXES = ["https://dust.tt/blog/"];
 
 export function SharedFramePage() {
   const token = usePathParam("token");
-  const hideHeader = useSearchParam("embed") === "true";
+
+  const hideHeader = useMemo(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const referrer = document.referrer;
+    return ALLOWED_EMBED_PREFIXES.some((prefix) => referrer.startsWith(prefix));
+  }, []);
 
   const { shareMetadata, isShareMetadataLoading, shareMetadataError } =
     useShareFrameMetadata({
