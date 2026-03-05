@@ -1,5 +1,8 @@
-import type { DetectedSkillStatus } from "@app/lib/api/skills/github_detection/import_types";
 import { parseGitHubRepoUrl } from "@app/lib/api/skills/github_detection/parsing";
+import {
+  type DetectedSkillStatus,
+  isImportableSkillStatus,
+} from "@app/lib/skill";
 import {
   useDetectSkillsFromRepo,
   useImportSkills,
@@ -35,6 +38,7 @@ const STATUS_CHIP_LABEL: Record<
   string
 > = {
   name_conflict: "Skill name already in use",
+  skill_already_exists: "Override existing skill",
   invalid: "Invalid skill format",
 };
 
@@ -49,11 +53,11 @@ export function ImportSkillsDialog({
     useDetectSkillsFromRepo({ owner });
   const { importSkills, isImporting } = useImportSkills({ owner });
 
-  // Pre-select all "ready" skills when detection completes.
+  // Pre-select all importable skills when detection completes.
   useEffect(() => {
     const initial = new Set<string>();
     for (const skill of detectedSkills) {
-      if (skill.status === "ready") {
+      if (isImportableSkillStatus(skill.status)) {
         initial.add(skill.name);
       }
     }
@@ -150,9 +154,7 @@ export function ImportSkillsDialog({
                     <div className="flex items-center gap-2">
                       <Checkbox
                         checked={selectedNames.has(skill.name)}
-                        // TODO(2026-03-04 aubin): allow overriding existing skills with name_conflict status
-                        // (needs to check that it comes from the same source).
-                        disabled={skill.status !== "ready"}
+                        disabled={!isImportableSkillStatus(skill.status)}
                         onCheckedChange={() => toggleSkill(skill.name)}
                       />
                       <ContextItem.Visual visual={PuzzleIcon} />
@@ -163,7 +165,11 @@ export function ImportSkillsDialog({
                       <Chip
                         label={STATUS_CHIP_LABEL[skill.status]}
                         size="xs"
-                        color="warning"
+                        color={
+                          skill.status === "skill_already_exists"
+                            ? "info"
+                            : "warning"
+                        }
                       />
                     ) : undefined
                   }
@@ -181,6 +187,7 @@ export function ImportSkillsDialog({
           rightButtonProps={{
             label: "Import",
             disabled: isImporting || selectedCount === 0,
+            isLoading: isImporting,
             onClick: handleImport,
           }}
         />

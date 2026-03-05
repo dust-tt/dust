@@ -72,3 +72,21 @@ export function hasRelations(
 ): skill is SkillWithRelationsType {
   return skill.relations !== undefined;
 }
+
+// GitHub skill import types and helpers.
+
+export type DetectedSkillStatus =
+  | "ready"
+  | "name_conflict"
+  | "skill_already_exists"
+  | "invalid";
+
+export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
+  return status === "ready" || status === "skill_already_exists";
+}
+
+export interface DetectedSkillSummary {
+  name: string;
+  status: DetectedSkillStatus;
+  existingSkillId: string | null;
+}

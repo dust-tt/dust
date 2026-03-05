@@ -52,6 +52,8 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type {
+  SkillSourceMetadata,
+  SkillSourceType,
   SkillStatus,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
@@ -1611,6 +1613,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       name,
       requestedSpaceIds,
+      source,
+      sourceMetadata,
       status,
       userFacingDescription,
     }: {
@@ -1622,6 +1626,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
+      source?: SkillSourceType;
+      sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
       userFacingDescription: string;
     }
@@ -1647,6 +1653,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds,
           editedBy,
           ...(status ? { status } : {}),
+          ...(source ? { source } : {}),
+          ...(sourceMetadata ? { sourceMetadata } : {}),
         },
         transaction
       );
