@@ -156,6 +156,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               message={data}
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
+              hideReactions={!!context.agentBuilderContext}
             />
           )}
           {isMessageTemporayState(data) && (

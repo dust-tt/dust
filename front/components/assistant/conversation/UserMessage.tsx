@@ -119,6 +119,7 @@ interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
   currentUserId: string;
+  hideReactions?: boolean;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
@@ -129,6 +130,7 @@ export function UserMessage({
   citations,
   conversationId,
   currentUserId,
+  hideReactions,
   isLastMessage,
   message,
   owner,
@@ -337,6 +339,7 @@ export function UserMessage({
             canEdit={canEdit}
             conversationId={conversationId}
             owner={owner}
+            hideReactions={hideReactions}
           />
         </ConversationMessageContainer>
       )}
@@ -408,6 +411,7 @@ function ActionMenu({
   isUserMessageHovered,
   conversationId,
   owner,
+  hideReactions,
 }: {
   isDeleted: boolean;
   showActions: boolean;
@@ -420,6 +424,7 @@ function ActionMenu({
   isUserMessageHovered: boolean;
   conversationId: string;
   owner: WorkspaceType;
+  hideReactions?: boolean;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
@@ -477,7 +482,7 @@ function ActionMenu({
       )}
       ref={isReactionsHoveredRef}
     >
-      {!isDeleted && (
+      {!isDeleted && !hideReactions && (
         <>
           <MessageReactions
             reactions={message.reactions ?? []}
