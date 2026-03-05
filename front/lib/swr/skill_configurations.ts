@@ -29,7 +29,7 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
@@ -373,10 +373,14 @@ export function useDetectSkillsFromRepo({
   );
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
+  const lastDetectedUrl = useRef<string | null>(null);
 
   const triggerDetect = useDebounceWithAbort(
     useCallback(
       async (repoUrl: string, signal: AbortSignal) => {
+        if (repoUrl === lastDetectedUrl.current) {
+          return;
+        }
         setIsDetecting(true);
         setDetectError(null);
 
@@ -387,13 +391,11 @@ export function useDetectSkillsFromRepo({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ repoUrl }),
+              signal,
             }
           );
 
-          if (signal.aborted) {
-            return;
-          }
-
+          lastDetectedUrl.current = repoUrl;
           setDetectedSkills(response.skills);
         } catch (err) {
           if (signal.aborted) {
