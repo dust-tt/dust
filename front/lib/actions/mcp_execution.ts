@@ -5,7 +5,7 @@ import {
 import {
   computeTextByteSize,
   MAX_RESOURCE_CONTENT_SIZE,
-  MAX_TEXT_CONTENT_SIZE,
+  MAX_TEXT_CONTENT_SIZE_BYTES,
   MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
 } from "@app/lib/actions/action_output_limits";
 import type {
@@ -169,7 +169,7 @@ export async function processToolResults(
         case "text": {
           // If the text is too large we create a file and return a resource block that references the file.
           if (
-            computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE &&
+            computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE_BYTES &&
             toolConfiguration.mcpServerName !== "conversation_files"
           ) {
             const fileName = `${toolConfiguration.mcpServerName}_${Date.now()}.txt`;

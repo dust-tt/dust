@@ -1,6 +1,6 @@
 import {
   computeTextByteSize,
-  MAX_TEXT_CONTENT_SIZE,
+  MAX_TEXT_CONTENT_SIZE_BYTES,
 } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -184,9 +184,9 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       );
     }
 
-    // Cap to MAX_TEXT_CONTENT_SIZE to avoid storing oversized content in the DB.
-    // computeTextByteSize uses length * 2, so the character cap is MAX_TEXT_CONTENT_SIZE / 2.
-    const maxCharacters = MAX_TEXT_CONTENT_SIZE / 2;
+    // Cap to MAX_TEXT_CONTENT_SIZE_BYTES to avoid storing oversized content in the DB.
+    // For ASCII-dominant text, 1 char ≈ 1 byte, so we use MAX_TEXT_CONTENT_SIZE_BYTES directly.
+    const maxCharacters = MAX_TEXT_CONTENT_SIZE_BYTES;
     const effectiveLimit =
       limit !== undefined ? Math.min(limit, maxCharacters) : maxCharacters;
     const end = start + effectiveLimit;
