@@ -2,6 +2,7 @@ import { AgentSidebarMenu } from "@app/components/assistant/conversation/Sidebar
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
+  ArrowLeftIcon,
   BarHeader,
   Button,
   MenuIcon,
@@ -13,20 +14,24 @@ import {
 import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import type React from "react";
 import { useContext } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface ConversationLayoutProps {
   title: string;
+  backHref?: string;
   rightActions?: React.ReactNode;
   children: React.ReactNode;
 }
 
 export const ConversationLayout = ({
   title,
+  backHref,
   rightActions,
   children,
 }: ConversationLayoutProps) => {
   const { workspace: owner } = useAuth();
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const navigate = useNavigate();
 
   return (
     <FileDropProvider>
@@ -48,11 +53,21 @@ export const ConversationLayout = ({
         tooltip={title}
         className="justify-between"
         leftActions={
-          <Button
-            variant="ghost"
-            icon={MenuIcon}
-            onClick={() => setSidebarOpen(true)}
-          />
+          <div className="flex flex-row">
+            <Button
+              variant="ghost"
+              icon={MenuIcon}
+              onClick={() => setSidebarOpen(true)}
+            />
+            {backHref && (
+              <Button
+                variant="ghost"
+                icon={ArrowLeftIcon}
+                onClick={() => navigate(backHref)}
+                tooltip="Go back to project homepage"
+              />
+            )}
+          </div>
         }
         rightActions={rightActions}
       />
