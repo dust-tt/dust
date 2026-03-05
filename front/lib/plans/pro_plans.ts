@@ -54,6 +54,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 14,
     canUseProduct: true,
+    isByok: false,
   });
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_39_CODE,
@@ -80,6 +81,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 14,
     canUseProduct: true,
+    isByok: false,
   });
 }
 

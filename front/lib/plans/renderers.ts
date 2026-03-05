@@ -51,6 +51,7 @@ export function renderPlanFromModel({
       canUseProduct: plan.canUseProduct,
     },
     trialPeriodDays: plan.trialPeriodDays,
+    isByok: plan.isByok,
   };
 }
 
