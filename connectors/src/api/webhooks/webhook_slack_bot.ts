@@ -230,20 +230,6 @@ const _webhookSlackBotAPIHandler = async (
                     "slack.team_id": teamId,
                     "slack.app": "slack_bot",
                   })(handleChatBot)(req, res, logger);
-                } else {
-                  // TODO(2026-03-05 SLACK_INCIDENT): Remove once app_mention events are reliably received again
-                  logger.info(
-                    {
-                      slackChannelId: event.channel,
-                      slackTeamId: teamId,
-                    },
-                    "[INCIDENT] Fallbacking to message event for app_mention"
-                  );
-
-                  await withTrace({
-                    "slack.team_id": teamId,
-                    "slack.app": "slack_bot",
-                  })(handleChatBot)(req, res, logger);
                 }
               }
             }
