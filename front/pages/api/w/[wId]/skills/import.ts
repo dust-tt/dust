@@ -8,7 +8,6 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isBuilder } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -35,7 +34,7 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      if (!isBuilder(owner)) {
+      if (!auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
