@@ -41,7 +41,9 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
  * - Node.js tooling (typescript, tsx)
  * - Dust sandbox CLI
  */
-export const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sdbx-bedrock")
+export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
+  "dust-sbx-bedrock:latest"
+)
   // Set environment variables (these apply during build operations)
   .setEnv({
     NPM_CONFIG_PREFIX: "/opt/npm-global",

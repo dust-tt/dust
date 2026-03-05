@@ -489,6 +489,11 @@ const config = {
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
+  getSandboxGcpArtifactServiceAccountPath: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT"
+    );
+  },
 };
 
 export default config;

@@ -87,17 +87,9 @@ async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
 
   let dockerRegistryFactory: DockerRegistryFactory | undefined;
   if (dockerRegistry) {
-    const serviceAccountPath = process.env.GCP_ARTIFACT_SERVICE_ACCOUNT;
-    if (!serviceAccountPath) {
-      logger.error(
-        { imageName },
-        "GCP_ARTIFACT_SERVICE_ACCOUNT env var required (path to service account JSON file)"
-      );
-      return;
-    }
     dockerRegistryFactory = createGCPRegistryFactory(
       dockerRegistry,
-      serviceAccountPath
+      config.getSandboxGcpArtifactServiceAccountPath()
     );
   }
 

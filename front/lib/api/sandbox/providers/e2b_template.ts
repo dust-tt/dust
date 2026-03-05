@@ -31,9 +31,16 @@ export function createGCPRegistryFactory(
   registry: string,
   serviceAccountPath: string
 ): DockerRegistryFactory {
+  const absolutePath = path.isAbsolute(serviceAccountPath)
+    ? serviceAccountPath
+    : path.resolve(process.cwd(), serviceAccountPath);
+  // E2B SDK uses path.join internally which breaks absolute paths.
+  // Compute relative path from this file's directory so E2B resolves correctly.
+  const relativePath = path.relative(__dirname, absolutePath);
+
   return (imageRef: string) =>
     E2BTemplate().fromGCPRegistry(`${registry}/${imageRef}`, {
-      serviceAccountJSON: serviceAccountPath,
+      serviceAccountJSON: relativePath,
     });
 }
 
@@ -97,7 +104,9 @@ class E2BTemplateBuilder {
         break;
       case "docker":
         if (!options?.dockerRegistryFactory) {
-          throw new Error("dockerRegistryFactory is required for docker images");
+          throw new Error(
+            "dockerRegistryFactory is required for docker images"
+          );
         }
         builder = options.dockerRegistryFactory(baseImage.imageRef);
         break;
