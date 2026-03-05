@@ -7,6 +7,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -59,17 +60,47 @@ async function handler(
       const result = await detectSkillsFromGitHubRepo({ repoUrl });
 
       if (result.isErr()) {
-        logger.error(
-          { error: result.error, workspaceId: owner.sId },
-          "Error detecting skills from GitHub repo"
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
-          },
-        });
+        const error = result.error;
+        switch (error.type) {
+          case "invalid_url":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "auth_error":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "api_error":
+            logger.error(
+              { error, workspaceId: owner.sId },
+              "Error detecting skills from GitHub repo"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: error.message,
+              },
+            });
+          default:
+            assertNever(error);
+        }
       }
 
       const detectedSkills = result.value;

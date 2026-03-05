@@ -36,14 +36,14 @@ export function parseGitHubRepoUrl(
     url = new URL(normalized);
   } catch {
     return new Err({
-      type: "not_found",
+      type: "invalid_url",
       message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
     });
   }
 
   if (url.hostname !== "github.com") {
     return new Err({
-      type: "not_found",
+      type: "invalid_url",
       message: `Unsupported hostname "${url.hostname}". Only github.com repositories are supported.`,
     });
   }
@@ -56,7 +56,7 @@ export function parseGitHubRepoUrl(
 
   if (segments.length < 2 || !segments[0] || !segments[1]) {
     return new Err({
-      type: "not_found",
+      type: "invalid_url",
       message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
     });
   }

@@ -14,6 +14,7 @@ export interface DetectedSkill {
 }
 
 export type SkillDetectionError =
+  | { type: "invalid_url"; message: string }
   | { type: "auth_error"; message: string }
   | { type: "not_found"; message: string }
   | { type: "api_error"; message: string };
