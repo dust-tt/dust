@@ -80,7 +80,7 @@ async function handler(
             });
           case "auth_error":
             return apiError(req, res, {
-              status_code: 400,
+              status_code: 401,
               api_error: {
                 type: "invalid_request_error",
                 message: error.message,
@@ -92,9 +92,9 @@ async function handler(
               "Error detecting skills from GitHub repo"
             );
             return apiError(req, res, {
-              status_code: 500,
+              status_code: 400,
               api_error: {
-                type: "internal_server_error",
+                type: "invalid_request_error",
                 message: error.message,
               },
             });
