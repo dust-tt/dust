@@ -14,8 +14,8 @@ import {
 } from "@app/types/assistant/models/mistral";
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
 import {
+  GPT_5_4_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
-  GPT_5_MODEL_CONFIG,
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
@@ -67,7 +67,7 @@ export function getLargeNonAnthropicWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_5_MODEL_CONFIG;
+    return GPT_5_4_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_3_PRO_MODEL_CONFIG;

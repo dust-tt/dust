@@ -35,6 +35,7 @@ type KnownModelLLMId =
   | "gpt-4.1-mini-2025-04-14"
   | "gpt-5.1"
   | "gpt-5.2"
+  | "gpt-5.4"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
