@@ -79,7 +79,7 @@ Lead with the changes that will most effect agent behavior. Skip cosmetic fixes 
 You MUST refer to <instruction_suggestion_formatting> and <suggestion_context> when making suggestions.
 
 Step 7: Respond
-You MUST refer to <response_style> when responding to the user. Refer to <clarification_guidance> if you need further information to refine the agent after initial suggestions.
+You MUST refer to <response_style> when responding to the user
 
 Refer to <workflow_visualization> when the user asks for a diagram/visualization of the agent or when explaining complex workflows.
 Refer to <triggers_and_schedules> when the user asks about scheduling, automating runs, or triggering agents based on events.
@@ -320,7 +320,6 @@ The following suggestion tools are available, but it is rare that you will need 
 Keep responses concise and scannable - users move quickly in the copilot tab.
 
 Format based on content:
-- Questions/Options: Use bullets to present choices clearly
 - Sequential steps: Use numbered lists when order matters
 - Single suggestion: Just state it directly in 1-2 sentences
 - Explanations: Short paragraph (2-3 sentences max)
@@ -339,12 +338,24 @@ The agent config you retrieve is for YOUR decision-making, not to inform the use
 BAD: "Here's the current state of your agent: Config: 'Test', minimal instructions, model Claude 4 Sonnet..."
 GOOD: Jump straight to insights or suggestions based on what you found.
 </dont_echo_config>
-</response_style>`,
 
-  clarificationGuidance: `<clarification_guidance>
-When asking clarifying questions, be concise (3-4 bullet points max).
+<asking_questions>
 Only ask questions that are pinpointed to obtain the information needed to create a good suggestion.
-</clarification_guidance>`,
+
+If a question has a finite, small set of concrete choices, you SHOULD offer them as clickable quickReply buttons so the user can answer in one click.
+
+Format (all on one line, space-separated):
+:quickReply[Button label]{message="Exact message sent when clicked"}
+
+The \`message\` should be the exact text the user would send (so your next turn has clear intent).
+Put quickReplies on a single line at the end of your message.
+
+Examples:
+- Picking audience: :quickReply[Just me]{message="Just for me"} :quickReply[My team]{message="For my team"} :quickReply[Whole company]{message="For the whole company"}
+
+NEVER offer the quickReply button if the question is open-ended or requires multiple steps to answer. In this case, use bullet points to present the questions (3-4 max).
+</asking_questions>
+</response_style>`,
 
   templates: `<using_templates>
 Each template will include a <copilotInstructions> section which contains domain-specific guidance for the template, structured as:
@@ -427,7 +438,6 @@ export function buildCopilotInstructions(): string {
     COPILOT_INSTRUCTION_SECTIONS.skillsToolsGuidance,
     COPILOT_INSTRUCTION_SECTIONS.knowledgeGuidance,
     COPILOT_INSTRUCTION_SECTIONS.companyDataGuidance,
-    COPILOT_INSTRUCTION_SECTIONS.clarificationGuidance,
     COPILOT_INSTRUCTION_SECTIONS.templates,
     COPILOT_INSTRUCTION_SECTIONS.triggersAndSchedules,
     COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
@@ -438,7 +448,7 @@ export function buildCopilotInstructions(): string {
   return parts.join("\n\n");
 }
 
-const COPILOT_NEW_AGENT_STATIC_RESPONSE = "What agent would you like to build?";
+const COPILOT_NEW_AGENT_STATIC_RESPONSE = "What should this agent do?";
 
 export function _getCopilotGlobalAgent(
   auth: Authenticator,
