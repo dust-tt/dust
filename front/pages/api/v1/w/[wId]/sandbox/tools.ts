@@ -1,5 +1,8 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getJITServers } from "@app/lib/api/assistant/jit_actions";
+import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -48,7 +51,7 @@ async function handler(
         });
       }
 
-      const { aId } = claims;
+      const { aId, cId } = claims;
 
       // Fetch the agent configuration.
       const agentConfig = await getAgentConfiguration(auth, {
@@ -65,21 +68,56 @@ async function handler(
         });
       }
 
-      // Extract MCP server view IDs from server-side actions.
-      const viewIds = agentConfig.actions
-        .filter(isServerSideMCPServerConfiguration)
-        .map((action) => action.mcpServerViewId);
+      // Collect view IDs from agent config actions.
+      const viewIds = new Set(
+        agentConfig.actions
+          .filter(isServerSideMCPServerConfiguration)
+          .map((action) => action.mcpServerViewId)
+      );
 
-      if (viewIds.length === 0) {
+      // Fetch conversation and merge JIT servers (conversation files, utilities, etc.).
+      const conversationResult = await getConversation(auth, cId);
+      if (conversationResult.isOk()) {
+        const conversation = conversationResult.value;
+        const attachments = await listAttachments(auth, { conversation });
+        const { servers: jitServers } = await getJITServers(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+          attachments,
+        });
+        for (const srv of jitServers) {
+          viewIds.add(srv.mcpServerViewId);
+        }
+      }
+
+      if (viewIds.size === 0) {
         return res.status(200).json({ serverViews: [] });
       }
 
       // Fetch the server views with their tools metadata.
-      const views = await MCPServerViewResource.fetchByIds(auth, viewIds);
+      const views = await MCPServerViewResource.fetchByIds(auth, [...viewIds]);
 
-      return res.status(200).json({
-        serverViews: views.map((view) => view.toJSON()),
-      });
+      const { server, light } = req.query;
+
+      let serverViews = views.map((view) => view.toJSON());
+
+      // Filter by server name if requested.
+      if (typeof server === "string") {
+        serverViews = serverViews.filter((sv) => sv.server.name === server);
+      }
+
+      // Strip tool inputSchemas in light mode.
+      if (light === "true") {
+        serverViews = serverViews.map((sv) => ({
+          ...sv,
+          server: {
+            ...sv.server,
+            tools: sv.server.tools.map(({ inputSchema, ...rest }) => rest),
+          },
+        }));
+      }
+
+      return res.status(200).json({ serverViews });
     }
 
     default:

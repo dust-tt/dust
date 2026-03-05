@@ -95,8 +95,24 @@ impl DustApiClient {
             .context(format!("failed to parse response from POST {url}"))
     }
 
-    pub async fn list_tools(&self) -> anyhow::Result<Vec<MCPServerView>> {
-        let resp: SandboxToolsResponse = self.get("sandbox/tools").await?;
+    pub async fn list_tools(
+        &self,
+        server: Option<&str>,
+        light: bool,
+    ) -> anyhow::Result<Vec<MCPServerView>> {
+        let mut params = Vec::new();
+        if let Some(s) = server {
+            params.push(format!("server={s}"));
+        }
+        if light {
+            params.push("light=true".to_string());
+        }
+        let qs = if params.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", params.join("&"))
+        };
+        let resp: SandboxToolsResponse = self.get(&format!("sandbox/tools{qs}")).await?;
         Ok(resp.server_views)
     }
 

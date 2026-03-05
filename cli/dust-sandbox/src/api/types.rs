@@ -21,7 +21,6 @@ pub struct MCPServer {
     #[serde(rename = "sId")]
     pub s_id: String,
     pub name: String,
-    pub description: String,
     pub tools: Vec<MCPTool>,
 }
 
