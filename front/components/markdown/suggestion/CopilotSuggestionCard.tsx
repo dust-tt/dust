@@ -94,7 +94,9 @@ const InstructionsSuggestionCard = memo(
       {
         extensions: [
           ...buildAgentInstructionsReadOnlyExtensions(),
-          InstructionSuggestionExtension,
+          InstructionSuggestionExtension.configure({
+            showBlockHighlight: false,
+          }),
         ],
         editable: false,
         content: blockHtml,
