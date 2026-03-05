@@ -13,11 +13,13 @@ import logger from "@app/logger/logger";
 export async function getWorkspaceLevelGitHubAccessToken(
   auth: Authenticator
 ): Promise<string | null> {
-  const connection =
-    await MCPServerConnectionResource.findByInternalServerName(auth, {
+  const connection = await MCPServerConnectionResource.findByInternalServerName(
+    auth,
+    {
       serverName: "github",
       connectionType: "workspace",
-    });
+    }
+  );
 
   if (!connection?.connectionId || !connection.internalMCPServerId) {
     return null;
