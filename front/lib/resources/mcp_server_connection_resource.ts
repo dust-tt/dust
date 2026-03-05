@@ -2,6 +2,8 @@ import {
   getServerTypeAndIdFromSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -179,6 +181,34 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     return connections.length > 0
       ? new Ok(connections[0])
       : new Err(new DustError("connection_not_found", "Connection not found"));
+  }
+
+  static async findByInternalServerName(
+    auth: Authenticator,
+    {
+      serverName,
+      connectionType,
+    }: {
+      serverName: InternalMCPServerNameType;
+      connectionType: MCPServerConnectionConnectionType;
+    }
+  ): Promise<MCPServerConnectionResource | null> {
+    const connections = await this.baseFetch(auth, {
+      where: {
+        serverType: "internal",
+        connectionType,
+        ...(connectionType === "personal"
+          ? { userId: auth.getNonNullableUser().id }
+          : {}),
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return (
+      connections.find((c) =>
+        matchesInternalMCPServerName(c.internalMCPServerId, serverName)
+      ) ?? null
+    );
   }
 
   static async listByMCPServer(
