@@ -81,9 +81,7 @@ export type DetectedSkillStatus =
   | "skill_already_exists"
   | "invalid";
 
-export function isImportableSkillStatus(
-  status: DetectedSkillStatus
-): boolean {
+export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
   return status === "ready" || status === "skill_already_exists";
 }
 

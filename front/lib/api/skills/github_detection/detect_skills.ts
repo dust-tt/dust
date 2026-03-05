@@ -14,7 +14,7 @@ import {
   GitHubBlobResponseSchema,
   GitHubTreeResponseSchema,
 } from "@app/lib/api/skills/github_detection/types";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -244,7 +244,5 @@ export function isSkillFromGitHubRepo(
   skill: SkillResource,
   { repoUrl }: { repoUrl: string }
 ): boolean {
-  return (
-    skill.source === "github" && skill.sourceMetadata?.repoUrl === repoUrl
-  );
+  return skill.source === "github" && skill.sourceMetadata?.repoUrl === repoUrl;
 }
