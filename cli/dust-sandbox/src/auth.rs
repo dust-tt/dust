@@ -43,7 +43,6 @@ mod tests {
                 "wId": "ws-123",
                 "cId": "conv-456",
                 "uId": "user-789",
-                "aId": "agent-42",
                 "sbId": "sb-abc",
                 "exp": 9999999999u64
             })
