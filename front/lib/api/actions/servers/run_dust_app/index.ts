@@ -20,11 +20,12 @@ import {
 import { RUN_DUST_APP_TOOL_NAME } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
+import { getHeaderFromRole } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
+import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
@@ -138,7 +139,7 @@ export default async function createServer(
           auth
         );
 
-        const requestedGroupIds = auth.groupIds();
+        const user = auth.user();
 
         const prodCredentials = await prodAPICredentialsForOwner(owner);
         const apiConfig = config.getDustAPIConfig();
@@ -147,7 +148,8 @@ export default async function createServer(
           {
             ...prodCredentials,
             extraHeaders: {
-              ...getHeaderFromGroupIds(requestedGroupIds),
+              ...getHeaderFromUserEmail(user?.email),
+              ...getApiKeyNameHeader(auth),
               ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
             },
           },

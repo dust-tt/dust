@@ -9,11 +9,11 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
+import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
@@ -24,7 +24,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         .map((action) => action.mcpServerViewId) ?? [];
 
     const owner = auth.getNonNullableWorkspace();
-    const requestedGroupIds = auth.groupIds();
+    const user = auth.user();
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
@@ -34,7 +34,8 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...getHeaderFromUserEmail(user?.email),
+          ...getApiKeyNameHeader(auth),
         },
       },
       logger,
@@ -87,7 +88,6 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       return new Err(new MCPError("User not found", { tracked: false }));
     }
 
-    const requestedGroupIds = auth.groupIds();
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
@@ -98,8 +98,8 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroupIds),
-          "x-api-user-email": user.email,
+          ...getHeaderFromUserEmail(user.email),
+          ...getApiKeyNameHeader(auth),
         },
       },
       logger,
