@@ -38,7 +38,7 @@ const STATUS_CHIP_LABEL: Record<
   string
 > = {
   name_conflict: "Skill name already in use",
-  same_source_conflict: "Will override existing skill",
+  skill_already_exists: "Override existing skill",
   invalid: "Invalid skill format",
 };
 
@@ -166,7 +166,7 @@ export function ImportSkillsDialog({
                         label={STATUS_CHIP_LABEL[skill.status]}
                         size="xs"
                         color={
-                          skill.status === "same_source_conflict"
+                          skill.status === "skill_already_exists"
                             ? "info"
                             : "warning"
                         }

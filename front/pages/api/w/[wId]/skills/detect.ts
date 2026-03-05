@@ -104,7 +104,7 @@ async function handler(
           return {
             name: skill.name,
             status: isSkillFromSameGitHubRepo(existing, { repoUrl })
-              ? "same_source_conflict"
+              ? "skill_already_exists"
               : "name_conflict",
             existingSkillId: existing.sId,
           };
