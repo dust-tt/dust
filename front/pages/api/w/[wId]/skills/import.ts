@@ -1,6 +1,5 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
-import { isSkillFromSameGitHubRepo } from "@app/lib/skill";
+import { detectSkillsFromGitHubRepo, isSkillFromSameGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
