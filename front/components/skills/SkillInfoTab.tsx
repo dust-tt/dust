@@ -102,6 +102,7 @@ export function SkillInfoTab({
             content={skill.instructions}
             owner={owner}
             onKnowledgeItemsChange={handleKnowledgeItemsChange}
+            className="max-h-150 overflow-y-auto"
           />
         </div>
       )}
