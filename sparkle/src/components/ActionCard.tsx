@@ -3,20 +3,46 @@ import { Button } from "@sparkle/components/Button";
 import { Card } from "@sparkle/components/Card";
 import { Chip } from "@sparkle/components/Chip";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
-import { PlusIcon } from "@sparkle/icons/app/";
+import { DashIcon, PlusIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
+import { cva } from "class-variance-authority";
 import React from "react";
 
 const FADE_TRANSITION_CLASSES =
   "s-transition-opacity s-duration-300 s-ease-in-out";
 
-export interface ActionCardProps {
+export const ACTION_CARD_DIFF_STATUSES = ["added", "removed"] as const;
+export type ActionCardDiffStatus = (typeof ACTION_CARD_DIFF_STATUSES)[number];
+
+const actionCardDiffVariants = cva("s-p-3", {
+  variants: {
+    diffStatus: {
+      added: cn(
+        "s-bg-success-50 s-border-success-200",
+        "dark:s-bg-success-50-night dark:s-border-success-200-night"
+      ),
+      removed: cn(
+        "s-bg-warning-50 s-border-warning-200",
+        "dark:s-bg-warning-50-night dark:s-border-warning-200-night"
+      ),
+    },
+  },
+});
+
+const DIFF_CHIP_CONFIG: Record<
+  ActionCardDiffStatus,
+  { color: "green" | "warning"; icon: React.ComponentType }
+> = {
+  added: { color: "green", icon: PlusIcon },
+  removed: { color: "warning", icon: DashIcon },
+};
+
+interface ActionCardBaseProps {
   icon: React.ComponentType;
   iconBackgroundColor?: string;
   iconColor?: string;
   label: string;
   description: string | React.ReactNode;
-  isSelected: boolean;
   canAdd: boolean;
   cantAddReason?: string;
   footer?: { label: string; onClick: () => void };
@@ -27,6 +53,18 @@ export interface ActionCardProps {
   mountPortalContainer?: HTMLElement;
   descriptionLineClamp?: number;
 }
+
+interface ActionCardSelectableProps extends ActionCardBaseProps {
+  isSelected: boolean;
+  diffStatus?: never;
+}
+
+interface ActionCardDiffProps extends ActionCardBaseProps {
+  diffStatus: ActionCardDiffStatus;
+  isSelected?: never;
+}
+
+export type ActionCardProps = ActionCardSelectableProps | ActionCardDiffProps;
 
 export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
   (
@@ -39,6 +77,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
       isSelected,
       canAdd,
       cantAddReason,
+      diffStatus,
       footer,
       onClick,
       className,
@@ -49,6 +88,8 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
     },
     ref
   ) => {
+    const diffChip = diffStatus ? DIFF_CHIP_CONFIG[diffStatus] : null;
+
     return (
       <Card
         ref={ref}
@@ -56,7 +97,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
         onClick={onClick}
         disabled={!canAdd}
         containerClassName={cardContainerClassName}
-        className={cn("s-p-3", className)}
+        className={cn(actionCardDiffVariants({ diffStatus }), className)}
       >
         <div className="s-flex s-h-full s-w-full s-flex-col s-justify-between">
           <div className="s-flex s-flex-col">
@@ -79,6 +120,14 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                 )}
               </div>
               <div className="s-flex s-flex-shrink-0 s-items-center s-gap-2">
+                {diffChip && (
+                  <Chip
+                    size="xs"
+                    color={diffChip.color}
+                    icon={diffChip.icon}
+                    className={cn(FADE_TRANSITION_CLASSES, "s-opacity-100")}
+                  />
+                )}
                 {canAdd && (
                   <Button
                     size="xs"
