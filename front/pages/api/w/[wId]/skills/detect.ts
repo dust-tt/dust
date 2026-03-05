@@ -65,7 +65,7 @@ async function handler(
       const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
       const result = await detectSkillsFromGitHubRepo({
         repoUrl,
-        accessToken: accessToken ?? undefined,
+        accessToken,
       });
 
       if (result.isErr()) {
