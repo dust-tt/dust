@@ -5,6 +5,7 @@ import {
   fetchGongConfiguration,
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
+import { launchGongKeywordUpdateWorkflow } from "@connectors/connectors/gong/temporal/client";
 import {
   QUEUE_NAME,
   SCHEDULE_POLICIES,
@@ -32,6 +33,7 @@ import {
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
@@ -56,7 +58,7 @@ const EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY = "gongExcludeTitleKeywords";
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
-function makeGongSyncScheduleId(connector: ConnectorResource): string {
+export function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
@@ -424,22 +426,68 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Ok(undefined);
       }
       case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
-        // Parse comma-separated string
-        const keywords = configValue
+        const newKeywords = configValue
           .split(",")
-          .map((k) => k.trim())
+          .map((k) => k.trim().toLowerCase())
           .filter((k) => k.length > 0);
 
-        // Validation and storage handled by resource
-        const result = await configuration.setExcludeTitleKeywords(keywords);
+        const oldKeywords = configuration.excludeTitleKeywords || [];
+
+        const result = await configuration.setExcludeTitleKeywords(newKeywords);
         if (result.isErr()) {
           return result;
         }
 
         logger.info(
-          { connectorId: connector.id, keywords },
+          { connectorId: connector.id, oldKeywords, newKeywords },
           "[Gong] Updated exclude title keywords"
         );
+
+        const addedKeywords = newKeywords.filter(
+          (kw) => !oldKeywords.includes(kw)
+        );
+
+        if (addedKeywords.length > 0) {
+          logger.info(
+            { connectorId: connector.id, addedKeywords },
+            "[Gong] New keywords added, launching keyword update workflow"
+          );
+
+          const stopResult = await this.stop({
+            reason: "Excluded keywords updated",
+          });
+          if (stopResult.isErr()) {
+            return stopResult;
+          }
+
+          // Capture max transcript ID before launching workflow
+          const maxTranscript = await GongTranscriptResource.fetchBatch(
+            connector,
+            {
+              limit: 1,
+              orderBy: "DESC",
+            }
+          );
+          const currentMaxId = maxTranscript[0]?.id || 0;
+          const GONG_TRANSCRIPT_PAGE_SIZE = 100;
+          const maxTranscriptId = currentMaxId + GONG_TRANSCRIPT_PAGE_SIZE;
+
+          await launchGongKeywordUpdateWorkflow(
+            connector,
+            newKeywords,
+            maxTranscriptId
+          );
+
+          // Resume the schedule with new keywords excluded
+          const resumeResult = await this.resume();
+          if (resumeResult.isErr()) {
+            logger.error(
+              { connectorId: connector.id, error: resumeResult.error },
+              "[Gong] Failed to resume schedule after keyword update"
+            );
+            return resumeResult;
+          }
+        }
 
         return new Ok(undefined);
       }
