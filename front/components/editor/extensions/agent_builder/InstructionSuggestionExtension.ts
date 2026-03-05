@@ -260,6 +260,43 @@ function buildBlockDecorations({
   }
 }
 
+function addBlockAdditionWidget(
+  pos: number,
+  newChild: PMNode,
+  isHighlighted: boolean,
+  decorations: Decoration[],
+  schema: Schema,
+  suggestionId: string
+): void {
+  const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
+  decorations.push(
+    Decoration.widget(
+      pos,
+      () => {
+        const div = document.createElement("div");
+        div.className = className;
+        div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+        div.contentEditable = "false";
+        div.style.width = "fit-content";
+
+        const serializer = DOMSerializer.fromSchema(schema);
+        serializer.serializeFragment(Fragment.from(newChild), {}, div);
+
+        div.querySelectorAll("*").forEach((el) => {
+          if (el instanceof HTMLElement) {
+            el.className = el.className
+              ? `${el.className} ${className}`
+              : className;
+          }
+        });
+
+        return div;
+      },
+      { side: -1 }
+    )
+  );
+}
+
 // Create per-child-block decorations for root-level targets. Matches old and
 // new children by position and diffs each pair for word-level inline diffs.
 // Extra new blocks are shown as full additions, extra old blocks as deletions.
@@ -295,56 +332,55 @@ function buildRootDecorations({
     const childPos = rootPos + 1 + oldOffset;
 
     if (oldChild && newChild) {
-      // Both exist: diff within this block pair.
-      buildBlockDecorations({
-        blockPos: childPos,
-        newNode: newChild,
-        oldNode: oldChild,
-        schema,
-        suggestionId,
-        isHighlighted,
-        decorations,
-      });
+      if (oldChild.content.size > 0) {
+        buildBlockDecorations({
+          blockPos: childPos,
+          newNode: newChild,
+          oldNode: oldChild,
+          schema,
+          suggestionId,
+          isHighlighted,
+          decorations,
+        });
+      } else {
+        // Old block is empty (e.g. the default placeholder paragraph in a new editor).
+        // Skip pairing — pairing would place the addition widget *after* the empty block,
+        // causing a blank line before the first heading/paragraph in the card.
+        addBlockAdditionWidget(
+          childPos,
+          newChild,
+          isHighlighted,
+          decorations,
+          schema,
+          suggestionId
+        );
+      }
       oldOffset += oldChild.nodeSize;
     } else if (oldChild) {
       // Block was removed: mark entire block content as deletion.
-      const contentStart = childPos + 1;
-      decorations.push(
-        Decoration.inline(contentStart, contentStart + oldChild.content.size, {
-          class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
-          [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-        })
-      );
+      if (oldChild.content.size > 0) {
+        const contentStart = childPos + 1;
+        decorations.push(
+          Decoration.inline(
+            contentStart,
+            contentStart + oldChild.content.size,
+            {
+              class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
+              [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+            }
+          )
+        );
+      }
       oldOffset += oldChild.nodeSize;
     } else if (newChild) {
       // Block was added: insert as a widget after the last old child.
-      decorations.push(
-        Decoration.widget(
-          childPos,
-          () => {
-            const div = document.createElement("div");
-            div.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
-            div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
-            div.contentEditable = "false";
-            div.style.width = "fit-content";
-
-            const serializer = DOMSerializer.fromSchema(schema);
-            serializer.serializeFragment(Fragment.from(newChild), {}, div);
-
-            // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)
-            const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
-            div.querySelectorAll("*").forEach((el) => {
-              if (el instanceof HTMLElement) {
-                el.className = el.className
-                  ? `${el.className} ${className}`
-                  : className;
-              }
-            });
-
-            return div;
-          },
-          { side: -1 }
-        )
+      addBlockAdditionWidget(
+        childPos,
+        newChild,
+        isHighlighted,
+        decorations,
+        schema,
+        suggestionId
       );
     }
   }
