@@ -516,8 +516,9 @@ function CopilotSuggestionsProviderContent({
         state: "approved",
       });
 
-      // Optimistic update: remove from the pending SWR cache so the card
-      // disappears instantly without waiting for the API round-trip.
+      // Optimistic update: remove from the pending SWR cache so it's no longer
+      // counted as pending. The card stays visible via processedSuggestionsRef
+      // with its new state (approved/rejected).
       // `revalidate: false` — don't refetch yet, the API call below will
       // confirm or rollback.
       void mutatePending(
@@ -580,7 +581,8 @@ function CopilotSuggestionsProviderContent({
 
       const { sId } = suggestion;
 
-      // Optimistic update: add it to processedSuggestionsRef and remove from the pending SWR cache instantly.
+      // Optimistic update: mark as rejected in processedSuggestionsRef (so the
+      // card shows the rejected state) and remove from the pending SWR cache.
       processedSuggestionsRef.current.set(sId, {
         ...suggestion,
         state: "rejected",
@@ -596,7 +598,7 @@ function CopilotSuggestionsProviderContent({
             suggestions: current.suggestions.filter((s) => s.sId !== sId),
           };
         },
-        { revalidate: false } // `revalidate: false` — wait for the API call to confirm or rollback.
+        { revalidate: false } // Don't refetch yet, the API call below will confirm or rollback.
       );
 
       // Send the state change to the server.
@@ -655,8 +657,8 @@ function CopilotSuggestionsProviderContent({
         });
       }
 
-      // Optimistic update: remove from the pending SWR cache instantly.
-      // `revalidate: false` — wait for the API call to confirm or rollback.
+      // Optimistic update: remove from the pending SWR cache so they're no
+      // longer counted as pending. Cards stay visible via processedSuggestionsRef.
       void mutatePending(
         (current) => {
           if (!current) {
@@ -669,10 +671,9 @@ function CopilotSuggestionsProviderContent({
             ),
           };
         },
-        { revalidate: false }
+        { revalidate: false } // Don't refetch yet, the API call below will confirm or rollback.
       );
 
-      // Send the state change to the server.
       const result = await patchSuggestions(
         instructionSuggestionIds,
         "approved"
@@ -733,13 +734,14 @@ function CopilotSuggestionsProviderContent({
       const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
 
       for (const s of instructionSuggestions) {
-        // Optimistic update: add it to processedSuggestionsRef and remove from the pending SWR cache instantly.
+        // Mark as rejected so cards show the rejected state via processedSuggestionsRef.
         processedSuggestionsRef.current.set(s.sId, {
           ...s,
           state: "rejected",
         });
       }
 
+      // Remove from the pending SWR cache so they're no longer counted as pending.
       void mutatePending(
         (current) => {
           if (!current) {
@@ -752,7 +754,7 @@ function CopilotSuggestionsProviderContent({
             ),
           };
         },
-        { revalidate: false } // `revalidate: false` — wait for the API call to confirm or rollback.
+        { revalidate: false } // Don't refetch yet, the API call below will confirm or rollback.
       );
 
       const result = await patchSuggestions(
