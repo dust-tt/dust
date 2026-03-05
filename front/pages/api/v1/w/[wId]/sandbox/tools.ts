@@ -76,17 +76,25 @@ async function handler(
 
       // Fetch conversation-jitted servers.
       const conversationResult = await getConversation(auth, cId);
-      if (conversationResult.isOk()) {
-        const conversation = conversationResult.value;
-        const attachments = await listAttachments(auth, { conversation });
-        const { servers: jitServers } = await getJITServers(auth, {
-          agentConfiguration: agentConfig,
-          conversation,
-          attachments,
+      if (conversationResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "conversation_not_found",
+            message: `Conversation ${cId} not found.`,
+          },
         });
-        for (const srv of jitServers) {
-          viewIds.add(srv.mcpServerViewId);
-        }
+      }
+
+      const conversation = conversationResult.value;
+      const attachments = await listAttachments(auth, { conversation });
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments,
+      });
+      for (const srv of jitServers) {
+        viewIds.add(srv.mcpServerViewId);
       }
 
       if (viewIds.size === 0) {
