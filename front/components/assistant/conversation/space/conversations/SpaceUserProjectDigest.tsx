@@ -18,17 +18,22 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 const COLLAPSED_MAX_HEIGHT_PX = 200;
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+const ACTIVE_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+const UNREAD_THRESHOLD = 5;
 
 interface SpaceUserProjectDigestProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   hasConversations: boolean;
+  unreadCount: number;
 }
 
 export function SpaceUserProjectDigest({
   owner,
   space,
   hasConversations,
+  unreadCount,
 }: SpaceUserProjectDigestProps) {
   const [generationError, setGenerationError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -86,6 +91,36 @@ export function SpaceUserProjectDigest({
       void mutateGenerationStatus();
     }
   };
+
+  // Auto-trigger digest generation when the digest is stale.
+  const hasAutoTriggeredRef = useRef(false);
+  const handleGenerateRef = useRef(handleGenerate);
+  handleGenerateRef.current = handleGenerate;
+
+  useEffect(() => {
+    if (
+      isDigestsLoading ||
+      isGenerating ||
+      hasAutoTriggeredRef.current ||
+      !hasConversations
+    ) {
+      return;
+    }
+
+    const latestDigest = digests[0];
+    const hasNoDigest = !latestDigest;
+    const ageMs = latestDigest ? Date.now() - latestDigest.createdAt : 0;
+    const isStale = latestDigest && ageMs > STALE_THRESHOLD_MS;
+    const isActiveAndUnread =
+      latestDigest &&
+      ageMs > ACTIVE_THRESHOLD_MS &&
+      unreadCount >= UNREAD_THRESHOLD;
+
+    if (hasNoDigest || isStale || isActiveAndUnread) {
+      hasAutoTriggeredRef.current = true;
+      void handleGenerateRef.current();
+    }
+  }, [isDigestsLoading, isGenerating, digests, hasConversations, unreadCount]);
 
   if (!hasConversations) {
     return null;
@@ -208,11 +243,6 @@ export function SpaceUserProjectDigest({
             </div>
           )}
         </>
-      ) : !isGenerating ? (
-        <div className="text-sm italic text-muted-foreground dark:text-muted-foreground-night">
-          No digest yet. Click Generate to create an AI summary of recent
-          project activity.
-        </div>
       ) : (
         <div className="flex items-center gap-3 py-4">
           <Spinner size="sm" variant="color" />
