@@ -219,10 +219,7 @@ export interface ModelSuggestionRelations {
 
 export interface KnowledgeSuggestionRelations {
   dataSourceView: DataSourceViewType;
-  searchServerView?: MCPServerViewType;
-  tablesQueryServerView?: MCPServerViewType;
-  includeServerView?: MCPServerViewType;
-  extractServerView?: MCPServerViewType;
+  serverView: MCPServerViewType;
 }
 
 export type AgentToolsSuggestionWithRelationsType = AgentToolsSuggestionType & {

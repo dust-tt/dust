@@ -15,6 +15,7 @@ import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
@@ -461,6 +462,70 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   );
 }
 
+const KNOWLEDGE_METHOD_ACTION_VERB: Record<string, string> = {
+  include: "Include",
+  extract: "Extract",
+  search: "Search",
+};
+
+function buildNewKnowledgeAction(
+  serverView: MCPServerViewType,
+  method: string,
+  dataSourceView: DataSourceViewType,
+  displayName: string,
+  description: string | null,
+  currentActions: AgentBuilderFormData["actions"]
+): ReturnType<typeof getDefaultMCPAction> {
+  const newAction = getDefaultMCPAction(serverView);
+  if (method === "query_tables") {
+    newAction.name = generateUniqueActionName({
+      baseName: nameToStorageFormat(`query ${displayName}`),
+      existingActions: currentActions,
+    });
+    newAction.description = description ?? `Query tables in ${displayName}`;
+    const tableConfig = defaultSelectionConfiguration(dataSourceView);
+    newAction.configuration.tablesConfigurations = {
+      [dataSourceView.sId]: { ...tableConfig, isSelectAll: true },
+    };
+    return newAction;
+  }
+  const actionVerb = KNOWLEDGE_METHOD_ACTION_VERB[method] ?? "Search";
+  newAction.name = generateUniqueActionName({
+    baseName: nameToStorageFormat(`${actionVerb.toLowerCase()} ${displayName}`),
+    existingActions: currentActions,
+  });
+  newAction.description = description ?? `${actionVerb} ${displayName}`;
+  newAction.configuration.dataSourceConfigurations = {
+    [dataSourceView.sId]: {
+      dataSourceView,
+      selectedResources: [],
+      excludedResources: [],
+      isSelectAll: true,
+      tagsFilter: null,
+    },
+  };
+  return newAction;
+}
+
+function actionIncludesDataSourceView(
+  action: AgentBuilderFormData["actions"][number],
+  dataSourceViewSId: string,
+  isQueryTables: boolean
+): boolean {
+  const config = isQueryTables
+    ? action.configuration.tablesConfigurations
+    : action.configuration.dataSourceConfigurations;
+  return config != null && dataSourceViewSId in config;
+}
+
+function removeFirstWhere<T>(arr: T[], predicate: (item: T) => boolean): T[] {
+  const i = arr.findIndex(predicate);
+  if (i === -1) {
+    return arr;
+  }
+  return [...arr.slice(0, i), ...arr.slice(i + 1)];
+}
+
 interface KnowledgeSuggestionCardProps {
   agentSuggestion: AgentKnowledgeSuggestionWithRelationsType;
 }
@@ -474,90 +539,46 @@ function KnowledgeSuggestionCard({
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const isAddition = suggestion.action === "add";
-  const dataSourceView = relations.dataSourceView;
+  const { dataSourceView, serverView } = relations;
   const method = suggestion.method ?? "search";
   const isQueryTables = method === "query_tables";
   const displayName = getDisplayNameForDataSource(dataSourceView.dataSource);
-  const serverView =
-    method === "query_tables"
-      ? relations.tablesQueryServerView
-      : method === "include"
-        ? relations.includeServerView
-        : method === "extract"
-          ? relations.extractServerView
-          : relations.searchServerView;
 
   const handleAccept = useCallback(async () => {
-    if (!serverView) {
-      return;
-    }
     const success = await acceptSuggestion(sId);
     if (!success) {
       return;
     }
-
     const currentActions = getValues("actions");
-    if (isAddition) {
-      const newAction = getDefaultMCPAction(serverView);
-      if (isQueryTables) {
-        newAction.name = generateUniqueActionName({
-          baseName: nameToStorageFormat(`query ${displayName}`),
-          existingActions: currentActions,
-        });
-        newAction.description =
-          suggestion.description ?? `Query tables in ${displayName}`;
-        const tableConfig = defaultSelectionConfiguration(dataSourceView);
-        newAction.configuration.tablesConfigurations = {
-          [dataSourceView.sId]: { ...tableConfig, isSelectAll: true },
-        };
-      } else {
-        const actionVerb =
-          method === "include"
-            ? "Include"
-            : method === "extract"
-              ? "Extract"
-              : "Search";
-        newAction.name = generateUniqueActionName({
-          baseName: nameToStorageFormat(
-            `${actionVerb.toLowerCase()} ${displayName}`
-          ),
-          existingActions: currentActions,
-        });
-        newAction.description =
-          suggestion.description ?? `${actionVerb} ${displayName}`;
-        newAction.configuration.dataSourceConfigurations = {
-          [dataSourceView.sId]: {
+    const nextActions = isAddition
+      ? [
+          ...currentActions,
+          buildNewKnowledgeAction(
+            serverView,
+            method,
             dataSourceView,
-            selectedResources: [],
-            excludedResources: [],
-            isSelectAll: true,
-            tagsFilter: null,
-          },
-        };
-      }
-      setValue("actions", [...currentActions, newAction], {
-        shouldDirty: true,
-      });
-    } else {
-      const filteredActions = currentActions.filter((action) => {
-        if (isQueryTables) {
-          const tableConfigs = action.configuration.tablesConfigurations;
-          return !tableConfigs || !(dataSourceView.sId in tableConfigs);
-        }
-        const dsConfigs = action.configuration.dataSourceConfigurations;
-        return !dsConfigs || !(dataSourceView.sId in dsConfigs);
-      });
-      setValue("actions", filteredActions, { shouldDirty: true });
-    }
+            displayName,
+            suggestion.description ?? null,
+            currentActions
+          ),
+        ]
+      : removeFirstWhere(currentActions, (action) =>
+          actionIncludesDataSourceView(
+            action,
+            dataSourceView.sId,
+            isQueryTables
+          )
+        );
+    setValue("actions", nextActions, { shouldDirty: true });
   }, [
     acceptSuggestion,
     sId,
     isAddition,
     isQueryTables,
     serverView,
+    dataSourceView,
     getValues,
     setValue,
-    dataSourceView,
     displayName,
     suggestion.description,
     method,

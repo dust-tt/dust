@@ -357,8 +357,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   search_knowledge: {
     description:
       "Semantic search across workspace **search** knowledge sources (documents, folders, websites) to find which contain content relevant to a query. " +
-      "Returns matching data source views with hit counts and document titles. Use for suggesting search knowledge (method 'search'). " +
-      "For warehouses/SQL sources, use the sources from get_available_knowledge that have knowledgeMethod 'query_tables'.",
+      "Returns matching data source views with hit counts and document titles. Use for suggesting search knowledge (method 'search').",
     schema: {
       query: z
         .string()
