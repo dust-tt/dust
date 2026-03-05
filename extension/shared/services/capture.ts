@@ -6,7 +6,6 @@ export type CaptureOperationId = "capture-page-content" | "capture-screenshot";
 export interface TabContent {
   title: string;
   url?: string;
-  contentType?: string;
   content?: string;
   captures?: string[];
 }

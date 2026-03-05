@@ -286,8 +286,6 @@ chrome.runtime.onMessage.addListener(
                 target: { tabId: tab.id },
                 func: () => document.contentType,
               });
-              const contentType: string =
-                mimetypeExecution.result ?? "text/html";
 
               const includeContent = message.includeContent ?? true;
               const includeCapture = message.includeCapture ?? false;
@@ -362,7 +360,6 @@ chrome.runtime.onMessage.addListener(
               sendResponse({
                 title: tab.title || "",
                 url: tab.url || "",
-                contentType,
                 content,
                 captures,
               });
