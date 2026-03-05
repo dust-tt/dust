@@ -1,0 +1,46 @@
+connectors/src/connectors/slack/lib/errors.ts
+  d88ec7093329bef8 22-23
+sdks/js/src/types.ts
+  d88ec7093329bef8 671,722
+connectors/src/connectors/slack/bot.ts
+  d88ec7093329bef8 534,539-540,555-569,642,907,1021-1054,1066-1067,1125,1210,1313,1524,1534-1537,1539,1541-1558,1560-1565,1568-1569,1571-1572,1576
+  b326b463a7961699 1566,1575,1577
+front/types/shared/feature_flags.ts
+  d88ec7093329bef8 34-38,192-196
+connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+  b326b463a7961699 489,513,560,875-876
+  d88ec7093329bef8 42-43,46-49,54-61,123-126,145,148-149,160-161,167-169,186,213-221,228-240,255,279-283,339-350,414-431,433-457,463-464,467,476,488,495,512,514,548,556,559,566,571,573,580,593,605-607,647,663-678,708,751,754,763,778,785,789,824,880,888,909,922-943,948,963-978,1050,1086-1089,1097-1102,1120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "30580906b7240bfb3771d7e983e1825e7cf9d710",
+  "prompts": {
+    "b326b463a7961699": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ab45a41-0556-4087-a110-1647182b1ef0",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 348,
+      "total_deletions": 352,
+      "accepted_lines": 98,
+      "overriden_lines": 0
+    },
+    "d88ec7093329bef8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fcb0079-a82b-4d47-9a2d-8eb94e0b7409",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 586,
+      "total_deletions": 303,
+      "accepted_lines": 322,
+      "overriden_lines": 0
+    }
+  }
+}
