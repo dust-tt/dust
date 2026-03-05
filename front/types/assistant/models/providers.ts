@@ -55,6 +55,10 @@ export function isProviderWhitelisted(
   owner: WorkspaceType,
   providerId: ModelProviderIdType
 ) {
+  // noop never sees user data, so we always treat it as whitelisted
+  if (providerId === "noop") {
+    return true;
+  }
   const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   return whiteListedProviders.includes(providerId);
 }
