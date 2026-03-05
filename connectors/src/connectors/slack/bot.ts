@@ -70,7 +70,7 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
+import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
 
@@ -531,10 +531,14 @@ async function processErrorResult(
         ? res.error.message
         : `An error occurred : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
 
-    const { slackChatBotMessage, mainMessage } =
+    const { slackChatBotMessage, mainMessage, streamTs } =
       res.error instanceof SlackMessageError
         ? res.error
-        : { mainMessage: undefined, slackChatBotMessage: undefined };
+        : {
+            mainMessage: undefined,
+            streamTs: undefined,
+            slackChatBotMessage: undefined,
+          };
 
     const conversationUrl = makeConversationUrl(
       connector.workspaceId,
@@ -548,14 +552,26 @@ async function processErrorResult(
       connector.workspaceId,
       errorMessage
     );
-    if (mainMessage && mainMessage.ts) {
+
+    const updateTs = streamTs ?? mainMessage?.ts;
+
+    if (updateTs) {
       reportSlackUsage({
         connectorId: connector.id,
         method: "chat.update",
         channelId: slackChannel,
         useCase: "bot",
       });
+    }
 
+    if (streamTs) {
+      // Native streaming path: update the stream message with error.
+      await slackClient.chat.update({
+        ...errorPost,
+        channel: slackChannel,
+        ts: streamTs,
+      });
+    } else if (mainMessage && mainMessage.ts) {
       const mainMessageTs = mainMessage.ts;
 
       await throttleWithRedis(
@@ -621,6 +637,7 @@ async function answerMessage(
     });
   }
 
+  // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
@@ -885,6 +902,7 @@ async function answerMessage(
     if (!agentConfig) {
       return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
+    // Removing all previous mentions.
     if (mentionCandidate) {
       message = message.replace(mentionCandidate, "");
     }
@@ -998,21 +1016,48 @@ async function answerMessage(
     }
   }
 
-  const mainMessage = await slackClient.chat.postMessage({
-    ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
-      assistantName: mention.agentName,
-      agentConfigurations: mostPopularAgentConfigurations,
-      isThinking: true,
-    }),
-    channel: slackChannel,
-    thread_ts: slackMessageTs,
-    metadata: {
-      event_type: "user_message",
-      event_payload: {
-        message_id: slackChatBotMessage.id,
+  const useNativeStreaming = await getNativeStreamingFromFeatureFlag(dustAPI);
+
+  let mainMessage: ChatPostMessageResponse | undefined;
+  let streamer: ReturnType<WebClient["chatStream"]> | undefined;
+  let streamTs: string | undefined;
+
+  if (useNativeStreaming) {
+    streamer = slackClient.chatStream({
+      channel: slackChannel,
+      thread_ts: slackMessageTs,
+      recipient_team_id: slackTeamId,
+      recipient_user_id: slackUserId ?? undefined,
+      buffer_size: 256,
+    });
+    const startRes = await streamer.append({
+      chunks: [
+        {
+          type: "task_update",
+          id: "thinking",
+          title: `${mention.agentName} is thinking...`,
+          status: "in_progress" as const,
+        },
+      ],
+    });
+    streamTs = startRes?.ts;
+  } else {
+    mainMessage = await slackClient.chat.postMessage({
+      ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
+        assistantName: mention.agentName,
+        agentConfigurations: mostPopularAgentConfigurations,
+        isThinking: true,
+      }),
+      channel: slackChannel,
+      thread_ts: slackMessageTs,
+      metadata: {
+        event_type: "user_message",
+        event_payload: {
+          message_id: slackChatBotMessage.id,
+        },
       },
-    },
-  });
+    });
+  }
 
   const buildSlackMessageError = (
     errRes: Err<Error | APIError>,
@@ -1037,7 +1082,8 @@ async function answerMessage(
       new SlackMessageError(
         errRes.error.message,
         slackChatBotMessage.get(),
-        mainMessage
+        mainMessage,
+        streamTs
       )
     );
   };
@@ -1064,6 +1110,7 @@ async function answerMessage(
     skipToolsValidation,
   };
 
+  // Await the promise to get the content fragment.
   const buildContentFragmentRes = await buildContentFragmentPromise;
 
   if (buildContentFragmentRes.isErr()) {
@@ -1148,6 +1195,8 @@ async function answerMessage(
     connector,
     conversation,
     mainMessage,
+    streamer,
+    streamTs,
     slack: {
       slackChannelId: slackChannel,
       slackClient,
@@ -1248,6 +1297,7 @@ async function makeContentFragments(
   if (supportedFiles.length > 0) {
     logger.info({ conversationId }, "Found supported files, uploading them.");
 
+    // Download the files and upload them to the conversation.
     const proxyFetch = createProxyAwareFetch();
     for (const f of supportedFiles) {
       const response = await proxyFetch(f.url_private_download!, {
@@ -1458,35 +1508,70 @@ async function isAgentAccessingRestrictedSpace(
   activeAgentConfigurations: LightAgentConfigurationType[],
   agentId: string
 ): Promise<Result<boolean, Error>> {
-  const agent = activeAgentConfigurations.find((ac) => ac.sId === agentId);
-  if (!agent) {
-    logger.warn(
-      { agentId },
-      "Agent not found when checking for restricted space"
+  try {
+    const agent = activeAgentConfigurations.find((ac) => ac.sId === agentId);
+    if (!agent) {
+      logger.warn(
+        { agentId },
+        "Agent not found when checking for restricted space"
+      );
+      return new Err(new Error(`Agent ${agentId} not found`));
+    }
+
+    // If the agent has no requestedSpaceIds, it's not from a restricted space
+    if (!agent.requestedSpaceIds || agent.requestedSpaceIds.length === 0) {
+      return new Ok(false);
+    }
+
+    const agentSpaceIds = agent.requestedSpaceIds.flat();
+
+    const spacesRes = await dustAPI.getSpaces();
+    if (spacesRes.isErr()) {
+      logger.error(
+        { error: spacesRes.error, agentId },
+        "Error fetching spaces when checking for restricted space"
+      );
+      return new Err(
+        new Error(`Error fetching spaces: ${spacesRes.error.message}`)
+      );
+    }
+
+    // Check if any of the agent's group IDs match with groups from restricted spaces
+    const restrictedSpaces = spacesRes.value.filter(
+      (space) => space.isRestricted
     );
-    return new Err(new Error(`Agent ${agentId} not found`));
-  }
+    const isFromRestrictedSpace = restrictedSpaces.some((space) =>
+      agentSpaceIds.includes(space.sId)
+    );
 
-  if (!agent.requestedSpaceIds || agent.requestedSpaceIds.length === 0) {
-    return new Ok(false);
-  }
+    logger.info(
+      {
+        agentId,
+        isRestricted: isFromRestrictedSpace,
+      },
+      "Checked if agent is from restricted space"
+    );
 
-  const agentSpaceIds = agent.requestedSpaceIds.flat();
-
-  const spacesRes = await dustAPI.getSpaces();
-  if (spacesRes.isErr()) {
+    return new Ok(isFromRestrictedSpace);
+  } catch (error) {
     logger.error(
-      { error: spacesRes.error, agentId },
-      "Error fetching spaces when checking for restricted space"
+      { error, agentId },
+      "Error checking if agent is from restricted space"
     );
     return new Err(
-      new Error(`Error fetching spaces: ${spacesRes.error.message}`)
+      new Error(
+        `Error checking if agent ${agentId} is from restricted space: ${error}`
+      )
     );
   }
+}
 
-  const isFromRestrictedSpace = spacesRes.value
-    .filter((space) => space.isRestricted)
-    .some((space) => agentSpaceIds.includes(space.sId));
-
-  return new Ok(isFromRestrictedSpace);
+async function getNativeStreamingFromFeatureFlag(
+  dustAPI: DustAPI
+): Promise<boolean> {
+  const flagsRes = await dustAPI.getWorkspaceFeatureFlags();
+  if (flagsRes.isErr()) {
+    return false;
+  }
+  return flagsRes.value.includes("slack_native_streaming");
 }

@@ -19,7 +19,8 @@ export class SlackMessageError extends Error {
   constructor(
     message: string,
     public slackChatBotMessage: Attributes<SlackChatBotMessageModel>,
-    public mainMessage: ChatPostMessageResponse
+    public mainMessage?: ChatPostMessageResponse,
+    public streamTs?: string
   ) {
     super(message);
   }

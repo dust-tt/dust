@@ -39,11 +39,28 @@ import {
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
+// biome-ignore lint/plugin/noBulkLodash: existing usage
+import { throttle } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
+
+type SlackStreamer = ReturnType<WebClient["chatStream"]>;
+
+const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
+const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
 
 function getActionRunningLabel(action: AgentActionPublicType): string {
   return action.displayLabels?.running ?? TOOL_RUNNING_LABEL;
 }
+
+// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
+// Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
+const getThrottleDelay = (textLength: number): number => {
+  if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
+    return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
+  }
+  return SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+};
 
 export const SlackBlockIdStaticAgentConfigSchema = t.type({
   slackChatBotMessageId: t.number,
@@ -105,7 +122,9 @@ interface StreamConversationToSlackParams {
   assistantName: string;
   connector: ConnectorResource;
   conversation: ConversationPublicType;
-  mainMessage: ChatPostMessageResponse;
+  mainMessage?: ChatPostMessageResponse;
+  streamer?: SlackStreamer;
+  streamTs?: string;
   slack: {
     slackChannelId: string;
     slackClient: WebClient;
@@ -124,23 +143,31 @@ export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const { assistantName, agentConfigurations } = conversationData;
+  const { assistantName, agentConfigurations, streamer } = conversationData;
 
-  await postSlackMessageUpdate({
-    messageUpdate: {
-      isThinking: true,
-      assistantName,
-      agentConfigurations,
-    },
-    ...conversationData,
-    canBeIgnored: false,
-    extraLogs: { source: "streamConversationToSlack" },
-  });
+  if (!streamer) {
+    // Old path: update placeholder with thinking state.
+    await postSlackMessageUpdate({
+      messageUpdate: {
+        isThinking: true,
+        assistantName,
+        agentConfigurations,
+      },
+      ...conversationData,
+      canBeIgnored: false,
+      extraLogs: { source: "streamConversationToSlack" },
+    });
+  }
+  // Native streaming: thinking already shown via task_update in bot.ts.
 
   return streamAgentAnswerToSlack(dustAPI, conversationData);
 }
 
-class SlackAnswerRetryableError extends Error {}
+class SlackAnswerRetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
 
 async function streamAgentAnswerToSlack(
   dustAPI: DustAPI,
@@ -162,7 +189,6 @@ async function streamAgentAnswerToSlack(
     slackChannelId,
     slackClient,
     slackMessageTs,
-    slackTeamId,
     slackUserInfo,
     slackUserId,
   } = slack;
@@ -183,34 +209,48 @@ async function streamAgentAnswerToSlack(
     serverName: string;
   } | null = null;
 
-  const streamer = slackClient.chatStream({
-    channel: slackChannelId,
-    thread_ts: slackMessageTs,
-    recipient_team_id: slackTeamId,
-    recipient_user_id: slackUserId ?? undefined,
-    buffer_size: 256,
-  });
-  let streamStarted = false;
+  // Native streaming: reuse the streamer from bot.ts.
+  const { streamer, streamTs } = conversationData;
+
+  // Old path: lodash throttle for chat.update.
+  let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+  let throttledPostSlackMessageUpdate = throttle(
+    postSlackMessageUpdate,
+    currentThrottleDelay
+  );
 
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        await postSlackMessageUpdate({
-          messageUpdate: {
-            isThinking: true,
-            assistantName,
-            agentConfigurations,
-            text: answer,
-            thinkingAction: getActionRunningLabel(event.action),
-          },
-          ...conversationData,
-          canBeIgnored: true,
-          extraLogs: {
-            source: "streamAgentAnswerToSlack",
-            eventType: event.type,
-          },
-        });
+        if (streamer) {
+          await streamer.append({
+            chunks: [
+              {
+                type: "task_update",
+                id: `tool-${event.action.id}`,
+                title: getActionRunningLabel(event.action),
+                status: "in_progress" as const,
+              },
+            ],
+          });
+        } else {
+          await throttledPostSlackMessageUpdate({
+            messageUpdate: {
+              isThinking: true,
+              assistantName,
+              agentConfigurations,
+              text: answer,
+              thinkingAction: getActionRunningLabel(event.action),
+            },
+            ...conversationData,
+            canBeIgnored: true,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: event.type,
+            },
+          });
+        }
 
         break;
       }
@@ -234,9 +274,11 @@ async function streamAgentAnswerToSlack(
           conversationId: event.conversationId,
           messageId: event.messageId,
           actionId: event.actionId,
-          slackThreadTs: mainMessage.message?.thread_ts,
-          messageTs: mainMessage.message?.ts,
-          botId: mainMessage.message?.bot_id,
+          slackThreadTs: streamTs
+            ? slackMessageTs
+            : mainMessage?.message?.thread_ts,
+          messageTs: streamTs ?? mainMessage?.message?.ts,
+          botId: streamTs ? undefined : mainMessage?.message?.bot_id,
           slackChatBotMessageId: slackChatBotMessage.id,
         });
 
@@ -288,19 +330,32 @@ async function streamAgentAnswerToSlack(
           };
         }
 
-        await postSlackMessageUpdate({
-          messageUpdate: {
-            text: "Agent is waiting for authentication…",
-            assistantName,
-            agentConfigurations,
-          },
-          ...conversationData,
-          canBeIgnored: false,
-          extraLogs: {
-            source: "streamAgentAnswerToSlack",
-            eventType: event.type,
-          },
-        });
+        if (streamer) {
+          await streamer.append({
+            chunks: [
+              {
+                type: "task_update",
+                id: "auth",
+                title: "Waiting for authentication…",
+                status: "in_progress" as const,
+              },
+            ],
+          });
+        } else {
+          await throttledPostSlackMessageUpdate({
+            messageUpdate: {
+              text: "Agent is waiting for authentication…",
+              assistantName,
+              agentConfigurations,
+            },
+            ...conversationData,
+            canBeIgnored: false,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: event.type,
+            },
+          });
+        }
         break;
       }
 
@@ -354,18 +409,60 @@ async function streamAgentAnswerToSlack(
 
         answer += event.text;
 
-        await streamer.append({ markdown_text: event.text });
-        streamStarted = true;
+        if (streamer) {
+          await streamer.append({ markdown_text: event.text });
+        } else {
+          const { formattedContent, footnotes } = annotateCitations(
+            answer,
+            actions
+          );
+          const slackContent = safelyPrepareAnswer(formattedContent);
+          // If the answer cannot be prepared safely, skip processing these tokens.
+          if (!slackContent) {
+            break;
+          }
+          // If the message is too long, we avoid the update entirely (to reduce
+          // rate limiting) the previous update will have shown the "..." and the
+          // link to continue the conversation so this is fine.
+          if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
+            break;
+          }
+
+          const newThrottleDelay = getThrottleDelay(slackContent.length);
+          if (newThrottleDelay !== currentThrottleDelay) {
+            currentThrottleDelay = newThrottleDelay;
+            throttledPostSlackMessageUpdate.cancel();
+            throttledPostSlackMessageUpdate = throttle(
+              postSlackMessageUpdate,
+              currentThrottleDelay
+            );
+          }
+
+          await throttledPostSlackMessageUpdate({
+            messageUpdate: {
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
+            canBeIgnored: true,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: event.type,
+            },
+          });
+        }
         break;
       }
 
       case "agent_message_success": {
         const finalAnswer = event.message.content ?? "";
-        const messageActions = event.message.actions;
-        const messageId = event.message.sId;
+        const actions = event.message.actions;
+        const messageId = event.message.sId; // Get the message ID
         const { formattedContent, footnotes } = annotateCitations(
           finalAnswer,
-          messageActions
+          actions
         );
 
         const authResult = await slackClient.auth.test();
@@ -374,9 +471,7 @@ async function streamAgentAnswerToSlack(
           authResult.ok &&
           authResult.response_metadata?.scopes?.includes("files:write")
         ) {
-          const files = messageActions.flatMap(
-            (action) => action.generatedFiles
-          );
+          const files = actions.flatMap((action) => action.generatedFiles);
           filesUploaded = await getFilesFromDust(files, dustAPI);
         }
 
@@ -384,27 +479,24 @@ async function streamAgentAnswerToSlack(
           normalizeContentForSlack(formattedContent)
         );
 
-        const messageUpdate: SlackMessageUpdate = {
-          text: slackContent,
-          assistantName,
-          agentConfigurations,
-          footnotes,
-          conversationId: conversation.sId,
-          messageId,
-        };
-
-        if (streamStarted) {
-          await finalizeStreamMessage({
+        if (streamer) {
+          await finalizeNativeStreamMessage({
             streamer,
-            messageUpdate,
+            streamTs,
+            messageUpdate: {
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+              conversationId: conversation.sId,
+              messageId,
+            },
             slack,
             connector,
             conversation,
-            mainMessage,
             filesUploaded,
           });
         } else {
-          // Fallback: no tokens were streamed, use existing chat.update path.
           const shouldSplitMessage =
             slackContent.length > MAX_SLACK_MESSAGE_LENGTH
               ? await getMessageSplittingFromFeatureFlag(
@@ -415,11 +507,18 @@ async function streamAgentAnswerToSlack(
           if (shouldSplitMessage) {
             const splitMessages = splitContentForSlack(slackContent);
 
+            throttledPostSlackMessageUpdate.cancel();
+
+            // If we have files, we need to delete and repost the message
             if (filesUploaded.length > 0) {
               await deleteAndRepostMessageWithFiles({
                 messageUpdate: {
-                  ...messageUpdate,
                   text: splitMessages[0],
+                  assistantName,
+                  agentConfigurations,
+                  footnotes,
+                  conversationId: conversation.sId,
+                  messageId,
                 },
                 ...conversationData,
                 uploadedFiles: filesUploaded,
@@ -427,8 +526,12 @@ async function streamAgentAnswerToSlack(
             } else {
               await postSlackMessageUpdate({
                 messageUpdate: {
-                  ...messageUpdate,
                   text: splitMessages[0],
+                  assistantName,
+                  agentConfigurations,
+                  footnotes,
+                  conversationId: conversation.sId,
+                  messageId,
                 },
                 ...conversationData,
                 canBeIgnored: false,
@@ -440,6 +543,7 @@ async function streamAgentAnswerToSlack(
               });
             }
 
+            // Post additional messages as thread replies
             if (splitMessages.length > 1) {
               await postThreadFollowUpMessages(
                 splitMessages.slice(1),
@@ -447,15 +551,31 @@ async function streamAgentAnswerToSlack(
               );
             }
           } else {
+            // If we have files, we need to delete and repost the message
             if (filesUploaded.length > 0) {
               await deleteAndRepostMessageWithFiles({
-                messageUpdate,
+                messageUpdate: {
+                  text: slackContent,
+                  assistantName,
+                  agentConfigurations,
+                  footnotes,
+                  conversationId: conversation.sId,
+                  messageId,
+                },
                 ...conversationData,
                 uploadedFiles: filesUploaded,
               });
             } else {
+              // Use normal single message update (with truncation if needed)
               await postSlackMessageUpdate({
-                messageUpdate,
+                messageUpdate: {
+                  text: slackContent,
+                  assistantName,
+                  agentConfigurations,
+                  footnotes,
+                  conversationId: conversation.sId,
+                  messageId,
+                },
                 ...conversationData,
                 canBeIgnored: false,
                 extraLogs: {
@@ -468,7 +588,7 @@ async function streamAgentAnswerToSlack(
           }
         }
 
-        // Post feedback buttons and agent selection.
+        // Post feedback buttons and agent selection (ephemeral or regular message based on setting)
         if (
           slackUserId &&
           !slackUserInfo.is_bot &&
@@ -476,9 +596,11 @@ async function streamAgentAnswerToSlack(
         ) {
           const blockId = SlackBlockIdStaticAgentConfigSchema.encode({
             slackChatBotMessageId: slackChatBotMessage.id,
-            slackThreadTs: mainMessage.message?.thread_ts,
-            messageTs: mainMessage.message?.ts,
-            botId: mainMessage.message?.bot_id,
+            slackThreadTs: streamTs
+              ? slackMessageTs
+              : mainMessage?.message?.thread_ts,
+            messageTs: streamTs ?? mainMessage?.message?.ts,
+            botId: streamTs ? undefined : mainMessage?.message?.bot_id,
           });
 
           const feedbackParams =
@@ -518,6 +640,7 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_generation_cancelled": {
+        // Handle generation cancellation by showing a cancelled message
         const cancelledMessage = "_Message generation was cancelled._";
         const { formattedContent, footnotes } = annotateCitations(
           answer || cancelledMessage,
@@ -527,12 +650,28 @@ async function streamAgentAnswerToSlack(
           normalizeContentForSlack(formattedContent)
         );
 
-        if (streamStarted) {
+        if (streamer) {
           await streamer.stop();
-          await slackClient.chat.delete({
-            channel: slackChannelId,
-            ts: mainMessage.ts as string,
-          });
+          if (streamTs) {
+            const conversationUrl = makeConversationUrl(
+              connector.workspaceId,
+              conversation.sId
+            );
+            await slackClient.chat.update({
+              ...makeMessageUpdateBlocksAndText(
+                conversationUrl,
+                connector.workspaceId,
+                {
+                  text: slackContent,
+                  assistantName,
+                  agentConfigurations,
+                  footnotes,
+                }
+              ),
+              channel: slackChannelId,
+              ts: streamTs,
+            });
+          }
         } else {
           await postSlackMessageUpdate({
             messageUpdate: {
@@ -562,8 +701,8 @@ async function streamAgentAnswerToSlack(
     }
   }
 
-  // Clean up stream on early termination.
-  if (streamStarted) {
+  // Clean up stream on early termination (native streaming only).
+  if (streamer) {
     try {
       await streamer.stop();
     } catch (_err) {
@@ -582,6 +721,7 @@ async function deleteAndRepostMessageWithFiles({
   connector,
   conversation,
   mainMessage,
+  streamTs,
   uploadedFiles,
 }: {
   messageUpdate: SlackMessageUpdate;
@@ -594,15 +734,20 @@ async function deleteAndRepostMessageWithFiles({
   };
   connector: ConnectorResource;
   conversation: ConversationPublicType;
-  mainMessage: ChatPostMessageResponse;
+  mainMessage?: ChatPostMessageResponse;
+  streamTs?: string;
   uploadedFiles: { file: Buffer; filename: string }[];
 }): Promise<void> {
-  const { slackChannelId, slackClient } = slack;
+  const { slackChannelId, slackClient, slackMessageTs } = slack;
   const conversationUrl = makeConversationUrl(
     connector.workspaceId,
     conversation.sId
   );
 
+  const threadTs = mainMessage?.message?.thread_ts ?? slackMessageTs;
+  const deleteTs = streamTs ?? mainMessage?.ts;
+
+  // First post a new message with files
   const response = await slackClient.filesUploadV2({
     ...makeMessageUpdateBlocksAndText(
       conversationUrl,
@@ -611,7 +756,7 @@ async function deleteAndRepostMessageWithFiles({
     ),
     channel_id: slackChannelId,
     file_uploads: uploadedFiles,
-    thread_ts: mainMessage.message?.thread_ts, // Preserve thread context if it exists
+    thread_ts: threadTs, // Preserve thread context if it exists
   });
 
   if (response?.error) {
@@ -626,21 +771,24 @@ async function deleteAndRepostMessageWithFiles({
     );
   }
 
-  try {
-    await slackClient.chat.delete({
-      channel: slackChannelId,
-      ts: mainMessage.ts as string,
-    });
-  } catch (error) {
-    logger.error(
-      {
-        provider: "slack",
-        connectorId: connector.id,
-        conversationId: conversation.sId,
-        err: error,
-      },
-      "Failed to delete original Slack message."
-    );
+  // Then, delete the original message
+  if (deleteTs) {
+    try {
+      await slackClient.chat.delete({
+        channel: slackChannelId,
+        ts: deleteTs,
+      });
+    } catch (error) {
+      logger.error(
+        {
+          provider: "slack",
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          err: error,
+        },
+        "Failed to delete original Slack message."
+      );
+    }
   }
 }
 
@@ -663,10 +811,14 @@ async function postSlackMessageUpdate({
   };
   connector: ConnectorResource;
   conversation: ConversationPublicType;
-  mainMessage: ChatPostMessageResponse;
+  mainMessage?: ChatPostMessageResponse;
   canBeIgnored: boolean;
   extraLogs: Record<string, string>;
 }): Promise<void> {
+  if (!mainMessage?.ts) {
+    return;
+  }
+
   const { slackChannelId, slackClient } = slack;
   const conversationUrl = makeConversationUrl(
     connector.workspaceId,
@@ -716,19 +868,20 @@ async function postSlackMessageUpdate({
 }
 
 /**
- * Stops the Slack stream, deletes the placeholder, and posts the final formatted message.
- * If the stream or formatting fails, falls back to chat.postMessage.
+ * Stops the native stream and updates the stream message with formatted content.
+ * No placeholder to delete — the stream IS the message.
  */
-async function finalizeStreamMessage({
+async function finalizeNativeStreamMessage({
   streamer,
+  streamTs,
   messageUpdate,
   slack,
   connector,
   conversation,
-  mainMessage,
   filesUploaded,
 }: {
-  streamer: ReturnType<WebClient["chatStream"]>;
+  streamer: SlackStreamer;
+  streamTs: string | undefined;
   messageUpdate: SlackMessageUpdate;
   slack: {
     slackChannelId: string;
@@ -739,7 +892,6 @@ async function finalizeStreamMessage({
   };
   connector: ConnectorResource;
   conversation: ConversationPublicType;
-  mainMessage: ChatPostMessageResponse;
   filesUploaded: { file: Buffer; filename: string }[];
 }): Promise<void> {
   const { slackChannelId, slackClient, slackMessageTs } = slack;
@@ -750,15 +902,9 @@ async function finalizeStreamMessage({
 
   try {
     const stopRes = await streamer.stop();
-    const streamTs = stopRes.ts;
-
-    await slackClient.chat.delete({
-      channel: slackChannelId,
-      ts: mainMessage.ts as string,
-    });
+    const resolvedStreamTs = streamTs ?? stopRes.ts;
 
     if (filesUploaded.length > 0) {
-      // Files require a new message — delete stream message and repost with files.
       await slackClient.filesUploadV2({
         ...makeMessageUpdateBlocksAndText(
           conversationUrl,
@@ -769,32 +915,33 @@ async function finalizeStreamMessage({
         file_uploads: filesUploaded,
         thread_ts: slackMessageTs,
       });
-      await slackClient.chat.delete({
-        channel: slackChannelId,
-        ts: streamTs as string,
-      });
-    } else if (
-      messageUpdate.text &&
-      messageUpdate.text.length <= MAX_SLACK_MESSAGE_LENGTH
-    ) {
-      // Update the stream message with properly formatted content (citations, blocks, footer).
-      // For long messages, the stream message stands as-is since the full content
-      // was already delivered via streaming.
-      await slackClient.chat.update({
-        ...makeMessageUpdateBlocksAndText(
-          conversationUrl,
-          connector.workspaceId,
-          messageUpdate
-        ),
-        channel: slackChannelId,
-        ts: streamTs as string,
-      });
+      if (resolvedStreamTs) {
+        await slackClient.chat.delete({
+          channel: slackChannelId,
+          ts: resolvedStreamTs,
+        });
+      }
+    } else if (resolvedStreamTs) {
+      if (
+        messageUpdate.text &&
+        messageUpdate.text.length <= MAX_SLACK_MESSAGE_LENGTH
+      ) {
+        await slackClient.chat.update({
+          ...makeMessageUpdateBlocksAndText(
+            conversationUrl,
+            connector.workspaceId,
+            messageUpdate
+          ),
+          channel: slackChannelId,
+          ts: resolvedStreamTs,
+        });
+      }
+      // For long messages, the stream message stands as-is.
     }
   } catch (err) {
-    // Stream finalization failed — fall back to posting the full message.
     logger.error(
       { err, connectorId: connector.id },
-      "Failed to finalize stream, falling back to postMessage"
+      "Failed to finalize native stream, falling back to postMessage"
     );
     await slackClient.chat.postMessage({
       ...makeMessageUpdateBlocksAndText(
@@ -805,6 +952,23 @@ async function finalizeStreamMessage({
       channel: slackChannelId,
       thread_ts: slackMessageTs,
     });
+  }
+}
+
+/**
+ * Safely prepare the answer by normalizing the content for Slack and converting it to Markdown.
+ * In streaming mode, partial links might trigger errors in the `slackifyMarkdown` function.
+ * This function handles such errors gracefully, ensuring that the full text will be displayed
+ * once a valid URL is available.
+ */
+function safelyPrepareAnswer(text: string): string | null {
+  const rawAnswer = normalizeContentForSlack(text);
+
+  try {
+    return slackifyMarkdown(rawAnswer);
+  } catch (_err) {
+    // It's safe to swallow the error as we'll catch up once a valid URL is fully received.
+    return null;
   }
 }
 
@@ -870,14 +1034,16 @@ async function postThreadFollowUpMessages(
   followUpMessages: string[],
   conversationData: StreamConversationToSlackParams
 ): Promise<void> {
-  const { slack, connector, conversation, mainMessage } = conversationData;
+  const { slack, connector, conversation, mainMessage, streamTs } =
+    conversationData;
   const { slackChannelId, slackClient } = slack;
+  const threadTs = mainMessage?.ts ?? streamTs;
 
   for (let i = 0; i < followUpMessages.length; i++) {
     const threadResponse = await slackClient.chat.postMessage({
       channel: slackChannelId,
       text: followUpMessages[i] || "",
-      thread_ts: mainMessage.ts,
+      thread_ts: threadTs,
     });
 
     if (threadResponse.error) {
@@ -913,19 +1079,28 @@ async function getMessageSplittingFromFeatureFlag(
     const featureFlagsRes = await dustAPI.getWorkspaceFeatureFlags();
     if (featureFlagsRes.isOk()) {
       return featureFlagsRes.value.includes("slack_message_splitting");
+    } else {
+      logger.warn(
+        {
+          error: featureFlagsRes.error,
+          connectorId: connector.id,
+          workspaceId: connector.workspaceId,
+        },
+        "Failed to fetch feature flags, defaulting to message truncation"
+      );
+      return false;
     }
-  } catch {
-    // Fall through to warn + default.
+  } catch (error) {
+    logger.warn(
+      {
+        error,
+        connectorId: connector.id,
+        workspaceId: connector.workspaceId,
+      },
+      "Failed to fetch feature flags, defaulting to message truncation"
+    );
+    return false;
   }
-
-  logger.warn(
-    {
-      connectorId: connector.id,
-      workspaceId: connector.workspaceId,
-    },
-    "Failed to fetch feature flags, defaulting to message truncation"
-  );
-  return false;
 }
 
 async function getFilesFromDust(
@@ -938,7 +1113,7 @@ async function getFilesFromDust(
   }>,
   dustAPI: DustAPI
 ): Promise<{ file: Buffer; filename: string }[]> {
-  const visibleFiles = files.filter((file) => !file.hidden);
+  const visibleFiles = files.filter((file) => !file.hidden); // Skip hidden files
   const uploadResults = await concurrentExecutor(
     visibleFiles,
     async (file) => {
