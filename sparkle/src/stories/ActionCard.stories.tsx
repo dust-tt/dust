@@ -78,7 +78,6 @@ export const DiffStatus = () => (
         cardContainerClassName="s-h-36"
         label="Web Search"
         description="Search & browse the web for up-to-date information."
-        isSelected={false}
         canAdd={false}
         diffStatus="added"
       />
@@ -89,7 +88,6 @@ export const DiffStatus = () => (
         cardContainerClassName="s-h-36"
         label="Code Interpreter"
         description="Run code snippets in a sandboxed environment."
-        isSelected={false}
         canAdd={false}
         diffStatus="removed"
       />

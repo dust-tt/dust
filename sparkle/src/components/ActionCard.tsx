@@ -37,16 +37,14 @@ const DIFF_CHIP_CONFIG: Record<
   removed: { color: "warning", icon: DashIcon },
 };
 
-export interface ActionCardProps {
+interface ActionCardBaseProps {
   icon: React.ComponentType;
   iconBackgroundColor?: string;
   iconColor?: string;
   label: string;
   description: string | React.ReactNode;
-  isSelected: boolean;
   canAdd: boolean;
   cantAddReason?: string;
-  diffStatus?: ActionCardDiffStatus;
   footer?: { label: string; onClick: () => void };
   onClick?: () => void;
   className?: string;
@@ -55,6 +53,18 @@ export interface ActionCardProps {
   mountPortalContainer?: HTMLElement;
   descriptionLineClamp?: number;
 }
+
+interface ActionCardSelectableProps extends ActionCardBaseProps {
+  isSelected: boolean;
+  diffStatus?: never;
+}
+
+interface ActionCardDiffProps extends ActionCardBaseProps {
+  diffStatus: ActionCardDiffStatus;
+  isSelected?: never;
+}
+
+export type ActionCardProps = ActionCardSelectableProps | ActionCardDiffProps;
 
 export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
   (
@@ -100,7 +110,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                   iconColor={iconColor}
                 />
                 <span className="s-text-sm s-font-medium">{label}</span>
-                {!diffChip && isSelected && (
+                {isSelected && (
                   <Chip
                     size="xs"
                     color="green"
