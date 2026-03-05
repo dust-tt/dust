@@ -1,0 +1,23 @@
+front/components/agent_builder/instructions/InstructionsTipsPopover.tsx
+  1e7d9b3c014ba6b6 51-57,59,63,66-68,72-73,81-85,87-89,91-93,95-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "01ca8bf2b1104563ba0fdce4c6f07e792a9033c5",
+  "prompts": {
+    "1e7d9b3c014ba6b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16527cf9-72fa-48d2-8336-09d0ce6d852f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 142,
+      "total_deletions": 164,
+      "accepted_lines": 38,
+      "overriden_lines": 1
+    }
+  }
+}
