@@ -1,9 +1,9 @@
 import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
-import { gongKeywordUpdateWorkflow } from "@connectors/connectors/gong/temporal/workflows";
 import {
-  getTemporalClient,
-  terminateAllWorkflowsForConnectorId,
-} from "@connectors/lib/temporal";
+  gongKeywordUpdateWorkflow,
+  updateExcludedKeywordsSignal,
+} from "@connectors/connectors/gong/temporal/workflows";
+import { getTemporalClient } from "@connectors/lib/temporal";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { Result } from "@dust-tt/client";
 import { Ok } from "@dust-tt/client";
@@ -19,22 +19,16 @@ export async function launchGongKeywordUpdateWorkflow(
   newKeywords: string[],
   maxTranscriptId: number
 ): Promise<Result<string, Error>> {
-  await terminateAllWorkflowsForConnectorId({
-    connectorId: connector.id,
-    stopReason: "Excluded keywords updated",
-  });
-
   const client = await getTemporalClient();
   const workflowId = makeGongKeywordUpdateWorkflowId(connector);
 
-  await client.workflow.start(gongKeywordUpdateWorkflow, {
+  await client.workflow.signalWithStart(gongKeywordUpdateWorkflow, {
     args: [{ connectorId: connector.id, newKeywords, maxTranscriptId }],
+    signal: updateExcludedKeywordsSignal,
+    signalArgs: [{ newKeywords, maxTranscriptId }],
     taskQueue: QUEUE_NAME,
     workflowId,
-    startDelay: "90 seconds",
-    searchAttributes: {
-      connectorId: [connector.id],
-    },
+    searchAttributes: { connectorId: [connector.id] },
     memo: { connectorId: connector.id },
   });
 
