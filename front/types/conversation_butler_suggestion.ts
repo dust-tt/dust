@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-export const BUTLER_SUGGESTION_TYPES = ["rename_title", "call_agent"] as const;
+export const BUTLER_SUGGESTION_TYPES = [
+  "rename_title",
+  "call_agent",
+  "create_frame",
+] as const;
 
 export type ButlerSuggestionType = (typeof BUTLER_SUGGESTION_TYPES)[number];
 
@@ -24,8 +28,15 @@ const CallAgentMetadataSchema = z.object({
   prompt: z.string(),
 });
 
+const CreateFrameMetadataSchema = z.object({
+  agentSId: z.string(),
+  agentName: z.string(),
+  prompt: z.string(),
+});
+
 export type RenameTitleMetadata = z.infer<typeof RenameTitleMetadataSchema>;
 export type CallAgentMetadata = z.infer<typeof CallAgentMetadataSchema>;
+export type CreateFrameMetadata = z.infer<typeof CreateFrameMetadataSchema>;
 
 // Discriminated union linking suggestionType to its metadata shape.
 export const ButlerSuggestionDataSchema = z.discriminatedUnion(
@@ -41,13 +52,21 @@ export const ButlerSuggestionDataSchema = z.discriminatedUnion(
       metadata: CallAgentMetadataSchema,
       status: z.enum(BUTLER_SUGGESTION_STATUSES),
     }),
+    z.object({
+      suggestionType: z.literal("create_frame"),
+      metadata: CreateFrameMetadataSchema,
+      status: z.enum(BUTLER_SUGGESTION_STATUSES),
+    }),
   ]
 );
 
 export type ButlerSuggestionData = z.infer<typeof ButlerSuggestionDataSchema>;
 
 // Union of all metadata payload shapes (useful for the Sequelize model field type).
-export type ButlerSuggestionMetadata = RenameTitleMetadata | CallAgentMetadata;
+export type ButlerSuggestionMetadata =
+  | RenameTitleMetadata
+  | CallAgentMetadata
+  | CreateFrameMetadata;
 
 export function parseButlerSuggestionData(data: unknown): ButlerSuggestionData {
   return ButlerSuggestionDataSchema.parse(data);
@@ -80,4 +99,9 @@ export type RenameTitleButlerSuggestion = Extract<
 export type CallAgentButlerSuggestion = Extract<
   ButlerSuggestionPublicType,
   { suggestionType: "call_agent" }
+>;
+
+export type CreateFrameButlerSuggestion = Extract<
+  ButlerSuggestionPublicType,
+  { suggestionType: "create_frame" }
 >;
