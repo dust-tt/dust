@@ -6,6 +6,9 @@ import { publishConversationEvent } from "@app/lib/api/assistant/streaming/event
 import type { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
+import { framesSkill } from "@app/lib/resources/skill/global/frames";
+import { mentionUsersSkill } from "@app/lib/resources/skill/global/mention_users";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -27,9 +30,10 @@ import { z } from "zod";
 const SUGGEST_ACTIONS_FUNCTION_NAME = "suggest_actions";
 
 const MAX_AGENTS_IN_PROMPT = 50;
+const MAX_SKILLS_IN_PROMPT = 20;
 const RENAME_CONFIDENCE_THRESHOLD = 70;
 const AGENT_CONFIDENCE_THRESHOLD = 70;
-const FRAME_CONFIDENCE_THRESHOLD = 70;
+const SKILL_CONFIDENCE_THRESHOLD = 70;
 
 // Minimum number of messages (by rank distance) between two suggestions of the same type.
 const SUGGESTION_COOLDOWN_MESSAGES = 10;
@@ -40,16 +44,17 @@ const SuggestActionsResult = z.object({
   agent_confidence: z.number(),
   agent_name: z.string(),
   agent_prompt: z.string(),
-  frame_confidence: z.number(),
-  frame_prompt: z.string(),
+  skill_confidence: z.number(),
+  skill_name: z.string(),
+  skill_prompt: z.string(),
 });
 
 function buildAnalyzeConversationSpecifications({
   hasAgents,
-  shouldSuggestFrame,
+  hasSkills,
 }: {
   hasAgents: boolean;
-  shouldSuggestFrame: boolean;
+  hasSkills: boolean;
 }): AgentActionSpecification[] {
   const properties: Record<string, object> = {
     rename_confidence: {
@@ -81,18 +86,24 @@ function buildAnalyzeConversationSpecifications({
         ? "A suggested message to send to the recommended agent, or empty string if none."
         : "Always set to empty string when no agents are available.",
     },
-    frame_confidence: {
+    skill_confidence: {
       type: "number",
-      description: shouldSuggestFrame
-        ? "Confidence from 0 to 100 that creating a visual Frame would benefit the conversation. " +
-          "Use 0 if the conversation does not have content that would benefit from visual output."
-        : "Always set to 0 when frame suggestions are not available.",
+      description: hasSkills
+        ? "Confidence from 0 to 100 that one of the listed skills would help the user. " +
+          "Use 0 if no skill is relevant to the conversation."
+        : "Always set to 0 when no skills are available.",
     },
-    frame_prompt: {
+    skill_name: {
       type: "string",
-      description: shouldSuggestFrame
-        ? "A prompt describing the Frame to create (e.g. 'Create a dashboard summarizing the sales data we discussed'), or empty string if none."
-        : "Always set to empty string when frame suggestions are not available.",
+      description: hasSkills
+        ? "The exact name of the recommended skill from the provided list, or empty string if none."
+        : "Always set to empty string when no skills are available.",
+    },
+    skill_prompt: {
+      type: "string",
+      description: hasSkills
+        ? "A suggested message to send to @dust to use the skill, or empty string if none."
+        : "Always set to empty string when no skills are available.",
     },
   };
 
@@ -100,8 +111,8 @@ function buildAnalyzeConversationSpecifications({
     {
       name: SUGGEST_ACTIONS_FUNCTION_NAME,
       description:
-        "Suggested one or many actions to the user to evaluate whether the title should be updated, " +
-        "whether an available agent could help, and whether a visual Frame should be created.",
+        "Suggest one or many actions to the user to evaluate whether the title should be updated, " +
+        "whether an available agent could help, and whether a skill could be useful.",
       inputSchema: {
         type: "object",
         properties,
@@ -111,33 +122,40 @@ function buildAnalyzeConversationSpecifications({
           "agent_confidence",
           "agent_name",
           "agent_prompt",
-          "frame_confidence",
-          "frame_prompt",
+          "skill_confidence",
+          "skill_name",
+          "skill_prompt",
         ],
       },
     },
   ];
 }
 
-function buildPrompt(
-  currentTitle: string,
-  agents: LightAgentConfigurationType[],
-  suggestionHistory: ButlerSuggestionData[],
-  shouldSuggestFrame: boolean
-): string {
-  const shouldBuildPromptForAgentSuggestion = agents.length > 0;
+function buildPrompt({
+  currentTitle,
+  agents,
+  skills,
+  suggestionHistory,
+}: {
+  currentTitle: string;
+  agents: LightAgentConfigurationType[];
+  skills: { name: string; description: string }[];
+  suggestionHistory: ButlerSuggestionData[];
+}): string {
+  const hasAgents = agents.length > 0;
+  const hasSkills = skills.length > 0;
 
   let prompt = "You are a conversation analyst. Your job is to:\n";
 
   const tasks: string[] = [
     "Score how much the conversation title would benefit from being updated.",
   ];
-  if (shouldBuildPromptForAgentSuggestion) {
+  if (hasAgents) {
     tasks.push("Determine if one of the available agents could help the user.");
   }
-  if (shouldSuggestFrame) {
+  if (hasSkills) {
     tasks.push(
-      "Determine if creating a visual Frame would benefit the conversation."
+      "Determine if one of the available skills could enhance the conversation."
     );
   }
 
@@ -156,7 +174,7 @@ function buildPrompt(
     "or the difference is just stylistic.\n" +
     "- Be conservative — most auto-generated titles are adequate.\n\n";
 
-  if (shouldBuildPromptForAgentSuggestion) {
+  if (hasAgents) {
     prompt +=
       "Agent suggestion guidelines:\n" +
       "- Review the list of available agents below and determine if one could help with the user's current question or task.\n" +
@@ -180,22 +198,28 @@ function buildPrompt(
       "and agent_prompt to empty string.\n\n";
   }
 
-  if (shouldSuggestFrame) {
+  if (hasSkills) {
     prompt +=
-      "Frame creation guidelines:\n" +
-      "- Frames are interactive visual components (dashboards, charts, presentations, formatted documents).\n" +
-      "- Set frame_confidence HIGH (>75) only when the conversation contains content that would clearly " +
-      "benefit from visual presentation: data analysis results, document iterations, structured reports, " +
-      "comparisons, or summaries that deserve a polished visual output.\n" +
-      "- Set frame_confidence LOW (<30) when the conversation is purely Q&A, has no structured data " +
-      "or document content, or the user hasn't reached a point where a visual output would add value.\n" +
-      '- The frame_prompt should start with "Use the Create Frames skill to" followed by a description of the Frame to create ' +
-      'based on the conversation content (e.g. "Use the Create Frames skill to build a dashboard summarizing the quarterly sales data", ' +
-      '"Use the Create Frames skill to turn this report into an interactive presentation").\n' +
-      "- Be conservative — only suggest frames when there is clear value in a visual output.\n\n";
+      "Skill suggestion guidelines:\n" +
+      "- Skills are specialized capabilities that enhance the @dust agent (e.g. deep analysis, data discovery, interactive frames).\n" +
+      "- Review the list of available skills below and determine if one could help with the user's current question or task.\n" +
+      "- Set skill_confidence HIGH (>75) only when a skill clearly matches the user's need " +
+      "and would add meaningful value to the conversation.\n" +
+      "- Set skill_confidence LOW (<30) when no skill is relevant or the user's need is already being addressed.\n" +
+      "- The skill_name MUST exactly match one of the names from the list below.\n" +
+      "- The skill_prompt should be a message to send to @dust that leverages the skill " +
+      '(e.g. "Use the Go Deep skill to do a comprehensive analysis of the sales data we discussed").\n\n' +
+      "Available skills:\n";
+
+    for (const skill of skills) {
+      prompt += `- ${skill.name}: ${skill.description}\n`;
+    }
+
+    prompt += "\n";
   } else {
     prompt +=
-      "Frame creation is not available, so set frame_confidence to 0 and frame_prompt to empty string.\n\n";
+      "No skills are available, so set skill_confidence to 0, skill_name to empty string, " +
+      "and skill_prompt to empty string.\n\n";
   }
 
   if (suggestionHistory.length > 0) {
@@ -211,18 +235,19 @@ function buildPrompt(
           break;
         }
         case "call_agent": {
-          if (!shouldBuildPromptForAgentSuggestion) {
+          if (!hasAgents) {
             break;
           }
           const { agentName } = suggestion.metadata;
           prompt += `- [${outcome}] Agent suggestion: ${agentName}\n`;
           break;
         }
-        case "create_frame": {
-          if (!shouldSuggestFrame) {
+        case "use_skill": {
+          if (!hasSkills) {
             break;
           }
-          prompt += `- [${outcome}] Frame creation suggestion\n`;
+          const { skillName } = suggestion.metadata;
+          prompt += `- [${outcome}] Skill suggestion: ${skillName}\n`;
           break;
         }
         default:
@@ -293,7 +318,7 @@ async function shouldProposeSuggestion(
   }: {
     conversationId: ModelId;
     currentMessageRank: number;
-    suggestionType: "rename_title" | "call_agent" | "create_frame";
+    suggestionType: "rename_title" | "call_agent" | "use_skill";
   }
 ): Promise<boolean> {
   const latest =
@@ -339,9 +364,9 @@ async function shouldProposeSuggestion(
 }
 
 /**
- * Analyze a conversation with a single LLM call to evaluate both title rename
- * and agent suggestion. Creates suggestions for each evaluation that passes
- * the confidence threshold.
+ * Analyze a conversation with a single LLM call to evaluate title rename,
+ * agent suggestion, and skill suggestion. Creates suggestions for each
+ * evaluation that passes the confidence threshold.
  */
 export async function analyzeConversation(
   auth: Authenticator,
@@ -389,8 +414,28 @@ export async function analyzeConversation(
       .filter((a) => a.scope !== "global" && !participantSIds.has(a.sId))
       .slice(0, MAX_AGENTS_IN_PROMPT);
 
-    // Only suggest frames if no frame has already been created in this conversation.
-    const shouldSuggestFrame = !hasFrame;
+    // Fetch available skills for suggestion. Filter out auto-enabled skills
+    // (implicit baseline capabilities like Discover Knowledge / Discover Tools)
+    // and niche skills that aren't  useful as proactive suggestions.
+    const BUTLER_EXCLUDED_SKILL_IDS = new Set<string>([mentionUsersSkill.sId]);
+    const allSkills = await SkillResource.listByWorkspace(auth, {
+      status: "active",
+    });
+    const availableSkills = allSkills
+      .filter(
+        (s) =>
+          s.userFacingDescription &&
+          !s.isAutoEnabled &&
+          !BUTLER_EXCLUDED_SKILL_IDS.has(s.sId) &&
+          // Don't suggest the frames skill if a frame already exists in the conversation.
+          !(hasFrame && s.sId === framesSkill.sId)
+      )
+      .slice(0, MAX_SKILLS_IN_PROMPT)
+      .map((s) => ({
+        sId: s.sId,
+        name: s.name,
+        description: s.userFacingDescription,
+      }));
 
     const suggestionHistory =
       await ConversationButlerSuggestionResource.fetchResolvedByConversation(
@@ -399,12 +444,12 @@ export async function analyzeConversation(
       );
 
     const currentTitle = conversation.title ?? "";
-    const prompt = buildPrompt(
+    const prompt = buildPrompt({
       currentTitle,
-      availableAgents,
+      agents: availableAgents,
+      skills: availableSkills,
       suggestionHistory,
-      shouldSuggestFrame
-    );
+    });
 
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation,
@@ -445,7 +490,7 @@ export async function analyzeConversation(
         prompt,
         specifications: buildAnalyzeConversationSpecifications({
           hasAgents: availableAgents.length > 0,
-          shouldSuggestFrame,
+          hasSkills: availableSkills.length > 0,
         }),
         forceToolCall: SUGGEST_ACTIONS_FUNCTION_NAME,
       },
@@ -493,8 +538,9 @@ export async function analyzeConversation(
       agent_confidence,
       agent_name,
       agent_prompt,
-      frame_confidence,
-      frame_prompt,
+      skill_confidence,
+      skill_name,
+      skill_prompt,
     } = parseResult.data;
 
     // Find the source message that triggered this analysis.
@@ -630,59 +676,60 @@ export async function analyzeConversation(
       }
     }
 
-    // Process frame creation suggestion with throttling.
+    // Process skill suggestion with throttling.
     if (
-      shouldSuggestFrame &&
-      frame_confidence >= FRAME_CONFIDENCE_THRESHOLD &&
-      frame_prompt
+      availableSkills.length > 0 &&
+      skill_confidence >= SKILL_CONFIDENCE_THRESHOLD &&
+      skill_name &&
+      skill_prompt
     ) {
-      const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
+      // Validate that the skill name matches an available skill (case-insensitive).
+      const matchedSkill = availableSkills.find(
+        (s) => s.name.toLowerCase() === skill_name.toLowerCase()
+      );
 
-      if (!dustAgent) {
-        logger.warn(
-          { conversationId: conversation.id },
-          "Butler: @dust agent not found, skipping create_frame suggestion"
+      if (matchedSkill) {
+        const dustAgent = allAgents.find(
+          (a) => a.sId === GLOBAL_AGENTS_SID.DUST
         );
-      } else {
-        const shouldPropose = await shouldProposeSuggestion(auth, {
-          conversationId: conversation.id,
-          currentMessageRank: sourceMessage.rank,
-          suggestionType: "create_frame",
-        });
 
-        if (shouldPropose) {
-          const suggestion = await ConversationButlerSuggestionResource.makeNew(
-            auth,
-            {
-              conversationId: conversation.id,
-              sourceMessageId: sourceMessage.id,
-              suggestionType: "create_frame",
-              metadata: {
-                agentSId: dustAgent.sId,
-                agentName: dustAgent.name,
-                prompt: frame_prompt,
-              },
-              status: "pending",
-            }
+        if (!dustAgent) {
+          logger.debug(
+            { conversationId: conversation.id },
+            "Butler: @dust agent not found, skipping use_skill suggestion"
           );
-
-          const event: ButlerSuggestionCreatedEvent = {
-            type: "butler_suggestion_created",
-            created: Date.now(),
-            suggestion: suggestion.toJSON(),
-          };
-
-          await publishConversationEvent(event, {
-            conversationId: conversation.sId,
+        } else {
+          const shouldPropose = await shouldProposeSuggestion(auth, {
+            conversationId: conversation.id,
+            currentMessageRank: sourceMessage.rank,
+            suggestionType: "use_skill",
           });
 
-          logger.info(
-            {
-              conversationId: conversation.id,
-              confidence: frame_confidence,
-            },
-            "Butler: created create_frame suggestion"
-          );
+          if (shouldPropose) {
+            const suggestion =
+              await ConversationButlerSuggestionResource.makeNew(auth, {
+                conversationId: conversation.id,
+                sourceMessageId: sourceMessage.id,
+                suggestionType: "use_skill",
+                metadata: {
+                  agentSId: dustAgent.sId,
+                  agentName: dustAgent.name,
+                  prompt: skill_prompt,
+                  skillName: matchedSkill.name,
+                },
+                status: "pending",
+              });
+
+            const event: ButlerSuggestionCreatedEvent = {
+              type: "butler_suggestion_created",
+              created: Date.now(),
+              suggestion: suggestion.toJSON(),
+            };
+
+            await publishConversationEvent(event, {
+              conversationId: conversation.sId,
+            });
+          }
         }
       }
     }

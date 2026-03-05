@@ -1,12 +1,12 @@
 import type {
   ButlerSuggestionPublicType,
   CallAgentButlerSuggestion,
-  CreateFrameButlerSuggestion,
   RenameTitleButlerSuggestion,
+  UseSkillButlerSuggestion,
 } from "@app/types/conversation_butler_suggestion";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
-  ActionFrameIcon,
+  ActionLightbulbIcon,
   Button,
   ChatBubbleLeftRightIcon,
   CheckIcon,
@@ -47,14 +47,14 @@ export function ButlerSuggestionCard({
           actionLabel="Ask"
         />
       );
-    case "create_frame":
+    case "use_skill":
       return (
         <AgentInvocationSuggestionCard
           suggestion={suggestion}
           onAction={onAction}
-          icon={ActionFrameIcon}
-          title="Create a Frame?"
-          actionLabel="Create"
+          icon={ActionLightbulbIcon}
+          title={`Try using ${suggestion.metadata.skillName}?`}
+          actionLabel="Try it"
         />
       );
     default:
@@ -123,7 +123,7 @@ function RenameTitleSuggestionCard({
 }
 
 interface AgentInvocationSuggestionCardProps {
-  suggestion: CallAgentButlerSuggestion | CreateFrameButlerSuggestion;
+  suggestion: CallAgentButlerSuggestion | UseSkillButlerSuggestion;
   onAction: (
     suggestionSId: string,
     status: "accepted" | "dismissed"

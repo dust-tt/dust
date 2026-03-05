@@ -3,7 +3,7 @@ import { z } from "zod";
 export const BUTLER_SUGGESTION_TYPES = [
   "rename_title",
   "call_agent",
-  "create_frame",
+  "use_skill",
 ] as const;
 
 export type ButlerSuggestionType = (typeof BUTLER_SUGGESTION_TYPES)[number];
@@ -29,9 +29,17 @@ const AgentInvocationMetadataSchema = z.object({
   prompt: z.string(),
 });
 
+// Metadata for use_skill: invokes @dust with a skill-specific prompt.
+const UseSkillMetadataSchema = z.object({
+  agentSId: z.string(),
+  agentName: z.string(),
+  prompt: z.string(),
+  skillName: z.string(),
+});
+
 export type RenameTitleMetadata = z.infer<typeof RenameTitleMetadataSchema>;
 export type CallAgentMetadata = z.infer<typeof AgentInvocationMetadataSchema>;
-export type CreateFrameMetadata = z.infer<typeof AgentInvocationMetadataSchema>;
+export type UseSkillMetadata = z.infer<typeof UseSkillMetadataSchema>;
 
 // Discriminated union linking suggestionType to its metadata shape.
 export const ButlerSuggestionDataSchema = z.discriminatedUnion(
@@ -48,8 +56,8 @@ export const ButlerSuggestionDataSchema = z.discriminatedUnion(
       status: z.enum(BUTLER_SUGGESTION_STATUSES),
     }),
     z.object({
-      suggestionType: z.literal("create_frame"),
-      metadata: AgentInvocationMetadataSchema,
+      suggestionType: z.literal("use_skill"),
+      metadata: UseSkillMetadataSchema,
       status: z.enum(BUTLER_SUGGESTION_STATUSES),
     }),
   ]
@@ -61,7 +69,7 @@ export type ButlerSuggestionData = z.infer<typeof ButlerSuggestionDataSchema>;
 export type ButlerSuggestionMetadata =
   | RenameTitleMetadata
   | CallAgentMetadata
-  | CreateFrameMetadata;
+  | UseSkillMetadata;
 
 export function parseButlerSuggestionData(data: unknown): ButlerSuggestionData {
   return ButlerSuggestionDataSchema.parse(data);
@@ -96,7 +104,7 @@ export type CallAgentButlerSuggestion = Extract<
   { suggestionType: "call_agent" }
 >;
 
-export type CreateFrameButlerSuggestion = Extract<
+export type UseSkillButlerSuggestion = Extract<
   ButlerSuggestionPublicType,
-  { suggestionType: "create_frame" }
+  { suggestionType: "use_skill" }
 >;

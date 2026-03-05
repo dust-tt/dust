@@ -4,6 +4,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { analyzeConversation } from "@app/lib/butler/analyze_conversation";
 import { MessageModel } from "@app/lib/models/agent/conversation";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -40,17 +41,26 @@ vi.mock("@app/lib/api/assistant/configuration/views", () => ({
   getAgentConfigurationsForView: vi.fn(),
 }));
 
+// Mock skill listing.
+vi.mock("@app/lib/resources/skill/skill_resource", () => ({
+  SkillResource: {
+    listByWorkspace: vi.fn(),
+  },
+}));
+
 const mockGetFastestModel = vi.mocked(getFastestWhitelistedModel);
 const mockPublishConversationEvent = vi.mocked(publishConversationEvent);
 const mockRenderConversation = vi.mocked(renderConversationForModel);
 const mockRunMultiActionsAgent = vi.mocked(runMultiActionsAgent);
 const mockGetAgentConfigurations = vi.mocked(getAgentConfigurationsForView);
+const mockListSkills = vi.mocked(SkillResource.listByWorkspace);
 
 // Use clearAllMocks (not resetAllMocks) to preserve global mock implementations from vite.setup.ts.
 beforeEach(() => {
   vi.clearAllMocks();
-  // Default: no agents available.
+  // Default: no agents or skills available.
   mockGetAgentConfigurations.mockResolvedValue([] as never);
+  mockListSkills.mockResolvedValue([] as never);
 });
 
 const FAKE_MODEL = {
@@ -92,6 +102,9 @@ function setupMocksForHighConfidenceRename() {
             agent_prompt: "",
             frame_confidence: 0,
             frame_prompt: "",
+            skill_confidence: 0,
+            skill_name: "",
+            skill_prompt: "",
           },
         },
       ],
@@ -196,8 +209,9 @@ describe("analyzeConversation", () => {
               agent_confidence: 0,
               agent_name: "",
               agent_prompt: "",
-              frame_confidence: 0,
-              frame_prompt: "",
+              skill_confidence: 0,
+              skill_name: "",
+              skill_prompt: "",
             },
           },
         ],
@@ -242,8 +256,9 @@ describe("analyzeConversation", () => {
               agent_confidence: 0,
               agent_name: "",
               agent_prompt: "",
-              frame_confidence: 0,
-              frame_prompt: "",
+              skill_confidence: 0,
+              skill_name: "",
+              skill_prompt: "",
             },
           },
         ],
@@ -325,8 +340,9 @@ describe("analyzeConversation", () => {
               agent_confidence: 85,
               agent_name: "CodeHelper",
               agent_prompt: "Can you help me debug this issue?",
-              frame_confidence: 0,
-              frame_prompt: "",
+              skill_confidence: 0,
+              skill_name: "",
+              skill_prompt: "",
             },
           },
         ],
@@ -383,8 +399,9 @@ describe("analyzeConversation", () => {
               agent_confidence: 80,
               agent_name: "CodeHelper",
               agent_prompt: "Can you help?",
-              frame_confidence: 0,
-              frame_prompt: "",
+              skill_confidence: 0,
+              skill_name: "",
+              skill_prompt: "",
             },
           },
         ],
@@ -439,8 +456,9 @@ describe("analyzeConversation", () => {
               agent_confidence: 90,
               agent_name: "NonExistentAgent",
               agent_prompt: "Help me",
-              frame_confidence: 0,
-              frame_prompt: "",
+              skill_confidence: 0,
+              skill_name: "",
+              skill_prompt: "",
             },
           },
         ],
@@ -503,6 +521,7 @@ describe("analyzeConversation", () => {
 
     vi.clearAllMocks();
     mockGetAgentConfigurations.mockResolvedValue([] as never);
+    mockListSkills.mockResolvedValue([] as never);
     setupMocksForHighConfidenceRename();
 
     await analyzeConversation(authenticator, {

@@ -44,9 +44,9 @@ export async function acceptSuggestion(
       // No server-side side-effect: the frontend handles call_agent acceptance
       // by submitting a message with the suggested prompt and agent mention.
       break;
-    case "create_frame":
-      // No server-side side-effect: the frontend handles create_frame acceptance
-      // by submitting a message to @dust with the "Create Frames" skill prompt.
+    case "use_skill":
+      // No server-side side-effect: the frontend handles use_skill acceptance
+      // by submitting a message to @dust with the skill prompt.
       break;
     default:
       assertNever(suggestion.suggestionType);
