@@ -25,7 +25,7 @@ import {
 } from "@app/types/assistant/models/mistral";
 import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
-  GPT_5_2_MODEL_CONFIG,
+  GPT_5_4_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   O3_MODEL_CONFIG,
@@ -98,7 +98,7 @@ export const getModelProviderLogo = (
   return isDark && logos.dark ? logos.dark : logos.light;
 };
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
-  GPT_5_2_MODEL_CONFIG,
+  GPT_5_4_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   O3_MODEL_CONFIG,
