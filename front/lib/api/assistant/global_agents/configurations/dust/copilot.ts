@@ -1,5 +1,6 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
+
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -404,24 +405,18 @@ You CANNOT configure triggers or schedules for the agent. When users ask about s
 Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
 </triggers_and_schedules>`,
 
-  workspaceContext: (formatted: string) => `<workspace_context>
-The following capabilities are available in this workspace and can be suggested when building agents.
-You DO NOT need to call list_models, list_skills, or list_tools unless explicitly requested by the user.
+  contextGuidance: `<context_guidance>
+The runtime context includes <user_context> and <workspace_context> tags injected separately.
 
-${formatted}
-</workspace_context>`,
-
-  userContext: (formatted: string) => `<user_context>
-The user building this agent has the following profile:
-${formatted}
-
+<user_context> contains the user's job function and preferred platforms.
 Consider their role and platform preferences when suggesting tools and improvements.
-</user_context>`,
+
+<workspace_context> lists all available models, skills, and tools in this workspace.
+You DO NOT need to call list_models, list_skills, or list_tools unless explicitly requested by the user.
+</context_guidance>`,
 };
 
-export function buildCopilotInstructions(
-  copilotContext: CopilotContext | null
-): string {
+export function buildCopilotInstructions(): string {
   const parts: string[] = [
     COPILOT_INSTRUCTION_SECTIONS.primary,
     COPILOT_INSTRUCTION_SECTIONS.agentWorkflow,
@@ -437,27 +432,8 @@ export function buildCopilotInstructions(
     COPILOT_INSTRUCTION_SECTIONS.triggersAndSchedules,
     COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
     COPILOT_INSTRUCTION_SECTIONS.responseStyle,
+    COPILOT_INSTRUCTION_SECTIONS.contextGuidance,
   ];
-
-  if (!copilotContext) {
-    return parts.join("\n\n");
-  }
-
-  if (copilotContext.formattedUserContext) {
-    parts.push(
-      COPILOT_INSTRUCTION_SECTIONS.userContext(
-        copilotContext.formattedUserContext
-      )
-    );
-  }
-
-  if (copilotContext.formattedWorkspaceContext) {
-    parts.push(
-      COPILOT_INSTRUCTION_SECTIONS.workspaceContext(
-        copilotContext.formattedWorkspaceContext
-      )
-    );
-  }
 
   return parts.join("\n\n");
 }
@@ -523,7 +499,7 @@ export function _getCopilotGlobalAgent(
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
 
-  const instructions = buildCopilotInstructions(copilotContext);
+  const instructions = buildCopilotInstructions();
 
   return {
     id: -1,

@@ -3,22 +3,12 @@ import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/a
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import { _getCopilotEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_edge";
-import {
-  type CopilotContext,
-  formatAvailableModels,
-  formatAvailableSkills,
-  formatAvailableTools,
-} from "@app/lib/api/assistant/global_agents/copilot_context";
+import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
 import {
   MCP_SERVERS_FOR_GLOBAL_AGENTS,
   type MCPServerViewsForGlobalAgentsMap,
 } from "@app/lib/api/assistant/global_agents/tools";
-import type {
-  AvailableSkill,
-  AvailableTool,
-} from "@app/lib/api/assistant/workspace_capabilities";
 import { Authenticator } from "@app/lib/auth";
-import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { CopilotConfig } from "@app/tests/copilot-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
@@ -55,82 +45,9 @@ const GET_AGENT_CONFIG_SPEC: AgentActionSpecification = {
   },
 };
 
-const MOCK_MODEL_IDS = [
-  "gpt-4-turbo",
-  "gpt-5-mini",
-  "claude-sonnet-4-5-20250929",
-  "claude-opus-4-20250514",
-] as const;
-
-const MOCK_WORKSPACE_SKILLS: AvailableSkill[] = [
-  {
-    sId: "skill_web_search",
-    name: "Web Search",
-    userFacingDescription: null,
-    agentFacingDescription: "Search the web for information",
-    icon: null,
-    toolSIds: [],
-  },
-  {
-    sId: "skill_data_analysis",
-    name: "Data Analysis",
-    userFacingDescription: null,
-    agentFacingDescription: "Analyze data and generate insights",
-    icon: null,
-    toolSIds: [],
-  },
-];
-
-const MOCK_WORKSPACE_TOOLS: AvailableTool[] = [
-  {
-    sId: "mcp_slack",
-    name: "Slack",
-    description: "Read and send Slack messages",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_notion",
-    name: "Notion",
-    description: "Search Notion workspace",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_github",
-    name: "GitHub",
-    description: "Access GitHub repositories",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_datadog",
-    name: "Datadog",
-    description: "Search and query Datadog logs and metrics",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_jira",
-    name: "JIRA",
-    description: "Search and manage JIRA issues and projects",
-    serverType: "internal",
-    availability: "manual",
-  },
-];
-
 function getMockCopilotContext(): CopilotContext {
-  const models = MOCK_MODEL_IDS.map((id) => getModelConfigByModelId(id)).filter(
-    (m): m is NonNullable<typeof m> => m != null
-  );
   return {
     mcpServerViews: null,
-    formattedUserContext: null,
-    formattedWorkspaceContext: [
-      formatAvailableModels(models),
-      formatAvailableSkills(MOCK_WORKSPACE_SKILLS),
-      formatAvailableTools(MOCK_WORKSPACE_TOOLS),
-    ].join("\n\n"),
     langfuseConfig: null,
   };
 }

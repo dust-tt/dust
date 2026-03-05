@@ -5,7 +5,11 @@ import {
   constructPromptMultiActions,
 } from "@app/lib/api/assistant/generation";
 import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import { globalAgentInjectsMemory } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  globalAgentInjectsMemory,
+  globalAgentInjectsUserContext,
+  globalAgentInjectsWorkspaceContext,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import {
   normalizePrompt,
   systemPromptToText,
@@ -337,6 +341,54 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(context.every((s) => s.role === "context")).toBe(true);
   });
 
+  it("should return tuple with user/workspace context in context block for copilot agent", () => {
+    const copilotConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.COPILOT,
+      scope: "global" as const,
+    };
+
+    const userCtx =
+      "<user_context>\n- Job function: Engineering\n- Preferred platforms: Slack\n</user_context>";
+    const workspaceCtx =
+      "<workspace_context>\n## AVAILABLE MODELS\n1 model available.\n</workspace_context>";
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: copilotConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      userContext: userCtx,
+      workspaceContext: workspaceCtx,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+
+    const [instructions, context] = normalizePrompt(sections);
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0].role).toBe("instruction");
+    expect(instructions[0].content).toContain("# INSTRUCTIONS");
+    // User/workspace context must NOT be in the cached instructions block.
+    expect(instructions[0].content).not.toContain("<user_context>");
+    expect(instructions[0].content).not.toContain("<workspace_context>");
+
+    // They must appear in the dynamic context block.
+    const userSection = context.find((s) =>
+      s.content.includes("<user_context>")
+    );
+    expect(userSection).toBeDefined();
+    expect(userSection?.content).toContain("Engineering");
+
+    const wsSection = context.find((s) =>
+      s.content.includes("<workspace_context>")
+    );
+    expect(wsSection).toBeDefined();
+    expect(wsSection?.content).toContain("AVAILABLE MODELS");
+  });
+
   it("should include memoriesContext in prompt output when provided", () => {
     const memoriesContext =
       "<existing_memories>\n- User prefers TypeScript (saved Jan 15, 2025).\n</existing_memories>";
@@ -441,6 +493,43 @@ describe("globalAgentInjectsMemory", () => {
     expect(globalAgentInjectsMemory("my-custom-agent")).toBe(false);
     expect(globalAgentInjectsMemory("random-string")).toBe(false);
     expect(globalAgentInjectsMemory("")).toBe(false);
+  });
+});
+
+describe("globalAgentInjectsUserContext", () => {
+  it("should return true for copilot agents", () => {
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.COPILOT)).toBe(true);
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.COPILOT_EDGE)).toBe(
+      true
+    );
+  });
+
+  it("should return false for non-copilot agents", () => {
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DUST)).toBe(false);
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DEEP_DIVE)).toBe(
+      false
+    );
+    expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.GPT4)).toBe(false);
+  });
+});
+
+describe("globalAgentInjectsWorkspaceContext", () => {
+  it("should return true for copilot agents", () => {
+    expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.COPILOT)).toBe(
+      true
+    );
+    expect(
+      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.COPILOT_EDGE)
+    ).toBe(true);
+  });
+
+  it("should return false for non-copilot agents", () => {
+    expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DUST)).toBe(
+      false
+    );
+    expect(
+      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DEEP_DIVE)
+    ).toBe(false);
   });
 });
 

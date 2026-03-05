@@ -33,8 +33,6 @@ export interface CopilotContext {
   mcpServerViews: {
     context: MCPServerViewResource;
   } | null;
-  formattedUserContext: string | null;
-  formattedWorkspaceContext: string | null;
   langfuseConfig: LangfusePromptConfig | null;
 }
 
@@ -146,6 +144,29 @@ function formatWorkspaceContext(
   ].join("\n\n");
 }
 
+export async function buildUserContext(
+  auth: Authenticator
+): Promise<string | null> {
+  const userMetadata = await fetchCopilotUserMetadata(auth);
+  const formatted = formatUserContext(userMetadata);
+  if (!formatted) {
+    return null;
+  }
+  return `<user_context>\n${formatted}\n</user_context>`;
+}
+
+export async function buildWorkspaceContext(
+  auth: Authenticator
+): Promise<string> {
+  const [models, skills, tools] = await Promise.all([
+    getAvailableModelsForWorkspace(auth),
+    listAvailableSkills(auth),
+    listAvailableTools(auth),
+  ]);
+  const formatted = formatWorkspaceContext(models, skills, tools);
+  return `<workspace_context>\n${formatted}\n</workspace_context>`;
+}
+
 export async function buildCopilotContext(
   auth: Authenticator,
   agentsIdsToFetch: string[]
@@ -157,31 +178,16 @@ export async function buildCopilotContext(
     return null;
   }
 
-  const [context, userMetadata, models, skills, tools] = await Promise.all([
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+  const context =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
       AGENT_COPILOT_CONTEXT_TOOL_NAME
-    ),
-    fetchCopilotUserMetadata(auth),
-    getAvailableModelsForWorkspace(auth),
-    listAvailableSkills(auth),
-    listAvailableTools(auth),
-  ]);
-
-  const formattedUserContext = formatUserContext(userMetadata);
-  const formattedWorkspaceContext = formatWorkspaceContext(
-    models,
-    skills,
-    tools
-  );
+    );
 
   let langfuseConfig: LangfusePromptConfig | null = null;
 
   if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_EDGE)) {
-    const result = await fetchLangfuseSystemPromptConfig("copilot-edge", {
-      userContext: formattedUserContext ?? "",
-      workspaceContext: formattedWorkspaceContext,
-    });
+    const result = await fetchLangfuseSystemPromptConfig("copilot-edge", {});
     if (result.isErr()) {
       logger.error(
         {
@@ -197,8 +203,6 @@ export async function buildCopilotContext(
 
   return {
     mcpServerViews: context ? { context } : null,
-    formattedUserContext,
-    formattedWorkspaceContext,
     langfuseConfig,
   };
 }
