@@ -556,15 +556,11 @@ function CopilotSuggestionsProviderContent({
         scrollToNextSuggestion(suggestion);
       }
 
-      // Refetch both pending and outdated so our local state converges
-      // with the server.
-      void mutateSuggestions();
       return true;
     },
     [
       patchSuggestions,
       mutatePending,
-      mutateSuggestions,
       dispatchDelayedBlur,
       scrollToNextSuggestion,
     ]
@@ -625,11 +621,9 @@ function CopilotSuggestionsProviderContent({
         appliedSuggestionsRef.current.delete(sId);
       }
 
-      // Refetch to converge with server state.
-      void mutateSuggestions();
       return true;
     },
-    [patchSuggestions, mutatePending, mutateSuggestions]
+    [patchSuggestions, mutatePending]
   );
 
   const acceptAllInstructionSuggestions =
@@ -707,14 +701,11 @@ function CopilotSuggestionsProviderContent({
       highlightSuggestion(null);
       dispatchDelayedBlur();
 
-      // Refetch to converge with server state.
-      void mutateSuggestions();
       return true;
     }, [
       suggestions,
       patchSuggestions,
       mutatePending,
-      mutateSuggestions,
       dispatchDelayedBlur,
       highlightSuggestion,
     ]);
@@ -791,16 +782,8 @@ function CopilotSuggestionsProviderContent({
 
       highlightSuggestion(null);
 
-      // Refetch to converge with server state.
-      void mutateSuggestions();
       return true;
-    }, [
-      suggestions,
-      patchSuggestions,
-      mutatePending,
-      mutateSuggestions,
-      highlightSuggestion,
-    ]);
+    }, [suggestions, patchSuggestions, mutatePending, highlightSuggestion]);
 
   const getCommittedInstructionsHtml = useCallback(() => {
     const editor = editorRef.current;
