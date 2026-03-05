@@ -1,15 +1,17 @@
 import { registerGetCurrentPageTool } from "@extension/platforms/chrome/tools/getCurrentPageTool";
-import type { BrowserMessagingService } from "@extension/shared/services/platform";
+import { registerGetPageScreenshotTool } from "@extension/platforms/chrome/tools/getPageScreenshotTool";
+import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
  * Registers all Chrome MCP tools with the server
  * @param server The MCP server to register tools with
- * @param messaging The browser messaging service for communicating with the background script
+ * @param captureService The capture service for retrieving page content
  */
 export function registerAllTools(
   server: McpServer,
-  messaging: BrowserMessagingService | null
+  captureService: CaptureService | null
 ): void {
-  registerGetCurrentPageTool(server, messaging);
+  registerGetCurrentPageTool(server, captureService);
+  registerGetPageScreenshotTool(server, captureService);
 }

@@ -27,6 +27,7 @@ export type GetActiveTabBackgroundMessage = {
 export type GetActiveTabBackgroundResponse = {
   title: string;
   url: string;
+  contentType?: string;
   content?: string;
   captures?: string[];
   error?: string;

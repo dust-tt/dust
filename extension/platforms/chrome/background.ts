@@ -282,12 +282,22 @@ chrome.runtime.onMessage.addListener(
             }
 
             try {
-              const includeContent = message.includeContent ?? true;
-              const includeCapture = message.includeCapture ?? false;
               const [mimetypeExecution] = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => document.contentType,
               });
+              const contentType: string =
+                mimetypeExecution.result ?? "text/html";
+              const isHtml = contentType === "text/html";
+
+              // autoDetect: pick the right strategy based on page content type.
+              // HTML pages → text extraction; non-HTML pages → screenshot.
+              const includeContent = message.autoDetect
+                ? isHtml
+                : (message.includeContent ?? true);
+              const includeCapture = message.autoDetect
+                ? !isHtml
+                : (message.includeCapture ?? false);
 
               let captures: string[] | undefined;
               if (includeCapture) {
@@ -359,6 +369,7 @@ chrome.runtime.onMessage.addListener(
               sendResponse({
                 title: tab.title || "",
                 url: tab.url || "",
+                contentType,
                 content,
                 captures,
               });
