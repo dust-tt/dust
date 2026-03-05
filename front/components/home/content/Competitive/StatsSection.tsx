@@ -1,14 +1,8 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H2, P } from "@app/components/home/ContentComponents";
+import type { Stat } from "@app/components/home/content/Competitive/types";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import Image from "next/image";
-
-interface Stat {
-  value: string;
-  label: string;
-  company: string;
-  logo: string;
-}
 
 interface StatsSectionProps {
   stats: Stat[];
