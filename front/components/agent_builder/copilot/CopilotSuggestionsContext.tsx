@@ -13,6 +13,7 @@ import { getSuggestionPosition } from "@app/components/editor/extensions/agent_b
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import {
   useAgentSuggestions,
@@ -160,10 +161,26 @@ function CopilotSuggestionsProviderContent({
     [dataSourceViews]
   );
 
-  const searchServerView = useMemo(
-    () =>
-      mcpServerViewsWithKnowledge.find((v) => v.server.name === "search") ??
-      null,
+  const knowledgeServerViewByMethod = useMemo<
+    Record<string, MCPServerViewType | undefined>
+  >(
+    () => ({
+      search:
+        mcpServerViewsWithKnowledge.find((v) => v.server.name === "search") ??
+        undefined,
+      include:
+        mcpServerViewsWithKnowledge.find(
+          (v) => v.server.name === "include_data"
+        ) ?? undefined,
+      extract:
+        mcpServerViewsWithKnowledge.find(
+          (v) => v.server.name === "extract_data"
+        ) ?? undefined,
+      query_tables:
+        mcpServerViewsWithKnowledge.find(
+          (v) => v.server.name === "query_tables_v2"
+        ) ?? undefined,
+    }),
     [mcpServerViewsWithKnowledge]
   );
 
@@ -257,13 +274,19 @@ function CopilotSuggestionsProviderContent({
           const dataSourceView = dataSourceViewsMap.get(
             suggestion.suggestion.dataSourceViewId
           );
-          if (!dataSourceView || !searchServerView) {
+          if (!dataSourceView) {
+            return null;
+          }
+
+          const method = suggestion.suggestion.method ?? "search";
+          const serverView = knowledgeServerViewByMethod[method];
+          if (!serverView) {
             return null;
           }
 
           return {
             ...suggestion,
-            relations: { dataSourceView, searchServerView },
+            relations: { dataSourceView, serverView },
           };
         }
 
@@ -279,7 +302,7 @@ function CopilotSuggestionsProviderContent({
       skillsMap,
       mcpServerViewsMap,
       dataSourceViewsMap,
-      searchServerView,
+      knowledgeServerViewByMethod,
     ]
   );
 

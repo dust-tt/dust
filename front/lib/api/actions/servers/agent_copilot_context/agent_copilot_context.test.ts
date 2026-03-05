@@ -1424,6 +1424,43 @@ describe("agent_copilot_context tools", () => {
     });
   });
 
+  describe("suggest_knowledge", () => {
+    it("creates knowledge suggestion with method include", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+      const dsv = await DataSourceViewFactory.folder(workspace, globalSpace);
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_knowledge");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            action: "add",
+            dataSourceViewId: dsv.sId,
+            method: "include",
+            description: "Include recent content",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk() && result.value[0].type === "text") {
+        expect(result.value[0].text).toMatch(
+          /:agent_suggestion\[\]\{sId=\S+ kind=knowledge\}/
+        );
+      }
+    });
+  });
+
   describe("suggest_sub_agent", () => {
     it("creates sub-agent suggestion with add action successfully", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });

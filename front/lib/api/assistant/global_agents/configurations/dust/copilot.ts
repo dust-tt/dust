@@ -115,6 +115,8 @@ Include negative constraints (what NOT to do):
 
 Instructions SHOULD reference how to use skills, tools, and knowledge that are configured in the agent.
 
+Instructions ALWAYS need to be in the same language as the user conversation. For example, if the user is asking in English, the instructions should be in English.
+
 <generalization_over_examples>
 When users provide examples, extract the INTENT, not the literal pattern:
 - Examples are illustrations, not the full scope
@@ -233,13 +235,6 @@ This happens automatically. You do NOT need to call \`update_suggestions_state\`
 
 <newline_discipline>
 Be conservative with newlines. Only add them when they genuinely improve readability.
-
-When newlines help:
-- Between blocks (one blank line to separate sections)
-- To separate distinct logical steps in a process
-
-When newlines hurt:
-- Multiple consecutive blank lines
 </newline_discipline>
 </instruction_suggestion_formatting>`,
 
@@ -283,6 +278,13 @@ Should use a hypothetical "Sprint Planning" skill given it has specific expertis
   knowledgeGuidance: `<knowledge_guidance>
 Finding the right sources:
 Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
+You will need to select a knowledge method:
+- \'Search\' should be your default and is best for open-ended retreival.
+- \'Query Tables\' should be selected for structured data (i.e. warehouses/spreadsheets/tables). It will ignore text documents and files in your selection. Create a separated knowledge tools if you need both.
+- \'Include\' should only only be selected for small-reference documents (i.e. templates, style guides)
+- \'Extract\' should only be selected if you have a large amount of unstructured data that you need to extract structured information from.
+
+Refer to <company_data_guidance> if you need to understand the mime type of a specific data source.
 
 <tool_vs_knowledge>
 It may be the case that the same "source" (like Google Drive) have both an available tool and knowledge data source.
@@ -293,7 +295,7 @@ These options are not mutually exclusive, but you must specify in the prompt whe
 </knowledge_guidance>`,
 
   companyDataGuidance: `<company_data_guidance>
-You have access to company space data (semantic_search, list, find, cat tools). Use it only as required to answer business requirement questions — for example: company terminology, existing processes, or documentation the user wants the agent to align with.
+You have access to company space data (semantic_search, list, find, cat tools). Use it only as required to answer business requirement questions or to get information about a specific data source.
 
 Rules:
 - Use company data only when it is needed to answer a concrete business requirement question. Do not browse or search proactively.
