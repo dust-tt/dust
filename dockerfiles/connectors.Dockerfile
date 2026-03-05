@@ -41,7 +41,7 @@ RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
 # Build temporal workers
-RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
+RUN CONNECTORS_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
 # Build all components (server, worker, cli) with esbuild
 RUN npm run build
 
