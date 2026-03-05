@@ -38,7 +38,7 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 function mapSuggestionStateToCardState(
@@ -181,36 +181,34 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
   const isAddition = suggestion.action === "add";
   const tool = relations.tool;
 
-  const handleAccept = useCallback(
-    async (agentSuggestion: AgentToolsSuggestionWithRelationsType) => {
-      const success = await acceptSuggestion(agentSuggestion);
-      if (success) {
-        if (isAddition) {
-          const currentActions = getValues("actions");
-          if (!isToolAlreadyAdded(currentActions, tool.sId)) {
-            const newAction = getDefaultMCPAction(tool);
-            setValue("actions", [...currentActions, newAction], {
-              shouldDirty: true,
-            });
-          }
-        } else {
-          const currentActions = getValues("actions");
-          const filteredActions = currentActions.filter(
-            (action) => action.configuration.mcpServerViewId !== tool.sId
-          );
-          setValue("actions", filteredActions, { shouldDirty: true });
+  const handleAccept = async (
+    agentSuggestion: AgentToolsSuggestionWithRelationsType
+  ) => {
+    const success = await acceptSuggestion(agentSuggestion);
+    if (success) {
+      if (isAddition) {
+        const currentActions = getValues("actions");
+        if (!isToolAlreadyAdded(currentActions, tool.sId)) {
+          const newAction = getDefaultMCPAction(tool);
+          setValue("actions", [...currentActions, newAction], {
+            shouldDirty: true,
+          });
         }
+      } else {
+        const currentActions = getValues("actions");
+        const filteredActions = currentActions.filter(
+          (action) => action.configuration.mcpServerViewId !== tool.sId
+        );
+        setValue("actions", filteredActions, { shouldDirty: true });
       }
-    },
-    [acceptSuggestion, getValues, setValue, isAddition, tool]
-  );
+    }
+  };
 
-  const handleReject = useCallback(
-    (agentSuggestion: AgentToolsSuggestionWithRelationsType) => {
-      void rejectSuggestion(agentSuggestion);
-    },
-    [rejectSuggestion]
-  );
+  const handleReject = (
+    agentSuggestion: AgentToolsSuggestionWithRelationsType
+  ) => {
+    void rejectSuggestion(agentSuggestion);
+  };
 
   const displayName = getMcpServerViewDisplayName(tool);
 
@@ -269,48 +267,38 @@ function SubAgentSuggestionCard({
     return childAgent?.name ?? null;
   }, [childAgentId, agentConfigurations]);
 
-  const handleAccept = useCallback(
-    async (agentSuggestion: AgentSubAgentSuggestionWithRelationsType) => {
-      const success = await acceptSuggestion(agentSuggestion);
-      if (success) {
-        if (isAddition) {
-          const currentActions = getValues("actions");
-          if (!isSubAgentAlreadyAdded(currentActions, childAgentId)) {
-            const newAction = getNewSubAgentAction(
-              tool,
-              childAgentId,
-              childAgentName
-            );
-            setValue("actions", [...currentActions, newAction], {
-              shouldDirty: true,
-            });
-          }
-        } else {
-          const currentActions = getValues("actions");
-          const filteredActions = currentActions.filter(
-            (action) => action.configuration.childAgentId !== childAgentId
+  const handleAccept = async (
+    agentSuggestion: AgentSubAgentSuggestionWithRelationsType
+  ) => {
+    const success = await acceptSuggestion(agentSuggestion);
+    if (success) {
+      if (isAddition) {
+        const currentActions = getValues("actions");
+        if (!isSubAgentAlreadyAdded(currentActions, childAgentId)) {
+          const newAction = getNewSubAgentAction(
+            tool,
+            childAgentId,
+            childAgentName
           );
-          setValue("actions", filteredActions, { shouldDirty: true });
+          setValue("actions", [...currentActions, newAction], {
+            shouldDirty: true,
+          });
         }
+      } else {
+        const currentActions = getValues("actions");
+        const filteredActions = currentActions.filter(
+          (action) => action.configuration.childAgentId !== childAgentId
+        );
+        setValue("actions", filteredActions, { shouldDirty: true });
       }
-    },
-    [
-      acceptSuggestion,
-      getValues,
-      setValue,
-      isAddition,
-      tool,
-      childAgentId,
-      childAgentName,
-    ]
-  );
+    }
+  };
 
-  const handleReject = useCallback(
-    (agentSuggestion: AgentSubAgentSuggestionWithRelationsType) => {
-      void rejectSuggestion(agentSuggestion);
-    },
-    [rejectSuggestion]
-  );
+  const handleReject = (
+    agentSuggestion: AgentSubAgentSuggestionWithRelationsType
+  ) => {
+    void rejectSuggestion(agentSuggestion);
+  };
 
   const displayName = childAgentName
     ? `Run ${childAgentName}`
@@ -355,7 +343,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   const isAddition = suggestion.action === "add";
   const skill = relations.skill;
 
-  const handleAccept = useCallback(async () => {
+  const handleAccept = async () => {
     const success = await acceptSuggestion(agentSuggestion);
     if (success) {
       if (isAddition) {
@@ -378,18 +366,11 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
         setValue("skills", filteredSkills, { shouldDirty: true });
       }
     }
-  }, [
-    acceptSuggestion,
-    agentSuggestion,
-    getValues,
-    setValue,
-    isAddition,
-    skill,
-  ]);
+  };
 
-  const handleReject = useCallback(() => {
+  const handleReject = () => {
     void rejectSuggestion(agentSuggestion);
-  }, [rejectSuggestion, agentSuggestion]);
+  };
 
   const labels = isAddition
     ? {
@@ -439,34 +420,26 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
     name: "generationSettings.reasoningEffort",
   });
 
-  const handleAccept = useCallback(
-    async (agentSuggestion: AgentModelSuggestionWithRelationsType) => {
-      const success = await acceptSuggestion(agentSuggestion);
-      if (success && relations.model) {
-        modelSettingsField.onChange({
-          modelId: relations.model.modelId,
-          providerId: relations.model.providerId,
-        });
-        reasoningEffortField.onChange(
-          suggestion.reasoningEffort ?? relations.model.defaultReasoningEffort
-        );
-      }
-    },
-    [
-      acceptSuggestion,
-      relations.model,
-      suggestion.reasoningEffort,
-      modelSettingsField,
-      reasoningEffortField,
-    ]
-  );
+  const handleAccept = async (
+    agentSuggestion: AgentModelSuggestionWithRelationsType
+  ) => {
+    const success = await acceptSuggestion(agentSuggestion);
+    if (success && relations.model) {
+      modelSettingsField.onChange({
+        modelId: relations.model.modelId,
+        providerId: relations.model.providerId,
+      });
+      reasoningEffortField.onChange(
+        suggestion.reasoningEffort ?? relations.model.defaultReasoningEffort
+      );
+    }
+  };
 
-  const handleReject = useCallback(
-    (agentSuggestion: AgentModelSuggestionWithRelationsType) => {
-      void rejectSuggestion(agentSuggestion);
-    },
-    [rejectSuggestion]
-  );
+  const handleReject = (
+    agentSuggestion: AgentModelSuggestionWithRelationsType
+  ) => {
+    void rejectSuggestion(agentSuggestion);
+  };
 
   return (
     <ActionCardBlock
@@ -499,61 +472,50 @@ function KnowledgeSuggestionCard({
   const dataSourceView = relations.dataSourceView;
   const displayName = getDisplayNameForDataSource(dataSourceView.dataSource);
 
-  const handleAccept = useCallback(
-    async (agentSuggestion: AgentKnowledgeSuggestionWithRelationsType) => {
-      const success = await acceptSuggestion(agentSuggestion);
-      if (!success) {
-        return;
-      }
+  const handleAccept = async (
+    agentSuggestion: AgentKnowledgeSuggestionWithRelationsType
+  ) => {
+    const success = await acceptSuggestion(agentSuggestion);
+    if (!success) {
+      return;
+    }
 
-      const currentActions = getValues("actions");
-      if (isAddition) {
-        const newAction = getDefaultMCPAction(relations.searchServerView);
-        newAction.name = generateUniqueActionName({
-          baseName: nameToStorageFormat(`search ${displayName}`),
-          existingActions: currentActions,
-        });
-        newAction.description =
-          suggestion.description ?? `Search ${displayName}`;
-        newAction.configuration.dataSourceConfigurations = {
-          [dataSourceView.sId]: {
-            dataSourceView: dataSourceView,
-            selectedResources: [],
-            excludedResources: [],
-            isSelectAll: true,
-            tagsFilter: null,
-          },
-        };
+    const currentActions = getValues("actions");
+    if (isAddition) {
+      const newAction = getDefaultMCPAction(relations.searchServerView);
+      newAction.name = generateUniqueActionName({
+        baseName: nameToStorageFormat(`search ${displayName}`),
+        existingActions: currentActions,
+      });
+      newAction.description =
+        suggestion.description ?? `Search ${displayName}`;
+      newAction.configuration.dataSourceConfigurations = {
+        [dataSourceView.sId]: {
+          dataSourceView: dataSourceView,
+          selectedResources: [],
+          excludedResources: [],
+          isSelectAll: true,
+          tagsFilter: null,
+        },
+      };
 
-        setValue("actions", [...currentActions, newAction], {
-          shouldDirty: true,
-        });
-      } else {
-        const filteredActions = currentActions.filter((action) => {
-          const dsConfigs = action.configuration.dataSourceConfigurations;
-          return !dsConfigs || !(dataSourceView.sId in dsConfigs);
-        });
-        setValue("actions", filteredActions, { shouldDirty: true });
-      }
-    },
-    [
-      acceptSuggestion,
-      isAddition,
-      relations.searchServerView,
-      getValues,
-      setValue,
-      dataSourceView,
-      displayName,
-      suggestion.description,
-    ]
-  );
+      setValue("actions", [...currentActions, newAction], {
+        shouldDirty: true,
+      });
+    } else {
+      const filteredActions = currentActions.filter((action) => {
+        const dsConfigs = action.configuration.dataSourceConfigurations;
+        return !dsConfigs || !(dataSourceView.sId in dsConfigs);
+      });
+      setValue("actions", filteredActions, { shouldDirty: true });
+    }
+  };
 
-  const handleReject = useCallback(
-    (agentSuggestion: AgentKnowledgeSuggestionWithRelationsType) => {
-      void rejectSuggestion(agentSuggestion);
-    },
-    [rejectSuggestion]
-  );
+  const handleReject = (
+    agentSuggestion: AgentKnowledgeSuggestionWithRelationsType
+  ) => {
+    void rejectSuggestion(agentSuggestion);
+  };
 
   const icon = dataSourceView.dataSource.connectorProvider
     ? CONNECTOR_UI_CONFIGURATIONS[
