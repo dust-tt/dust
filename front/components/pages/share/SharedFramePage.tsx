@@ -7,18 +7,22 @@ import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
 
-const ALLOWED_EMBED_PREFIXES = ["https://dust.tt/blog/"];
+function isEmbeddedFromDustBlog(): boolean {
+  if (typeof window === "undefined" || !document.referrer) {
+    return false;
+  }
+  try {
+    const url = new URL(document.referrer);
+    return url.hostname === "dust.tt" && url.pathname.startsWith("/blog/");
+  } catch {
+    return false;
+  }
+}
 
 export function SharedFramePage() {
   const token = usePathParam("token");
 
-  const hideHeader = useMemo(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    const referrer = document.referrer;
-    return ALLOWED_EMBED_PREFIXES.some((prefix) => referrer.startsWith(prefix));
-  }, []);
+  const hideHeader = useMemo(() => isEmbeddedFromDustBlog(), []);
 
   const { shareMetadata, isShareMetadataLoading, shareMetadataError } =
     useShareFrameMetadata({
