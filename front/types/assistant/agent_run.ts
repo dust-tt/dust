@@ -38,6 +38,9 @@ export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "user_message_deleted",
 ] as const;
 
+// Cache for 200 seconds, which maps to P95 execution time of the agent loop.
+const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
+
 export type AgentLoopDataSoftDeleteErrorType =
   (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
 
@@ -296,7 +299,7 @@ export async function getAgentLoopDataWithAuth(
     () =>
       `agentMessageId:${agentMessageId}-agentConfigurationId:${agentId}-agentMessageVersion:${agentMessageVersion}`,
     {
-      ttlMs: 60 * 60 * 1000, // 1 hour
+      ttlMs: AGENT_CONFIGURATION_CACHE_TTL_MS,
     }
   )(auth, {
     agentId,
