@@ -2,6 +2,7 @@ import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { useArchiveProject } from "@app/hooks/useArchiveProject";
 import {
   useProjectMetadata,
   useSpaceInfo,
@@ -147,23 +148,18 @@ export function SpaceAboutTab({
     setIsEditingDescription(false);
   };
 
+  const { archiveProject, unarchiveProject } = useArchiveProject({
+    owner,
+    spaceId: space.sId,
+  });
+
   const handleArchiveToggle = useCallback(async () => {
     if (projectMetadata?.archivedAt) {
-      await doUpdateMetadata({ archive: false });
+      await unarchiveProject();
     } else {
-      const confirmed = await confirm({
-        title: "Archive project?",
-        message:
-          "You'll no longer be able to create new conversations in this project and it will be hidden from the sidebar. However, existing content can still be used by agents. Unarchive it to get back access to it",
-        validateVariant: "warning",
-      });
-
-      if (!confirmed) {
-        return;
-      }
-      await doUpdateMetadata({ archive: true });
+      await archiveProject();
     }
-  }, [confirm, doUpdateMetadata, projectMetadata?.archivedAt]);
+  }, [archiveProject, unarchiveProject, projectMetadata?.archivedAt]);
 
   const handleVisibilityToggle = useCallback(async () => {
     const newIsPublic = !isPublic;
