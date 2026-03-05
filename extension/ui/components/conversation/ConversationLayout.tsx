@@ -1,3 +1,4 @@
+import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -10,7 +11,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { FileDropProvider } from "@extension/ui/components/conversation/FileUploaderContext";
 import type React from "react";
 import { useContext } from "react";
 

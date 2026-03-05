@@ -11,7 +11,6 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { Button, MoreIcon } from "@dust-tt/sparkle";
 import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
-import { DropzoneContainer } from "@extension/ui/components/DropzoneContainer";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
@@ -99,25 +98,20 @@ export const MainPage = () => {
           </p>
         </div>
       )}
-      <DropzoneContainer
-        description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-        title="Attach files to the conversation"
-      >
-        <BlockedActionsProvider owner={workspace} conversation={conversation}>
-          <ConversationSidePanelProvider>
-            <GenerationContextProvider>
-              <ConversationContainer
-                workspace={workspace}
-                user={user}
-                subscription={subscription}
-                conversationId={conversationId}
-                conversation={conversation}
-                serverId={serverId}
-              />
-            </GenerationContextProvider>
-          </ConversationSidePanelProvider>
-        </BlockedActionsProvider>
-      </DropzoneContainer>
+      <BlockedActionsProvider owner={workspace} conversation={conversation}>
+        <ConversationSidePanelProvider>
+          <GenerationContextProvider>
+            <ConversationContainer
+              workspace={workspace}
+              user={user}
+              subscription={subscription}
+              conversationId={conversationId}
+              conversation={conversation}
+              serverId={serverId}
+            />
+          </GenerationContextProvider>
+        </ConversationSidePanelProvider>
+      </BlockedActionsProvider>
     </ConversationLayout>
   );
 };

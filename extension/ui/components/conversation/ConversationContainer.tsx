@@ -81,7 +81,7 @@ export const ConversationContainer = ({
     });
 
     const cleanup = platform.messaging?.addMessageListener(
-      async (message: AttachSelectionMessage) => {
+      (message: AttachSelectionMessage) => {
         if (message.type === "EXT_ATTACH_TAB") {
           void fileUploaderService.uploadContentTab(message);
         }
