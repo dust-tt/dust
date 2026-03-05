@@ -307,11 +307,6 @@ export function AgentBuilderInstructionsEditor({
     // Mark as set immediately to prevent race conditions
     initialContentSetRef.current = true;
 
-    // Register the editor with the suggestions context if available.
-    if (suggestionsContext) {
-      suggestionsContext.registerEditor(editor);
-    }
-
     // Use requestAnimationFrame to ensure DOM is fully ready
     // This fixes "Applying a mismatched transaction" error in Safari/iOS
     requestAnimationFrame(() => {
@@ -340,6 +335,11 @@ export function AgentBuilderInstructionsEditor({
           // For HTML loads, this preserves existing IDs; for markdown loads, this generates new ones.
           instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
           editor.commands.focus("end");
+
+          // Register with the suggestions context now that content is fully set.
+          if (suggestionsContext) {
+            suggestionsContext.registerEditor(editor);
+          }
         }
       });
     });

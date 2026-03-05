@@ -305,23 +305,12 @@ function CopilotSuggestionsProviderContent({
   const registerEditor = useCallback((editor: Editor) => {
     if (editorRef.current !== editor) {
       appliedSuggestionsRef.current.clear();
-      setIsEditorReady(false);
     }
 
+    // Called after the editor has fully set its initial content, so it's
+    // immediately ready to have suggestions applied.
     editorRef.current = editor;
-
-    // Wait for the editor content to be set.
-    const checkEditorReady = () => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (editor && !editor.isDestroyed) {
-            setIsEditorReady(true);
-          }
-        });
-      });
-    };
-
-    checkEditorReady();
+    setIsEditorReady(true);
   }, []);
 
   // Dispatch the blur event after a delay so the editor's debounced form sync
