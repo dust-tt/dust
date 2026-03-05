@@ -1,0 +1,37 @@
+front/lib/api/assistant/global_agents/configurations/dust/copilot_edge.ts
+  1f5b4239bd65f114 60
+front/temporal/agent_loop/lib/run_model.ts
+  1f5b4239bd65f114 20-22,26-27,361-370,385-386
+front/lib/api/assistant/global_agents/configurations/dust/copilot.ts
+  1f5b4239bd65f114 3,408-409,411,413-416,435,502
+front/lib/api/assistant/generation.test.ts
+  1f5b4239bd65f114 9-11,344-391,499-535
+front/lib/api/assistant/generation.ts
+  1f5b4239bd65f114 407-408,423-424,436-437,497-498,518-519
+front/lib/api/assistant/global_agents/global_agents.ts
+  1f5b4239bd65f114 110-112,117-119,123-125,130-131,136-137,141-143,148-149,154-155,159-161,166-167,172-175,178-179,184-185,190-193,196-197,202-203,208-209,214-215,220-221,226-227,232-233,238-239,244-251,256-257,262-263,268-269,274-277,280-281,286-289,292-293,298-299,303-305,309-311,316-317,322-323,327-329,333-335,340-341,346-347,352-361,364-365,370-379,382-383,388-389,394-395,400-401,406-407,412-413,418-419,424-425,430-431,436-437,442-443,448-449,454-457,460-461,473-477,479,481-482
+front/lib/api/assistant/global_agents/copilot_context.ts
+  1f5b4239bd65f114 147-161,166-169,181-182,190
+front/tests/copilot-evals/lib/config.ts
+  1f5b4239bd65f114 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "b0f6c6ab879361fd02c62ca728aa9c8f524fe99c",
+  "prompts": {
+    "1f5b4239bd65f114": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc2f9916-18db-460e-afa8-4bba8a2aaf90",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 360,
+      "total_deletions": 163,
+      "accepted_lines": 325,
+      "overriden_lines": 2
+    }
+  }
+}
