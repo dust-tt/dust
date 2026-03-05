@@ -58,14 +58,14 @@ export function checkSignature({
   algorithm,
   secret,
   headers,
-  body,
+  rawBody,
   provider,
 }: {
   headerName: string | null;
   algorithm: "sha1" | "sha256" | "sha512" | null;
   secret: string;
   headers: Record<string, string>;
-  body: unknown;
+  rawBody: string;
   provider: WebhookProvider | null;
 }): Result<
   void,
@@ -75,7 +75,7 @@ export function checkSignature({
     const verifyRes = FathomClient.verifyWebhook({
       secret,
       headers,
-      body: JSON.stringify(body),
+      body: rawBody,
     });
 
     if (verifyRes.isErr()) {
@@ -108,10 +108,8 @@ export function checkSignature({
     });
   }
 
-  const stringifiedBody = JSON.stringify(body);
-
   const isValid = verifySignature({
-    signedContent: stringifiedBody,
+    signedContent: rawBody,
     secret: secret,
     signature,
     algorithm,
@@ -718,11 +716,13 @@ export async function processWebhookRequest(
     webhookRequest,
     headers,
     body,
+    rawBody,
   }: {
     webhookSource: WebhookSourceResource;
     webhookRequest: WebhookRequestResource;
     headers: Record<string, string>;
     body: Record<string, unknown>;
+    rawBody: string;
   }
 ): Promise<Result<void, Error>> {
   const localLogger = logger.child({
@@ -737,7 +737,7 @@ export async function processWebhookRequest(
       algorithm: webhookSource.signatureAlgorithm,
       secret: webhookSource.secret,
       headers,
-      body,
+      rawBody,
       provider: webhookSource.provider,
     });
 

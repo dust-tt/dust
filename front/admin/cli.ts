@@ -836,6 +836,7 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
             webhookSource,
             headers,
             body,
+            rawBody: JSON.stringify(body),
           });
           if (result.isErr()) {
             localLogger.error(

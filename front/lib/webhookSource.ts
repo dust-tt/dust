@@ -62,24 +62,33 @@ export const verifySignature = ({
     return false;
   }
 
-  const expectedSignature = `${algorithm}=${createHmac(algorithm, secret)
+  // Try "{algorithm}={hex}" format first (GitHub-style).
+  const prefixedHex = `${algorithm}=${createHmac(algorithm, secret)
     .update(signedContent, "utf8")
     .digest("hex")}`;
+  if (safeCompare(signature, prefixedHex)) {
+    return true;
+  }
 
-  // timingSafeEqual requires buffers of equal length
-  // Return false immediately if it throws an error
+  // Try raw base64 format (HelpScout, etc.).
+  const rawBase64 = createHmac(algorithm, secret)
+    .update(signedContent, "utf8")
+    .digest("base64");
+  if (safeCompare(signature, rawBase64)) {
+    return true;
+  }
+
+  return false;
+};
+
+function safeCompare(a: string, b: string): boolean {
   try {
-    const isValid = timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
-    return isValid;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (e) {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    // Length mismatch.
     return false;
   }
-};
+}
 
 export const buildWebhookUrl = ({
   apiBaseUrl,
