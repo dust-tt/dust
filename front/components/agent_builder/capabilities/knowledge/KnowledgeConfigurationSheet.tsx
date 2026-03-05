@@ -34,7 +34,10 @@ import {
 } from "@app/components/data_source_view/context/PageContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  ADVANCED_SEARCH_SWITCH,
+  SEARCH_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
@@ -287,7 +290,7 @@ function KnowledgeConfigurationSheetContent({
     }
   }, [currentPageId, setFocus]);
 
-  // Prefill name field with processing method display name when mcpServerView.id changes
+  // Prefill name field and set defaults when mcpServerView.id changes
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (mcpServerView && !isEditing) {
@@ -299,6 +302,21 @@ function KnowledgeConfigurationSheetContent({
           shouldTouch: false,
           shouldValidate: false,
         });
+      }
+
+      // Enable advanced search by default for new search server configurations.
+      if (
+        mcpServerView.serverType === "internal" &&
+        mcpServerView.server.name === SEARCH_SERVER_NAME
+      ) {
+        const currentAdditionalConfig = getValues(
+          "configuration.additionalConfiguration"
+        );
+        setValue(
+          "configuration.additionalConfiguration",
+          { ...currentAdditionalConfig, [ADVANCED_SEARCH_SWITCH]: true },
+          { shouldDirty: false }
+        );
       }
     }
     // We only watch mcpServerView?.id instead of the full object because:
