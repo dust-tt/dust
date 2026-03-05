@@ -152,7 +152,12 @@ async function handler(
         { concurrency: IMPORT_CONCURRENCY }
       );
 
-      return res.status(200).json({ imported, errors });
+      return res
+        .status(200)
+        .json({
+          imported: imported.map((skill) => skill.toJSON(auth)),
+          errors,
+        });
     }
 
     default:
