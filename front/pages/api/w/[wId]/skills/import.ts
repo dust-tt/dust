@@ -93,7 +93,7 @@ async function handler(
       );
 
       const user = auth.getNonNullableUser();
-      const imported: SkillType[] = [];
+      const imported: SkillResource[] = [];
       const errors: { name: string; message: string }[] = [];
 
       await concurrentExecutor(
@@ -147,7 +147,7 @@ async function handler(
             { mcpServerViews: [] }
           );
 
-          imported.push(skillResource.toJSON(auth));
+          imported.push(skillResource);
         },
         { concurrency: IMPORT_CONCURRENCY }
       );
