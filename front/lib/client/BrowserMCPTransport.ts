@@ -1,7 +1,7 @@
-import config from "@app/lib/api/config";
-import { clientFetch } from "@app/lib/egress/client";
+import { clientEventSource, clientFetch } from "@app/lib/egress/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import type { EventSourcePolyfill } from "event-source-polyfill";
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes.
 const RECONNECT_DELAY_MS = 5_000; // 5 seconds.
@@ -14,7 +14,7 @@ const RECONNECT_DELAY_MS = 5_000; // 5 seconds.
  * - Uses fetch with credentials for HTTP POST (sends results back to Dust)
  */
 export class BrowserMCPTransport implements Transport {
-  private eventSource: EventSource | null = null;
+  private eventSource: EventSourcePolyfill | null = null;
   private lastEventId: string | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private serverId: string | null = null;
@@ -186,18 +186,20 @@ export class BrowserMCPTransport implements Transport {
       this.eventSource = null;
     }
 
-    // Build URL with query parameters.
-    const base = config.getApiBaseUrl() || window.location.origin;
-    const url = new URL(`/api/sse/w/${this.workspaceId}/mcp/requests`, base);
-    url.searchParams.set("serverId", this.serverId);
+    // Build relative URL with query parameters.
+    const params = new URLSearchParams();
+    params.set("serverId", this.serverId);
     if (this.lastEventId) {
-      url.searchParams.set("lastEventId", this.lastEventId);
+      params.set("lastEventId", this.lastEventId);
     }
 
-    // Create native EventSource (uses session cookies automatically).
-    this.eventSource = new EventSource(url.toString(), {
-      withCredentials: true,
-    });
+    this.eventSource = clientEventSource(
+      `/api/sse/w/${this.workspaceId}/mcp/requests?${params.toString()}`,
+      // The MCP SSE connection is idle most of the time (waiting for requests
+      // from Dust). Disable the polyfill's heartbeat timeout so it doesn't
+      // treat silence as a dead connection (default is 45s).
+      { heartbeatTimeout: HEARTBEAT_INTERVAL_MS * 2 }
+    );
 
     this.eventSource.onmessage = (event) => {
       try {

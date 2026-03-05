@@ -52,10 +52,7 @@ ConversationBranchModel.init(
         fields: ["workspaceId", "conversationId", "userId"],
       },
       {
-        // We can only have one branch per message.
-        // If the original message is edited, it will be a new message row.
         fields: ["previousMessageId"],
-        unique: true,
       },
     ],
   }

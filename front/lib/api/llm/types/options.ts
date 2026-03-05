@@ -82,6 +82,7 @@ export type LLMParameters = {
   modelId: ModelIdType;
   reasoningEffort?: ReasoningEffort | null;
   responseFormat?: string | null;
+  metaData?: Record<string, unknown>;
   temperature?: number | null;
 } & LLMTraceCustomization;
 

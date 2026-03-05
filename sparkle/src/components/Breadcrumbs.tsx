@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import { Button, ICON_SIZE_MAP } from "@sparkle/components/Button";
 import {
   DropdownMenu,

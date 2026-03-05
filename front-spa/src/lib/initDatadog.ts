@@ -1,10 +1,49 @@
+import { datadogLogs } from "@datadog/browser-logs";
+
+// Benign errors filtered from Datadog Logs.
+// See: https://github.com/DataDog/browser-sdk/issues/1616
+const IGNORED_LOG_MESSAGES = [
+  "ResizeObserver loop completed with undelivered notifications",
+  "ResizeObserver loop limit exceeded",
+];
+
+/**
+ * Initialize Datadog Logs so that `datadogLogger` calls from front components
+ * are forwarded to Datadog instead of being silently swallowed.
+ */
+export function initDatadogLogs() {
+  const clientToken = import.meta.env?.VITE_DATADOG_CLIENT_TOKEN;
+
+  if (!clientToken) {
+    return;
+  }
+
+  datadogLogs.init({
+    clientToken,
+    site: "datadoghq.eu",
+    service: `${import.meta.env?.VITE_DATADOG_SERVICE || "front"}-browser`,
+    env: import.meta.env?.MODE === "production" ? "prod" : "dev",
+    version: import.meta.env?.VITE_COMMIT_HASH || "",
+    forwardErrorsToLogs: true,
+    sessionSampleRate: 100,
+    beforeSend: (log) => {
+      if (
+        typeof log.message === "string" &&
+        IGNORED_LOG_MESSAGES.some((m) => log.message.includes(m))
+      ) {
+        return false;
+      }
+      return true;
+    },
+  });
+}
+
 /**
  * Initialize Datadog RUM (Real User Monitoring)
  * This should be called early in the app initialization
  */
 export function initDatadogRUM() {
-  const env = import.meta.env as Record<string, string | undefined>;
-  const clientToken = env.VITE_DATADOG_CLIENT_TOKEN;
+  const clientToken = import.meta.env?.VITE_DATADOG_CLIENT_TOKEN;
 
   // Only initialize if we have a client token
   if (!clientToken || !window.DD_RUM) {
@@ -16,9 +55,9 @@ export function initDatadogRUM() {
       clientToken,
       applicationId: "5e9735e7-87c8-4093-b09f-49d708816bfd",
       site: "datadoghq.eu",
-      service: `${env.VITE_DATADOG_SERVICE || "front"}-browser`,
-      env: env.MODE === "production" ? "prod" : "dev",
-      version: env.VITE_COMMIT_HASH || "",
+      service: `${import.meta.env?.VITE_DATADOG_SERVICE || "front"}-browser`,
+      env: import.meta.env?.MODE === "production" ? "prod" : "dev",
+      version: import.meta.env?.VITE_COMMIT_HASH || "",
       allowedTracingUrls: [
         "https://dust.tt",
         "https://eu.dust.tt",

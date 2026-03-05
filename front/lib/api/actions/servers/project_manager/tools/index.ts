@@ -412,6 +412,7 @@ export function createProjectManagerTools(
             spaceId: space.sId,
             options: {
               updatedSince: cutoffDate.getTime(),
+              excludeTest: true,
             },
           });
 

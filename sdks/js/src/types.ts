@@ -668,6 +668,7 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_builder_copilot"
+  | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
   | "agent_management_tool"
   | "agent_to_yaml"
@@ -678,6 +679,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "conversation_butler"
+  | "conversation_branches"
   | "project_butler"
   | "projects"
   | "databricks_tool"
@@ -2993,6 +2995,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "AsanaLogo"
   | "AshbyLogo"
   | "AttioLogo"
+  | "BigQueryLogo"
   | "ToolsIcon"
   | "CanvaLogo"
   | "CommandLineIcon"
@@ -3005,6 +3008,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GithubLogo"
   | "GitlabLogo"
   | "GmailLogo"
+  | "GongLogo"
   | "GoogleSpreadsheetLogo"
   | "GranolaLogo"
   | "GuruLogo"
@@ -3238,6 +3242,30 @@ export const GetMCPServerViewsQuerySchema = z.object({
 export type GetMCPServerViewsQueryType = z.infer<
   typeof GetMCPServerViewsQuerySchema
 >;
+
+export const CallMCPToolRequestBodySchema = z.object({
+  toolName: z.string(),
+  arguments: z.record(z.unknown()).optional(),
+});
+
+export type CallMCPToolRequestBodyType = z.infer<
+  typeof CallMCPToolRequestBodySchema
+>;
+
+const CallMCPToolContentBlockSchema = z.object({
+  type: z.string(),
+  text: z.string().optional(),
+});
+
+export const CallMCPToolResponseSchema = z.object({
+  success: z.literal(true),
+  result: z.object({
+    content: z.array(CallMCPToolContentBlockSchema),
+    isError: z.boolean(),
+  }),
+});
+
+export type CallMCPToolResponseType = z.infer<typeof CallMCPToolResponseSchema>;
 
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,

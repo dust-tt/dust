@@ -17,10 +17,10 @@ import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
 // Constants for Slack API limits and pagination.
-export const MAX_CHANNELS_LIMIT = 500;
 export const MAX_CHANNEL_SEARCH_RESULTS = 20;
 export const MAX_THREAD_MESSAGES = 200;
 export const SLACK_API_PAGE_SIZE = 200; // Slack recommendation 100 to 200 and max 1000 per request.
+export const MAX_PUBLIC_CHANNELS_LIMIT = 1000; // conversations.list is Tier 2 (20 req/min) => max 5 request plus cache TTL.
 export const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
 export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
@@ -52,10 +52,9 @@ export const getSlackClient = async (accessToken?: string) => {
   });
 };
 
-type GetChannelsArgs = {
-  slackClient: WebClient;
-  scope: "public" | "joined";
-};
+type GetChannelsArgs =
+  | { slackClient: WebClient; scope: "public"; limit: number }
+  | { slackClient: WebClient; scope: "joined" };
 
 type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
   id: string;
@@ -188,10 +187,10 @@ export function cleanUserGroupPayload(
   };
 }
 
-export const getChannels = async ({
-  slackClient,
-  scope,
-}: GetChannelsArgs): Promise<ChannelWithIdAndName[]> => {
+export const getChannels = async (
+  args: GetChannelsArgs
+): Promise<ChannelWithIdAndName[]> => {
+  const { slackClient, scope } = args;
   const channels: Channel[] = [];
   let cursor: string | undefined = undefined;
 
@@ -223,11 +222,9 @@ export const getChannels = async ({
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
 
-    // We can't handle a huge list of channels, and even if we could, it would be unusable.
-    // So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
-    if (channels.length >= MAX_CHANNELS_LIMIT) {
-      logger.warn(
-        `Channel list truncated after reaching over ${MAX_CHANNELS_LIMIT} channels.`
+    if (args.scope === "public" && channels.length >= args.limit) {
+      logger.info(
+        `Channel list capped at ${args.limit} channels (scope: ${scope}).`
       );
       break;
     }
@@ -250,7 +247,11 @@ export const getCachedPublicChannels = cacheWithRedis(
     slackClient: WebClient;
     mcpServerId: string;
   }): Promise<ChannelWithIdAndName[]> => {
-    return getChannels({ slackClient, scope: "public" });
+    return getChannels({
+      slackClient,
+      scope: "public",
+      limit: MAX_PUBLIC_CHANNELS_LIMIT,
+    });
   },
   ({ mcpServerId }: { mcpServerId: string }) => mcpServerId,
   {
@@ -593,30 +594,6 @@ function filterUsers(
   return allMatches.slice(0, limit);
 }
 
-async function searchAndProcessChannels(
-  slackClient: WebClient,
-  scope: "joined" | "public",
-  query: string,
-  contextMessage: string
-): Promise<{
-  result: Ok<Array<{ type: "text"; text: string }>>;
-  count: number;
-}> {
-  const channels = await getChannels({ slackClient, scope });
-  const matched = filterChannels(channels, query);
-  const cleaned = matched.map(cleanChannelPayload);
-  const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
-  return {
-    result: new Ok([
-      {
-        type: "text" as const,
-        text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
-      },
-    ]),
-    count: cleaned.length,
-  };
-}
-
 function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
   return [
     `- **#${c.name}**`,
@@ -635,11 +612,13 @@ function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
 // Execute search_channels: automatically detects channel IDs vs text search.
 export async function executeSearchChannels(
   query: string,
-  scope: "auto" | "joined" | "all",
+  searchAll: boolean,
   {
     accessToken,
+    mcpServerId,
   }: {
     accessToken: string;
+    mcpServerId: string;
   }
 ): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
   const slackClient = await getSlackClient(accessToken);
@@ -674,49 +653,24 @@ export async function executeSearchChannels(
   }
 
   // Search lookup.
-  // Scope="auto": search in joined channels; if no match fallback in all public channels.
-  if (scope === "auto") {
-    const { result: joinedResult, count: joinedCount } =
-      await searchAndProcessChannels(
-        slackClient,
-        "joined",
-        query,
-        "in your joined channels"
-      );
+  // search_all=true: use workspace-level Redis cache (public channels, TTL 10min)
+  // search_all=false: fetch joined channels (user-specific, no cache)
+  const channels = searchAll
+    ? await getCachedPublicChannels({ slackClient, mcpServerId })
+    : await getChannels({ slackClient, scope: "joined" });
+  const contextMessage = searchAll
+    ? "in public workspace channels"
+    : "in your joined channels";
 
-    if (joinedCount > 0) {
-      return joinedResult;
-    }
-
-    // Fallback to all public channels.
-    const { result: publicResult } = await searchAndProcessChannels(
-      slackClient,
-      "public",
-      query,
-      "in public workspace channels"
-    );
-    return publicResult;
-  }
-
-  // Scope="joined": search all public, private, im and mpim joined channels.
-  if (scope === "joined") {
-    const { result } = await searchAndProcessChannels(
-      slackClient,
-      "joined",
-      query,
-      "in your joined channels"
-    );
-    return result;
-  }
-
-  // Scope="all": search all public channels.
-  const { result } = await searchAndProcessChannels(
-    slackClient,
-    "public",
-    query,
-    "in public workspace channels"
-  );
-  return result;
+  const matched = filterChannels(channels, query);
+  const cleaned = matched.map(cleanChannelPayload);
+  const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
+    },
+  ]);
 }
 
 // Used by slack_bot

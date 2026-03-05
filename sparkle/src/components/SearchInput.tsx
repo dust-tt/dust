@@ -1,18 +1,15 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
+import { Button } from "@sparkle/components/Button";
+import type { ContentMessageProps } from "@sparkle/components/ContentMessage";
+import { ContentMessage } from "@sparkle/components/ContentMessage";
+import { Icon } from "@sparkle/components/Icon";
+import { Input } from "@sparkle/components/Input";
 import {
-  Button,
-  ContentMessage,
-  Icon,
-  Input,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
-} from "@sparkle/components";
-import type { ContentMessageProps } from "@sparkle/components/ContentMessage";
+} from "@sparkle/components/Popover";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { Spinner } from "@sparkle/components/Spinner";
 import {
   ListCheckIcon,
   MagnifyingGlassIcon,

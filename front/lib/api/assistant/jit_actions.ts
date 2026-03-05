@@ -83,10 +83,11 @@ async function getConditionalJITServers(
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   const servers: (ServerSideMCPServerConfigurationType | null)[] = [];
 
-  // Get conversation-specific MCP servers (tools).
+  // Get conversation-specific MCP servers (tools), including those activated by this agent.
   const conversationServers = await getConversationMCPServers(
     auth,
-    conversation
+    conversation,
+    agentConfiguration.sId
   );
   servers.push(...conversationServers);
 

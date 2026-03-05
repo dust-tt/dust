@@ -18,6 +18,7 @@ import {
   getSmallWhitelistedModel,
 } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
@@ -61,7 +62,7 @@ Dimensions you MUST consider:
 - Review instructions to determine if the agent is meeting the user intent and properly utilizing the configured capabilities: <instructions_guidance>.
 - Instructions reference/require external actions - Tools or skills are required. See <skills_tools_guidance>.
 - Instructions reference/require internal data -> Knowledge is required. See <knowledge_guidance>.
-- This should be ignored unless the user asks for model suggestions.
+- Model: Haiku is a good default for simple, single-purpose agents. Recommend upgrading to Sonnet only for agents with complex workflows, multi-step reasoning, or advanced tool orchestration. Don't mention models unless you are recommending a change.
 - Refer to <templates> when the user asks for use case ideas or selects a template to build.
 
 From this, determine (1) tools required to perform further research and (2) rough count of estimated suggest_* calls required to complete the plan.
@@ -461,6 +462,8 @@ export function buildCopilotInstructions(
   return parts.join("\n\n");
 }
 
+const COPILOT_NEW_AGENT_STATIC_RESPONSE = "What agent would you like to build?";
+
 export function _getCopilotGlobalAgent(
   auth: Authenticator,
   {
@@ -493,22 +496,28 @@ export function _getCopilotGlobalAgent(
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 
-  // Use a fast model for the very first turn (when the conversation has no
-  // prior exchanges) and the full model for all follow-ups.
-  // Prefer Haiku on the first turn; fall back to the workspace's small model if
-  // Anthropic is not whitelisted.
+  // Use noop model for the first turn of a new agent copilot conversation
+  // (static response without calling a real LLM).
+  // Use a fast model for other first turns and the full model for follow-ups.
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
-  const modelConfiguration = isFirstTurn
-    ? isProviderWhitelisted(owner, "anthropic")
-      ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-      : getSmallWhitelistedModel(owner)
-    : getLargeWhitelistedModel(owner);
+  const isNewAgentFromScratchFirstTurn =
+    isFirstTurn && globalAgentContext?.copilotIsNewAgentFromScratch;
+  const modelConfiguration = isNewAgentFromScratchFirstTurn
+    ? NOOP_MODEL_CONFIG
+    : isFirstTurn
+      ? isProviderWhitelisted(owner, "anthropic")
+        ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+        : getSmallWhitelistedModel(owner)
+      : getLargeWhitelistedModel(owner);
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
+        ...(isNewAgentFromScratchFirstTurn && {
+          metaData: { staticResponse: COPILOT_NEW_AGENT_STATIC_RESPONSE },
+        }),
       }
     : dummyModelConfiguration;
 

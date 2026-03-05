@@ -387,7 +387,7 @@ export function getProviderRequiredOAuthCredentialInputs({
       }
       return null;
     case "snowflake":
-      if (useCase === "personal_actions" || useCase === "platform_actions") {
+      if (useCase === "personal_actions") {
         const result: OAuthCredentialInputs = {
           snowflake_account: {
             label: "Snowflake Account",
@@ -414,9 +414,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              useCase === "platform_actions"
-                ? "The Snowflake role for all users (e.g., ANALYST)."
-                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
+              "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",
@@ -432,6 +430,7 @@ export function getProviderRequiredOAuthCredentialInputs({
         };
         return result;
       }
+      // platform_actions uses static credentials via the registry.
       return null;
     default:
       assertNever(provider);
@@ -567,6 +566,56 @@ export function isValidSnowflakeWarehouse(s: unknown): s is string {
     s.trim().length > 0 &&
     /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
   );
+}
+
+/**
+ * Pure validation function for OAuth credential inputs.
+ * Returns null if all credentials are valid, or the first error message string.
+ */
+export function validateOAuthCredentials({
+  provider,
+  useCase,
+  authCredentials,
+}: {
+  provider: OAuthProvider;
+  useCase: OAuthUseCase | null;
+  authCredentials: OAuthCredentials | null;
+}): string | null {
+  if (!useCase) {
+    return null;
+  }
+
+  const inputs = getProviderRequiredOAuthCredentialInputs({
+    provider,
+    useCase,
+  });
+
+  if (!inputs) {
+    return null;
+  }
+
+  if (!authCredentials) {
+    return "Credentials required";
+  }
+
+  for (const [key, inputData] of Object.entries(inputs)) {
+    if (!isSupportedOAuthCredential(key) || inputData.value) {
+      continue; // Skip unsupported or pre-filled values.
+    }
+
+    const value = authCredentials[key] ?? "";
+    if (inputData.validator) {
+      if (!inputData.validator(value)) {
+        return value.length === 0
+          ? `${inputData.label} is required`
+          : `Invalid ${inputData.label}`;
+      }
+    } else if (!value) {
+      return `${inputData.label} is required`;
+    }
+  }
+
+  return null;
 }
 
 // Credentials Providers

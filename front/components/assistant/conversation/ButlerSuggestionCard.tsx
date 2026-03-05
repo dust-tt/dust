@@ -1,9 +1,12 @@
 import type {
   ButlerSuggestionPublicType,
+  CallAgentButlerSuggestion,
   RenameTitleButlerSuggestion,
 } from "@app/types/conversation_butler_suggestion";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   Button,
+  ChatBubbleLeftRightIcon,
   CheckIcon,
   ContentMessage,
   PencilSquareIcon,
@@ -32,8 +35,11 @@ export function ButlerSuggestionCard({
         />
       );
     case "call_agent":
-      // Not yet implemented.
-      return null;
+      return (
+        <CallAgentSuggestionCard suggestion={suggestion} onAction={onAction} />
+      );
+    default:
+      assertNever(suggestion);
   }
 }
 
@@ -80,6 +86,63 @@ function RenameTitleSuggestionCard({
             variant="highlight"
             size="xs"
             icon={CheckIcon}
+            disabled={isSubmitting}
+            onClick={() => handleAction("accepted")}
+          />
+          <Button
+            label="Dismiss"
+            variant="outline"
+            size="xs"
+            icon={XMarkIcon}
+            disabled={isSubmitting}
+            onClick={() => handleAction("dismissed")}
+          />
+        </div>
+      </div>
+    </ContentMessage>
+  );
+}
+
+interface CallAgentSuggestionCardProps {
+  suggestion: CallAgentButlerSuggestion;
+  onAction: (
+    suggestionSId: string,
+    status: "accepted" | "dismissed"
+  ) => Promise<void>;
+}
+
+function CallAgentSuggestionCard({
+  suggestion,
+  onAction,
+}: CallAgentSuggestionCardProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleAction = async (status: "accepted" | "dismissed") => {
+    setIsSubmitting(true);
+    try {
+      await onAction(suggestion.sId, status);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ContentMessage
+      variant="highlight"
+      icon={ChatBubbleLeftRightIcon}
+      title={`Try asking @${suggestion.metadata.agentName}`}
+      className="my-3 w-full max-w-full"
+    >
+      <div className="flex flex-col gap-3">
+        <div className="italic text-sm text-muted-foreground">
+          "{suggestion.metadata.prompt}"
+        </div>
+        <div className="flex flex-row gap-2">
+          <Button
+            label="Ask"
+            variant="highlight"
+            size="xs"
+            icon={ChatBubbleLeftRightIcon}
             disabled={isSubmitting}
             onClick={() => handleAction("accepted")}
           />

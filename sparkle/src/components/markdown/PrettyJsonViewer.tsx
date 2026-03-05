@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import { Chip } from "@sparkle/components/Chip";
 import { cn } from "@sparkle/lib/utils";
 import React, { useState } from "react";

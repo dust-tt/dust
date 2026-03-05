@@ -7,6 +7,10 @@
  * adapter.
  */
 
+import type {
+  NetworkPolicy,
+  SandboxImageId,
+} from "@app/lib/api/sandbox/image/types";
 import type { Result } from "@app/types/shared/result";
 
 // ---------------------------------------------------------------------------
@@ -25,10 +29,12 @@ export interface SandboxHandle {
  * Configuration for provisioning a new sandbox.
  */
 export interface SandboxCreateConfig {
-  /** Template or image identifier. Provider-specific. */
-  templateId?: string;
+  /** Typed image identifier (name + tag). */
+  imageId?: SandboxImageId;
   /** Environment variables injected at creation time. */
   envVars?: Record<string, string>;
+  /** Network egress policy for the sandbox. */
+  network?: NetworkPolicy;
 }
 
 // ---------------------------------------------------------------------------

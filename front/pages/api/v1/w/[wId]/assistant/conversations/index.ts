@@ -426,6 +426,8 @@ async function handler(
             conversation,
             mcpServerViews,
             enabled: true,
+            source: "conversation",
+            agentConfigurationId: null,
           });
           if (r.isErr()) {
             return apiError(req, res, {

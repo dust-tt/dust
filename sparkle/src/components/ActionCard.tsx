@@ -1,6 +1,7 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Avatar, Button, Card, Chip } from "@sparkle/components/";
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { Card } from "@sparkle/components/Card";
+import { Chip } from "@sparkle/components/Chip";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
 import { PlusIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";

@@ -12,7 +12,6 @@ import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -61,7 +60,8 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       loginHint,
       returnTo,
       redirect_uri,
-      workspaceId,
+      code_challenge,
+      code_challenge_method,
     } = req.query;
 
     const redirectUri =
@@ -70,20 +70,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
         : `${config.getAuthRedirectBaseUrl()}/api/workos/callback`;
 
     let organizationIdToUse;
-
-    if (workspaceId && isString(workspaceId)) {
-      const workspace = workspaceId
-        ? await WorkspaceResource.fetchById(workspaceId)
-        : null;
-
-      if (!workspace?.workOSOrganizationId) {
-        res.status(400).json({
-          error: "Workspace does not have a WorkOS organization ID",
-        });
-        return;
-      }
-      organizationIdToUse = workspace.workOSOrganizationId;
-    }
 
     if (organizationId && typeof organizationId === "string") {
       organizationIdToUse = organizationId;
@@ -139,6 +125,10 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
           : undefined,
       ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
       ...(isString(loginHint) ? { loginHint } : {}),
+      ...(isString(code_challenge) ? { codeChallenge: code_challenge } : {}),
+      ...(isString(code_challenge_method) && code_challenge_method === "S256"
+        ? { codeChallengeMethod: code_challenge_method }
+        : {}),
     });
 
     res.redirect(authorizationUrl);
@@ -150,7 +140,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
-  const { code, grant_type, refresh_token } = req.body;
+  const { code, grant_type, refresh_token, code_verifier } = req.body;
 
   if (grant_type && !isString(grant_type)) {
     return res.status(400).json({ error: "Invalid grant_type" });
@@ -176,19 +166,43 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   if (!code || !isString(code)) {
     return res.status(400).json({ error: "Invalid code" });
   }
+
+  if (code_verifier && !isString(code_verifier)) {
+    return res.status(400).json({ error: "Invalid code verifier" });
+  }
   try {
-    const authResult = await authenticate(code);
-    return res.status(200).json(authResult);
+    const authResult = await authenticate({
+      code,
+      codeVerifier: code_verifier,
+    });
+
+    const jwtPayload = JSON.parse(
+      Buffer.from(authResult.accessToken.split(".")[1], "base64").toString()
+    );
+    const expiresIn = jwtPayload.exp
+      ? jwtPayload.exp - Math.floor(Date.now() / 1000)
+      : undefined;
+
+    return res.status(200).json({ ...authResult, expiresIn });
   } catch (error) {
     logger.error({ error }, "Error during WorkOS authentication");
     return res.status(500).json({ error: "Authentication failed" });
   }
 }
 
-async function authenticate(code: string, organizationId?: string) {
+async function authenticate({
+  code,
+  codeVerifier,
+  organizationId,
+}: {
+  code: string;
+  codeVerifier?: string;
+  organizationId?: string;
+}) {
   try {
     return await getWorkOS().userManagement.authenticateWithCode({
       code,
+      codeVerifier,
       clientId: config.getWorkOSClientId(),
       session: {
         sealSession: true,
@@ -242,7 +256,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       authenticationMethod,
       sealedSession,
       accessToken,
-    } = await authenticate(code, stateObj.organizationId);
+    } = await authenticate({ code, organizationId: stateObj.organizationId });
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
@@ -300,7 +314,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       sanitizedReturnTo &&
       sanitizedReturnTo.startsWith("/api/login?inviteToken=")
     ) {
-      const inviteUrl = new URL(sanitizedReturnTo, config.getClientFacingUrl());
+      const inviteUrl = new URL(sanitizedReturnTo, config.getApiBaseUrl());
       const inviteToken = inviteUrl.searchParams.get("inviteToken");
       if (inviteToken) {
         const inviteRes =
@@ -464,7 +478,7 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const validatedReturnTo = validateRelativePath(returnTo);
   const sanitizedReturnTo = validatedReturnTo.valid
     ? validatedReturnTo.sanitizedPath
-    : config.getClientFacingUrl();
+    : config.getStaticWebsiteUrl();
 
   redirectTo(res, sanitizedReturnTo);
 }

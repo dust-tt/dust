@@ -6,36 +6,38 @@ import {
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BookOpenIcon,
   Button,
   ChevronLeftIcon,
   ChevronRightIcon,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  ContentMessage,
+  Chip,
   IconButton,
   Markdown,
-  Page,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const COLLAPSED_MAX_HEIGHT_PX = 200;
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+const ACTIVE_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+const UNREAD_THRESHOLD = 5;
 
 interface SpaceUserProjectDigestProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   hasConversations: boolean;
+  unreadCount: number;
 }
 
 export function SpaceUserProjectDigest({
   owner,
   space,
   hasConversations,
+  unreadCount,
 }: SpaceUserProjectDigestProps) {
   const [generationError, setGenerationError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const { digests, isDigestsLoading, mutateDigests } = useUserProjectDigests({
     workspaceId: owner.sId,
@@ -78,6 +80,7 @@ export function SpaceUserProjectDigest({
   if (prevDigestsLengthRef.current !== digests.length) {
     prevDigestsLengthRef.current = digests.length;
     setCurrentIndex(0);
+    setIsExpanded(false);
   }
 
   const handleGenerate = async () => {
@@ -89,22 +92,38 @@ export function SpaceUserProjectDigest({
     }
   };
 
+  // Auto-trigger digest generation when the digest is stale.
+  const hasAutoTriggeredRef = useRef(false);
+  const handleGenerateRef = useRef(handleGenerate);
+  handleGenerateRef.current = handleGenerate;
+
+  useEffect(() => {
+    if (
+      isDigestsLoading ||
+      isGenerating ||
+      hasAutoTriggeredRef.current ||
+      !hasConversations
+    ) {
+      return;
+    }
+
+    const latestDigest = digests[0];
+    const hasNoDigest = !latestDigest;
+    const ageMs = latestDigest ? Date.now() - latestDigest.createdAt : 0;
+    const isStale = latestDigest && ageMs > STALE_THRESHOLD_MS;
+    const isActiveAndUnread =
+      latestDigest &&
+      ageMs > ACTIVE_THRESHOLD_MS &&
+      unreadCount >= UNREAD_THRESHOLD;
+
+    if (hasNoDigest || isStale || isActiveAndUnread) {
+      hasAutoTriggeredRef.current = true;
+      void handleGenerateRef.current();
+    }
+  }, [isDigestsLoading, isGenerating, digests, hasConversations, unreadCount]);
+
   if (!hasConversations) {
-    return (
-      <Page.Vertical gap="none" align="stretch">
-        <ContentMessage
-          variant="outline"
-          size="lg"
-          title="Project Digest"
-          icon={BookOpenIcon}
-        >
-          <div className="text-element-700 text-sm">
-            A summary of project activity will be available here once
-            conversations start.
-          </div>
-        </ContentMessage>
-      </Page.Vertical>
-    );
+    return null;
   }
 
   if (isDigestsLoading) {
@@ -115,168 +134,123 @@ export function SpaceUserProjectDigest({
     );
   }
 
-  if (isGenerating) {
-    return (
-      <Page.Vertical gap="none" align="stretch">
-        <ContentMessage
-          variant="outline"
-          size="lg"
-          title="Project Digest"
-          icon={BookOpenIcon}
-        >
-          <div className="flex items-center gap-3 py-2">
-            <Spinner size="sm" variant="color" />
-            <span className="text-element-700 text-sm">
-              Generating your personalized digest...
-            </span>
-          </div>
-        </ContentMessage>
-      </Page.Vertical>
-    );
-  }
-
-  if (generationError) {
-    return (
-      <Page.Vertical gap="none" align="stretch">
-        <ContentMessage
-          variant="outline"
-          size="lg"
-          title="Project Digest"
-          icon={BookOpenIcon}
-          action={
-            <Button
-              label="Retry"
-              variant="primary"
-              size="sm"
-              onClick={handleGenerate}
-            />
-          }
-        >
-          <div className="text-element-700 text-sm">
-            Digest generation failed. Please try again.
-          </div>
-        </ContentMessage>
-      </Page.Vertical>
-    );
-  }
-
-  if (digests.length === 0) {
-    return (
-      <Page.Vertical gap="none" align="stretch">
-        <ContentMessage
-          variant="outline"
-          size="lg"
-          title="Project Digest"
-          icon={BookOpenIcon}
-          action={
-            <Button
-              label="Generate"
-              variant="primary"
-              size="sm"
-              onClick={handleGenerate}
-            />
-          }
-        >
-          <div className="text-element-700 text-sm">
-            No project digest yet. Click Generate to create an AI summary of
-            recent project activity.
-          </div>
-        </ContentMessage>
-      </Page.Vertical>
-    );
-  }
-
-  const safeIndex = Math.min(currentIndex, digests.length - 1);
+  const safeIndex = Math.min(currentIndex, Math.max(digests.length - 1, 0));
   const currentDigest = digests[safeIndex];
-
-  const formattedDate = new Date(currentDigest.updatedAt).toLocaleDateString(
-    "en-US",
-    {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }
-  );
-
-  // Extract preview content (first 3 lines).
-  const lines = currentDigest.digest.split("\n");
-  const previewLines = lines.slice(0, 3);
-  const previewContent = previewLines.join("\n");
-  const remainingContent = lines.slice(3).join("\n");
-  const isLongContent = lines.length > 3;
-
   const hasPrevious = safeIndex < digests.length - 1;
   const hasNext = safeIndex > 0;
 
-  return (
-    <Page.Vertical gap="none" align="stretch">
-      <ContentMessage
-        variant="outline"
-        size="lg"
-        title="Project Digest"
-        icon={BookOpenIcon}
-        className="[&>div>div]:!w-full"
-      >
-        <div className="flex flex-col py-2">
-          {isLongContent ? (
-            <Collapsible key={currentDigest.sId}>
-              <div>
-                <Markdown content={previewContent} />
-                <CollapsibleTrigger
-                  label="Show more"
-                  variant="secondary"
-                  className="mt-2"
-                />
-              </div>
-              <CollapsibleContent className="mt-2">
-                <Markdown content={remainingContent} />
-              </CollapsibleContent>
-            </Collapsible>
-          ) : (
-            <Markdown content={currentDigest.digest} />
-          )}
+  const formattedDate = currentDigest
+    ? new Date(currentDigest.updatedAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "";
 
-          <div className="mt-3 flex items-center border-t border-border pt-2 dark:border-border-night">
-            <Tooltip
-              trigger={
-                <span className="text-xs text-muted-foreground">
-                  {formattedDate}
-                </span>
-              }
-              label="Generated by the AI butler of this project"
-              tooltipTriggerAsChild={false}
-            />
-            <div className="ml-auto flex items-center gap-1">
-              <Button
-                label="Generate"
-                variant="ghost"
+  const isLongContent = currentDigest
+    ? currentDigest.digest.split("\n").length > 5
+    : false;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="inline-flex flex-wrap items-center gap-2">
+        <h3 className="heading-2xl text-foreground dark:text-foreground-night">
+          What's new?
+        </h3>
+        {currentDigest && (
+          <Tooltip
+            label={`Generated on ${formattedDate}`}
+            trigger={
+              <Chip
                 size="xs"
-                onClick={handleGenerate}
+                color={isGenerating ? "highlight" : "primary"}
+                label={isGenerating ? "Updating" : formattedDate}
+                isBusy={isGenerating}
               />
-              {digests.length > 1 && (
-                <>
-                  <IconButton
-                    icon={ChevronLeftIcon}
-                    size="xs"
-                    variant="ghost"
-                    disabled={!hasPrevious}
-                    onClick={() => setCurrentIndex(safeIndex + 1)}
-                    tooltip="Older"
-                  />
-                  <IconButton
-                    icon={ChevronRightIcon}
-                    size="xs"
-                    variant="ghost"
-                    disabled={!hasNext}
-                    onClick={() => setCurrentIndex(safeIndex - 1)}
-                    tooltip="Newer"
-                  />
-                </>
-              )}
-            </div>
-          </div>
+            }
+          />
+        )}
+        {isGenerating && !currentDigest && (
+          <Chip size="xs" color="highlight" label="Generating" isBusy />
+        )}
+        <div className="flex-1" />
+        <Button
+          size="xs"
+          variant="outline"
+          label="Generate"
+          onClick={handleGenerate}
+          disabled={isGenerating}
+        />
+        {digests.length > 1 && (
+          <>
+            <IconButton
+              icon={ChevronLeftIcon}
+              size="xs"
+              variant="ghost"
+              disabled={!hasPrevious}
+              onClick={() => {
+                setCurrentIndex(safeIndex + 1);
+                setIsExpanded(false);
+              }}
+              tooltip="Older"
+            />
+            <IconButton
+              icon={ChevronRightIcon}
+              size="xs"
+              variant="ghost"
+              disabled={!hasNext}
+              onClick={() => {
+                setCurrentIndex(safeIndex - 1);
+                setIsExpanded(false);
+              }}
+              tooltip="Newer"
+            />
+          </>
+        )}
+      </div>
+
+      {generationError && (
+        <div className="text-sm text-warning-500 dark:text-warning-500-night">
+          Digest generation failed. Click Generate to retry.
         </div>
-      </ContentMessage>
-    </Page.Vertical>
+      )}
+
+      {currentDigest ? (
+        <>
+          <div className="relative">
+            <div
+              className="flex flex-col gap-4"
+              style={{
+                maxHeight: isExpanded ? 2000 : COLLAPSED_MAX_HEIGHT_PX,
+                overflow: "hidden",
+                transition: "max-height 200ms ease",
+              }}
+            >
+              <Markdown content={currentDigest.digest} />
+            </div>
+            {!isExpanded && isLongContent && (
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-b from-transparent to-background dark:to-background-night" />
+            )}
+          </div>
+          {isLongContent && (
+            <div>
+              <Button
+                size="xs"
+                variant="outline"
+                label={isExpanded ? "Show less" : "Show more"}
+                onClick={() => setIsExpanded((prev) => !prev)}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex items-center gap-3 py-4">
+          <Spinner size="sm" variant="color" />
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Generating your personalized digest...
+          </span>
+        </div>
+      )}
+    </div>
   );
 }

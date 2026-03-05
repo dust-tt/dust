@@ -120,6 +120,38 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       done: "Post reply to Zendesk",
     },
   },
+  update_ticket_tags: {
+    description:
+      "Add tags to a Zendesk ticket or completely replace its tags. " +
+      "By default (override=false), adds the provided tags to the existing ones without affecting them. " +
+      "When override=true, all existing tags on the ticket are replaced by the provided list — " +
+      "any tag not included in the list will be permanently removed. " +
+      "To remove a tag: first retrieve the current tags on the ticket, then call this tool with override=true, omitting the tag to remove from the list.",
+    schema: {
+      ticketId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The ID of the Zendesk ticket to update."),
+      tags: z
+        .array(z.string())
+        .describe(
+          "Tags to add, or the complete new list of tags if override=true."
+        ),
+      override: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, replaces all existing tags with the provided list. It removes any tag not in the list. " +
+            "If false or omitted, adds the tags to the existing ones. Defaults to false."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Updating Zendesk ticket tags",
+      done: "Update Zendesk ticket tags",
+    },
+  },
 });
 
 export const ZENDESK_SERVER = {

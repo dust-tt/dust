@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { Button } from "@sparkle/components/Button";
@@ -223,19 +221,32 @@ const DropdownMenuSubTrigger = React.forwardRef<
 DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName;
 
+interface DropdownMenuSubContentProps
+  extends React.ComponentPropsWithoutRef<
+    typeof DropdownMenuPrimitive.SubContent
+  > {
+  dropdownHeaders?: React.ReactNode;
+}
+
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, children, ...props }, ref) => (
+  DropdownMenuSubContentProps
+>(({ className, children, dropdownHeaders, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
       menuStyleClasses.container,
       "s-flex s-flex-col s-p-0 s-shadow-lg",
+      dropdownHeaders && "s-h-80 xs:s-h-96",
       className
     )}
     {...props}
   >
+    {dropdownHeaders && (
+      <div className="s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night">
+        {dropdownHeaders}
+      </div>
+    )}
     <ScrollArea
       className="s-w-full s-flex-1"
       hideScrollBar={false}

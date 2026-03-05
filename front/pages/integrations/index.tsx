@@ -228,7 +228,16 @@ export default function IntegrationsPageNextJS({
           {filteredIntegrations.length === 0 && (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">
-                No integrations found matching your search.
+                No integration found yet... but you can connect any MCP server
+                you want in Dust!{" "}
+                <a
+                  href="https://docs.dust.tt/docs/remote-mcp-server"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground underline hover:text-highlight"
+                >
+                  Learn more
+                </a>
               </p>
             </div>
           )}
@@ -246,7 +255,7 @@ export default function IntegrationsPageNextJS({
             },
             secondaryCTA: {
               label: "Talk to sales",
-              href: "/home/booking",
+              href: "/home/contact",
             },
             trustText: "14-day free trial. No credit card required.",
           }}

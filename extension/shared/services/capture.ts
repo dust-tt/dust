@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/client";
-import { Ok } from "@dust-tt/client";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 export type CaptureOperationId = "capture-page-content" | "capture-screenshot";
 

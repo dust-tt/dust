@@ -11,8 +11,12 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
-import { parseButlerSuggestionData } from "@app/types/conversation_butler_suggestion";
+import {
+  type ButlerSuggestionData,
+  type ButlerSuggestionPublicType,
+  type ButlerSuggestionType,
+  parseButlerSuggestionData,
+} from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import type {
@@ -21,6 +25,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -152,6 +157,52 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
     return results[0] ?? null;
   }
 
+  /**
+   * Fetch the most recent suggestion for a conversation filtered by type.
+   * Returns null if no suggestion of that type exists.
+   */
+  static async fetchLatestByConversationAndType(
+    auth: Authenticator,
+    {
+      conversationId,
+      suggestionType,
+    }: {
+      conversationId: ModelId;
+      suggestionType: ButlerSuggestionType;
+    }
+  ): Promise<ConversationButlerSuggestionResource | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const results = await this.baseFetch(auth, {
+      where: { workspaceId, conversationId, suggestionType },
+      order: [["createdAt", "DESC"]],
+      limit: 1,
+    });
+
+    return results[0] ?? null;
+  }
+
+  /**
+   * Fetch resolved (accepted or dismissed) suggestions for a conversation,
+   * ordered by most recent first.
+   */
+  static async fetchResolvedByConversation(
+    auth: Authenticator,
+    { conversationId, limit = 10 }: { conversationId: ModelId; limit?: number }
+  ): Promise<ButlerSuggestionData[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const suggestions = await this.baseFetch(auth, {
+      where: {
+        workspaceId,
+        conversationId,
+        status: { [Op.in]: ["accepted", "dismissed"] },
+      },
+      order: [["createdAt", "DESC"]],
+      limit,
+    });
+
+    return suggestions.map((s) => parseButlerSuggestionData(s));
+  }
+
   private async checkAccess(
     auth: Authenticator,
     transaction?: Transaction
@@ -219,6 +270,14 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
     return new Ok(this);
   }
 
+  /**
+   * System-level dismissal that bypasses user access checks.
+   * Used by the butler to auto-dismiss stale pending suggestions.
+   */
+  async autoDismiss(transaction?: Transaction): Promise<void> {
+    await this.update({ status: "dismissed" as const }, transaction);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
@@ -240,6 +299,7 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
     const data = parseButlerSuggestionData({
       suggestionType: this.suggestionType,
       metadata: this.metadata,
+      status: this.status,
     });
 
     return {
@@ -248,7 +308,6 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
       updatedAt: this.updatedAt.getTime(),
       sourceMessageSId: this.sourceMessageSId,
       resultMessageSId: this.resultMessageSId,
-      status: this.status,
       ...data,
     };
   }

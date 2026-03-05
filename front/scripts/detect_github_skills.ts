@@ -32,7 +32,8 @@ makeScript(
     for (const skill of skills) {
       logger.info(
         {
-          dirPath: skill.dirPath,
+          name: skill.name,
+          skillMdPath: skill.skillMdPath,
           descriptionLength: skill.description.length,
           instructionsLength: skill.instructions.length,
           attachmentCount: skill.attachments.length,

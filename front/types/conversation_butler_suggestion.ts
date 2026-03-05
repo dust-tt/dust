@@ -34,10 +34,12 @@ export const ButlerSuggestionDataSchema = z.discriminatedUnion(
     z.object({
       suggestionType: z.literal("rename_title"),
       metadata: RenameTitleMetadataSchema,
+      status: z.enum(BUTLER_SUGGESTION_STATUSES),
     }),
     z.object({
       suggestionType: z.literal("call_agent"),
       metadata: CallAgentMetadataSchema,
+      status: z.enum(BUTLER_SUGGESTION_STATUSES),
     }),
   ]
 );

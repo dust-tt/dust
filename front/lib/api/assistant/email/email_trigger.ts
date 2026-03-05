@@ -784,7 +784,7 @@ export async function sendToolValidationEmail({
     workspace.sId,
     conversation.sId,
     undefined,
-    baseUrl
+    config.getAppUrl()
   );
 
   // Build HTML for each blocked action.

@@ -56,15 +56,10 @@ type DataLayer =
       utm_term: string | undefined;
     };
 
-interface Signals {
-  identify: (data: { email: string; name: string }) => void;
-}
-
 declare global {
   interface Window {
     gtag: (command: string, action: string, params: object) => void;
     dataLayer?: DataLayer[];
-    signals?: Signals;
     DD_RUM: {
       clearUser: () => void;
       onReady: (callback: () => void) => void;
@@ -74,7 +69,11 @@ declare global {
   }
   interface ImportMeta {
     env?: {
+      MODE?: string;
       VITE_BASE_PATH?: string;
+      VITE_COMMIT_HASH?: string;
+      VITE_DATADOG_CLIENT_TOKEN?: string;
+      VITE_DATADOG_SERVICE?: string;
       VITE_DUST_CLIENT_FACING_URL?: string;
       VITE_DUST_REGION?: string;
       VITE_DUST_REGION_STORAGE_KEY?: string;

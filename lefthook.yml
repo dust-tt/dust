@@ -91,6 +91,22 @@ pre-commit:
       root: connectors/
       run: npm run tsgo
 
+    # Core (Rust) format check
+    core-fmt:
+      tags: core
+      glob: "*.rs"
+      root: core/
+      run: cargo fmt -- {staged_files}
+      stage_fixed: true
+
+    # Dust Sandbox (Rust) format check
+    dust-sandbox-fmt:
+      tags: dust-sandbox
+      glob: "*.rs"
+      root: cli/dust-sandbox/
+      run: cargo fmt -- {staged_files}
+      stage_fixed: true
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss,md}"

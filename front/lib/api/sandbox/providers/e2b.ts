@@ -1,3 +1,8 @@
+import {
+  formatSandboxImageId,
+  type NetworkPolicy,
+  type SandboxImageId,
+} from "@app/lib/api/sandbox/image/types";
 import type {
   ExecOptions,
   ExecResult,
@@ -10,6 +15,7 @@ import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
@@ -18,9 +24,30 @@ const SANDBOX_LIFETIME_MS = 86_400_000; // 24 hours (E2B Pro max; reaper manages
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
 
+const ALL_TRAFFIC = "0.0.0.0/0";
+
+interface E2BNetworkOpts {
+  allowOut?: string[];
+  denyOut?: string[];
+}
+
+function toE2BNetworkOpts(policy: NetworkPolicy): E2BNetworkOpts {
+  switch (policy.mode) {
+    case "deny_all":
+      return {
+        allowOut: policy.allowlist ? [...policy.allowlist] : [],
+        denyOut: [ALL_TRAFFIC],
+      };
+    case "allow_all":
+      return {};
+    default:
+      assertNever(policy.mode);
+  }
+}
+
 interface E2BConfig {
   apiKey: string;
-  templateId: string;
+  imageId: SandboxImageId;
   domain: string | undefined;
 }
 
@@ -32,12 +59,12 @@ interface E2BConfig {
  */
 export class E2BSandboxProvider implements SandboxProvider {
   private readonly apiKey: string;
-  private readonly templateId: string;
+  private readonly imageId: SandboxImageId;
   private readonly domain: string | undefined;
 
   constructor(config: E2BConfig) {
     this.apiKey = config.apiKey;
-    this.templateId = config.templateId;
+    this.imageId = config.imageId;
     this.domain = config.domain;
   }
 
@@ -51,9 +78,10 @@ export class E2BSandboxProvider implements SandboxProvider {
   async create(
     config: SandboxCreateConfig
   ): Promise<Result<SandboxHandle, Error>> {
-    const templateId = config.templateId ?? this.templateId;
+    const imageId = config.imageId ?? this.imageId;
+    const templateId = formatSandboxImageId(imageId);
 
-    logger.info({ templateId }, "Creating E2B sandbox");
+    logger.info({ templateId, imageId }, "Creating E2B sandbox");
 
     let sandbox: Sandbox;
     try {
@@ -62,6 +90,9 @@ export class E2BSandboxProvider implements SandboxProvider {
         envs: config.envVars,
         timeoutMs: SANDBOX_LIFETIME_MS,
         requestTimeoutMs: REQUEST_TIMEOUT_MS,
+        ...(config.network
+          ? { network: toE2BNetworkOpts(config.network) }
+          : {}),
       });
     } catch (err) {
       return new Err(normalizeError(err));

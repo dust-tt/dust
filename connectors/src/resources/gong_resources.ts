@@ -443,6 +443,41 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     return transcripts.map((t) => new this(this.model, t.get()));
   }
 
+  /**
+   * Fetches transcripts in batches for pagination.
+   */
+  static async fetchBatch(
+    connector: ConnectorResource,
+    {
+      limit,
+      lastId,
+      orderBy = "ASC",
+    }: {
+      limit: number;
+      lastId?: number;
+      orderBy?: "ASC" | "DESC";
+    }
+  ): Promise<GongTranscriptResource[]> {
+    const whereClause: {
+      connectorId: number;
+      id?: { [Op.gt]: number };
+    } = {
+      connectorId: connector.id,
+    };
+
+    if (lastId !== undefined) {
+      whereClause.id = { [Op.gt]: lastId };
+    }
+
+    const transcripts = await GongTranscriptModel.findAll({
+      where: whereClause,
+      order: [["id", orderBy]],
+      limit,
+    });
+
+    return transcripts.map((t) => new this(this.model, t.get()));
+  }
+
   static async batchDelete(
     connector: ConnectorResource,
     transcripts: GongTranscriptResource[]

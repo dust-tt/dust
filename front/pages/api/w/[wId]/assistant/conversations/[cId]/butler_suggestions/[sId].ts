@@ -1,8 +1,7 @@
-import { updateConversationTitle } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { acceptSuggestion } from "@app/lib/butler/accept_suggestion";
 import { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -74,41 +73,15 @@ async function handler(
       }
 
       if (status === "accepted") {
-        // Apply the suggestion side-effect before marking as accepted.
-        if (suggestion.suggestionType === "rename_title") {
-          const metadata = suggestion.metadata as {
-            suggestedTitle: string;
-          };
-          const titleRes = await updateConversationTitle(auth, {
-            conversationId,
-            title: metadata.suggestedTitle,
-          });
-          if (titleRes.isErr()) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to update conversation title.",
-              },
-            });
-          }
-
-          // Publish the title change event so the UI updates in real-time.
-          await publishConversationEvent(
-            {
-              type: "conversation_title",
-              created: Date.now(),
-              title: metadata.suggestedTitle,
-            },
-            { conversationId }
-          );
-        }
-        const acceptRes = await suggestion.accept(auth);
+        const acceptRes = await acceptSuggestion(auth, {
+          suggestion,
+          conversationId,
+        });
         if (acceptRes.isErr()) {
           return apiError(req, res, {
-            status_code: 403,
+            status_code: 500,
             api_error: {
-              type: "invalid_request_error",
+              type: "internal_server_error",
               message: acceptRes.error.message,
             },
           });

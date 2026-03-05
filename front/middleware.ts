@@ -121,6 +121,7 @@ const SPA_PATH_PREFIXES = [
   "/maintenance",
   "/oauth",
   "/share",
+  "/email",
 ];
 
 function isSpaPath(pathname: string): boolean {

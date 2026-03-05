@@ -228,7 +228,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     const responseData = res._getJSONData();
     expect(responseData.error).toEqual({
       type: "workspace_auth_error",
-      message: "Only users of the workspace can access this route.",
+      message: "Only users of the workspace can access this content.",
     });
   });
 });

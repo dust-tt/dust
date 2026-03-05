@@ -137,7 +137,7 @@ export default async function handler(
   // Validate origin to ensure request comes from our website
   const origin = req.headers.origin;
   const referer = req.headers.referer;
-  const allowedOrigin = config.getClientFacingUrl();
+  const allowedOrigin = config.getStaticWebsiteUrl();
 
   const isValidOrigin =
     (origin !== undefined && origin.startsWith(allowedOrigin)) ||

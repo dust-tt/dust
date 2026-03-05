@@ -184,7 +184,7 @@ export const projectAddedAsMemberWorkflow = workflow(
           action: {
             label: "View project",
             url:
-              config.getClientFacingUrl() +
+              config.getAppUrl() +
               getProjectRoute(payload.workspaceId, payload.projectId),
           },
         });

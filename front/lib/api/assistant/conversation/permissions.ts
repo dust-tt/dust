@@ -5,7 +5,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
@@ -90,12 +93,18 @@ export async function canAgentBeUsedInProjectConversation(
     conversation,
   }: {
     configuration: LightAgentConfigurationType;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationType;
   }
 ): Promise<boolean> {
   if (!isProjectConversation(conversation)) {
     throw new Error("Unexpected: conversation is not a project conversation");
   }
+
+  // If we are in a branch, we can use the agent.
+  if (conversation.branchId) {
+    return true;
+  }
+
   // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or open spaces, otherwise we reject the mention and do not create the agent message.
   // Check to skip heavy work if the agent configuration is only using the project space.
   if (

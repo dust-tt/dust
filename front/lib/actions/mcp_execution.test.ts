@@ -1,6 +1,6 @@
 import {
   MAX_RESOURCE_CONTENT_SIZE,
-  MAX_TEXT_CONTENT_SIZE,
+  MAX_TEXT_CONTENT_SIZE_BYTES,
   MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
 } from "@app/lib/actions/action_output_limits";
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
@@ -83,12 +83,11 @@ async function setupTest() {
 }
 
 describe("processToolResults", () => {
-  it("should store snippet in DB when text exceeds MAX_TEXT_CONTENT_SIZE", async () => {
+  it("should store snippet in DB when text exceeds MAX_TEXT_CONTENT_SIZE_BYTES", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
-    // Generate text that exceeds MAX_TEXT_CONTENT_SIZE (400KB).
-    // computeTextByteSize uses text.length * 2, so length > MAX_TEXT_CONTENT_SIZE / 2 triggers it.
-    const largeText = "x".repeat(MAX_TEXT_CONTENT_SIZE / 2 + 1);
+    // Generate text that exceeds MAX_TEXT_CONTENT_SIZE_BYTES (20KB).
+    const largeText = "x".repeat(MAX_TEXT_CONTENT_SIZE_BYTES + 1);
 
     const { outputItems } = await processToolResults(auth, {
       action,
@@ -115,8 +114,7 @@ describe("processToolResults", () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
     // Generate resource text that exceeds MAX_RESOURCE_CONTENT_SIZE (20MB).
-    // computeTextByteSize uses text.length * 2, so length > MAX_RESOURCE_CONTENT_SIZE / 2 triggers it.
-    const largeResourceText = "y".repeat(MAX_RESOURCE_CONTENT_SIZE / 2 + 1);
+    const largeResourceText = "y".repeat(MAX_RESOURCE_CONTENT_SIZE + 1);
 
     const { outputItems } = await processToolResults(auth, {
       action,

@@ -2,9 +2,15 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { getLargeWhitelistedModel } from "@app/types/assistant/assistant";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
-import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -56,12 +62,18 @@ export function transformAgentConfigurationToFormData(
 export function getDefaultAgentFormData({
   user,
   owner,
+  hasCopilot,
 }: {
   user: UserType;
   owner: WorkspaceType;
+  hasCopilot?: boolean;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = getLargeWhitelistedModel(owner);
+  const preferredModel = hasCopilot
+    ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+    : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  const fallbackModel = hasCopilot
+    ? getSmallWhitelistedModel(owner)
+    : getLargeWhitelistedModel(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
   // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
@@ -111,9 +123,16 @@ export function transformTemplateToFormData(
   owner: WorkspaceType,
   hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
 ): AgentBuilderFormData {
-  const defaultFormData = getDefaultAgentFormData({ user, owner });
   const hasCopilotAccess =
-    hasFeature("agent_builder_copilot") && owner.role === "admin";
+    hasFeature("agent_builder_copilot") &&
+    (owner.role === "admin" ||
+      (hasFeature("agent_builder_copilot_builders") &&
+        owner.role === "builder"));
+  const defaultFormData = getDefaultAgentFormData({
+    user,
+    owner,
+    hasCopilot: hasCopilotAccess,
+  });
 
   return {
     ...defaultFormData,

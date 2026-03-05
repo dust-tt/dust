@@ -1,5 +1,5 @@
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
-import type { WorkspaceType } from "@dust-tt/client/src/types";
+import type { WorkspaceType } from "@app/types/user";
 import { registerAllTools } from "@extension/platforms/chrome/tools";
 import { McpService } from "@extension/shared/services/mcp";
 import type { BrowserMessagingService } from "@extension/shared/services/platform";

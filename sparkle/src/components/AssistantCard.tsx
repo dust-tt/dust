@@ -1,12 +1,7 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import {
-  Avatar,
-  Card,
-  CardActionButton,
-  type IconOnlyButtonProps,
-} from "@sparkle/components/";
+import { Avatar } from "@sparkle/components/Avatar";
+import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import type { CardVariantType } from "@sparkle/components/Card";
+import { Card, CardActionButton } from "@sparkle/components/Card";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
 import { MoreIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";

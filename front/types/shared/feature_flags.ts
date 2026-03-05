@@ -31,7 +31,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   agent_builder_copilot: {
-    description: "Enable Sidekick in Agent Builder",
+    description: "Enable Sidekick in Agent Builder (admins only by default)",
+    stage: "dust_only",
+  },
+  agent_builder_copilot_builders: {
+    description: "Allow workspace builders to use Sidekick in Agent Builder",
     stage: "dust_only",
   },
   agent_builder_shrink_wrap: {
@@ -233,6 +237,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
     // Not really on_demand but we want to be able to enable it for customers
     stage: "on_demand",
+  },
+  conversation_branches: {
+    description: "Enable conversation branches",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

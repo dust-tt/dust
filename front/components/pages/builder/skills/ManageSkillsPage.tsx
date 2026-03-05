@@ -1,5 +1,6 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
@@ -9,7 +10,11 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
@@ -17,6 +22,7 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
+  ArrowDownOnSquareIcon,
   Button,
   MagnifyingGlassIcon,
   Page,
@@ -78,9 +84,12 @@ function sortSkillsByName(skills: SkillWithRelationsType[]) {
 export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
   const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
@@ -219,6 +228,12 @@ export function ManageSkillsPage() {
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
+      {isImportDialogOpen && (
+        <ImportSkillsDialog
+          onClose={() => setIsImportDialogOpen(false)}
+          owner={owner}
+        />
+      )}
       <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
         <Page.Header
           title="Manage Skills"
@@ -237,6 +252,15 @@ export function ManageSkillsPage() {
                 setSkillSearch(s);
               }}
             />
+            {hasFeature("sandbox_tools") && (
+              <Button
+                label="Import skill"
+                variant="outline"
+                icon={ArrowDownOnSquareIcon}
+                tooltip="Import skills from a GitHub repository"
+                onClick={() => setIsImportDialogOpen(true)}
+              />
+            )}
             <Button
               label="Create skill"
               href={getSkillBuilderRoute(owner.sId, "new")}

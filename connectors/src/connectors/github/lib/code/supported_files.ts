@@ -28,6 +28,7 @@ const EXTENSION_WHITELIST = [
   ".cls", // Salesforce Apex class
   ".cls-meta.xml", // Salesforce Apex class metadata
 
+  ".xml", // XML
   ".xhtml", // XML/HTML
   ".xsd", // XML Schema Definition
 

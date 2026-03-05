@@ -1,13 +1,8 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
-import {
-  Button,
-  type ButtonProps,
-  ScrollArea,
-  Separator,
-} from "@sparkle/components";
+import { Button, type ButtonProps } from "@sparkle/components/Button";
+import { ScrollArea } from "@sparkle/components/ScrollArea";
+import { Separator } from "@sparkle/components/Separator";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";

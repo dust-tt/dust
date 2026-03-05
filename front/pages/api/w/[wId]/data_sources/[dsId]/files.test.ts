@@ -64,7 +64,8 @@ vi.mock(import("@app/lib/api/config"), (() => ({
       apiKey: "foo",
     }),
     getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-    getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
+    getAppUrl: vi.fn().mockReturnValue("http://localhost:3011"),
+    getApiBaseUrl: vi.fn().mockReturnValue("http://localhost:3000"),
   },
 })) as any);
 

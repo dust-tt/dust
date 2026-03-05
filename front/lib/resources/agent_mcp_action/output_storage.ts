@@ -13,9 +13,6 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const GCS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
 
-// TODO(2026-02-25 PERF): Remove this once optional `ttlMs` on `cacheWithRedis` has been merged.
-const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours.
-
 type OutputContent = CallToolResult["content"][number];
 
 function getGcsPath(
@@ -97,7 +94,7 @@ const fetchGcsContentCached = cacheWithRedis(
   fetchGcsContent,
   (auth, _gcsPath, itemId) =>
     `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}`,
-  { ttlMs: CACHE_TTL_MS, cacheNullValues: false }
+  { cacheNullValues: false }
 );
 
 /**

@@ -22,6 +22,7 @@ import {
   syncStarted,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
@@ -294,9 +295,12 @@ export async function gongSyncTranscriptsActivity({
     configuration
   );
 
+  await heartbeat();
+
   await concurrentExecutor(
     transcriptsToSync,
     async (transcript) => {
+      await heartbeat();
       const transcriptMetadata = callsMetadataMap.get(transcript.callId);
       if (!transcriptMetadata) {
         logger.warn(
@@ -357,6 +361,8 @@ export async function gongSyncTranscriptsActivity({
     },
     { concurrency: 10 }
   );
+
+  await heartbeat();
 
   return {
     nextPageCursor,
@@ -467,5 +473,79 @@ export async function gongDeleteOutdatedTranscriptsActivity({
 
   return {
     hasMore: outdatedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE,
+  };
+}
+
+/**
+ * Deletes transcripts matching exclude keywords in batches.
+ */
+export async function gongDeleteExcludedTranscriptsActivity({
+  connectorId,
+  excludeKeywords,
+  lastId,
+  maxTranscriptId,
+}: {
+  connectorId: ModelId;
+  excludeKeywords: string[];
+  lastId?: ModelId;
+  maxTranscriptId: ModelId;
+}): Promise<{ hasMore: boolean; lastId: ModelId | null }> {
+  const connector = await fetchGongConnector({ connectorId });
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const transcripts = await GongTranscriptResource.fetchBatch(connector, {
+    limit: GARBAGE_COLLECT_BATCH_SIZE,
+    lastId,
+  });
+
+  if (transcripts.length === 0) {
+    logger.info(
+      { connectorId: connector.id },
+      "[Gong] Cleanup complete - no more transcripts"
+    );
+    return { hasMore: false, lastId: null };
+  }
+
+  const transcriptsToDelete = transcripts.filter((transcript) =>
+    shouldExcludeByTitle(transcript.title, excludeKeywords)
+  );
+
+  for (const transcript of transcriptsToDelete) {
+    await deleteDataSourceDocument(
+      dataSourceConfig,
+      makeGongTranscriptInternalId(connector, transcript.callId),
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        provider: "gong",
+        callId: transcript.callId,
+      }
+    );
+  }
+
+  await GongTranscriptResource.batchDelete(connector, transcriptsToDelete);
+
+  const lastTranscript = transcripts[transcripts.length - 1];
+  const newLastId = lastTranscript ? lastTranscript.id : null;
+
+  // Check if we've hit the maxId ceiling - stop immediately
+  if (lastTranscript && lastTranscript.id > maxTranscriptId) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        lastProcessedId: lastTranscript.id,
+        maxTranscriptId,
+        deletedInBatch: transcriptsToDelete.length,
+      },
+      "[Gong] Cleanup complete - remaining transcripts were synced with current config"
+    );
+    return { hasMore: false, lastId: null };
+  }
+
+  const hasMore = transcripts.length === GARBAGE_COLLECT_BATCH_SIZE;
+
+  return {
+    hasMore,
+    lastId: newLastId,
   };
 }

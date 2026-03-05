@@ -47,6 +47,7 @@ interface CopilotPanelProviderProps {
   targetAgentConfigurationVersion: number;
   clientSideMCPServerIds: string[];
   isNewAgent: boolean;
+  isDuplicate?: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
 }
@@ -57,6 +58,7 @@ export const CopilotPanelProvider = ({
   targetAgentConfigurationVersion,
   clientSideMCPServerIds,
   isNewAgent,
+  isDuplicate = false,
   templateInfo,
   conversationId,
 }: CopilotPanelProviderProps) => {
@@ -79,6 +81,7 @@ export const CopilotPanelProvider = ({
   const { getFirstMessage, useCase } = useCopilotFirstMessage({
     owner,
     isNewAgent,
+    isDuplicate,
     templateInfo,
     conversationId,
     agentConfigurationId: targetAgentConfigurationId ?? undefined,
@@ -132,6 +135,7 @@ export const CopilotPanelProvider = ({
       metadata: {
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
+        copilotIsNewAgentFromScratch: useCase === "new",
       },
       skipToolsValidation: true,
     });

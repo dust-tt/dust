@@ -1,4 +1,4 @@
-import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import {
   PokeTable,
   PokeTableBody,

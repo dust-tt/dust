@@ -12,6 +12,7 @@ import type { PendingUpdate } from "@extension/platforms/chrome/services/core_pl
 import { ChromeCorePlatformService } from "@extension/platforms/chrome/services/core_platform";
 import { DUST_US_URL } from "@extension/shared/lib/config";
 import { extractPage } from "@extension/shared/lib/extraction";
+import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
@@ -26,11 +27,9 @@ const state: {
   refreshRequests: ((
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void)[];
-  lastHandler: (() => void) | undefined;
 } = {
   refreshingToken: false,
   refreshRequests: [],
-  lastHandler: undefined,
 };
 
 /**
@@ -139,7 +138,6 @@ chrome.runtime.onConnect.addListener(async (port) => {
       // This fires when sidepanel closes
       console.log("Sidepanel was closed");
       await platform.storage.set("extensionReady", false);
-      state.lastHandler = undefined;
     });
   }
 });
@@ -198,15 +196,19 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
     return;
   }
 
+  // chrome.sidePanel.open() must be called synchronously within the user gesture
+  // context. Any await before this call would break the gesture chain and throw:
+  // "sidePanel.open() may only be called in response to a user gesture".
+  if (tab) {
+    void chrome.sidePanel.open({ windowId: tab.windowId });
+  }
+
   const isExtensionReady =
     await platform.storage.get<boolean>("extensionReady");
 
-  if (!isExtensionReady && tab) {
-    // Store the handler for later use when the extension is ready.
-    state.lastHandler = handler;
-    void chrome.sidePanel.open({
-      windowId: tab.windowId,
-    });
+  if (!isExtensionReady) {
+    // Store the pending action for later use when the extension is ready.
+    await platform.storage.set("pendingAction", event.menuItemId);
   } else {
     void handler();
   }
@@ -377,11 +379,16 @@ chrome.runtime.onMessage.addListener(
         return true;
 
       case "INPUT_BAR_STATUS":
-        // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
-        if (state.lastHandler && message.available) {
-          state.lastHandler();
-          state.lastHandler = undefined;
-        }
+        void (async () => {
+          if (message.available) {
+            const pendingAction =
+              await platform.storage.get<string>("pendingAction");
+            if (pendingAction) {
+              getActionHandler(pendingAction)?.();
+            }
+          }
+          await platform.storage.delete("pendingAction");
+        })();
         return false;
 
       default:
@@ -487,22 +494,19 @@ chrome.runtime.onMessageExternal.addListener((request) => {
  * Authenticate the user using WorkOS.
  */
 const authenticate = async (
-  { connection, organizationId }: AuthBackgroundMessage,
+  { organizationId }: AuthBackgroundMessage,
   sendResponse: (
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
-
-  const workspaceId =
-    connection && connection.startsWith("workspace-")
-      ? connection.split("workspace-")[1]
-      : "";
+  const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
     redirect_uri: redirectUrl,
-    workspaceId: workspaceId,
+    code_challenge_method: "S256",
+    code_challenge: codeChallenge,
     ...(organizationId ? { organizationId } : {}),
   };
 
@@ -546,7 +550,10 @@ const authenticate = async (
       }
 
       if (authorizationCode) {
-        const data = await exchangeCodeForTokens(authorizationCode);
+        const data = await exchangeCodeForTokens(
+          authorizationCode,
+          codeVerifier
+        );
         sendResponse(data);
       } else {
         log(`Missing authorization code: ${redirectUrl}`);
@@ -616,7 +623,7 @@ const refreshToken = async (
           success: true,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken || refreshToken,
-          expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
           authentication_method: data.authenticationMethod,
         });
       });
@@ -640,10 +647,12 @@ const refreshToken = async (
  *  Exchange authorization code for tokens
  */
 const exchangeCodeForTokens = async (
-  code: string
+  code: string,
+  codeVerifier: string
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   try {
     const tokenParams: Record<string, string> = {
+      code_verifier: codeVerifier,
       code,
     };
 
@@ -666,7 +675,7 @@ const exchangeCodeForTokens = async (
       success: true,
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
-      expiresIn: DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      expiresIn: data.expiresIn || DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
       authentication_method: data.authenticationMethod,
     };
   } catch (error) {

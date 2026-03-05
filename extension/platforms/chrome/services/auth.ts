@@ -1,6 +1,6 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { datadogLogs } from "@datadog/browser-logs";
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import {
   sendAuthMessage,
   sendRefreshTokenMessage,

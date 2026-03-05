@@ -1,4 +1,6 @@
+import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { DetectedSkillSummary } from "@app/lib/api/skills/github_detection/import_types";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -15,18 +17,24 @@ import type {
   GetSkillWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
+import type { DetectSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/detect";
+import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type {
   SkillStatus,
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
+
+const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
 
 export function useSkill(options: {
   workspaceId: string;
@@ -352,4 +360,125 @@ export function useSkillWithRelations(
     fetchSkillWithRelations: trigger,
     isLoading: isMutating,
   };
+}
+
+export function useDetectSkillsFromRepo({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
+    []
+  );
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
+
+  const triggerDetect = useDebounceWithAbort(
+    useCallback(
+      async (repoUrl: string, signal: AbortSignal) => {
+        setIsDetecting(true);
+        setDetectError(null);
+
+        try {
+          const response: DetectSkillsResponseBody = await fetcher(
+            `/api/w/${owner.sId}/skills/detect`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ repoUrl }),
+            }
+          );
+
+          if (signal.aborted) {
+            return;
+          }
+
+          setDetectedSkills(response.skills);
+        } catch (err) {
+          if (signal.aborted) {
+            return;
+          }
+          setDetectError(
+            isAPIErrorResponse(err)
+              ? err.error.message
+              : "Failed to detect skills from this repository."
+          );
+        } finally {
+          if (!signal.aborted) {
+            setIsDetecting(false);
+          }
+        }
+      },
+      [owner.sId, fetcher]
+    ),
+    { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
+  );
+
+  return { detectedSkills, isDetecting, detectError, triggerDetect };
+}
+
+export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+  const [isImporting, setIsImporting] = useState(false);
+  const { mutateSkillsWithRelations: mutateActiveSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
+
+  const importSkills = useCallback(
+    async (repoUrl: string, names: string[]) => {
+      setIsImporting(true);
+      try {
+        const res = await clientFetch(`/api/w/${owner.sId}/skills/import`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoUrl, names }),
+        });
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: "Import failed",
+            description: errorData.message,
+          });
+          return { successCount: 0, errors: [errorData.message] };
+        }
+
+        const data: ImportSkillsResponseBody = await res.json();
+
+        void mutateActiveSkills();
+
+        const successCount = data.imported.length;
+        const errors = data.errors.map((e) => e.message);
+
+        if (successCount > 0) {
+          sendNotification({
+            type: "success",
+            title: `Imported ${successCount} skill${pluralize(successCount)}`,
+            description:
+              errors.length > 0
+                ? `${errors.length} skill${pluralize(errors.length)} failed to import.`
+                : `All skills were imported successfully.`,
+          });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Import failed",
+            description: errors[0] ?? "Failed to import skills.",
+          });
+        }
+
+        return { successCount, errors };
+      } finally {
+        setIsImporting(false);
+      }
+    },
+    [owner.sId, mutateActiveSkills, sendNotification]
+  );
+
+  return { importSkills, isImporting };
 }

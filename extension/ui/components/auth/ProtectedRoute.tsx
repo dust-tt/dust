@@ -28,6 +28,9 @@ export const ProtectedRoute = () => {
   }, [navigate]);
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
     if (!isAuthenticated || !isUserSetup || !user || !workspace) {
       navigate("/login");
       return;
@@ -38,14 +41,12 @@ export const ProtectedRoute = () => {
     return (
       <div
         className={cn(
-          "flex h-screen flex-col gap-2 p-4",
+          "flex h-screen items-center justify-center",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex h-full w-full items-center justify-center">
-          <Spinner />
-        </div>
+        <Spinner />
       </div>
     );
   }

@@ -31,8 +31,7 @@ const ConversationAddedAsParticipantEmailTemplate = ({
   conversation,
 }: ConversationAddedAsParticipantEmailTemplateProps) => {
   const url =
-    config.getClientFacingUrl() +
-    getConversationRoute(workspace.id, conversation.id);
+    config.getAppUrl() + getConversationRoute(workspace.id, conversation.id);
 
   return (
     <EmailLayout workspace={workspace}>

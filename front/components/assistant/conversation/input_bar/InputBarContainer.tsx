@@ -1,7 +1,6 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -23,6 +22,7 @@ import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import { isChromeExtension } from "@app/lib/utils/extension";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -42,8 +42,15 @@ import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   Button,
+  CameraIcon,
   Chip,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  GlobeAltIcon,
+  PlusIcon,
   TextIcon,
   Toolbar,
   VoicePicker,
@@ -59,6 +66,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { InputBarContext } from "./InputBarContext";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -134,6 +142,7 @@ const InputBarContainer = ({
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -537,7 +546,7 @@ const InputBarContainer = ({
 
   // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
-  const { animate } = useContext(InputBarContext);
+  const { animate, captureActions } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
       // Schedule focus to avoid flushing during render lifecycle.
@@ -600,6 +609,8 @@ const InputBarContainer = ({
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const isRecording = voiceTranscriberService.status === "recording";
+
+  const displayCaptureActionsDropdown = captureActions && isChromeExtension();
 
   return (
     <div
@@ -739,36 +750,38 @@ const InputBarContainer = ({
                     className="flex sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {actions.includes("attachment") && (
-                    <>
-                      <input
-                        accept={getSupportedFileExtensions().join(",")}
-                        onChange={async (e) => {
-                          await fileUploaderService.handleFileChange(e);
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                          editorService.focusEnd();
-                        }}
-                        ref={fileInputRef}
-                        style={{ display: "none" }}
-                        type="file"
-                        multiple={true}
-                      />
-                      <InputBarAttachmentsPicker
-                        fileUploaderService={fileUploaderService}
-                        owner={owner}
-                        isLoading={false}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        attachedNodes={attachedNodes}
-                        disabled={disableInput}
-                        buttonSize={buttonSize}
-                        conversation={conversation}
-                        space={space}
-                      />
-                    </>
-                  )}
+                  {actions.includes("attachment") &&
+                    !displayCaptureActionsDropdown && (
+                      <>
+                        <input
+                          accept={getSupportedFileExtensions().join(",")}
+                          onChange={async (e) => {
+                            await fileUploaderService.handleFileChange(e);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                            editorService.focusEnd();
+                          }}
+                          ref={fileInputRef}
+                          style={{ display: "none" }}
+                          type="file"
+                          multiple={true}
+                        />
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="dropdown"
+                        />
+                      </>
+                    )}
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
@@ -814,6 +827,57 @@ const InputBarContainer = ({
                       showStopLabel={!isMobile}
                     />
                   )}
+                {displayCaptureActionsDropdown && (
+                  <DropdownMenu
+                    open={isCaptureDropdownOpen}
+                    onOpenChange={setIsCaptureDropdownOpen}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost-secondary"
+                        icon={PlusIcon}
+                        size={buttonSize}
+                        disabled={disableInput}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {actions.includes("attachment") && (
+                        <InputBarAttachmentsPicker
+                          fileUploaderService={fileUploaderService}
+                          owner={owner}
+                          isLoading={false}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                          attachedNodes={attachedNodes}
+                          disabled={disableInput}
+                          buttonSize={buttonSize}
+                          conversation={conversation}
+                          space={space}
+                          type="subdropdown"
+                          onFileChange={() => setIsCaptureDropdownOpen(false)}
+                        />
+                      )}
+                      <DropdownMenuItem
+                        icon={GlobeAltIcon}
+                        label="Attach page content"
+                        disabled={
+                          captureActions.isCapturing ||
+                          fileUploaderService.isProcessingFiles
+                        }
+                        onClick={() => captureActions.onCapture("text")}
+                      />
+                      <DropdownMenuItem
+                        icon={CameraIcon}
+                        label="Take screenshot"
+                        disabled={
+                          captureActions.isCapturing ||
+                          fileUploaderService.isProcessingFiles
+                        }
+                        onClick={() => captureActions.onCapture("screenshot")}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 <Button
                   size={buttonSize}
                   isLoading={

@@ -1,6 +1,5 @@
-/** biome-ignore-all lint/suspicious/noImportCycles: I'm too lazy to fix that now */
-
-import { Checkbox, Chip } from "@sparkle/components";
+import { Checkbox } from "@sparkle/components/Checkbox";
+import { Chip } from "@sparkle/components/Chip";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";

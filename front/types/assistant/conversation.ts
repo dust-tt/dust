@@ -329,6 +329,7 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
+  branchId: string | null;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -339,6 +340,7 @@ export type ConversationType = ConversationWithoutContentType & {
 export type LightConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
+  branchId: string | null;
   content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
 
@@ -381,6 +383,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "user_already_participant",
   "message_not_found",
   "message_deletion_not_authorized",
+  "branch_not_found",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
@@ -450,7 +453,23 @@ export type ButlerSuggestionCreatedEvent = {
   suggestion: ButlerSuggestionPublicType;
 };
 
-export type ConversationMCPServerViewType = {
+export const ConversationMCPServerViewOrigins = [
+  "agent_enabled",
+  "conversation",
+] as const;
+
+export type ConversationMCPServerViewOrigin =
+  (typeof ConversationMCPServerViewOrigins)[number];
+
+export function isConversationMCPServerViewOrigin(
+  value: unknown
+): value is ConversationMCPServerViewOrigin {
+  return ConversationMCPServerViewOrigins.includes(
+    value as ConversationMCPServerViewOrigin
+  );
+}
+
+type BaseConversationMCPServerViewType = {
   id: ModelId;
   workspaceId: ModelId;
   conversationId: ModelId;
@@ -460,6 +479,12 @@ export type ConversationMCPServerViewType = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
+  (
+    | { source: "agent_enabled"; agentConfigurationId: string }
+    | { source: "conversation"; agentConfigurationId: null }
+  );
 
 export type MCPActionValidationRequest = Omit<
   MCPApproveExecutionEvent,

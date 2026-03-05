@@ -192,7 +192,7 @@ function createResultOutputItem(
   const resultResource: ExtractResultResourceType = {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
     text: extractResult,
-    uri: `${config.getClientFacingUrl()}/api/w/${auth.getNonNullableWorkspace().sId}/files/${processAction.jsonFileId}`,
+    uri: `${config.getApiBaseUrl()}/api/w/${auth.getNonNullableWorkspace().sId}/files/${processAction.jsonFileId}`,
     fileId: processAction.jsonFileId.toString(),
     title: "Extracted Data",
     contentType: "application/json",

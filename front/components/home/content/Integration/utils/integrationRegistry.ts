@@ -97,8 +97,11 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   zendesk: "support",
   freshservice: "support",
   front: "support",
+  // Recruiting
+  ukg_ready: "recruiting",
   // Data
   databricks: "data",
+  snowflake: "data",
   // Security
   vanta: "security",
   // AI
@@ -246,9 +249,9 @@ function getConnectorIcon(
     microsoft_bot: "MicrosoftLogo",
     snowflake: "SnowflakeLogo",
     zendesk: "ZendeskLogo",
-    bigquery: "ActionTableIcon", // No BigQueryLogo available
+    bigquery: "BigQueryLogo",
     salesforce: "SalesforceLogo",
-    gong: "ActionSpeakIcon",
+    gong: "GongLogo",
     webcrawler: "ActionGlobeAltIcon",
     discord_bot: "ActionMegaphoneIcon",
   };
