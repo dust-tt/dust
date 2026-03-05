@@ -12,6 +12,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const GCS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
+const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type OutputContent = CallToolResult["content"][number];
 
@@ -94,7 +95,7 @@ const fetchGcsContentCached = cacheWithRedis(
   fetchGcsContent,
   (auth, _gcsPath, itemId) =>
     `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}`,
-  { cacheNullValues: false }
+  { cacheNullValues: false, ttlMs: GCS_CONTENT_CACHE_TTL_MS }
 );
 
 /**
