@@ -1,0 +1,114 @@
+name: Node 24 Compatibility Check
+
+on:
+  push:
+    paths:
+      - package-lock.json
+      - sdks/js/**
+      - front/**
+      - connectors/**
+      - sparkle/**
+      - .github/workflows/node24-compat.yml
+      - .github/actions/setup-node-deps/**
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  front-tsgo:
+    name: "[Node 24] front typecheck"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "24"
+          build-sdks: "true"
+          build-sparkle: "true"
+      - name: Typecheck
+        run: npm -w front run tsgo -- --version && npm -w front run tsgo
+
+  front-tests:
+    name: "[Node 24] front tests"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      redis:
+        image: redis:7.2.5
+        ports:
+          - 5434:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "24"
+          build-sdks: "true"
+          build-sparkle: "true"
+      - name: Install Postgres
+        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
+        with:
+          postgresql docker image: mirror.gcr.io/postgres
+          postgresql version: "14.13"
+          postgresql db: front_test
+          postgresql user: test
+          postgresql password: test
+          postgresql port: 5433
+      - name: Run Tests
+        working-directory: front
+        env:
+          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
+          REDIS_CACHE_URI: "redis://localhost:5434"
+          REDIS_URI: "redis://localhost:5434"
+          NODE_ENV: test
+        run: npx tsx admin/db.ts && npm run test:ci
+
+  connectors-tsgo:
+    name: "[Node 24] connectors typecheck"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "24"
+          build-sdks: "true"
+      - name: Typecheck
+        run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
+
+  connectors-tests:
+    name: "[Node 24] connectors tests"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "24"
+          build-sdks: "true"
+      - name: Install Postgres
+        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
+        with:
+          postgresql docker image: mirror.gcr.io/postgres
+          postgresql version: "14.13"
+          postgresql db: connectors_test
+          postgresql user: test
+          postgresql password: test
+          postgresql port: 5433
+      - name: Run Tests
+        working-directory: connectors
+        env:
+          CONNECTORS_DATABASE_URI: "postgres://test:test@localhost:5433/connectors_test"
+          NODE_ENV: test
+        run: npx tsx src/admin/db.ts && npm run test:ci
