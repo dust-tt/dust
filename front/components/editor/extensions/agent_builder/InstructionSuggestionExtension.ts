@@ -46,14 +46,14 @@ export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
 const CLASSES = {
   remove:
-    "suggestion-deletion rounded line-through bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 cursor-default",
+    "suggestion-deletion rounded line-through bg-red-100 text-red-800 cursor-default",
   removeDimmed:
-    "suggestion-deletion rounded line-through bg-red-50 dark:bg-red-900/20 text-gray-400 cursor-default",
-  add: "suggestion-addition rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 cursor-default",
+    "suggestion-deletion rounded line-through bg-red-50 text-gray-400 cursor-default",
+  add: "suggestion-addition rounded bg-blue-100 text-blue-800 cursor-default",
   addDimmed:
-    "suggestion-addition rounded bg-blue-50 dark:bg-blue-900/20 text-gray-400 cursor-default",
+    "suggestion-addition rounded bg-blue-50 text-gray-400 cursor-default",
   blockHighlightDimmed:
-    "suggestion-highlight rounded bg-blue-50/50 dark:bg-blue-900/10 cursor-default",
+    "suggestion-highlight rounded bg-gray-100 cursor-default",
 };
 
 export function diffBlockContent(
