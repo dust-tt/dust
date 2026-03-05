@@ -86,6 +86,7 @@ export type VirtuosoMessageListContext = {
     suggestionSId: string,
     status: "accepted" | "dismissed"
   ) => Promise<void>;
+  isButlerThinking: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   // Project membership fields (undefined for non-project conversations)

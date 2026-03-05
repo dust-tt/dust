@@ -453,6 +453,18 @@ export type ButlerSuggestionCreatedEvent = {
   suggestion: ButlerSuggestionPublicType;
 };
 
+// Event sent when the butler starts analyzing a conversation.
+export type ButlerThinkingEvent = {
+  type: "butler_thinking";
+  created: number;
+};
+
+// Event sent when the butler finishes analyzing a conversation.
+export type ButlerDoneEvent = {
+  type: "butler_done";
+  created: number;
+};
+
 export const ConversationMCPServerViewOrigins = [
   "agent_enabled",
   "conversation",

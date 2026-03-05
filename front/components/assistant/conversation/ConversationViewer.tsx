@@ -42,7 +42,9 @@ import type {
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageNewEvent,
+  ButlerDoneEvent,
   ButlerSuggestionCreatedEvent,
+  ButlerThinkingEvent,
   ConversationTitleEvent,
   ConversationWithoutContentType,
   LightMessageType,
@@ -315,6 +317,8 @@ export const ConversationViewer = ({
     () => new Map<string, ButlerSuggestionPublicType[]>()
   );
 
+  const [isButlerThinking, setIsButlerThinking] = useState(false);
+
   const handleSuggestionAction = useCallback(
     async (
       suggestionSId: string,
@@ -386,7 +390,9 @@ export const ConversationViewer = ({
           | AgentMessageDoneEvent
           | AgentGenerationCancelledEvent
           | ConversationTitleEvent
-          | ButlerSuggestionCreatedEvent;
+          | ButlerSuggestionCreatedEvent
+          | ButlerThinkingEvent
+          | ButlerDoneEvent;
       } = JSON.parse(eventStr);
       const event = eventPayload.data;
 
@@ -526,7 +532,14 @@ export const ConversationViewer = ({
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
             break;
+          case "butler_thinking":
+            setIsButlerThinking(true);
+            break;
+          case "butler_done":
+            setIsButlerThinking(false);
+            break;
           case "butler_suggestion_created":
+            setIsButlerThinking(false);
             setSuggestionsByMessageSId((prev) => {
               const { suggestion } = event;
               const existing = prev.get(suggestion.sourceMessageSId) ?? [];
@@ -790,6 +803,7 @@ export const ConversationViewer = ({
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
+      isButlerThinking,
       suggestionsByMessageSId,
       handleSuggestionAction,
       additionalMarkdownComponents,
@@ -807,6 +821,7 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
+    isButlerThinking,
     suggestionsByMessageSId,
     handleSuggestionAction,
     additionalMarkdownComponents,

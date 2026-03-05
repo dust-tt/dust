@@ -11,12 +11,15 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
+  ButlerDoneEvent,
   ButlerSuggestionCreatedEvent,
+  ButlerThinkingEvent,
   ConversationType,
 } from "@app/types/assistant/conversation";
 import type { ButlerSuggestionData } from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { z } from "zod";
 
 const SUGGEST_ACTIONS_FUNCTION_NAME = "suggest_actions";
 
@@ -26,6 +29,14 @@ const AGENT_CONFIDENCE_THRESHOLD = 70;
 
 // Minimum number of messages (by rank distance) between two suggestions of the same type.
 const SUGGESTION_COOLDOWN_MESSAGES = 10;
+
+const SuggestActionsResult = z.object({
+  rename_confidence: z.number(),
+  new_title: z.string(),
+  agent_confidence: z.number(),
+  agent_name: z.string(),
+  agent_prompt: z.string(),
+});
 
 function buildAnalyzeConversationSpecifications(
   hasAgents: boolean
@@ -271,214 +282,161 @@ export async function analyzeConversation(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getFastestWhitelistedModel(owner);
-  if (!model) {
-    logger.warn(
-      { conversationId: conversation.id, workspaceId: owner.sId },
-      "Butler: no whitelisted model available for conversation analysis"
-    );
-    return;
-  }
-
-  // Fetch available agents, filtering out global (platform-provided) agents
-  // and those already participating in the conversation.
-  const participantSIds = getParticipantAgentSIds(conversation);
-  const allAgents = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "list",
-    variant: "extra_light",
-    sort: "priority",
-  });
-  const availableAgents = allAgents
-    .filter((a) => a.scope !== "global" && !participantSIds.has(a.sId))
-    .slice(0, MAX_AGENTS_IN_PROMPT);
-
-  const suggestionHistory =
-    await ConversationButlerSuggestionResource.fetchResolvedByConversation(
-      auth,
-      { conversationId: conversation.id, limit: 10 }
-    );
-
-  const currentTitle = conversation.title ?? "";
-  const prompt = buildPrompt(currentTitle, availableAgents, suggestionHistory);
-
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    tools: "",
-    allowedTokenCount: model.contextSize - model.generationTokensCount,
-    excludeActions: true,
-    excludeImages: true,
-  });
-
-  if (modelConversationRes.isErr()) {
-    logger.error(
-      {
-        conversationId: conversation.id,
-        error: modelConversationRes.error,
-      },
-      "Butler: failed to render conversation for analysis"
-    );
-    return;
-  }
-
-  const { modelConversation: conv } = modelConversationRes.value;
-  if (conv.messages.length === 0) {
-    return;
-  }
-
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: SUGGEST_ACTIONS_FUNCTION_NAME,
-      useCache: false,
-    },
-    {
-      conversation: conv,
-      prompt,
-      specifications: buildAnalyzeConversationSpecifications(
-        availableAgents.length > 0
-      ),
-      forceToolCall: SUGGEST_ACTIONS_FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType: "butler_analyze_conversation",
-        conversationId: conversation.sId,
-        workspaceId: owner.sId,
-      },
-    }
-  );
-
-  if (res.isErr()) {
-    logger.error(
-      { conversationId: conversation.id, error: res.error },
-      "Butler: LLM call failed for conversation analysis"
-    );
-    return;
-  }
-
-  const action = res.value.actions?.[0];
-  if (!action?.arguments) {
-    logger.warn(
-      { conversationId: conversation.id },
-      "Butler: no tool call in LLM response for conversation analysis. Hint: improve the prompt"
-    );
-    return;
-  }
-
-  const {
-    rename_confidence,
-    new_title,
-    agent_confidence,
-    agent_name,
-    agent_prompt,
-  } = action.arguments as {
-    rename_confidence: number;
-    new_title: string;
-    agent_confidence: number;
-    agent_name: string;
-    agent_prompt: string;
+  const thinkingEvent: ButlerThinkingEvent = {
+    type: "butler_thinking",
+    created: Date.now(),
   };
+  await publishConversationEvent(thinkingEvent, {
+    conversationId: conversation.sId,
+  });
 
-  logger.info(
-    {
-      workspaceId: owner.sId,
-      conversationId: conversation.id,
+  try {
+    const model = getFastestWhitelistedModel(owner);
+    if (!model) {
+      logger.warn(
+        { conversationId: conversation.id, workspaceId: owner.sId },
+        "Butler: no whitelisted model available for conversation analysis"
+      );
+      return;
+    }
+
+    // Fetch available agents, filtering out global (platform-provided) agents
+    // and those already participating in the conversation.
+    const participantSIds = getParticipantAgentSIds(conversation);
+    const allAgents = await getAgentConfigurationsForView({
+      auth,
+      agentsGetView: "list",
+      variant: "extra_light",
+      sort: "priority",
+    });
+    const availableAgents = allAgents
+      .filter((a) => a.scope !== "global" && !participantSIds.has(a.sId))
+      .slice(0, MAX_AGENTS_IN_PROMPT);
+
+    const suggestionHistory =
+      await ConversationButlerSuggestionResource.fetchResolvedByConversation(
+        auth,
+        { conversationId: conversation.id, limit: 10 }
+      );
+
+    const currentTitle = conversation.title ?? "";
+    const prompt = buildPrompt(
       currentTitle,
+      availableAgents,
+      suggestionHistory
+    );
+
+    const modelConversationRes = await renderConversationForModel(auth, {
+      conversation,
+      model,
+      prompt,
+      tools: "",
+      allowedTokenCount: model.contextSize - model.generationTokensCount,
+      excludeActions: true,
+      excludeImages: true,
+    });
+
+    if (modelConversationRes.isErr()) {
+      logger.error(
+        {
+          conversationId: conversation.id,
+          error: modelConversationRes.error,
+        },
+        "Butler: failed to render conversation for analysis"
+      );
+      return;
+    }
+
+    const { modelConversation: conv } = modelConversationRes.value;
+    if (conv.messages.length === 0) {
+      return;
+    }
+
+    const res = await runMultiActionsAgent(
+      auth,
+      {
+        providerId: model.providerId,
+        modelId: model.modelId,
+        functionCall: SUGGEST_ACTIONS_FUNCTION_NAME,
+        useCache: false,
+      },
+      {
+        conversation: conv,
+        prompt,
+        specifications: buildAnalyzeConversationSpecifications(
+          availableAgents.length > 0
+        ),
+        forceToolCall: SUGGEST_ACTIONS_FUNCTION_NAME,
+      },
+      {
+        context: {
+          operationType: "butler_analyze_conversation",
+          conversationId: conversation.sId,
+          workspaceId: owner.sId,
+        },
+      }
+    );
+
+    if (res.isErr()) {
+      logger.error(
+        { conversationId: conversation.id, error: res.error },
+        "Butler: LLM call failed for conversation analysis"
+      );
+      return;
+    }
+
+    const action = res.value.actions?.[0];
+    if (!action?.arguments) {
+      logger.warn(
+        { conversationId: conversation.id },
+        "Butler: no tool call in LLM response for conversation analysis. Hint: improve the prompt"
+      );
+      return;
+    }
+
+    const parseResult = SuggestActionsResult.safeParse(action.arguments);
+    if (parseResult.success === false) {
+      logger.error(
+        {
+          conversationId: conversation.id,
+          error: parseResult.error,
+        },
+        "Butler: failed to parse LLM response for conversation analysis"
+      );
+      return;
+    }
+
+    const {
       rename_confidence,
       new_title,
       agent_confidence,
       agent_name,
-    },
-    "Butler: conversation analysis result"
-  );
+      agent_prompt,
+    } = parseResult.data;
 
-  // Find the source message that triggered this analysis.
-  const sourceMessage = await MessageModel.findOne({
-    where: {
-      sId: messageId,
-      workspaceId: owner.id,
-      visibility: "visible",
-    },
-  });
-
-  if (!sourceMessage) {
-    return;
-  }
-
-  // Process rename title suggestion with throttling.
-  if (
-    rename_confidence >= RENAME_CONFIDENCE_THRESHOLD &&
-    new_title &&
-    new_title.trim().toLowerCase() !== currentTitle.trim().toLowerCase()
-  ) {
-    const shouldPropose = await shouldProposeSuggestion(auth, {
-      conversationId: conversation.id,
-      currentMessageRank: sourceMessage.rank,
-      suggestionType: "rename_title",
+    // Find the source message that triggered this analysis.
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        sId: messageId,
+        workspaceId: owner.id,
+        visibility: "visible",
+      },
     });
 
-    if (shouldPropose) {
-      const suggestion = await ConversationButlerSuggestionResource.makeNew(
-        auth,
-        {
-          conversationId: conversation.id,
-          sourceMessageId: sourceMessage.id,
-          suggestionType: "rename_title",
-          metadata: { suggestedTitle: new_title },
-          status: "pending",
-        }
-      );
-
-      const event: ButlerSuggestionCreatedEvent = {
-        type: "butler_suggestion_created",
-        created: Date.now(),
-        suggestion: suggestion.toJSON(),
-      };
-
-      await publishConversationEvent(event, {
-        conversationId: conversation.sId,
-      });
-
-      logger.info(
-        {
-          conversationId: conversation.id,
-          suggestedTitle: new_title,
-          confidence: rename_confidence,
-        },
-        "Butler: created rename_title suggestion"
-      );
-    } else {
-      logger.info(
-        {
-          conversationId: conversation.id,
-          confidence: rename_confidence,
-        },
-        "Butler: skipped rename_title suggestion (throttled)"
-      );
+    if (!sourceMessage) {
+      return;
     }
-  }
 
-  // Process agent suggestion with throttling.
-  if (
-    agent_confidence >= AGENT_CONFIDENCE_THRESHOLD &&
-    agent_name &&
-    agent_prompt
-  ) {
-    // Validate that the agent name matches an available agent (case-insensitive).
-    const matchedAgent = availableAgents.find(
-      (a) => a.name.toLowerCase() === agent_name.toLowerCase()
-    );
-
-    if (matchedAgent) {
+    // Process rename title suggestion with throttling.
+    if (
+      rename_confidence >= RENAME_CONFIDENCE_THRESHOLD &&
+      new_title &&
+      new_title.trim().toLowerCase() !== currentTitle.trim().toLowerCase()
+    ) {
       const shouldPropose = await shouldProposeSuggestion(auth, {
         conversationId: conversation.id,
         currentMessageRank: sourceMessage.rank,
-        suggestionType: "call_agent",
+        suggestionType: "rename_title",
       });
 
       if (shouldPropose) {
@@ -487,12 +445,8 @@ export async function analyzeConversation(
           {
             conversationId: conversation.id,
             sourceMessageId: sourceMessage.id,
-            suggestionType: "call_agent",
-            metadata: {
-              agentSId: matchedAgent.sId,
-              agentName: matchedAgent.name,
-              prompt: agent_prompt,
-            },
+            suggestionType: "rename_title",
+            metadata: { suggestedTitle: new_title },
             status: "pending",
           }
         );
@@ -510,31 +464,103 @@ export async function analyzeConversation(
         logger.info(
           {
             conversationId: conversation.id,
-            agentName: matchedAgent.name,
-            agentSId: matchedAgent.sId,
-            confidence: agent_confidence,
+            suggestedTitle: new_title,
+            confidence: rename_confidence,
           },
-          "Butler: created call_agent suggestion"
+          "Butler: created rename_title suggestion"
         );
       } else {
         logger.info(
           {
             conversationId: conversation.id,
-            agentName: matchedAgent.name,
-            confidence: agent_confidence,
+            confidence: rename_confidence,
           },
-          "Butler: skipped call_agent suggestion (throttled)"
+          "Butler: skipped rename_title suggestion (throttled)"
         );
       }
-    } else {
-      logger.info(
-        {
-          conversationId: conversation.id,
-          agentName: agent_name,
-          agent_confidence,
-        },
-        "Butler: agent name from LLM did not match any available agent, skipping"
-      );
     }
+
+    // Process agent suggestion with throttling.
+    if (
+      agent_confidence >= AGENT_CONFIDENCE_THRESHOLD &&
+      agent_name &&
+      agent_prompt
+    ) {
+      // Validate that the agent name matches an available agent (case-insensitive).
+      const matchedAgent = availableAgents.find(
+        (a) => a.name.toLowerCase() === agent_name.toLowerCase()
+      );
+
+      if (matchedAgent) {
+        const shouldPropose = await shouldProposeSuggestion(auth, {
+          conversationId: conversation.id,
+          currentMessageRank: sourceMessage.rank,
+          suggestionType: "call_agent",
+        });
+
+        if (shouldPropose) {
+          const suggestion = await ConversationButlerSuggestionResource.makeNew(
+            auth,
+            {
+              conversationId: conversation.id,
+              sourceMessageId: sourceMessage.id,
+              suggestionType: "call_agent",
+              metadata: {
+                agentSId: matchedAgent.sId,
+                agentName: matchedAgent.name,
+                prompt: agent_prompt,
+              },
+              status: "pending",
+            }
+          );
+
+          const event: ButlerSuggestionCreatedEvent = {
+            type: "butler_suggestion_created",
+            created: Date.now(),
+            suggestion: suggestion.toJSON(),
+          };
+
+          await publishConversationEvent(event, {
+            conversationId: conversation.sId,
+          });
+
+          logger.info(
+            {
+              conversationId: conversation.id,
+              agentName: matchedAgent.name,
+              agentSId: matchedAgent.sId,
+              confidence: agent_confidence,
+            },
+            "Butler: created call_agent suggestion"
+          );
+        } else {
+          logger.info(
+            {
+              conversationId: conversation.id,
+              agentName: matchedAgent.name,
+              confidence: agent_confidence,
+            },
+            "Butler: skipped call_agent suggestion (throttled)"
+          );
+        }
+      } else {
+        logger.info(
+          {
+            conversationId: conversation.id,
+            agentName: agent_name,
+            agent_confidence,
+          },
+          "Butler: agent name from LLM did not match any available agent, skipping"
+        );
+      }
+    }
+  } finally {
+    const doneEvent: ButlerDoneEvent = {
+      type: "butler_done",
+      created: Date.now(),
+    };
+    await publishConversationEvent(doneEvent, {
+      conversationId: conversation.sId,
+    });
   }
 }
