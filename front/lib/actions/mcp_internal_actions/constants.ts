@@ -89,7 +89,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
 
 export const SEARCH_TOOL_NAME = "semantic_search";
