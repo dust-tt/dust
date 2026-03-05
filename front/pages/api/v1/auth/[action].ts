@@ -50,15 +50,11 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
 
   let workspaceId = undefined;
-  // TODO(chris): Remove this condition if no log
   if (
     typeof query.organization_id === "string" &&
     query.organization_id.startsWith("workspace-")
   ) {
     workspaceId = query.organization_id.split("workspace-")[1];
-    logger.info(
-      `Received authorize request with organization_id ${query.organization_id} (starting with "workspace-"), extracted workspaceId ${workspaceId}`
-    );
   }
 
   if (typeof query.workspaceId === "string") {

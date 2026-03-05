@@ -102,6 +102,7 @@ export const useAuthHook = () => {
         new AuthError("not_authenticated", "No access token received.")
       );
       log("Refresh token: No access token received.");
+      setIsLoading(false);
       return;
     }
 
