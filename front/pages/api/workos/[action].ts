@@ -12,7 +12,6 @@ import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -61,7 +60,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       loginHint,
       returnTo,
       redirect_uri,
-      workspaceId,
       code_challenge,
       code_challenge_method,
     } = req.query;
@@ -72,20 +70,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
         : `${config.getAuthRedirectBaseUrl()}/api/workos/callback`;
 
     let organizationIdToUse;
-
-    if (workspaceId && isString(workspaceId)) {
-      const workspace = workspaceId
-        ? await WorkspaceResource.fetchById(workspaceId)
-        : null;
-
-      if (!workspace?.workOSOrganizationId) {
-        res.status(400).json({
-          error: "Workspace does not have a WorkOS organization ID",
-        });
-        return;
-      }
-      organizationIdToUse = workspace.workOSOrganizationId;
-    }
 
     if (organizationId && typeof organizationId === "string") {
       organizationIdToUse = organizationId;
@@ -182,15 +166,15 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   if (!code || !isString(code)) {
     return res.status(400).json({ error: "Invalid code" });
   }
+
+  if (code_verifier && !isString(code_verifier)) {
+    return res.status(400).json({ error: "Invalid code verifier" });
+  }
   try {
-    const authResult =
-      code_verifier && isString(code_verifier)
-        ? await getWorkOS().userManagement.authenticateWithCodeAndVerifier({
-            code,
-            codeVerifier: code_verifier,
-            clientId: config.getWorkOSClientId(),
-          })
-        : await authenticate(code);
+    const authResult = await authenticate({
+      code,
+      codeVerifier: code_verifier,
+    });
 
     const jwtPayload = JSON.parse(
       Buffer.from(authResult.accessToken.split(".")[1], "base64").toString()
@@ -206,10 +190,19 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-async function authenticate(code: string, organizationId?: string) {
+async function authenticate({
+  code,
+  codeVerifier,
+  organizationId,
+}: {
+  code: string;
+  codeVerifier?: string;
+  organizationId?: string;
+}) {
   try {
     return await getWorkOS().userManagement.authenticateWithCode({
       code,
+      codeVerifier,
       clientId: config.getWorkOSClientId(),
       session: {
         sealSession: true,
@@ -263,7 +256,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       authenticationMethod,
       sealedSession,
       accessToken,
-    } = await authenticate(code, stateObj.organizationId);
+    } = await authenticate({ code, organizationId: stateObj.organizationId });
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
