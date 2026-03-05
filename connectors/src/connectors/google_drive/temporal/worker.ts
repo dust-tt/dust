@@ -4,10 +4,10 @@ import * as sync_status from "@connectors/lib/sync_status";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import { getWorkflowConfig } from "@connectors/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-
 import {
   GDRIVE_FULL_SYNC_QUEUE_NAME,
   GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
@@ -15,8 +15,13 @@ import {
 
 export async function runGoogleWorkers() {
   const { connection, namespace } = await getTemporalWorkerConnection();
+  const workflowConfig = getWorkflowConfig({
+    workerName: "google_drive",
+    getWorkflowsPath: () => require.resolve("./workflows"),
+  });
+
   const workerFullSync = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...workflowConfig,
     activities: { ...activities, ...sync_status },
     taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
     stickyQueueScheduleToStartTimeout: "1m",
@@ -50,7 +55,7 @@ export async function runGoogleWorkers() {
   });
 
   const workerIncrementalSync = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...workflowConfig,
     activities: { ...activities, ...sync_status },
     taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 15,

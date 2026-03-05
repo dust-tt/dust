@@ -8,6 +8,7 @@ import {
 } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import { getWorkflowConfig } from "@connectors/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
@@ -15,7 +16,10 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 export async function runSalesforceWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "salesforce",
+      getWorkflowsPath: () => require.resolve("./workflows"),
+    }),
     activities: { ...activities, ...sync_status },
     taskQueue: QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 4,

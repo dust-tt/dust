@@ -1,28 +1,15 @@
-import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
-import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
-import { runDustProjectWorker } from "@connectors/connectors/dust_project/temporal/worker";
-import { runGongWorker } from "@connectors/connectors/gong/temporal/worker";
-import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
-import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
-import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
-import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
+import type { WorkerName } from "@connectors/temporal/worker_registry";
+import {
+  ALL_WORKERS,
+  workerFunctions,
+} from "@connectors/temporal/worker_registry";
 import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
 import { closeRedisClients } from "@connectors/types/shared/redis_client";
-import type { ConnectorProvider } from "@dust-tt/client";
 import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
 import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { runGithubWorker } from "./connectors/github/temporal/worker";
-import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
-import { runIntercomWorker } from "./connectors/intercom/temporal/worker";
-import {
-  runNotionGarbageCollectWorker,
-  runNotionWorker,
-} from "./connectors/notion/temporal/worker";
-import { runSlackWorker } from "./connectors/slack/temporal/worker";
-import { runZendeskWorkers } from "./connectors/zendesk/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
@@ -49,31 +36,7 @@ Runtime.install({
   logger: pinoAdapter,
 });
 
-type WorkerType =
-  | Exclude<ConnectorProvider, "slack_bot" | "discord_bot" | "microsoft_bot">
-  | "notion_garbage_collector";
-
-const workerFunctions: Record<WorkerType, () => Promise<void>> = {
-  confluence: runConfluenceWorker,
-  github: runGithubWorker,
-  google_drive: runGoogleWorkers,
-  intercom: runIntercomWorker,
-  microsoft: runMicrosoftWorker,
-  notion: runNotionWorker,
-  notion_garbage_collector: runNotionGarbageCollectWorker,
-  slack: runSlackWorker,
-  webcrawler: runWebCrawlerWorker,
-  snowflake: runSnowflakeWorker,
-  zendesk: runZendeskWorkers,
-  bigquery: runBigQueryWorker,
-  salesforce: runSalesforceWorker,
-  gong: runGongWorker,
-  dust_project: runDustProjectWorker,
-};
-
-const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
-
-async function runWorkers(workers: WorkerType[]) {
+async function runWorkers(workers: WorkerName[]) {
   // Start all workers in parallel
   try {
     const promises = workers.map((worker) =>
@@ -113,7 +76,7 @@ yargs(hideBin(process.argv))
   .help()
   .alias("help", "h")
   .parseAsync()
-  .then(async (args) => runWorkers(args.workers as WorkerType[]))
+  .then(async (args) => runWorkers(args.workers as WorkerName[]))
   .catch((err) => {
     logger.error(errorFromAny(err), "Error running workers");
     process.exit(1);

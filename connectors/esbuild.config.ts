@@ -14,6 +14,11 @@ const buildTargets: BuildTarget[] = [
     outfile: "dist/start_server.js",
   },
   {
+    name: "Worker",
+    entryPoint: "src/start_worker.ts",
+    outfile: "dist/start_worker.js",
+  },
+  {
     name: "CLI",
     entryPoint: "src/admin/cli.ts",
     outfile: "dist/cli.js",
