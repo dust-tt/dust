@@ -40,8 +40,11 @@ COPY --from=rust-builder /opt/cargo /opt/cargo
 ARG NODE_VERSION=22.12.0
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then NODE_ARCH="x64"; else NODE_ARCH="arm64"; fi && \
-    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
-    | tar -xJ -C /usr/local --strip-components=1
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" -o node.tar.xz && \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" -o SHASUMS256.txt && \
+    grep "node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz$" SHASUMS256.txt | sha256sum -c - && \
+    tar -xJf node.tar.xz -C /usr/local --strip-components=1 && \
+    rm node.tar.xz SHASUMS256.txt
 
 # Bun
 ARG BUN_VERSION=1.3.7
@@ -49,10 +52,13 @@ RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then BUN_ARCH="x64"; else BUN_ARCH="aarch64"; fi && \
     curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${BUN_ARCH}.zip" \
     -o /tmp/bun.zip && \
+    curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${BUN_ARCH}.zip.sha512" \
+    -o /tmp/bun.zip.sha512 && \
+    echo "$(cat /tmp/bun.zip.sha512)  /tmp/bun.zip" | sha512sum -c - && \
     unzip -q /tmp/bun.zip -d /tmp && \
     mv /tmp/bun-linux-${BUN_ARCH}/bun /usr/local/bin/bun && \
     chmod +x /usr/local/bin/bun && \
-    rm -rf /tmp/bun.zip /tmp/bun-linux-${BUN_ARCH}
+    rm -rf /tmp/bun.zip /tmp/bun.zip.sha512 /tmp/bun-linux-${BUN_ARCH}
 
 WORKDIR /home/user
 
