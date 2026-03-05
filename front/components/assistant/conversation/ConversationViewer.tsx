@@ -333,10 +333,11 @@ export const ConversationViewer = ({
         }
       }
 
-      // If accepting a call_agent suggestion, submit the message with the agent mention.
+      // If accepting a call_agent or create_frame suggestion, submit the message with the agent mention.
       if (
         status === "accepted" &&
-        matchedSuggestion?.suggestionType === "call_agent"
+        (matchedSuggestion?.suggestionType === "call_agent" ||
+          matchedSuggestion?.suggestionType === "create_frame")
       ) {
         const { agentSId, agentName, prompt } = matchedSuggestion.metadata;
         void submitMessage({
