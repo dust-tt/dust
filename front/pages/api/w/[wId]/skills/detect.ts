@@ -74,6 +74,17 @@ async function handler(
 
       const detectedSkills = result.value;
 
+      if (detectedSkills.length === 0) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "No skills found in this repository. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).",
+          },
+        });
+      }
+
       const skillSummaries = await concurrentExecutor(
         detectedSkills,
         async (skill): Promise<DetectedSkillSummary> => {
