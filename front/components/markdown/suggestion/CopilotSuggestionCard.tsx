@@ -487,8 +487,7 @@ function KnowledgeSuggestionCard({
         baseName: nameToStorageFormat(`search ${displayName}`),
         existingActions: currentActions,
       });
-      newAction.description =
-        suggestion.description ?? `Search ${displayName}`;
+      newAction.description = suggestion.description ?? `Search ${displayName}`;
       newAction.configuration.dataSourceConfigurations = {
         [dataSourceView.sId]: {
           dataSourceView: dataSourceView,
