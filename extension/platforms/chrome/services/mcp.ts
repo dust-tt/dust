@@ -1,23 +1,26 @@
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 import type { WorkspaceType } from "@app/types/user";
 import { registerAllTools } from "@extension/platforms/chrome/tools";
+import type { CaptureService } from "@extension/shared/services/capture";
 import { McpService } from "@extension/shared/services/mcp";
-import type { BrowserMessagingService } from "@extension/shared/services/platform";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
  * Chrome-specific implementation of the MCP service.
- * Tools use the browser messaging service to communicate with the background script.
+ * Tools use the capture service to retrieve page content.
  */
 export class ChromeMcpService extends McpService {
-  private messaging: BrowserMessagingService | null;
+  private captureService: CaptureService | null = null;
   private server: McpServer | null = null;
   private transport: BrowserMCPTransport | null = null;
   private serverId: string | undefined = undefined;
 
-  constructor(messaging?: BrowserMessagingService) {
+  constructor() {
     super();
-    this.messaging = messaging ?? null;
+  }
+
+  setCaptureService(captureService: CaptureService): void {
+    this.captureService = captureService;
   }
 
   createServerForWorkspace(): McpServer | null {
@@ -27,7 +30,7 @@ export class ChromeMcpService extends McpService {
         version: "1.0.0",
       });
 
-      registerAllTools(server, this.messaging);
+      registerAllTools(server, this.captureService);
 
       this.server = server;
       return server;

@@ -1,60 +1,43 @@
-import type {
-  GetActiveTabBackgroundMessage,
-  GetActiveTabBackgroundResponse,
-} from "@extension/platforms/chrome/messages";
-import type { BrowserMessagingService } from "@extension/shared/services/platform";
+import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
- * Registers the get-current-page tool with the MCP server.
- * Retrieves the title, URL, and text content of the active browser tab.
+ * Registers the get-current-browser-page tool with the MCP server.
+ * Extracts the text content of the active browser tab.
  */
 export function registerGetCurrentPageTool(
   server: McpServer,
-  messaging: BrowserMessagingService | null
+  captureService: CaptureService | null
 ): void {
   server.tool(
-    "get-current-page",
-    "Retrieves the title, URL, and text content of the active browser tab. " +
-      "Use this to understand what page the user is currently viewing.",
+    "get-current-browser-page",
+    "Extracts the title, URL, and text content of the active browser tab. " +
+      "Use this to read and understand what the user is currently viewing. " +
+      "For non-text pages (PDFs, images, etc.), prefer get-current-browser-page-screenshot.",
     {},
     async () => {
-      if (!messaging) {
+      if (!captureService) {
         return {
-          content: [{ type: "text", text: "Messaging service not available." }],
+          content: [{ type: "text", text: "Capture service not available." }],
         };
       }
 
       try {
-        const response = await messaging.sendMessage<
-          GetActiveTabBackgroundMessage,
-          GetActiveTabBackgroundResponse
-        >({
-          type: "GET_ACTIVE_TAB",
-          includeContent: true,
-          includeCapture: false,
-        });
+        const result = await captureService.handleOperation(
+          "capture-page-content",
+          { includeContent: true, includeCapture: false }
+        );
 
-        if (!response) {
+        if (result.isErr()) {
           return {
-            content: [
-              {
-                type: "text",
-                text: "No response received from background script.",
-              },
-            ],
+            content: [{ type: "text", text: `Error: ${result.error.message}` }],
           };
         }
 
-        if (response.error) {
-          return {
-            content: [{ type: "text", text: `Error: ${response.error}` }],
-          };
-        }
-
-        const parts = [`Title: ${response.title}`, `URL: ${response.url}`];
-        if (response.content) {
-          parts.push(`Content:\n${response.content}`);
+        const { title, url, content } = result.value;
+        const parts = [`Title: ${title}`, `URL: ${url}`];
+        if (content) {
+          parts.push(`Content:\n${content}`);
         }
 
         return {
