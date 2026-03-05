@@ -18,6 +18,7 @@ import {
   getSmallWhitelistedModel,
 } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
@@ -461,6 +462,8 @@ export function buildCopilotInstructions(
   return parts.join("\n\n");
 }
 
+const COPILOT_NEW_AGENT_STATIC_RESPONSE = "What agent would you like to build?";
+
 export function _getCopilotGlobalAgent(
   auth: Authenticator,
   {
@@ -497,17 +500,24 @@ export function _getCopilotGlobalAgent(
   // (static response without calling a real LLM).
   // Use a fast model for other first turns and the full model for follow-ups.
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
-  const modelConfiguration = isFirstTurn
-    ? isProviderWhitelisted(owner, "anthropic")
-      ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-      : getSmallWhitelistedModel(owner)
-    : getLargeWhitelistedModel(owner);
+  const isNewAgentFromScratchFirstTurn =
+    isFirstTurn && globalAgentContext?.copilotIsNewAgentFromScratch;
+  const modelConfiguration = isNewAgentFromScratchFirstTurn
+    ? NOOP_MODEL_CONFIG
+    : isFirstTurn
+      ? isProviderWhitelisted(owner, "anthropic")
+        ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+        : getSmallWhitelistedModel(owner)
+      : getLargeWhitelistedModel(owner);
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
+        ...(isNewAgentFromScratchFirstTurn && {
+          metaData: { staticResponse: COPILOT_NEW_AGENT_STATIC_RESPONSE },
+        }),
       }
     : dummyModelConfiguration;
 
