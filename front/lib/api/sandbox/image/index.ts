@@ -1,11 +1,32 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 
-import { DUST_BASE_IMAGE } from "./dust-base";
+import {
+  getRequiredSandboxImages,
+  getSandboxImageFromRegistry,
+  getSandboxImageFromRegistryByName,
+} from "./registry";
 import type { SandboxImage } from "./sandbox_image";
 
-export function getSandboxImage(_auth?: Authenticator): SandboxImage {
-  return DUST_BASE_IMAGE;
+export function getSandboxImage(
+  _auth?: Authenticator
+): Result<SandboxImage, Error> {
+  const result = getSandboxImageFromRegistry({
+    imageName: "dust-base",
+    tag: "production",
+  });
+  if (result.isErr()) {
+    return new Err(new Error("Default sandbox image not found in registry"));
+  }
+  return result;
 }
+
+export {
+  getRequiredSandboxImages,
+  getSandboxImageFromRegistry,
+  getSandboxImageFromRegistryByName,
+};
 export { SandboxImage } from "./sandbox_image";
 export {
   createToolManifest,

@@ -173,6 +173,60 @@ class E2BTemplateBuilder {
   }
 }
 
+export interface E2BTemplateInfo {
+  templateId: string;
+  aliases: readonly string[];
+}
+
+interface E2BAPITemplateResponse {
+  templateID: string;
+  aliases?: string[];
+  buildID: string;
+  cpuCount: number;
+  memoryMB: number;
+  public: boolean;
+}
+
+const E2B_API_BASE_URL = "https://api.e2b.dev";
+
+export async function listE2BTemplates(
+  apiKey?: string
+): Promise<Result<E2BTemplateInfo[], Error>> {
+  const e2bConfig = config.getE2BSandboxConfig();
+  const key = apiKey ?? e2bConfig.apiKey;
+  const domain = e2bConfig.domain;
+
+  const baseUrl = domain ? `https://api.${domain}` : E2B_API_BASE_URL;
+
+  try {
+    const response = await fetch(`${baseUrl}/templates`, {
+      method: "GET",
+      headers: {
+        "X-API-Key": key,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `E2B API error: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const templates: E2BAPITemplateResponse[] = await response.json();
+    return new Ok(
+      templates.map((t) => ({
+        templateId: t.templateID,
+        aliases: t.aliases ?? [],
+      }))
+    );
+  } catch (err) {
+    logger.error({ err: normalizeError(err) }, "Failed to list E2B templates");
+    return new Err(normalizeError(err));
+  }
+}
+
 export async function buildSandboxImage(
   image: SandboxImage,
   imageId: SandboxImageId,

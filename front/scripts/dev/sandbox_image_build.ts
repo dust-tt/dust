@@ -46,7 +46,15 @@ async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
 
   const imageId: SandboxImageId = { imageName, tag };
   const { apiKey } = config.getE2BSandboxConfig();
-  const sandboxImage = getSandboxImage();
+  const sandboxImageResult = getSandboxImage();
+  if (sandboxImageResult.isErr()) {
+    logger.error(
+      { err: sandboxImageResult.error },
+      "Failed to get sandbox image"
+    );
+    return;
+  }
+  const sandboxImage = sandboxImageResult.value;
 
   // Check if the image uses Docker base and registry is required
   const usesDockerBase = sandboxImage.baseImage.type === "docker";
