@@ -142,7 +142,9 @@ export function transformTemplateToFormData(
       : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
       ...defaultFormData.agentSettings,
-      name: template.handle ?? defaultFormData.agentSettings.name,
+      name: hasCopilotAccess
+        ? defaultFormData.agentSettings.name
+        : (template.handle ?? defaultFormData.agentSettings.name),
       description:
         template.userFacingDescription ??
         defaultFormData.agentSettings.description,
