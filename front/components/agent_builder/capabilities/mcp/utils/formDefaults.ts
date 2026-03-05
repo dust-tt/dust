@@ -2,6 +2,10 @@ import type {
   AdditionalConfigurationInBuilderType,
   MCPServerConfigurationType,
 } from "@app/components/shared/tools_picker/types";
+import {
+  ADVANCED_SEARCH_SWITCH,
+  SEARCH_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import set from "lodash/set";
@@ -72,6 +76,14 @@ export function getDefaultConfiguration(
     if (defaultValue !== null) {
       set(additionalConfig, key, defaultValue);
     }
+  }
+
+  // Always enable advanced search for new search server configurations.
+  if (
+    mcpServerView.serverType === "internal" &&
+    mcpServerView.server.name === SEARCH_SERVER_NAME
+  ) {
+    set(additionalConfig, ADVANCED_SEARCH_SWITCH, true);
   }
 
   defaults.additionalConfiguration = additionalConfig;
