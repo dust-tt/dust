@@ -629,6 +629,7 @@ export async function analyzeConversation(
               metadata: {
                 agentSId: matchedAgent.sId,
                 agentName: matchedAgent.name,
+                agentDescription: matchedAgent.description ?? "",
                 prompt: agent_prompt,
               },
               status: "pending",
@@ -716,6 +717,7 @@ export async function analyzeConversation(
                   agentName: dustAgent.name,
                   prompt: skill_prompt,
                   skillName: matchedSkill.name,
+                  skillDescription: matchedSkill.description,
                 },
                 status: "pending",
               });

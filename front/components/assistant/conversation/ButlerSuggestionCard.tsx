@@ -44,6 +44,7 @@ export function ButlerSuggestionCard({
           onAction={onAction}
           icon={ChatBubbleLeftRightIcon}
           title={`Try asking @${suggestion.metadata.agentName}`}
+          description={suggestion.metadata.agentDescription}
           actionLabel="Ask"
         />
       );
@@ -54,6 +55,7 @@ export function ButlerSuggestionCard({
           onAction={onAction}
           icon={ActionLightbulbIcon}
           title={`Try using ${suggestion.metadata.skillName}?`}
+          description={suggestion.metadata.skillDescription}
           actionLabel="Try it"
         />
       );
@@ -130,6 +132,7 @@ interface AgentInvocationSuggestionCardProps {
   ) => Promise<void>;
   icon: ComponentType;
   title: string;
+  description: string;
   actionLabel: string;
 }
 
@@ -138,6 +141,7 @@ function AgentInvocationSuggestionCard({
   onAction,
   icon,
   title,
+  description,
   actionLabel,
 }: AgentInvocationSuggestionCardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -159,6 +163,9 @@ function AgentInvocationSuggestionCard({
       className="my-3 w-full max-w-full"
     >
       <div className="flex flex-col gap-3">
+        {description && (
+          <div className="text-sm text-muted-foreground">{description}</div>
+        )}
         <div className="italic text-sm text-muted-foreground">
           "{suggestion.metadata.prompt}"
         </div>

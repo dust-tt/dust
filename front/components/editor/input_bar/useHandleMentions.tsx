@@ -1,3 +1,4 @@
+import type { PendingInputContent } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import type {
   RichAgentMention,
@@ -9,6 +10,7 @@ const useHandleMentions = (
   editorService: EditorService,
   stickyMentions: RichMention[] | undefined,
   selectedAgent: RichAgentMention | null,
+  pendingInputContent: PendingInputContent | null,
   disableAutoFocus: boolean
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
@@ -50,6 +52,17 @@ const useHandleMentions = (
       }
     }
   }, [selectedAgent, editorService]);
+
+  // Populate the input bar with an agent mention + text from butler suggestions.
+  useEffect(() => {
+    if (pendingInputContent) {
+      queueMicrotask(() => {
+        editorService.insertMention(pendingInputContent.agentMention);
+        editorService.insertText(` ${pendingInputContent.text}`);
+        editorService.focusEnd();
+      });
+    }
+  }, [pendingInputContent, editorService]);
 
   return { stickyMentionsTextContent };
 };

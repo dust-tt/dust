@@ -362,6 +362,7 @@ describe("analyzeConversation", () => {
     expect(suggestions[0].metadata).toEqual({
       agentSId: "agent-1",
       agentName: "CodeHelper",
+      agentDescription: "Helps with code",
       prompt: "Can you help me debug this issue?",
     });
   });
@@ -470,6 +471,219 @@ describe("analyzeConversation", () => {
       messageId: message!.sId,
     });
 
+    const suggestions = await ConversationButlerSuggestionModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(suggestions).toHaveLength(0);
+  });
+
+  it("creates a use_skill suggestion when confidence is high and skill matches", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date(), new Date()],
+    });
+
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversation.id, workspaceId: workspace.id },
+    });
+    expect(message).not.toBeNull();
+
+    // Mock the @dust global agent so the skill suggestion can reference it.
+    mockGetAgentConfigurations.mockResolvedValue([
+      {
+        sId: "dust",
+        name: "Dust",
+        scope: "global",
+        description: "The Dust assistant",
+      },
+    ] as never);
+
+    // Mock available skills.
+    mockListSkills.mockResolvedValue([
+      {
+        sId: "go-deep",
+        name: "Go Deep",
+        userFacingDescription: "Enable comprehensive analysis.",
+        isAutoEnabled: false,
+      },
+    ] as never);
+
+    setupMocksForRender();
+    mockRunMultiActionsAgent.mockResolvedValue(
+      new Ok({
+        actions: [
+          {
+            name: "analyze_conversation",
+            arguments: {
+              rename_confidence: 20,
+              new_title: "",
+              agent_confidence: 0,
+              agent_name: "",
+              agent_prompt: "",
+              skill_confidence: 85,
+              skill_name: "Go Deep",
+              skill_prompt:
+                "Use Go Deep to analyze the sales data we discussed",
+            },
+          },
+        ],
+      }) as never
+    );
+
+    await analyzeConversation(authenticator, {
+      conversation,
+      messageId: message!.sId,
+    });
+
+    const suggestions = await ConversationButlerSuggestionModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0].suggestionType).toBe("use_skill");
+    expect(suggestions[0].metadata).toEqual({
+      agentSId: "dust",
+      agentName: "Dust",
+      prompt: "Use Go Deep to analyze the sales data we discussed",
+      skillName: "Go Deep",
+      skillDescription: "Enable comprehensive analysis.",
+    });
+  });
+
+  it("skips use_skill suggestion when skill name does not match", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date(), new Date()],
+    });
+
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversation.id, workspaceId: workspace.id },
+    });
+
+    mockGetAgentConfigurations.mockResolvedValue([
+      {
+        sId: "dust",
+        name: "Dust",
+        scope: "global",
+        description: "The Dust assistant",
+      },
+    ] as never);
+
+    mockListSkills.mockResolvedValue([
+      {
+        sId: "go-deep",
+        name: "Go Deep",
+        userFacingDescription: "Enable comprehensive analysis.",
+        isAutoEnabled: false,
+      },
+    ] as never);
+
+    setupMocksForRender();
+    mockRunMultiActionsAgent.mockResolvedValue(
+      new Ok({
+        actions: [
+          {
+            name: "analyze_conversation",
+            arguments: {
+              rename_confidence: 20,
+              new_title: "",
+              agent_confidence: 0,
+              agent_name: "",
+              agent_prompt: "",
+              skill_confidence: 90,
+              skill_name: "NonExistentSkill",
+              skill_prompt: "Use it",
+            },
+          },
+        ],
+      }) as never
+    );
+
+    await analyzeConversation(authenticator, {
+      conversation,
+      messageId: message!.sId,
+    });
+
+    const suggestions = await ConversationButlerSuggestionModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(suggestions).toHaveLength(0);
+  });
+
+  it("filters out auto-enabled skills from suggestions", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date(), new Date()],
+    });
+
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversation.id, workspaceId: workspace.id },
+    });
+
+    mockGetAgentConfigurations.mockResolvedValue([
+      {
+        sId: "dust",
+        name: "Dust",
+        scope: "global",
+        description: "The Dust assistant",
+      },
+    ] as never);
+
+    // Return only an auto-enabled skill (should be filtered out).
+    mockListSkills.mockResolvedValue([
+      {
+        sId: "discover_knowledge",
+        name: "Discover Knowledge",
+        userFacingDescription: "Auto-discover data sources.",
+        isAutoEnabled: true,
+      },
+    ] as never);
+
+    setupMocksForRender();
+    mockRunMultiActionsAgent.mockResolvedValue(
+      new Ok({
+        actions: [
+          {
+            name: "analyze_conversation",
+            arguments: {
+              rename_confidence: 20,
+              new_title: "",
+              agent_confidence: 0,
+              agent_name: "",
+              agent_prompt: "",
+              skill_confidence: 0,
+              skill_name: "",
+              skill_prompt: "",
+            },
+          },
+        ],
+      }) as never
+    );
+
+    await analyzeConversation(authenticator, {
+      conversation,
+      messageId: message!.sId,
+    });
+
+    // The LLM was told no skills are available (auto-enabled filtered out),
+    // so skill_confidence should be 0 and no skill suggestion created.
     const suggestions = await ConversationButlerSuggestionModel.findAll({
       where: { workspaceId: workspace.id },
     });

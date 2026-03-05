@@ -26,6 +26,7 @@ const RenameTitleMetadataSchema = z.object({
 const AgentInvocationMetadataSchema = z.object({
   agentSId: z.string(),
   agentName: z.string(),
+  agentDescription: z.string(),
   prompt: z.string(),
 });
 
@@ -35,6 +36,7 @@ const UseSkillMetadataSchema = z.object({
   agentName: z.string(),
   prompt: z.string(),
   skillName: z.string(),
+  skillDescription: z.string(),
 });
 
 export type RenameTitleMetadata = z.infer<typeof RenameTitleMetadataSchema>;

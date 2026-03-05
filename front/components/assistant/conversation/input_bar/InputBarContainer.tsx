@@ -546,7 +546,13 @@ const InputBarContainer = ({
 
   // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
-  const { animate, captureActions } = useContext(InputBarContext);
+  const { animate, captureActions, getAndClearPendingInputContent } =
+    useContext(InputBarContext);
+
+  const pendingInputContent = useMemo(
+    () => getAndClearPendingInputContent(),
+    [getAndClearPendingInputContent]
+  );
   useEffect(() => {
     if (animate) {
       // Schedule focus to avoid flushing during render lifecycle.
@@ -591,6 +597,7 @@ const InputBarContainer = ({
     editorService,
     stickyMentions,
     selectedAgent,
+    pendingInputContent,
     disableAutoFocus
   );
 

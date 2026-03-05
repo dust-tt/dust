@@ -13,11 +13,18 @@ import {
   useState,
 } from "react";
 
+export interface PendingInputContent {
+  agentMention: RichAgentMention;
+  text: string;
+}
+
 export const InputBarContext = createContext<{
   animate: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
+  getAndClearPendingInputContent: () => PendingInputContent | null;
+  setPendingInputContent: (content: PendingInputContent | null) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: {
     onCapture: (type: "text" | "screenshot") => void;
@@ -28,6 +35,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
+  getAndClearPendingInputContent: () => null,
+  setPendingInputContent: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -62,6 +71,11 @@ export function InputBarContextProvider({
     null
   );
 
+  // Pending input content: allows external components to populate the input bar
+  // with an agent mention and text (e.g. butler suggestion acceptance).
+  const [pendingInputContent, setPendingInputContentState] =
+    useState<PendingInputContent | null>(null);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectedAgentOuter = useCallback(
     (agentMention: RichAgentMention | null) => {
@@ -83,12 +97,30 @@ export function InputBarContextProvider({
     return previousSelectedAgent;
   }, [selectedAgent, setSelectedAgent]);
 
+  const setPendingInputContent = useCallback(
+    (content: PendingInputContent | null) => {
+      if (content) {
+        setAnimate(true);
+      }
+      setPendingInputContentState(content);
+    },
+    []
+  );
+
+  const getAndClearPendingInputContent = useCallback(() => {
+    const prev = pendingInputContent;
+    setPendingInputContentState(null);
+    return prev;
+  }, [pendingInputContent]);
+
   const value = useMemo(
     () => ({
       animate,
       setAnimate,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
+      getAndClearPendingInputContent,
+      setPendingInputContent,
       captureActions,
       fileUploaderService,
     }),
@@ -96,6 +128,8 @@ export function InputBarContextProvider({
       animate,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
+      getAndClearPendingInputContent,
+      setPendingInputContent,
       captureActions,
       fileUploaderService,
     ]
