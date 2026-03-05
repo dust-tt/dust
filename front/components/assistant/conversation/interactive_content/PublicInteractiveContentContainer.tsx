@@ -10,6 +10,7 @@ interface PublicInteractiveContentContainerProps {
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
+  isEmbed?: boolean;
 }
 
 /**
@@ -20,6 +21,7 @@ export function PublicInteractiveContentContainer({
   shareToken,
   workspaceId,
   vizUrl,
+  isEmbed = false,
 }: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
     shareToken,
@@ -49,6 +51,7 @@ export function PublicInteractiveContentContainer({
             shareToken={shareToken}
             workspaceId={workspaceId}
             vizUrl={vizUrl}
+            isEmbed={isEmbed}
           />
         );
 

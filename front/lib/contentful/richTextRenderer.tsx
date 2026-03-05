@@ -72,6 +72,7 @@ interface DustFrameEmbedProps {
 }
 
 function DustFrameEmbed({ frameUrl }: DustFrameEmbedProps) {
+  const embedUrl = `${frameUrl}?embed=true`;
   return (
     <div
       style={{ maxWidth: "1000px" }}
@@ -79,7 +80,7 @@ function DustFrameEmbed({ frameUrl }: DustFrameEmbedProps) {
     >
       <div className="relative aspect-video w-full">
         <iframe
-          src={frameUrl}
+          src={embedUrl}
           title="Dust Frame"
           className="absolute inset-0 h-full w-full border-none"
           allowFullScreen
