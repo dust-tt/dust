@@ -1,5 +1,5 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { detectSkillsFromGitHubRepo, isSkillFromSameGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
+import { detectSkillsFromGitHubRepo, isSkillFromGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -107,7 +107,7 @@ async function handler(
           );
 
           if (existing) {
-            if (!isSkillFromSameGitHubRepo(existing, { repoUrl })) {
+            if (!isSkillFromGitHubRepo(existing, { repoUrl })) {
               errors.push({
                 name: skill.name,
                 message: `A different skill named "${skill.name}" already exists.`,

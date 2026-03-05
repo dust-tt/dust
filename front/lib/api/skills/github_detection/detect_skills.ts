@@ -240,7 +240,7 @@ async function buildDetectedSkill({
   });
 }
 
-export function isSkillFromSameGitHubRepo(
+export function isSkillFromGitHubRepo(
   skill: SkillResource,
   { repoUrl }: { repoUrl: string }
 ): boolean {
