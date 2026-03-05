@@ -4,6 +4,7 @@ import {
   makeMessageUpdateBlocksAndText,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
+import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
@@ -562,17 +563,6 @@ async function processErrorResult(
         channelId: slackChannel,
         useCase: "bot",
       });
-    }
-
-    if (streamTs) {
-      // Native streaming path: update the stream message with error.
-      await slackClient.chat.update({
-        ...errorPost,
-        channel: slackChannel,
-        ts: streamTs,
-      });
-    } else if (mainMessage && mainMessage.ts) {
-      const mainMessageTs = mainMessage.ts;
 
       await throttleWithRedis(
         RATE_LIMITS["chat.update"],
@@ -582,7 +572,7 @@ async function processErrorResult(
           slackClient.chat.update({
             ...errorPost,
             channel: slackChannel,
-            ts: mainMessageTs,
+            ts: updateTs,
           }),
         { source: "processErrorResult" }
       );
@@ -1019,28 +1009,17 @@ async function answerMessage(
   const useNativeStreaming = await getNativeStreamingFromFeatureFlag(dustAPI);
 
   let mainMessage: ChatPostMessageResponse | undefined;
-  let streamer: ReturnType<WebClient["chatStream"]> | undefined;
-  let streamTs: string | undefined;
+  let streamHandler: SlackStreamHandler | undefined;
 
   if (useNativeStreaming) {
-    streamer = slackClient.chatStream({
-      channel: slackChannel,
-      thread_ts: slackMessageTs,
-      recipient_team_id: slackTeamId,
-      recipient_user_id: slackUserId ?? undefined,
-      buffer_size: 256,
+    streamHandler = new SlackStreamHandler(slackClient);
+    streamHandler.start({
+      slackChannel,
+      slackMessageTs,
+      slackTeamId,
+      slackUserId,
     });
-    const startRes = await streamer.append({
-      chunks: [
-        {
-          type: "task_update",
-          id: "thinking",
-          title: `${mention.agentName} is thinking...`,
-          status: "in_progress" as const,
-        },
-      ],
-    });
-    streamTs = startRes?.ts;
+    await streamHandler.startTask(`${mention.agentName} is thinking...`);
   } else {
     mainMessage = await slackClient.chat.postMessage({
       ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
@@ -1083,7 +1062,7 @@ async function answerMessage(
         errRes.error.message,
         slackChatBotMessage.get(),
         mainMessage,
-        streamTs
+        streamHandler?.messageTs
       )
     );
   };
@@ -1195,8 +1174,7 @@ async function answerMessage(
     connector,
     conversation,
     mainMessage,
-    streamer,
-    streamTs,
+    streamHandler,
     slack: {
       slackChannelId: slackChannel,
       slackClient,
