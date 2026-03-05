@@ -1,5 +1,8 @@
-import type { SandboxImageId } from "@app/lib/api/sandbox/image";
-import { DUST_BASE_IMAGE } from "@app/lib/api/sandbox/image/dust-base";
+import type { SandboxImage } from "@app/lib/api/sandbox/image";
+import {
+  getSandboxImageFromRegistry,
+  type SandboxImageId,
+} from "@app/lib/api/sandbox/image";
 import type { TemplateBuilder } from "e2b";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -16,6 +19,17 @@ const PRODUCTION_IMAGE_ID: SandboxImageId = {
   tag: "production",
 };
 
+function getTestImage(): SandboxImage {
+  const result = getSandboxImageFromRegistry({
+    imageName: "dust-base",
+    tag: "production",
+  });
+  if (result.isErr()) {
+    throw new Error("Test setup failed: dust-base image not in registry");
+  }
+  return result.value;
+}
+
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getE2BSandboxConfig: () => ({
@@ -25,7 +39,6 @@ vi.mock("@app/lib/api/config", () => ({
   },
 }));
 
-// Untyped mock for TemplateBuilder - keeps vi.fn() mock properties accessible
 const mockDockerRegistryBuilder = {
   copy: vi.fn().mockReturnThis(),
   copyItems: vi.fn().mockReturnThis(),
@@ -50,12 +63,10 @@ const mockDockerRegistryBuilder = {
   betaSetDevContainerStart: vi.fn().mockReturnThis(),
 };
 
-// Mock for Template() factory (has fromTemplate, etc.)
 const mockE2BTemplateFactory = {
   fromTemplate: vi.fn().mockReturnValue(mockDockerRegistryBuilder),
 };
 
-// Type-safe factory wrapper - the runtime mock satisfies TemplateBuilder interface
 function createMockDockerRegistryFactory(): DockerRegistryFactory {
   return (_imageRef: string): TemplateBuilder => {
     return mockDockerRegistryBuilder;
@@ -80,8 +91,9 @@ describe("buildSandboxImage()", () => {
 
   test("calls E2B Template builder methods in operation order", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
+    const testImage = getTestImage();
 
-    const result = await buildSandboxImage(DUST_BASE_IMAGE, TEST_IMAGE_ID, {
+    const result = await buildSandboxImage(testImage, TEST_IMAGE_ID, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
@@ -99,8 +111,9 @@ describe("buildSandboxImage()", () => {
 
   test("returns templateId from E2B build result", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "my-template-123" });
+    const testImage = getTestImage();
 
-    const result = await buildSandboxImage(DUST_BASE_IMAGE, STAGING_IMAGE_ID, {
+    const result = await buildSandboxImage(testImage, STAGING_IMAGE_ID, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
@@ -113,8 +126,9 @@ describe("buildSandboxImage()", () => {
 
   test("passes name_tag format to E2B build", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
+    const testImage = getTestImage();
 
-    await buildSandboxImage(DUST_BASE_IMAGE, PRODUCTION_IMAGE_ID, {
+    await buildSandboxImage(testImage, PRODUCTION_IMAGE_ID, {
       apiKey: "test-api-key",
       domain: "custom.e2b.dev",
       dockerRegistryFactory: mockDockerRegistryFactory,
@@ -126,16 +140,17 @@ describe("buildSandboxImage()", () => {
       expect.objectContaining({
         apiKey: "test-api-key",
         domain: "custom.e2b.dev",
-        cpuCount: DUST_BASE_IMAGE.resources.vcpu,
-        memoryMB: DUST_BASE_IMAGE.resources.memoryMb,
+        cpuCount: testImage.resources.vcpu,
+        memoryMB: testImage.resources.memoryMb,
       })
     );
   });
 
   test("returns Err when E2B build fails", async () => {
     mockBuild.mockRejectedValueOnce(new Error("Build failed"));
+    const testImage = getTestImage();
 
-    const result = await buildSandboxImage(DUST_BASE_IMAGE, TEST_IMAGE_ID, {
+    const result = await buildSandboxImage(testImage, TEST_IMAGE_ID, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
@@ -148,8 +163,9 @@ describe("buildSandboxImage()", () => {
 
   test("installs npm packages via runCmd", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
+    const testImage = getTestImage();
 
-    await buildSandboxImage(DUST_BASE_IMAGE, TEST_IMAGE_ID, {
+    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
@@ -163,6 +179,7 @@ describe("buildSandboxImage()", () => {
 
   test("processes operations in correct order", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
+    const testImage = getTestImage();
 
     const callOrder: string[] = [];
     const trackingDockerRegistryFactory: DockerRegistryFactory = (
@@ -192,7 +209,7 @@ describe("buildSandboxImage()", () => {
       return mockDockerRegistryBuilder;
     });
 
-    await buildSandboxImage(DUST_BASE_IMAGE, TEST_IMAGE_ID, {
+    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
       apiKey: "test-api-key",
       dockerRegistryFactory: trackingDockerRegistryFactory,
     });
@@ -206,8 +223,9 @@ describe("buildSandboxImage()", () => {
 
   test("passes correct apt packages via runCmd", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
+    const testImage = getTestImage();
 
-    await buildSandboxImage(DUST_BASE_IMAGE, TEST_IMAGE_ID, {
+    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
@@ -224,8 +242,9 @@ describe("buildSandboxImage()", () => {
 
   test("passes correct pip packages via runCmd", async () => {
     mockBuild.mockResolvedValueOnce({ templateId: "built-template-id" });
+    const testImage = getTestImage();
 
-    await buildSandboxImage(DUST_BASE_IMAGE, TEST_IMAGE_ID, {
+    await buildSandboxImage(testImage, TEST_IMAGE_ID, {
       apiKey: "test-api-key",
       dockerRegistryFactory: mockDockerRegistryFactory,
     });

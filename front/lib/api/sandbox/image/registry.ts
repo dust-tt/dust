@@ -1,60 +1,20 @@
-/**
- * Dust base sandbox image.
- *
- * This module defines the standard Dust sandbox image with all
- * pre-installed tools and packages using the imperative builder API.
- *
- * The base Docker image (dust-sdbx-bedrock) provides:
- * - Python 3.14 via uv with venv at /opt/venv
- * - Node.js 22
- * - Bun
- * - Rust toolchain
- * - Basic system tools (curl, git, ca-certificates)
- *
- * This image definition adds additional tools and packages on top.
- */
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 import { SandboxImage } from "./sandbox_image";
-import type { NetworkPolicy } from "./types";
+import type { SandboxImageId, SandboxImageName } from "./types";
+import { ALLOWLIST_NETWORK_POLICY } from "./types";
 
-export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
-  mode: "deny_all",
-  allowlist: [
-    "storage.googleapis.com",
-    "*.dust.tt",
-    "pypi.org",
-    "registry.npmjs.org",
-    "github.com",
-    "static.rust-lang.org",
-    "crates.io",
-    "static.crates.io",
-    "index.crates.io",
-  ],
-};
-
-/**
- * The base Dust sandbox image.
- *
- * Built on top of dust-sdbx-bedrock Docker image, this adds:
- * - System tools (jq, pandoc, imagemagick, ffmpeg)
- * - Python data science packages
- * - Node.js tooling (typescript, tsx)
- * - Dust sandbox CLI
- */
-export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
-  "dust-sbx-bedrock:latest"
-)
-  // Set environment variables (these apply during build operations)
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:latest")
   .setBuildEnv({
     NPM_CONFIG_PREFIX: "/opt/npm-global",
     CARGO_HOME: "/opt/cargo",
     RUSTUP_HOME: "/opt/rustup",
     VIRTUAL_ENV: "/opt/venv",
   })
-  // Create npm-global and bin directories for additional package installs
   .runCmd("sudo mkdir -p /opt/npm-global && sudo chmod -R 777 /opt/npm-global")
   .runCmd("sudo mkdir -p /opt/bin && sudo chmod -R 777 /opt/bin")
-  // Install system tools (git is already in base image)
   .registerTool(
     [
       { name: "git", description: "Version control system" },
@@ -69,9 +29,7 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
         "sudo apt-get update && sudo apt-get install -y jq pandoc imagemagick ffmpeg lsb-release",
     }
   )
-  // Register Python runtime (already installed in base image)
   .registerTool({ name: "python", description: "Python interpreter" })
-  // Install Python packages
   .registerTool(
     [
       { name: "pandas", description: "Data analysis library" },
@@ -86,9 +44,7 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
         "uv pip install --python /opt/venv pandas numpy matplotlib requests openpyxl pdfplumber",
     }
   )
-  // Register Bun (already installed in base image)
   .registerTool({ name: "bun", description: "JavaScript runtime" })
-  // Install Node packages
   .registerTool(
     [
       { name: "typescript", description: "TypeScript compiler" },
@@ -96,7 +52,6 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     ],
     { installCmd: "npm install -g typescript tsx" }
   )
-  // Install Dust sandbox CLI
   .registerTool(
     { name: "dsbx", description: "Dust CLI" },
     {
@@ -106,8 +61,6 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
         "sudo rm -rf /tmp/dust",
     }
   )
-  // Persist PATH and VIRTUAL_ENV to /etc/profile.d/ so they're available at runtime.
-  // E2B's setEnvs() only applies during build, so we write to the filesystem snapshot.
   .runCmd(
     'echo "export PATH=/opt/venv/bin:/opt/cargo/bin:/opt/bin:/opt/npm-global/bin:\\$PATH" | sudo tee /etc/profile.d/dust-path.sh && ' +
       'echo "export VIRTUAL_ENV=/opt/venv" | sudo tee -a /etc/profile.d/dust-path.sh'
@@ -116,3 +69,48 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
   .setWorkdir("/home/user")
   .register({ imageName: "dust-base", tag: "production" });
+
+const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
+
+function getRegisteredImages(): readonly SandboxImage[] {
+  return IMAGES.filter((image) => {
+    if (!image.imageId) {
+      logger.warn("Skipping unregistered sandbox image (no imageId)");
+      return false;
+    }
+    return true;
+  });
+}
+
+export function getRequiredSandboxImages(): readonly SandboxImageId[] {
+  return getRegisteredImages()
+    .map((image) => image.imageId)
+    .filter((id): id is SandboxImageId => id !== undefined);
+}
+
+export function getSandboxImageFromRegistry(
+  id: SandboxImageId
+): Result<SandboxImage, Error> {
+  const image = getRegisteredImages().find(
+    (img) =>
+      img.imageId?.imageName === id.imageName && img.imageId?.tag === id.tag
+  );
+  if (!image) {
+    return new Err(
+      new Error(`No sandbox image found for id: ${id.imageName}:${id.tag}`)
+    );
+  }
+  return new Ok(image);
+}
+
+export function getSandboxImageFromRegistryByName(
+  name: SandboxImageName
+): Result<SandboxImage, Error> {
+  const image = getRegisteredImages().find(
+    (img) => img.imageId?.imageName === name
+  );
+  if (!image) {
+    return new Err(new Error(`No sandbox image found for name: ${name}`));
+  }
+  return new Ok(image);
+}

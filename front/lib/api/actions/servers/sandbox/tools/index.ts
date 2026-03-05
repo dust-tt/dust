@@ -117,8 +117,11 @@ export function createSandboxTools(
       return new Ok([{ type: "text" as const, text: output }]);
     },
     describe_environment: async ({ format }, { auth }) => {
-      const sandboxImage = getSandboxImage(auth);
-      const manifest = createToolManifest(sandboxImage.tools);
+      const sandboxImageResult = getSandboxImage(auth);
+      if (sandboxImageResult.isErr()) {
+        return new Err(new MCPError(sandboxImageResult.error.message));
+      }
+      const manifest = createToolManifest(sandboxImageResult.value.tools);
       const output =
         format === "json"
           ? toolManifestToJSON(manifest)

@@ -64,7 +64,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ensure-sandbox-images:
+    if: inputs.component == 'front' || inputs.component == 'front-edge'
+    uses: ./.github/workflows/sandbox-img-registry.yml
+    secrets: inherit
+
   check-branch:
+    needs: [ensure-sandbox-images]
+    if: always() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Check if deployment is from main branch

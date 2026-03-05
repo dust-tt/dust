@@ -98,6 +98,21 @@ export interface NetworkPolicy {
   readonly allowlist?: readonly string[];
 }
 
+export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
+  mode: "deny_all",
+  allowlist: [
+    "storage.googleapis.com",
+    "*.dust.tt",
+    "pypi.org",
+    "registry.npmjs.org",
+    "github.com",
+    "static.rust-lang.org",
+    "crates.io",
+    "static.crates.io",
+    "index.crates.io",
+  ],
+};
+
 // ---------------------------------------------------------------------------
 // Tool Manifest
 // ---------------------------------------------------------------------------
