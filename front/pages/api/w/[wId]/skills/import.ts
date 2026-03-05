@@ -1,5 +1,6 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
+import { isSkillFromSameGitHubRepo } from "@app/lib/skill";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -22,6 +23,7 @@ const ImportSkillsRequestBodySchema = t.type({
 
 export type ImportSkillsResponseBody = {
   imported: SkillType[];
+  updated: SkillType[];
   errors: { name: string; message: string }[];
 };
 
@@ -94,6 +96,7 @@ async function handler(
 
       const user = auth.getNonNullableUser();
       const imported: SkillResource[] = [];
+      const updated: SkillResource[] = [];
       const errors: { name: string; message: string }[] = [];
 
       await concurrentExecutor(
@@ -103,11 +106,36 @@ async function handler(
             auth,
             skill.name
           );
+
           if (existing) {
-            errors.push({
+            if (!isSkillFromSameGitHubRepo(existing, { repoUrl })) {
+              errors.push({
+                name: skill.name,
+                message: `A skill named "${skill.name}" already exists from a different source.`,
+              });
+              return;
+            }
+
+            const attachedKnowledge =
+              await existing.getAttachedKnowledge(auth);
+
+            await existing.updateSkill(auth, {
               name: skill.name,
-              message: `A skill with the name "${skill.name}" already exists.`,
+              agentFacingDescription: skill.description,
+              userFacingDescription: skill.description,
+              instructions: skill.instructions,
+              icon: existing.icon,
+              mcpServerViews: existing.mcpServerViews,
+              attachedKnowledge,
+              requestedSpaceIds: existing.requestedSpaceIds,
+              source: "github",
+              sourceMetadata: {
+                repoUrl,
+                filePath: skill.skillMdPath,
+              },
             });
+
+            updated.push(existing);
             return;
           }
 
@@ -154,6 +182,7 @@ async function handler(
 
       return res.status(200).json({
         imported: imported.map((skill) => skill.toJSON(auth)),
+        updated: updated.map((skill) => skill.toJSON(auth)),
         errors,
       });
     }

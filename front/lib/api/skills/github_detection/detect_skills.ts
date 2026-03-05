@@ -238,3 +238,12 @@ async function buildDetectedSkill({
     attachments,
   });
 }
+
+export function isSkillFromSameGitHubRepo(
+  skill: { source: string | null; sourceMetadata: { repoUrl: string } | null },
+  { repoUrl }: { repoUrl: string }
+): boolean {
+  return (
+    skill.source === "github" && skill.sourceMetadata?.repoUrl === repoUrl
+  );
+}

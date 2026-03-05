@@ -452,17 +452,32 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
         void mutateActiveSkills();
 
-        const successCount = data.imported.length;
+        const importedCount = data.imported.length;
+        const updatedCount = data.updated.length;
+        const successCount = importedCount + updatedCount;
         const errors = data.errors.map((e) => e.message);
 
         if (successCount > 0) {
+          const parts: string[] = [];
+          if (importedCount > 0) {
+            parts.push(
+              `${importedCount} skill${pluralize(importedCount)} imported`
+            );
+          }
+          if (updatedCount > 0) {
+            parts.push(
+              `${updatedCount} skill${pluralize(updatedCount)} overridden`
+            );
+          }
+          if (errors.length > 0) {
+            parts.push(
+              `${errors.length} skill${pluralize(errors.length)} failed`
+            );
+          }
           sendNotification({
             type: "success",
-            title: `Imported ${successCount} skill${pluralize(successCount)}`,
-            description:
-              errors.length > 0
-                ? `${errors.length} skill${pluralize(errors.length)} failed to import.`
-                : `All skills were imported successfully.`,
+            title: "Import successful",
+            description: parts.join(", ") + ".",
           });
         } else {
           sendNotification({
