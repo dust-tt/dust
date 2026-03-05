@@ -41,6 +41,7 @@ export class PlanModel extends BaseModel<PlanModel> {
   declare isManagedSalesforceAllowed: boolean;
   declare isSSOAllowed: boolean;
   declare isSCIMAllowed: boolean;
+  declare isByok: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -143,6 +144,10 @@ PlanModel.init(
       defaultValue: false,
     },
     isSCIMAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isByok: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
