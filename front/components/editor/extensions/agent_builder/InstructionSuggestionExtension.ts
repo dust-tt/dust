@@ -172,6 +172,7 @@ function findBlockByBlockId(
 
 // Create inline diff decorations for a single block (deletion + addition widgets).
 function buildBlockDecorations({
+  applyBlockHighlight,
   blockPos,
   decorations,
   isHighlighted,
@@ -180,6 +181,7 @@ function buildBlockDecorations({
   schema,
   suggestionId,
 }: {
+  applyBlockHighlight: boolean;
   blockPos: number;
   decorations: Decoration[];
   isHighlighted: boolean;
@@ -192,7 +194,7 @@ function buildBlockDecorations({
   const contentStart = blockPos + 1;
 
   // Selected only: entire block gets dimmed highlight.
-  if (isHighlighted && changes.length > 0) {
+  if (applyBlockHighlight && changes.length > 0) {
     decorations.push(
       Decoration.node(blockPos, blockPos + oldNode.nodeSize, {
         class: CLASSES.blockHighlightDimmed,
@@ -301,6 +303,7 @@ function addBlockAdditionWidget(
 // new children by position and diffs each pair for word-level inline diffs.
 // Extra new blocks are shown as full additions, extra old blocks as deletions.
 function buildRootDecorations({
+  applyBlockHighlight,
   decorations,
   isHighlighted,
   newRoot,
@@ -309,6 +312,7 @@ function buildRootDecorations({
   schema,
   suggestionId,
 }: {
+  applyBlockHighlight: boolean;
   decorations: Decoration[];
   isHighlighted: boolean;
   newRoot: PMNode;
@@ -322,6 +326,16 @@ function buildRootDecorations({
   oldRoot.content.forEach((child) => oldChildren.push(child));
   newRoot.content.forEach((child) => newChildren.push(child));
 
+  // Apply a single decoration spanning the full root for a continuous highlight (no gaps between blocks).
+  if (applyBlockHighlight) {
+    decorations.push(
+      Decoration.node(rootPos, rootPos + oldRoot.nodeSize, {
+        class: CLASSES.blockHighlightDimmed,
+        [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
+      })
+    );
+  }
+
   const maxLen = Math.max(oldChildren.length, newChildren.length);
   let oldOffset = 0;
 
@@ -334,6 +348,7 @@ function buildRootDecorations({
     if (oldChild && newChild) {
       if (oldChild.content.size > 0) {
         buildBlockDecorations({
+          applyBlockHighlight: false, // Root handles the highlight as a single decoration.
           blockPos: childPos,
           newNode: newChild,
           oldNode: oldChild,
@@ -389,7 +404,8 @@ function buildRootDecorations({
 function buildDecorations(
   state: EditorState,
   suggestions: Map<string, StoredSuggestion>,
-  highlightedId: string | null
+  highlightedId: string | null,
+  showBlockHighlight: boolean
 ): DecorationSet {
   if (suggestions.size === 0) {
     return DecorationSet.empty;
@@ -400,6 +416,7 @@ function buildDecorations(
 
   for (const [suggestionId, suggestion] of suggestions) {
     const isHighlighted = suggestionId === highlightedId;
+    const applyBlockHighlight = showBlockHighlight && isHighlighted;
 
     for (const op of suggestion.operations) {
       const found = findBlockByBlockId(state.doc, op.targetBlockId);
@@ -421,6 +438,7 @@ function buildDecorations(
         newNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME
       ) {
         buildRootDecorations({
+          applyBlockHighlight,
           oldRoot: blockNode,
           newRoot: newNode,
           rootPos: blockPos,
@@ -431,6 +449,7 @@ function buildDecorations(
         });
       } else {
         buildBlockDecorations({
+          applyBlockHighlight,
           oldNode: blockNode,
           newNode,
           blockPos,
@@ -462,7 +481,10 @@ function stepModifiesRange(
   return modifies;
 }
 
-function createPlugin(getHighlightedId: () => string | null) {
+function createPlugin(
+  getHighlightedId: () => string | null,
+  showBlockHighlight: boolean
+) {
   return new Plugin<PluginState>({
     key: pluginKey,
 
@@ -513,7 +535,8 @@ function createPlugin(getHighlightedId: () => string | null) {
             decorations: buildDecorations(
               newState,
               suggestions,
-              effectiveHighlightedId
+              effectiveHighlightedId,
+              showBlockHighlight
             ),
           };
         }
@@ -688,8 +711,16 @@ export function getSuggestionBlockRect(
   return top <= bottom ? { top, bottom } : null;
 }
 
-export const InstructionSuggestionExtension = Extension.create({
+export const InstructionSuggestionExtension = Extension.create<{
+  showBlockHighlight: boolean;
+}>({
   name: "instructionSuggestion",
+
+  addOptions() {
+    return {
+      showBlockHighlight: true,
+    };
+  },
 
   addStorage() {
     return {
@@ -698,7 +729,12 @@ export const InstructionSuggestionExtension = Extension.create({
   },
 
   addProseMirrorPlugins() {
-    return [createPlugin(() => this.storage.highlightedSuggestionId)];
+    return [
+      createPlugin(
+        () => this.storage.highlightedSuggestionId,
+        this.options.showBlockHighlight
+      ),
+    ];
   },
 
   addCommands() {
