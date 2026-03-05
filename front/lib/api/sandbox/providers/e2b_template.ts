@@ -8,8 +8,10 @@
 import config from "@app/lib/api/config";
 import type { SandboxImage } from "@app/lib/api/sandbox/image";
 import type {
+  ContentGenerator,
   Operation,
   SandboxImageId,
+  SandboxResources,
 } from "@app/lib/api/sandbox/image/types";
 import { formatSandboxImageId } from "@app/lib/api/sandbox/image/types";
 import logger from "@app/logger/logger";
@@ -17,8 +19,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { TemplateBuilder, TemplateClass } from "e2b";
+import type { TemplateBuilder } from "e2b";
 import { defaultBuildLogger, Template as E2BTemplate } from "e2b";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 interface E2BBuildConfig {
   apiKey?: string;
@@ -26,45 +31,118 @@ interface E2BBuildConfig {
   skipCache?: boolean;
 }
 
-function applyOperation(e2b: TemplateBuilder, op: Operation): TemplateBuilder {
-  switch (op.type) {
-    case "run":
-      return e2b.runCmd(op.command);
+class ContentMaterializer {
+  private tempDir: string | null = null;
+  private fileCount = 0;
 
-    case "copy":
-      return e2b.copy(op.src, op.dest);
+  materializeToPath(getContent: ContentGenerator): string {
+    if (!this.tempDir) {
+      this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sandbox-build-"));
+    }
+    const tempFile = path.join(this.tempDir, `content-${this.fileCount++}`);
+    fs.writeFileSync(tempFile, getContent());
+    return tempFile;
+  }
 
-    case "workdir":
-      return e2b.setWorkdir(op.path);
-
-    case "env":
-      return e2b.setEnvs({ ...op.vars });
-
-    default:
-      return assertNever(op);
+  cleanup(): void {
+    if (this.tempDir) {
+      fs.rmSync(this.tempDir, { recursive: true, force: true });
+    }
   }
 }
 
-function toE2BTemplate(image: SandboxImage): TemplateClass {
-  const baseImage = image.baseImage;
-  let e2b: TemplateBuilder;
+interface E2BTemplateBuildOptions {
+  apiKey: string;
+  domain?: string;
+  skipCache?: boolean;
+  resources: SandboxResources;
+}
 
-  switch (baseImage.type) {
-    case "ubuntu":
-      e2b = E2BTemplate().fromUbuntuImage(baseImage.version);
-      break;
-    case "template":
-      e2b = E2BTemplate().fromTemplate(formatSandboxImageId(baseImage.id));
-      break;
-    default:
-      return assertNever(baseImage);
+class E2BTemplateBuilder {
+  private builder: TemplateBuilder;
+  private readonly materializer = new ContentMaterializer();
+
+  private constructor(builder: TemplateBuilder) {
+    this.builder = builder;
   }
 
-  for (const op of image.operations) {
-    e2b = applyOperation(e2b, op);
+  static fromSandboxImage(image: SandboxImage): E2BTemplateBuilder {
+    const baseImage = image.baseImage;
+    let builder: TemplateBuilder;
+
+    switch (baseImage.type) {
+      case "ubuntu":
+        builder = E2BTemplate().fromUbuntuImage(baseImage.version);
+        break;
+      case "template":
+        builder = E2BTemplate().fromTemplate(
+          formatSandboxImageId(baseImage.id)
+        );
+        break;
+      default:
+        return assertNever(baseImage);
+    }
+
+    const e2bBuilder = new E2BTemplateBuilder(builder);
+
+    for (const op of image.operations) {
+      e2bBuilder.applyOperation(op);
+    }
+
+    return e2bBuilder;
   }
 
-  return e2b;
+  private applyOperation(op: Operation): void {
+    switch (op.type) {
+      case "run":
+        this.builder = this.builder.runCmd(op.command);
+        break;
+
+      case "copy":
+        if (op.src.type === "path") {
+          this.builder = this.builder.copy(op.src.path, op.dest);
+        } else {
+          const tempPath = this.materializer.materializeToPath(
+            op.src.getContent
+          );
+          this.builder = this.builder.copy(tempPath, op.dest);
+        }
+        break;
+
+      case "workdir":
+        this.builder = this.builder.setWorkdir(op.path);
+        break;
+
+      case "env":
+        this.builder = this.builder.setEnvs({ ...op.vars });
+        break;
+
+      default:
+        assertNever(op);
+    }
+  }
+
+  async build(
+    imageId: SandboxImageId,
+    options: E2BTemplateBuildOptions
+  ): Promise<{ templateId: string }> {
+    try {
+      return await E2BTemplate.build(
+        this.builder,
+        formatSandboxImageId(imageId),
+        {
+          cpuCount: options.resources.vcpu,
+          memoryMB: options.resources.memoryMb,
+          apiKey: options.apiKey,
+          ...(options.domain ? { domain: options.domain } : {}),
+          ...(options.skipCache ? { skipCache: true } : {}),
+          onBuildLogs: defaultBuildLogger(),
+        }
+      );
+    } finally {
+      this.materializer.cleanup();
+    }
+  }
 }
 
 export async function buildSandboxImage(
@@ -92,20 +170,14 @@ export async function buildSandboxImage(
   );
 
   try {
-    const e2bTemplate = toE2BTemplate(image);
+    const e2bBuilder = E2BTemplateBuilder.fromSandboxImage(image);
 
-    const result = await E2BTemplate.build(
-      e2bTemplate,
-      formatSandboxImageId(imageId),
-      {
-        cpuCount: image.resources.vcpu,
-        memoryMB: image.resources.memoryMb,
-        apiKey,
-        ...(domain ? { domain } : {}),
-        ...(buildConfig?.skipCache ? { skipCache: true } : {}),
-        onBuildLogs: defaultBuildLogger(),
-      }
-    );
+    const result = await e2bBuilder.build(imageId, {
+      apiKey,
+      domain,
+      skipCache: buildConfig?.skipCache,
+      resources: image.resources,
+    });
 
     logger.info(
       {
@@ -115,7 +187,7 @@ export async function buildSandboxImage(
           memoryMB: image.resources.memoryMb,
         },
       },
-      "E2B sandbox image build completed - verify resources in E2B dashboard or use sandbox_image_list.ts"
+      "E2B sandbox image build completed"
     );
 
     return new Ok(result.templateId);

@@ -37,6 +37,21 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       done: "Execute command in sandbox",
     },
   },
+  describe_environment: {
+    description:
+      "Describe the sandbox environment and list available CLI binaries and language libraries.",
+    schema: {
+      format: z
+        .enum(["yaml", "json"])
+        .optional()
+        .describe("Output format (defaults to yaml)"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Describing sandbox environment",
+      done: "Describe sandbox environment",
+    },
+  },
 });
 
 export const SANDBOX_SERVER = {

@@ -5,8 +5,6 @@
  * pre-installed tools and packages using the imperative builder API.
  */
 
-import type { Authenticator } from "@app/lib/auth";
-
 import { SandboxImage } from "./sandbox_image";
 import type { NetworkPolicy } from "./types";
 
@@ -25,10 +23,6 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
     "index.crates.io",
   ],
 };
-
-export function getSandboxImage(_auth?: Authenticator): SandboxImage {
-  return DUST_BASE_IMAGE;
-}
 
 /**
  * The base Dust sandbox image.

@@ -1,11 +1,18 @@
+import {
+  createToolManifest,
+  toolManifestToJSON,
+  toolManifestToYAML,
+} from "./tool_manifest";
 import type {
   BaseImage,
+  ContentGenerator,
+  CopySource,
+  ManifestFormat,
   NetworkPolicy,
   Operation,
   SandboxImageId,
   SandboxResources,
   ToolEntry,
-  ToolManifest,
 } from "./types";
 
 const DEFAULT_RESOURCES: SandboxResources = {
@@ -107,10 +114,17 @@ export class SandboxImage {
     });
   }
 
-  copy(src: string, dest: string): SandboxImage {
+  copy(src: string, dest: string): SandboxImage;
+  copy(src: ContentGenerator, dest: string): SandboxImage;
+  copy(src: string | ContentGenerator, dest: string): SandboxImage {
+    const srcValue: CopySource =
+      typeof src === "string"
+        ? { type: "path", path: src }
+        : { type: "content", getContent: src };
+
     const operation: Operation = {
       type: "copy",
-      src,
+      src: srcValue,
       dest,
     };
 
@@ -150,11 +164,24 @@ export class SandboxImage {
     return this.clone({ network: policy });
   }
 
-  toManifest(): ToolManifest {
-    return {
-      version: "1.0",
-      generatedAt: new Date().toISOString(),
-      tools: this.tools,
+  withToolManifest(options?: {
+    path?: string;
+    format?: ManifestFormat;
+  }): SandboxImage {
+    const format = options?.format ?? "yaml";
+    const extension = format === "yaml" ? "yaml" : "json";
+    const destPath =
+      options?.path ?? `${this.workdir}/tool-manifest.${extension}`;
+
+    // Capture tools at call time, generate content lazily
+    const tools = this.tools;
+    const getContent = (): string => {
+      const manifest = createToolManifest(tools);
+      return format === "yaml"
+        ? toolManifestToYAML(manifest)
+        : toolManifestToJSON(manifest);
     };
+
+    return this.copy(getContent, destPath);
   }
 }

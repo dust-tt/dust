@@ -7,6 +7,12 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import {
+  createToolManifest,
+  getSandboxImage,
+  toolManifestToJSON,
+  toolManifestToYAML,
+} from "@app/lib/api/sandbox/image";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -107,6 +113,16 @@ export function createSandboxTools(
       }
 
       const output = formatExecOutput(execResult.value);
+
+      return new Ok([{ type: "text" as const, text: output }]);
+    },
+    describe_environment: async ({ format }, { auth }) => {
+      const sandboxImage = getSandboxImage(auth);
+      const manifest = createToolManifest(sandboxImage.tools);
+      const output =
+        format === "json"
+          ? toolManifestToJSON(manifest)
+          : toolManifestToYAML(manifest);
 
       return new Ok([{ type: "text" as const, text: output }]);
     },

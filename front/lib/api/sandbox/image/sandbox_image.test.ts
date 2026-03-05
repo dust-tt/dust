@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { SandboxImage } from "./sandbox_image";
 import type { SandboxImageId } from "./types";
 
@@ -148,14 +149,50 @@ describe("SandboxImage.registerTool()", () => {
 });
 
 describe("SandboxImage.copy()", () => {
-  test("adds copy operation", () => {
+  test("accepts string path", () => {
     const image = SandboxImage.fromUbuntu().copy("./src", "/app/src");
 
     expect(image.operations).toHaveLength(1);
     expect(image.operations[0].type).toBe("copy");
     if (image.operations[0].type === "copy") {
-      expect(image.operations[0].src).toBe("./src");
+      expect(image.operations[0].src.type).toBe("path");
+      if (image.operations[0].src.type === "path") {
+        expect(image.operations[0].src.path).toBe("./src");
+      }
       expect(image.operations[0].dest).toBe("/app/src");
+    }
+  });
+
+  test("accepts content generator callback", () => {
+    const image = SandboxImage.fromUbuntu().copy(
+      () => "hello world",
+      "/app/file.txt"
+    );
+
+    expect(image.operations).toHaveLength(1);
+    expect(image.operations[0].type).toBe("copy");
+    if (image.operations[0].type === "copy") {
+      expect(image.operations[0].src.type).toBe("content");
+      if (image.operations[0].src.type === "content") {
+        expect(image.operations[0].src.getContent()).toBe("hello world");
+      }
+      expect(image.operations[0].dest).toBe("/app/file.txt");
+    }
+  });
+
+  test("accepts content generator returning Buffer", () => {
+    const image = SandboxImage.fromUbuntu().copy(
+      () => Buffer.from("binary data"),
+      "/app/data.bin"
+    );
+
+    expect(image.operations).toHaveLength(1);
+    if (image.operations[0].type === "copy") {
+      expect(image.operations[0].src.type).toBe("content");
+      if (image.operations[0].src.type === "content") {
+        const content = image.operations[0].src.getContent();
+        expect(Buffer.isBuffer(content)).toBe(true);
+      }
     }
   });
 });
@@ -228,44 +265,105 @@ describe("SandboxImage immutability", () => {
   });
 });
 
-describe("SandboxImage.toManifest()", () => {
-  test("generates manifest with version 1.0", () => {
-    const image = SandboxImage.fromUbuntu();
-    const manifest = image.toManifest();
+describe("SandboxImage.withToolManifest()", () => {
+  test("adds copy operation with content generator", () => {
+    const image = SandboxImage.fromUbuntu().withToolManifest();
 
-    expect(manifest.version).toBe("1.0");
+    expect(image.operations).toHaveLength(1);
+    expect(image.operations[0].type).toBe("copy");
+    if (image.operations[0].type === "copy") {
+      expect(image.operations[0].src.type).toBe("content");
+      expect(image.operations[0].dest).toBe("/home/user/tool-manifest.yaml");
+      if (image.operations[0].src.type === "content") {
+        const content = image.operations[0].src.getContent();
+        expect(typeof content).toBe("string");
+        expect(content).toContain("version:");
+      }
+    }
   });
 
-  test("includes generatedAt timestamp", () => {
-    const image = SandboxImage.fromUbuntu();
-    const manifest = image.toManifest();
+  test("accepts custom path and format", () => {
+    const image = SandboxImage.fromUbuntu().withToolManifest({
+      path: "/custom/path/manifest.json",
+      format: "json",
+    });
 
-    expect(manifest.generatedAt).toBeDefined();
-    expect(() => new Date(manifest.generatedAt)).not.toThrow();
+    expect(image.operations).toHaveLength(1);
+    if (image.operations[0].type === "copy") {
+      expect(image.operations[0].dest).toBe("/custom/path/manifest.json");
+      if (image.operations[0].src.type === "content") {
+        const content = image.operations[0].src.getContent();
+        expect(content).toContain('"version"');
+      }
+    }
   });
 
-  test("includes all tools", () => {
-    const image = SandboxImage.fromUbuntu()
-      .registerTool(
-        { name: "curl", description: "HTTP client" },
-        { installCmd: "apt-get install -y curl" }
-      )
-      .registerTool(
-        { name: "pandas", description: "Data analysis" },
-        { installCmd: "pip install pandas" }
-      )
-      .registerTool(
-        { name: "custom", description: "Custom tool" },
-        { installCmd: "./setup-custom.sh" }
+  test("uses correct default extension based on format", () => {
+    const jsonImage = SandboxImage.fromUbuntu().withToolManifest({
+      format: "json",
+    });
+
+    if (jsonImage.operations[0].type === "copy") {
+      expect(jsonImage.operations[0].dest).toBe(
+        "/home/user/tool-manifest.json"
       );
+    }
+  });
 
-    const manifest = image.toManifest();
+  test("returns new instance (immutability)", () => {
+    const original = SandboxImage.fromUbuntu();
+    const modified = original.withToolManifest();
 
-    expect(manifest.tools).toHaveLength(3);
-    expect(manifest.tools.map((t) => t.name)).toEqual([
-      "curl",
-      "pandas",
-      "custom",
-    ]);
+    expect(modified).not.toBe(original);
+    expect(original.operations).toHaveLength(0);
+    expect(modified.operations).toHaveLength(1);
+  });
+
+  test("chains with other operations", () => {
+    const image = SandboxImage.fromUbuntu()
+      .registerTool({ name: "curl", description: "HTTP client" })
+      .runCmd("echo hello")
+      .withToolManifest()
+      .runCmd("echo done");
+
+    expect(image.operations).toHaveLength(3);
+    expect(image.operations[0].type).toBe("run");
+    expect(image.operations[1].type).toBe("copy");
+    expect(image.operations[2].type).toBe("run");
+  });
+
+  test("includes registered tools in manifest content", () => {
+    const image = SandboxImage.fromUbuntu()
+      .registerTool({ name: "curl", description: "HTTP client" })
+      .registerTool({ name: "jq", description: "JSON processor" })
+      .withToolManifest();
+
+    if (
+      image.operations[0].type === "copy" &&
+      image.operations[0].src.type === "content"
+    ) {
+      const content = image.operations[0].src.getContent();
+      expect(content).toContain("curl");
+      expect(content).toContain("HTTP client");
+      expect(content).toContain("jq");
+      expect(content).toContain("JSON processor");
+    }
+  });
+
+  test("lazily generates content (captures tools at call time)", () => {
+    const baseImage = SandboxImage.fromUbuntu().registerTool({
+      name: "curl",
+      description: "HTTP client",
+    });
+
+    const imageWithManifest = baseImage.withToolManifest();
+
+    if (
+      imageWithManifest.operations[0].type === "copy" &&
+      imageWithManifest.operations[0].src.type === "content"
+    ) {
+      const content = imageWithManifest.operations[0].src.getContent();
+      expect(content).toContain("curl");
+    }
   });
 });

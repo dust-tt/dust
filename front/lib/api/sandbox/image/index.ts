@@ -1,5 +1,17 @@
-export { DUST_BASE_IMAGE, getSandboxImage } from "./dust-base";
+import type { Authenticator } from "@app/lib/auth";
+
+import { DUST_BASE_IMAGE } from "./dust-base";
+import type { SandboxImage } from "./sandbox_image";
+
+export function getSandboxImage(_auth?: Authenticator): SandboxImage {
+  return DUST_BASE_IMAGE;
+}
 export { SandboxImage } from "./sandbox_image";
+export {
+  createToolManifest,
+  toolManifestToJSON,
+  toolManifestToYAML,
+} from "./tool_manifest";
 export type {
   BaseImage,
   NetworkMode,

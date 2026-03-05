@@ -60,9 +60,17 @@ export interface ToolEntry {
 // Operations
 // ---------------------------------------------------------------------------
 
+export type ManifestFormat = "json" | "yaml";
+
+export type ContentGenerator = () => Buffer | string;
+
+export type CopySource =
+  | { readonly type: "path"; readonly path: string }
+  | { readonly type: "content"; readonly getContent: ContentGenerator };
+
 export type Operation =
   | { readonly type: "run"; readonly command: string }
-  | { readonly type: "copy"; readonly src: string; readonly dest: string }
+  | { readonly type: "copy"; readonly src: CopySource; readonly dest: string }
   | { readonly type: "workdir"; readonly path: string }
   | {
       readonly type: "env";
