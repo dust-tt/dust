@@ -16,7 +16,8 @@ export class ChromeCorePlatformService extends CorePlatformService {
   constructor() {
     const messaging = new ChromeBrowserMessagingService();
     const captureService = new ChromeCaptureService();
-    const mcpService = new ChromeMcpService(captureService);
+    const mcpService = new ChromeMcpService();
+    mcpService.setCaptureService(captureService);
 
     super(
       "chrome",

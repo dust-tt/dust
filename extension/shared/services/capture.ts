@@ -15,9 +15,6 @@ export interface CaptureOptions {
   includeContent?: boolean;
   includeSelectionOnly?: boolean;
   includeCapture?: boolean;
-  // When true, auto-selects the right capture strategy based on the page's
-  // content type: HTML pages get text extraction, non-HTML pages get a screenshot.
-  autoDetect?: boolean;
 }
 
 export interface CaptureService {

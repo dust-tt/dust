@@ -10,14 +10,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * Tools use the capture service to retrieve page content.
  */
 export class ChromeMcpService extends McpService {
-  private captureService: CaptureService | null;
+  private captureService: CaptureService | null = null;
   private server: McpServer | null = null;
   private transport: BrowserMCPTransport | null = null;
   private serverId: string | undefined = undefined;
 
-  constructor(captureService?: CaptureService) {
+  constructor() {
     super();
-    this.captureService = captureService ?? null;
+  }
+
+  setCaptureService(captureService: CaptureService): void {
+    this.captureService = captureService;
   }
 
   createServerForWorkspace(): McpServer | null {
