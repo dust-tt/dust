@@ -8,6 +8,7 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { useConversation } from "@app/hooks/conversations/useConversation";
 import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getProjectRoute } from "@app/lib/utils/router";
 import { Button, MoreIcon } from "@dust-tt/sparkle";
 import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
@@ -63,6 +64,11 @@ export const MainPage = () => {
   return (
     <ConversationLayout
       title={headerTitle}
+      backHref={
+        conversation?.spaceId
+          ? getProjectRoute(workspace.sId, conversation.spaceId)
+          : undefined
+      }
       rightActions={
         conversationId ? (
           <ConversationMenu
