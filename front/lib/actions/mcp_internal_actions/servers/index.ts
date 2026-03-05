@@ -1,5 +1,10 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isLightServerSideMCPToolConfiguration,
+  isServerSideMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
 import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
 import { default as agentManagementServer } from "@app/lib/api/actions/servers/agent_management";
@@ -48,6 +53,7 @@ import { default as salesforceServer } from "@app/lib/api/actions/servers/salesf
 import { default as salesloftServer } from "@app/lib/api/actions/servers/salesloft";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
+import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
@@ -67,6 +73,29 @@ import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+/**
+ * Check if we are in advanced search mode,
+ * relying on a magic value stored in the additionalConfiguration.
+ */
+function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
+  return (
+    (agentLoopContext?.runContext &&
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
+      ) &&
+      agentLoopContext.runContext.toolConfiguration.additionalConfiguration[
+        ADVANCED_SEARCH_SWITCH
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      ] === true) ||
+    (agentLoopContext?.listToolsContext &&
+      isServerSideMCPServerConfiguration(
+        agentLoopContext.listToolsContext.agentActionConfiguration
+      ) &&
+      agentLoopContext.listToolsContext.agentActionConfiguration
+        .additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true)
+  );
+}
 
 export async function getInternalMCPServer(
   auth: Authenticator,
@@ -107,7 +136,11 @@ export async function getInternalMCPServer(
     case "web_search_&_browse":
       return webSearchBrowseServer(auth, agentLoopContext);
     case "search":
-      return dataSourcesFileSystemServer(auth, agentLoopContext);
+      // If we are in advanced search mode, we use the data_sources_file_system server instead.
+      if (isAdvancedSearchMode(agentLoopContext)) {
+        return dataSourcesFileSystemServer(auth, agentLoopContext);
+      }
+      return searchServer(auth, agentLoopContext);
     case "slideshow":
       return slideshowServer(auth, agentLoopContext);
     case "missing_action_catcher":
