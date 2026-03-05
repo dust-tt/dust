@@ -72,7 +72,9 @@ interface DustFrameEmbedProps {
 }
 
 function DustFrameEmbed({ frameUrl }: DustFrameEmbedProps) {
-  const embedUrl = `${frameUrl}?embed=true`;
+  const url = new URL(frameUrl);
+  url.searchParams.set("embed", "true");
+  const embedUrl = url.toString();
   return (
     <div
       style={{ maxWidth: "1000px" }}
