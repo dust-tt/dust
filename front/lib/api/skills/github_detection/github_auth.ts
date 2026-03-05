@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
  * Attempts to retrieve a GitHub access token from an existing MCP connection
  * (workspace only). Returns null if no connection is available.
  */
-export async function getGitHubAccessToken(
+export async function getWorkspaceLevelGitHubAccessToken(
   auth: Authenticator
 ): Promise<string | null> {
   const connection = await MCPServerConnectionResource.findByInternalServerName(
