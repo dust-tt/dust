@@ -466,7 +466,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
           }
           if (updatedCount > 0) {
             parts.push(
-              `${updatedCount} skill${pluralize(updatedCount)} overridden`
+              `${updatedCount} skill${pluralize(updatedCount)} updated`
             );
           }
           if (errors.length > 0) {
