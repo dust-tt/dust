@@ -82,7 +82,18 @@ export function MemberSelectionTable({
     }
   }, [members]);
 
-  const rows = useMemo(() => getMemberTableRows(members), [members]);
+  const rows = useMemo(
+    () =>
+      getMemberTableRows(members).sort((a, b) => {
+        const aSelected = selectedMemberIds.has(a.sId);
+        const bSelected = selectedMemberIds.has(b.sId);
+        if (aSelected !== bSelected) {
+          return aSelected ? -1 : 1;
+        }
+        return 0;
+      }),
+    [members, selectedMemberIds]
+  );
 
   const rowSelectionState: RowSelectionState = useMemo(
     () =>
