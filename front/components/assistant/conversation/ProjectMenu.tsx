@@ -1,5 +1,6 @@
 import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
+import { useArchiveProject } from "@app/hooks/useArchiveProject";
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
@@ -25,6 +26,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  EyeSlashIcon,
   LinkIcon,
   PencilSquareIcon,
   XMarkIcon,
@@ -170,6 +172,18 @@ export function ProjectMenu({
     sendNotification({ type: "success", title: "Link copied !" });
   }, [shareLink, sendNotification]);
 
+  const handleArchiveSuccess = useCallback(() => {
+    if (isProjectDisplayed) {
+      void router.push(getConversationRoute(owner.sId));
+    }
+  }, [isProjectDisplayed, owner.sId, router]);
+
+  const { archiveProject } = useArchiveProject({
+    owner,
+    spaceId: activeSpaceId ?? "",
+    onSuccess: handleArchiveSuccess,
+  });
+
   if (!activeSpaceId) {
     return null;
   }
@@ -264,6 +278,14 @@ export function ProjectMenu({
               label="Copy the link"
               onClick={copyProjectLink}
               icon={LinkIcon}
+            />
+          )}
+          {isProjectEditor && (
+            <DropdownMenuItem
+              label="Archive"
+              onClick={archiveProject}
+              icon={EyeSlashIcon}
+              variant="warning"
             />
           )}
           {canLeave && (
