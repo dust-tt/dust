@@ -8,6 +8,7 @@ import type {
 } from "@connectors/api/webhooks/slack/utils";
 import {
   handleChatBot,
+  isAppMentionMessage,
   isSlackWebhookEventReqBody,
   withTrace,
 } from "@connectors/api/webhooks/slack/utils";
@@ -107,11 +108,10 @@ const _webhookSlackBotAPIHandler = async (
     try {
       switch (event.type) {
         case "app_mention": {
-          // TODO(2026-03-05 SLACK_INCIDENT): Uncomment once app_mention events are reliably received again
-          // await withTrace({
-          //   "slack.team_id": teamId,
-          //   "slack.app": "slack_bot",
-          // })(handleChatBot)(req, res, logger);
+          await withTrace({
+            "slack.team_id": teamId,
+            "slack.app": "slack_bot",
+          })(handleChatBot)(req, res, logger);
           break;
         }
         /**
@@ -216,15 +216,14 @@ const _webhookSlackBotAPIHandler = async (
                     "Found enhanced default agent for channel - processing message"
                   );
 
-                  // TODO(2026-03-05 SLACK_INCIDENT): Uncomment once app_mention events are reliably received again
                   // Avoid double processing since we already handle app mention events
-                  // const isAppMention = await isAppMentionMessage(
-                  //   event.text,
-                  //   teamId
-                  // );
-                  // if (isAppMention) {
-                  //   return res.status(200).send();
-                  // }
+                  const isAppMention = await isAppMentionMessage(
+                    event.text,
+                    teamId
+                  );
+                  if (isAppMention) {
+                    return res.status(200).send();
+                  }
 
                   await withTrace({
                     "slack.team_id": teamId,
