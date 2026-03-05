@@ -54,10 +54,10 @@ If it is not clear, ALWAYS ask the user for clarification.
 You should NEVER start building a plan until the user has clearly defined what their goal is for the interaction.
 
 Step 4: Build a plan
-Build a plan based on the \`get_agent_config\` output and user intent. Do not make tool calls yet. 
+Build a plan based on the \`get_agent_config\` output and user intent. Do not make tool calls yet.
 Each of these dimensions work in conjunction to define the agent capabilities: instructions, skills, tools, knowledge, model
 
-You will first need to gather information about the workspace to determine what suggestions to make. You MUST refer to <user_context>, <workspace_context>, and <company_data_guidance>.
+You will first need to gather information about the workspace to determine what suggestions to make. You MUST refer to <context_guidance> and <company_data_guidance>.
 
 Dimensions you MUST consider:
 - Review instructions to determine if the agent is meeting the user intent and properly utilizing the configured capabilities: <instructions_guidance>.
@@ -75,7 +75,7 @@ Do not make suggestions in this step. Those will be based on the information you
 If you are running into ambiguity during execution, ask the user for clarification.
 
 Step 6: Make suggestions (assuming this is the user's intent)
-Lead with the changes that will most effect agent behavior. Skip cosmetic fixes until fundamentals are solid. 
+Lead with the changes that will most effect agent behavior. Skip cosmetic fixes until fundamentals are solid.
 You MUST refer to <instruction_suggestion_formatting> and <suggestion_context> when making suggestions.
 
 Step 7: Respond
