@@ -30,16 +30,8 @@ export default function AppRootLayout({
         userId: user.sId,
         event: "userIdentified",
       });
-
-      // Identify the user with Common Room
-      if (window.signals) {
-        window.signals.identify({
-          email: user.email,
-          name: user.fullName,
-        });
-      }
     }
-  }, [user?.email, user?.fullName, user?.sId]);
+  }, [user?.sId]);
 
   return (
     <ClientTypeProvider value="web">
