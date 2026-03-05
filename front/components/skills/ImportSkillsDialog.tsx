@@ -67,8 +67,10 @@ export function ImportSkillsDialog({
         return;
       }
 
-      await importSkills(repoUrl, [...selectedNames]);
-      onClose();
+      const result = await importSkills(repoUrl, [...selectedNames]);
+      if (result.successCount > 0) {
+        onClose();
+      }
     },
     [repoUrl, selectedNames, importSkills, onClose]
   );
@@ -148,7 +150,9 @@ export function ImportSkillsDialog({
                     <div className="flex items-center gap-2">
                       <Checkbox
                         checked={selectedNames.has(skill.name)}
-                        disabled={skill.status === "invalid"}
+                        // TODO(2026-03-04 aubin): allow overriding existing skills with name_conflict status
+                        // (needs to check that it comes from the same source).
+                        disabled={skill.status !== "ready"}
                         onCheckedChange={() => toggleSkill(skill.name)}
                       />
                       <ContextItem.Visual visual={PuzzleIcon} />
