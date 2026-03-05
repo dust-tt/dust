@@ -284,6 +284,20 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust but running OpenAI models.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+        name: "dust-oai-medium",
+        description: "Same as dust-oai but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+        name: "dust-oai-high",
+        description: "Same as dust-oai but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_NEXT:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT,

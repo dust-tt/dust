@@ -124,6 +124,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_QUICK = "dust-quick",
   DUST_QUICK_MEDIUM = "dust-quick-medium",
   DUST_OAI = "dust-oai",
+  DUST_OAI_MEDIUM = "dust-oai-medium",
+  DUST_OAI_HIGH = "dust-oai-high",
   DUST_GOOG = "dust-goog",
   DUST_GOOG_MEDIUM = "dust-goog-medium",
   DUST_NEXT = "dust-next",
@@ -238,6 +240,8 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_EDGE,
   GLOBAL_AGENTS_SID.DUST_QUICK,
   GLOBAL_AGENTS_SID.DUST_OAI,
+  GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
 ];
 const globalAgentIndexMap = new Map(
   GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])

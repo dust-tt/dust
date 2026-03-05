@@ -38,6 +38,8 @@ import {
   _getDustNextHighGlobalAgent,
   _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
+  _getDustOaiHighGlobalAgent,
+  _getDustOaiMediumGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
@@ -137,6 +139,18 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_OAI]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_OAI_HIGH]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -829,6 +843,22 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
+      agentConfiguration = _getDustOaiMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_HIGH:
+      agentConfiguration = _getDustOaiHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_GOOG:
       agentConfiguration = _getDustGoogGlobalAgent(auth, {
         settings,
@@ -1042,6 +1072,8 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_QUICK,
     GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI,
+    GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
     GLOBAL_AGENTS_SID.DUST_GOOG,
     GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_NEXT,

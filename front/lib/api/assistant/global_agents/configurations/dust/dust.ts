@@ -751,6 +751,30 @@ export function _getDustOaiGlobalAgent(
   });
 }
 
+export function _getDustOaiMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+    name: "dust-oai-medium",
+    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustOaiHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+    name: "dust-oai-high",
+    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
 export function _getDustQuickMediumGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
