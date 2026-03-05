@@ -1,6 +1,9 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
-import type { DetectedSkillSummary } from "@app/lib/api/skills/github_detection/import_types";
+import {
+  isSkillFromSameGitHubRepo,
+  type DetectedSkillSummary,
+} from "@app/lib/api/skills/github_detection/import_types";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

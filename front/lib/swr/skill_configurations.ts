@@ -1,6 +1,6 @@
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { DetectedSkillSummary } from "@app/lib/api/skills/github_detection/import_types";
+import type { DetectedSkillSummary } from "@app/lib/skills/detected_skill_status";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
