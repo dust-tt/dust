@@ -1,13 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H2, P } from "@app/components/home/ContentComponents";
+import type { Testimonial } from "@app/components/home/content/Competitive/types";
 import Image from "next/image";
-
-interface Testimonial {
-  quote: string;
-  name: string;
-  title: string;
-  logo: string;
-}
 
 interface TestimonialsGridSectionProps {
   testimonials: Testimonial[];
