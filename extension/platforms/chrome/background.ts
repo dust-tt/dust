@@ -282,13 +282,12 @@ chrome.runtime.onMessage.addListener(
             }
 
             try {
+              const includeContent = message.includeContent ?? true;
+              const includeCapture = message.includeCapture ?? false;
               const [mimetypeExecution] = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => document.contentType,
               });
-
-              const includeContent = message.includeContent ?? true;
-              const includeCapture = message.includeCapture ?? false;
 
               let captures: string[] | undefined;
               if (includeCapture) {
