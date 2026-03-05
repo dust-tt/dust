@@ -93,10 +93,20 @@ async function handler(
             skill.name
           );
 
+          if (!existing) {
+            return {
+              name: skill.name,
+              status: "ready",
+              existingSkillId: null,
+            };
+          }
+
           return {
             name: skill.name,
-            status: existing ? "name_conflict" : "ready",
-            existingSkillId: existing ? existing.sId : null,
+            status: isSkillFromSameGitHubRepo(existing, repoUrl)
+              ? "same_source_conflict"
+              : "name_conflict",
+            existingSkillId: existing.sId,
           };
         },
         { concurrency: 8 }
