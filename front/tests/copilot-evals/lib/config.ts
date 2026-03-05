@@ -3,22 +3,12 @@ import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/a
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import { _getCopilotEdgeGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot_edge";
-import {
-  type CopilotContext,
-  formatAvailableModels,
-  formatAvailableSkills,
-  formatAvailableTools,
-} from "@app/lib/api/assistant/global_agents/copilot_context";
+import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
 import {
   MCP_SERVERS_FOR_GLOBAL_AGENTS,
   type MCPServerViewsForGlobalAgentsMap,
 } from "@app/lib/api/assistant/global_agents/tools";
-import type {
-  AvailableSkill,
-  AvailableTool,
-} from "@app/lib/api/assistant/workspace_capabilities";
 import { Authenticator } from "@app/lib/auth";
-import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { CopilotConfig } from "@app/tests/copilot-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
@@ -55,85 +45,44 @@ const GET_AGENT_CONFIG_SPEC: AgentActionSpecification = {
   },
 };
 
-const MOCK_MODEL_IDS = [
-  "gpt-4-turbo",
-  "gpt-5-mini",
-  "claude-sonnet-4-5-20250929",
-  "claude-opus-4-20250514",
-] as const;
-
-const MOCK_WORKSPACE_SKILLS: AvailableSkill[] = [
-  {
-    sId: "skill_web_search",
-    name: "Web Search",
-    userFacingDescription: null,
-    agentFacingDescription: "Search the web for information",
-    icon: null,
-    toolSIds: [],
-  },
-  {
-    sId: "skill_data_analysis",
-    name: "Data Analysis",
-    userFacingDescription: null,
-    agentFacingDescription: "Analyze data and generate insights",
-    icon: null,
-    toolSIds: [],
-  },
-];
-
-const MOCK_WORKSPACE_TOOLS: AvailableTool[] = [
-  {
-    sId: "mcp_slack",
-    name: "Slack",
-    description: "Read and send Slack messages",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_notion",
-    name: "Notion",
-    description: "Search Notion workspace",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_github",
-    name: "GitHub",
-    description: "Access GitHub repositories",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_datadog",
-    name: "Datadog",
-    description: "Search and query Datadog logs and metrics",
-    serverType: "internal",
-    availability: "manual",
-  },
-  {
-    sId: "mcp_jira",
-    name: "JIRA",
-    description: "Search and manage JIRA issues and projects",
-    serverType: "internal",
-    availability: "manual",
-  },
-];
-
 function getMockCopilotContext(): CopilotContext {
-  const models = MOCK_MODEL_IDS.map((id) => getModelConfigByModelId(id)).filter(
-    (m): m is NonNullable<typeof m> => m != null
-  );
   return {
     mcpServerViews: null,
-    formattedUserContext: null,
-    formattedWorkspaceContext: [
-      formatAvailableModels(models),
-      formatAvailableSkills(MOCK_WORKSPACE_SKILLS),
-      formatAvailableTools(MOCK_WORKSPACE_TOOLS),
-    ].join("\n\n"),
     langfuseConfig: null,
   };
 }
+
+// In production, run_model.ts injects <user_context> and <workspace_context> into
+// the dynamic context block. The evals bypass run_model.ts and call the LLM directly,
+// so we append mock context to the instructions to simulate runtime injection.
+const MOCK_WORKSPACE_CONTEXT = [
+  "<workspace_context>",
+  "## AVAILABLE MODELS",
+  "4 models available.",
+  "",
+  "### openai",
+  "- **GPT 4 Turbo** (modelId: gpt-4-turbo): OpenAI's fast, intelligent flagship model (no vision)",
+  "- **GPT 5 Mini** (modelId: gpt-5-mini): OpenAI's fastest model. Designed for quick, everyday tasks (no vision)",
+  "### anthropic",
+  "- **Claude Sonnet 4.5** (modelId: claude-sonnet-4-5-20250929): Claude Sonnet 4.5 (no vision)",
+  "- **Claude Opus 4** (modelId: claude-opus-4-20250514): Claude Opus 4 (no vision)",
+  "",
+  "## AVAILABLE SKILLS",
+  "2 skills available.",
+  "",
+  "- **Web Search** (ID: skill_web_search): Search the web for information",
+  "- **Data Analysis** (ID: skill_data_analysis): Analyze data and generate insights",
+  "",
+  "## AVAILABLE TOOLS",
+  "5 tools available.",
+  "",
+  "- **Slack** (ID: mcp_slack): Read and send Slack messages",
+  "- **Notion** (ID: mcp_notion): Search Notion workspace",
+  "- **GitHub** (ID: mcp_github): Access GitHub repositories",
+  "- **Datadog** (ID: mcp_datadog): Search and query Datadog logs and metrics",
+  "- **JIRA** (ID: mcp_jira): Search and manage JIRA issues and projects",
+  "</workspace_context>",
+].join("\n");
 
 const MOCK_MCP_SERVER_VIEWS: MCPServerViewsForGlobalAgentsMap =
   Object.fromEntries(
@@ -217,9 +166,14 @@ export async function getCopilotConfig(): Promise<{
     }
   }
 
+  const instructions = [
+    copilotConfig.instructions ?? "",
+    MOCK_WORKSPACE_CONTEXT,
+  ].join("\n\n");
+
   return {
     config: {
-      instructions: copilotConfig.instructions ?? "",
+      instructions,
       model: copilotConfig.model,
       tools,
     },

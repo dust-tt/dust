@@ -17,8 +17,14 @@ import {
   buildToolsetsContext,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
+  buildUserContext,
+  buildWorkspaceContext,
+} from "@app/lib/api/assistant/global_agents/copilot_context";
+import {
   globalAgentInjectsMemory,
   globalAgentInjectsToolsets,
+  globalAgentInjectsUserContext,
+  globalAgentInjectsWorkspaceContext,
 } from "@app/lib/api/assistant/global_agents/global_agents";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -352,6 +358,16 @@ export async function runModel(
     toolsetsContext = buildToolsetsContext(filteredToolsets);
   }
 
+  let userContext: string | undefined;
+  if (globalAgentInjectsUserContext(agentConfiguration.sId) && auth.user()) {
+    userContext = (await buildUserContext(auth)) ?? undefined;
+  }
+
+  let workspaceContext: string | undefined;
+  if (globalAgentInjectsWorkspaceContext(agentConfiguration.sId)) {
+    workspaceContext = await buildWorkspaceContext(auth);
+  }
+
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -366,6 +382,8 @@ export async function runModel(
     equippedSkills,
     memoriesContext,
     toolsetsContext,
+    userContext,
+    workspaceContext,
   });
 
   const specifications: AgentActionSpecification[] = [];

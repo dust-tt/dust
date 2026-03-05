@@ -1,5 +1,6 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import type { CopilotContext } from "@app/lib/api/assistant/global_agents/copilot_context";
+
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -53,10 +54,10 @@ If it is not clear, ALWAYS ask the user for clarification.
 You should NEVER start building a plan until the user has clearly defined what their goal is for the interaction.
 
 Step 4: Build a plan
-Build a plan based on the \`get_agent_config\` output and user intent. Do not make tool calls yet. 
+Build a plan based on the \`get_agent_config\` output and user intent. Do not make tool calls yet.
 Each of these dimensions work in conjunction to define the agent capabilities: instructions, skills, tools, knowledge, model
 
-You will first need to gather information about the workspace to determine what suggestions to make. You MUST refer to <user_context>, <workspace_context>, and <company_data_guidance>.
+You will first need to gather information about the workspace to determine what suggestions to make. You MUST refer to <context_guidance> and <company_data_guidance>.
 
 Dimensions you MUST consider:
 - Review instructions to determine if the agent is meeting the user intent and properly utilizing the configured capabilities: <instructions_guidance>.
@@ -74,7 +75,7 @@ Do not make suggestions in this step. Those will be based on the information you
 If you are running into ambiguity during execution, ask the user for clarification.
 
 Step 6: Make suggestions (assuming this is the user's intent)
-Lead with the changes that will most effect agent behavior. Skip cosmetic fixes until fundamentals are solid. 
+Lead with the changes that will most effect agent behavior. Skip cosmetic fixes until fundamentals are solid.
 You MUST refer to <instruction_suggestion_formatting> and <suggestion_context> when making suggestions.
 
 Step 7: Respond
@@ -404,24 +405,18 @@ You CANNOT configure triggers or schedules for the agent. When users ask about s
 Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
 </triggers_and_schedules>`,
 
-  workspaceContext: (formatted: string) => `<workspace_context>
-The following capabilities are available in this workspace and can be suggested when building agents.
-You DO NOT need to call list_models, list_skills, or list_tools unless explicitly requested by the user.
+  contextGuidance: `<context_guidance>
+The runtime context includes <user_context> and <workspace_context> tags injected separately.
 
-${formatted}
-</workspace_context>`,
-
-  userContext: (formatted: string) => `<user_context>
-The user building this agent has the following profile:
-${formatted}
-
+<user_context> contains the user's job function and preferred platforms.
 Consider their role and platform preferences when suggesting tools and improvements.
-</user_context>`,
+
+<workspace_context> lists all available models, skills, and tools in this workspace.
+You DO NOT need to call list_models, list_skills, or list_tools unless explicitly requested by the user.
+</context_guidance>`,
 };
 
-export function buildCopilotInstructions(
-  copilotContext: CopilotContext | null
-): string {
+export function buildCopilotInstructions(): string {
   const parts: string[] = [
     COPILOT_INSTRUCTION_SECTIONS.primary,
     COPILOT_INSTRUCTION_SECTIONS.agentWorkflow,
@@ -437,27 +432,8 @@ export function buildCopilotInstructions(
     COPILOT_INSTRUCTION_SECTIONS.triggersAndSchedules,
     COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
     COPILOT_INSTRUCTION_SECTIONS.responseStyle,
+    COPILOT_INSTRUCTION_SECTIONS.contextGuidance,
   ];
-
-  if (!copilotContext) {
-    return parts.join("\n\n");
-  }
-
-  if (copilotContext.formattedUserContext) {
-    parts.push(
-      COPILOT_INSTRUCTION_SECTIONS.userContext(
-        copilotContext.formattedUserContext
-      )
-    );
-  }
-
-  if (copilotContext.formattedWorkspaceContext) {
-    parts.push(
-      COPILOT_INSTRUCTION_SECTIONS.workspaceContext(
-        copilotContext.formattedWorkspaceContext
-      )
-    );
-  }
 
   return parts.join("\n\n");
 }
@@ -523,7 +499,7 @@ export function _getCopilotGlobalAgent(
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
 
-  const instructions = buildCopilotInstructions(copilotContext);
+  const instructions = buildCopilotInstructions();
 
   return {
     id: -1,

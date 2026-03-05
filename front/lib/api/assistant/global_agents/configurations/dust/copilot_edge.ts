@@ -57,7 +57,7 @@ export function _getCopilotEdgeGlobalAgent(
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT_EDGE);
 
   const instructions =
-    langfuseConfig?.instructions || buildCopilotInstructions(copilotContext);
+    langfuseConfig?.instructions || buildCopilotInstructions();
 
   return {
     id: -1,

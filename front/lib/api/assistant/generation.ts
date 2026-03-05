@@ -404,6 +404,8 @@ export function constructPromptMultiActions(
     equippedSkills,
     memoriesContext,
     toolsetsContext,
+    userContext,
+    workspaceContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -418,6 +420,8 @@ export function constructPromptMultiActions(
     equippedSkills: SkillResource[];
     memoriesContext?: string;
     toolsetsContext?: string;
+    userContext?: string;
+    workspaceContext?: string;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -429,6 +433,8 @@ export function constructPromptMultiActions(
   // Only enabled for `deep-dive` and `dust(-x)` agents.
   const hasStaticInstructions =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.COPILOT ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.COPILOT_EDGE ||
     isDustLikeAgent(agentConfiguration.sId);
 
   const instructionsContent = constructInstructionsSection({
@@ -488,6 +494,8 @@ export function constructPromptMultiActions(
       { role: "context" as const, content: projectContextSection },
       { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: toolsetsContext ?? "" },
+      { role: "context" as const, content: userContext ?? "" },
+      { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
     return [
@@ -507,6 +515,8 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: pastedContentSection },
     { role: "context" as const, content: guidelinesSection },
     { role: "context" as const, content: memoriesContext ?? "" },
+    { role: "context" as const, content: userContext ?? "" },
+    { role: "context" as const, content: workspaceContext ?? "" },
   ].filter((s) => s.content.trim() !== "");
 
   return allSections;
