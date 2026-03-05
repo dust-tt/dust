@@ -1,3 +1,4 @@
+export { DUST_BASE_IMAGE, getSandboxImage } from "./dust-base";
 export { SandboxImage } from "./sandbox_image";
 export type {
   BaseImage,
