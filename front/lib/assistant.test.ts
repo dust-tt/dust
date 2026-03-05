@@ -71,6 +71,7 @@ function createMockPlan(code: string): PlanType {
       },
       canUseProduct: true,
     },
+    isByok: false,
   };
 }
 
