@@ -8,7 +8,6 @@ import type {
 } from "@connectors/api/webhooks/slack/utils";
 import {
   handleChatBot,
-  isAppMentionMessage,
   isSlackWebhookEventReqBody,
   withTrace,
 } from "@connectors/api/webhooks/slack/utils";
