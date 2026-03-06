@@ -7,6 +7,8 @@ import type {
   CaptureResponse,
   ClickPageElementMessage,
   ClickPageElementResponse,
+  DeleteTextMessage,
+  DeleteTextResponse,
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   GetPageElementsMessage,
@@ -14,6 +16,8 @@ import type {
   InputBarStatusMessage,
   TabActionMessage,
   TabActionResponse,
+  TypeTextMessage,
+  TypeTextResponse,
 } from "@extension/platforms/chrome/messages";
 import type { PendingUpdate } from "@extension/platforms/chrome/services/platform";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
@@ -23,7 +27,12 @@ import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
 import { jwtDecode } from "jwt-decode";
-import { clickPageElement, getPageElements } from "./interactWithPage";
+import {
+  clickPageElement,
+  deleteText,
+  getPageElements,
+  typeText,
+} from "./interactWithPage";
 
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
@@ -281,7 +290,9 @@ chrome.runtime.onMessage.addListener(
       | InputBarStatusMessage
       | TabActionMessage
       | GetPageElementsMessage
-      | ClickPageElementMessage,
+      | ClickPageElementMessage
+      | TypeTextMessage
+      | DeleteTextMessage,
     sender,
     sendResponse: (
       response:
@@ -293,6 +304,8 @@ chrome.runtime.onMessage.addListener(
         | TabActionResponse
         | GetPageElementsResponse
         | ClickPageElementResponse
+        | TypeTextResponse
+        | DeleteTextResponse
     ) => void
   ) => {
     switch (message.type) {
@@ -749,6 +762,78 @@ chrome.runtime.onMessage.addListener(
             });
           }
         });
+        return true;
+
+      case "TYPE_TEXT":
+        chrome.tabs.query(
+          { active: true, currentWindow: true },
+          async (tabs) => {
+            const tab = tabs[0];
+            try {
+              const result = await typeText(
+                tab,
+                message.elementId,
+                message.text,
+                message.variant
+              );
+
+              if (result.isErr()) {
+                log("Error typing text in element:", result.error);
+                sendResponse({
+                  success: false,
+                  error: result.error.message,
+                });
+                return;
+              }
+
+              sendResponse({
+                success: true,
+              });
+            } catch (error) {
+              const normalizedError = normalizeError(error);
+              log("Error typing text in element:", normalizedError.message);
+              sendResponse({
+                success: false,
+                error:
+                  normalizedError.message ?? "Failed to type text in element.",
+              });
+            }
+          }
+        );
+        return true;
+
+      case "DELETE_TEXT":
+        chrome.tabs.query(
+          { active: true, currentWindow: true },
+          async (tabs) => {
+            const tab = tabs[0];
+            try {
+              const result = await deleteText(tab, message.elementId);
+
+              if (result.isErr()) {
+                log("Error deliting text in element:", result.error);
+                sendResponse({
+                  success: false,
+                  error: result.error.message,
+                });
+                return;
+              }
+
+              sendResponse({
+                success: true,
+              });
+            } catch (error) {
+              const normalizedError = normalizeError(error);
+              log("Error deliting text in element:", normalizedError.message);
+              sendResponse({
+                success: false,
+                error:
+                  normalizedError.message ??
+                  "Failed to delete text in element.",
+              });
+            }
+          }
+        );
         return true;
 
       case "INPUT_BAR_STATUS":

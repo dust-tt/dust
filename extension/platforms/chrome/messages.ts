@@ -95,6 +95,24 @@ export type ClickPageElementMessage = {
 };
 export type ClickPageElementResponse = { success: boolean; error?: string };
 
+export type TypeTextMessage = {
+  type: "TYPE_TEXT";
+  tabId: number;
+  elementId: string;
+  text: string;
+  variant: "replace" | "append";
+};
+
+export type TypeTextResponse = { success: boolean; error?: string };
+
+export type DeleteTextMessage = {
+  type: "DELETE_TEXT";
+  tabId: number;
+  elementId: string;
+};
+
+export type DeleteTextResponse = { success: boolean; error?: string };
+
 const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response: U | undefined) => {
@@ -236,15 +254,46 @@ export function sendInteractWithPageMessage(input: {
 
 export function sendInteractWithPageMessage(input: {
   action: "click_element";
-  elementId: string;
   tabId: number;
+  elementId: string;
 }): Promise<ClickPageElementResponse>;
+
+export function sendInteractWithPageMessage(input: {
+  action: "type_text";
+  tabId: number;
+  elementId: string;
+  text: string;
+  variant: "replace" | "append";
+}): Promise<TypeTextResponse>;
+
+export function sendInteractWithPageMessage(input: {
+  action: "delete_text";
+  tabId: number;
+  elementId: string;
+}): Promise<DeleteTextResponse>;
 
 export function sendInteractWithPageMessage(
   input:
     | { action: "get_elements"; tabId: number }
     | { action: "click_element"; tabId: number; elementId: string }
-): Promise<GetPageElementsResponse | ClickPageElementResponse> {
+    | {
+        action: "type_text";
+        tabId: number;
+        elementId: string;
+        text: string;
+        variant: "replace" | "append";
+      }
+    | {
+        action: "delete_text";
+        tabId: number;
+        elementId: string;
+      }
+): Promise<
+  | GetPageElementsResponse
+  | ClickPageElementResponse
+  | TypeTextResponse
+  | DeleteTextResponse
+> {
   switch (input.action) {
     case "get_elements":
       return sendMessage<GetPageElementsMessage, GetPageElementsResponse>({
@@ -256,6 +305,20 @@ export function sendInteractWithPageMessage(
         type: "CLICK_ELEMENT",
         elementId: input.elementId,
         tabId: input.tabId,
+      });
+    case "type_text":
+      return sendMessage<TypeTextMessage, TypeTextResponse>({
+        type: "TYPE_TEXT",
+        tabId: input.tabId,
+        elementId: input.elementId,
+        text: input.text,
+        variant: input.variant,
+      });
+    case "delete_text":
+      return sendMessage<DeleteTextMessage, DeleteTextResponse>({
+        type: "DELETE_TEXT",
+        tabId: input.tabId,
+        elementId: input.elementId,
       });
   }
 }

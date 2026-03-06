@@ -1,4 +1,5 @@
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ensureDustPageUtils } from "./pageUtils";
 
 type ElementSnapshot = {
@@ -152,4 +153,352 @@ export async function clickPageElement(
     return new Err(new Error("Element not found"));
   }
   return new Ok(true);
+}
+
+export async function typeText(
+  tab: chrome.tabs.Tab,
+  elementId: string,
+  text: string,
+  variant: "replace" | "append"
+): Promise<Result<boolean, Error>> {
+  if (!tab?.id) {
+    return new Err(new Error("No active tab found."));
+  }
+
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    args: [elementId, text, variant],
+    func: (
+      elementId: string,
+      text: string,
+      variant: "replace" | "append"
+    ):
+      | "OK"
+      | "NOT_FOUND"
+      | "SETTER_NOT_FOUND"
+      | "SELECTION_UNAVAILABLE"
+      | "OPTION_NOT_FOUND"
+      | "UNSUPPORTED_ELEMENT" => {
+      const w = window as unknown as {
+        __dustElementMap?: Record<string, WeakRef<HTMLElement>>;
+      };
+
+      const element = w.__dustElementMap?.[elementId].deref();
+      if (!element) {
+        return "NOT_FOUND";
+      }
+
+      const tag = element.tagName.toLowerCase();
+
+      if (tag === "input" || tag === "textarea") {
+        const proto =
+          tag === "input"
+            ? HTMLInputElement.prototype
+            : HTMLTextAreaElement.prototype;
+
+        const nativeSetter = Object.getOwnPropertyDescriptor(
+          proto,
+          "value"
+        )?.set;
+        if (!nativeSetter) {
+          return "SETTER_NOT_FOUND";
+        }
+
+        element.focus();
+
+        const baseValue =
+          variant === "append"
+            ? (element as HTMLInputElement | HTMLTextAreaElement).value
+            : "";
+
+        let current = baseValue;
+        for (const char of text) {
+          current += char;
+          nativeSetter.call(element, current);
+          element.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+        return "OK";
+      }
+
+      if (
+        element.getAttribute("role") === "combobox" ||
+        element.getAttribute("role") === "searchbox"
+      ) {
+        const inner = element.querySelector<HTMLInputElement>("input");
+        if (inner) {
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            "value"
+          )?.set;
+          if (!nativeSetter) {
+            return "SETTER_NOT_FOUND";
+          }
+
+          inner.focus();
+
+          const baseValue = variant === "append" ? inner.value : "";
+          let current = baseValue;
+          for (const char of text) {
+            current += char;
+            nativeSetter.call(inner, current);
+            inner.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+          inner.dispatchEvent(new Event("change", { bubbles: true }));
+          return "OK";
+        }
+        // No inner input — fall through to contenteditable check
+      }
+
+      if (element.isContentEditable) {
+        element.focus();
+
+        const sel = window.getSelection();
+        if (!sel) {
+          return "SELECTION_UNAVAILABLE";
+        }
+
+        const range = document.createRange();
+        range.selectNodeContents(element);
+
+        if (variant === "append") {
+          range.collapse(false);
+        }
+
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        for (const char of text) {
+          element.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key: char,
+              bubbles: true,
+              cancelable: true,
+            })
+          );
+          element.dispatchEvent(
+            new KeyboardEvent("keypress", {
+              key: char,
+              bubbles: true,
+              cancelable: true,
+            })
+          );
+
+          // Even if deprecated execCommand works with Notion
+          // while other alternatives do not
+          document.execCommand("insertText", false, char);
+
+          element.dispatchEvent(
+            new InputEvent("input", {
+              inputType: "insertText",
+              data: char,
+              bubbles: true,
+            })
+          );
+          element.dispatchEvent(
+            new KeyboardEvent("keyup", {
+              key: char,
+              bubbles: true,
+            })
+          );
+        }
+        return "OK";
+      }
+
+      if (tag === "select") {
+        const select = element as HTMLSelectElement;
+        const option = Array.from(select.options).find(
+          (o) => o.text === text || o.value === text
+        );
+        if (!option) {
+          return "OPTION_NOT_FOUND";
+        }
+        select.value = option.value;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        return "OK";
+      }
+
+      return "UNSUPPORTED_ELEMENT";
+    },
+  });
+
+  const result = execution?.result;
+
+  if (!result) {
+    return new Err(new Error("Unexpected error"));
+  }
+
+  switch (result) {
+    case "OK":
+      return new Ok(true);
+    case "NOT_FOUND":
+      return new Err(
+        new Error("Element not found. Call getPageElements first.")
+      );
+    case "SETTER_NOT_FOUND":
+      return new Err(new Error("Could not resolve native setter for element."));
+    case "SELECTION_UNAVAILABLE":
+      return new Err(new Error("Could not get selection for element."));
+    case "OPTION_NOT_FOUND":
+      return new Err(
+        new Error(`Option "${text}" not found in select element.`)
+      );
+    case "UNSUPPORTED_ELEMENT":
+      return new Err(new Error("Element is not a supported input type."));
+    default:
+      assertNever(result);
+  }
+}
+
+export async function deleteText(
+  tab: chrome.tabs.Tab,
+  elementId: string
+): Promise<Result<boolean, Error>> {
+  if (!tab?.id) {
+    return new Err(new Error("No active tab found."));
+  }
+
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    args: [elementId],
+    func: (
+      elementId: string
+    ):
+      | "OK"
+      | "NOT_FOUND"
+      | "SETTER_NOT_FOUND"
+      | "SELECTION_UNAVAILABLE"
+      | "UNSUPPORTED_ELEMENT" => {
+      const w = window as unknown as {
+        __dustElementMap?: Record<string, WeakRef<HTMLElement>>;
+      };
+
+      const element = w.__dustElementMap?.[elementId].deref();
+      if (!element) {
+        return "NOT_FOUND";
+      }
+
+      const tag = element.tagName.toLowerCase();
+
+      if (tag === "input" || tag === "textarea") {
+        const proto =
+          tag === "input"
+            ? HTMLInputElement.prototype
+            : HTMLTextAreaElement.prototype;
+
+        const nativeSetter = Object.getOwnPropertyDescriptor(
+          proto,
+          "value"
+        )?.set;
+        if (!nativeSetter) {
+          return "SETTER_NOT_FOUND";
+        }
+
+        element.focus();
+
+        nativeSetter.call(element, "");
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+        return "OK";
+      }
+
+      if (
+        element.getAttribute("role") === "combobox" ||
+        element.getAttribute("role") === "searchbox"
+      ) {
+        const inner = element.querySelector<HTMLInputElement>("input");
+        if (inner) {
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            "value"
+          )?.set;
+          if (!nativeSetter) {
+            return "SETTER_NOT_FOUND";
+          }
+
+          inner.focus();
+
+          nativeSetter.call(inner, "");
+          inner.dispatchEvent(new Event("input", { bubbles: true }));
+          inner.dispatchEvent(new Event("change", { bubbles: true }));
+          return "OK";
+        }
+      }
+
+      if (element.isContentEditable) {
+        element.focus();
+
+        const sel = window.getSelection();
+        if (!sel) {
+          return "SELECTION_UNAVAILABLE";
+        }
+
+        const range = document.createRange();
+        range.selectNodeContents(element);
+
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        element.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Backspace",
+            code: "Backspace",
+            keyCode: 8,
+            bubbles: true,
+            cancelable: true,
+          })
+        );
+        element.dispatchEvent(
+          new InputEvent("beforeinput", {
+            inputType: "deleteContentBackward",
+            bubbles: true,
+            cancelable: true,
+          })
+        );
+
+        range.deleteContents();
+
+        element.dispatchEvent(
+          new InputEvent("input", {
+            inputType: "deleteContentBackward",
+            bubbles: true,
+          })
+        );
+        element.dispatchEvent(
+          new KeyboardEvent("keyup", {
+            key: "Backspace",
+            code: "Backspace",
+            keyCode: 8,
+            bubbles: true,
+          })
+        );
+        return "OK";
+      }
+
+      return "UNSUPPORTED_ELEMENT";
+    },
+  });
+
+  const result = execution?.result;
+
+  if (!result) {
+    return new Err(new Error("Unexpected error"));
+  }
+
+  switch (result) {
+    case "OK":
+      return new Ok(true);
+    case "NOT_FOUND":
+      return new Err(
+        new Error("Element not found. Call getPageElements first.")
+      );
+    case "SETTER_NOT_FOUND":
+      return new Err(new Error("Could not resolve native setter for element."));
+    case "SELECTION_UNAVAILABLE":
+      return new Err(new Error("Could not get selection for element."));
+    case "UNSUPPORTED_ELEMENT":
+      return new Err(new Error("Element is not a supported input type."));
+    default:
+      assertNever(result);
+  }
 }
