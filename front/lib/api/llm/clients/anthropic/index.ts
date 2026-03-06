@@ -158,7 +158,6 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     payload: BetaMessageStreamParams
   ): AsyncGenerator<LLMEvent> {
     try {
-      console.log(">> payload:", JSON.stringify(payload, null, 2));
       const events = this.client.beta.messages.stream(payload);
 
       const shouldCountReasoningTokens =
