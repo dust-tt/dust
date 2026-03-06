@@ -446,8 +446,11 @@ export async function connectToMCPServer(
             }
           }
 
-          const { dispatcher, fetch: proxyFetch, proxyKind } =
-            await createMCPProxyConfig(auth, url.hostname);
+          const {
+            dispatcher,
+            fetch: proxyFetch,
+            proxyKind,
+          } = await createMCPProxyConfig(auth, url.hostname);
 
           try {
             const req = {
@@ -494,6 +497,7 @@ export async function connectToMCPServer(
 
             logger.error(
               {
+                mcpServerId: params.mcpServerId,
                 oauthConnectionType,
                 proxyKind,
                 serverType,
