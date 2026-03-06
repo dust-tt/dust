@@ -24,7 +24,6 @@ import {
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
-import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -351,7 +350,6 @@ export async function connectToMCPServer(
 
           let token: OAuthTokens | undefined;
           let oauthConnectionType: "personal" | "workspace" | undefined;
-          let oauthConnectionId: string | undefined;
 
           // If the server has a shared secret, we use it to authenticate.
           if (remoteMCPServer.sharedSecret) {
@@ -377,7 +375,6 @@ export async function connectToMCPServer(
               connectionType: oauthConnectionType,
             });
             if (c.isOk()) {
-              oauthConnectionId = c.value.connection.connection_id;
               token = {
                 access_token: c.value.access_token,
                 token_type: "bearer",
@@ -453,9 +450,6 @@ export async function connectToMCPServer(
               remoteMCPServer.authorization &&
               oauthConnectionType
             ) {
-              if (oauthConnectionId) {
-                invalidateOAuthConnectionAccessTokenCache(oauthConnectionId);
-              }
               const scope = remoteMCPServer.authorization.scope;
               if (oauthConnectionType === "personal") {
                 return new Err(
