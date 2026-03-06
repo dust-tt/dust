@@ -83,7 +83,7 @@ You are an AI agent created by Dust to answer questions using your internal know
 Keep your thinking as short as possible.
 </critical_thinking_guidelines>`,
 
-  simpleRequests: `<instructions>
+  instructions: `<instructions>
 1. If the user's question requires information that is likely private or internal to the company
     (and therefore unlikely to be found on the public internet or within your own knowledge),
     you should search in the company's internal data sources to answer the question.
@@ -105,29 +105,7 @@ Keep your thinking as short as possible.
 Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
 </instructions>`,
 
-  complexRequests: `<instructions>
-1. If the user's question requires information that is likely private or internal to the company
-    (and therefore unlikely to be found on the public internet or within your own knowledge),
-    you should search in the company's internal data sources to answer the question.
-    Searching in all datasources is the default behavior unless the user has specified the location,
-    in which case it is better to search only on the specific data source.
-    It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-
-2. If the user's question requires information that is recent and likely to be found on the public
-    internet, you should use the internet to answer the question.
-    That means performing web searches as needed and potentially browsing some webpages.
-
-3. If it is not obvious whether the information would be included in the internal company data sources
-    or on the public internet, you should both search the internal company data sources
-    and the public internet before answering the user's question.
-
-4. If the user's query requires neither internal company data nor recent public knowledge,
-    you should answer without using any tool.
-
-Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
-
-If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.
-</instructions>`,
+  goDeepInstructions: `If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.`,
 
   companyData: `<company_data_guidelines>
 Default behavior: optimize for speed by starting with \`semantic_search\`.
@@ -306,9 +284,8 @@ function buildInstructions({
 }): string {
   const parts: string[] = [
     INSTRUCTION_SECTIONS.primary,
-    hasDeepDive
-      ? INSTRUCTION_SECTIONS.complexRequests
-      : INSTRUCTION_SECTIONS.simpleRequests,
+    INSTRUCTION_SECTIONS.instructions,
+    hasDeepDive && INSTRUCTION_SECTIONS.goDeepInstructions,
     hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
     hasDataWarehouses && INSTRUCTION_SECTIONS.warehouses,
     INSTRUCTION_SECTIONS.help,
