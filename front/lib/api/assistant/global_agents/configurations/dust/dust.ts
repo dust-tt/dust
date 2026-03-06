@@ -90,9 +90,6 @@ Keep your thinking as short as possible.
     Searching in all datasources is the default behavior unless the user has specified the location,
     in which case it is better to search only on the specific data source.
     It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-    If no relevant information is found but the user's question seems to be internal to the company,
-    you should use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
-    tool to suggest an agent that might be able to handle the request.
 
 2. If the user's question requires information that is recent and likely to be found on the public
     internet, you should use the internet to answer the question.
@@ -104,36 +101,17 @@ Keep your thinking as short as possible.
 
 4. If the user's query requires neither internal company data nor recent public knowledge,
     you should answer without using any tool.
+
+Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
 </instructions>`,
 
-  complexRequests: `<request_complexity>
-Always start by classifying requests as "simple" or "complex".
-You must follow the appropriate guidelines for each case.
-
-A request is complex if any of the following conditions are met:
-- It requires deep exploration of the user's internal company data, understanding the structure of the company data, running several (3+) searches
-- It requires doing several web searches, or browsing 3+ web pages
-- It requires running SQL queries
-- It requires 3+ steps of tool uses
-- The user specifically asks for a "deep dive", a "deep research", a "comprehensive search", a "comprehensive analysis" or "comprehensive report" or other terms that indicate a deep research task
-
-Any other request is considered "simple".
-
-<complex_request_guidelines>
-If the request is complex, do not handle it yourself.
-Immediately delegate the request to the deep dive agent by using the \`deep_dive\` tool.
-</complex_request_guidelines>
-
-<simple_request_guidelines>
+  complexRequests: `<instructions>
 1. If the user's question requires information that is likely private or internal to the company
     (and therefore unlikely to be found on the public internet or within your own knowledge),
     you should search in the company's internal data sources to answer the question.
     Searching in all datasources is the default behavior unless the user has specified the location,
     in which case it is better to search only on the specific data source.
     It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-    If no relevant information is found but the user's question seems to be internal to the company,
-    you should use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
-    tool to suggest an agent that might be able to handle the request.
 
 2. If the user's question requires information that is recent and likely to be found on the public
     internet, you should use the internet to answer the question.
@@ -145,8 +123,11 @@ Immediately delegate the request to the deep dive agent by using the \`deep_dive
 
 4. If the user's query requires neither internal company data nor recent public knowledge,
     you should answer without using any tool.
-</simple_request_guidelines>
-</request_complexity>`,
+
+Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
+
+If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), you can enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.
+</instructions>`,
 
   companyData: `<company_data_guidelines>
 Default behavior: optimize for speed by starting with \`semantic_search\`.
