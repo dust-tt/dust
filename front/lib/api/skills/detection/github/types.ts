@@ -1,27 +1,13 @@
+import type { SkillDirectory } from "@app/lib/api/skills/detection/types";
 import { z } from "zod";
 
-export interface DetectedSkillAttachment {
-  path: string;
-  sizeBytes: number;
-}
-
-export interface DetectedSkill {
-  name: string;
-  skillMdPath: string;
-  description: string;
-  instructions: string;
-  attachments: DetectedSkillAttachment[];
-}
-
-export type SkillDetectionError =
+export type GitHubSkillDetectionError =
   | { type: "invalid_url"; message: string }
   | { type: "auth_error"; message: string }
   | { type: "not_found"; message: string }
   | { type: "github_api_error"; message: string };
 
-export interface SkillDirectory {
-  dirPath: string;
-  skillMdPath: string;
+export interface GitHubSkillDirectory extends SkillDirectory {
   skillMdSha: string;
 }
 
