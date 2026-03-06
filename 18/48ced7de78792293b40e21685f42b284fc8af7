@@ -1,0 +1,36 @@
+front/components/assistant/conversation/AgentMessage.tsx
+  680ddda17d0df819 60-62,88,93,105,189-191,298-316,333,866,896,922,1151-1165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "1848ced7de78792293b40e21685f42b284fc8af7",
+  "prompts": {
+    "680ddda17d0df819": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42a05706-d1f8-4c45-94ad-72de3e97e419",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 48,
+      "total_deletions": 2,
+      "accepted_lines": 48,
+      "overriden_lines": 0
+    },
+    "b3ba646dac812e7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625578d2-2cb8-4535-8eb5-e49d03c328aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}
