@@ -60,7 +60,8 @@ async function handler(
       const result = await detectSkillsFromGitHubRepo({ repoUrl });
 
       if (result.isErr()) {
-        const error = result.error;
+        const { error } = result;
+
         switch (error.type) {
           case "invalid_url":
             return apiError(req, res, {
@@ -92,7 +93,7 @@ async function handler(
               "Error detecting skills from GitHub repo"
             );
             return apiError(req, res, {
-              status_code: 400,
+              status_code: 500,
               api_error: {
                 type: "invalid_request_error",
                 message: error.message,

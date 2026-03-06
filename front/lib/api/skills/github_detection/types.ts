@@ -13,11 +13,10 @@ export interface DetectedSkill {
   attachments: DetectedSkillAttachment[];
 }
 
-export type SkillDetectionError =
-  | { type: "invalid_url"; message: string }
-  | { type: "auth_error"; message: string }
-  | { type: "not_found"; message: string }
-  | { type: "api_error"; message: string };
+export type SkillDetectionError = {
+  type: "invalid_url" | "auth_error" | "not_found" | "api_error";
+  message: string;
+};
 
 export interface SkillDirectory {
   dirPath: string;
