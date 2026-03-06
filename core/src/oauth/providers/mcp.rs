@@ -134,6 +134,11 @@ impl Provider for MCPConnectionProvider {
             form_data.push(("resource", resource));
         }
 
+        // Include scope parameter if available (required by Azure AD v2.0).
+        if let Some(ref scope) = metadata.scope {
+            form_data.push(("scope", scope));
+        }
+
         let mut req = self
             .reqwest_client()
             .post(metadata.token_endpoint)
@@ -230,6 +235,11 @@ impl Provider for MCPConnectionProvider {
         // Include resource parameter per RFC 8707 if available.
         if let Some(ref resource) = metadata.resource {
             form_data.push(("resource", resource));
+        }
+
+        // Include scope parameter if available (required by Azure AD v2.0).
+        if let Some(ref scope) = metadata.scope {
+            form_data.push(("scope", scope));
         }
 
         let mut req = self
