@@ -44,6 +44,7 @@ export function makeToolBlockedAwaitingInputResponse(
 ): CallToolResult {
   const agentPauseToolOutputResource = {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
+    type: "tool_blocked_awaiting_input" as const,
     text: "Tool requires resume after blocking events",
     uri: "",
     blockingEvents,
