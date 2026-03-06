@@ -44,7 +44,7 @@ export function ButlerSuggestionCard({
           onAction={onAction}
           icon={ChatBubbleLeftRightIcon}
           title={`Try asking @${suggestion.metadata.agentName}`}
-          actionLabel="Ask"
+          actionLabel="Draft"
         />
       );
     case "create_frame":
@@ -54,7 +54,7 @@ export function ButlerSuggestionCard({
           onAction={onAction}
           icon={ActionFrameIcon}
           title="Create a Frame?"
-          actionLabel="Create"
+          actionLabel="Draft"
         />
       );
     default:
