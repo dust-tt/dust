@@ -9,89 +9,73 @@ import type {
   ConversationType,
 } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { z } from "zod";
 
-export type FileAuthorizationInfo = {
-  fileId: string;
-  fileName: string;
-  connectionId: string;
-  mimeType: string;
-};
+const FileAuthorizationInfoSchema = z.object({
+  fileId: z.string(),
+  fileName: z.string(),
+  connectionId: z.string(),
+  mimeType: z.string(),
+});
+
+export type FileAuthorizationInfo = z.infer<typeof FileAuthorizationInfoSchema>;
 
 export function isFileAuthorizationInfo(
   value: unknown
 ): value is FileAuthorizationInfo {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "fileId" in value &&
-    typeof (value as Record<string, unknown>).fileId === "string" &&
-    "fileName" in value &&
-    typeof (value as Record<string, unknown>).fileName === "string" &&
-    "connectionId" in value &&
-    typeof (value as Record<string, unknown>).connectionId === "string" &&
-    "mimeType" in value &&
-    typeof (value as Record<string, unknown>).mimeType === "string"
-  );
+  return FileAuthorizationInfoSchema.safeParse(value).success;
 }
 
-export type UserQuestionOption = {
-  label: string;
-  description: string;
-};
+export const UserQuestionOptionSchema = z.object({
+  label: z.string(),
+  description: z.string(),
+});
 
-export type UserQuestion = {
-  question: string;
-  options: UserQuestionOption[];
-  multiSelect: boolean;
-};
+export type UserQuestionOption = z.infer<typeof UserQuestionOptionSchema>;
 
-export type UserQuestionResumeState = {
-  type: "user_question";
-  questions: UserQuestion[];
-  metadata?: Record<string, unknown>;
-};
+export const UserQuestionSchema = z.object({
+  question: z.string(),
+  options: z.array(UserQuestionOptionSchema),
+  multiSelect: z.boolean(),
+});
+
+export type UserQuestion = z.infer<typeof UserQuestionSchema>;
+
+const UserQuestionResumeStateSchema = z.object({
+  type: z.literal("user_question"),
+  questions: z.array(UserQuestionSchema),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type UserQuestionResumeState = z.infer<
+  typeof UserQuestionResumeStateSchema
+>;
 
 export function isUserQuestionResumeState(
   value: Record<string, unknown> | null
 ): value is UserQuestionResumeState {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    value.type === "user_question" &&
-    "questions" in value &&
-    Array.isArray(value.questions)
-  );
+  return UserQuestionResumeStateSchema.safeParse(value).success;
 }
 
-export type UserQuestionAnswerItem = {
-  selectedOptions: number[];
-  customResponse?: string;
-};
+export const UserQuestionAnswerItemSchema = z.object({
+  selectedOptions: z.array(z.number()),
+  customResponse: z.string().optional(),
+});
 
-export type UserQuestionAnswers = {
-  answers: UserQuestionAnswerItem[];
-};
+export type UserQuestionAnswerItem = z.infer<
+  typeof UserQuestionAnswerItemSchema
+>;
+
+const UserQuestionAnswersSchema = z.object({
+  answers: z.array(UserQuestionAnswerItemSchema),
+});
+
+export type UserQuestionAnswers = z.infer<typeof UserQuestionAnswersSchema>;
 
 export function isUserQuestionAnswers(
   value: unknown
 ): value is UserQuestionAnswers {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    !("answers" in value) ||
-    !Array.isArray((value as Record<string, unknown>).answers)
-  ) {
-    return false;
-  }
-  const answers = (value as Record<string, unknown>).answers as unknown[];
-  return answers.every(
-    (item) =>
-      typeof item === "object" &&
-      item !== null &&
-      "selectedOptions" in item &&
-      Array.isArray((item as Record<string, unknown>).selectedOptions)
-  );
+  return UserQuestionAnswersSchema.safeParse(value).success;
 }
 
 export type StepContext = {
