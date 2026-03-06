@@ -1,6 +1,5 @@
+import type { ToolEntry, ToolManifest } from "@app/lib/api/sandbox/image/types";
 import * as yaml from "js-yaml";
-
-import type { ToolEntry, ToolManifest } from "./types";
 
 export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
   return {

@@ -1,13 +1,12 @@
-import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
-
 import {
   getRequiredSandboxImages,
   getSandboxImageFromRegistry,
   getSandboxImageFromRegistryByName,
-} from "./registry";
-import type { SandboxImage } from "./sandbox_image";
+} from "@app/lib/api/sandbox/image/registry";
+import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 
 export function getSandboxImage(
   _auth?: Authenticator
@@ -27,12 +26,12 @@ export {
   getSandboxImageFromRegistry,
   getSandboxImageFromRegistryByName,
 };
-export { SandboxImage } from "./sandbox_image";
+export { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 export {
   createToolManifest,
   toolManifestToJSON,
   toolManifestToYAML,
-} from "./tool_manifest";
+} from "@app/lib/api/sandbox/image/tool_manifest";
 export type {
   BaseImage,
   NetworkMode,
@@ -44,7 +43,7 @@ export type {
   SandboxResources,
   ToolEntry,
   ToolManifest,
-} from "./types";
+} from "@app/lib/api/sandbox/image/types";
 export {
   DUST_SANDBOX_IMAGE_ID,
   formatSandboxImageId,
@@ -52,4 +51,4 @@ export {
   getSandboxImageTags,
   isValidSandboxImageName,
   isValidSandboxImageTag,
-} from "./types";
+} from "@app/lib/api/sandbox/image/types";

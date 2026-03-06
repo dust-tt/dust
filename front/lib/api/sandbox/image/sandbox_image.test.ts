@@ -1,7 +1,6 @@
+import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import type { SandboxImageId } from "@app/lib/api/sandbox/image/types";
 import { describe, expect, test } from "vitest";
-
-import { SandboxImage } from "./sandbox_image";
-import type { SandboxImageId } from "./types";
 
 describe("SandboxImage.fromSandbox()", () => {
   test("creates image with sandbox base", () => {

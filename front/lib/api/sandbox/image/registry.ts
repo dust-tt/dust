@@ -1,10 +1,12 @@
+import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import type {
+  SandboxImageId,
+  SandboxImageName,
+} from "@app/lib/api/sandbox/image/types";
+import { ALLOWLIST_NETWORK_POLICY } from "@app/lib/api/sandbox/image/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-import { SandboxImage } from "./sandbox_image";
-import type { SandboxImageId, SandboxImageName } from "./types";
-import { ALLOWLIST_NETWORK_POLICY } from "./types";
 
 const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:v0.1.0")
   .setBuildEnv({
