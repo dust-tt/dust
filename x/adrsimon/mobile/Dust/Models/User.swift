@@ -1,6 +1,6 @@
 import Foundation
 
-struct User: Codable, Sendable {
+struct User: Codable {
     let id: String
     let email: String
     let emailVerified: Bool
@@ -16,14 +16,14 @@ struct User: Codable, Sendable {
     }
 }
 
-struct AuthResponse: Codable, Sendable {
+struct AuthResponse: Codable {
     let accessToken: String
     let refreshToken: String
     let user: User
     let expiresIn: Int?
 }
 
-struct AuthTokens: Codable, Sendable {
+struct AuthTokens: Codable {
     let accessToken: String
     let refreshToken: String
 }

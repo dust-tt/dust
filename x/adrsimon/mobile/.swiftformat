@@ -1,0 +1,16 @@
+--swiftversion 5.9
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+--commas always
+--trimwhitespace always
+--stripunusedargs closure-only
+--importgrouping alpha
+--semicolons never
+--self init-only
+--header strip
+--ifdef no-indent
+--exclude Dust.xcodeproj

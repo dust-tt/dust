@@ -22,7 +22,7 @@ enum KeychainService {
         ]
 
         let deleteStatus = SecItemDelete(query as CFDictionary)
-        if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
+        if deleteStatus != errSecSuccess, deleteStatus != errSecItemNotFound {
             logger.error("Keychain delete before save failed for \(key.rawValue): \(deleteStatus)")
         }
 
@@ -60,7 +60,7 @@ enum KeychainService {
             kSecAttrAccount as String: key.rawValue,
         ]
         let status = SecItemDelete(query as CFDictionary)
-        if status != errSecSuccess && status != errSecItemNotFound {
+        if status != errSecSuccess, status != errSecItemNotFound {
             logger.error("Keychain delete failed for \(key.rawValue): \(status)")
         }
     }

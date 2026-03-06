@@ -60,7 +60,7 @@ private struct AsyncProfileImage: View {
         if let url, let imageURL = URL(string: url) {
             AsyncImage(url: imageURL) { phase in
                 switch phase {
-                case .success(let image):
+                case let .success(image):
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
