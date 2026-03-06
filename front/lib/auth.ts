@@ -85,6 +85,7 @@ export interface AuthenticatorType {
   role: RoleType;
   groupIds: string[];
   subscriptionId: string | null;
+  isByok: boolean;
   key?: KeyAuthType;
 }
 
@@ -1111,6 +1112,7 @@ export class Authenticator {
       role: this._role,
       groupIds: this.groupIds(),
       subscriptionId: this._subscription?.sId ?? null,
+      isByok: this.plan()?.isByok ?? false,
       key: this._key,
     };
   }
