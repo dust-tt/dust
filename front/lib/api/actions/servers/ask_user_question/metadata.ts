@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const ASK_USER_QUESTION_SERVER_NAME = "ask_user_question" as const;
-
 export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
   ask_user_question: {
     description:
@@ -48,7 +46,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
 
 export const ASK_USER_QUESTION_SERVER = {
   serverInfo: {
-    name: ASK_USER_QUESTION_SERVER_NAME,
+    name: "ask_user_question",
     version: "1.0.0",
     description: "Ask the user a question with multiple-choice options.",
     icon: "ActionAtomIcon",
