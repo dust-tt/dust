@@ -7,34 +7,77 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
   ask_user_question: {
     description:
-      "Ask the user a question with multiple-choice options. " +
-      "The agent will pause until the user answers. " +
-      "Use this when you need clarification or a decision from the user before proceeding.",
+      "Ask the user one or more questions with multiple-choice options. " +
+      "The agent will pause until the user answers.\n\n" +
+      "Use this tool when:\n" +
+      "- The user's request could apply to several known entities and asking " +
+      "narrows the work significantly. For example: 'What's the weather at " +
+      "the office?' when the company has offices in Paris, SF, and NY — ask " +
+      "which office instead of looking up all three.\n" +
+      "- A piece of information is missing and you can enumerate the likely " +
+      "options (e.g. which project, which account, which time range).\n" +
+      "- You need a decision that determines what you do next " +
+      "(e.g. deploy target, auth method, output format).\n" +
+      "- Doing the work for every possibility would be noticeably slower or " +
+      "noisier than asking one quick question first.\n\n" +
+      "Prefer asking over doing redundant work across all possibilities. " +
+      "A single focused result is more useful than a wall of answers " +
+      "covering every interpretation.\n\n" +
+      "Formatting:\n" +
+      "- List the recommended option first with '(Recommended)' in its label.\n" +
+      "- The user always gets an automatic 'Other' option for free-text input.",
     schema: {
-      question: z
-        .string()
-        .describe(
-          "The question to ask the user. Should be clear and specific."
-        ),
-      options: z
+      questions: z
         .array(
           z.object({
-            label: z.string().describe("Short display text for this option."),
-            description: z
+            question: z
               .string()
-              .optional()
-              .describe("Optional explanation of this option."),
+              .describe("The question text. Should be clear and specific."),
+            header: z
+              .string()
+              .max(12)
+              .describe(
+                "Short chip/tag label for this question, max 12 chars " +
+                  "(e.g. 'Auth method', 'Format')."
+              ),
+            options: z
+              .array(
+                z.object({
+                  label: z
+                    .string()
+                    .describe(
+                      "Concise choice text, 1–5 words. " +
+                        "Recommended option should include '(Recommended)'."
+                    ),
+                  description: z
+                    .string()
+                    .describe("Explanation of this option."),
+                  preview: z
+                    .string()
+                    .optional()
+                    .describe(
+                      "Optional markdown rendered in a monospace box for " +
+                        "visual comparisons (code snippets, ASCII mockups)."
+                    ),
+                })
+              )
+              .min(2)
+              .max(4)
+              .describe("The available choices (2 to 4 options)."),
+            multi_select: z
+              .boolean()
+              .describe(
+                "Whether the user can select multiple options for this question."
+              ),
           })
         )
-        .min(2)
-        .max(6)
-        .describe("The available choices (2 to 6 options)."),
-      allow_multiple: z
-        .boolean()
+        .min(1)
+        .max(4)
+        .describe("The questions to ask (1 to 4)."),
+      metadata: z
+        .record(z.unknown())
         .optional()
-        .describe(
-          "Whether the user can select multiple options. Defaults to false."
-        ),
+        .describe("Optional analytics/tracking metadata."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -48,7 +91,7 @@ export const ASK_USER_QUESTION_SERVER = {
   serverInfo: {
     name: "ask_user_question",
     version: "1.0.0",
-    description: "Ask the user a question with multiple-choice options.",
+    description: "Ask the user questions with multiple-choice options.",
     icon: "ActionAtomIcon",
     authorization: null,
     documentationUrl: null,
