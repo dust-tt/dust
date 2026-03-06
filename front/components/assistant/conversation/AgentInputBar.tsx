@@ -214,7 +214,7 @@ export const AgentInputBar = ({
     context.projectSpaceName
   ) {
     return (
-      <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4">
+      <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-4xl">
         <ProjectJoinCTA
           owner={context.owner}
           spaceId={context.projectSpaceId}

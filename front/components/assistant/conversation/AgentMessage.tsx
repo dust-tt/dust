@@ -761,7 +761,7 @@ export function AgentMessage({
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
-      <div className="inline-flex items-center gap-2 @sm:hidden">
+      <div className="inline-flex items-center gap-2 @xs:hidden">
         <ConversationMessageAvatar
           avatarUrl={agentConfiguration.pictureUrl}
           name={agentConfiguration.name}
@@ -785,7 +785,7 @@ export function AgentMessage({
       </div>
 
       <ConversationMessageAvatar
-        className="hidden @sm:flex"
+        className="hidden @xs:flex"
         avatarUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
         isBusy={agentMessage.status === "created"}
@@ -795,7 +795,7 @@ export function AgentMessage({
 
       <div className="flex w-full min-w-0 flex-col gap-3">
         <ConversationMessageTitle
-          className="hidden @sm:flex"
+          className="hidden @xs:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
           infoChip={
