@@ -15,7 +15,10 @@ import {
   collectAttachments,
   parseSkillMarkdown,
 } from "@app/lib/api/skills/detection/parsing";
-import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
+import type {
+  DetectedSkill,
+  FileEntry,
+} from "@app/lib/api/skills/detection/types";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -149,14 +152,10 @@ export async function detectSkillsFromGitHubRepo({
   }
   const tree = treeResult.value;
 
-  const skillDirs = findGitHubSkillDirectories(tree);
+  const { skillDirs, fileEntries } = findGitHubSkillDirectories(tree);
   if (skillDirs.length === 0) {
     return new Ok([]);
   }
-
-  const fileEntries = tree
-    .filter((e) => e.type === "blob")
-    .map((e) => ({ path: e.path, isFile: true, sizeBytes: e.size ?? 0 }));
 
   const skills = await concurrentExecutor(
     skillDirs,
@@ -165,21 +164,14 @@ export async function detectSkillsFromGitHubRepo({
     { concurrency: FETCH_CONCURRENCY }
   );
 
-  const detectedSkills: DetectedSkill[] = [];
-  const seenNames = new Set<string>();
+  const resolvedSkills: DetectedSkill[] = [];
   for (const result of skills) {
-    if (result.isErr()) {
-      continue;
+    if (result.isOk()) {
+      resolvedSkills.push(result.value);
     }
-    const skill = result.value;
-    if (!skill.name || seenNames.has(skill.name)) {
-      continue;
-    }
-    seenNames.add(skill.name);
-    detectedSkills.push(skill);
   }
 
-  return new Ok(detectedSkills);
+  return new Ok(resolvedSkills.filter((s) => s.name.length > 0));
 }
 
 async function buildDetectedSkill({
@@ -193,7 +185,7 @@ async function buildDetectedSkill({
   owner: string;
   repo: string;
   skillDir: GitHubSkillDirectory;
-  fileEntries: { path: string; isFile: boolean; sizeBytes: number }[];
+  fileEntries: FileEntry[];
 }): Promise<Result<DetectedSkill, GitHubSkillDetectionError>> {
   const blobResult = await fetchBlobContent(octokit, {
     owner,

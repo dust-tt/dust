@@ -4,6 +4,7 @@ import type {
   GitHubTreeEntry,
 } from "@app/lib/api/skills/detection/github/types";
 import { findSkillDirectories } from "@app/lib/api/skills/detection/parsing";
+import type { FileEntry } from "@app/lib/api/skills/detection/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -64,10 +65,12 @@ export function parseGitHubRepoUrl(
 /**
  * Scans a GitHub tree for directories containing skill.md or SKILL.md.
  * Enriches the shared SkillDirectory with the blob SHA for content fetching.
+ * Also returns the computed fileEntries so callers don't need to rebuild them.
  */
-export function findGitHubSkillDirectories(
-  tree: GitHubTreeEntry[]
-): GitHubSkillDirectory[] {
+export function findGitHubSkillDirectories(tree: GitHubTreeEntry[]): {
+  skillDirs: GitHubSkillDirectory[];
+  fileEntries: FileEntry[];
+} {
   const shaByPath = new Map<string, string>();
   for (const entry of tree) {
     if (entry.type === "blob") {
@@ -75,14 +78,20 @@ export function findGitHubSkillDirectories(
     }
   }
 
-  const fileEntries = tree
+  const fileEntries: FileEntry[] = tree
     .filter((e) => e.type === "blob")
-    .map((e) => ({ path: e.path, isFile: true, sizeBytes: e.size ?? 0 }));
+    .map((e) => ({
+      path: e.path,
+      isFile: true,
+      sizeBytes: e.size ?? 0,
+    }));
 
   const baseDirs = findSkillDirectories(fileEntries);
 
-  return baseDirs.map((dir) => ({
+  const skillDirs = baseDirs.map((dir) => ({
     ...dir,
     skillMdSha: shaByPath.get(dir.skillMdPath) ?? "",
   }));
+
+  return { skillDirs, fileEntries };
 }
