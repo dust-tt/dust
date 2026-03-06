@@ -13,12 +13,12 @@ import {
   getFastestWhitelistedModel,
 } from "@app/types/assistant/assistant";
 import type {
-  AgentMessageType,
   ButlerDoneEvent,
   ButlerSuggestionCreatedEvent,
   ButlerThinkingEvent,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { ButlerSuggestionData } from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -242,38 +242,32 @@ function buildPrompt(
 }
 
 /**
- * Check whether any agent in the conversation has created a Frame
- * (i.e. used the interactive_content MCP server).
+ * Single pass over conversation content to extract:
+ * - The sIds of agents already participating in the conversation.
+ * - Whether any agent has created a Frame (used the interactive_content MCP server).
  */
-function conversationHasFrame(conversation: ConversationType): boolean {
+function analyzeConversationContent(conversation: ConversationType): {
+  participantIds: Set<string>;
+  hasFrame: boolean;
+} {
+  const participantIds = new Set<string>();
+  let hasFrame = false;
   for (const messageGroup of conversation.content) {
     for (const message of messageGroup) {
-      if (message.type === "agent_message") {
-        const agentMessage = message as AgentMessageType;
-        for (const action of agentMessage.actions) {
-          if (action.internalMCPServerName === "interactive_content") {
-            return true;
+      if (isAgentMessageType(message)) {
+        participantIds.add(message.configuration.sId);
+        if (!hasFrame) {
+          for (const action of message.actions) {
+            if (action.internalMCPServerName === "interactive_content") {
+              hasFrame = true;
+              break;
+            }
           }
         }
       }
     }
   }
-  return false;
-}
-
-/**
- * Extract the sIds of agents already participating in the conversation.
- */
-function getParticipantAgentSIds(conversation: ConversationType): Set<string> {
-  const sIds = new Set<string>();
-  for (const messageGroup of conversation.content) {
-    for (const message of messageGroup) {
-      if (message.type === "agent_message") {
-        sIds.add((message as AgentMessageType).configuration.sId);
-      }
-    }
-  }
-  return sIds;
+  return { participantIds, hasFrame };
 }
 
 /*
@@ -379,9 +373,12 @@ export async function analyzeConversation(
       return;
     }
 
+    // Single pass to extract participant agents and frame presence.
+    const { participantIds, hasFrame } =
+      analyzeConversationContent(conversation);
+
     // Fetch available agents, filtering out global (platform-provided) agents
     // and those already participating in the conversation.
-    const participantSIds = getParticipantAgentSIds(conversation);
     const allAgents = await getAgentConfigurationsForView({
       auth,
       agentsGetView: "list",
@@ -389,15 +386,11 @@ export async function analyzeConversation(
       sort: "priority",
     });
     const availableAgents = allAgents
-      .filter((a) => a.scope !== "global" && !participantSIds.has(a.sId))
+      .filter((a) => a.scope !== "global" && !participantIds.has(a.sId))
       .slice(0, MAX_AGENTS_IN_PROMPT);
 
     // Only suggest frames if no frame has already been created in this conversation.
-    const hasFrame = conversationHasFrame(conversation);
     const shouldSuggestFrame = !hasFrame;
-
-    // Resolve the @dust agent for frame creation suggestions.
-    const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
 
     const suggestionHistory =
       await ConversationButlerSuggestionResource.fetchResolvedByConversation(
@@ -631,49 +624,57 @@ export async function analyzeConversation(
     // Process frame creation suggestion with throttling.
     if (
       shouldSuggestFrame &&
-      dustAgent &&
       frame_confidence >= FRAME_CONFIDENCE_THRESHOLD &&
       frame_prompt
     ) {
-      const shouldPropose = await shouldProposeSuggestion(auth, {
-        conversationId: conversation.id,
-        currentMessageRank: sourceMessage.rank,
-        suggestionType: "create_frame",
-      });
+      const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
 
-      if (shouldPropose) {
-        const suggestion = await ConversationButlerSuggestionResource.makeNew(
-          auth,
-          {
-            conversationId: conversation.id,
-            sourceMessageId: sourceMessage.id,
-            suggestionType: "create_frame",
-            metadata: {
-              agentSId: dustAgent.sId,
-              agentName: dustAgent.name,
-              prompt: frame_prompt,
-            },
-            status: "pending",
-          }
+      if (!dustAgent) {
+        logger.debug(
+          { conversationId: conversation.id },
+          "Butler: @dust agent not found, skipping create_frame suggestion"
         );
-
-        const event: ButlerSuggestionCreatedEvent = {
-          type: "butler_suggestion_created",
-          created: Date.now(),
-          suggestion: suggestion.toJSON(),
-        };
-
-        await publishConversationEvent(event, {
-          conversationId: conversation.sId,
+      } else {
+        const shouldPropose = await shouldProposeSuggestion(auth, {
+          conversationId: conversation.id,
+          currentMessageRank: sourceMessage.rank,
+          suggestionType: "create_frame",
         });
 
-        logger.info(
-          {
-            conversationId: conversation.id,
-            confidence: frame_confidence,
-          },
-          "Butler: created create_frame suggestion"
-        );
+        if (shouldPropose) {
+          const suggestion = await ConversationButlerSuggestionResource.makeNew(
+            auth,
+            {
+              conversationId: conversation.id,
+              sourceMessageId: sourceMessage.id,
+              suggestionType: "create_frame",
+              metadata: {
+                agentSId: dustAgent.sId,
+                agentName: dustAgent.name,
+                prompt: frame_prompt,
+              },
+              status: "pending",
+            }
+          );
+
+          const event: ButlerSuggestionCreatedEvent = {
+            type: "butler_suggestion_created",
+            created: Date.now(),
+            suggestion: suggestion.toJSON(),
+          };
+
+          await publishConversationEvent(event, {
+            conversationId: conversation.sId,
+          });
+
+          logger.info(
+            {
+              conversationId: conversation.id,
+              confidence: frame_confidence,
+            },
+            "Butler: created create_frame suggestion"
+          );
+        }
       }
     }
   } finally {
