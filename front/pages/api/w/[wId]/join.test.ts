@@ -1,5 +1,5 @@
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
-import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
+import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
@@ -66,18 +66,11 @@ describe("GET /api/w/[wId]/join", () => {
   it("returns 200 with join data for a valid invite token", async () => {
     const workspace = await WorkspaceFactory.basic();
 
-    const invitation = await MembershipInvitationModel.create({
-      workspaceId: workspace.id,
+    const invitation = await MembershipInvitationFactory.create(workspace, {
       inviteEmail: "test@example.com",
-      status: "pending",
-      initialRole: "user",
-      sId: `inv-${Date.now()}`,
     });
 
-    const token = getMembershipInvitationToken({
-      id: invitation.id,
-      createdAt: invitation.createdAt.getTime(),
-    } as any);
+    const token = getMembershipInvitationToken(invitation.toJSON());
 
     const { req, res } = createJoinRequest(workspace.sId, { t: token });
 
@@ -115,22 +108,17 @@ describe("GET /api/w/[wId]/join", () => {
     // (7 days) but use a recent createdAt for the JWT so it doesn't fail JWT
     // verification before reaching the expiration check.
     const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
-    const invitation = await MembershipInvitationModel.create({
-      workspaceId: workspace.id,
+    const invitation = await MembershipInvitationFactory.create(workspace, {
       inviteEmail: "expired@example.com",
-      status: "pending",
-      initialRole: "user",
-      sId: `inv-exp-${Date.now()}`,
       createdAt: eightDaysAgo,
     });
 
     // Generate a token with a recent iat/exp so JWT verification passes,
     // but the invitation's createdAt is old enough to trigger expiration.
     const now = Date.now();
-    const token = getMembershipInvitationToken({
-      id: invitation.id,
-      createdAt: now,
-    } as any);
+    const tokenPayload = invitation.toJSON();
+    tokenPayload.createdAt = now;
+    const token = getMembershipInvitationToken(tokenPayload);
 
     const { req, res } = createJoinRequest(workspace.sId, { t: token });
 
