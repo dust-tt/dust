@@ -638,11 +638,32 @@ export const FileAuthRequiredOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export const UserQuestionRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_user_question_required"),
+  questions: z.array(
+    z.object({
+      question: z.string(),
+      options: z.array(
+        z.object({
+          label: z.string(),
+          description: z.string(),
+        })
+      ),
+      multiSelect: z.boolean(),
+    })
+  ),
+  metadata: z.record(z.unknown()).nullable(),
+  text: z.string(),
+  uri: z.string(),
+});
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
   FileAuthRequiredOutputResourceSchema,
+  UserQuestionRequiredOutputResourceSchema,
 ]);
 
 export type AgentPauseOutputResourceType = z.infer<

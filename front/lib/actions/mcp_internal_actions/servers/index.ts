@@ -11,6 +11,7 @@ import { default as agentManagementServer } from "@app/lib/api/actions/servers/a
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
+import { default as userAskQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
@@ -237,6 +238,8 @@ export async function getInternalMCPServer(
       return projectConversationServer(auth, agentLoopContext);
     case "ukg_ready":
       return ukgReadyServer(auth, agentLoopContext);
+    case "ask_user_question":
+      return userAskQuestionServer(auth, agentLoopContext);
     case "user_mentions":
       return userMentionsServer(auth, agentLoopContext);
     case "statuspage":

@@ -12,11 +12,15 @@ import type {
   ToolExecution,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
+  ToolUserQuestionEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type { FileAuthorizationInfo } from "@app/lib/actions/types";
+import type {
+  FileAuthorizationInfo,
+  UserQuestion,
+} from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
@@ -173,6 +177,12 @@ export type BlockedToolExecution = ToolExecution &
         };
         fileAuthorizationInfo: FileAuthorizationInfo;
       }
+    | {
+        status: "blocked_user_question_required";
+        questions: UserQuestion[];
+        questionMetadata: Record<string, unknown> | null;
+        authorizationInfo: null;
+      }
   );
 
 export function getMCPApprovalStateFromUserApprovalState(
@@ -304,12 +314,24 @@ function isToolFileAuthRequiredEvent(
   );
 }
 
+export function isToolUserQuestionEvent(
+  event: unknown
+): event is ToolUserQuestionEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_user_question"
+  );
+}
+
 export function isBlockedActionEvent(
   event: unknown
 ): event is
   | MCPApproveExecutionEvent
   | ToolPersonalAuthRequiredEvent
-  | ToolFileAuthRequiredEvent {
+  | ToolFileAuthRequiredEvent
+  | ToolUserQuestionEvent {
   return (
     typeof event === "object" &&
     event !== null &&
@@ -317,6 +339,7 @@ export function isBlockedActionEvent(
     (isMCPApproveExecutionEvent(event) ||
       isToolPersonalAuthRequiredEvent(event) ||
       isToolFileAuthRequiredEvent(event) ||
+      isToolUserQuestionEvent(event) ||
       isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

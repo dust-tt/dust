@@ -14,7 +14,10 @@ import {
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
-import { isFileAuthorizationInfo } from "@app/lib/actions/types";
+import {
+  isFileAuthorizationInfo,
+  isUserQuestionResumeState,
+} from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
@@ -483,6 +486,28 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             mcpServerId,
             mcpServerDisplayName,
           },
+        });
+      } else if (action.status === "blocked_user_question_required") {
+        const resumeState = action.stepContext.resumeState;
+        if (!isUserQuestionResumeState(resumeState)) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId: conversation.sId,
+              workspaceId: owner.id,
+            },
+            `User question data not found for blocked action ${action.id}`
+          );
+          continue;
+        }
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          questions: resumeState.questions,
+          questionMetadata: resumeState.metadata ?? null,
+          metadata: baseActionParams.metadata,
+          authorizationInfo: null,
         });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;

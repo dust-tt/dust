@@ -7,6 +7,7 @@ import {
   INTERNAL_ALLOWED_ICONS,
 } from "@app/components/resources/resources_icons";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
+import { UserQuestionSchema } from "@app/lib/actions/types";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
@@ -1046,10 +1047,20 @@ export const EarlyExitOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export const UserQuestionRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_user_question_required"),
+  questions: z.array(UserQuestionSchema),
+  metadata: z.record(z.unknown()).nullable(),
+  text: z.string(),
+  uri: z.string(),
+});
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
+  UserQuestionRequiredOutputResourceSchema,
 ]);
 
 export type AgentPauseOutputResourceType = z.infer<

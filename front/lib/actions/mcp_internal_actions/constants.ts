@@ -11,6 +11,7 @@ import {
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
+import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
@@ -195,6 +196,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "project_manager",
   "project_conversation",
   "sandbox",
+  "ask_user_question",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1060,6 +1062,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: USER_MENTIONS_SERVER,
+  },
+  ask_user_question: {
+    id: 1027,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ask_user_question_tool");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: ASK_USER_QUESTION_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

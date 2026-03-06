@@ -14,6 +14,7 @@ import type {
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
+  ToolUserQuestionEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
@@ -59,7 +60,8 @@ export async function* runToolWithStreaming(
   | ToolNotificationEvent
   | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent
-  | ToolEarlyExitEvent,
+  | ToolEarlyExitEvent
+  | ToolUserQuestionEvent,
   void
 > {
   const owner = auth.getNonNullableWorkspace();
