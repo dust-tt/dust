@@ -187,12 +187,35 @@ export default defineConfig(({ mode }) => {
 
   const appDefinition = apps[appName];
 
-  // Map NEXT_PUBLIC_* env vars to process.env.NEXT_PUBLIC_* for compatibility
+  // Explicit allowlist of client-safe env vars exposed to the browser via process.env.*
+  const CLIENT_ENV_VARS = [
+    "DUST_APP_URL",
+    "DUST_CLIENT_FACING_URL",
+    "POSTHOG_KEY",
+    "GTM_TRACKING_ID",
+    "VIRTUOSO_LICENSE_KEY",
+    "COMMIT_HASH",
+    "BUILD_DATE",
+    "DATADOG_CLIENT_TOKEN",
+    "DATADOG_SERVICE",
+    "OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID",
+    "NOVU_APPLICATION_IDENTIFIER",
+    "NOVU_APPLICATION_IDENTIFIER_EU",
+    "NOVU_APPLICATION_IDENTIFIER_US",
+    "NOVU_API_URL",
+    "NOVU_API_URL_EU",
+    "NOVU_API_URL_US",
+    "NOVU_WEBSOCKET_API_URL",
+    "NOVU_WEBSOCKET_API_URL_EU",
+    "NOVU_WEBSOCKET_API_URL_US",
+  ];
   const envVarDefines: Record<string, string> = {};
-  for (const key of Object.keys(env)) {
-    if (key.startsWith("NEXT_PUBLIC_")) {
+  for (const key of CLIENT_ENV_VARS) {
+    if (env[key] !== undefined) {
       envVarDefines[`process.env.${key}`] = JSON.stringify(env[key]);
     }
+  }
+  for (const key of Object.keys(env)) {
     // Also define VITE_* vars for import.meta.env (ensures shell vars are included)
     if (key.startsWith("VITE_")) {
       envVarDefines[`import.meta.env.${key}`] = JSON.stringify(env[key]);

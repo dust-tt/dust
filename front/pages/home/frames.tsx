@@ -37,7 +37,7 @@ const DEMO_VIDEO = {
 export async function getStaticProps() {
   return {
     props: {
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
     },
   };
 }

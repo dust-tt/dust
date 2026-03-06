@@ -156,14 +156,12 @@ export const getConfig = async ({
         COMMIT_HASH: getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
-        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
-          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
-        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
-          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
-        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
-        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
-          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
-        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        VIRTUOSO_LICENSE_KEY: process.env.VIRTUOSO_LICENSE_KEY || "",
+        NOVU_APPLICATION_IDENTIFIER:
+          process.env.NOVU_APPLICATION_IDENTIFIER || "",
+        NOVU_API_URL: process.env.NOVU_API_URL || "",
+        NOVU_WEBSOCKET_API_URL: process.env.NOVU_WEBSOCKET_API_URL || "",
+        DUST_APP_URL: process.env.DUST_APP_URL || "",
         VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
       }),
       new webpack.ProvidePlugin({

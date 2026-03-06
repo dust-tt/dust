@@ -15,7 +15,7 @@ import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const POSTHOG_KEY = process.env.POSTHOG_KEY;
 
 const EXCLUDED_PATHS = [
   "/poke",

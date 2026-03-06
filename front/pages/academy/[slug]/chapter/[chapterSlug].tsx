@@ -110,7 +110,7 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
       courseImage: course.image,
       courseAuthor: course.author,
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
-      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      gtmTrackingId: process.env.GTM_TRACKING_ID ?? null,
       academyUser: academyUser
         ? { firstName: academyUser.firstName, sId: academyUser.sId }
         : null,

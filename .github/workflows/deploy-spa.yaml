@@ -112,25 +112,21 @@ jobs:
       - name: Build SPA
         working-directory: front-spa
         env:
-          NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
-          NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
-          NEXT_PUBLIC_DATADOG_SERVICE: ${{ inputs.app }}-spa
-          NEXT_PUBLIC_COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
+          VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
+          DATADOG_SERVICE: ${{ inputs.app }}-spa
+          COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
         run: |
           set -a
           source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
-          # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches.
+          # Override DUST_APP_URL: use branch preview URL for non-main branches.
           # Apply the same sanitization Cloudflare Pages uses for branch aliases:
           # lowercase, replace non-alphanumeric with '-', collapse multiple '-', trim '-', truncate to 28 chars.
           if [ "${{ github.ref_name }}" != "main" ]; then
             CF_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
-            export NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt
+            export DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt
           fi
-          export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
-          # Map all NEXT_PUBLIC_* to VITE_* for SPA
-          for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
-            export "VITE_${var#NEXT_PUBLIC_}=${!var}"
-          done
+          export BUILD_DATE=$(date +%s)
           set +a
           npm run build:${{ inputs.app }}
 

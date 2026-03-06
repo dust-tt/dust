@@ -133,7 +133,7 @@ runs:
 
         # Only set the Virtuoso license key if provided
         if [[ -n "${{ inputs.virtuoso_license_key }}" ]]; then
-          build_args+=("--build-arg NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=${{ inputs.virtuoso_license_key }}")
+          build_args+=("--build-arg VIRTUOSO_LICENSE_KEY=${{ inputs.virtuoso_license_key }}")
         fi
 
         # Only set the Datadog API key if provided
@@ -143,9 +143,9 @@ runs:
 
         # Only set the Datadog client token for front and front-edge builds
         if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
-          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
-          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
-          build_args+=("--build-arg NEXT_PUBLIC_BUILD_DATE=$(date +%s)")
+          build_args+=("--build-arg DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
+          build_args+=("--build-arg DATADOG_SERVICE=$COMPONENT")
+          build_args+=("--build-arg BUILD_DATE=$(date +%s)")
           # Upload source maps for front-sse too (same image, different DD service name)
           if [[ "$COMPONENT" == "front" ]]; then
             build_args+=("--build-arg DATADOG_ADDITIONAL_SERVICES=front-sse")
@@ -162,13 +162,13 @@ runs:
           fi
         fi
 
-        # Override NEXT_PUBLIC_DUST_APP_URL for front-edge
+        # Override DUST_APP_URL for front-edge
         # Apply the same sanitization Cloudflare Pages uses for branch aliases:
         # lowercase, replace non-alphanumeric with '-', collapse multiple '-', trim '-', truncate to 28 chars.
         if [[ "$COMPONENT" == "front-edge" ]]; then
           CF_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
-          echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt"
-          build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt")
+          echo "🏗️ Setting build arg DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt"
+          build_args+=("--build-arg DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt")
         fi
 
         # Special handling for front component, build both front and workers targets
