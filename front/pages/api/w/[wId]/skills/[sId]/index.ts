@@ -62,6 +62,7 @@ const PatchSkillRequestBodySchema = t.intersection([
   // TODO(2026-03-02): make mandatory once always sent by the client.
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
+    isDiscoverable: t.boolean,
   }),
 ]);
 
@@ -323,6 +324,9 @@ async function handler(
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
+        ...(body.isDiscoverable !== undefined
+          ? { isDiscoverable: body.isDiscoverable }
+          : {}),
       });
 
       return res.status(200).json({
