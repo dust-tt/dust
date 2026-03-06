@@ -17,13 +17,11 @@ export async function answerUserQuestion(
   {
     actionId,
     messageId,
-    selectedOptions,
-    customResponse,
+    answers,
   }: {
     actionId: string;
     messageId: string;
-    selectedOptions?: number[];
-    customResponse?: string;
+    answers: Array<{ selectedOptions: number[]; customResponse?: string }>;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -77,14 +75,13 @@ export async function answerUserQuestion(
     );
   }
 
-  // Update resumeState to include the answer.
+  // Update resumeState to include the answers.
   await action.updateStepContext({
     ...action.stepContext,
     resumeState: {
       ...action.stepContext.resumeState,
       answer: {
-        selectedOptions: selectedOptions ?? [],
-        customResponse,
+        answers,
       },
     },
   });
