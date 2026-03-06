@@ -1,9 +1,9 @@
-import { findSkillDirectories } from "@app/lib/api/skills/detection/parsing";
 import type {
   GitHubSkillDetectionError,
   GitHubSkillDirectory,
   GitHubTreeEntry,
 } from "@app/lib/api/skills/detection/github/types";
+import { findSkillDirectories } from "@app/lib/api/skills/detection/parsing";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

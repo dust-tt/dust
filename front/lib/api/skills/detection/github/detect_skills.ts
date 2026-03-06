@@ -16,12 +16,12 @@ import {
   parseSkillMarkdown,
 } from "@app/lib/api/skills/detection/parsing";
 import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Octokit } from "@octokit/core";
 
 const FETCH_CONCURRENCY = 4;
