@@ -631,6 +631,72 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => c.sId);
   }
 
+  /**
+   * Lists conversations updated since a given date along with the distinct
+   * agent configuration IDs that participated in each conversation.
+   * Returns an array of { conversationId, agentConfigurationIds }.
+   */
+  static async listRecentConversationsWithAgents(
+    auth: Authenticator,
+    { updatedSince }: { updatedSince: Date }
+  ): Promise<{ conversationId: string; agentConfigurationIds: string[] }[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Step 1: Find distinct (conversationId, agentConfigurationId) pairs
+    // from messages updated since the given date.
+    const rows = await MessageModel.findAll({
+      attributes: ["conversationId"],
+      where: { workspaceId },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["agentConfigurationId"],
+          where: { workspaceId },
+        },
+      ],
+      raw: true,
+      nest: true,
+    });
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    // Build a map of conversationId -> Set<agentConfigurationId>.
+    const conversationAgentMap = new Map<number, Set<string>>();
+    for (const row of rows) {
+      const convId = row.conversationId;
+      const agentConfigId = (
+        row as unknown as { agentMessage: { agentConfigurationId: string } }
+      ).agentMessage.agentConfigurationId;
+      if (!conversationAgentMap.has(convId)) {
+        conversationAgentMap.set(convId, new Set());
+      }
+      conversationAgentMap.get(convId)!.add(agentConfigId);
+    }
+
+    // Step 2: Fetch conversations updated since the given date.
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      { dangerouslySkipPermissionFiltering: true, excludeTest: true },
+      {
+        where: {
+          id: { [Op.in]: [...conversationAgentMap.keys()] },
+          updatedAt: { [Op.gte]: updatedSince },
+        },
+      }
+    );
+
+    return conversations
+      .filter((c) => conversationAgentMap.has(c.id))
+      .map((c) => ({
+        conversationId: c.sId,
+        agentConfigurationIds: [...conversationAgentMap.get(c.id)!],
+      }));
+  }
+
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,

@@ -26,7 +26,11 @@ export const AGENT_SUGGESTION_STATES = [
 
 export type AgentSuggestionState = (typeof AGENT_SUGGESTION_STATES)[number];
 
-export const AGENT_SUGGESTION_SOURCES = ["reinforcement", "copilot"] as const;
+export const AGENT_SUGGESTION_SOURCES = [
+  "copilot",
+  "reinforcement",
+  "synthetic",
+] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
 
