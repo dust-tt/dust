@@ -37,9 +37,14 @@ import type { WorkspaceType } from "@app/types/user";
  *
  * Each non-empty tier becomes a separate text block. Cache breakpoints are placed
  * between tiers so that stable prefixes can be reused even when later tiers change:
- *  1. Instructions  – long TTL (1h), stable per agent config.
- *  2. Shared context – default ephemeral (5min), shared across callers.
+ *  1. Instructions      – long TTL (1h), stable per agent config.
+ *  2. Shared context    – default ephemeral (5min), shared across callers.
  *  3. Ephemeral context – no breakpoint needed (last block).
+ *
+ * IMPORTANT: Anthropic allows at most 4 cache breakpoints per request (system + messages combined).
+ * This function uses up to 2 (instructions + shared context).
+ * The remaining budget is for the global + conversation message breakpoints.
+ * /!\ Do not add breakpoints here without auditing total usage across the request.
  */
 function buildSystemBlocks(
   { instructions, sharedContext, ephemeralContext }: StructuredSystemPrompt,
