@@ -35,6 +35,7 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -301,6 +302,20 @@ async function handler(
                 workspaceSeats,
                 subscriptionStartAt: now,
               });
+
+              // Track the pro_plan_activated event
+              const user = await UserResource.fetchById(userId);
+              if (user) {
+                const stripeSubscriptionStatus = await stripe.subscriptions
+                  .retrieve(stripeSubscriptionId)
+                  .then((sub) => sub.status);
+                await ServerSideTracking.trackProPlanActivated({
+                  user: user.toJSON(),
+                  workspace: renderLightWorkspaceType({ workspace }),
+                  planCode,
+                  isTrialing: stripeSubscriptionStatus === "trialing",
+                });
+              }
             }
             await restoreWorkspaceAfterSubscription(
               await Authenticator.internalAdminForWorkspace(workspace.sId)
