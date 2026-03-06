@@ -1,3 +1,5 @@
+import { DUST_ANONYMOUS_ID_COOKIE } from "@app/lib/utils/anonymous_id";
+
 // Marketing and UTM parameter keys to track across the application.
 export const MARKETING_PARAMS = [
   "utm_source",
@@ -72,6 +74,23 @@ export function persistClickIdCookies(params: UTMParams): void {
       ).toUTCString();
       document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
     }
+  }
+}
+
+/**
+ * If the URL contains a `dust_aid` parameter (from email CTA links), set it as
+ * the `_dust_aid` cookie to re-establish the anonymous device ID on this device.
+ */
+export function persistDustAidFromURL(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const dustAid = params.get("dust_aid");
+  if (dustAid) {
+    const maxAgeSeconds = 31536000; // 1 year
+    document.cookie = `${DUST_ANONYMOUS_ID_COOKIE}=${encodeURIComponent(dustAid)}; path=/; SameSite=Lax; Secure; max-age=${maxAgeSeconds}`;
   }
 }
 

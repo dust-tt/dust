@@ -28,14 +28,16 @@ export class ServerSideTracking {
   static trackSignup({
     user,
     utmParams,
+    anonymousId,
     userCreated,
   }: {
     user: UserType;
     utmParams?: UTMParams;
+    anonymousId?: string;
     userCreated?: boolean;
   }) {
     try {
-      CustomerioServerSideTracking.trackSignup({ user });
+      CustomerioServerSideTracking.trackSignup({ user, anonymousId });
     } catch (err) {
       logger.error(
         { userId: user.sId, err },
@@ -44,7 +46,12 @@ export class ServerSideTracking {
     }
 
     try {
-      PostHogServerSideTracking.trackSignup({ user, utmParams, userCreated });
+      PostHogServerSideTracking.trackSignup({
+        user,
+        utmParams,
+        anonymousId,
+        userCreated,
+      });
     } catch (err) {
       logger.error(
         { userId: user.sId, err },
