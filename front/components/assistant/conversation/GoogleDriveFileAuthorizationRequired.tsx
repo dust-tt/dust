@@ -1,6 +1,10 @@
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
-import type { FileAuthorizationInfo } from "@app/lib/actions/mcp";
+import type {
+  BlockedToolExecution,
+  FileAuthorizationInfo,
+} from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
@@ -19,6 +23,7 @@ interface GoogleDriveFileAuthorizationRequiredProps {
   fileAuthorizationInfo: FileAuthorizationInfo;
   mcpServerId: string;
   retryHandler: () => void;
+  blockedAction: BlockedToolExecution;
 }
 
 export function GoogleDriveFileAuthorizationRequired({
@@ -27,6 +32,7 @@ export function GoogleDriveFileAuthorizationRequired({
   fileAuthorizationInfo,
   mcpServerId,
   retryHandler,
+  blockedAction,
 }: GoogleDriveFileAuthorizationRequiredProps) {
   const { user } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -38,6 +44,8 @@ export function GoogleDriveFileAuthorizationRequired({
     appId: string;
   } | null>(null);
   const [credentialsError, setCredentialsError] = useState<string | null>(null);
+
+  const { removeCompletedAction } = useBlockedActionsContext();
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user?.sId,
@@ -85,13 +93,19 @@ export function GoogleDriveFileAuthorizationRequired({
 
       if (targetFileSelected) {
         setIsAuthorized(true);
+        removeCompletedAction(blockedAction.actionId);
         setTimeout(() => {
           retryHandler();
         }, 100);
       }
       // If wrong file selected, user can click the button again
     },
-    [fileAuthorizationInfo.fileId, retryHandler]
+    [
+      fileAuthorizationInfo.fileId,
+      retryHandler,
+      removeCompletedAction,
+      blockedAction.actionId,
+    ]
   );
 
   const handlePickerCancel = useCallback(() => {
