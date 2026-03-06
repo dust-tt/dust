@@ -1,0 +1,8 @@
+name = "poke-dust-tt"
+compatibility_date = "2025-01-01"
+main = "./worker/poke.ts"
+
+[assets]
+directory = "./dist/poke"
+not_found_handling = "none"
+binding = "ASSETS"

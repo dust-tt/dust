@@ -1,0 +1,27 @@
+name: Cleanup SPA preview Workers
+
+on:
+  delete:
+    branches:
+
+jobs:
+  cleanup:
+    if: ${{ github.event.ref_type == 'branch' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [app, poke]
+    steps:
+      - name: Sanitize branch name
+        id: branch
+        run: |
+          SANITIZED=$(echo "${{ github.event.ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+          echo "sanitized=${SANITIZED}" >> $GITHUB_OUTPUT
+
+      - name: Delete preview Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: delete --name ${{ matrix.app }}-dust-tt-preview-${{ steps.branch.outputs.sanitized }} --force
+        continue-on-error: true
