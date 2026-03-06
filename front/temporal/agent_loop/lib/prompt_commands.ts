@@ -161,11 +161,15 @@ async function listAvailableTools(
     });
 
   const attachments = await listAttachments(auth, { conversation });
-  const { servers: jitServers } = await getJITServers(auth, {
-    agentConfiguration,
-    conversation,
-    attachments,
-  });
+  const { stableServers, conditionalServers } = await getJITServers(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+      attachments,
+    }
+  );
+  const jitServers = [...stableServers, ...conditionalServers];
 
   const clientSideMCPActionConfigurations =
     await createClientSideMCPServerConfigurations(
