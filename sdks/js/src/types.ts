@@ -720,6 +720,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
+  | "slack_native_streaming"
   | "slideshow"
   | "snowflake_tool"
   | "run_tools_from_prompt"

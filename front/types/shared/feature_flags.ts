@@ -189,6 +189,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
+  slack_native_streaming: {
+    description:
+      "Use Slack's native streaming API for bot responses instead of throttled chat.update loop",
+    stage: "dust_only",
+  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
