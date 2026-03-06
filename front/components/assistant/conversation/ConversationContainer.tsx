@@ -170,7 +170,7 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
+            className="flex h-fit w-full max-w-3xl flex-col justify-end gap-8 py-4 sm:min-h-[20vh]"
             ref={startConversationRef}
           >
             <Page.Header title={greeting} />
