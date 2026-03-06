@@ -9,6 +9,17 @@ import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 
+export function isEnforcedByEnterpriseAvailability(
+  m: ModelConfigurationType,
+  plan: PlanType | null
+): boolean {
+  return (
+    m.enforceEnterpriseAvailability === true &&
+    plan !== null &&
+    (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
+  );
+}
+
 // Returns true if the model is available to the workspace, regardless of whether it is whitelisted or not.
 export function isModelAvailable(
   m: ModelConfigurationType,
