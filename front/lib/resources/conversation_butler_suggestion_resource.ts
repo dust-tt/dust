@@ -278,6 +278,56 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
     await this.update({ status: "dismissed" as const }, transaction);
   }
 
+  /**
+   * Link the agent message that was produced after accepting this suggestion.
+   */
+  async setResultMessage(
+    resultMessageId: ModelId,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ resultMessageId }, transaction);
+  }
+
+  /**
+   * Find an accepted call_agent or create_frame suggestion in a conversation
+   * that has not yet been linked to a result message, matching a specific agent.
+   */
+  static async fetchAcceptedWithoutResult(
+    auth: Authenticator,
+    {
+      conversationId,
+      agentConfigurationSId,
+    }: {
+      conversationId: ModelId;
+      agentConfigurationSId: string;
+    }
+  ): Promise<ConversationButlerSuggestionResource | null> {
+    const results = await this.baseFetch(auth, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId,
+        status: "accepted",
+        resultMessageId: null,
+        suggestionType: { [Op.in]: ["call_agent", "create_frame"] },
+      },
+      order: [["updatedAt", "DESC"]],
+      limit: 1,
+    });
+
+    const suggestion = results[0];
+    if (!suggestion) {
+      return null;
+    }
+
+    // Verify the suggestion's agent matches the one that just responded.
+    const metadata = suggestion.metadata as { agentSId: string };
+    if (metadata.agentSId !== agentConfigurationSId) {
+      return null;
+    }
+
+    return suggestion;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
