@@ -1005,6 +1005,27 @@ export async function getInvoicePaymentUrl(
   return invoice.hosted_invoice_url ?? null;
 }
 
+export function getAnnualizedSubscriptionValueMicroUsd(
+  stripeSubscription: Stripe.Subscription
+): number {
+  let totalMicroUsd = 0;
+  for (const item of stripeSubscription.items.data) {
+    if (item.deleted) {
+      continue;
+    }
+    const unitAmountCents = Number(
+      item.price.unit_amount ?? item.price.unit_amount_decimal ?? 0
+    );
+    const quantity = item.quantity ?? 1;
+    const interval = item.price.recurring?.interval;
+
+    const annualMultiplier = interval === "year" ? 1 : 12;
+    // Convert cents to micro USD: cents * 10_000
+    totalMicroUsd += unitAmountCents * quantity * 10_000 * annualMultiplier;
+  }
+  return totalMicroUsd;
+}
+
 export async function makeAndFinalizeCreditsPAYGInvoice({
   stripeSubscription,
   amountMicroUsd,
