@@ -17,6 +17,7 @@ export const MODEL_PROVIDER_IDS = [
   "fireworks",
   "xai",
   "noop",
+  "ollama",
 ] as const;
 
 export function getProviderDisplayName(

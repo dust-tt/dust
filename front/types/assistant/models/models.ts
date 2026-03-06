@@ -1,6 +1,9 @@
+import {
+  QWEN_3_5_MODEL_CONFIG,
+  QWEN_3_5_MODEL_ID,
+} from "@app/types/assistant/models/ollama";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
-
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -167,6 +170,7 @@ export const STATIC_MODEL_IDS = [
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
   O3_MODEL_ID,
+  QWEN_3_5_MODEL_ID,
   O3_MINI_MODEL_ID,
   O4_MINI_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
@@ -294,6 +298,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_1_FAST_REASONING_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   NOOP_MODEL_CONFIG,
+  QWEN_3_5_MODEL_CONFIG,
   // Custom models (generated at build time from GCS).
   ...CUSTOM_MODEL_CONFIGS,
 ];

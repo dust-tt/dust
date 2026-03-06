@@ -2,6 +2,7 @@ import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthr
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
+import type { OllamaWhitelistedModelId } from "@app/lib/api/llm/clients/ollama/types";
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import type { ConversationId } from "@app/lib/api/llm/tests/conversations";
 import {
@@ -50,6 +51,7 @@ import {
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
 } from "@app/types/assistant/models/mistral";
+import { QWEN_3_5_MODEL_ID } from "@app/types/assistant/models/ollama";
 import {
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_1_MINI_MODEL_ID,
@@ -129,7 +131,8 @@ const MODELS: Record<
   | AnthropicWhitelistedModelId
   | GoogleAIStudioWhitelistedModelId
   | MistralWhitelistedModelId
-  | FireworksWhitelistedModelId,
+  | FireworksWhitelistedModelId
+  | OllamaWhitelistedModelId,
   { runTest: boolean; providerId: ModelProviderIdType }
 > = {
   // Anthropic models
@@ -222,6 +225,10 @@ const MODELS: Record<
   [FIREWORKS_GLM_5_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
+  },
+  [QWEN_3_5_MODEL_ID]: {
+    runTest: false,
+    providerId: "ollama",
   },
 };
 
