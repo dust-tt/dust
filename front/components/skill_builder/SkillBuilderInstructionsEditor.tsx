@@ -1,3 +1,4 @@
+import { editorVariants } from "@app/components/editor/editorStyles";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
@@ -7,9 +8,9 @@ import {
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
-import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
@@ -39,35 +40,7 @@ function toAttachedKnowledge(
   }));
 }
 
-const editorVariants = cva(
-  [
-    "overflow-auto border rounded-xl px-3 pt-2 pb-8 resize-y min-h-60 max-h-[1024px]",
-    "transition-all duration-200",
-    "bg-muted-background dark:bg-muted-background-night",
-  ],
-  {
-    variants: {
-      error: {
-        true: [
-          "border-border-warning/30 dark:border-border-warning-night/60",
-          "ring-warning/0 dark:ring-warning-night/0",
-          "focus-visible:border-border-warning dark:focus-visible:border-border-warning-night",
-          "focus-visible:outline-none focus-visible:ring-2",
-          "focus-visible:ring-warning/10 dark:focus-visible:ring-warning/30",
-        ],
-        false: [
-          "border-border dark:border-border-night",
-          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
-          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
-        ],
-      },
-    },
-    defaultVariants: {
-      error: false,
-    },
-  }
-);
+const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
 
 interface SkillBuilderInstructionsEditorProps {
   compareVersion?: SkillType | null;
@@ -198,7 +171,10 @@ export function SkillBuilderInstructionsEditor({
     editor.setOptions({
       editorProps: {
         attributes: {
-          class: editorVariants({ error: displayError }),
+          class: cn(
+            editorVariants({ error: displayError }),
+            INSTRUCTIONS_EDITOR_SIZE
+          ),
         },
       },
     });
