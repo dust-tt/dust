@@ -1,6 +1,7 @@
 import {
   isDustCompanyPlan,
   isEntreprisePlanPrefix,
+  isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -48,20 +49,18 @@ export function isModelCustomAvailable(
     return false;
   }
 
-  if (!m.customAvailableIf) {
-    return true;
+  if (m.customAvailableIf) {
+    return (
+      m.customAvailableIf.featureFlag &&
+      featureFlags.includes(m.customAvailableIf.featureFlag)
+    );
   }
 
-  const { featureFlag: customAssistantFeatureFlag } = m.customAvailableIf;
-
-  if (
-    customAssistantFeatureFlag &&
-    featureFlags.includes(customAssistantFeatureFlag)
-  ) {
-    return true;
+  if (m.largeModel && !isUpgraded(plan)) {
+    return false;
   }
 
-  return false;
+  return true;
 }
 
 // Returns true if the model is available to the workspace and is whitelisted.
