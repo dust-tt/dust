@@ -1,0 +1,36 @@
+front/temporal/agent_loop/lib/run_model.ts
+  17d6c454ac5b33e5 11-14,194-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "4fff42fb572962caa80a3b4637bf1132ef3658ab",
+  "prompts": {
+    "17d6c454ac5b33e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce3a6818-a6fb-4ce5-85ff-f8999cc5fad9",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 50,
+      "total_deletions": 0,
+      "accepted_lines": 50,
+      "overriden_lines": 0
+    },
+    "b3ba646dac812e7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625578d2-2cb8-4535-8eb5-e49d03c328aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}
