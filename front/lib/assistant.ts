@@ -20,7 +20,7 @@ export function isModelAvailable(
   }
 
   if (
-    m.enterpriseOnly === true &&
+    m.enforceEnterpriseAvailability === true &&
     (plan === null ||
       (!isEntreprisePlanPrefix(plan.code) && !isDustCompanyPlan(plan.code)))
   ) {
