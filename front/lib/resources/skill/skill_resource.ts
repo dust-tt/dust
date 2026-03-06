@@ -935,9 +935,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * List active custom skills marked as discoverable.
    */
-  static async listDiscoverable(
-    auth: Authenticator
-  ): Promise<SkillResource[]> {
+  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
         status: "active",
