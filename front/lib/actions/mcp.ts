@@ -146,16 +146,14 @@ export type BlockedToolExecution = ToolExecution &
       }
     | {
         status: "blocked_user_question_required";
-        questions: Array<{
+        questions: {
           question: string;
-          header: string;
-          options: Array<{
+          options: {
             label: string;
             description: string;
-            preview?: string;
-          }>;
+          }[];
           multiSelect: boolean;
-        }>;
+        }[];
         questionMetadata: Record<string, unknown> | null;
         authorizationInfo: null;
       }

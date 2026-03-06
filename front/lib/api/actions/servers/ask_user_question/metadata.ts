@@ -29,13 +29,6 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
             question: z
               .string()
               .describe("The question text. Should be clear and specific."),
-            header: z
-              .string()
-              .max(12)
-              .describe(
-                "Short chip/tag label for this question, max 12 chars " +
-                  "(e.g. 'Auth method', 'Format')."
-              ),
             options: z
               .array(
                 z.object({
@@ -48,13 +41,6 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
                   description: z
                     .string()
                     .describe("Explanation of this option."),
-                  preview: z
-                    .string()
-                    .optional()
-                    .describe(
-                      "Optional markdown rendered in a monospace box for " +
-                        "visual comparisons (code snippets, ASCII mockups)."
-                    ),
                 })
               )
               .min(2)

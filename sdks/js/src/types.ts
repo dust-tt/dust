@@ -1357,12 +1357,10 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
     .array(
       z.object({
         question: z.string(),
-        header: z.string(),
         options: z.array(
           z.object({
             label: z.string(),
             description: z.string(),
-            preview: z.string().optional(),
           })
         ),
         multiSelect: z.boolean(),
@@ -1464,12 +1462,10 @@ const ToolUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   questions: z.array(
     z.object({
       question: z.string(),
-      header: z.string(),
       options: z.array(
         z.object({
           label: z.string(),
           description: z.string(),
-          preview: z.string().optional(),
         })
       ),
       multiSelect: z.boolean(),

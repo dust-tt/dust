@@ -37,12 +37,10 @@ export function isFileAuthorizationInfo(
 export type UserQuestionOption = {
   label: string;
   description: string;
-  preview?: string;
 };
 
 export type UserQuestion = {
   question: string;
-  header: string;
   options: UserQuestionOption[];
   multiSelect: boolean;
 };
