@@ -23,6 +23,7 @@ export type PrefetchedDataSourcesType = {
 
 export const MCP_SERVERS_FOR_GLOBAL_AGENTS = [
   "agent_router",
+  "ask_user_question",
   "web_search_&_browse",
   "search",
   "data_sources_file_system",
