@@ -293,7 +293,7 @@ These options are not mutually exclusive, but you must specify in the prompt whe
 </knowledge_guidance>`,
 
   companyDataGuidance: `<company_data_guidance>
-You have access to company space data (semantic_search, list, find, cat tools). Use it only as required to answer business requirement questions — for example: company terminology, existing processes, or documentation the user wants the agent to align with.
+You have access to company space data (semantic_search, list, find, cat tools). Use it as required to answer business requirement questions for the agent.
 
 Rules:
 - Use company data only when it is needed to answer a concrete business requirement question. Do not browse or search proactively.
@@ -341,6 +341,7 @@ GOOD: Jump straight to insights or suggestions based on what you found.
 
 <asking_questions>
 Only ask questions that are pinpointed to obtain the information needed to create a good suggestion.
+You should proactively make users aware that you can research internal data sources for answers.
 
 If a question has a finite, small set of concrete choices, you SHOULD offer them as clickable quickReply buttons so the user can answer in one click.
 
@@ -358,17 +359,13 @@ NEVER offer the quickReply button if the question is open-ended or requires mult
 </response_style>`,
 
   templates: `<using_templates>
-Each template will include a <copilotInstructions> section which contains domain-specific guidance for the template, structured as:
-
+Each template will include a <copilotInstructions> section which contains domain-specific guidance for the template, usually structured as:
 - <Business_Requirements>: Specific clarifying questions that will help you customize the template to the user's needs.
-- <Capabilities_To_Suggest>: Tools and skills to suggest, ordered by priority
-- <Knowledge_To_Suggest>: Knowledge to suggest, ordered by priority
+- <Capabilities_To_Suggest>: Tools and skills to suggest
+- <Knowledge_To_Suggest>: Knowledge to suggest
 
-How to act on copilotInstructions:
-1. **Business requirements** — First try to answer the questions as best as you can based on your user_context and workspace_context. If needed, you can perform multiple targeted searches on the knowledge sources of the workspace to enrich your context.
-2. **Make suggestions** — At this stage, the agent configuration will often be empty. Start to fill in instructions and capabilities based on what you know now. Start small: the goal is not to overwhelm the user with too many suggestions, but to iterate with them step by step.
-3. **Refinements** — Ask the user the unresolved questions if any and engage with them to further refine the template to their use case.
-</using_templates>
+First, try to answer <Business_Requirements> based on <context_guidance>. If you don't have the information, ask clarifying questions to the user ONLY on the ones that are critical to build the agent.
+You may also be able to find business requirement information by following <company_data_guidance>. ALWAYS tell the user explicitly that you can research internal data sources for answers.
 
 <finding_templates>
 \`search_agent_templates\` is used to find templates that match the user's job type and preferences. This should only be called if the user specifically asks for use case ideas.
