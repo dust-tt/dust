@@ -75,7 +75,6 @@ function QuestionCard({
             onClick={() =>
               onToggleOption(questionIndex, oi, question.multiSelect)
             }
-            hasSeparator={false}
           >
             <ContextItem.Description description={option.description} />
             {option.preview && (
@@ -85,21 +84,29 @@ function QuestionCard({
             )}
           </ContextItem>
         ))}
-      </ContextItem.List>
-
-      <div className="flex items-center gap-2 pl-1">
-        <span className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
-          Other:
-        </span>
-        <Input
-          placeholder="Type your response..."
-          value={answerState.customResponse}
-          onChange={(e) =>
-            onCustomResponseChange(questionIndex, e.target.value)
+        <ContextItem
+          title="Other"
+          visual={
+            <Checkbox
+              checked={isOtherActive}
+              onCheckedChange={() => {
+                if (isOtherActive) {
+                  onCustomResponseChange(questionIndex, "");
+                }
+              }}
+            />
           }
-          name={`custom-response-${questionIndex}`}
-        />
-      </div>
+        >
+          <Input
+            placeholder="Type your response..."
+            value={answerState.customResponse}
+            onChange={(e) =>
+              onCustomResponseChange(questionIndex, e.target.value)
+            }
+            name={`custom-response-${questionIndex}`}
+          />
+        </ContextItem>
+      </ContextItem.List>
     </div>
   );
 }
@@ -121,9 +128,8 @@ export function MCPToolUserQuestion({
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
   const { questions } = blockedAction;
 
-  const [answerStates, setAnswerStates] = useState<QuestionAnswerState[]>(
-    () =>
-      questions.map(() => ({ selectedOptions: new Set(), customResponse: "" }))
+  const [answerStates, setAnswerStates] = useState<QuestionAnswerState[]>(() =>
+    questions.map(() => ({ selectedOptions: new Set(), customResponse: "" }))
   );
 
   const toggleOption = useCallback(
@@ -148,9 +154,7 @@ export function MCPToolUserQuestion({
         }
         // Selecting an option clears "Other" in single-select mode.
         const customResponse =
-          !multiSelect && nextOptions.size > 0
-            ? ""
-            : current.customResponse;
+          !multiSelect && nextOptions.size > 0 ? "" : current.customResponse;
         next[questionIndex] = {
           selectedOptions: nextOptions,
           customResponse,
