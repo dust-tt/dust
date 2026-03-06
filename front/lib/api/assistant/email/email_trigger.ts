@@ -188,7 +188,7 @@ export async function deleteEmailReplyContext(
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
   ? "dev.dust.help"
-  : "run.dust.help";
+  : "dust.team";
 
 export type EmailAttachment = {
   filepath: string; // Temp file path from formidable
