@@ -11,6 +11,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -75,17 +76,47 @@ async function handler(
 
       const result = await detectSkillsFromGitHubRepo({ repoUrl });
       if (result.isErr()) {
-        logger.error(
-          { error: result.error, workspaceId: owner.sId },
-          "Error detecting skills from GitHub repo during import"
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
-          },
-        });
+        const error = result.error;
+        switch (error.type) {
+          case "invalid_url":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "auth_error":
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "github_api_error":
+            logger.error(
+              { error, workspaceId: owner.sId },
+              "Error detecting skills from GitHub repo during import"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          default:
+            assertNever(error);
+        }
       }
 
       const requestedNames = new Set(names);
