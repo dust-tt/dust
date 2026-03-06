@@ -5,7 +5,7 @@ import {
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { isModelAvailable } from "@app/lib/assistant";
+import { isModelCustomAvailable } from "@app/lib/assistant";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspace } from "@app/lib/swr/workspaces";
@@ -81,7 +81,8 @@ export function ProviderManagementModal({
     [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
     (m) => m.modelId
   ).filter(
-    (model) => !model.isLegacy && isModelAvailable(model, featureFlags, plan)
+    (model) =>
+      !model.isLegacy && isModelCustomAvailable(model, featureFlags, plan)
   );
 
   const modelProviders = filteredModels.reduce(
