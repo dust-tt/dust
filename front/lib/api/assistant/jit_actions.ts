@@ -136,10 +136,10 @@ export async function getJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<{
-  servers: ServerSideMCPServerConfigurationType[];
-  hasConditionalJITTools: boolean;
+  stableServers: ServerSideMCPServerConfigurationType[];
+  conditionalServers: ServerSideMCPServerConfigurationType[];
 }> {
-  const [baseServers, conditionalServers] = await Promise.all([
+  const [stableServers, conditionalServers] = await Promise.all([
     getUnconditionalJITServers(auth, { agentConfiguration, conversation }),
     getConditionalJITServers(auth, {
       agentConfiguration,
@@ -149,7 +149,7 @@ export async function getJITServers(
   ]);
 
   return {
-    servers: [...baseServers, ...conditionalServers],
-    hasConditionalJITTools: conditionalServers.length > 0,
+    stableServers,
+    conditionalServers,
   };
 }

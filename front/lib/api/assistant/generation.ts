@@ -122,6 +122,28 @@ When information should be preserved for future conversations or context, add it
 `;
 }
 
+function formatToolServerListing(
+  servers: ServerToolsAndInstructions[]
+): string {
+  let prompt = "";
+  for (const serverData of servers) {
+    prompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
+    if (serverData.instructions) {
+      prompt += `Server instructions: ${serverData.instructions}\n`;
+    }
+    if (serverData.tools && serverData.tools.length > 0) {
+      prompt += "Tools available on this server (names only):\n";
+      for (const tool of serverData.tools) {
+        prompt += `  - ${tool.name}\n`;
+      }
+    } else {
+      prompt +=
+        "  (No tools reported by this server or tool listing failed.)\n";
+    }
+  }
+  return prompt;
+}
+
 function constructToolsSection({
   hasAvailableActions,
   model,
@@ -165,32 +187,30 @@ function constructToolsSection({
   // is determined by the comprehensive tool specifications provided to the model separately.
   // All discovered tools from all servers are made available for the agent to call, regardless of
   // whether their server has explicit instructions or is detailed in this specific prompt overview.
-  let toolServersPrompt = "";
-
   if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
-    toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
-    toolServersPrompt +=
+    toolsSection += "\n## AVAILABLE TOOL SERVERS\n";
+    toolsSection +=
       "Each server provides a list of tools made available to the agent.\n";
-    for (const serverData of serverToolsAndInstructions) {
-      toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
-      if (serverData.instructions) {
-        toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
-      }
-      if (serverData.tools && serverData.tools.length > 0) {
-        toolServersPrompt += `Tools available on this server (names only):\n`;
-        for (const tool of serverData.tools) {
-          toolServersPrompt += `  - ${tool.name}\n`;
-        }
-      } else {
-        toolServersPrompt += `  (No tools reported by this server or tool listing failed.)\n`;
-      }
-    }
-    toolServersPrompt += "\n";
+    toolsSection += formatToolServerListing(serverToolsAndInstructions);
   }
 
-  toolsSection += toolServersPrompt;
-
   return toolsSection;
+}
+
+function constructConditionalJitToolsSection({
+  conditionalJitServerToolsAndInstructions,
+}: {
+  conditionalJitServerToolsAndInstructions?: ServerToolsAndInstructions[];
+}): string {
+  if (!conditionalJitServerToolsAndInstructions?.length) {
+    return "";
+  }
+
+  let section = "\n## CONDITIONAL TOOL SERVERS\n";
+  section += "The following tool servers are also available.\n";
+  section += formatToolServerListing(conditionalJitServerToolsAndInstructions);
+  section += "\n";
+  return section;
 }
 
 /**
@@ -400,7 +420,8 @@ export function constructPromptMultiActions(
     errorContext,
     agentsList,
     conversation,
-    serverToolsAndInstructions,
+    stableServerToolsAndInstructions,
+    conditionalJitServerToolsAndInstructions,
     enabledSkills,
     equippedSkills,
     memoriesContext,
@@ -416,7 +437,8 @@ export function constructPromptMultiActions(
     errorContext?: string;
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
-    serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    stableServerToolsAndInstructions?: ServerToolsAndInstructions[];
+    conditionalJitServerToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
     memoriesContext?: string;
@@ -457,7 +479,7 @@ export function constructPromptMultiActions(
     hasAvailableActions,
     model,
     agentConfiguration,
-    serverToolsAndInstructions,
+    serverToolsAndInstructions: stableServerToolsAndInstructions,
   });
   const skillsSection = constructSkillsSection({
     enabledSkills,
@@ -466,6 +488,9 @@ export function constructPromptMultiActions(
   const attachmentsSection = constructAttachmentsSection();
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
+  const conditionalJitToolsSection = constructConditionalJitToolsSection({
+    conditionalJitServerToolsAndInstructions,
+  });
 
   if (hasStaticInstructions) {
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.
@@ -493,6 +518,7 @@ export function constructPromptMultiActions(
       { role: "context" as const, content: contextSection },
       { role: "context" as const, content: projectContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
+      { role: "context" as const, content: conditionalJitToolsSection },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
@@ -521,6 +547,7 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: pastedContentSection },
     { role: "context" as const, content: guidelinesSection },
     { role: "context" as const, content: toolsetsContext ?? "" },
+    { role: "context" as const, content: conditionalJitToolsSection },
     { role: "context" as const, content: memoriesContext ?? "" },
     { role: "context" as const, content: userContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
