@@ -7,12 +7,11 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
   ask_user_question: {
     description:
-      "Ask the user one or more questions with multiple-choice options. " +
-      "The agent will pause until the user answers.\n\n" +
+      "Ask the user one or more questions with multiple-choice options.\n\n" +
       "Use this tool when:\n" +
       "- The user's request could apply to several known entities and asking " +
       "narrows the work significantly. For example: 'What's the weather at " +
-      "the office?' when the company has offices in Paris, SF, and NY — ask " +
+      "the office?' when the company has offices in Paris, SF, and NY: ask " +
       "which office instead of looking up all three.\n" +
       "- A piece of information is missing and you can enumerate the likely " +
       "options (e.g. which project, which account, which time range).\n" +
@@ -20,9 +19,6 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
       "(e.g. deploy target, auth method, output format).\n" +
       "- Doing the work for every possibility would be noticeably slower or " +
       "noisier than asking one quick question first.\n\n" +
-      "Prefer asking over doing redundant work across all possibilities. " +
-      "A single focused result is more useful than a wall of answers " +
-      "covering every interpretation.\n\n" +
       "Formatting:\n" +
       "- List the recommended option first with '(Recommended)' in its label.\n" +
       "- The user always gets an automatic 'Other' option for free-text input.",
