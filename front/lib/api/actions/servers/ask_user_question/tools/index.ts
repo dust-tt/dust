@@ -28,7 +28,7 @@ function formatAnswers(
     }
     const answerText =
       selections.length > 0 ? selections.join(", ") : "No option selected";
-    parts.push(`${q.header}: ${answerText}`);
+    parts.push(`${q.question}: ${answerText}`);
   }
   return parts.join("\n");
 }
@@ -37,11 +37,9 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
   ask_user_question: async ({ questions, metadata }, { agentLoopContext }) => {
     const typedQuestions: UserQuestion[] = questions.map((q) => ({
       question: q.question,
-      header: q.header,
       options: q.options.map((o) => ({
         label: o.label,
         description: o.description,
-        preview: o.preview,
       })),
       multiSelect: q.multi_select,
     }));
@@ -49,9 +47,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
     // Check if we have a resume state with the user's answers.
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
     const userAnswers =
-      resumeState &&
-      typeof resumeState === "object" &&
-      "answer" in resumeState
+      resumeState && typeof resumeState === "object" && "answer" in resumeState
         ? resumeState.answer
         : undefined;
 
@@ -65,9 +61,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
     }
 
     // No answer yet — return a pause resource to block the agent loop.
-    const summaryText = typedQuestions
-      .map((q) => q.question)
-      .join("; ");
+    const summaryText = typedQuestions.map((q) => q.question).join("; ");
 
     return new Ok([
       {

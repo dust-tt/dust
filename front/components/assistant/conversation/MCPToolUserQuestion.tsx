@@ -8,7 +8,6 @@ import {
   Button,
   Checkbox,
   CheckIcon,
-  Chip,
   ContentMessage,
   ContextItem,
   Input,
@@ -51,26 +50,19 @@ function QuestionCard({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Chip size="xs" label={question.header} />
-        <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-          {question.question}
-        </span>
-      </div>
+      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+        {question.question}
+      </span>
 
       <ContextItem.List>
         {question.options.map((option, oi) => (
           <ContextItem
             key={oi}
-            title={
-              <span className="text-sm font-normal">{option.label}</span>
-            }
+            title={<span className="text-sm font-normal">{option.label}</span>}
             visual={
               <Checkbox
                 className="mt-0.5"
-                checked={
-                  answerState.selectedOptions.has(oi) && !isOtherActive
-                }
+                checked={answerState.selectedOptions.has(oi) && !isOtherActive}
                 onCheckedChange={() =>
                   onToggleOption(questionIndex, oi, question.multiSelect)
                 }
@@ -82,11 +74,6 @@ function QuestionCard({
             }
           >
             <ContextItem.Description description={option.description} />
-            {option.preview && (
-              <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 font-mono text-xs text-foreground dark:bg-muted-night dark:text-foreground-night">
-                {option.preview}
-              </pre>
-            )}
           </ContextItem>
         ))}
         <ContextItem
