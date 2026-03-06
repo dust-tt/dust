@@ -73,14 +73,10 @@ export async function getRecentConversationsForAgentActivity({
   const updatedSince = new Date();
   updatedSince.setHours(updatedSince.getHours() - HOURS_LOOKBACK);
 
-  const recentConversations =
-    await ConversationResource.listRecentConversationsWithAgents(auth, {
-      updatedSince,
-    });
-
-  return recentConversations
-    .filter((c) => c.agentConfigurationIds.includes(agentConfigurationId))
-    .map((c) => c.conversationId);
+  return ConversationResource.listRecentConversationsForAgent(auth, {
+    agentConfigurationId,
+    updatedSince,
+  });
 }
 
 /**

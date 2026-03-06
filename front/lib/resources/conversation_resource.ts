@@ -49,7 +49,6 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
-import { z } from "zod";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -633,78 +632,60 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Lists conversations updated since a given date along with the distinct
-   * agent configuration IDs that participated in each conversation.
-   * Returns an array of { conversationId, agentConfigurationIds }.
+   * Lists conversations updated since a given date that involve a specific agent.
+   * Returns an array of conversation sIds.
    */
-  static async listRecentConversationsWithAgents(
+  static async listRecentConversationsForAgent(
     auth: Authenticator,
-    { updatedSince }: { updatedSince: Date }
-  ): Promise<{ conversationId: string; agentConfigurationIds: string[] }[]> {
+    {
+      agentConfigurationId,
+      updatedSince,
+    }: {
+      agentConfigurationId: string;
+      updatedSince: Date;
+    }
+  ): Promise<string[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Step 1: Find distinct (conversationId, agentConfigurationId) pairs
-    // from messages updated since the given date.
-    const rows = await MessageModel.findAll({
-      attributes: ["conversationId"],
+    // Step 1: Get distinct conversation IDs that have messages from this agent.
+    const messagesWithAgent = await MessageModel.findAll({
+      attributes: [
+        [
+          Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+          "conversationId",
+        ],
+      ],
       where: { workspaceId },
       include: [
         {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          attributes: ["agentConfigurationId"],
-          where: { workspaceId },
+          attributes: [],
+          where: { workspaceId, agentConfigurationId },
         },
       ],
       raw: true,
-      nest: true,
     });
 
-    if (rows.length === 0) {
+    if (messagesWithAgent.length === 0) {
       return [];
     }
 
-    // With raw: true + nest: true, rows are plain objects with nested includes.
-    const RawMessageWithAgentSchema = z.object({
-      conversationId: z.number(),
-      agentMessage: z.object({
-        agentConfigurationId: z.string(),
-      }),
-    });
-
-    // Build a map of conversationId -> Set<agentConfigurationId>.
-    const conversationAgentMap = new Map<number, Set<string>>();
-    for (const row of rows) {
-      const parsed = RawMessageWithAgentSchema.safeParse(row);
-      if (!parsed.success) {
-        continue;
-      }
-      const { conversationId: convId, agentMessage } = parsed.data;
-      if (!conversationAgentMap.has(convId)) {
-        conversationAgentMap.set(convId, new Set());
-      }
-      conversationAgentMap.get(convId)!.add(agentMessage.agentConfigurationId);
-    }
-
-    // Step 2: Fetch conversations updated since the given date.
+    // Step 2: Filter to conversations updated since the given date.
+    const conversationIds = messagesWithAgent.map((m) => m.conversationId);
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       { dangerouslySkipPermissionFiltering: true, excludeTest: true },
       {
         where: {
-          id: { [Op.in]: [...conversationAgentMap.keys()] },
+          id: { [Op.in]: conversationIds },
           updatedAt: { [Op.gte]: updatedSince },
         },
       }
     );
 
-    return conversations
-      .filter((c) => conversationAgentMap.has(c.id))
-      .map((c) => ({
-        conversationId: c.sId,
-        agentConfigurationIds: [...conversationAgentMap.get(c.id)!],
-      }));
+    return conversations.map((c) => c.sId);
   }
 
   static async fetchConversationWithoutContent(
