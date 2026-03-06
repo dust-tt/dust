@@ -46,6 +46,10 @@ export type MessageTemporaryState = LightAgentMessageWithActionsType & {
     lastUpdated: Date;
     actionProgress: ActionProgressState;
     useFullChainOfThought: boolean;
+    // CoT content saved by the streaming hook right before an action clears it,
+    // keyed by the action's step number. Used by AgentMessageActions to display
+    // completed "Thought for X sec." rows without relying on render-timing.
+    savedChainOfThoughtByStep: Map<number, string>;
   };
 };
 
@@ -141,6 +145,7 @@ export const makeInitialMessageStreamState = (
       isRetrying: false,
       lastUpdated: new Date(),
       useFullChainOfThought: false,
+      savedChainOfThoughtByStep: new Map(),
     },
   };
 };

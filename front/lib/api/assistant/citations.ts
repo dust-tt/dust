@@ -9,7 +9,7 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageType,
   CitationType,
-  LightAgentMessageType,
+  LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -139,7 +139,7 @@ export function getCitationsFromActions(
 
 export function getLightAgentMessageFromAgentMessage(
   agentMessage: AgentMessageType
-): LightAgentMessageType {
+): LightAgentMessageWithActionsType {
   return {
     type: "agent_message",
     sId: agentMessage.sId,
@@ -171,6 +171,7 @@ export function getLightAgentMessageFromAgentMessage(
         isInProjectContext: f.isInProjectContext,
         ...(f.hidden ? { hidden: true } : {}),
       })),
+    actions: agentMessage.actions,
     richMentions: agentMessage.richMentions,
     completionDurationMs: agentMessage.completionDurationMs,
     reactions: agentMessage.reactions,

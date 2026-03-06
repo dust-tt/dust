@@ -13,8 +13,8 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing toolsets",
-      done: "List toolsets",
+      running: "Listing tools",
+      done: "List tools",
     },
   },
   enable: {
@@ -24,8 +24,8 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Enabling toolset",
-      done: "Enable toolset",
+      running: "enabling",
+      done: "enabled",
     },
   },
 });
