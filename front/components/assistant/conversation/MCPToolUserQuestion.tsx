@@ -1,13 +1,16 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAnswerUserQuestion } from "@app/hooks/useAnswerUserQuestion";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { UserQuestion } from "@app/lib/actions/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   Checkbox,
   CheckIcon,
+  Chip,
   ContentMessage,
+  ContextItem,
   Input,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
@@ -20,16 +23,91 @@ interface MCPToolUserQuestionProps {
   };
 }
 
+type QuestionAnswerState = {
+  selectedOptions: Set<number>;
+  customResponse: string;
+};
+
+function QuestionCard({
+  question,
+  answerState,
+  questionIndex,
+  onToggleOption,
+  onCustomResponseChange,
+}: {
+  question: UserQuestion;
+  answerState: QuestionAnswerState;
+  questionIndex: number;
+  onToggleOption: (
+    questionIndex: number,
+    optionIndex: number,
+    multiSelect: boolean
+  ) => void;
+  onCustomResponseChange: (questionIndex: number, value: string) => void;
+}) {
+  const isOtherActive = answerState.customResponse.trim() !== "";
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Chip size="xs" label={question.header} />
+        <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+          {question.question}
+        </span>
+      </div>
+
+      <ContextItem.List>
+        {question.options.map((option, oi) => (
+          <ContextItem
+            key={oi}
+            title={option.label}
+            visual={
+              <Checkbox
+                checked={answerState.selectedOptions.has(oi) && !isOtherActive}
+                onCheckedChange={() =>
+                  onToggleOption(questionIndex, oi, question.multiSelect)
+                }
+                disabled={isOtherActive && !question.multiSelect}
+              />
+            }
+            onClick={() =>
+              onToggleOption(questionIndex, oi, question.multiSelect)
+            }
+            hasSeparator={false}
+          >
+            <ContextItem.Description description={option.description} />
+            {option.preview && (
+              <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 font-mono text-xs text-foreground dark:bg-muted-night dark:text-foreground-night">
+                {option.preview}
+              </pre>
+            )}
+          </ContextItem>
+        ))}
+      </ContextItem.List>
+
+      <div className="flex items-center gap-2 pl-1">
+        <span className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          Other:
+        </span>
+        <Input
+          placeholder="Type your response..."
+          value={answerState.customResponse}
+          onChange={(e) =>
+            onCustomResponseChange(questionIndex, e.target.value)
+          }
+          name={`custom-response-${questionIndex}`}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function MCPToolUserQuestion({
   triggeringUser,
   owner,
   blockedAction,
 }: MCPToolUserQuestionProps) {
   const { user } = useAuth();
-  const [selectedOptions, setSelectedOptions] = useState<Set<number>>(
-    new Set()
-  );
-  const [customResponse, setCustomResponse] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { removeCompletedAction } = useBlockedActionsContext();
@@ -39,47 +117,85 @@ export function MCPToolUserQuestion({
   });
 
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
+  const { questions } = blockedAction;
 
-  const { question, options, allowMultiple } = blockedAction;
+  const [answerStates, setAnswerStates] = useState<QuestionAnswerState[]>(
+    () =>
+      questions.map(() => ({ selectedOptions: new Set(), customResponse: "" }))
+  );
 
   const toggleOption = useCallback(
-    (index: number) => {
-      setSelectedOptions((prev) => {
-        const next = new Set(prev);
-        if (allowMultiple) {
-          if (next.has(index)) {
-            next.delete(index);
+    (questionIndex: number, optionIndex: number, multiSelect: boolean) => {
+      setAnswerStates((prev) => {
+        const next = [...prev];
+        const current = next[questionIndex];
+        const nextOptions = new Set(current.selectedOptions);
+        if (multiSelect) {
+          if (nextOptions.has(optionIndex)) {
+            nextOptions.delete(optionIndex);
           } else {
-            next.add(index);
+            nextOptions.add(optionIndex);
           }
         } else {
-          // Single select: clear all and set the new one (or toggle off).
-          if (next.has(index)) {
-            next.clear();
+          if (nextOptions.has(optionIndex)) {
+            nextOptions.clear();
           } else {
-            next.clear();
-            next.add(index);
+            nextOptions.clear();
+            nextOptions.add(optionIndex);
           }
         }
+        // Selecting an option clears "Other" in single-select mode.
+        const customResponse =
+          !multiSelect && nextOptions.size > 0
+            ? ""
+            : current.customResponse;
+        next[questionIndex] = {
+          selectedOptions: nextOptions,
+          customResponse,
+        };
         return next;
       });
     },
-    [allowMultiple]
+    []
   );
 
-  const hasSelection = selectedOptions.size > 0 || customResponse.trim() !== "";
+  const setCustomResponse = useCallback(
+    (questionIndex: number, value: string) => {
+      setAnswerStates((prev) => {
+        const next = [...prev];
+        const current = next[questionIndex];
+        // Typing in "Other" clears option selection in single-select mode.
+        // We check the question's multiSelect from the questions array.
+        const q = questions[questionIndex];
+        const selectedOptions =
+          !q.multiSelect && value.trim() !== ""
+            ? new Set<number>()
+            : current.selectedOptions;
+        next[questionIndex] = { selectedOptions, customResponse: value };
+        return next;
+      });
+    },
+    [questions]
+  );
+
+  const hasAnySelection = answerStates.some(
+    (s) => s.selectedOptions.size > 0 || s.customResponse.trim() !== ""
+  );
 
   const handleSubmit = async () => {
     setErrorMessage(null);
+
+    const answers = answerStates.map((s) => ({
+      selectedOptions: Array.from(s.selectedOptions),
+      customResponse:
+        s.customResponse.trim() !== "" ? s.customResponse.trim() : undefined,
+    }));
 
     const result = await answerQuestion({
       conversationId: blockedAction.conversationId,
       messageId: blockedAction.messageId,
       actionId: blockedAction.actionId,
-      selectedOptions:
-        selectedOptions.size > 0 ? Array.from(selectedOptions) : undefined,
-      customResponse:
-        customResponse.trim() !== "" ? customResponse.trim() : undefined,
+      answers,
     });
 
     if (result.success) {
@@ -89,48 +205,21 @@ export function MCPToolUserQuestion({
 
   return (
     <ContentMessage
-      title={question}
       variant="primary"
-      className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
+      className="flex w-80 min-w-[300px] flex-col gap-4 sm:min-w-[500px]"
     >
       {isTriggeredByCurrentUser ? (
         <>
-          <div className="flex flex-col gap-2">
-            {options.map((option, index) => (
-              <label
-                key={index}
-                className="flex cursor-pointer items-start gap-2 rounded-lg border border-separator px-3 py-2 transition-colors hover:bg-muted dark:border-separator-night dark:hover:bg-muted-night"
-              >
-                <Checkbox
-                  checked={selectedOptions.has(index)}
-                  onCheckedChange={() => toggleOption(index)}
-                  className="mt-0.5"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    {option.label}
-                  </span>
-                  {option.description && (
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {option.description}
-                    </span>
-                  )}
-                </div>
-              </label>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              Or type a custom response:
-            </span>
-            <Input
-              placeholder="Type your response..."
-              value={customResponse}
-              onChange={(e) => setCustomResponse(e.target.value)}
-              name="custom-response"
+          {questions.map((q, qi) => (
+            <QuestionCard
+              key={qi}
+              question={q}
+              answerState={answerStates[qi]}
+              questionIndex={qi}
+              onToggleOption={toggleOption}
+              onCustomResponseChange={setCustomResponse}
             />
-          </div>
+          ))}
 
           {errorMessage && (
             <div className="text-sm font-medium text-warning-800 dark:text-warning-800-night">
@@ -138,19 +227,19 @@ export function MCPToolUserQuestion({
             </div>
           )}
 
-          <div className="flex flex-row justify-end">
+          <div className="flex justify-end">
             <Button
               label="Submit"
               variant="highlight"
               size="xs"
               icon={CheckIcon}
-              disabled={isSubmitting || !hasSelection}
+              disabled={isSubmitting || !hasAnySelection}
               onClick={() => void handleSubmit()}
             />
           </div>
         </>
       ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+        <div className="text-sm text-foreground dark:text-foreground-night">
           Waiting for{" "}
           <span className="font-semibold">
             {triggeringUser?.fullName ?? "the user"}
