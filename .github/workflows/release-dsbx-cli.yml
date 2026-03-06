@@ -1,0 +1,79 @@
+name: Release dsbx CLI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: release_dsbx
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Get version
+        id: version
+        working-directory: cli/dust-sandbox
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build with cross
+        working-directory: cli/dust-sandbox
+        run: cross build --release --target x86_64-unknown-linux-musl
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p artifacts
+          cp cli/dust-sandbox/target/x86_64-unknown-linux-musl/release/dsbx artifacts/dsbx-linux-x86_64
+          cd artifacts
+          sha256sum dsbx-linux-x86_64 > checksums-sha256.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+        with:
+          tag_name: dsbx-v${{ steps.version.outputs.version }}
+          name: dsbx v${{ steps.version.outputs.version }}
+          body: |
+            ## dsbx CLI v${{ steps.version.outputs.version }}
+
+            **Commit**: ${{ github.sha }}
+
+            ### Download
+
+            | Platform | Architecture | Binary |
+            |----------|--------------|--------|
+            | Linux    | x86_64       | `dsbx-linux-x86_64` |
+
+            ### Installation
+
+            ```bash
+            curl -LO https://github.com/${{ github.repository }}/releases/download/dsbx-v${{ steps.version.outputs.version }}/dsbx-linux-x86_64
+            chmod +x dsbx-linux-x86_64
+            sudo mv dsbx-linux-x86_64 /usr/local/bin/dsbx
+            ```
+
+            ### Verify checksum
+
+            ```bash
+            sha256sum -c checksums-sha256.txt
+            ```
+          files: |
+            artifacts/dsbx-linux-x86_64
+            artifacts/checksums-sha256.txt
+          fail_on_unmatched_files: true
