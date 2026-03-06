@@ -64,6 +64,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ensure-sandbox-images:
+    if: inputs.component == 'front' || inputs.component == 'front-edge'
+    uses: ./.github/workflows/sandbox-img-registry.yml
+    secrets: inherit
+
   check-branch:
     runs-on: ubuntu-latest
     steps:
@@ -202,7 +207,10 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
+    # TODO(@jd) uncomment when ensure-sandbox-images is good to go
+    # needs: [prepare, notify-start, build, ensure-sandbox-images]
     needs: [prepare, notify-start, build]
+    # if: always() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

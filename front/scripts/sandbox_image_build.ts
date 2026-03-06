@@ -1,6 +1,7 @@
-import config from "@app/lib/api/config";
 import {
-  getSandboxImage,
+  formatSandboxImageId,
+  getSandboxImageFromRegistry,
+  getSandboxImageFromRegistryByName,
   getSandboxImageNames,
   getSandboxImageTags,
   isValidSandboxImageName,
@@ -10,7 +11,6 @@ import {
 import {
   buildSandboxImage,
   createGCPRegistryFactory,
-  type DockerRegistryFactory,
 } from "@app/lib/api/sandbox/providers/e2b_template";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -21,52 +21,69 @@ interface BuildArgs {
   execute: boolean;
   skipCache: boolean;
   dockerRegistry?: string;
+  force: boolean;
 }
 
 async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
-  const { image: imageName, tag, execute, skipCache, dockerRegistry } = args;
+  const {
+    image: imageName,
+    tag,
+    execute,
+    skipCache,
+    dockerRegistry,
+    force,
+  } = args;
 
   if (!isValidSandboxImageName(imageName)) {
     const available = getSandboxImageNames().join(", ");
     logger.error(
       { imageName, available },
-      "Invalid image name. Available images: " + available
+      "Invalid image name. Available: " + available
     );
-    return;
+    process.exit(1);
   }
 
   if (!isValidSandboxImageTag(tag)) {
     const available = getSandboxImageTags().join(", ");
-    logger.error(
-      { tag, available },
-      "Invalid tag. Available tags: " + available
-    );
-    return;
+    logger.error({ tag, available }, "Invalid tag. Available: " + available);
+    process.exit(1);
   }
 
   const imageId: SandboxImageId = { imageName, tag };
-  const { apiKey } = config.getE2BSandboxConfig();
-  const sandboxImage = getSandboxImage();
 
-  // Check if the image uses Docker base and registry is required
+  const sandboxImageResult = force
+    ? getSandboxImageFromRegistryByName(imageName)
+    : getSandboxImageFromRegistry(imageId);
+
+  if (sandboxImageResult.isErr()) {
+    logger.error(
+      { imageId: formatSandboxImageId(imageId) },
+      "Image not found in registry"
+    );
+    process.exit(1);
+  }
+
+  if (force) {
+    logger.warn(
+      { imageName, tag },
+      "Force mode: building image with tag that may differ from registry"
+    );
+  }
+
+  const sandboxImage = sandboxImageResult.value;
+
   const usesDockerBase = sandboxImage.baseImage.type === "docker";
   if (usesDockerBase && !dockerRegistry) {
     logger.error(
       { imageName },
-      "Image uses Docker base. Please provide --dockerRegistry option (e.g., us-docker.pkg.dev/project/repo)"
+      "Image uses Docker base. Please provide --docker-registry option"
     );
-    return;
+    process.exit(1);
   }
 
   logger.info(
-    {
-      sandboxImage: "DUST_BASE_IMAGE",
-      imageName,
-      tag,
-      usesDockerBase,
-      dockerRegistry: dockerRegistry ?? "N/A",
-    },
-    "Using DUST_BASE_IMAGE for build"
+    { imageName, tag, usesDockerBase, dockerRegistry: dockerRegistry ?? "N/A" },
+    "Building sandbox image"
   );
 
   if (!execute) {
@@ -75,33 +92,29 @@ async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
         imageName,
         tag,
         skipCache,
-        hasApiKey: Boolean(apiKey),
         operationCount: sandboxImage.operations.length,
         toolCount: sandboxImage.tools.length,
-        dockerRegistry: dockerRegistry ?? "N/A",
       },
       "Would build sandbox image via E2B SDK (dry-run)"
     );
     return;
   }
 
-  let dockerRegistryFactory: DockerRegistryFactory | undefined;
-  if (dockerRegistry) {
-    dockerRegistryFactory = createGCPRegistryFactory(
-      dockerRegistry,
-      config.getSandboxGcpArtifactServiceAccountPath()
-    );
-  }
+  const dockerRegistryFactory = dockerRegistry
+    ? createGCPRegistryFactory(
+        dockerRegistry,
+        process.env.SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT ?? ""
+      )
+    : undefined;
 
   const result = await buildSandboxImage(sandboxImage, imageId, {
-    ...(apiKey ? { apiKey } : {}),
     skipCache,
     dockerRegistryFactory,
   });
 
   if (result.isErr()) {
     logger.error({ err: result.error }, "Failed to build sandbox image");
-    return;
+    process.exit(1);
   }
 
   logger.info(
@@ -119,8 +132,8 @@ makeScript(
     },
     tag: {
       type: "string" as const,
-      default: "staging",
-      describe: "E2B image tag",
+      demandOption: true,
+      describe: "E2B image tag (e.g., production, staging)",
     },
     "skip-cache": {
       type: "boolean" as const,
@@ -132,6 +145,13 @@ makeScript(
       describe:
         "Docker registry URL for images using Docker base (e.g., us-docker.pkg.dev/project/repo)",
     },
+    force: {
+      alias: "f",
+      type: "boolean" as const,
+      default: false,
+      describe:
+        "Build image even if exact tag is not registered (uses image config by name)",
+    },
   },
   async (args, logger) => {
     await buildImage(
@@ -141,6 +161,7 @@ makeScript(
         execute: args.execute,
         skipCache: args["skip-cache"],
         dockerRegistry: args["docker-registry"],
+        force: args.force,
       },
       logger
     );

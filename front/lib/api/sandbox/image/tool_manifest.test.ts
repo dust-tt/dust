@@ -1,12 +1,11 @@
-import * as yaml from "js-yaml";
-import { describe, expect, test } from "vitest";
-
 import {
   createToolManifest,
   toolManifestToJSON,
   toolManifestToYAML,
-} from "./tool_manifest";
-import type { ToolManifest } from "./types";
+} from "@app/lib/api/sandbox/image/tool_manifest";
+import type { ToolManifest } from "@app/lib/api/sandbox/image/types";
+import * as yaml from "js-yaml";
+import { describe, expect, test } from "vitest";
 
 describe("createToolManifest()", () => {
   test("generates manifest with version 1.0", () => {

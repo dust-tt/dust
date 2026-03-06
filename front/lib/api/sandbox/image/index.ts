@@ -1,17 +1,37 @@
+import {
+  getRequiredSandboxImages,
+  getSandboxImageFromRegistry,
+  getSandboxImageFromRegistryByName,
+} from "@app/lib/api/sandbox/image/registry";
+import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 
-import { DUST_BASE_IMAGE } from "./dust-base";
-import type { SandboxImage } from "./sandbox_image";
-
-export function getSandboxImage(_auth?: Authenticator): SandboxImage {
-  return DUST_BASE_IMAGE;
+export function getSandboxImage(
+  _auth?: Authenticator
+): Result<SandboxImage, Error> {
+  const result = getSandboxImageFromRegistry({
+    imageName: "dust-base",
+    tag: "production",
+  });
+  if (result.isErr()) {
+    return new Err(new Error("Default sandbox image not found in registry"));
+  }
+  return result;
 }
-export { SandboxImage } from "./sandbox_image";
+
+export {
+  getRequiredSandboxImages,
+  getSandboxImageFromRegistry,
+  getSandboxImageFromRegistryByName,
+};
+export { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 export {
   createToolManifest,
   toolManifestToJSON,
   toolManifestToYAML,
-} from "./tool_manifest";
+} from "@app/lib/api/sandbox/image/tool_manifest";
 export type {
   BaseImage,
   NetworkMode,
@@ -23,7 +43,7 @@ export type {
   SandboxResources,
   ToolEntry,
   ToolManifest,
-} from "./types";
+} from "@app/lib/api/sandbox/image/types";
 export {
   DUST_SANDBOX_IMAGE_ID,
   formatSandboxImageId,
@@ -31,4 +51,4 @@ export {
   getSandboxImageTags,
   isValidSandboxImageName,
   isValidSandboxImageTag,
-} from "./types";
+} from "@app/lib/api/sandbox/image/types";

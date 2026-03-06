@@ -287,8 +287,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       );
 
       if (!existing) {
-        const image = getSandboxImage(auth);
-        const createResult = await provider.create(image.toCreateConfig());
+        const imageResult = getSandboxImage(auth);
+        if (imageResult.isErr()) {
+          return imageResult;
+        }
+        const createResult = await provider.create(
+          imageResult.value.toCreateConfig()
+        );
         if (createResult.isErr()) {
           return createResult;
         }
@@ -338,8 +343,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         // Falls through to recreation when wake fails.
 
         case "deleted": {
-          const image = getSandboxImage(auth);
-          const createResult = await provider.create(image.toCreateConfig());
+          const imageResult = getSandboxImage(auth);
+          if (imageResult.isErr()) {
+            return imageResult;
+          }
+          const createResult = await provider.create(
+            imageResult.value.toCreateConfig()
+          );
           if (createResult.isErr()) {
             return createResult;
           }
