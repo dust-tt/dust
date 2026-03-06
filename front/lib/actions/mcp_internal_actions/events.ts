@@ -74,12 +74,11 @@ export interface MCPApproveExecutionEvent extends ToolExecution {
 
 export interface ToolUserQuestionEvent extends ToolExecution {
   type: "tool_user_question";
-  questions: Array<{
+  questions: {
     question: string;
-    header: string;
-    options: Array<{ label: string; description: string; preview?: string }>;
+    options: { label: string; description: string }[];
     multiSelect: boolean;
-  }>;
+  }[];
   questionMetadata: Record<string, unknown> | null;
 }
 
