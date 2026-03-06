@@ -379,6 +379,7 @@ export function useDetectSkillsFromRepo({
     useCallback(
       async (repoUrl: string, signal: AbortSignal) => {
         if (repoUrl === lastDetectedUrl.current) {
+          setDetectError(null);
           return;
         }
         setIsDetecting(true);
