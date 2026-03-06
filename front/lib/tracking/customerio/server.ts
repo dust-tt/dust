@@ -15,8 +15,14 @@ import * as _ from "lodash";
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 
 export class CustomerioServerSideTracking {
-  static trackSignup({ user }: { user: UserType }) {
-    return CustomerioServerSideTracking._identifyUser({ user });
+  static trackSignup({
+    user,
+    anonymousId,
+  }: {
+    user: UserType;
+    anonymousId?: string;
+  }) {
+    return CustomerioServerSideTracking._identifyUser({ user, anonymousId });
   }
 
   static identifyWorkspaces({
@@ -282,6 +288,7 @@ export class CustomerioServerSideTracking {
   static async _identifyUser({
     user,
     workspaces,
+    anonymousId,
   }: {
     user: UserType;
     workspaces?: Array<{
@@ -291,9 +298,24 @@ export class CustomerioServerSideTracking {
       role: MembershipRoleType;
       jobType?: JobType;
     }>;
+    anonymousId?: string;
   }) {
     if (!config.getCustomerIoEnabled()) {
       return;
+    }
+
+    const attributes: Record<string, any> = {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      created_at: Math.floor(user.createdAt / 1000),
+      sid: user.sId,
+    };
+
+    // Include the anonymous device ID so email templates can link back to the
+    // user's web session: {{ customer.dust_anonymous_id }}.
+    if (anonymousId) {
+      attributes.dust_anonymous_id = anonymousId;
     }
 
     const body: Record<string, any> = {
@@ -302,13 +324,7 @@ export class CustomerioServerSideTracking {
       },
       type: "person",
       action: "identify",
-      attributes: {
-        email: user.email,
-        first_name: user.firstName,
-        last_name: user.lastName,
-        created_at: Math.floor(user.createdAt / 1000),
-        sid: user.sId,
-      },
+      attributes,
     };
 
     if (workspaces) {

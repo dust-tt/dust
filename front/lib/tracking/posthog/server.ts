@@ -23,13 +23,45 @@ function getClient(): PostHog | null {
 }
 
 export class PostHogServerSideTracking {
+  /**
+   * Alias an anonymous device ID to an identified user so that all pre-signup
+   * events captured with `dust_anonymous_id` are merged into the user's
+   * PostHog person profile.
+   */
+  static aliasAnonymousId({
+    anonymousId,
+    userId,
+  }: {
+    anonymousId: string;
+    userId: string;
+  }): void {
+    const client = getClient();
+    if (!client) {
+      return;
+    }
+
+    try {
+      client.alias({
+        distinctId: userId,
+        alias: anonymousId,
+      });
+    } catch (err) {
+      logger.error(
+        { userId, anonymousId, err },
+        "Failed to alias anonymous ID on PostHog"
+      );
+    }
+  }
+
   static trackSignup({
     user,
     utmParams,
+    anonymousId,
     userCreated,
   }: {
     user: UserType;
     utmParams?: UTMParams;
+    anonymousId?: string;
     userCreated?: boolean;
   }): void {
     const client = getClient();
@@ -38,6 +70,14 @@ export class PostHogServerSideTracking {
     }
 
     try {
+      // Stitch the anonymous device ID to the identified user.
+      if (anonymousId) {
+        PostHogServerSideTracking.aliasAnonymousId({
+          anonymousId,
+          userId: user.sId,
+        });
+      }
+
       const utmProperties: Record<string, string> = {};
       if (utmParams) {
         for (const [key, value] of Object.entries(utmParams)) {
@@ -57,6 +97,23 @@ export class PostHogServerSideTracking {
           ...utmProperties,
         },
       });
+
+      // Set first-touch attribution as $set_once person properties so the
+      // very first UTM/click-ID values are permanently recorded.
+      if (Object.keys(utmProperties).length > 0) {
+        const firstTouchProps: Record<string, string> = {};
+        for (const [key, value] of Object.entries(utmProperties)) {
+          firstTouchProps[`first_${key}`] = value;
+        }
+
+        client.capture({
+          distinctId: user.sId,
+          event: "$set",
+          properties: {
+            $set_once: firstTouchProps,
+          },
+        });
+      }
 
       if (userCreated) {
         client.capture({
