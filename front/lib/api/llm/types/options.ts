@@ -22,17 +22,26 @@ export interface SystemPromptContext {
 }
 
 /**
- * Structured system prompt with type-enforced ordering.
+ * Structured system prompt with cache-tier ordering.
  *
- * - Context-only: `SystemPromptContext[]` - flat array, most common case
- * - With instructions: `[SystemPromptInstruction[], SystemPromptContext[]]` - tuple
- *   guaranteeing instructions come before context
+ * - Context-only: `SystemPromptContext[]` is a flat array, most common case.
+ * - Structured: named tiers ordered from most stable to most volatile. Provider clients might place
+ * cache breakpoints between tiers to maximize prefix cache hits.
  *
- * Provider clients may map each tuple position to a separate system block for caching.
+ *   `instructions`     – stable per agent config (long cache TTL).
+ *   `sharedContext`    – shared across calls with different callers (short cache).
+ *   `ephemeralContext` – per-call data, varies every time (no breakpoint needed since it's the last
+ *                        tier).
  */
+export interface StructuredSystemPrompt {
+  instructions: SystemPromptInstruction[];
+  sharedContext: SystemPromptContext[];
+  ephemeralContext: SystemPromptContext[];
+}
+
 export type SystemPromptSections =
   | SystemPromptContext[]
-  | [SystemPromptInstruction[], SystemPromptContext[]];
+  | StructuredSystemPrompt;
 
 /**
  * Plain strings are treated as context-only. Pass `SystemPromptSections` to
@@ -40,37 +49,47 @@ export type SystemPromptSections =
  */
 export type SystemPromptInput = string | SystemPromptSections;
 
-// Checks whether sections use the [instructions, context] tuple form.
-function isTupleForm(
+function isStructured(
   sections: SystemPromptSections
-): sections is [SystemPromptInstruction[], SystemPromptContext[]] {
-  return sections.length > 0 && Array.isArray(sections[0]);
+): sections is StructuredSystemPrompt {
+  return "instructions" in sections;
 }
 
-// Normalizes prompt input into [instructions, context] tuple form.
+/**
+ * Normalizes any prompt input into a `StructuredSystemPrompt`.
+ *
+ * - Plain string -> single shared-context block.
+ * - Flat `SystemPromptContext[]` -> all items become shared context.
+ * - `StructuredSystemPrompt` -> returned as-is.
+ */
 export function normalizePrompt(
   input: SystemPromptInput
-): [SystemPromptInstruction[], SystemPromptContext[]] {
+): StructuredSystemPrompt {
   if (isString(input)) {
-    return [[], [{ role: "context", content: input }]];
+    return {
+      instructions: [],
+      sharedContext: [{ role: "context", content: input }],
+      ephemeralContext: [],
+    };
   }
 
-  if (isTupleForm(input)) {
+  if (isStructured(input)) {
     return input;
   }
 
-  return [[], input];
+  return { instructions: [], sharedContext: input, ephemeralContext: [] };
 }
 
-// Joins all sections into a flat string.
+// Joins all tiers into a flat string.
 export function systemPromptToText(input: SystemPromptInput): string {
   if (isString(input)) {
     return input;
   }
 
-  const [instructions, context] = normalizePrompt(input);
+  const { instructions, sharedContext, ephemeralContext } =
+    normalizePrompt(input);
 
-  return [...instructions, ...context]
+  return [...instructions, ...sharedContext, ...ephemeralContext]
     .map((s) => s.content.trim())
     .filter(Boolean)
     .join("\n");
