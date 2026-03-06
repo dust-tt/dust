@@ -49,9 +49,9 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
     {
       accessorKey: "server.sId",
       cell: ({ row }) => {
-        const { serverType, server } = row.original;
+        const { server } = row.original;
 
-        return `${serverType}:${server.sId}`;
+        return `${server.sId}`;
       },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Server ID" />
