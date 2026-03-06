@@ -281,20 +281,9 @@ export function AgentMessage({
             enqueueBlockedAction({
               messageId: sId,
               blockedAction: {
+                ...eventPayload.data,
                 status: "blocked_user_question_required",
-                actionId: eventPayload.data.actionId,
-                question: eventPayload.data.question,
-                options: eventPayload.data.options,
-                allowMultiple: eventPayload.data.allowMultiple,
                 authorizationInfo: null,
-                configurationId: eventPayload.data.configurationId,
-                conversationId: eventPayload.data.conversationId,
-                created: eventPayload.data.created,
-                inputs: eventPayload.data.inputs,
-                messageId: eventPayload.data.messageId,
-                metadata: eventPayload.data.metadata,
-                stake: eventPayload.data.stake,
-                userId: eventPayload.data.userId,
               },
             });
             break;
