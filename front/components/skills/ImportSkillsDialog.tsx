@@ -186,7 +186,7 @@ export function ImportSkillsDialog({
           }}
           rightButtonProps={{
             label: "Import",
-            disabled: selectedCount === 0,
+            disabled: isImporting || selectedCount === 0,
             isLoading: isImporting,
             onClick: handleImport,
           }}
