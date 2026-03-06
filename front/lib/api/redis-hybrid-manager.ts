@@ -236,6 +236,7 @@ class RedisHybridManager {
             origin,
             attempt: i + 1,
             maxAttempts: MAX_PUBLISH_ATTEMPTS,
+            eventId,
           },
           "Error publishing to Redis, retrying..."
         );
