@@ -3,6 +3,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import type { Authenticator } from "@app/lib/auth";
+import { ReinforcedResponseSchema } from "@app/lib/reinforced_agent/schemas";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -195,16 +196,18 @@ export async function analyzeConversationForReinforcement(
     return;
   }
 
-  const { suggestions } = action.arguments as {
-    suggestions: Array<{
-      kind: string;
-      content: string;
-      targetBlockId: string;
-      analysis: string;
-    }>;
-  };
+  const parsed = ReinforcedResponseSchema.safeParse(action.arguments);
+  if (!parsed.success) {
+    logger.warn(
+      { conversationId, agentConfigurationId, error: parsed.error },
+      "ReinforcedAgent: invalid LLM response shape"
+    );
+    return;
+  }
 
-  if (!suggestions || suggestions.length === 0) {
+  const { suggestions } = parsed.data;
+
+  if (suggestions.length === 0) {
     logger.info(
       { conversationId, agentConfigurationId },
       "ReinforcedAgent: no suggestions from analysis"

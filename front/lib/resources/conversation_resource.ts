@@ -49,6 +49,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
+import { z } from "zod";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -664,17 +665,26 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
+    // With raw: true + nest: true, rows are plain objects with nested includes.
+    const RawMessageWithAgentSchema = z.object({
+      conversationId: z.number(),
+      agentMessage: z.object({
+        agentConfigurationId: z.string(),
+      }),
+    });
+
     // Build a map of conversationId -> Set<agentConfigurationId>.
     const conversationAgentMap = new Map<number, Set<string>>();
     for (const row of rows) {
-      const convId = row.conversationId;
-      const agentConfigId = (
-        row as unknown as { agentMessage: { agentConfigurationId: string } }
-      ).agentMessage.agentConfigurationId;
+      const parsed = RawMessageWithAgentSchema.safeParse(row);
+      if (!parsed.success) {
+        continue;
+      }
+      const { conversationId: convId, agentMessage } = parsed.data;
       if (!conversationAgentMap.has(convId)) {
         conversationAgentMap.set(convId, new Set());
       }
-      conversationAgentMap.get(convId)!.add(agentConfigId);
+      conversationAgentMap.get(convId)!.add(agentMessage.agentConfigurationId);
     }
 
     // Step 2: Fetch conversations updated since the given date.
