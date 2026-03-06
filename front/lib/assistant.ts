@@ -1,7 +1,6 @@
 import {
   isDustCompanyPlan,
   isEntreprisePlanPrefix,
-  isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -9,55 +8,70 @@ import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 
-export function isEnforcedByEnterpriseAvailability(
-  m: ModelConfigurationType,
-  plan: PlanType | null
-): boolean {
+export function passEnterpriseAvalability(plan: PlanType | null): boolean {
   return (
-    m.enforceEnterpriseAvailability === true &&
     plan !== null &&
     (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
   );
 }
 
-// Returns true if the model is available to the workspace, regardless of whether it is whitelisted or not.
+// Returns true if the model is available to the workspace for use.
 export function isModelAvailable(
   m: ModelConfigurationType,
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null
 ) {
-  if (m.enforceEnterpriseAvailability === true) {
-    return (
-      plan &&
-      (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
-    );
+  if (!m.availableIfUnion) {
+    return true;
   }
 
-  if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
+  const { enterprise, featureFlag } = m.availableIfUnion;
+
+  if (enterprise === true && passEnterpriseAvalability(plan)) {
+    return true;
+  }
+
+  if (featureFlag && featureFlags.includes(featureFlag)) {
+    return true;
+  }
+
+  return false;
+}
+
+// Returns true if the model is available to the workspace for build.
+export function isModelCustomAvailable(
+  m: ModelConfigurationType,
+  featureFlags: WhitelistableFeature[],
+  plan: PlanType | null
+) {
+  if (!isModelAvailable(m, featureFlags, plan)) {
     return false;
   }
+
+  if (!m.customAvailableIf) {
+    return true;
+  }
+
+  const { featureFlag: customAssistantFeatureFlag } = m.customAvailableIf;
 
   if (
-    m.customAssistantFeatureFlag &&
-    !featureFlags.includes(m.customAssistantFeatureFlag)
+    customAssistantFeatureFlag &&
+    featureFlags.includes(customAssistantFeatureFlag)
   ) {
-    return false;
+    return true;
   }
 
-  if (m.largeModel && !isUpgraded(plan)) {
-    return false;
-  }
-  return true;
+  return false;
 }
 
 // Returns true if the model is available to the workspace and is whitelisted.
-export function isModelAvailableAndWhitelisted(
+export function isModelCustomAvailableAndWhitelisted(
   m: ModelConfigurationType,
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null,
   owner: WorkspaceType
 ) {
-  if (!isModelAvailable(m, featureFlags, plan)) {
+  if (!isModelCustomAvailable(m, featureFlags, plan)) {
     return false;
   }
 
