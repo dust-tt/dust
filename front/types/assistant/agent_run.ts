@@ -68,6 +68,7 @@ export type ConversationCaching =
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
+  conversationBranchId: string | null,
   // These params are only used for cache key uniqueness.
   _workspaceId: string,
   _unicitySuffix: string
@@ -82,8 +83,8 @@ async function getConversationForAgentLoop(
 function getCachedGetConversation(ttlMs: number) {
   return cacheWithRedis(
     getConversationForAgentLoop,
-    (_auth, conversationId, workspaceId, unicitySuffix) =>
-      `${workspaceId}:${conversationId}:${unicitySuffix}`,
+    (_auth, conversationId, conversationBranchId, workspaceId, unicitySuffix) =>
+      `${workspaceId}:${conversationId}:${conversationBranchId}:${unicitySuffix}`,
     {
       ttlMs,
       useDistributedLock: true,
@@ -96,6 +97,7 @@ export type AgentLoopArgs = {
   agentMessageVersion: number;
   conversationId: string;
   conversationTitle: string | null;
+  conversationBranchId: string | null;
 
   // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
@@ -177,6 +179,7 @@ export async function getAgentLoopDataWithAuth(
     agentMessageVersion,
     caching,
     conversationId,
+    conversationBranchId,
     userMessageId,
     userMessageVersion,
   } = agentLoopArgs;
@@ -188,6 +191,7 @@ export async function getAgentLoopDataWithAuth(
       conversation = await cachedGetConversation(
         auth,
         conversationId,
+        conversationBranchId,
         auth.getNonNullableWorkspace().sId,
         caching.unicitySuffix
       );
@@ -212,7 +216,12 @@ export async function getAgentLoopDataWithAuth(
       throw error;
     }
   } else {
-    const conversationRes = await getConversation(auth, conversationId);
+    const conversationRes = await getConversation(
+      auth,
+      conversationId,
+      false,
+      conversationBranchId
+    );
     if (conversationRes.isErr()) {
       if (conversationRes.error.type === "conversation_not_found") {
         // Check if the conversation was soft-deleted.
