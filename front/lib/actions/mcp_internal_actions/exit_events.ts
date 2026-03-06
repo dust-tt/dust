@@ -66,14 +66,16 @@ export async function getExitOrPauseEvents(
       }
       case "tool_blocked_awaiting_input": {
         const { blockingEvents, state } = exitOutputItem;
-        // Update the action status to blocked_child_action_input_required to break the agent loop.
-        await action.updateStatus("blocked_child_action_input_required");
 
-        // Update the step context to save the resume state.
+        // Update the step context BEFORE status to avoid a race where the action
+        // appears blocked but stepContext lacks the resume state.
         await action.updateStepContext({
           ...action.stepContext,
           resumeState: state,
         });
+
+        // Update the action status to blocked_child_action_input_required to break the agent loop.
+        await action.updateStatus("blocked_child_action_input_required");
 
         // Yield the blocking events.
         return blockingEvents;
@@ -125,9 +127,8 @@ export async function getExitOrPauseEvents(
           `The tool ${action.functionCallName} requires file authorization ` +
           `for ${fileName}, please authorize the file to continue.`;
 
-        await action.updateStatus("blocked_file_authorization_required");
-
-        // Persisted here so the blocked action can be reconstructed on page reload.
+        // Persist file auth info BEFORE updating status to avoid a race where the
+        // action appears blocked but stepContext lacks file authorization data.
         await action.updateStepContext({
           ...action.stepContext,
           fileAuthorizationInfo: {
@@ -137,6 +138,8 @@ export async function getExitOrPauseEvents(
             mimeType: mimeType_file,
           },
         });
+
+        await action.updateStatus("blocked_file_authorization_required");
 
         return [
           {
@@ -169,9 +172,8 @@ export async function getExitOrPauseEvents(
       case "tool_user_question_required": {
         const { questions, metadata } = exitOutputItem;
 
-        await action.updateStatus("blocked_user_question_required");
-
-        // Persist question data in stepContext so it can be reconstructed on page reload.
+        // Persist question data in stepContext BEFORE updating status to avoid a race
+        // where the action appears blocked but stepContext lacks question data.
         await action.updateStepContext({
           ...action.stepContext,
           resumeState: {
@@ -180,6 +182,8 @@ export async function getExitOrPauseEvents(
             metadata,
           },
         });
+
+        await action.updateStatus("blocked_user_question_required");
 
         return [
           {
