@@ -1,13 +1,13 @@
 import type { ChatStreamer, WebClient } from "@slack/web-api";
 import type { ChatAppendStreamArguments } from "@slack/web-api/dist/types/request/chat";
 
+// Single task id reused for every task so only the latest is visible.
+// Later, if we adapt the tool call output a bit further, we can use this
+// to show multiple tasks in a single plan block (see: https://docs.slack.dev/reference/block-kit/blocks/plan-block).
+const ACTIVE_TASK_ID = "active-task-id";
+
 export class SlackStreamHandler {
   private streamer: ChatStreamer | undefined;
-  // Single task slot reused for every task — only the latest is visible.
-  // The stream is invisible until first append (chat.startStream only fires
-  // then). The native "Thinking…" spinner requires the Assistant API's
-  // set_status(), which we don't use, so a task kicks off the stream instead.
-  private readonly taskId = "active-step";
   private hasTask = false;
   messageTs: string | undefined;
 
@@ -46,7 +46,12 @@ export class SlackStreamHandler {
     this.hasTask = true;
     await this.append({
       chunks: [
-        { type: "task_update", id: this.taskId, title, status: "in_progress" },
+        {
+          type: "task_update",
+          id: ACTIVE_TASK_ID,
+          title,
+          status: "in_progress",
+        },
       ],
     });
   }
@@ -58,7 +63,7 @@ export class SlackStreamHandler {
         chunks: [
           {
             type: "task_update",
-            id: this.taskId,
+            id: ACTIVE_TASK_ID,
             title: "Done",
             status: "complete",
           },
