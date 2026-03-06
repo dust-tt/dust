@@ -1,6 +1,7 @@
 import {
   formatSandboxImageId,
   getSandboxImageFromRegistry,
+  getSandboxImageFromRegistryByName,
   getSandboxImageNames,
   getSandboxImageTags,
   isValidSandboxImageName,
@@ -20,10 +21,18 @@ interface BuildArgs {
   execute: boolean;
   skipCache: boolean;
   dockerRegistry?: string;
+  force: boolean;
 }
 
 async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
-  const { image: imageName, tag, execute, skipCache, dockerRegistry } = args;
+  const {
+    image: imageName,
+    tag,
+    execute,
+    skipCache,
+    dockerRegistry,
+    force,
+  } = args;
 
   if (!isValidSandboxImageName(imageName)) {
     const available = getSandboxImageNames().join(", ");
@@ -41,7 +50,11 @@ async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
   }
 
   const imageId: SandboxImageId = { imageName, tag };
-  const sandboxImageResult = getSandboxImageFromRegistry(imageId);
+
+  const sandboxImageResult = force
+    ? getSandboxImageFromRegistryByName(imageName)
+    : getSandboxImageFromRegistry(imageId);
+
   if (sandboxImageResult.isErr()) {
     logger.error(
       { imageId: formatSandboxImageId(imageId) },
@@ -49,6 +62,14 @@ async function buildImage(args: BuildArgs, logger: Logger): Promise<void> {
     );
     process.exit(1);
   }
+
+  if (force) {
+    logger.warn(
+      { imageName, tag },
+      "Force mode: building image with tag that may differ from registry"
+    );
+  }
+
   const sandboxImage = sandboxImageResult.value;
 
   const usesDockerBase = sandboxImage.baseImage.type === "docker";
@@ -124,6 +145,13 @@ makeScript(
       describe:
         "Docker registry URL for images using Docker base (e.g., us-docker.pkg.dev/project/repo)",
     },
+    force: {
+      alias: "f",
+      type: "boolean" as const,
+      default: false,
+      describe:
+        "Build image even if exact tag is not registered (uses image config by name)",
+    },
   },
   async (args, logger) => {
     await buildImage(
@@ -133,6 +161,7 @@ makeScript(
         execute: args.execute,
         skipCache: args["skip-cache"],
         dockerRegistry: args["docker-registry"],
+        force: args.force,
       },
       logger
     );
