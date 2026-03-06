@@ -78,11 +78,21 @@ export type UserQuestionAnswers = {
 export function isUserQuestionAnswers(
   value: unknown
 ): value is UserQuestionAnswers {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "answers" in value &&
-    Array.isArray((value as Record<string, unknown>).answers)
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("answers" in value) ||
+    !Array.isArray((value as Record<string, unknown>).answers)
+  ) {
+    return false;
+  }
+  const answers = (value as Record<string, unknown>).answers as unknown[];
+  return answers.every(
+    (item) =>
+      typeof item === "object" &&
+      item !== null &&
+      "selectedOptions" in item &&
+      Array.isArray((item as Record<string, unknown>).selectedOptions)
   );
 }
 

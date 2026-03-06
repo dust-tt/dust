@@ -28,13 +28,7 @@ type QuestionAnswerState = {
   customResponse: string;
 };
 
-function QuestionCard({
-  question,
-  answerState,
-  questionIndex,
-  onToggleOption,
-  onCustomResponseChange,
-}: {
+interface QuestionCardProps {
   question: UserQuestion;
   answerState: QuestionAnswerState;
   questionIndex: number;
@@ -44,7 +38,15 @@ function QuestionCard({
     multiSelect: boolean
   ) => void;
   onCustomResponseChange: (questionIndex: number, value: string) => void;
-}) {
+}
+
+function QuestionCard({
+  question,
+  answerState,
+  questionIndex,
+  onToggleOption,
+  onCustomResponseChange,
+}: QuestionCardProps) {
   const isOtherActive = answerState.customResponse.trim() !== "";
 
   return (
