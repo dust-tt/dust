@@ -104,7 +104,8 @@ export const chatgptConfig: ChatGPTConfig = {
       },
       {
         name: "Multi-model AI",
-        description: "GPT-4, Claude, Gemini, Mistral—choose the best per task",
+        description:
+          "GPT-5.3, Claude, Gemini, Mistral—choose the best per task",
         dust: "yes",
         competitor: "no",
       },
