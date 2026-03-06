@@ -242,6 +242,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable conversation branches",
     stage: "dust_only",
   },
+  reinforced_agents: {
+    description:
+      "Enable reinforced agents: background analysis of conversations to suggest agent improvements",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

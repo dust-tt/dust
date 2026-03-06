@@ -1,4 +1,4 @@
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { aggregateSyntheticSuggestions } from "@app/lib/reinforced_agent/aggregate_suggestions";
 import { analyzeConversationForReinforcement } from "@app/lib/reinforced_agent/analyze_conversation";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -34,6 +34,11 @@ export async function analyzeRecentConversationsActivity({
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (!featureFlags.includes("reinforced_agents")) {
+    return;
+  }
 
   const updatedSince = new Date();
   updatedSince.setHours(updatedSince.getHours() - HOURS_LOOKBACK);
@@ -91,6 +96,11 @@ export async function aggregateSyntheticSuggestionsActivity({
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (!featureFlags.includes("reinforced_agents")) {
+    return;
+  }
 
   // Fetch all suggestions to find distinct agent config IDs with synthetic suggestions.
   const allSuggestions = await AgentSuggestionResource.listAll(auth);
