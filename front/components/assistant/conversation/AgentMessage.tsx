@@ -72,7 +72,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -1137,6 +1137,10 @@ function AgentMessageContent({
               content={sanitizeVisualizationContent(agentMessage.content)}
               owner={owner}
               isStreaming={streaming && lastTokenClassification === "tokens"}
+              streamingState={getStreamingState(
+                streaming && lastTokenClassification === "tokens",
+                agentMessage.status
+              )}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
@@ -1196,6 +1200,19 @@ function AgentMessageContent({
       )}
     </div>
   );
+}
+
+function getStreamingState(
+  isStreaming: boolean,
+  messageStatus: string
+): StreamingState {
+  if (isStreaming) {
+    return "streaming";
+  }
+  if (messageStatus === "cancelled") {
+    return "cancelled";
+  }
+  return "ended";
 }
 
 function getCitations({

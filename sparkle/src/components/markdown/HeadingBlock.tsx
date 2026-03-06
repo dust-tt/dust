@@ -1,7 +1,11 @@
-import { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
 import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
+import { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
+import {
+  type MarkdownNode,
+  sameNodePosition,
+} from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
-import React from "react";
+import React, { memo } from "react";
 
 const headingSpacing: Record<number, string> = {
   1: "s-pb-2 s-pt-4",
@@ -12,42 +16,121 @@ const headingSpacing: Record<number, string> = {
   6: "s-pb-1.5 s-pt-2.5",
 };
 
-function HeadingBlock({
-  level,
-  children,
-}: {
-  level: 1 | 2 | 3 | 4 | 5 | 6;
-  children: React.ReactNode;
-}) {
-  const { textColor, forcedTextSize } = useMarkdownStyle();
-  const Tag = `h${level}` as const;
-  const defaultSize =
-    markdownHeaderClasses[`h${level}` as keyof typeof markdownHeaderClasses];
-  return (
-    <Tag
-      className={cn(headingSpacing[level], forcedTextSize ?? defaultSize, textColor)}
-    >
-      {children}
-    </Tag>
-  );
+interface HeadingBlockProps {
+  children?: React.ReactNode;
+  node?: MarkdownNode;
 }
 
-// Module-level stable references — these never change identity.
-export const H1Block = ({ children }: { children?: React.ReactNode }) => (
-  <HeadingBlock level={1}>{children}</HeadingBlock>
+export const H1Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h1
+        className={cn(
+          headingSpacing[1],
+          forcedTextSize ?? markdownHeaderClasses.h1,
+          textColor
+        )}
+      >
+        {children}
+      </h1>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
-export const H2Block = ({ children }: { children?: React.ReactNode }) => (
-  <HeadingBlock level={2}>{children}</HeadingBlock>
+H1Block.displayName = "H1Block";
+
+export const H2Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h2
+        className={cn(
+          headingSpacing[2],
+          forcedTextSize ?? markdownHeaderClasses.h2,
+          textColor
+        )}
+      >
+        {children}
+      </h2>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
-export const H3Block = ({ children }: { children?: React.ReactNode }) => (
-  <HeadingBlock level={3}>{children}</HeadingBlock>
+H2Block.displayName = "H2Block";
+
+export const H3Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h3
+        className={cn(
+          headingSpacing[3],
+          forcedTextSize ?? markdownHeaderClasses.h3,
+          textColor
+        )}
+      >
+        {children}
+      </h3>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
-export const H4Block = ({ children }: { children?: React.ReactNode }) => (
-  <HeadingBlock level={4}>{children}</HeadingBlock>
+H3Block.displayName = "H3Block";
+
+export const H4Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h4
+        className={cn(
+          headingSpacing[4],
+          forcedTextSize ?? markdownHeaderClasses.h4,
+          textColor
+        )}
+      >
+        {children}
+      </h4>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
-export const H5Block = ({ children }: { children?: React.ReactNode }) => (
-  <HeadingBlock level={5}>{children}</HeadingBlock>
+H4Block.displayName = "H4Block";
+
+export const H5Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h5
+        className={cn(
+          headingSpacing[5],
+          forcedTextSize ?? markdownHeaderClasses.h5,
+          textColor
+        )}
+      >
+        {children}
+      </h5>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
-export const H6Block = ({ children }: { children?: React.ReactNode }) => (
-  <HeadingBlock level={6}>{children}</HeadingBlock>
+H5Block.displayName = "H5Block";
+
+export const H6Block = memo(
+  ({ children }: HeadingBlockProps) => {
+    const { textColor, forcedTextSize } = useMarkdownStyle();
+    return (
+      <h6
+        className={cn(
+          headingSpacing[6],
+          forcedTextSize ?? markdownHeaderClasses.h6,
+          textColor
+        )}
+      >
+        {children}
+      </h6>
+    );
+  },
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
+H6Block.displayName = "H6Block";
