@@ -80,6 +80,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
@@ -1097,12 +1098,26 @@ export async function listToolsForServerSideMCPServer(
     return new Ok(serverSideToolConfigs);
   }
 
+  return buildToolConfigurationsFromRawTools(
+    auth,
+    connectionParams.mcpServerId,
+    config,
+    allToolsRaw
+  );
+}
+
+async function buildToolConfigurationsFromRawTools(
+  auth: Authenticator,
+  mcpServerId: string,
+  config: ServerSideMCPServerConfigurationType,
+  allToolsRaw: MCPToolType[]
+): Promise<Result<ServerSideMCPToolConfigurationType[], Error>> {
   const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
     auth,
-    connectionParams.mcpServerId
+    mcpServerId
   );
 
-  const r = getToolExtraFields(connectionParams.mcpServerId, metadata);
+  const r = getToolExtraFields(mcpServerId, metadata);
   if (r.isErr()) {
     return r;
   }
@@ -1114,9 +1129,7 @@ export async function listToolsForServerSideMCPServer(
     toolsArgumentsRequiringApproval,
   } = r.value;
 
-  const availability = getAvailabilityOfInternalMCPServerById(
-    connectionParams.mcpServerId
-  );
+  const availability = getAvailabilityOfInternalMCPServerById(mcpServerId);
 
   const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
@@ -1128,7 +1141,7 @@ export async function listToolsForServerSideMCPServer(
           ? FALLBACK_MCP_TOOL_STAKE_LEVEL
           : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
       availability,
-      toolServerId: connectionParams.mcpServerId,
+      toolServerId: mcpServerId,
       ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
       retryPolicy:
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -1164,6 +1177,40 @@ async function listMCPServerToolsAndServerInstructions(
       agentLoopContext: { listToolsContext: agentLoopListToolsContext },
     });
     if (r.isErr()) {
+      // When the workspace connection is broken (admin token revoked/expired),
+      // fall back to cached tools so users are not blocked.
+      if (
+        MCPServerRequiresAdminAuthenticationError.is(r.error) &&
+        isConnectViaMCPServerId(connectionParams) &&
+        isServerSideMCPServerConfiguration(config)
+      ) {
+        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+          auth,
+          connectionParams.mcpServerId
+        );
+        if (remoteMCPServer?.cachedTools?.length) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              mcpServerId: connectionParams.mcpServerId,
+              cachedToolCount: remoteMCPServer.cachedTools.length,
+            },
+            "Workspace connection broken for remote MCP server, falling back to cached tools"
+          );
+          const cachedToolsRes = await buildToolConfigurationsFromRawTools(
+            auth,
+            connectionParams.mcpServerId,
+            config,
+            remoteMCPServer.cachedTools
+          );
+          if (cachedToolsRes.isOk()) {
+            return new Ok({
+              instructions: undefined,
+              tools: cachedToolsRes.value,
+            });
+          }
+        }
+      }
       return r;
     }
     mcpClient = r.value;

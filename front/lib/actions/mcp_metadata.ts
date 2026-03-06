@@ -162,6 +162,151 @@ async function createMCPProxyConfig(
   };
 }
 
+/**
+ * Resolve the OAuth token for a remote MCP server.
+ *
+ * For personal_actions servers:
+ *   - Tool execution: use the user's personal token.
+ *   - Listing tools (user session): try personal token first, fall back to workspace.
+ *   - Listing tools (sync / no user): use workspace token.
+ * For platform_actions or servers without auth: use workspace token or shared secret.
+ */
+async function resolveRemoteServerOAuthToken(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    oAuthUseCase,
+    remoteMCPServer,
+    isToolExecution,
+  }: {
+    mcpServerId: string;
+    oAuthUseCase: MCPOAuthUseCase | null;
+    remoteMCPServer: RemoteMCPServerResource;
+    isToolExecution: boolean;
+  }
+): Promise<
+  Result<
+    {
+      token: OAuthTokens | undefined;
+      oauthConnectionType: "personal" | "workspace" | undefined;
+      oauthConnectionId: string | undefined;
+    },
+    Error | MCPServerPersonalAuthenticationRequiredError
+  >
+> {
+  // Shared secret: no OAuth needed.
+  if (remoteMCPServer.sharedSecret) {
+    return new Ok({
+      token: {
+        access_token: remoteMCPServer.sharedSecret,
+        token_type: "bearer",
+        expires_in: undefined,
+        scope: "",
+      },
+      oauthConnectionType: undefined,
+      oauthConnectionId: undefined,
+    });
+  }
+
+  // No authorization required.
+  if (!remoteMCPServer.authorization) {
+    return new Ok({
+      token: undefined,
+      oauthConnectionType: undefined,
+      oauthConnectionId: undefined,
+    });
+  }
+
+  // Determine which connection type to try.
+  let connectionType: "personal" | "workspace";
+  if (oAuthUseCase === "personal_actions" && isToolExecution) {
+    connectionType = "personal";
+  } else if (oAuthUseCase === "personal_actions" && auth.user()) {
+    // Listing tools with a user session: try personal first.
+    const personalConnection = await getConnectionForMCPServer(auth, {
+      mcpServerId,
+      connectionType: "personal",
+    });
+    if (personalConnection.isOk()) {
+      return new Ok({
+        token: {
+          access_token: personalConnection.value.access_token,
+          token_type: "bearer",
+          expires_in: personalConnection.value.access_token_expiry ?? undefined,
+          scope: personalConnection.value.connection.metadata.scope,
+        },
+        oauthConnectionType: "personal",
+        oauthConnectionId: personalConnection.value.connection.connection_id,
+      });
+    }
+    // Personal connection not found — fall back to workspace.
+    connectionType = "workspace";
+  } else {
+    connectionType = "workspace";
+  }
+
+  // Fetch connection token.
+  const c = await getConnectionForMCPServer(auth, {
+    mcpServerId,
+    connectionType,
+  });
+  if (c.isOk()) {
+    return new Ok({
+      token: {
+        access_token: c.value.access_token,
+        token_type: "bearer",
+        expires_in: c.value.access_token_expiry ?? undefined,
+        scope: c.value.connection.metadata.scope,
+      },
+      oauthConnectionType: connectionType,
+      oauthConnectionId: c.value.connection.connection_id,
+    });
+  }
+
+  // Connection failed — return the appropriate error.
+  const { provider, scope } = remoteMCPServer.authorization;
+
+  switch (connectionType) {
+    case "personal": {
+      // Check if admin has set up the workspace connection.
+      const adminConnectionRes =
+        await MCPServerConnectionResource.findByMCPServer(auth, {
+          mcpServerId,
+          connectionType: "workspace",
+        });
+      if (
+        adminConnectionRes.isErr() &&
+        adminConnectionRes.error.code === "connection_not_found"
+      ) {
+        return new Err(
+          new MCPServerRequiresAdminAuthenticationError(
+            mcpServerId,
+            provider,
+            scope
+          )
+        );
+      }
+      return new Err(
+        new MCPServerPersonalAuthenticationRequiredError(
+          mcpServerId,
+          provider,
+          scope
+        )
+      );
+    }
+    case "workspace":
+      return new Err(
+        new MCPServerRequiresAdminAuthenticationError(
+          mcpServerId,
+          provider,
+          scope
+        )
+      );
+    default:
+      assertNever(connectionType);
+  }
+}
+
 export async function connectToMCPServer(
   auth: Authenticator,
   {
@@ -365,86 +510,19 @@ export async function connectToMCPServer(
 
           const url = new URL(remoteMCPServer.url);
 
-          let token: OAuthTokens | undefined;
-          let oauthConnectionType: "personal" | "workspace" | undefined;
-          let oauthConnectionId: string | undefined;
-
-          // If the server has a shared secret, we use it to authenticate.
-          if (remoteMCPServer.sharedSecret) {
-            token = {
-              access_token: remoteMCPServer.sharedSecret,
-              token_type: "bearer",
-              expires_in: undefined,
-              scope: "",
-            };
+          const tokenRes = await resolveRemoteServerOAuthToken(auth, {
+            mcpServerId: params.mcpServerId,
+            oAuthUseCase: params.oAuthUseCase,
+            remoteMCPServer,
+            isToolExecution: !!(
+              agentLoopContext?.runContext || allowDirectToolExecution
+            ),
+          });
+          if (tokenRes.isErr()) {
+            return tokenRes;
           }
-          // The server requires authentication.
-          else if (remoteMCPServer.authorization) {
-            // We only fetch the personal token if we are running a tool.
-            // Otherwise, for listing tools etc.., we use the workspace token.
-            oauthConnectionType =
-              params.oAuthUseCase === "personal_actions" &&
-              (agentLoopContext?.runContext || allowDirectToolExecution)
-                ? "personal"
-                : "workspace";
-
-            const c = await getConnectionForMCPServer(auth, {
-              mcpServerId: params.mcpServerId,
-              connectionType: oauthConnectionType,
-            });
-            if (c.isOk()) {
-              oauthConnectionId = c.value.connection.connection_id;
-              token = {
-                access_token: c.value.access_token,
-                token_type: "bearer",
-                expires_in: c.value.access_token_expiry ?? undefined,
-                scope: c.value.connection.metadata.scope,
-              };
-            } else {
-              const scope = remoteMCPServer.authorization.scope;
-
-              if (oauthConnectionType === "personal") {
-                // Check if admin connection exists for the server.
-                // We only check if the connection resource exists (not if the token is valid)
-                // because for personal_actions we just need to know if admin setup is done.
-                const adminConnectionRes =
-                  await MCPServerConnectionResource.findByMCPServer(auth, {
-                    mcpServerId: params.mcpServerId,
-                    connectionType: "workspace",
-                  });
-                if (
-                  adminConnectionRes.isErr() &&
-                  adminConnectionRes.error.code === "connection_not_found"
-                ) {
-                  return new Err(
-                    new MCPServerRequiresAdminAuthenticationError(
-                      params.mcpServerId,
-                      remoteMCPServer.authorization.provider,
-                      scope
-                    )
-                  );
-                }
-                return new Err(
-                  new MCPServerPersonalAuthenticationRequiredError(
-                    params.mcpServerId,
-                    remoteMCPServer.authorization.provider,
-                    scope
-                  )
-                );
-              } else if (oauthConnectionType === "workspace") {
-                // Workspace connection required — admin must set up or reconnect.
-                return new Err(
-                  new MCPServerRequiresAdminAuthenticationError(
-                    params.mcpServerId,
-                    remoteMCPServer.authorization.provider,
-                    scope
-                  )
-                );
-              } else {
-                assertNever(oauthConnectionType);
-              }
-            }
-          }
+          const { token, oauthConnectionType, oauthConnectionId } =
+            tokenRes.value;
 
           const {
             dispatcher,
