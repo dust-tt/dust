@@ -1,0 +1,38 @@
+front/lib/api/content_guard/tool_check.ts
+  680ddda17d0df819 1-227
+front/lib/api/content_guard/index.ts
+  680ddda17d0df819 4-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "cfcece6b61450e53f57381759fd492d25488cb83",
+  "prompts": {
+    "680ddda17d0df819": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42a05706-d1f8-4c45-94ad-72de3e97e419",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 232,
+      "total_deletions": 0,
+      "accepted_lines": 232,
+      "overriden_lines": 0
+    },
+    "b3ba646dac812e7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625578d2-2cb8-4535-8eb5-e49d03c328aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}
