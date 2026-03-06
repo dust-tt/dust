@@ -8,7 +8,11 @@ import moment from "moment-timezone";
 
 import { QUEUE_NAME } from "./config";
 import { runSignal } from "./signals";
-import { reinforcedAgentWorkflow } from "./workflows";
+import {
+  reinforcedAgentForAgentWorkflow,
+  reinforcedAgentWorkflow,
+  reinforcedAgentWorkspaceWorkflow,
+} from "./workflows";
 
 /**
  * Returns the UTC hour corresponding to midnight in the given timezone.
@@ -32,7 +36,7 @@ export async function launchReinforcedAgentWorkflow(): Promise<
     workflowId: "reinforced-agent-workflow",
     signal: runSignal,
     signalArgs: undefined,
-    cronSchedule: `0 ${utcHour} * * *`, // Every day at midnight in the region's timezone.
+    cronSchedule: `0 ${utcHour} * * *`,
   });
 
   logger.info(
@@ -57,4 +61,48 @@ export async function stopReinforcedAgentWorkflow({
   } catch (e) {
     logger.error({ error: e }, "[ReinforcedAgent] Failed stopping workflow.");
   }
+}
+
+export async function startReinforcedAgentWorkspaceWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<Result<string, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = `reinforced-agent-workspace-${workspaceId}-manual-${Date.now()}`;
+
+  await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
+    args: [{ workspaceId }],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+  });
+
+  logger.info(
+    { workflowId, workspaceId },
+    "[ReinforcedAgent] Started workspace workflow."
+  );
+  return new Ok(workflowId);
+}
+
+export async function startReinforcedAgentForAgentWorkflow({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}): Promise<Result<string, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = `reinforced-agent-${workspaceId}-${agentConfigurationId}-manual-${Date.now()}`;
+
+  await client.workflow.start(reinforcedAgentForAgentWorkflow, {
+    args: [{ workspaceId, agentConfigurationId }],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+  });
+
+  logger.info(
+    { workflowId, workspaceId, agentConfigurationId },
+    "[ReinforcedAgent] Started agent workflow."
+  );
+  return new Ok(workflowId);
 }
