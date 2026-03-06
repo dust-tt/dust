@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "992edb85cdc26bb1d18180b9f77db8858cb0bebe",
+  "prompts": {
+    "30a94894994be7d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82f6c639-5dab-48f0-8298-519d27d52fe4",
+        "model": "<synthetic>"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "messages": [],
+      "total_additions": 16,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    }
+  }
+}
