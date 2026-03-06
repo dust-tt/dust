@@ -18,6 +18,7 @@ interface TooltipContentProps
   extends React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  showArrow?: boolean;
 }
 
 const TooltipContent = React.forwardRef<
@@ -30,6 +31,8 @@ const TooltipContent = React.forwardRef<
       sideOffset = 4,
       mountPortal = true,
       mountPortalContainer,
+      showArrow = false,
+      children,
       ...props
     },
     ref
@@ -49,7 +52,16 @@ const TooltipContent = React.forwardRef<
           className || ""
         )}
         {...props}
-      />
+      >
+        {children}
+        {showArrow && (
+          <TooltipPrimitive.Arrow
+            width={12}
+            height={7}
+            className="s-fill-border dark:s-fill-border-night"
+          />
+        )}
+      </TooltipPrimitive.Content>
     );
 
     const container = useSheetContainer(mountPortalContainer);

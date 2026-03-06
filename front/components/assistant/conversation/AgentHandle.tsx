@@ -1,4 +1,6 @@
+import { SidekickTooltipHandle } from "@app/components/assistant/conversation/SidekickTooltipHandle";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { cn } from "@dust-tt/sparkle";
 
 interface AgentHandleProps {
@@ -24,6 +26,9 @@ export function AgentHandle({
   };
 
   if (!canMention) {
+    if (agent.sId === GLOBAL_AGENTS_SID.COPILOT) {
+      return <SidekickTooltipHandle agent={agent} />;
+    }
     return <span>{agent.name}</span>;
   }
 
