@@ -126,7 +126,7 @@ Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_T
 
 Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
 
-If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), you can enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.
+If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.
 </instructions>`,
 
   companyData: `<company_data_guidelines>
