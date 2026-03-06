@@ -91,8 +91,7 @@ export function detectSkillsFromZip({
     return new Ok([]);
   }
 
-  const detectedSkills: DetectedSkill[] = [];
-  const seenNames = new Set<string>();
+  const allSkills: DetectedSkill[] = [];
 
   for (const skillDir of skillDirs) {
     const skillMdEntry = entryByPath.get(skillDir.skillMdPath);
@@ -109,12 +108,7 @@ export function detectSkillsFromZip({
     }
 
     const parsed = parseSkillMarkdown(contentResult.value);
-    if (!parsed.name || seenNames.has(parsed.name)) {
-      continue;
-    }
-    seenNames.add(parsed.name);
-
-    detectedSkills.push({
+    allSkills.push({
       name: parsed.name,
       skillMdPath: skillDir.skillMdPath,
       description: parsed.description,
@@ -123,5 +117,5 @@ export function detectSkillsFromZip({
     });
   }
 
-  return new Ok(detectedSkills);
+  return new Ok(allSkills.filter((s) => s.name.length > 0));
 }
