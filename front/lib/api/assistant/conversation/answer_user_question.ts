@@ -1,11 +1,10 @@
 import { isToolUserQuestionEvent } from "@app/lib/actions/mcp";
-import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/mentions";
+import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -48,6 +47,7 @@ export async function answerUserQuestion(
     userMessageId,
     userMessageVersion,
     userMessageUserId,
+    userMessageOrigin,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -65,20 +65,6 @@ export async function answerUserQuestion(
   if (!action) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
-    );
-  }
-
-  const agentStepContent =
-    await AgentStepContentResource.fetchByModelIdWithAuth(
-      auth,
-      action.stepContentId
-    );
-  if (!agentStepContent) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        `Agent step content not found: ${action.stepContentId}`
-      )
     );
   }
 
@@ -135,7 +121,7 @@ export async function answerUserQuestion(
       conversation
     );
 
-  if (blockedActions.filter((a) => a.messageId === messageId).length > 0) {
+  if (blockedActions.some((a) => a.messageId === messageId)) {
     logger.info(
       { blockedActions },
       "Skipping agent loop launch because there are remaining blocked actions"
@@ -152,8 +138,9 @@ export async function answerUserQuestion(
       conversationTitle,
       userMessageId,
       userMessageVersion,
+      userMessageOrigin,
     },
-    startStep: agentStepContent.step,
+    startStep: action.stepContent.step,
     waitForCompletion: true,
   });
 
