@@ -1,0 +1,63 @@
+front/types/shared/feature_flags.ts
+  d88ec7093329bef8 34-38,192-196
+sdks/js/src/types.ts
+  d88ec7093329bef8 723
+connectors/src/connectors/slack/lib/errors.ts
+  d88ec7093329bef8 22-23
+connectors/src/connectors/slack/bot.ts
+  b326b463a7961699 1182,1523,1540,1542,1546
+  d88ec7093329bef8 74,535,540-541,556-559,566,630,895,1008-1023,1033-1034,1039,1092,1278,1489,1495-1497,1499-1522,1525-1534,1536-1537,1541,1547-1554
+connectors/src/connectors/slack/chat/slack_stream_handler.ts
+  d88ec7093329bef8 3-4,12,15,36,38,41-42,52-54,68-71,74-75
+  a920374687f7db34 11,13,43-48,50-51,55-60,62,65-67,72
+connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+  b326b463a7961699 129,207,465,472,479-482,484,488-492,495,499-501,503,507,509,529
+  a920374687f7db34 320,462-464,470-471,487,493,510,524,584-585,587-590,595-606
+  d88ec7093329bef8 11,43,46-49,54-61,123-124,143-144,146-147,158,163-165,208-214,221-224,239,263-267,319,321-325,389-406,408-432,438-439,442,451,459-461,469,483,512,514,517-518,530,538,541-542,582-583,622,661-662,664,673,688,695,699,735,737,788-803,875,911-914,922-927,945
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "d0b64e68ebd79ec44d4ef5f61ddd98ab58dbd21a",
+  "prompts": {
+    "a920374687f7db34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a00569c-c284-46e7-852d-c2442870c638",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 305,
+      "total_deletions": 405,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    },
+    "b326b463a7961699": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ab45a41-0556-4087-a110-1647182b1ef0",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 348,
+      "total_deletions": 352,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    },
+    "d88ec7093329bef8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fcb0079-a82b-4d47-9a2d-8eb94e0b7409",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 724,
+      "total_deletions": 769,
+      "accepted_lines": 258,
+      "overriden_lines": 0
+    }
+  }
+}
