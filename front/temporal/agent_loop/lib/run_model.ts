@@ -17,15 +17,15 @@ import {
   buildToolsetsContext,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
-  buildUserContext,
-  buildWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/copilot_context";
-import {
   globalAgentInjectsMemory,
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
 } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  buildUserContext,
+  buildWorkspaceContext,
+} from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
