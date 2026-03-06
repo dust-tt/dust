@@ -1,4 +1,4 @@
-import { parseGitHubRepoUrl } from "@app/lib/api/skills/github_detection/parsing";
+import { parseGitHubRepoUrl } from "@app/lib/api/skills/detection/github/parsing";
 import {
   type DetectedSkillStatus,
   isImportableSkillStatus,

@@ -1,19 +1,21 @@
 import {
-  findSkillDirectories,
+  findGitHubSkillDirectories,
   parseGitHubRepoUrl,
-  parseSkillMarkdown,
-} from "@app/lib/api/skills/github_detection/parsing";
+} from "@app/lib/api/skills/detection/github/parsing";
 import type {
-  DetectedSkill,
-  DetectedSkillAttachment,
+  GitHubSkillDetectionError,
+  GitHubSkillDirectory,
   GitHubTreeEntry,
-  SkillDetectionError,
-  SkillDirectory,
-} from "@app/lib/api/skills/github_detection/types";
+} from "@app/lib/api/skills/detection/github/types";
 import {
   GitHubBlobResponseSchema,
   GitHubTreeResponseSchema,
-} from "@app/lib/api/skills/github_detection/types";
+} from "@app/lib/api/skills/detection/github/types";
+import {
+  collectAttachments,
+  parseSkillMarkdown,
+} from "@app/lib/api/skills/detection/parsing";
+import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -33,7 +35,7 @@ async function fetchRepoTree(
     owner: string;
     repo: string;
   }
-): Promise<Result<GitHubTreeEntry[], SkillDetectionError>> {
+): Promise<Result<GitHubTreeEntry[], GitHubSkillDetectionError>> {
   let rawData: unknown;
   try {
     const response = await octokit.request(
@@ -96,7 +98,7 @@ async function fetchBlobContent(
     repo: string;
     fileSha: string;
   }
-): Promise<Result<string, SkillDetectionError>> {
+): Promise<Result<string, GitHubSkillDetectionError>> {
   let rawData: unknown;
   try {
     const response = await octokit.request(
@@ -132,7 +134,7 @@ export async function detectSkillsFromGitHubRepo({
 }: {
   repoUrl: string;
   accessToken?: string;
-}): Promise<Result<DetectedSkill[], SkillDetectionError>> {
+}): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
   const parseResult = parseGitHubRepoUrl(repoUrl);
   if (parseResult.isErr()) {
     return parseResult;
@@ -147,15 +149,19 @@ export async function detectSkillsFromGitHubRepo({
   }
   const tree = treeResult.value;
 
-  const skillDirs = findSkillDirectories(tree);
+  const skillDirs = findGitHubSkillDirectories(tree);
   if (skillDirs.length === 0) {
     return new Ok([]);
   }
 
+  const fileEntries = tree
+    .filter((e) => e.type === "blob")
+    .map((e) => ({ path: e.path, isFile: true, sizeBytes: e.size ?? 0 }));
+
   const skills = await concurrentExecutor(
     skillDirs,
     async (skillDir) =>
-      buildDetectedSkill({ octokit, owner, repo, skillDir, tree }),
+      buildDetectedSkill({ octokit, owner, repo, skillDir, fileEntries }),
     { concurrency: FETCH_CONCURRENCY }
   );
 
@@ -181,14 +187,14 @@ async function buildDetectedSkill({
   owner,
   repo,
   skillDir,
-  tree,
+  fileEntries,
 }: {
   octokit: InstanceType<typeof Octokit>;
   owner: string;
   repo: string;
-  skillDir: SkillDirectory;
-  tree: GitHubTreeEntry[];
-}): Promise<Result<DetectedSkill, SkillDetectionError>> {
+  skillDir: GitHubSkillDirectory;
+  fileEntries: { path: string; isFile: boolean; sizeBytes: number }[];
+}): Promise<Result<DetectedSkill, GitHubSkillDetectionError>> {
   const blobResult = await fetchBlobContent(octokit, {
     owner,
     repo,
@@ -208,35 +214,12 @@ async function buildDetectedSkill({
   }
   const parsed = parseSkillMarkdown(blobResult.value);
 
-  const attachments: DetectedSkillAttachment[] = [];
-  const lastSlash = skillDir.skillMdPath.lastIndexOf("/");
-  const dirPrefix = skillDir.skillMdPath.slice(0, lastSlash + 1);
-
-  for (const entry of tree) {
-    if (entry.type !== "blob") {
-      continue;
-    }
-    if (!entry.path.startsWith(dirPrefix)) {
-      continue;
-    }
-    if (entry.path === skillDir.skillMdPath) {
-      continue;
-    }
-
-    const relativePath = entry.path.slice(dirPrefix.length);
-
-    attachments.push({
-      path: relativePath,
-      sizeBytes: entry.size ?? 0,
-    });
-  }
-
   return new Ok({
     name: parsed.name,
     skillMdPath: skillDir.skillMdPath,
     description: parsed.description,
     instructions: parsed.instructions,
-    attachments,
+    attachments: collectAttachments(fileEntries, skillDir),
   });
 }
 
