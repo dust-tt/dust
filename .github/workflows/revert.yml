@@ -43,6 +43,37 @@ on:
         required: true
       GCLOUD_EU_PROJECT_ID:
         required: true
+  workflow_call:
+    inputs:
+      region:
+        description: "Region to revert"
+        required: true
+        type: string
+      image_tag:
+        description: "The image tag/SHA to deploy"
+        type: string
+        required: true
+      component:
+        description: "Component to revert"
+        type: string
+        required: true
+      slack_thread_ts:
+        description: "Slack thread timestamp for notifications"
+        type: string
+        required: false
+    secrets:
+      SLACK_CHANNEL_ID:
+        required: true
+      SLACK_BOT_TOKEN:
+        required: true
+      INFRA_DISPATCH_APP_ID:
+        required: true
+      INFRA_DISPATCH_APP_PRIVATE_KEY:
+        required: true
+      GCLOUD_US_PROJECT_ID:
+        required: true
+      GCLOUD_EU_PROJECT_ID:
+        required: true
 
 permissions:
   contents: read
@@ -63,11 +94,12 @@ jobs:
   notify-start:
     runs-on: ubuntu-latest
     outputs:
-      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+      thread_ts: ${{ inputs.slack_thread_ts || steps.build_message.outputs.thread_ts }}
     steps:
       - uses: actions/checkout@v3
 
       - name: Notify Start
+        if: ${{ !inputs.slack_thread_ts }}
         id: build_message
         uses: ./.github/actions/slack-notify
         with:
