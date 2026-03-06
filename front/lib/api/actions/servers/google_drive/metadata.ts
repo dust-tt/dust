@@ -330,7 +330,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available. If false, the edit will be rejected."
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
         ),
     },
     stake: "low",
@@ -350,7 +350,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available. If false, the edit will be rejected."
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
         ),
     },
     stake: "low",
@@ -374,7 +374,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available. If false, the edit will be rejected."
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
         ),
       requests: GoogleDocsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the document. Include multiple operations in a single call to minimize requests. " +
@@ -400,7 +400,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available. If false, the edit will be rejected."
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
         ),
       range: z
         .string()
@@ -446,7 +446,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available. If false, the edit will be rejected."
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
         ),
       requests: GoogleSheetsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the spreadsheet. Include multiple operations in a single call to minimize requests. " +
@@ -475,7 +475,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available. If false, the edit will be rejected."
+          "Whether the user has edit access to this file, as returned by search_files or get_file_content in the capabilities.canEdit field. You MUST pass this value if available."
         ),
       requests: GoogleSlidesRequestsArraySchema.describe(
         "An array of batch update requests to apply to the presentation. Include multiple operations in a single call to minimize requests. " +

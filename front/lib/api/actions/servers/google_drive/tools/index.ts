@@ -683,7 +683,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "You only have view access to this file. To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.",
+          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
         },
       ]);
     }
@@ -697,7 +697,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         return new Ok([
           {
             type: "text" as const,
-            text: `You only have view access to "${accessCheck.fileName}". To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.`,
+            text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
           },
         ]);
       }
@@ -740,7 +740,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "You only have view access to this file. To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.",
+          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
         },
       ]);
     }
@@ -754,7 +754,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         return new Ok([
           {
             type: "text" as const,
-            text: `You only have view access to "${accessCheck.fileName}". To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.`,
+            text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
           },
         ]);
       }
@@ -800,7 +800,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "You only have view access to this file. To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.",
+          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
         },
       ]);
     }
@@ -812,7 +812,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           return new Ok([
             {
               type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.`,
+              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
             },
           ]);
         }
@@ -875,7 +875,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "You only have view access to this file. To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.",
+          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
         },
       ]);
     }
@@ -887,7 +887,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           return new Ok([
             {
               type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.`,
+              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
             },
           ]);
         }
@@ -934,7 +934,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "You only have view access to this file. To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.",
+          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
         },
       ]);
     }
@@ -946,7 +946,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           return new Ok([
             {
               type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.`,
+              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
             },
           ]);
         }
@@ -1001,7 +1001,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "You only have view access to this file. To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.",
+          text: "You only have view access to this file. The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.",
         },
       ]);
     }
@@ -1013,7 +1013,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           return new Ok([
             {
               type: "text" as const,
-              text: `You only have view access to "${accessCheck.fileName}". To make changes, ask the file owner to grant you edit permissions, or offer to use copy_file to create an editable copy.`,
+              text: `You only have view access to "${accessCheck.fileName}". The user can request edit access from the file owner, or you can ask if they'd like you to call copy_file to create an editable copy.`,
             },
           ]);
         }
