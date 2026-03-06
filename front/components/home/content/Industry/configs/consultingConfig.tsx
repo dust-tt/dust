@@ -79,7 +79,8 @@ export const consultingConfig: IndustryPageConfig = {
         value: "20",
         unit: "min",
         type: "Deep Research",
-        description: "across sectors, clients & projects vs. 4 days of traditional research",
+        description:
+          "across sectors, clients & projects vs. 4 days of traditional research",
       },
     ],
   },
