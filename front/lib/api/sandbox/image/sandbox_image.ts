@@ -84,6 +84,17 @@ export class SandboxImage {
     });
   }
 
+  static fromDocker(imageRef: string): SandboxImage {
+    return new SandboxImage({
+      baseImage: { type: "docker", imageRef },
+      operations: [],
+      tools: [],
+      resources: DEFAULT_RESOURCES,
+      network: DEFAULT_NETWORK,
+      workdir: "/home/user",
+    });
+  }
+
   runCmd(command: string): SandboxImage {
     const operation: Operation = {
       type: "run",

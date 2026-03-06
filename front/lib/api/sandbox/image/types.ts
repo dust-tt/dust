@@ -114,4 +114,5 @@ export interface ToolManifest {
 
 export type BaseImage =
   | { readonly type: "ubuntu"; readonly version: string }
-  | { readonly type: "template"; readonly id: SandboxImageId };
+  | { readonly type: "template"; readonly id: SandboxImageId }
+  | { readonly type: "docker"; readonly imageRef: string };
