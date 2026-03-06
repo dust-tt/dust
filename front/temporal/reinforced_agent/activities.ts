@@ -1,44 +1,74 @@
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { aggregateSyntheticSuggestions } from "@app/lib/reinforced_agent/aggregate_suggestions";
 import { analyzeConversationForReinforcement } from "@app/lib/reinforced_agent/analyze_conversation";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types/shared/model_id";
-import { heartbeat } from "@temporalio/activity";
+import { ApplicationFailure } from "@temporalio/common";
 
 const HOURS_LOOKBACK = 24;
 
-/**
- * List all workspace model IDs.
- */
-export async function getWorkspacesActivity(): Promise<ModelId[]> {
-  return WorkspaceResource.listAllModelIds();
+async function getAuthForWorkspace(
+  workspaceId: string
+): Promise<Authenticator> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    throw ApplicationFailure.nonRetryable(
+      `Workspace not found: ${workspaceId}`
+    );
+  }
+  return Authenticator.internalAdminForWorkspace(workspaceId);
 }
 
 /**
- * Find conversations updated in the last 24 hours that have agent messages,
- * and analyze each one to create synthetic suggestions.
+ * List workspace sIds that have the reinforced_agents feature flag.
  */
-export async function analyzeRecentConversationsActivity({
+export async function getFlaggedWorkspacesActivity(): Promise<string[]> {
+  const allWorkspaces = await WorkspaceResource.listAll();
+  const flaggedIds: string[] = [];
+
+  for (const workspace of allWorkspaces) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    if (featureFlags.includes("reinforced_agents")) {
+      flaggedIds.push(workspace.sId);
+    }
+  }
+
+  return flaggedIds;
+}
+
+/**
+ * List agent configuration sIds for active (non-global) agents in a workspace.
+ */
+export async function getAgentConfigurationsActivity({
   workspaceId,
 }: {
-  workspaceId: ModelId;
-}): Promise<void> {
-  const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
-  if (!workspace) {
-    logger.error({ workspaceId }, "ReinforcedAgent: workspace not found");
-    return;
-  }
+  workspaceId: string;
+}): Promise<string[]> {
+  const auth = await getAuthForWorkspace(workspaceId);
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const agents = await getAgentConfigurationsForView({
+    auth,
+    agentsGetView: "published",
+    variant: "extra_light",
+    dangerouslySkipPermissionFiltering: true,
+  });
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("reinforced_agents")) {
-    return;
-  }
+  return agents.filter((a) => a.id > 0).map((a) => a.sId);
+}
+
+/**
+ * List recent conversation sIds that involved a specific agent.
+ */
+export async function getRecentConversationsForAgentActivity({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}): Promise<string[]> {
+  const auth = await getAuthForWorkspace(workspaceId);
 
   const updatedSince = new Date();
   updatedSince.setHours(updatedSince.getHours() - HOURS_LOOKBACK);
@@ -48,90 +78,42 @@ export async function analyzeRecentConversationsActivity({
       updatedSince,
     });
 
-  if (recentConversations.length === 0) {
-    return;
-  }
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      conversationCount: recentConversations.length,
-    },
-    "ReinforcedAgent: analyzing recent conversations"
-  );
-
-  heartbeat();
-
-  await concurrentExecutor(
-    recentConversations,
-    async ({ conversationId, agentConfigurationIds }) => {
-      for (const agentConfigurationId of agentConfigurationIds) {
-        await analyzeConversationForReinforcement(auth, {
-          conversationId,
-          agentConfigurationId,
-        });
-      }
-      heartbeat();
-    },
-    { concurrency: 2 }
-  );
+  return recentConversations
+    .filter((c) => c.agentConfigurationIds.includes(agentConfigurationId))
+    .map((c) => c.conversationId);
 }
 
 /**
- * For each agent that has synthetic suggestions, aggregate them into
- * user-facing pending suggestions.
+ * Analyze a single conversation for a specific agent.
  */
-export async function aggregateSyntheticSuggestionsActivity({
+export async function analyzeConversationActivity({
   workspaceId,
+  agentConfigurationId,
+  conversationId,
 }: {
-  workspaceId: ModelId;
+  workspaceId: string;
+  agentConfigurationId: string;
+  conversationId: string;
 }): Promise<void> {
-  const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
-  if (!workspace) {
-    logger.error(
-      { workspaceId },
-      "ReinforcedAgent: workspace not found for aggregation"
-    );
-    return;
-  }
+  const auth = await getAuthForWorkspace(workspaceId);
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  await analyzeConversationForReinforcement(auth, {
+    conversationId,
+    agentConfigurationId,
+  });
+}
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("reinforced_agents")) {
-    return;
-  }
+/**
+ * Aggregate synthetic suggestions for a specific agent into pending suggestions.
+ */
+export async function aggregateSuggestionsActivity({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
 
-  // Fetch all suggestions to find distinct agent config IDs with synthetic suggestions.
-  const allSuggestions = await AgentSuggestionResource.listAll(auth);
-  const agentIdsWithSynthetic = [
-    ...new Set(
-      allSuggestions
-        .filter((s) => s.source === "synthetic" && s.state === "pending")
-        .map((s) => s.agentConfigurationSId)
-    ),
-  ];
-
-  if (agentIdsWithSynthetic.length === 0) {
-    return;
-  }
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      agentCount: agentIdsWithSynthetic.length,
-    },
-    "ReinforcedAgent: aggregating synthetic suggestions"
-  );
-
-  heartbeat();
-
-  await concurrentExecutor(
-    agentIdsWithSynthetic,
-    async (agentConfigurationId) => {
-      await aggregateSyntheticSuggestions(auth, agentConfigurationId);
-      heartbeat();
-    },
-    { concurrency: 2 }
-  );
+  await aggregateSyntheticSuggestions(auth, agentConfigurationId);
 }
