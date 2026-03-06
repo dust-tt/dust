@@ -2,9 +2,11 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { ReinforcedResponseSchema } from "@app/lib/reinforced_agent/schemas";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 const AGGREGATE_FUNCTION_NAME = "aggregate_suggestions";
 
@@ -137,22 +139,16 @@ export async function aggregateSyntheticSuggestions(
     return;
   }
 
-  // Prepare synthetic suggestions for the prompt.
-  const suggestionsForPrompt = syntheticSuggestions.map((s) => {
-    const json = s.toJSON();
-    return {
+  // Prepare synthetic suggestions for the prompt (instructions only).
+  const suggestionsForPrompt = syntheticSuggestions
+    .map((s) => s.toJSON())
+    .filter((json) => json.kind === "instructions")
+    .map((json) => ({
       kind: json.kind,
       analysis: json.analysis,
-      content:
-        json.kind === "instructions"
-          ? (json.suggestion as { content: string }).content
-          : "",
-      targetBlockId:
-        json.kind === "instructions"
-          ? (json.suggestion as { targetBlockId: string }).targetBlockId
-          : "instructions-root",
-    };
-  });
+      content: json.suggestion.content,
+      targetBlockId: json.suggestion.targetBlockId,
+    }));
 
   const prompt = buildAggregationPrompt(agentConfig.name, suggestionsForPrompt);
 
@@ -198,18 +194,20 @@ export async function aggregateSyntheticSuggestions(
     return;
   }
 
-  const { suggestions } = action.arguments as {
-    suggestions: Array<{
-      kind: string;
-      content: string;
-      targetBlockId: string;
-      analysis: string;
-    }>;
-  };
+  const parsed = ReinforcedResponseSchema.safeParse(action.arguments);
+  if (!parsed.success) {
+    logger.warn(
+      { agentConfigurationId, error: parsed.error },
+      "ReinforcedAgent: invalid LLM aggregation response shape"
+    );
+    return;
+  }
+
+  const { suggestions } = parsed.data;
 
   // Create pending suggestions.
   let createdCount = 0;
-  for (const suggestion of suggestions ?? []) {
+  for (const suggestion of suggestions) {
     if (suggestion.kind !== "instructions") {
       continue;
     }
@@ -218,7 +216,8 @@ export async function aggregateSyntheticSuggestions(
       kind: "instructions",
       suggestion: {
         content: suggestion.content,
-        targetBlockId: suggestion.targetBlockId,
+        targetBlockId:
+          suggestion.targetBlockId || INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         type: "replace",
       },
       analysis: suggestion.analysis,
