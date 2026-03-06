@@ -1,5 +1,6 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isUserQuestionAnswer } from "@app/lib/actions/types";
 import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -13,30 +14,22 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
 
     // Check if we have a resume state with the user's answer.
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
-
-    if (
+    const answer =
       resumeState &&
       typeof resumeState === "object" &&
       "answer" in resumeState
-    ) {
-      const answer = resumeState.answer;
-      const selectedOptions: number[] =
-        answer && typeof answer === "object" && "selectedOptions" in answer
-          ? (answer.selectedOptions as number[])
-          : [];
-      const customResponse: string | undefined =
-        answer && typeof answer === "object" && "customResponse" in answer
-          ? (answer.customResponse as string | undefined)
-          : undefined;
+        ? resumeState.answer
+        : undefined;
 
+    if (isUserQuestionAnswer(answer)) {
       const parts: string[] = [];
-      for (const idx of selectedOptions) {
+      for (const idx of answer.selectedOptions) {
         if (idx >= 0 && idx < options.length) {
           parts.push(options[idx].label);
         }
       }
-      if (customResponse) {
-        parts.push(customResponse);
+      if (answer.customResponse) {
+        parts.push(answer.customResponse);
       }
 
       const answerText =
