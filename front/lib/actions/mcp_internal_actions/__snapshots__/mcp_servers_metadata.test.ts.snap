@@ -443,7 +443,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_attachments": "never_ask",
     "list_objects": "never_ask",
     "read_attachment": "never_ask",
-    "update_object": "high",
+    "update_object": "medium",
   },
   "salesloft": {
     "get_actions": "never_ask",
