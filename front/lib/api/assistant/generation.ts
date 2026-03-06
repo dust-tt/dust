@@ -421,7 +421,7 @@ export function constructPromptMultiActions(
     errorContext,
     agentsList,
     conversation,
-    serverToolsAndInstructions,
+    stableServerToolsAndInstructions,
     conditionalJitServerToolsAndInstructions,
     enabledSkills,
     equippedSkills,
@@ -438,7 +438,7 @@ export function constructPromptMultiActions(
     errorContext?: string;
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
-    serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    stableServerToolsAndInstructions?: ServerToolsAndInstructions[];
     conditionalJitServerToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
@@ -480,7 +480,7 @@ export function constructPromptMultiActions(
     hasAvailableActions,
     model,
     agentConfiguration,
-    serverToolsAndInstructions,
+    serverToolsAndInstructions: stableServerToolsAndInstructions,
   });
   const skillsSection = constructSkillsSection({
     enabledSkills,

@@ -23,11 +23,8 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-async function getAllJITServers(
-  ...args: Parameters<typeof getJITServers>
-) {
-  const { stableServers, conditionalServers } =
-    await getJITServers(...args);
+async function getAllJITServers(...args: Parameters<typeof getJITServers>) {
+  const { stableServers, conditionalServers } = await getJITServers(...args);
   return [...stableServers, ...conditionalServers];
 }
 

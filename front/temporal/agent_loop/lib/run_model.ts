@@ -228,10 +228,7 @@ export async function runModel(
       attachments,
     });
     const hasConditionalJITTools = conditionalJitServers.length > 0;
-    const jitServers = [
-      ...stableJitServers,
-      ...conditionalJitServers,
-    ];
+    const jitServers = [...stableJitServers, ...conditionalJitServers];
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
@@ -395,7 +392,7 @@ export async function runModel(
     errorContext: mcpToolsListingError,
     agentsList,
     conversation,
-    serverToolsAndInstructions: stableServerToolsAndInstructions,
+    stableServerToolsAndInstructions,
     conditionalJitServerToolsAndInstructions,
     enabledSkills,
     equippedSkills,

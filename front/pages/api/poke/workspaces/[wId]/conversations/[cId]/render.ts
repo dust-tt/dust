@@ -161,12 +161,11 @@ async function handler(
 
       // Build tools list and prompt similar to the agent loop.
       const attachments = await listAttachments(auth, { conversation });
-      const { stableServers, conditionalServers } =
-        await getJITServers(auth, {
-          agentConfiguration,
-          conversation,
-          attachments,
-        });
+      const { stableServers, conditionalServers } = await getJITServers(auth, {
+        agentConfiguration,
+        conversation,
+        attachments,
+      });
       const jitServers = [...stableServers, ...conditionalServers];
 
       const { enabledSkills, equippedSkills } =
@@ -260,7 +259,7 @@ async function handler(
         errorContext: mcpToolsListingError,
         agentsList,
         conversation,
-        serverToolsAndInstructions,
+        stableServerToolsAndInstructions: serverToolsAndInstructions,
         enabledSkills,
         equippedSkills,
       });
