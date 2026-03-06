@@ -18,6 +18,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
+  getAndClearPendingInputText: () => string | null;
+  setPendingInputText: (text: string | null) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: {
     onCapture: (type: "text" | "screenshot") => void;
@@ -28,6 +30,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
+  getAndClearPendingInputText: () => null,
+  setPendingInputText: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -62,6 +66,11 @@ export function InputBarContextProvider({
     null
   );
 
+  // Useful when a component needs to pre-fill the input bar with text (e.g. butler suggestions).
+  const [pendingInputText, setPendingInputTextState] = useState<string | null>(
+    null
+  );
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectedAgentOuter = useCallback(
     (agentMention: RichAgentMention | null) => {
@@ -83,12 +92,24 @@ export function InputBarContextProvider({
     return previousSelectedAgent;
   }, [selectedAgent, setSelectedAgent]);
 
+  const getAndClearPendingInputText = useCallback(() => {
+    const text = pendingInputText;
+    setPendingInputTextState(null);
+    return text;
+  }, [pendingInputText]);
+
+  const setPendingInputText = useCallback((text: string | null) => {
+    setPendingInputTextState(text);
+  }, []);
+
   const value = useMemo(
     () => ({
       animate,
       setAnimate,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
+      getAndClearPendingInputText,
+      setPendingInputText,
       captureActions,
       fileUploaderService,
     }),
@@ -96,6 +117,8 @@ export function InputBarContextProvider({
       animate,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
+      getAndClearPendingInputText,
+      setPendingInputText,
       captureActions,
       fileUploaderService,
     ]
