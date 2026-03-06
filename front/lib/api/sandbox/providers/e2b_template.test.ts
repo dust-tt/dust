@@ -26,7 +26,7 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 // Untyped mock for TemplateBuilder - keeps vi.fn() mock properties accessible
-const mockTemplateBuilder = {
+const mockDockerRegistryBuilder = {
   copy: vi.fn().mockReturnThis(),
   copyItems: vi.fn().mockReturnThis(),
   remove: vi.fn().mockReturnThis(),
@@ -50,18 +50,15 @@ const mockTemplateBuilder = {
   betaSetDevContainerStart: vi.fn().mockReturnThis(),
 };
 
-// Mock for Template() factory (has fromUbuntuImage, fromTemplate, etc.)
+// Mock for Template() factory (has fromTemplate, etc.)
 const mockE2BTemplateFactory = {
-  fromUbuntuImage: vi.fn().mockReturnValue(mockTemplateBuilder),
-  fromTemplate: vi.fn().mockReturnValue(mockTemplateBuilder),
-  fromGCPRegistry: vi.fn().mockReturnValue(mockTemplateBuilder),
+  fromTemplate: vi.fn().mockReturnValue(mockDockerRegistryBuilder),
 };
 
 // Type-safe factory wrapper - the runtime mock satisfies TemplateBuilder interface
 function createMockDockerRegistryFactory(): DockerRegistryFactory {
   return (_imageRef: string): TemplateBuilder => {
-    // The mock has all required methods; return type annotation satisfies TypeScript
-    return mockTemplateBuilder;
+    return mockDockerRegistryBuilder;
   };
 }
 
@@ -90,10 +87,14 @@ describe("buildSandboxImage()", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockDockerRegistryFactory).toHaveBeenCalled();
-    expect(mockTemplateBuilder.runCmd).toHaveBeenCalled();
-    expect(mockTemplateBuilder.setEnvs).toHaveBeenCalled();
-    expect(mockTemplateBuilder.setWorkdir).toHaveBeenCalledWith("/home/user");
+    expect(mockDockerRegistryFactory).toHaveBeenCalledWith(
+      "dust-sbx-bedrock:latest"
+    );
+    expect(mockDockerRegistryBuilder.runCmd).toHaveBeenCalled();
+    expect(mockDockerRegistryBuilder.setEnvs).toHaveBeenCalled();
+    expect(mockDockerRegistryBuilder.setWorkdir).toHaveBeenCalledWith(
+      "/home/user"
+    );
   });
 
   test("returns templateId from E2B build result", async () => {
@@ -120,7 +121,7 @@ describe("buildSandboxImage()", () => {
     });
 
     expect(mockBuild).toHaveBeenCalledWith(
-      mockTemplateBuilder,
+      mockDockerRegistryBuilder,
       "dust-base_production",
       expect.objectContaining({
         apiKey: "test-api-key",
@@ -153,7 +154,7 @@ describe("buildSandboxImage()", () => {
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
 
-    const runCmdCalls = mockTemplateBuilder.runCmd.mock.calls;
+    const runCmdCalls = mockDockerRegistryBuilder.runCmd.mock.calls;
     const hasNpmInstall = runCmdCalls.some((call: string[]) =>
       call[0].includes("npm install -g")
     );
@@ -168,13 +169,13 @@ describe("buildSandboxImage()", () => {
       _imageRef: string
     ): TemplateBuilder => {
       callOrder.push("fromDockerRegistry");
-      return mockTemplateBuilder;
+      return mockDockerRegistryBuilder;
     };
-    mockTemplateBuilder.setEnvs.mockImplementation(() => {
+    mockDockerRegistryBuilder.setEnvs.mockImplementation(() => {
       callOrder.push("setEnvs");
-      return mockTemplateBuilder;
+      return mockDockerRegistryBuilder;
     });
-    mockTemplateBuilder.runCmd.mockImplementation((cmd: string) => {
+    mockDockerRegistryBuilder.runCmd.mockImplementation((cmd: string) => {
       if (cmd.includes("uv pip install")) {
         callOrder.push("runCmd:pip");
       } else if (cmd.includes("npm install")) {
@@ -184,11 +185,11 @@ describe("buildSandboxImage()", () => {
       } else {
         callOrder.push("runCmd");
       }
-      return mockTemplateBuilder;
+      return mockDockerRegistryBuilder;
     });
-    mockTemplateBuilder.setWorkdir.mockImplementation(() => {
+    mockDockerRegistryBuilder.setWorkdir.mockImplementation(() => {
       callOrder.push("setWorkdir");
-      return mockTemplateBuilder;
+      return mockDockerRegistryBuilder;
     });
 
     await buildSandboxImage(DUST_BASE_IMAGE, TEST_IMAGE_ID, {
@@ -211,7 +212,7 @@ describe("buildSandboxImage()", () => {
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
 
-    const runCmdCalls = mockTemplateBuilder.runCmd.mock.calls;
+    const runCmdCalls = mockDockerRegistryBuilder.runCmd.mock.calls;
     const aptInstallCall = runCmdCalls.find(
       (call: string[]) =>
         call[0].includes("apt-get install") &&
@@ -229,7 +230,7 @@ describe("buildSandboxImage()", () => {
       dockerRegistryFactory: mockDockerRegistryFactory,
     });
 
-    const runCmdCalls = mockTemplateBuilder.runCmd.mock.calls;
+    const runCmdCalls = mockDockerRegistryBuilder.runCmd.mock.calls;
     const pipInstallCall = runCmdCalls.find(
       (call: string[]) =>
         call[0].includes("uv pip install") &&

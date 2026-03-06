@@ -85,9 +85,11 @@ export class E2BSandboxProvider implements SandboxProvider {
 
     let sandbox: Sandbox;
     try {
+      const envVars = config.envVars ?? {};
+      const hasEnvVars = Object.keys(envVars).length > 0;
       sandbox = await Sandbox.create(templateId, {
         ...this.connectionOpts(),
-        envs: config.envVars,
+        envs: hasEnvVars ? envVars : undefined,
         timeoutMs: SANDBOX_LIFETIME_MS,
         requestTimeoutMs: REQUEST_TIMEOUT_MS,
         ...(config.network

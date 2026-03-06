@@ -94,10 +94,7 @@ class E2BTemplateBuilder {
     let builder: TemplateBuilder;
 
     switch (baseImage.type) {
-      case "ubuntu":
-        builder = E2BTemplate().fromUbuntuImage(baseImage.version);
-        break;
-      case "template":
+      case "sandbox":
         builder = E2BTemplate().fromTemplate(
           formatSandboxImageId(baseImage.id)
         );

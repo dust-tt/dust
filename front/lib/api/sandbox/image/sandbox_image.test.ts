@@ -3,66 +3,58 @@ import { describe, expect, test } from "vitest";
 import { SandboxImage } from "./sandbox_image";
 import type { SandboxImageId } from "./types";
 
-describe("SandboxImage.fromUbuntu()", () => {
-  test("creates image with ubuntu base", () => {
-    const image = SandboxImage.fromUbuntu("22.04");
+describe("SandboxImage.fromSandbox()", () => {
+  test("creates image with sandbox base", () => {
+    const id: SandboxImageId = { imageName: "dust-base", tag: "staging" };
+    const image = SandboxImage.fromSandbox(id);
 
-    expect(image.baseImage.type).toBe("ubuntu");
-    if (image.baseImage.type === "ubuntu") {
-      expect(image.baseImage.version).toBe("22.04");
-    }
-  });
-
-  test("uses default version when not provided", () => {
-    const image = SandboxImage.fromUbuntu();
-
-    if (image.baseImage.type === "ubuntu") {
-      expect(image.baseImage.version).toBe("22.04");
+    expect(image.baseImage.type).toBe("sandbox");
+    if (image.baseImage.type === "sandbox") {
+      expect(image.baseImage.id).toEqual(id);
     }
   });
 
   test("starts with empty operations and tools", () => {
-    const image = SandboxImage.fromUbuntu();
+    const id: SandboxImageId = { imageName: "dust-base", tag: "staging" };
+    const image = SandboxImage.fromSandbox(id);
 
     expect(image.operations).toHaveLength(0);
     expect(image.tools).toHaveLength(0);
   });
 
   test("has default resources", () => {
-    const image = SandboxImage.fromUbuntu();
+    const id: SandboxImageId = { imageName: "dust-base", tag: "staging" };
+    const image = SandboxImage.fromSandbox(id);
 
     expect(image.resources.vcpu).toBe(1);
     expect(image.resources.memoryMb).toBe(512);
   });
 
   test("has default network policy", () => {
-    const image = SandboxImage.fromUbuntu();
+    const id: SandboxImageId = { imageName: "dust-base", tag: "staging" };
+    const image = SandboxImage.fromSandbox(id);
 
     expect(image.network.mode).toBe("deny_all");
   });
 
   test("has default workdir", () => {
-    const image = SandboxImage.fromUbuntu();
+    const id: SandboxImageId = { imageName: "dust-base", tag: "staging" };
+    const image = SandboxImage.fromSandbox(id);
 
     expect(image.workdir).toBe("/home/user");
   });
-});
 
-describe("SandboxImage.fromTemplate()", () => {
-  test("creates image with template reference", () => {
+  test("has empty runEnv by default", () => {
     const id: SandboxImageId = { imageName: "dust-base", tag: "staging" };
-    const image = SandboxImage.fromTemplate(id);
+    const image = SandboxImage.fromSandbox(id);
 
-    expect(image.baseImage.type).toBe("template");
-    if (image.baseImage.type === "template") {
-      expect(image.baseImage.id).toEqual(id);
-    }
+    expect(image.runEnv).toEqual({});
   });
 });
 
 describe("SandboxImage.runCmd()", () => {
   test("adds run operation", () => {
-    const image = SandboxImage.fromUbuntu().runCmd("echo hello");
+    const image = SandboxImage.fromDocker("ubuntu:22.04").runCmd("echo hello");
 
     expect(image.operations).toHaveLength(1);
     expect(image.operations[0].type).toBe("run");
@@ -73,7 +65,7 @@ describe("SandboxImage.runCmd()", () => {
   });
 
   test("returns new image instance", () => {
-    const original = SandboxImage.fromUbuntu();
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
     const modified = original.runCmd("echo hello");
 
     expect(modified).not.toBe(original);
@@ -84,7 +76,7 @@ describe("SandboxImage.runCmd()", () => {
 
 describe("SandboxImage.registerTool()", () => {
   test("registers single tool without installCmd", () => {
-    const image = SandboxImage.fromUbuntu().registerTool({
+    const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
       name: "dsbx",
       description: "Dust CLI",
     });
@@ -96,7 +88,7 @@ describe("SandboxImage.registerTool()", () => {
   });
 
   test("registers single tool with installCmd", () => {
-    const image = SandboxImage.fromUbuntu().registerTool(
+    const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool(
       { name: "curl", description: "HTTP client" },
       { installCmd: "apt-get install -y curl" }
     );
@@ -111,7 +103,7 @@ describe("SandboxImage.registerTool()", () => {
   });
 
   test("registers multiple tools with single installCmd", () => {
-    const image = SandboxImage.fromUbuntu().registerTool(
+    const image = SandboxImage.fromDocker("ubuntu:22.04").registerTool(
       [
         { name: "pandas", description: "Data analysis" },
         { name: "numpy", description: "Numerical computing" },
@@ -136,7 +128,7 @@ describe("SandboxImage.registerTool()", () => {
   });
 
   test("returns new image instance", () => {
-    const original = SandboxImage.fromUbuntu();
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
     const modified = original.registerTool({
       name: "curl",
       description: "HTTP client",
@@ -150,7 +142,10 @@ describe("SandboxImage.registerTool()", () => {
 
 describe("SandboxImage.copy()", () => {
   test("accepts string path", () => {
-    const image = SandboxImage.fromUbuntu().copy("./src", "/app/src");
+    const image = SandboxImage.fromDocker("ubuntu:22.04").copy(
+      "./src",
+      "/app/src"
+    );
 
     expect(image.operations).toHaveLength(1);
     expect(image.operations[0].type).toBe("copy");
@@ -164,7 +159,7 @@ describe("SandboxImage.copy()", () => {
   });
 
   test("accepts content generator callback", () => {
-    const image = SandboxImage.fromUbuntu().copy(
+    const image = SandboxImage.fromDocker("ubuntu:22.04").copy(
       () => "hello world",
       "/app/file.txt"
     );
@@ -181,7 +176,7 @@ describe("SandboxImage.copy()", () => {
   });
 
   test("accepts content generator returning Buffer", () => {
-    const image = SandboxImage.fromUbuntu().copy(
+    const image = SandboxImage.fromDocker("ubuntu:22.04").copy(
       () => Buffer.from("binary data"),
       "/app/data.bin"
     );
@@ -199,7 +194,7 @@ describe("SandboxImage.copy()", () => {
 
 describe("SandboxImage.setWorkdir()", () => {
   test("adds workdir operation and updates workdir property", () => {
-    const image = SandboxImage.fromUbuntu().setWorkdir("/app");
+    const image = SandboxImage.fromDocker("ubuntu:22.04").setWorkdir("/app");
 
     expect(image.workdir).toBe("/app");
     expect(image.operations).toHaveLength(1);
@@ -212,7 +207,7 @@ describe("SandboxImage.setWorkdir()", () => {
 
 describe("SandboxImage.withResources()", () => {
   test("updates resources", () => {
-    const image = SandboxImage.fromUbuntu().withResources({
+    const image = SandboxImage.fromDocker("ubuntu:22.04").withResources({
       vcpu: 4,
       memoryMb: 8192,
     });
@@ -222,7 +217,7 @@ describe("SandboxImage.withResources()", () => {
   });
 
   test("returns new image instance", () => {
-    const original = SandboxImage.fromUbuntu();
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
     const modified = original.withResources({ vcpu: 4, memoryMb: 8192 });
 
     expect(modified).not.toBe(original);
@@ -232,7 +227,7 @@ describe("SandboxImage.withResources()", () => {
 
 describe("SandboxImage.withNetwork()", () => {
   test("updates network policy", () => {
-    const image = SandboxImage.fromUbuntu().withNetwork({
+    const image = SandboxImage.fromDocker("ubuntu:22.04").withNetwork({
       mode: "deny_all",
       allowlist: ["example.com", "api.example.com"],
     });
@@ -244,7 +239,7 @@ describe("SandboxImage.withNetwork()", () => {
 
 describe("SandboxImage immutability", () => {
   test("chained operations preserve original instances", () => {
-    const original = SandboxImage.fromUbuntu();
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
     const afterInstall = original.registerTool(
       { name: "curl", description: "HTTP client" },
       { installCmd: "apt-get install -y curl" }
@@ -267,7 +262,7 @@ describe("SandboxImage immutability", () => {
 
 describe("SandboxImage.withToolManifest()", () => {
   test("adds copy operation with content generator", () => {
-    const image = SandboxImage.fromUbuntu().withToolManifest();
+    const image = SandboxImage.fromDocker("ubuntu:22.04").withToolManifest();
 
     expect(image.operations).toHaveLength(1);
     expect(image.operations[0].type).toBe("copy");
@@ -283,7 +278,7 @@ describe("SandboxImage.withToolManifest()", () => {
   });
 
   test("accepts custom path and format", () => {
-    const image = SandboxImage.fromUbuntu().withToolManifest({
+    const image = SandboxImage.fromDocker("ubuntu:22.04").withToolManifest({
       path: "/custom/path/manifest.json",
       format: "json",
     });
@@ -299,7 +294,7 @@ describe("SandboxImage.withToolManifest()", () => {
   });
 
   test("uses correct default extension based on format", () => {
-    const jsonImage = SandboxImage.fromUbuntu().withToolManifest({
+    const jsonImage = SandboxImage.fromDocker("ubuntu:22.04").withToolManifest({
       format: "json",
     });
 
@@ -311,7 +306,7 @@ describe("SandboxImage.withToolManifest()", () => {
   });
 
   test("returns new instance (immutability)", () => {
-    const original = SandboxImage.fromUbuntu();
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
     const modified = original.withToolManifest();
 
     expect(modified).not.toBe(original);
@@ -320,7 +315,7 @@ describe("SandboxImage.withToolManifest()", () => {
   });
 
   test("chains with other operations", () => {
-    const image = SandboxImage.fromUbuntu()
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
       .registerTool({ name: "curl", description: "HTTP client" })
       .runCmd("echo hello")
       .withToolManifest()
@@ -333,7 +328,7 @@ describe("SandboxImage.withToolManifest()", () => {
   });
 
   test("includes registered tools in manifest content", () => {
-    const image = SandboxImage.fromUbuntu()
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
       .registerTool({ name: "curl", description: "HTTP client" })
       .registerTool({ name: "jq", description: "JSON processor" })
       .withToolManifest();
@@ -351,7 +346,7 @@ describe("SandboxImage.withToolManifest()", () => {
   });
 
   test("lazily generates content (captures tools at call time)", () => {
-    const baseImage = SandboxImage.fromUbuntu().registerTool({
+    const baseImage = SandboxImage.fromDocker("ubuntu:22.04").registerTool({
       name: "curl",
       description: "HTTP client",
     });
@@ -365,5 +360,197 @@ describe("SandboxImage.withToolManifest()", () => {
       const content = imageWithManifest.operations[0].src.getContent();
       expect(content).toContain("curl");
     }
+  });
+});
+
+describe("SandboxImage.setBuildEnv()", () => {
+  test("adds env operation", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04").setBuildEnv({
+      FOO: "bar",
+      BAZ: "qux",
+    });
+
+    expect(image.operations).toHaveLength(1);
+    expect(image.operations[0].type).toBe("env");
+    if (image.operations[0].type === "env") {
+      expect(image.operations[0].vars).toEqual({ FOO: "bar", BAZ: "qux" });
+    }
+  });
+
+  test("returns new image instance", () => {
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
+    const modified = original.setBuildEnv({ FOO: "bar" });
+
+    expect(modified).not.toBe(original);
+    expect(original.operations).toHaveLength(0);
+    expect(modified.operations).toHaveLength(1);
+  });
+});
+
+describe("SandboxImage.setRunEnv()", () => {
+  test("sets runtime environment variables", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04").setRunEnv({
+      API_KEY: "secret",
+      DEBUG: "true",
+    });
+
+    expect(image.runEnv).toEqual({ API_KEY: "secret", DEBUG: "true" });
+  });
+
+  test("merges with existing runEnv", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
+      .setRunEnv({ FOO: "bar" })
+      .setRunEnv({ BAZ: "qux" });
+
+    expect(image.runEnv).toEqual({ FOO: "bar", BAZ: "qux" });
+  });
+
+  test("later values override earlier ones", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
+      .setRunEnv({ FOO: "original" })
+      .setRunEnv({ FOO: "updated" });
+
+    expect(image.runEnv).toEqual({ FOO: "updated" });
+  });
+
+  test("does not add operations (runtime-only)", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04").setRunEnv({
+      FOO: "bar",
+    });
+
+    expect(image.operations).toHaveLength(0);
+  });
+
+  test("returns new image instance", () => {
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
+    const modified = original.setRunEnv({ FOO: "bar" });
+
+    expect(modified).not.toBe(original);
+    expect(original.runEnv).toEqual({});
+    expect(modified.runEnv).toEqual({ FOO: "bar" });
+  });
+});
+
+describe("SandboxImage.toCreateConfig()", () => {
+  test("returns network and resources from image", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
+      .withResources({ vcpu: 2, memoryMb: 1024 })
+      .withNetwork({ mode: "allow_all" });
+
+    const config = image.toCreateConfig();
+
+    expect(config.network).toEqual({ mode: "allow_all" });
+    expect(config.resources).toEqual({ vcpu: 2, memoryMb: 1024 });
+  });
+
+  test("returns undefined envVars when runEnv is empty", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04");
+
+    const config = image.toCreateConfig();
+
+    expect(config.envVars).toBeUndefined();
+  });
+
+  test("returns envVars when runEnv is non-empty", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04").setRunEnv({
+      FOO: "bar",
+      BAZ: "qux",
+    });
+
+    const config = image.toCreateConfig();
+
+    expect(config.envVars).toEqual({ FOO: "bar", BAZ: "qux" });
+  });
+
+  test("returns a copy of runEnv (not the same reference)", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04").setRunEnv({
+      KEY: "value",
+    });
+
+    const config = image.toCreateConfig();
+
+    expect(config.envVars).not.toBe(image.runEnv);
+  });
+
+  test("returns default values for new image", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04");
+
+    const config = image.toCreateConfig();
+
+    expect(config.envVars).toBeUndefined();
+    expect(config.network).toEqual({ mode: "deny_all" });
+    expect(config.resources).toEqual({ vcpu: 1, memoryMb: 512 });
+  });
+
+  test("returns undefined imageId when not registered", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04");
+
+    const config = image.toCreateConfig();
+
+    expect(config.imageId).toBeUndefined();
+  });
+
+  test("returns imageId when registered", () => {
+    const imageId: SandboxImageId = {
+      imageName: "dust-base",
+      tag: "production",
+    };
+    const image = SandboxImage.fromDocker("ubuntu:22.04").register(imageId);
+
+    const config = image.toCreateConfig();
+
+    expect(config.imageId).toEqual(imageId);
+  });
+});
+
+describe("SandboxImage.register()", () => {
+  test("sets imageId", () => {
+    const imageId: SandboxImageId = {
+      imageName: "dust-base",
+      tag: "production",
+    };
+    const image = SandboxImage.fromDocker("ubuntu:22.04").register(imageId);
+
+    expect(image.imageId).toEqual(imageId);
+  });
+
+  test("returns new image instance", () => {
+    const imageId: SandboxImageId = {
+      imageName: "dust-base",
+      tag: "production",
+    };
+    const original = SandboxImage.fromDocker("ubuntu:22.04");
+    const modified = original.register(imageId);
+
+    expect(modified).not.toBe(original);
+    expect(original.imageId).toBeUndefined();
+    expect(modified.imageId).toEqual(imageId);
+  });
+
+  test("chains with other operations", () => {
+    const imageId: SandboxImageId = { imageName: "dust-base", tag: "staging" };
+    const image = SandboxImage.fromDocker("ubuntu:22.04")
+      .registerTool({ name: "curl", description: "HTTP client" })
+      .withResources({ vcpu: 2, memoryMb: 1024 })
+      .register(imageId)
+      .setRunEnv({ DEBUG: "true" });
+
+    expect(image.imageId).toEqual(imageId);
+    expect(image.tools).toHaveLength(1);
+    expect(image.resources.vcpu).toBe(2);
+    expect(image.runEnv).toEqual({ DEBUG: "true" });
+  });
+
+  test("has undefined imageId by default", () => {
+    const image = SandboxImage.fromDocker("ubuntu:22.04");
+
+    expect(image.imageId).toBeUndefined();
+  });
+
+  test("has undefined imageId from sandbox base by default", () => {
+    const id: SandboxImageId = { imageName: "dust-base", tag: "staging" };
+    const image = SandboxImage.fromSandbox(id);
+
+    expect(image.imageId).toBeUndefined();
   });
 });

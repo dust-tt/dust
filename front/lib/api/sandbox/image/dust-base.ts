@@ -45,7 +45,7 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   "dust-sbx-bedrock:latest"
 )
   // Set environment variables (these apply during build operations)
-  .setEnv({
+  .setBuildEnv({
     NPM_CONFIG_PREFIX: "/opt/npm-global",
     CARGO_HOME: "/opt/cargo",
     RUSTUP_HOME: "/opt/rustup",
@@ -114,4 +114,5 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   )
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
-  .setWorkdir("/home/user");
+  .setWorkdir("/home/user")
+  .register({ imageName: "dust-base", tag: "production" });

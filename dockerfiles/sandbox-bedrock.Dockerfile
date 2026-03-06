@@ -1,5 +1,5 @@
 # Stage 1: rust-builder - compile Rust in isolated stage
-FROM debian:bookworm-slim AS rust-builder
+FROM debian:trixie-20260223-slim AS rust-builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUSTUP_HOME=/opt/rustup
@@ -14,7 +14,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
   sh -s -- -y --default-toolchain stable --profile minimal
 
 # Stage 2: rootfs - assemble complete filesystem
-FROM debian:bookworm-slim AS rootfs
+FROM debian:trixie-20260223-slim  AS rootfs
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -37,7 +37,7 @@ COPY --from=rust-builder /opt/rustup /opt/rustup
 COPY --from=rust-builder /opt/cargo /opt/cargo
 
 # Node.js via official tarball
-ARG NODE_VERSION=22.12.0
+ARG NODE_VERSION=24.14.0
 RUN ARCH=$(dpkg --print-architecture) && \
   if [ "$ARCH" = "amd64" ]; then NODE_ARCH="x64"; else NODE_ARCH="arm64"; fi && \
   curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" -o node.tar.xz && \

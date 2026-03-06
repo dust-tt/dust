@@ -10,6 +10,7 @@
 import type {
   NetworkPolicy,
   SandboxImageId,
+  SandboxResources,
 } from "@app/lib/api/sandbox/image/types";
 import type { Result } from "@app/types/shared/result";
 
@@ -27,14 +28,17 @@ export interface SandboxHandle {
 
 /**
  * Configuration for provisioning a new sandbox.
+ * Flat structure derived from SandboxImage.toCreateConfig() with optional overrides.
  */
 export interface SandboxCreateConfig {
-  /** Typed image identifier (name + tag). */
+  /** Typed image identifier (name + tag) override - E2B specific but exposed for overrides. */
   imageId?: SandboxImageId;
-  /** Environment variables injected at creation time. */
+  /** Environment variables for the sandbox runtime. */
   envVars?: Record<string, string>;
-  /** Network egress policy for the sandbox. */
+  /** Network egress policy. */
   network?: NetworkPolicy;
+  /** Resource allocation for the sandbox. */
+  resources?: SandboxResources;
 }
 
 // ---------------------------------------------------------------------------
