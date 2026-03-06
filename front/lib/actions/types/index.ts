@@ -34,11 +34,23 @@ export function isFileAuthorizationInfo(
   );
 }
 
+export type UserQuestionOption = {
+  label: string;
+  description: string;
+  preview?: string;
+};
+
+export type UserQuestion = {
+  question: string;
+  header: string;
+  options: UserQuestionOption[];
+  multiSelect: boolean;
+};
+
 export type UserQuestionResumeState = {
   type: "user_question";
-  question: string;
-  options: Array<{ label: string; description?: string }>;
-  allowMultiple: boolean;
+  questions: UserQuestion[];
+  metadata?: Record<string, unknown>;
 };
 
 export function isUserQuestionResumeState(
@@ -49,28 +61,28 @@ export function isUserQuestionResumeState(
     value !== null &&
     "type" in value &&
     value.type === "user_question" &&
-    "question" in value &&
-    typeof value.question === "string" &&
-    "options" in value &&
-    Array.isArray(value.options) &&
-    "allowMultiple" in value &&
-    typeof value.allowMultiple === "boolean"
+    "questions" in value &&
+    Array.isArray(value.questions)
   );
 }
 
-export type UserQuestionAnswer = {
+export type UserQuestionAnswerItem = {
   selectedOptions: number[];
   customResponse?: string;
 };
 
-export function isUserQuestionAnswer(
+export type UserQuestionAnswers = {
+  answers: UserQuestionAnswerItem[];
+};
+
+export function isUserQuestionAnswers(
   value: unknown
-): value is UserQuestionAnswer {
+): value is UserQuestionAnswers {
   return (
     typeof value === "object" &&
     value !== null &&
-    "selectedOptions" in value &&
-    Array.isArray(value.selectedOptions)
+    "answers" in value &&
+    Array.isArray((value as Record<string, unknown>).answers)
   );
 }
 
