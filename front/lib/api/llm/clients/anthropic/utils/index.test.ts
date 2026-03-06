@@ -69,7 +69,7 @@ describe("toThinkingConfig", () => {
 describe("toAutoThinkingConfig", () => {
   it("returns adaptive thinking when reasoning effort is null", () => {
     expect(toAutoThinkingConfig(null)).toEqual({
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "omitted" },
     });
   });
 
@@ -87,7 +87,7 @@ describe("toAutoThinkingConfig", () => {
 
   it('returns adaptive thinking with output_config for "medium"', () => {
     expect(toAutoThinkingConfig("medium")).toEqual({
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "omitted" },
       output_config: {
         effort: ANTHROPIC_THINKING_EFFORT_MAPPING.medium,
       },
@@ -96,7 +96,7 @@ describe("toAutoThinkingConfig", () => {
 
   it('returns adaptive thinking with output_config for "high"', () => {
     expect(toAutoThinkingConfig("high")).toEqual({
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "omitted" },
       output_config: {
         effort: ANTHROPIC_THINKING_EFFORT_MAPPING.high,
       },

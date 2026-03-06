@@ -49,7 +49,8 @@ export function toAutoThinkingConfig(
 
   switch (reasoningEffort) {
     case null:
-      return { thinking: { type: "adaptive" } };
+      // @ts-ignore - display: "omitted" is not yet in the SDK types
+      return { thinking: { type: "adaptive", display: "omitted" } };
     case "none":
       return { thinking: { type: "disabled" } };
     case "light":
@@ -58,6 +59,8 @@ export function toAutoThinkingConfig(
       return {
         thinking: {
           type: "adaptive",
+          // @ts-ignore - display: "omitted" is not yet in the SDK types
+          display: "omitted",
         },
         output_config: {
           effort: ANTHROPIC_THINKING_EFFORT_MAPPING[reasoningEffort],
