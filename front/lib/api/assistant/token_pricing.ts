@@ -338,6 +338,11 @@ const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
     input: 20.0,
     output: 120.0,
   },
+  // https://ai.google.dev/gemini-api/docs/pricing
+  "gemini-3.1-flash-image-preview": {
+    input: 0.25,
+    output: 60.0,
+  },
 };
 
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.
