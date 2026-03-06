@@ -77,6 +77,7 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
       canUseProduct: true,
     },
     trialPeriodDays: 0,
+    isByok: false,
   },
   requestCancelAt: null,
 };
