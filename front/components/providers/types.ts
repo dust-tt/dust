@@ -24,6 +24,7 @@ import {
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@app/types/assistant/models/mistral";
 import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { QWEN_3_5_MODEL_CONFIG } from "@app/types/assistant/models/ollama";
 import {
   GPT_5_4_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
@@ -44,6 +45,7 @@ import {
   FireworksLogo,
   GeminiLogo,
   GrokLogo,
+  HuggingFaceLogo,
   MistralLogo,
   OpenaiLogo,
   TogetheraiLogo,
@@ -88,6 +90,9 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   noop: {
     light: DustLogo,
   },
+  ollama: {
+    light: HuggingFaceLogo,
+  },
 };
 
 export const getModelProviderLogo = (
@@ -121,6 +126,7 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GROK_4_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_1_FAST_REASONING_MODEL_CONFIG,
+  QWEN_3_5_MODEL_CONFIG,
 ] as const;
 
 // Sorted by preference order

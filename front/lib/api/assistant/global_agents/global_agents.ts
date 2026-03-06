@@ -31,6 +31,7 @@ import {
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
+  _getDustLocalGlobalAgent,
   _getDustMinimaxGlobalAgent,
   _getDustMinimaxHighGlobalAgent,
   _getDustMinimaxMediumGlobalAgent,
@@ -115,6 +116,12 @@ const GLOBAL_AGENT_FLAGS: Record<
   }
 > = {
   [GLOBAL_AGENTS_SID.DUST]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_LOCAL]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -717,6 +724,13 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = _getDustGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+    case GLOBAL_AGENTS_SID.DUST_LOCAL:
+      agentConfiguration = _getDustLocalGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         mcpServerViews,
