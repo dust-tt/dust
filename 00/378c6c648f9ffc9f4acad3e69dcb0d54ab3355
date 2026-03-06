@@ -1,0 +1,23 @@
+front/components/triggers/WebhookSourceDetailsInfo.tsx
+  0b15efbc3fde789f 30,174-180,226,228,235,242-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "00378c6c648f9ffc9f4acad3e69dcb0d54ab3355",
+  "prompts": {
+    "0b15efbc3fde789f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14b7c05f-4feb-451e-b309-67d3cadf2cd8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 34,
+      "total_deletions": 21,
+      "accepted_lines": 23,
+      "overriden_lines": 1
+    }
+  }
+}
