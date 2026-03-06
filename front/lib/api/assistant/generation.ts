@@ -192,24 +192,23 @@ function constructToolsSection({
     toolsSection +=
       "Each server provides a list of tools made available to the agent.\n";
     toolsSection += formatToolServerListing(serverToolsAndInstructions);
-    toolsSection += "\n";
   }
 
   return toolsSection;
 }
 
 function constructConditionalJitToolsSection({
-  serverToolsAndInstructions,
+  conditionalJitServerToolsAndInstructions,
 }: {
-  serverToolsAndInstructions: ServerToolsAndInstructions[];
+  conditionalJitServerToolsAndInstructions?: ServerToolsAndInstructions[];
 }): string {
-  if (!serverToolsAndInstructions.length) {
+  if (!conditionalJitServerToolsAndInstructions?.length) {
     return "";
   }
 
   let section = "\n## CONDITIONAL TOOL SERVERS\n";
   section += "The following tool servers are also available.\n";
-  section += formatToolServerListing(serverToolsAndInstructions);
+  section += formatToolServerListing(conditionalJitServerToolsAndInstructions);
   section += "\n";
   return section;
 }
@@ -490,7 +489,7 @@ export function constructPromptMultiActions(
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
   const conditionalJitToolsSection = constructConditionalJitToolsSection({
-    serverToolsAndInstructions: conditionalJitServerToolsAndInstructions ?? [],
+    conditionalJitServerToolsAndInstructions,
   });
 
   if (hasStaticInstructions) {
