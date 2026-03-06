@@ -19,7 +19,19 @@ FROM debian:trixie-20260223-slim  AS rootfs
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  ca-certificates curl git unzip xz-utils \
+  ca-certificates curl git unzip xz-utils gnupg lsb-release netcat-openbsd \
+  && rm -rf /var/lib/apt/lists/*
+
+# Add gcsfuse repository
+RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+  | tee /usr/share/keyrings/cloud.google.asc > /dev/null
+
+RUN GCSFUSE_REPO=$(lsb_release -c -s) \
+  && echo "deb [signed-by=/usr/share/keyrings/cloud.google.asc] https://packages.cloud.google.com/apt gcsfuse-$GCSFUSE_REPO main" \
+     > /etc/apt/sources.list.d/gcsfuse.list
+
+# Install gcsfuse
+RUN apt-get update && apt-get install -y --no-install-recommends gcsfuse \
   && rm -rf /var/lib/apt/lists/*
 
 # Python via uv (official Astral approach)

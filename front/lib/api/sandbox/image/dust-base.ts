@@ -54,6 +54,19 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   // Create npm-global and bin directories for additional package installs
   .runCmd("sudo mkdir -p /opt/npm-global && sudo chmod -R 777 /opt/npm-global")
   .runCmd("sudo mkdir -p /opt/bin && sudo chmod -R 777 /opt/bin")
+  // Pre-create workspace directory for faster GCS mounts.
+  .runCmd(
+    "sudo mkdir -p /files/conversation && sudo chmod 777 /files/conversation"
+  )
+  // Create simple netcat-based token server script.
+  .runCmd("mkdir -p /home/user/.bin")
+  .copy(
+    "lib/api/sandbox/image/scripts/token-server.sh",
+    "/home/user/.bin/token-server.sh"
+  )
+  .runCmd("chmod 755 /home/user/.bin/token-server.sh")
+  // Add sentinel file to indicate when mounts are pending.
+  .runCmd("touch /workspace/files/.mount-pending")
   // Install system tools (git is already in base image)
   .registerTool(
     [
@@ -66,7 +79,7 @@ export const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     ],
     {
       installCmd:
-        "sudo apt-get update && sudo apt-get install -y jq pandoc imagemagick ffmpeg lsb-release",
+        "sudo apt-get update && sudo apt-get install -y jq pandoc imagemagick ffmpeg",
     }
   )
   // Register Python runtime (already installed in base image)
