@@ -10,6 +10,7 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
@@ -43,6 +44,7 @@ type SpaceTab = "conversations" | "knowledge" | "settings";
 export function SpaceConversationsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const clientType = useClientType();
   const router = useAppRouter();
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
@@ -285,6 +287,25 @@ export function SpaceConversationsPage() {
             don&apos;t have access to it.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (clientType === "extension") {
+    return (
+      <div className="flex h-full w-full flex-col">
+        <SpaceConversationsTab
+          owner={owner}
+          user={user}
+          conversations={conversations}
+          isConversationsLoading={isConversationsLoading}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          isLoadingMore={isLoadingMore}
+          spaceInfo={spaceInfo}
+          onSubmit={handleConversationCreation}
+          onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
+        />
       </div>
     );
   }

@@ -54,17 +54,18 @@ export const ConversationLayout = ({
         className="justify-between"
         leftActions={
           <div className="flex flex-row">
-            <Button
-              variant="ghost"
-              icon={MenuIcon}
-              onClick={() => setSidebarOpen(true)}
-            />
-            {backHref && (
+            {backHref ? (
               <Button
                 variant="ghost"
                 icon={ArrowLeftIcon}
                 onClick={() => navigate(backHref)}
                 tooltip="Go back to project homepage"
+              />
+            ) : (
+              <Button
+                variant="ghost"
+                icon={MenuIcon}
+                onClick={() => setSidebarOpen(true)}
               />
             )}
           </div>
