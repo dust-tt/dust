@@ -2,6 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { fetchLangfuseButlerPrompt } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
@@ -183,6 +184,81 @@ function buildPrompt(
 }
 
 /**
+ * Build the prompt variables for Langfuse templates.
+ */
+function buildLangfuseVariables(
+  currentTitle: string,
+  suggestionHistory: ButlerSuggestionData[],
+  agents: LightAgentConfigurationType[]
+): Record<string, string> {
+  let availableAgentsStr = "";
+  for (const agent of agents) {
+    const description = agent.description ? `: ${agent.description}` : "";
+    availableAgentsStr += `- ${agent.name}${description}\n`;
+  }
+
+  const historyLines: string[] = [];
+  for (const suggestion of suggestionHistory) {
+    const outcome = suggestion.status === "accepted" ? "ACCEPTED" : "DISMISSED";
+    switch (suggestion.suggestionType) {
+      case "rename_title": {
+        const { suggestedTitle } = suggestion.metadata;
+        historyLines.push(`- [${outcome}] Title rename: "${suggestedTitle}"`);
+        break;
+      }
+      case "call_agent": {
+        if (agents.length > 0) {
+          const { agentName } = suggestion.metadata;
+          historyLines.push(`- [${outcome}] Agent suggestion: ${agentName}`);
+        }
+        break;
+      }
+      default:
+        assertNever(suggestion);
+    }
+  }
+
+  return {
+    currentTitle,
+    availableAgents: availableAgentsStr,
+    suggestionHistory: historyLines.join("\n"),
+  };
+}
+
+/**
+ * Try to fetch the prompt from Langfuse, falling back to the hardcoded buildPrompt.
+ */
+async function buildPromptWithLangfuseFallback(
+  currentTitle: string,
+  agents: LightAgentConfigurationType[],
+  suggestionHistory: ButlerSuggestionData[]
+): Promise<string> {
+  const hasAgents = agents.length > 0;
+  const promptName = hasAgents
+    ? "conversation-butler-with-agents"
+    : "conversation-butler-no-agents";
+
+  const variables = buildLangfuseVariables(
+    currentTitle,
+    suggestionHistory,
+    agents
+  );
+
+  const result = await fetchLangfuseButlerPrompt(promptName, variables);
+
+  if (result.isOk()) {
+    return result.value;
+  }
+
+  logger.info(
+    { error: result.error.message, promptName },
+    "Butler: Langfuse prompt fetch failed, falling back to hardcoded prompt"
+  );
+
+  return buildPrompt(currentTitle, agents, suggestionHistory);
+}
+
+/**
  * Extract the sIds of agents already participating in the conversation.
  */
 function getParticipantAgentSIds(conversation: ConversationType): Set<string> {
@@ -320,7 +396,7 @@ export async function analyzeConversation(
       );
 
     const currentTitle = conversation.title ?? "";
-    const prompt = buildPrompt(
+    const prompt = await buildPromptWithLangfuseFallback(
       currentTitle,
       availableAgents,
       suggestionHistory

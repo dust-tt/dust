@@ -19,6 +19,10 @@ type LangfuseFirstMessagePromptName =
 
 type LangfuseSystemPromptName = "copilot-edge";
 
+type LangfuseButlerPromptName =
+  | "conversation-butler-with-agents"
+  | "conversation-butler-no-agents";
+
 const LangfuseModelConfigSchema = z.object({
   modelId: z.string(),
   reasoningEffort: AgentReasoningEffortSchema.optional(),
@@ -84,6 +88,25 @@ export async function fetchLangfuseSystemPromptConfig(
           )
         : undefined,
     });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function fetchLangfuseButlerPrompt(
+  promptName: LangfuseButlerPromptName,
+  variables: Record<string, string>
+): Promise<Result<string, Error>> {
+  const client = getLangfuseClient();
+  if (!client) {
+    return new Err(new Error("Langfuse is not enabled"));
+  }
+
+  try {
+    const prompt = await client.prompt.get(promptName, {
+      cacheTtlSeconds: isDevelopment() ? 0 : undefined,
+    });
+    return new Ok(prompt.compile(variables));
   } catch (error) {
     return new Err(normalizeError(error));
   }
