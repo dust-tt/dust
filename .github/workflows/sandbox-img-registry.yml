@@ -117,7 +117,7 @@ jobs:
             --image ${{ matrix.image }} \
             --tag ${{ matrix.tag }} \
             --docker-registry us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx \
-            --ci
+            --execute
 
       - name: Cleanup service account JSON
         if: always()
