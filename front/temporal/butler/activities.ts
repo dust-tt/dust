@@ -7,10 +7,12 @@ export async function analyzeConversationActivity({
   authType,
   conversationId,
   messageId,
+  passIndex,
 }: {
   authType: AuthenticatorType;
   conversationId: string;
   messageId: string;
+  passIndex: number;
 }): Promise<void> {
   const authResult = await Authenticator.fromJSON(authType);
   if (authResult.isErr()) {
@@ -47,5 +49,6 @@ export async function analyzeConversationActivity({
   await analyzeConversation(auth, {
     conversation,
     messageId,
+    passIndex,
   });
 }
