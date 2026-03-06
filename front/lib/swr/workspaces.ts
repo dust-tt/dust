@@ -30,6 +30,7 @@ import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -42,6 +43,15 @@ export function isRegionRedirect(data: unknown): data is RegionRedirectError {
     // (data as RegionRedirectError).redirect !== null &&
     // "region" in (data as RegionRedirectError).redirect &&
     // "url" in (data as RegionRedirectError).redirect
+  );
+}
+
+function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "redirectUrl" in data &&
+    typeof data.redirectUrl === "string"
   );
 }
 
@@ -716,10 +726,25 @@ export function useJoinData({
     }
   }, [regionRedirect, mutate, regionContext]);
 
+  // The join API returns { redirectUrl: "..." } (e.g. for invalid/expired
+  // tokens). This is not a standard API error response, so the fetcher wraps
+  // it in new Error(jsonText) — we parse it back out here.
+  const redirectUrl = useMemo(() => {
+    if (!error || isRegionRedirectResponse || !(error instanceof Error)) {
+      return null;
+    }
+    const parsed = safeParseJSON(error.message);
+    if (parsed.isOk() && isRedirectResponse(parsed.value)) {
+      return parsed.value.redirectUrl;
+    }
+    return null;
+  }, [error, isRegionRedirectResponse]);
+
   return {
     joinData: data ?? null,
-    isJoinDataLoading: (!error && !data) || !!isRegionRedirectResponse,
-    isJoinDataError: isRegionRedirectResponse ? undefined : error,
+    isJoinDataLoading:
+      (!error && !data) || !!isRegionRedirectResponse || !!redirectUrl,
+    redirectUrl,
   };
 }
 

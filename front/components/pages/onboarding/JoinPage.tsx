@@ -12,32 +12,18 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
-function isRedirectResponse(data: unknown): data is { redirectUrl: string } {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "redirectUrl" in data &&
-    typeof (data as { redirectUrl: unknown }).redirectUrl === "string"
-  );
-}
-
 export function JoinPage() {
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
 
-  const { joinData, isJoinDataLoading, isJoinDataError } = useJoinData({
+  const { joinData, isJoinDataLoading, redirectUrl } = useJoinData({
     wId,
     token,
     conversationId,
   });
 
-  const errorData = isJoinDataError?.response?.data;
-  const redirectUrl = isRedirectResponse(errorData)
-    ? errorData.redirectUrl
-    : null;
-
-  // Redirect to login-error page when the invite token is invalid.
+  // Redirect when the API returns a redirect URL (e.g. invalid/expired token).
   useEffect(() => {
     if (redirectUrl) {
       window.location.href = redirectUrl;
@@ -45,7 +31,7 @@ export function JoinPage() {
   }, [redirectUrl]);
 
   // Show 404 for unknown workspaces or missing auto-join domains.
-  if (!isJoinDataLoading && !redirectUrl && !joinData) {
+  if (!isJoinDataLoading && !joinData) {
     return <Custom404 />;
   }
 
