@@ -1,3 +1,4 @@
+import { OLLAMA_PROVIDER_ID } from "@app/lib/api/llm/clients/ollama/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { DEFAULT_TOKEN_COUNT_ADJUSTMENT } from "@app/types/assistant/assistant";
@@ -28,6 +29,19 @@ export async function tokenCountForTexts(
   }
 ): Promise<Result<Array<number>, Error>> {
   try {
+    if (model.providerId === OLLAMA_PROVIDER_ID) {
+      // Ollama does not expose a tokenize endpoint in versions < 0.18.
+      // Use a character-based approximation (~4 chars per token) which is
+      // accurate enough for context window checks.
+      const counts = texts.map((text) =>
+        Math.round(
+          Math.ceil(text.length / 4) *
+            (model.tokenCountAdjustment ?? DEFAULT_TOKEN_COUNT_ADJUSTMENT)
+        )
+      );
+      return new Ok(counts);
+    }
+
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     // Split texts into batches to prevent OOM in core API.
     const batches = _.chunk(texts, MAX_BATCH_SIZE);
