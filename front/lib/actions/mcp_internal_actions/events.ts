@@ -2,6 +2,7 @@ import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
+import type { UserQuestion } from "@app/lib/actions/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
 export interface ToolExecution<
@@ -74,11 +75,7 @@ export interface MCPApproveExecutionEvent extends ToolExecution {
 
 export interface ToolUserQuestionEvent extends ToolExecution {
   type: "tool_user_question";
-  questions: {
-    question: string;
-    options: { label: string; description: string }[];
-    multiSelect: boolean;
-  }[];
+  questions: UserQuestion[];
   questionMetadata: Record<string, unknown> | null;
 }
 
