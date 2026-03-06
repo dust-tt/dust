@@ -237,6 +237,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   customThinkingType: "auto",
   availableIfUnion: {
     enterprise: true,
+    featureFlag: "claude_4_5_opus_feature",
   },
   customBetas: [
     "auto-thinking-2026-01-12",
