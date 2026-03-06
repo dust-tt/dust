@@ -1,4 +1,5 @@
 import { H2, P } from "@app/components/home/ContentComponents";
+import type { Differentiator } from "@app/components/home/content/Competitive/types";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   BoltIcon,
@@ -7,16 +8,6 @@ import {
   RobotIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-
-type IconType = "robot" | "bolt" | "book" | "users";
-type IconColor = "green" | "orange" | "blue" | "red";
-
-interface Differentiator {
-  title: string;
-  description: string;
-  iconColor: IconColor;
-  icon: IconType;
-}
 
 interface DifferentiatorsSectionProps {
   differentiators: Differentiator[];

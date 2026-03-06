@@ -1,18 +1,13 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H2 } from "@app/components/home/ContentComponents";
+import type {
+  ComparisonFeature,
+  FeatureStatus,
+} from "@app/components/home/content/Competitive/types";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { CheckIcon, Icon, XMarkIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
-
-type FeatureStatus = "yes" | "no" | "partial";
-
-interface ComparisonFeature {
-  name: string;
-  description?: string;
-  dust: FeatureStatus;
-  competitor: FeatureStatus;
-}
 
 interface ComparisonTableSectionProps {
   title?: string;
