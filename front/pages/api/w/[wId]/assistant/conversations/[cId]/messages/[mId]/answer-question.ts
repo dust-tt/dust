@@ -10,8 +10,12 @@ import { z } from "zod";
 
 const AnswerQuestionSchema = z.object({
   actionId: z.string(),
-  selectedOptions: z.array(z.number()).optional(),
-  customResponse: z.string().optional(),
+  answers: z.array(
+    z.object({
+      selectedOptions: z.array(z.number()),
+      customResponse: z.string().optional(),
+    })
+  ),
 });
 
 type AnswerQuestionResponse = {
@@ -67,13 +71,12 @@ async function handler(
     });
   }
 
-  const { actionId, selectedOptions, customResponse } = parseResult.data;
+  const { actionId, answers } = parseResult.data;
 
   const result = await answerUserQuestion(auth, conversation, {
     actionId,
     messageId: mId,
-    selectedOptions,
-    customResponse,
+    answers,
   });
 
   if (result.isErr()) {
