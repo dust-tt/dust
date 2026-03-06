@@ -27,7 +27,7 @@ import {
   TextArea,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 type WebhookSourceDetailsInfoProps = {
@@ -80,19 +80,10 @@ export function WebhookSourceDetailsInfo({
     [webhookSourceView]
   );
 
-  const [isCopied, copy] = useCopyToClipboard();
+  const [, copy] = useCopyToClipboard();
 
   const selectedIcon = form.watch("icon");
   const IconComponent = getIcon(normalizeWebhookIcon(selectedIcon));
-
-  useEffect(() => {
-    if (isCopied) {
-      sendNotification({
-        type: "success",
-        title: "Webhook URL copied to clipboard",
-      });
-    }
-  }, [isCopied, sendNotification]);
 
   const webhookUrl = useMemo(() => {
     return buildWebhookUrl({
@@ -101,6 +92,16 @@ export function WebhookSourceDetailsInfo({
       webhookSource: webhookSourceView.webhookSource,
     });
   }, [owner.sId, webhookSourceView.webhookSource]);
+
+  const handleCopy = async (text: string, label: string) => {
+    const ok = await copy(text);
+    if (ok) {
+      sendNotification({
+        type: "success",
+        title: `${label} copied to clipboard`,
+      });
+    }
+  };
 
   const { provider } = webhookSourceView.webhookSource;
 
@@ -180,7 +181,7 @@ export function WebhookSourceDetailsInfo({
             </p>
             <IconButton
               icon={ClipboardIcon}
-              onClick={() => copy(webhookUrl)}
+              onClick={() => handleCopy(webhookUrl, "Webhook URL")}
               size="xs"
             />
           </div>
@@ -226,18 +227,33 @@ export function WebhookSourceDetailsInfo({
           <div>
             <Page.H variant="h6">Secret</Page.H>
             <div className="flex items-center space-x-2">
-              <div
-                className={cn("font-mono", {
-                  "select-none blur-sm": !isSecretVisible,
-                })}
+              <p
+                className={cn(
+                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono",
+                  {
+                    "select-none blur-sm": !isSecretVisible,
+                  }
+                )}
               >
-                <Page.P>{webhookSourceView.webhookSource.secret}</Page.P>
+                {webhookSourceView.webhookSource.secret}
+              </p>
+              <div>
+                <IconButton
+                  icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                  onClick={() => setIsSecretVisible((prev) => !prev)}
+                  size="xs"
+                />
+                <IconButton
+                  icon={ClipboardIcon}
+                  onClick={() =>
+                    handleCopy(
+                      webhookSourceView.webhookSource.secret ?? "",
+                      "Secret"
+                    )
+                  }
+                  size="xs"
+                />
               </div>
-              <IconButton
-                icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                onClick={() => setIsSecretVisible((prev) => !prev)}
-                size="xs"
-              />
             </div>
           </div>
         )}
