@@ -11,18 +11,18 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
-import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
-import {
-  CopilotSuggestionsProvider,
-  useCopilotSuggestions,
-} from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
-import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderCopilotEnabled";
+import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
 } from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
+import { CopilotPanelProvider } from "@app/components/agent_builder/SidekickPanelContext";
+import {
+  CopilotSuggestionsProvider,
+  useCopilotSuggestions,
+} from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useCopilotMCPServer } from "@app/components/agent_builder/sidekick/useMCPServer";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,

@@ -1,0 +1,198 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useCopilotFirstMessage } from "@app/hooks/useSidekickFirstMessage";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useSearchParam } from "@app/lib/platform";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import type { TemplateInfo } from "@app/types/assistant/templates";
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+interface CopilotPanelContextType {
+  conversation: ConversationType | null;
+  isCreatingConversation: boolean;
+  creationFailed: boolean;
+  startConversation: () => Promise<void>;
+  resetConversation: () => void;
+  clientSideMCPServerIds: string[];
+  conversationId?: string;
+}
+
+const CopilotPanelContext = createContext<CopilotPanelContextType | undefined>(
+  undefined
+);
+
+export const useCopilotPanelContext = () => {
+  const context = useContext(CopilotPanelContext);
+  if (!context) {
+    throw new Error(
+      "useCopilotPanelContext must be used within a CopilotPanelProvider"
+    );
+  }
+  return context;
+};
+
+interface CopilotPanelProviderProps {
+  children: ReactNode;
+  targetAgentConfigurationId: string | null;
+  targetAgentConfigurationVersion: number;
+  clientSideMCPServerIds: string[];
+  isNewAgent: boolean;
+  isDuplicate?: boolean;
+  templateInfo?: TemplateInfo;
+  conversationId?: string;
+}
+
+export const CopilotPanelProvider = ({
+  children,
+  targetAgentConfigurationId,
+  targetAgentConfigurationVersion,
+  clientSideMCPServerIds,
+  isNewAgent,
+  isDuplicate = false,
+  templateInfo,
+  conversationId,
+}: CopilotPanelProviderProps) => {
+  const { owner } = useAgentBuilderContext();
+  const { user } = useAuth();
+  const sendNotification = useSendNotification();
+  const copilotEdgeParam = useSearchParam("copilotEdge");
+  const isCopilotEdge = copilotEdgeParam === "true";
+  const copilotAgentId = isCopilotEdge
+    ? GLOBAL_AGENTS_SID.COPILOT_EDGE
+    : GLOBAL_AGENTS_SID.COPILOT;
+
+  const [conversation, setConversation] = useState<ConversationType | null>(
+    null
+  );
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [creationFailed, setCreationFailed] = useState(false);
+  const hasStartedRef = useRef(false);
+
+  const { getFirstMessage, useCase } = useCopilotFirstMessage({
+    owner,
+    isNewAgent,
+    isDuplicate,
+    templateInfo,
+    conversationId,
+    agentConfigurationId: targetAgentConfigurationId ?? undefined,
+    copilotEdge: isCopilotEdge,
+  });
+
+  const createConversationWithMessage = useCreateConversationWithMessage({
+    owner,
+    user,
+  });
+
+  const startConversation = useCallback(async () => {
+    if (hasStartedRef.current || !targetAgentConfigurationId) {
+      return;
+    }
+
+    // Wait for the client-side MCP server to be registered before starting
+    // the conversation. Without this, the copilot won't have access to
+    // agent_builder_copilot_client tools like get_agent_config.
+    if (clientSideMCPServerIds.length === 0) {
+      return;
+    }
+    hasStartedRef.current = true;
+
+    setIsCreatingConversation(true);
+
+    const firstMessageResult = await getFirstMessage();
+    if (firstMessageResult.isErr()) {
+      setCreationFailed(true);
+      setIsCreatingConversation(false);
+      sendNotification({
+        title: "Sidekick error",
+        description: firstMessageResult.error.message,
+        type: "error",
+      });
+      return;
+    }
+
+    const result = await createConversationWithMessage({
+      messageData: {
+        input: firstMessageResult.value,
+        mentions: [{ configurationId: copilotAgentId }],
+        contentFragments: { uploaded: [], contentNodes: [] },
+        origin: "agent_copilot",
+        clientSideMCPServerIds,
+      },
+      // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.
+      // We should rename it.
+      visibility: "test",
+      title: `Copilot conversation (useCase: ${useCase}, agentId: ${targetAgentConfigurationId})`,
+      metadata: {
+        copilotTargetAgentConfigurationId: targetAgentConfigurationId,
+        copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
+        copilotIsNewAgentFromScratch: useCase === "new",
+      },
+      skipToolsValidation: true,
+    });
+
+    if (result.isOk()) {
+      setConversation(result.value);
+    } else {
+      setCreationFailed(true);
+      sendNotification({
+        title: result.error.title,
+        description: result.error.message,
+        type: "error",
+      });
+    }
+
+    setIsCreatingConversation(false);
+  }, [
+    clientSideMCPServerIds,
+    copilotAgentId,
+    createConversationWithMessage,
+    getFirstMessage,
+    useCase,
+    sendNotification,
+    targetAgentConfigurationId,
+    targetAgentConfigurationVersion,
+  ]);
+
+  const resetConversation = useCallback(() => {
+    hasStartedRef.current = false;
+    setConversation(null);
+    setCreationFailed(false);
+  }, []);
+
+  const value: CopilotPanelContextType = useMemo(
+    () => ({
+      conversation,
+      isCreatingConversation,
+      creationFailed,
+      startConversation,
+      resetConversation,
+      clientSideMCPServerIds,
+    }),
+    [
+      clientSideMCPServerIds,
+      conversation,
+      isCreatingConversation,
+      creationFailed,
+      startConversation,
+      resetConversation,
+    ]
+  );
+
+  return (
+    <CopilotPanelContext.Provider value={value}>
+      {children}
+    </CopilotPanelContext.Provider>
+  );
+};
+
+CopilotPanelProvider.displayName = "CopilotPanelProvider";
