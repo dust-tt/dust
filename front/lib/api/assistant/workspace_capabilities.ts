@@ -5,7 +5,7 @@ import {
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
+import { isModelCustomAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -45,7 +45,7 @@ export async function getAvailableModelsForWorkspace(
 
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
   return allUsedModels.filter((m) =>
-    isModelAvailableAndWhitelisted(m, featureFlags, plan, owner)
+    isModelCustomAvailableAndWhitelisted(m, featureFlags, plan, owner)
   );
 }
 
