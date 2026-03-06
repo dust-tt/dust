@@ -504,9 +504,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         blockedActionsList.push({
           ...baseActionParams,
           status: action.status,
-          question: resumeState.question,
-          options: resumeState.options,
-          allowMultiple: resumeState.allowMultiple,
+          questions: resumeState.questions,
+          questionMetadata: resumeState.metadata ?? null,
           metadata: baseActionParams.metadata,
           authorizationInfo: null,
         });

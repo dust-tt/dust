@@ -1341,11 +1341,23 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   conversationId: z.string(),
   status: ToolExecutionBlockedStatusSchema,
   // Present only when status is "blocked_user_question_required".
-  question: z.string().optional(),
-  options: z
-    .array(z.object({ label: z.string(), description: z.string().optional() }))
+  questions: z
+    .array(
+      z.object({
+        question: z.string(),
+        header: z.string(),
+        options: z.array(
+          z.object({
+            label: z.string(),
+            description: z.string(),
+            preview: z.string().optional(),
+          })
+        ),
+        multiSelect: z.boolean(),
+      })
+    )
     .optional(),
-  allowMultiple: z.boolean().optional(),
+  questionMetadata: z.record(z.unknown()).nullable().optional(),
 });
 
 export type BlockedActionExecutionType = z.infer<
@@ -1437,11 +1449,21 @@ const ToolUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   conversationId: z.string(),
   created: z.number(),
   messageId: z.string(),
-  question: z.string(),
-  options: z.array(
-    z.object({ label: z.string(), description: z.string().optional() })
+  questions: z.array(
+    z.object({
+      question: z.string(),
+      header: z.string(),
+      options: z.array(
+        z.object({
+          label: z.string(),
+          description: z.string(),
+          preview: z.string().optional(),
+        })
+      ),
+      multiSelect: z.boolean(),
+    })
   ),
-  allowMultiple: z.boolean(),
+  questionMetadata: z.record(z.unknown()).nullable(),
 });
 
 export type ToolUserQuestionEvent = z.infer<typeof ToolUserQuestionEventSchema>;

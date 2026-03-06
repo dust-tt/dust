@@ -18,14 +18,12 @@ export function useAnswerUserQuestion({
       conversationId,
       messageId,
       actionId,
-      selectedOptions,
-      customResponse,
+      answers,
     }: {
       conversationId: string;
       messageId: string;
       actionId: string;
-      selectedOptions?: number[];
-      customResponse?: string;
+      answers: Array<{ selectedOptions: number[]; customResponse?: string }>;
     }) => {
       setIsSubmitting(true);
 
@@ -39,8 +37,7 @@ export function useAnswerUserQuestion({
             },
             body: JSON.stringify({
               actionId,
-              selectedOptions,
-              customResponse,
+              answers,
             }),
           }
         );

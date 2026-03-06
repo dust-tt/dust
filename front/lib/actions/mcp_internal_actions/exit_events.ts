@@ -167,7 +167,7 @@ export async function getExitOrPauseEvents(
         ];
       }
       case "tool_user_question_required": {
-        const { question, options, allowMultiple } = exitOutputItem;
+        const { questions, metadata } = exitOutputItem;
 
         await action.updateStatus("blocked_user_question_required");
 
@@ -176,9 +176,8 @@ export async function getExitOrPauseEvents(
           ...action.stepContext,
           resumeState: {
             type: "user_question",
-            question,
-            options,
-            allowMultiple,
+            questions,
+            metadata,
           },
         });
 
@@ -197,9 +196,8 @@ export async function getExitOrPauseEvents(
               agentName: agentConfiguration.name,
             },
             inputs: action.augmentedInputs,
-            question,
-            options,
-            allowMultiple,
+            questions,
+            questionMetadata: metadata,
           },
         ];
       }

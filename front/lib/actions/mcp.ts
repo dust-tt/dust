@@ -176,9 +176,17 @@ export type BlockedToolExecution = ToolExecution &
       }
     | {
         status: "blocked_user_question_required";
-        question: string;
-        options: Array<{ label: string; description?: string }>;
-        allowMultiple: boolean;
+        questions: Array<{
+          question: string;
+          header: string;
+          options: Array<{
+            label: string;
+            description: string;
+            preview?: string;
+          }>;
+          multiSelect: boolean;
+        }>;
+        questionMetadata: Record<string, unknown> | null;
         authorizationInfo: null;
       }
   );
