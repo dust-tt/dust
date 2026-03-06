@@ -116,11 +116,6 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
   return skillDirs;
 }
 
-/**
- * Collects file attachments for a skill directory — all files under
- * `skillDir` except the SKILL.md itself, with paths relative to the dir.
- * O(skills * entries) — acceptable: skills < ~20, entries < ~1000.
- */
 export function collectAttachments(
   entries: FileEntry[],
   skillDir: SkillDirectory

@@ -61,7 +61,7 @@ function readZipFileContent(
 
 /**
  * Detects Agent Skills (https://agentskills.io/specification) in a ZIP archive
- * by scanning for SKILL.md files — the same logic as the GitHub detection but
+ * by scanning for SKILL.md files. Same logic as the GitHub detection but
  * operating on a ZIP buffer instead of the GitHub API.
  */
 export function detectSkillsFromZip({
