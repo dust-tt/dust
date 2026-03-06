@@ -15,15 +15,15 @@ export function isModelAvailable(
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null
 ) {
-  if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
-    return false;
-  }
-
   if (
     m.enforceEnterpriseAvailability === true &&
-    (plan === null ||
-      (!isEntreprisePlanPrefix(plan.code) && !isDustCompanyPlan(plan.code)))
+    plan &&
+    (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
   ) {
+    return true;
+  }
+
+  if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
     return false;
   }
 
