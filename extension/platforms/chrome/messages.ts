@@ -85,6 +85,9 @@ export type CaptureFullPageMessage = {
   type: "PAGE_CAPTURE_FULL_PAGE";
 };
 
+export type GetPageElementsMessage = { type: "GET_ELEMENTS" };
+export type GetPageElementsResponse = { elements: string; error?: string };
+
 const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response: U | undefined) => {
@@ -217,6 +220,17 @@ export const sendListTabsMessage = () => {
 
 export const sendTabActionMessage = (message: TabActionMessage) => {
   return sendMessage<TabActionMessage, TabActionResponse>(message);
+};
+
+export const sendInteractWithPageMessage = (
+  action: "get_elements"
+): Promise<GetPageElementsResponse> => {
+  switch (action) {
+    case "get_elements":
+      return sendMessage<GetPageElementsMessage, GetPageElementsResponse>({
+        type: "GET_ELEMENTS",
+      });
+  }
 };
 
 // Messages from background script to content script

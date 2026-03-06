@@ -4,6 +4,7 @@ import { registerListTabsTool } from "@extension/platforms/chrome/tools/listTabs
 import { registerTabActionTools } from "@extension/platforms/chrome/tools/tabActionTools";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerInteractWithPageTool } from "./interactWithPageTool";
 
 /**
  * Registers all Chrome MCP tools with the server
@@ -19,4 +20,5 @@ export function registerAllTools(
   registerTabActionTools(server);
   registerGetCurrentPageTool(server, captureService);
   registerGetPageViewTool(server, captureService, workspaceId);
+  registerInteractWithPageTool(server);
 }
