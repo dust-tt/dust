@@ -1,7 +1,5 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/github_detection/detect_skills";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/github_detection/github_auth";
-import type { DetectedSkillSummary } from "@app/lib/api/skills/github_detection/import_types";
 import {
   detectSkillsFromGitHubRepo,
   isSkillFromGitHubRepo,
