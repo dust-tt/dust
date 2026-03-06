@@ -216,23 +216,14 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {(router.pathname === "/w/[wId]/conversation/[cId]" ||
-                    router.pathname.match(
-                      /^\/w\/[^/]+\/conversation\/[^/]+$/
-                    )) && (
+                  {router.query.cId && (
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {
-                        const regexp = new RegExp(
-                          `/w/([^/]+)/conversation/([^/]+)`
+                        window.open(
+                          `${config.getPokeAppUrl()}/${owner.sId}/conversation/${router.query.cId}`,
+                          "_blank"
                         );
-                        const match = window.location.href.match(regexp);
-                        if (match) {
-                          window.open(
-                            `/poke/${match[1]}/conversation/${match[2]}`,
-                            "_blank"
-                          );
-                        }
                       }}
                       icon={ShapesIcon}
                     />
