@@ -49,6 +49,7 @@ export async function publishDeferredEventsActivity(
           // This event indicates that personal authentication is required to proceed.
           const newEvent: AgentMessageEvents = {
             ...event,
+            isLastBlockingEventForStep: isLastEvent,
             metadata: {
               ...event.metadata,
               // Override the message id to root the event to the right channel.
