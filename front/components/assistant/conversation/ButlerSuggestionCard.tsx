@@ -1,10 +1,12 @@
 import type {
   ButlerSuggestionPublicType,
   CallAgentButlerSuggestion,
+  CreateFrameButlerSuggestion,
   RenameTitleButlerSuggestion,
 } from "@app/types/conversation_butler_suggestion";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
+  ActionFrameIcon,
   Button,
   ChatBubbleLeftRightIcon,
   CheckIcon,
@@ -37,6 +39,13 @@ export function ButlerSuggestionCard({
     case "call_agent":
       return (
         <CallAgentSuggestionCard suggestion={suggestion} onAction={onAction} />
+      );
+    case "create_frame":
+      return (
+        <CreateFrameSuggestionCard
+          suggestion={suggestion}
+          onAction={onAction}
+        />
       );
     default:
       assertNever(suggestion);
@@ -143,6 +152,63 @@ function CallAgentSuggestionCard({
             variant="highlight"
             size="xs"
             icon={ChatBubbleLeftRightIcon}
+            disabled={isSubmitting}
+            onClick={() => handleAction("accepted")}
+          />
+          <Button
+            label="Dismiss"
+            variant="outline"
+            size="xs"
+            icon={XMarkIcon}
+            disabled={isSubmitting}
+            onClick={() => handleAction("dismissed")}
+          />
+        </div>
+      </div>
+    </ContentMessage>
+  );
+}
+
+interface CreateFrameSuggestionCardProps {
+  suggestion: CreateFrameButlerSuggestion;
+  onAction: (
+    suggestionSId: string,
+    status: "accepted" | "dismissed"
+  ) => Promise<void>;
+}
+
+function CreateFrameSuggestionCard({
+  suggestion,
+  onAction,
+}: CreateFrameSuggestionCardProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleAction = async (status: "accepted" | "dismissed") => {
+    setIsSubmitting(true);
+    try {
+      await onAction(suggestion.sId, status);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ContentMessage
+      variant="highlight"
+      icon={ActionFrameIcon}
+      title="Create a Frame?"
+      className="my-3 w-full max-w-full"
+    >
+      <div className="flex flex-col gap-3">
+        <div className="italic text-sm text-muted-foreground">
+          "{suggestion.metadata.prompt}"
+        </div>
+        <div className="flex flex-row gap-2">
+          <Button
+            label="Create"
+            variant="highlight"
+            size="xs"
+            icon={ActionFrameIcon}
             disabled={isSubmitting}
             onClick={() => handleAction("accepted")}
           />
