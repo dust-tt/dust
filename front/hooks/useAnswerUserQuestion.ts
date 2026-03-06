@@ -48,7 +48,7 @@ export function useAnswerUserQuestion({
         if (!response.ok) {
           try {
             const errData = await response.json();
-            if (errData?.error.type === "action_not_blocked") {
+            if (errData?.error?.type === "action_not_blocked") {
               return { success: true };
             }
           } catch {

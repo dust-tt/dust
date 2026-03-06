@@ -34,6 +34,46 @@ export function isFileAuthorizationInfo(
   );
 }
 
+export type UserQuestionResumeState = {
+  type: "user_question";
+  question: string;
+  options: Array<{ label: string; description?: string }>;
+  allowMultiple: boolean;
+};
+
+export function isUserQuestionResumeState(
+  value: Record<string, unknown> | null
+): value is UserQuestionResumeState {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    value.type === "user_question" &&
+    "question" in value &&
+    typeof value.question === "string" &&
+    "options" in value &&
+    Array.isArray(value.options) &&
+    "allowMultiple" in value &&
+    typeof value.allowMultiple === "boolean"
+  );
+}
+
+export type UserQuestionAnswer = {
+  selectedOptions: number[];
+  customResponse?: string;
+};
+
+export function isUserQuestionAnswer(
+  value: unknown
+): value is UserQuestionAnswer {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "selectedOptions" in value &&
+    Array.isArray(value.selectedOptions)
+  );
+}
+
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;

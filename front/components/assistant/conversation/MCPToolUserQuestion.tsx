@@ -10,7 +10,7 @@ import {
   ContentMessage,
   Input,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 interface MCPToolUserQuestionProps {
   triggeringUser: UserType | null;
@@ -38,10 +38,7 @@ export function MCPToolUserQuestion({
     onError: setErrorMessage,
   });
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => blockedAction.userId === user?.sId,
-    [blockedAction.userId, user?.sId]
-  );
+  const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
 
   const { question, options, allowMultiple } = blockedAction;
 
@@ -103,7 +100,6 @@ export function MCPToolUserQuestion({
               <label
                 key={index}
                 className="flex cursor-pointer items-start gap-2 rounded-lg border border-separator px-3 py-2 transition-colors hover:bg-muted dark:border-separator-night dark:hover:bg-muted-night"
-                onClick={() => toggleOption(index)}
               >
                 <Checkbox
                   checked={selectedOptions.has(index)}
@@ -156,8 +152,10 @@ export function MCPToolUserQuestion({
       ) : (
         <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
           Waiting for{" "}
-          <span className="font-semibold">{triggeringUser?.fullName}</span> to
-          answer.
+          <span className="font-semibold">
+            {triggeringUser?.fullName ?? "the user"}
+          </span>{" "}
+          to answer.
         </div>
       )}
     </ContentMessage>

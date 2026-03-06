@@ -14,7 +14,10 @@ import {
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
-import { isFileAuthorizationInfo } from "@app/lib/actions/types";
+import {
+  isFileAuthorizationInfo,
+  isUserQuestionResumeState,
+} from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
@@ -486,11 +489,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         });
       } else if (action.status === "blocked_user_question_required") {
         const resumeState = action.stepContext.resumeState;
-        if (
-          !resumeState ||
-          typeof resumeState !== "object" ||
-          resumeState.type !== "user_question"
-        ) {
+        if (!isUserQuestionResumeState(resumeState)) {
           logger.warn(
             {
               actionId: action.id,
@@ -505,15 +504,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         blockedActionsList.push({
           ...baseActionParams,
           status: action.status,
-          question: resumeState.question as string,
-          options: resumeState.options as Array<{
-            label: string;
-            description?: string;
-          }>,
-          allowMultiple: (resumeState.allowMultiple as boolean) ?? false,
-          metadata: {
-            ...baseActionParams.metadata,
-          },
+          question: resumeState.question,
+          options: resumeState.options,
+          allowMultiple: resumeState.allowMultiple,
+          metadata: baseActionParams.metadata,
           authorizationInfo: null,
         });
       } else if (action.status === "blocked_child_action_input_required") {

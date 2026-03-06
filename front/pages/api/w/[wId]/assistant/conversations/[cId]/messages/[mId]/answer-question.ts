@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -23,7 +24,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { cId, mId } = req.query;
-  if (typeof cId !== "string" || typeof mId !== "string") {
+  if (!isString(cId) || !isString(mId)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -77,6 +78,14 @@ async function handler(
 
   if (result.isErr()) {
     switch (result.error.code) {
+      case "unauthorized":
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: result.error.message,
+          },
+        });
       case "action_not_blocked":
         return apiError(req, res, {
           status_code: 400,
