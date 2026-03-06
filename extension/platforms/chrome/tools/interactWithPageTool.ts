@@ -15,13 +15,51 @@ export function registerInteractWithPageTool(server: McpServer): void {
     "Interact with the page the user is currently viewing. Use the get_elements action to get the elements of the page. Use the click_element action to click on an element. Use the type_text action to type text into an element.",
     inputSchema.shape,
     async (input) => {
-      if (input.action === "click_element" || input.action === "type_text") {
+      if (input.action === "type_text") {
         throw new Error("Not implemented");
       }
-      const response = await sendInteractWithPageMessage(
-        "get_elements",
-        input.tab_id
-      );
+
+      if (input.action === "click_element") {
+        const elementId = input.element_id;
+        if (!elementId) {
+          return {
+            content: [{ type: "text", text: "No elementId specified" }],
+            isError: true,
+          };
+        }
+        const clickResponse = await sendInteractWithPageMessage({
+          action: "click_element",
+          tabId: input.tab_id,
+          elementId,
+        });
+
+        if (!clickResponse.success) {
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  clickResponse.error ??
+                  "Unexpected error when clicking element",
+              },
+            ],
+            isError: true,
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Button clicked successfully",
+            },
+          ],
+        };
+      }
+
+      const response = await sendInteractWithPageMessage({
+        action: "get_elements",
+        tabId: input.tab_id,
+      });
 
       if (!response) {
         return {

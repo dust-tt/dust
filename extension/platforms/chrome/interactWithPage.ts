@@ -96,3 +96,86 @@ export async function getPageElements(
 
   return new Ok(result);
 }
+
+export async function clickPageElement(
+  tab: chrome.tabs.Tab,
+  elementId: string
+): Promise<Result<boolean, Error>> {
+  if (!tab?.id) {
+    return new Err(new Error("No active tab found."));
+  }
+
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    args: [elementId],
+    func: (elementId: string) => {
+      const w = window as unknown as {
+        __dustElementMap?: Record<string, WeakRef<HTMLElement>>;
+      };
+
+      const element = w.__dustElementMap?.[elementId].deref();
+      if (!element) {
+        return "NOT_FOUND";
+      }
+
+      const opts: MouseEventInit = {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        buttons: 1,
+      };
+
+      try {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center",
+        });
+      } catch {
+        // scrollIntoView may fail on some elements; ignore.
+      }
+
+      const rect = element.getBoundingClientRect();
+      const overlay = document.createElement("div");
+
+      Object.assign(overlay.style, {
+        position: "absolute",
+        top: `${rect.top + window.scrollY - 8}px`,
+        left: `${rect.left + window.scrollX - 8}px`,
+        width: `${rect.width + 16}px`,
+        height: `${rect.height + 16}px`,
+        borderRadius: "9999px",
+        boxShadow: "0 0 0 3px #418B5C, 0 0 16px 4px rgba(65, 139, 92, 0.9)",
+        background: "rgba(65, 139, 92, 0.12)",
+        pointerEvents: "none",
+        zIndex: "2147483647",
+        transition: "opacity 0.5s ease-out",
+      });
+
+      document.body.appendChild(overlay);
+
+      setTimeout(() => {
+        overlay.style.opacity = "0";
+        setTimeout(() => overlay.remove(), 500);
+      }, 100);
+
+      element.dispatchEvent(new MouseEvent("mouseover", opts));
+      element.dispatchEvent(new MouseEvent("mousedown", opts));
+      element.dispatchEvent(new MouseEvent("mouseup", opts));
+      element.dispatchEvent(new MouseEvent("click", opts));
+
+      return "OK";
+    },
+  });
+
+  const result = execution?.result;
+
+  if (!result) {
+    return new Err(new Error("Unexpected error"));
+  }
+
+  if (result === "NOT_FOUND") {
+    return new Err(new Error("Element not found"));
+  }
+  return new Ok(true);
+}

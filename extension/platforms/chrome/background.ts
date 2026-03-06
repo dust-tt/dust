@@ -5,6 +5,8 @@ import type {
   AuthBackgroundResponseSuccess,
   CaptureMesssage,
   CaptureResponse,
+  ClickPageElementMessage,
+  ClickPageElementResponse,
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   GetPageElementsMessage,
@@ -21,7 +23,7 @@ import { generatePKCE } from "@extension/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
 import { jwtDecode } from "jwt-decode";
-import { getPageElements } from "./interactWithPage";
+import { clickPageElement, getPageElements } from "./interactWithPage";
 
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
@@ -278,7 +280,8 @@ chrome.runtime.onMessage.addListener(
       | CaptureMesssage
       | InputBarStatusMessage
       | TabActionMessage
-      | GetPageElementsMessage,
+      | GetPageElementsMessage
+      | ClickPageElementMessage,
     sender,
     sendResponse: (
       response:
@@ -289,6 +292,7 @@ chrome.runtime.onMessage.addListener(
         | GetActiveTabBackgroundResponse
         | TabActionResponse
         | GetPageElementsResponse
+        | ClickPageElementResponse
     ) => void
   ) => {
     switch (message.type) {
@@ -716,6 +720,39 @@ chrome.runtime.onMessage.addListener(
             });
           }
         });
+        return true;
+
+      case "CLICK_ELEMENT":
+        chrome.tabs.query(
+          { active: true, currentWindow: true },
+          async (tabs) => {
+            const tab = tabs[0];
+            try {
+              const result = await clickPageElement(tab, message.elementId);
+
+              if (result.isErr()) {
+                log("Error clicking page element:", result.error);
+                sendResponse({
+                  success: false,
+                  error: result.error.message,
+                });
+                return;
+              }
+
+              sendResponse({
+                success: true,
+              });
+            } catch (error) {
+              const normalizedError = normalizeError(error);
+              log("Error clicking page element:", normalizedError.message);
+              sendResponse({
+                success: false,
+                error:
+                  normalizedError.message ?? "Failed to click page element.",
+              });
+            }
+          }
+        );
         return true;
 
       case "INPUT_BAR_STATUS":
