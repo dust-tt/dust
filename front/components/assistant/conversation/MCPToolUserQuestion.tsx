@@ -62,10 +62,15 @@ function QuestionCard({
         {question.options.map((option, oi) => (
           <ContextItem
             key={oi}
-            title={option.label}
+            title={
+              <span className="text-sm font-normal">{option.label}</span>
+            }
             visual={
               <Checkbox
-                checked={answerState.selectedOptions.has(oi) && !isOtherActive}
+                className="mt-0.5"
+                checked={
+                  answerState.selectedOptions.has(oi) && !isOtherActive
+                }
                 onCheckedChange={() =>
                   onToggleOption(questionIndex, oi, question.multiSelect)
                 }
@@ -85,9 +90,10 @@ function QuestionCard({
           </ContextItem>
         ))}
         <ContextItem
-          title="Other"
+          title={<span className="text-sm font-normal">Other</span>}
           visual={
             <Checkbox
+              className="mt-0.5"
               checked={isOtherActive}
               onCheckedChange={() => {
                 if (isOtherActive) {
