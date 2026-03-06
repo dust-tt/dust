@@ -4,9 +4,9 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const USER_ASK_QUESTION_SERVER_NAME = "user_ask_question" as const;
+export const ASK_USER_QUESTION_SERVER_NAME = "ask_user_question" as const;
 
-export const USER_ASK_QUESTION_TOOLS_METADATA = createToolsRecord({
+export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
   ask_user_question: {
     description:
       "Ask the user a question with multiple-choice options. " +
@@ -46,9 +46,9 @@ export const USER_ASK_QUESTION_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const USER_ASK_QUESTION_SERVER = {
+export const ASK_USER_QUESTION_SERVER = {
   serverInfo: {
-    name: USER_ASK_QUESTION_SERVER_NAME,
+    name: ASK_USER_QUESTION_SERVER_NAME,
     version: "1.0.0",
     description: "Ask the user a question with multiple-choice options.",
     icon: "ActionAtomIcon",
@@ -56,14 +56,14 @@ export const USER_ASK_QUESTION_SERVER = {
     documentationUrl: null,
     instructions: null,
   },
-  tools: Object.values(USER_ASK_QUESTION_TOOLS_METADATA).map((t) => ({
+  tools: Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(USER_ASK_QUESTION_TOOLS_METADATA).map((t) => [
+    Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => [
       t.name,
       t.stake,
     ])

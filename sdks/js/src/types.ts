@@ -724,7 +724,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "snowflake_tool"
   | "run_tools_from_prompt"
   | "usage_data_api"
-  | "user_ask_question_tool"
+  | "ask_user_question_tool"
   | "xai_feature"
   | "conversations_slack_notifications"
   | "anthropic_reasoning_token_count"

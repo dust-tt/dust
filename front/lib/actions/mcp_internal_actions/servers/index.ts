@@ -11,6 +11,7 @@ import { default as agentManagementServer } from "@app/lib/api/actions/servers/a
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
+import { default as userAskQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
@@ -65,7 +66,6 @@ import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
-import { default as userAskQuestionServer } from "@app/lib/api/actions/servers/user_ask_question";
 import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
 import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
@@ -238,7 +238,7 @@ export async function getInternalMCPServer(
       return projectConversationServer(auth, agentLoopContext);
     case "ukg_ready":
       return ukgReadyServer(auth, agentLoopContext);
-    case "user_ask_question":
+    case "ask_user_question":
       return userAskQuestionServer(auth, agentLoopContext);
     case "user_mentions":
       return userMentionsServer(auth, agentLoopContext);

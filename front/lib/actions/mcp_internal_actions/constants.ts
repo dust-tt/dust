@@ -11,6 +11,7 @@ import {
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
+import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
@@ -69,7 +70,6 @@ import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_gen
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
-import { USER_ASK_QUESTION_SERVER } from "@app/lib/api/actions/servers/user_ask_question/metadata";
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
@@ -196,7 +196,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "project_manager",
   "project_conversation",
   "sandbox",
-  "user_ask_question",
+  "ask_user_question",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1063,19 +1063,18 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: USER_MENTIONS_SERVER,
   },
-  user_ask_question: {
+  ask_user_question: {
     id: 1027,
     availability: "auto",
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
-      // return !featureFlags.includes("user_ask_question_tool");
-      return false;
+      return !featureFlags.includes("ask_user_question_tool");
     },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: USER_ASK_QUESTION_SERVER,
+    metadata: ASK_USER_QUESTION_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

@@ -1,10 +1,10 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { USER_ASK_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/user_ask_question/metadata";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-const handlers: ToolHandlers<typeof USER_ASK_QUESTION_TOOLS_METADATA> = {
+const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
   ask_user_question: async (
     { question, options, allow_multiple },
     { agentLoopContext }
@@ -68,4 +68,4 @@ const handlers: ToolHandlers<typeof USER_ASK_QUESTION_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = buildTools(USER_ASK_QUESTION_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(ASK_USER_QUESTION_TOOLS_METADATA, handlers);
