@@ -402,6 +402,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_events": "never_ask",
     "update_event": "low",
   },
+  "poke": {
+    "get_workspace_metadata": "high",
+  },
   "primitive_types_debugger": {
     "pass_through": "high",
     "tool_without_user_config": "high",

@@ -710,6 +710,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
+  | "poke_mcp"
   | "restrict_agents_publishing"
   | "salesforce_synced_queries"
   | "salesforce_tool_write"

@@ -42,6 +42,7 @@ import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
 import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
+import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as projectConversationServer } from "@app/lib/api/actions/servers/project_conversation";
@@ -233,6 +234,8 @@ export async function getInternalMCPServer(
       return productboardServer(auth, agentLoopContext);
     case "project_manager":
       return projectManagerServer(auth, agentLoopContext);
+    case "poke":
+      return pokeServer(auth, agentLoopContext);
     case "project_conversation":
       return projectConversationServer(auth, agentLoopContext);
     case "ukg_ready":
