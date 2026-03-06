@@ -1,4 +1,4 @@
-import { DUST_ANONYMOUS_ID_COOKIE } from "@app/lib/utils/anonymous_id";
+import { buildDustAidCookieString } from "@app/lib/utils/anonymous_id";
 
 // Marketing and UTM parameter keys to track across the application.
 export const MARKETING_PARAMS = [
@@ -89,8 +89,7 @@ export function persistDustAidFromURL(): void {
   const params = new URLSearchParams(window.location.search);
   const dustAid = params.get("dust_aid");
   if (dustAid) {
-    const maxAgeSeconds = 31536000; // 1 year
-    document.cookie = `${DUST_ANONYMOUS_ID_COOKIE}=${encodeURIComponent(dustAid)}; path=/; SameSite=Lax; Secure; max-age=${maxAgeSeconds}`;
+    document.cookie = buildDustAidCookieString(encodeURIComponent(dustAid));
   }
 }
 
