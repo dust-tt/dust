@@ -3,6 +3,7 @@ import {
   isModelCustomAvailableAndWhitelisted,
 } from "@app/lib/assistant";
 import {
+  DUST_COMPANY_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
@@ -203,6 +204,62 @@ describe("isModelCustomAvailable", () => {
     const model = createMockModel({
       availableIfUnion: { featureFlag: "deepseek_feature" },
       largeModel: true,
+    });
+    const featureFlags: WhitelistableFeature[] = [];
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+
+    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(false);
+  });
+
+  // enterprise availability tests
+  it("should return true when enterprise is set and plan is an enterprise plan", () => {
+    const model = createMockModel({
+      availableIfUnion: { enterprise: true },
+      largeModel: false,
+    });
+    const featureFlags: WhitelistableFeature[] = [];
+    const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
+
+    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+  });
+
+  it("should return true when enterprise is set and plan has ENT_ prefix", () => {
+    const model = createMockModel({
+      availableIfUnion: { enterprise: true },
+      largeModel: false,
+    });
+    const featureFlags: WhitelistableFeature[] = [];
+    const plan = createMockPlan("ENT_CUSTOM_PLAN");
+
+    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+  });
+
+  it("should return true when both enterprise and featureFlag are set, with enterprise plan (no featureFlag needed)", () => {
+    const model = createMockModel({
+      availableIfUnion: { enterprise: true, featureFlag: "deepseek_feature" },
+      largeModel: false,
+    });
+    const featureFlags: WhitelistableFeature[] = [];
+    const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
+
+    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+  });
+
+  it("should return true when both enterprise and featureFlag are set, with featureFlag enabled (no enterprise plan needed)", () => {
+    const model = createMockModel({
+      availableIfUnion: { enterprise: true, featureFlag: "deepseek_feature" },
+      largeModel: false,
+    });
+    const featureFlags: WhitelistableFeature[] = ["deepseek_feature"];
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+
+    expect(isModelCustomAvailable(model, featureFlags, plan)).toBe(true);
+  });
+
+  it("should return false when both enterprise and featureFlag are set but neither condition is met", () => {
+    const model = createMockModel({
+      availableIfUnion: { enterprise: true, featureFlag: "deepseek_feature" },
+      largeModel: false,
     });
     const featureFlags: WhitelistableFeature[] = [];
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
