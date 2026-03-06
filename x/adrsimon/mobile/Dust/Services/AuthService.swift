@@ -10,11 +10,11 @@ enum AuthError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .pkceGenerationFailed:
-            return "Failed to generate PKCE challenge"
+            "Failed to generate PKCE challenge"
         case .noAuthorizationCode:
-            return "No authorization code received"
+            "No authorization code received"
         case .authenticationCancelled:
-            return "Authentication was cancelled"
+            "Authentication was cancelled"
         }
     }
 }
@@ -77,7 +77,7 @@ enum AuthService {
     // MARK: - Token Exchange
 
     static func exchangeCodeForTokens(code: String, codeVerifier: String) async throws -> AuthResponse {
-        return try await APIClient.post(
+        try await APIClient.post(
             AppConfig.Endpoints.authenticate,
             body: TokenExchangeRequest(code: code, codeVerifier: codeVerifier)
         )
@@ -86,7 +86,7 @@ enum AuthService {
     // MARK: - Token Refresh
 
     static func refreshTokens(refreshToken: String) async throws -> AuthResponse {
-        return try await APIClient.post(
+        try await APIClient.post(
             AppConfig.Endpoints.authenticate,
             body: TokenRefreshRequest(refreshToken: refreshToken)
         )
@@ -107,7 +107,8 @@ enum AuthService {
 
     static func isTokenExpired() -> Bool {
         guard let expiryString = KeychainService.load(.tokenExpiry),
-              let expiryInterval = TimeInterval(expiryString) else {
+              let expiryInterval = TimeInterval(expiryString)
+        else {
             return true
         }
         return Date().timeIntervalSince1970 >= expiryInterval
@@ -127,7 +128,8 @@ enum AuthService {
 
     static func loadTokens() -> AuthTokens? {
         guard let accessToken = KeychainService.load(.accessToken),
-              let refreshToken = KeychainService.load(.refreshToken) else {
+              let refreshToken = KeychainService.load(.refreshToken)
+        else {
             return nil
         }
         return AuthTokens(accessToken: accessToken, refreshToken: refreshToken)

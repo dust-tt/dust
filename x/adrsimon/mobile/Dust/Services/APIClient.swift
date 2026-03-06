@@ -13,15 +13,15 @@ enum APIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid URL"
+            "Invalid URL"
         case .invalidResponse:
-            return "Invalid response from server"
-        case .httpError(let statusCode, let body):
-            return "HTTP \(statusCode): \(body)"
-        case .decodingError(let error):
-            return "Failed to decode response: \(error.localizedDescription)"
-        case .networkError(let error):
-            return error.localizedDescription
+            "Invalid response from server"
+        case let .httpError(statusCode, body):
+            "HTTP \(statusCode): \(body)"
+        case let .decodingError(error):
+            "Failed to decode response: \(error.localizedDescription)"
+        case let .networkError(error):
+            error.localizedDescription
         }
     }
 }
@@ -51,9 +51,9 @@ enum APIClient {
         return try await execute(request, endpoint: endpoint)
     }
 
-    static func post<T: Decodable, B: Encodable>(
+    static func post<T: Decodable>(
         _ endpoint: String,
-        body: B,
+        body: some Encodable,
         accessToken: String? = nil
     ) async throws -> T {
         var request = try buildRequest(endpoint: endpoint, accessToken: accessToken)
@@ -63,9 +63,9 @@ enum APIClient {
         return try await execute(request, endpoint: endpoint)
     }
 
-    static func postNoResponse<B: Encodable>(
+    static func postNoResponse(
         _ endpoint: String,
-        body: B,
+        body: some Encodable,
         accessToken: String? = nil
     ) async throws {
         var request = try buildRequest(endpoint: endpoint, accessToken: accessToken)
@@ -85,7 +85,7 @@ enum APIClient {
             throw APIError.invalidResponse
         }
 
-        guard (200...299).contains(httpResponse.statusCode) else {
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw APIError.httpError(statusCode: httpResponse.statusCode, body: body)
         }
@@ -115,7 +115,7 @@ enum APIClient {
             throw APIError.invalidResponse
         }
 
-        guard (200...299).contains(httpResponse.statusCode) else {
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw APIError.httpError(statusCode: httpResponse.statusCode, body: body)
         }

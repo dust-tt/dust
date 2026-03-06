@@ -107,10 +107,24 @@ pre-commit:
       run: cargo fmt -- {staged_files}
       stage_fixed: true
 
+    # Swift format check (mobile)
+    swift-format:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftformat --lint {staged_files}
+
+    # Swift lint check (mobile)
+    swift-lint:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftlint lint --quiet {staged_files}
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss,md}"
       # Rust projects' .md files are not covered by biome.
-      exclude: "{core,cli/dust-sandbox}/**"
+      exclude: "{core,cli/dust-sandbox,x}/**"
       run: npm run biome:lefthook -- {staged_files}
       stage_fixed: true

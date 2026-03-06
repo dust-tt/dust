@@ -41,7 +41,7 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
     func login() {
         do {
             let pkce = try AuthService.generatePKCE()
-            self.pkcePair = pkce
+            pkcePair = pkce
 
             guard let loginURL = AuthService.buildLoginURL(codeChallenge: pkce.codeChallenge) else {
                 state = .error("Failed to build login URL")
@@ -59,28 +59,29 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
 
                     if let error {
                         if (error as NSError).code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
-                            self.webAuthSession = nil
-                            self.state = .unauthenticated
+                            webAuthSession = nil
+                            state = .unauthenticated
                         } else {
-                            self.state = .error(error.localizedDescription)
+                            state = .error(error.localizedDescription)
                         }
                         return
                     }
 
                     guard let callbackURL,
-                          let code = AuthService.extractCode(from: callbackURL) else {
-                        self.state = .error("No authorization code received")
+                          let code = AuthService.extractCode(from: callbackURL)
+                    else {
+                        state = .error("No authorization code received")
                         return
                     }
 
-                    await self.exchangeCode(code)
+                    await exchangeCode(code)
                 }
             }
 
             session.presentationContextProvider = self
             session.prefersEphemeralWebBrowserSession = false
             session.start()
-            self.webAuthSession = session
+            webAuthSession = session
         } catch {
             state = .error(error.localizedDescription)
         }
@@ -90,7 +91,8 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
 
     func handleCallbackURL(_ url: URL) {
         guard url.scheme == AppConfig.callbackURLScheme,
-              let code = AuthService.extractCode(from: url) else {
+              let code = AuthService.extractCode(from: url)
+        else {
             return
         }
 
@@ -146,7 +148,7 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
             )
             AuthService.saveTokens(response)
             self.pkcePair = nil
-            self.webAuthSession = nil
+            webAuthSession = nil
             state = .authenticated(response.user)
         } catch {
             state = .error(error.localizedDescription)

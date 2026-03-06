@@ -14,10 +14,10 @@ struct ContentView: View {
         case .authenticating:
             ProgressView("Signing in...")
 
-        case .authenticated(let user):
+        case let .authenticated(user):
             ProfileView(user: user, onLogout: { authViewModel.logout() })
 
-        case .error(let message):
+        case let .error(message):
             ErrorView(message: message, onRetry: { authViewModel.logout() })
         }
     }
