@@ -22,21 +22,16 @@ const RenameTitleMetadataSchema = z.object({
   suggestedTitle: z.string(),
 });
 
-const CallAgentMetadataSchema = z.object({
-  agentSId: z.string(),
-  agentName: z.string(),
-  prompt: z.string(),
-});
-
-const CreateFrameMetadataSchema = z.object({
+// Shared schema for suggestion types that invoke an agent with a prompt.
+const AgentInvocationMetadataSchema = z.object({
   agentSId: z.string(),
   agentName: z.string(),
   prompt: z.string(),
 });
 
 export type RenameTitleMetadata = z.infer<typeof RenameTitleMetadataSchema>;
-export type CallAgentMetadata = z.infer<typeof CallAgentMetadataSchema>;
-export type CreateFrameMetadata = z.infer<typeof CreateFrameMetadataSchema>;
+export type CallAgentMetadata = z.infer<typeof AgentInvocationMetadataSchema>;
+export type CreateFrameMetadata = z.infer<typeof AgentInvocationMetadataSchema>;
 
 // Discriminated union linking suggestionType to its metadata shape.
 export const ButlerSuggestionDataSchema = z.discriminatedUnion(
@@ -49,12 +44,12 @@ export const ButlerSuggestionDataSchema = z.discriminatedUnion(
     }),
     z.object({
       suggestionType: z.literal("call_agent"),
-      metadata: CallAgentMetadataSchema,
+      metadata: AgentInvocationMetadataSchema,
       status: z.enum(BUTLER_SUGGESTION_STATUSES),
     }),
     z.object({
       suggestionType: z.literal("create_frame"),
-      metadata: CreateFrameMetadataSchema,
+      metadata: AgentInvocationMetadataSchema,
       status: z.enum(BUTLER_SUGGESTION_STATUSES),
     }),
   ]
