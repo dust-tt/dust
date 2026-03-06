@@ -1,5 +1,6 @@
 import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import config from "@app/lib/api/config";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
@@ -29,6 +30,7 @@ export function PublicInteractiveContentHeader({
   conversationUrl,
   projectUrl,
 }: PublicInteractiveContentHeaderProps) {
+  const staticWebsiteUrl = config.getStaticWebsiteUrl();
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
@@ -36,6 +38,7 @@ export function PublicInteractiveContentHeader({
           <PublicWebsiteLogo
             size="small"
             utmParam={user ? undefined : UTM_PARAM}
+            baseUrl={staticWebsiteUrl}
           />
         </div>
 
@@ -54,7 +57,7 @@ export function PublicInteractiveContentHeader({
           {!user && (
             <Button
               label="Try it yourself"
-              href={`/?${UTM_PARAM}`}
+              href={`${staticWebsiteUrl}/?${UTM_PARAM}`}
               variant="outline"
               icon={RocketIcon}
               onClick={withTracking(TRACKING_AREAS.FRAMES, "sign_up")}

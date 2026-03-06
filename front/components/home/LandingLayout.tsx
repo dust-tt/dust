@@ -384,6 +384,7 @@ const Header = () => {
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
   utmParam?: string;
+  baseUrl?: string;
 }
 
 const logoVariants = cva("", {
@@ -401,11 +402,13 @@ const logoVariants = cva("", {
 export const PublicWebsiteLogo = ({
   size = "default",
   utmParam,
+  baseUrl,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
+  const href = `${baseUrl ?? ""}/home${utmParam ? `?${utmParam}` : ""}`;
 
   return (
-    <Link href={`/home${utmParam ? `?${utmParam}` : ""}`}>
+    <Link href={href}>
       <DustLogo className={className} />
     </Link>
   );
