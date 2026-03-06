@@ -53,6 +53,29 @@ export class ServerSideTracking {
     }
   }
 
+  static trackWorkspaceCreated({
+    user,
+    workspace,
+    utmParams,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    utmParams?: UTMParams;
+  }) {
+    try {
+      PostHogServerSideTracking.trackWorkspaceCreated({
+        user,
+        workspace,
+        utmParams,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track workspace_created on PostHog"
+      );
+    }
+  }
+
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
     try {
       const subscriptionByWorkspaceModelId =
