@@ -1,20 +1,5 @@
-# Stage 1: rust-builder - compile Rust in isolated stage
-FROM debian:trixie-20260223-slim AS rust-builder
-
-ENV DEBIAN_FRONTEND=noninteractive
-ENV RUSTUP_HOME=/opt/rustup
-ENV CARGO_HOME=/opt/cargo
-ENV PATH="/opt/cargo/bin:$PATH"
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  curl ca-certificates build-essential \
-  && rm -rf /var/lib/apt/lists/*
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-  sh -s -- -y --default-toolchain stable --profile minimal
-
-# Stage 2: rootfs - assemble complete filesystem
-FROM debian:trixie-20260223-slim  AS rootfs
+# Stage 1: rootfs - assemble complete filesystem
+FROM debian:trixie-20260223-slim AS rootfs
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -31,10 +16,6 @@ RUN uv python install 3.14 \
   && ln -s "$PYTHON_BIN" /usr/local/bin/python
 ENV VIRTUAL_ENV=/opt/venv
 RUN uv venv /opt/venv --python 3.14
-
-# Rust from builder stage
-COPY --from=rust-builder /opt/rustup /opt/rustup
-COPY --from=rust-builder /opt/cargo /opt/cargo
 
 # Node.js via official tarball
 ARG NODE_VERSION=24.14.0

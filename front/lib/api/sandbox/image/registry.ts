@@ -11,8 +11,6 @@ import { Err, Ok } from "@app/types/shared/result";
 const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:v0.1.0")
   .setBuildEnv({
     NPM_CONFIG_PREFIX: "/opt/npm-global",
-    CARGO_HOME: "/opt/cargo",
-    RUSTUP_HOME: "/opt/rustup",
     VIRTUAL_ENV: "/opt/venv",
   })
   .runCmd("sudo mkdir -p /opt/npm-global && sudo chmod -R 777 /opt/npm-global")
@@ -58,15 +56,16 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:v0.1.0")
     { name: "dsbx", description: "Dust CLI" },
     {
       installCmd:
-        "git clone --depth 1 https://github.com/dust-tt/dust.git /tmp/dust && " +
-        "cargo install --path /tmp/dust/cli/dust-sandbox --root /opt/cargo && " +
-        "sudo rm -rf /tmp/dust",
+        "curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.0/dsbx-linux-x86_64 -o /tmp/dsbx && " +
+        "curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.0/checksums-sha256.txt -o /tmp/checksums-sha256.txt && " +
+        "cd /tmp && grep dsbx-linux-x86_64 checksums-sha256.txt | sha256sum -c - && " +
+        "chmod +x /tmp/dsbx && " +
+        "sudo mv /tmp/dsbx /opt/bin/dsbx",
     }
   )
-  .runCmd(
-    'echo "export PATH=/opt/venv/bin:/opt/cargo/bin:/opt/bin:/opt/npm-global/bin:\\$PATH" | sudo tee /etc/profile.d/dust-path.sh && ' +
-      'echo "export VIRTUAL_ENV=/opt/venv" | sudo tee -a /etc/profile.d/dust-path.sh'
-  )
+  .setRunEnv({
+    PATH: "/opt/bin:$PATH",
+  })
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
   .setWorkdir("/home/user")
