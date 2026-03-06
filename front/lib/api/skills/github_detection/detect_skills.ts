@@ -58,7 +58,7 @@ async function fetchRepoTree(
       });
     }
     return new Err({
-      type: "api_error",
+      type: "github_api_error",
       message: `Failed to fetch repository tree: ${error.message}`,
     });
   }
@@ -66,7 +66,7 @@ async function fetchRepoTree(
   const parsed = GitHubTreeResponseSchema.safeParse(rawData);
   if (!parsed.success) {
     return new Err({
-      type: "api_error",
+      type: "github_api_error",
       message: `Invalid tree response from GitHub: ${parsed.error.message}`,
     });
   }
@@ -105,7 +105,7 @@ async function fetchBlobContent(
     rawData = response.data;
   } catch (err) {
     return new Err({
-      type: "api_error",
+      type: "github_api_error",
       message: `Failed to fetch blob: ${normalizeError(err).message}`,
     });
   }
@@ -113,7 +113,7 @@ async function fetchBlobContent(
   const parsed = GitHubBlobResponseSchema.safeParse(rawData);
   if (!parsed.success) {
     return new Err({
-      type: "api_error",
+      type: "github_api_error",
       message: `Invalid blob response from GitHub: ${parsed.error.message}`,
     });
   }

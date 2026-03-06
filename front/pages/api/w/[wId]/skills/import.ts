@@ -98,13 +98,13 @@ async function handler(
                 message: error.message,
               },
             });
-          case "api_error":
+          case "github_api_error":
             logger.error(
               { error, workspaceId: owner.sId },
               "Error detecting skills from GitHub repo during import"
             );
             return apiError(req, res, {
-              status_code: 400,
+              status_code: 500,
               api_error: {
                 type: "invalid_request_error",
                 message: error.message,

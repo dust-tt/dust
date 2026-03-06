@@ -87,7 +87,7 @@ async function handler(
                 message: error.message,
               },
             });
-          case "api_error":
+          case "github_api_error":
             logger.error(
               { error, workspaceId: owner.sId },
               "Error detecting skills from GitHub repo"
