@@ -73,11 +73,19 @@ export type ModelConfigurationType = Omit<
   minimumReasoningEffort: AgentReasoningEffort;
   maximumReasoningEffort: AgentReasoningEffort;
   defaultReasoningEffort: AgentReasoningEffort;
-  featureFlag?: WhitelistableFeature;
-  customAssistantFeatureFlag?: WhitelistableFeature;
+  // If undefined, model is enabled.
+  // If object is empty, model is disabled.
+  // If defined, model must satisfy at least one of the conditions in the union to be enabled.
+  availableIfUnion?: {
+    // If set to true and workspace is enterprise, model is enabled.
+    enterprise?: boolean;
+    // If set, model is enabled for use only if feature flag is enabled.
+    featureFlag?: WhitelistableFeature;
+  };
+  customAvailableIf?: {
+    featureFlag?: WhitelistableFeature;
+  };
   tokenizer: TokenizerConfig;
-  // When true, enterprise plans bypass the feature flag check (both can coexist).
-  enforceEnterpriseAvailability?: boolean;
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
