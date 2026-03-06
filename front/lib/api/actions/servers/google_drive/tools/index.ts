@@ -227,7 +227,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         pageToken,
         pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
         fields:
-          "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared)",
+          "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared, capabilities(canEdit))",
         orderBy,
       };
 
@@ -274,7 +274,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       const fileMetadata = await drive.files.get({
         fileId,
         supportsAllDrives: true,
-        fields: "id, name, mimeType, size",
+        fields: "id, name, mimeType, size, capabilities(canEdit)",
       });
       const file = fileMetadata.data;
 
@@ -359,6 +359,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
               fileId,
               fileName: file.name,
               mimeType: file.mimeType,
+              canEdit: file.capabilities?.canEdit ?? null,
               content: truncatedContent,
               returnedContentLength: truncatedContent.length,
               totalContentLength,
@@ -640,9 +641,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   create_comment: async (
-    { fileId, content },
+    { fileId, content, canEdit },
     { authInfo, agentLoopContext }
   ) => {
+    if (canEdit === false) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
+        },
+      ]);
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -678,9 +687,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   create_reply: async (
-    { fileId, commentId, content },
+    { fileId, commentId, content, canEdit },
     { authInfo, agentLoopContext }
   ) => {
+    if (canEdit === false) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
+        },
+      ]);
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -719,9 +736,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_document: async (
-    { documentId, requests },
+    { documentId, requests, canEdit },
     { authInfo, agentLoopContext }
   ) => {
+    if (canEdit === false) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
+        },
+      ]);
+    }
     const docs = await getDocsClient(authInfo);
     if (!docs) {
       return new Err(new MCPError("Failed to authenticate with Google Docs"));
@@ -771,9 +796,18 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       majorDimension = "ROWS",
       valueInputOption = "USER_ENTERED",
       insertDataOption = "INSERT_ROWS",
+      canEdit,
     },
     { authInfo, agentLoopContext }
   ) => {
+    if (canEdit === false) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
+        },
+      ]);
+    }
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
@@ -808,9 +842,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_spreadsheet: async (
-    { spreadsheetId, requests },
+    { spreadsheetId, requests, canEdit },
     { authInfo, agentLoopContext }
   ) => {
+    if (canEdit === false) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
+        },
+      ]);
+    }
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
@@ -853,9 +895,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_presentation: async (
-    { presentationId, requests },
+    { presentationId, requests, canEdit },
     { authInfo, agentLoopContext }
   ) => {
+    if (canEdit === false) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
+        },
+      ]);
+    }
     const slides = await getSlidesClient(authInfo);
     if (!slides) {
       return new Err(new MCPError("Failed to authenticate with Google Slides"));
