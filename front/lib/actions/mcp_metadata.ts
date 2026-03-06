@@ -49,6 +49,7 @@ import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -58,6 +59,13 @@ const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 // is connected. If it takes longer than 5s the browser is likely
 // disconnected and waiting further won't help.
 const CLIENT_SIDE_CONNECT_TIMEOUT_MS = 5_000;
+
+type MCPProxyKind = "static_ip_proxy" | "untrusted_egress_proxy" | "direct";
+type MCPProxyConfig = {
+  dispatcher?: ReturnType<typeof getUntrustedEgressAgent>;
+  fetch?: FetchLike;
+  proxyKind: MCPProxyKind;
+};
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -110,7 +118,10 @@ export type MCPConnectionParams =
  * Without a custom `fetch`, those connections fall through to the global fetch
  * which may use a different proxy (e.g. squid-proxy instead of http-proxy).
  */
-async function createMCPProxyConfig(auth: Authenticator, host: string) {
+async function createMCPProxyConfig(
+  auth: Authenticator,
+  host: string
+): Promise<MCPProxyConfig> {
   const workspace = auth.getNonNullableWorkspace();
 
   // Check if workspace should use static IP:
@@ -127,7 +138,11 @@ async function createMCPProxyConfig(auth: Authenticator, host: string) {
         { workspaceId: workspace.sId, host },
         "Using static IP proxy for MCP request"
       );
-      return { dispatcher: staticAgent, fetch: createProxyFetch(staticAgent) };
+      return {
+        dispatcher: staticAgent,
+        fetch: createProxyFetch(staticAgent),
+        proxyKind: "static_ip_proxy" as const,
+      };
     }
     logger.warn(
       { workspaceId: workspace.sId, host },
@@ -137,12 +152,13 @@ async function createMCPProxyConfig(auth: Authenticator, host: string) {
 
   const dispatcher = getUntrustedEgressAgent();
   if (!dispatcher) {
-    return {};
+    return { proxyKind: "direct" as const };
   }
 
   return {
     dispatcher,
     fetch: createProxyFetch(dispatcher),
+    proxyKind: "untrusted_egress_proxy" as const,
   };
 }
 
@@ -430,9 +446,10 @@ export async function connectToMCPServer(
             }
           }
 
+          const { dispatcher, fetch: proxyFetch, proxyKind } =
+            await createMCPProxyConfig(auth, url.hostname);
+
           try {
-            const { dispatcher, fetch: proxyFetch } =
-              await createMCPProxyConfig(auth, url.hostname);
             const req = {
               requestInit: {
                 // Include stored custom headers
@@ -478,7 +495,10 @@ export async function connectToMCPServer(
             logger.error(
               {
                 oauthConnectionType,
+                proxyKind,
                 serverType,
+                targetHost: url.hostname,
+                targetUrlOrigin: url.origin,
                 workspaceId: auth.getNonNullableWorkspace().sId,
                 error: e,
               },
