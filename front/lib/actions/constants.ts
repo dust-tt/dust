@@ -3,6 +3,8 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 
+export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
+
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
 export const RUN_AGENT_CALL_TOOL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.

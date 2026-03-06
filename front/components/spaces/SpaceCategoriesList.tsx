@@ -2,7 +2,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import { MCP_SPECIFICATION } from "@app/lib/actions/mcp_specification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
