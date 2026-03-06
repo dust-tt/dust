@@ -215,17 +215,23 @@ export async function runModel(
     equippedSkills,
     hasConditionalJITTools,
     mcpActions,
+    conditionalJitServerNames,
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
-      auth,
-      {
-        agentConfiguration,
-        conversation,
-        attachments,
-      }
-    );
+    const {
+      stableServers: stableJitServers,
+      conditionalServers: conditionalJitServers,
+    } = await getJITServers(auth, {
+      agentConfiguration,
+      conversation,
+      attachments,
+    });
+    const hasConditionalJITTools = conditionalJitServers.length > 0;
+    const jitServers = [
+      ...stableJitServers,
+      ...conditionalJitServers,
+    ];
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
@@ -281,11 +287,16 @@ export async function runModel(
       )
     );
 
+    const conditionalJitServerNames = new Set(
+      conditionalJitServers.map((s) => s.name)
+    );
+
     return {
       hasConditionalJITTools,
       enabledSkills,
       equippedSkills,
       mcpActions,
+      conditionalJitServerNames,
       mcpToolsListingError,
     };
   });
@@ -368,6 +379,13 @@ export async function runModel(
     workspaceContext = await buildWorkspaceContext(auth);
   }
 
+  const stableServerToolsAndInstructions = mcpActions.filter(
+    (a) => !conditionalJitServerNames.has(a.serverName)
+  );
+  const conditionalJitServerToolsAndInstructions = mcpActions.filter((a) =>
+    conditionalJitServerNames.has(a.serverName)
+  );
+
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -377,7 +395,8 @@ export async function runModel(
     errorContext: mcpToolsListingError,
     agentsList,
     conversation,
-    serverToolsAndInstructions: mcpActions,
+    serverToolsAndInstructions: stableServerToolsAndInstructions,
+    conditionalJitServerToolsAndInstructions,
     enabledSkills,
     equippedSkills,
     memoriesContext,
