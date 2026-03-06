@@ -1,5 +1,5 @@
 import { setLastActiveEnv } from "../lib/activity";
-import { getEnvironment } from "../lib/environment";
+import { type Environment, getEnvironment } from "../lib/environment";
 import { logger } from "../lib/logger";
 import {
   type LayoutConfig,
@@ -35,7 +35,7 @@ export async function openCommand(
   const env = envResult.value;
 
   const multiplexer = await getConfiguredMultiplexer();
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const envShPath = getEnvFilePath(env.name);
   const sessionName = getSessionName(env.name);
 
@@ -60,7 +60,7 @@ export async function openCommand(
 
 async function resolveEnvironment(
   nameArg: string | undefined
-): Promise<Result<{ name: string }, CommandError>> {
+): Promise<Result<Environment, CommandError>> {
   let envName = nameArg;
   if (!envName) {
     const selected = await selectEnvironmentWithFzf("Select environment to open");

@@ -193,7 +193,7 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   const username = config.username ?? config.email.split("@")[0];
 
   // Read the SQL file from front (single source of truth)
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const sqlPath = `${worktreePath}/front/lib/dev/dust_hive_seed.sql`;
   const sqlFile = Bun.file(sqlPath);
   if (!(await sqlFile.exists())) {

@@ -39,7 +39,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) => `${getWorktreeDir(env.name)}/sparkle/dist/esm/index.js`,
+      path: (env) => `${getWorktreeDir(env.name, env.metadata.repoRoot)}/sparkle/dist/esm/index.js`,
     },
   },
   sdk: {
@@ -49,7 +49,8 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) => `${getWorktreeDir(env.name)}/sdks/js/dist/client.esm.js`,
+      path: (env) =>
+        `${getWorktreeDir(env.name, env.metadata.repoRoot)}/sdks/js/dist/client.esm.js`,
     },
   },
   front: {
@@ -173,7 +174,7 @@ function buildServiceCommand(env: Environment, service: ServiceName): string {
 // Get the working directory for a service
 function getServiceCwd(env: Environment, service: ServiceName): string {
   const config = SERVICE_REGISTRY[service];
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   return `${worktreePath}/${config.cwd}`;
 }
 

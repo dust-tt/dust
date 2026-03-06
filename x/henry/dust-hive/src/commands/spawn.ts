@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { setCacheSource } from "../lib/cache";
 import { writeDockerComposeOverride } from "../lib/docker";
@@ -11,7 +12,7 @@ import {
   validateEnvName,
 } from "../lib/environment";
 import { logger } from "../lib/logger";
-import { findRepoRoot, getEnvFilePath, getWorktreeDir } from "../lib/paths";
+import { HIVES_DIR, findRepoRoot, getEnvFilePath, getWorktreeDir } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
 import { startService, waitForServiceReady } from "../lib/registry";
@@ -265,7 +266,10 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // Always base on main branch
   const baseBranch = "main";
   const workspaceBranch = options.branchName ?? getBranchName(name, settings);
-  const worktreePath = getWorktreeDir(name);
+  const worktreePath = getWorktreeDir(name, mainRepoRoot);
+
+  // Ensure .hives/ directory exists under repo root
+  await mkdir(join(mainRepoRoot, HIVES_DIR), { recursive: true });
 
   logger.info(`Creating environment '${name}' from branch '${baseBranch}'`);
 

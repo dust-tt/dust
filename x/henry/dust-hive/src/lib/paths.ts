@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -10,7 +11,9 @@ export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
 export const DUST_HIVE_HOME = join(homedir(), ".dust-hive");
 export const DUST_HIVE_ENVS = join(DUST_HIVE_HOME, "envs");
 export const DUST_HIVE_SCRIPTS = join(DUST_HIVE_HOME, "scripts");
-export const DUST_HIVE_WORKTREES = join(homedir(), "dust-hive");
+
+// Hives directory name (relative to repo root)
+export const HIVES_DIR = ".hives";
 
 // Global config
 export const CONFIG_ENV_PATH = join(DUST_HIVE_HOME, "config.env");
@@ -48,8 +51,21 @@ export function getEnvDir(name: string): string {
   return join(DUST_HIVE_ENVS, name);
 }
 
-export function getWorktreeDir(name: string): string {
-  return join(DUST_HIVE_WORKTREES, name);
+// Old worktree location (pre-migration), kept for backward compatibility
+const OLD_WORKTREES_DIR = join(homedir(), "dust-hive");
+
+// Returns the worktree path for an environment.
+// Falls back to the old ~/dust-hive/{name} location if the new path doesn't
+// exist yet (pre-migration hives). New hives always use {repoRoot}/.hives/{name}.
+export function getWorktreeDir(name: string, repoRoot: string): string {
+  const newPath = join(repoRoot, HIVES_DIR, name);
+  if (!existsSync(newPath)) {
+    const oldPath = join(OLD_WORKTREES_DIR, name);
+    if (existsSync(oldPath)) {
+      return oldPath;
+    }
+  }
+  return newPath;
 }
 
 export function getEnvFilePath(name: string): string {
@@ -143,22 +159,30 @@ export async function findRepoRoot(startPath?: string): Promise<string | null> {
 
 // Detect if current working directory is inside a dust-hive worktree
 // Returns the environment name if found, null otherwise
+// Checks both new (.hives/{name}) and old (~/dust-hive/{name}) locations
 export function detectEnvFromCwd(): string | null {
   const cwd = process.cwd();
-  const worktreesBase = DUST_HIVE_WORKTREES;
 
-  // Check if cwd is under ~/dust-hive/{name}/
-  if (!cwd.startsWith(`${worktreesBase}/`)) {
-    return null;
+  // Check new location: .../.hives/{name}/...
+  const newMarker = `/${HIVES_DIR}/`;
+  const newIdx = cwd.indexOf(newMarker);
+  if (newIdx !== -1) {
+    const afterMarker = cwd.slice(newIdx + newMarker.length);
+    const envName = afterMarker.split("/")[0];
+    if (envName) {
+      return envName;
+    }
   }
 
-  // Extract environment name from path
-  const relativePath = cwd.slice(worktreesBase.length + 1);
-  const envName = relativePath.split("/")[0];
-
-  if (!envName) {
-    return null;
+  // Check old location: ~/dust-hive/{name}/...
+  const oldBase = `${OLD_WORKTREES_DIR}/`;
+  if (cwd.startsWith(oldBase)) {
+    const relativePath = cwd.slice(oldBase.length);
+    const envName = relativePath.split("/")[0];
+    if (envName) {
+      return envName;
+    }
   }
 
-  return envName;
+  return null;
 }

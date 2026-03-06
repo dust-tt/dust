@@ -28,6 +28,9 @@ AGENTS.local.md
 CLAUDE.local.md
 node_modules
 
+# dust-hive worktrees
+.hives/
+
 # Direnv
 .direnv/
 .envrc
