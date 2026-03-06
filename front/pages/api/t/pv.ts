@@ -82,14 +82,17 @@ async function handler(
     return;
   }
 
-  const { page_url, referrer } = req.body as {
-    page_url?: string;
-    referrer?: string;
-  };
+  const body = req.body;
+  const page_url =
+    typeof body?.page_url === "string" ? body.page_url : undefined;
+  const referrer =
+    typeof body?.referrer === "string" ? body.referrer : undefined;
 
   // Read anonymous ID from body or cookie fallback.
+  const anonymousIdFromBody =
+    typeof body?.anonymous_id === "string" ? body.anonymous_id : undefined;
   const anonymousId =
-    (req.body as { anonymous_id?: string }).anonymous_id ??
+    anonymousIdFromBody ??
     readAnonymousIdFromCookies(req.headers.cookie) ??
     undefined;
 
