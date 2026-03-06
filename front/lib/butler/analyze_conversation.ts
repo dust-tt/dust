@@ -37,11 +37,14 @@ const SUGGESTION_COOLDOWN_MESSAGES = 10;
 const SuggestActionsResult = z.object({
   rename_confidence: z.number(),
   new_title: z.string(),
+  rename_rationale: z.string(),
   agent_confidence: z.number(),
   agent_name: z.string(),
   agent_prompt: z.string(),
+  agent_rationale: z.string(),
   frame_confidence: z.number(),
   frame_prompt: z.string(),
+  frame_rationale: z.string(),
 });
 
 function buildAnalyzeConversationSpecifications({
@@ -62,6 +65,11 @@ function buildAnalyzeConversationSpecifications({
       type: "string",
       description: "The proposed new title (3-8 words).",
     },
+    rename_rationale: {
+      type: "string",
+      description:
+        "A brief one-sentence explanation of why renaming would help, or empty string if confidence is low.",
+    },
     agent_confidence: {
       type: "number",
       description: hasAgents
@@ -81,6 +89,12 @@ function buildAnalyzeConversationSpecifications({
         ? "A suggested message to send to the recommended agent, or empty string if none."
         : "Always set to empty string when no agents are available.",
     },
+    agent_rationale: {
+      type: "string",
+      description: hasAgents
+        ? "A brief one-sentence explanation of why this agent would help (e.g. 'This agent can search your Jira board for the ticket you mentioned'), or empty string if none."
+        : "Always set to empty string when no agents are available.",
+    },
     frame_confidence: {
       type: "number",
       description: shouldSuggestFrame
@@ -92,6 +106,12 @@ function buildAnalyzeConversationSpecifications({
       type: "string",
       description: shouldSuggestFrame
         ? "A prompt describing the Frame to create (e.g. 'Create a dashboard summarizing the sales data we discussed'), or empty string if none."
+        : "Always set to empty string when frame suggestions are not available.",
+    },
+    frame_rationale: {
+      type: "string",
+      description: shouldSuggestFrame
+        ? "A brief one-sentence explanation of why a Frame would benefit this conversation, or empty string if none."
         : "Always set to empty string when frame suggestions are not available.",
     },
   };
@@ -108,11 +128,14 @@ function buildAnalyzeConversationSpecifications({
         required: [
           "rename_confidence",
           "new_title",
+          "rename_rationale",
           "agent_confidence",
           "agent_name",
           "agent_prompt",
+          "agent_rationale",
           "frame_confidence",
           "frame_prompt",
+          "frame_rationale",
         ],
       },
     },
@@ -490,11 +513,14 @@ export async function analyzeConversation(
     const {
       rename_confidence,
       new_title,
+      rename_rationale,
       agent_confidence,
       agent_name,
       agent_prompt,
+      agent_rationale,
       frame_confidence,
       frame_prompt,
+      frame_rationale,
     } = parseResult.data;
 
     // Find the source message that triggered this analysis.
@@ -529,7 +555,10 @@ export async function analyzeConversation(
             conversationId: conversation.id,
             sourceMessageId: sourceMessage.id,
             suggestionType: "rename_title",
-            metadata: { suggestedTitle: new_title },
+            metadata: {
+              suggestedTitle: new_title,
+              rationale: rename_rationale || undefined,
+            },
             status: "pending",
           }
         );
@@ -584,6 +613,7 @@ export async function analyzeConversation(
                 agentSId: matchedAgent.sId,
                 agentName: matchedAgent.name,
                 prompt: agent_prompt,
+                rationale: agent_rationale || undefined,
               },
               status: "pending",
             }
@@ -652,6 +682,7 @@ export async function analyzeConversation(
                 agentSId: dustAgent.sId,
                 agentName: dustAgent.name,
                 prompt: frame_prompt,
+                rationale: frame_rationale || undefined,
               },
               status: "pending",
             }
