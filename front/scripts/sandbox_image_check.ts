@@ -26,7 +26,7 @@ async function checkSandboxImages(
 
   if (templatesResult.isErr()) {
     if (json) {
-      console.log(
+      logger.info(
         JSON.stringify({ error: templatesResult.error.message }, null, 2)
       );
     } else {
@@ -78,7 +78,7 @@ async function checkSandboxImages(
   };
 
   if (json) {
-    console.log(JSON.stringify(result, null, 2));
+    logger.info(JSON.stringify(result, null, 2));
   } else {
     logger.info(
       {

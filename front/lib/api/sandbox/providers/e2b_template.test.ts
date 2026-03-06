@@ -100,7 +100,7 @@ describe("buildSandboxImage()", () => {
 
     expect(result.isOk()).toBe(true);
     expect(mockDockerRegistryFactory).toHaveBeenCalledWith(
-      "dust-sbx-bedrock:latest"
+      "dust-sbx-bedrock:v0.1.0"
     );
     expect(mockDockerRegistryBuilder.runCmd).toHaveBeenCalled();
     expect(mockDockerRegistryBuilder.setEnvs).toHaveBeenCalled();

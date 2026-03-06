@@ -70,8 +70,6 @@ jobs:
     secrets: inherit
 
   check-branch:
-    needs: [ensure-sandbox-images]
-    if: always() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Check if deployment is from main branch
@@ -209,7 +207,8 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
-    needs: [prepare, notify-start, build]
+    needs: [prepare, notify-start, build, ensure-sandbox-images]
+    if: always() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

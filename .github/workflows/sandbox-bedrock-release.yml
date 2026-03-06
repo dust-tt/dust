@@ -1,0 +1,89 @@
+name: Sandbox Bedrock Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dockerfiles/sandbox-bedrock.Dockerfile"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.SPARKLE_RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.SPARKLE_RELEASE_BOT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Calculate next version
+        id: version
+        run: |
+          LATEST=$(git tag -l 'sbx-bedrock/v*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            NEXT_VERSION="0.1.0"
+          else
+            CURRENT="${LATEST#sbx-bedrock/v}"
+            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0"
+          fi
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          service_account: "github-build-invoker@or1g1n-186209.iam.gserviceaccount.com"
+
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Setup Depot
+        uses: depot/setup-action@v1
+
+      - name: Build and push
+        env:
+          DEPOT_TOKEN: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          depot build \
+            --project ${{ secrets.DEPOT_PROJECT_ID }} \
+            --platform linux/amd64 \
+            --provenance=false \
+            -f dockerfiles/sandbox-bedrock.Dockerfile \
+            -t us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx/dust-sbx-bedrock:${VERSION} \
+            -t us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx/dust-sbx-bedrock:latest \
+            --push \
+            .
+
+      - name: Create and push tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git tag "sbx-bedrock/v${VERSION}"
+          git push origin "sbx-bedrock/v${VERSION}"
+
+      - name: Summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "## Sandbox Bedrock Release" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Released **v${VERSION}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx/dust-sbx-bedrock:${VERSION}\`" >> $GITHUB_STEP_SUMMARY

@@ -6,7 +6,7 @@ import { SandboxImage } from "./sandbox_image";
 import type { SandboxImageId, SandboxImageName } from "./types";
 import { ALLOWLIST_NETWORK_POLICY } from "./types";
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:latest")
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:v0.1.0")
   .setBuildEnv({
     NPM_CONFIG_PREFIX: "/opt/npm-global",
     CARGO_HOME: "/opt/cargo",
@@ -68,7 +68,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:latest")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
   .setWorkdir("/home/user")
-  .register({ imageName: "dust-base", tag: "production" });
+  .register({ imageName: "dust-base", tag: "v0.1.1" });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
 

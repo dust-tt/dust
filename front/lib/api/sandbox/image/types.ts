@@ -2,9 +2,8 @@
 // SandboxImage Name & Tag Types
 // ---------------------------------------------------------------------------
 
-export type SandboxImageName = "dust-base";
-
-const SANDBOX_IMAGE_NAMES: readonly SandboxImageName[] = ["dust-base"];
+const SANDBOX_IMAGE_NAMES = ["dust-base"] as const;
+export type SandboxImageName = (typeof SANDBOX_IMAGE_NAMES)[number];
 
 export function isValidSandboxImageName(
   name: string
@@ -16,13 +15,8 @@ export function getSandboxImageNames(): readonly SandboxImageName[] {
   return SANDBOX_IMAGE_NAMES;
 }
 
-export type SandboxImageTag = "edge" | "staging" | "production";
-
-const SANDBOX_IMAGE_TAGS: readonly SandboxImageTag[] = [
-  "edge",
-  "staging",
-  "production",
-];
+const SANDBOX_IMAGE_TAGS = ["edge", "staging", "production", "v0.1.1"] as const;
+export type SandboxImageTag = (typeof SANDBOX_IMAGE_TAGS)[number];
 
 export function isValidSandboxImageTag(tag: string): tag is SandboxImageTag {
   return SANDBOX_IMAGE_TAGS.includes(tag as SandboxImageTag);
