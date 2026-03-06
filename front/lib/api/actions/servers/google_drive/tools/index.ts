@@ -178,6 +178,41 @@ function addAgentAttribution(
   return content;
 }
 
+/**
+ * Pre-flight check to verify write access to a file the LLM already knows about.
+ * Called when `canEdit` was not passed by the LLM, to catch view-only files before
+ * triggering the auth loop.
+ *
+ * Uses the drive.readonly scope (present on the token) to read file capabilities —
+ * this works for any file the user can see, regardless of file picker authorization.
+ *
+ * Returns { canEdit, fileName } if capabilities could be determined, or null if the
+ * file is inaccessible or the check fails — in both cases the caller should proceed
+ * and let the existing error flow handle it.
+ */
+async function checkWriteAccess(
+  drive: NonNullable<Awaited<ReturnType<typeof getDriveClient>>>,
+  fileId: string
+): Promise<{ canEdit: boolean; fileName: string } | null> {
+  try {
+    const res = await drive.files.get({
+      fileId,
+      fields: "capabilities(canEdit),name",
+    });
+    const { capabilities, name } = res.data;
+    if (!capabilities) {
+      return null;
+    }
+    return {
+      canEdit: capabilities.canEdit ?? true,
+      fileName: name ?? fileId,
+    };
+  } catch {
+    // File inaccessible or unexpected error — proceed and let the existing error flow handle it.
+    return null;
+  }
+}
+
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   list_drives: async ({ pageToken }, { authInfo }) => {
     const drive = await getDriveClient(authInfo);
@@ -656,6 +691,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
+    if (canEdit === undefined) {
+      const accessCheck = await checkWriteAccess(drive, fileId);
+      if (accessCheck !== null && !accessCheck.canEdit) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `You only have view access to "${accessCheck.fileName}". To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.`,
+          },
+        ]);
+      }
+    }
 
     const finalContent = addAgentAttribution(content, { agentLoopContext });
 
@@ -702,6 +748,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
+    if (canEdit === undefined) {
+      const accessCheck = await checkWriteAccess(drive, fileId);
+      if (accessCheck !== null && !accessCheck.canEdit) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `You only have view access to "${accessCheck.fileName}". To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.`,
+          },
+        ]);
+      }
+    }
 
     const finalContent = addAgentAttribution(content, { agentLoopContext });
 
@@ -746,6 +803,20 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
         },
       ]);
+    }
+    if (canEdit === undefined) {
+      const drive = await getDriveClient(authInfo);
+      if (drive) {
+        const accessCheck = await checkWriteAccess(drive, documentId);
+        if (accessCheck !== null && !accessCheck.canEdit) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `You only have view access to "${accessCheck.fileName}". To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.`,
+            },
+          ]);
+        }
+      }
     }
     const docs = await getDocsClient(authInfo);
     if (!docs) {
@@ -808,6 +879,20 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     }
+    if (canEdit === undefined) {
+      const drive = await getDriveClient(authInfo);
+      if (drive) {
+        const accessCheck = await checkWriteAccess(drive, spreadsheetId);
+        if (accessCheck !== null && !accessCheck.canEdit) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `You only have view access to "${accessCheck.fileName}". To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.`,
+            },
+          ]);
+        }
+      }
+    }
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
@@ -852,6 +937,20 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
         },
       ]);
+    }
+    if (canEdit === undefined) {
+      const drive = await getDriveClient(authInfo);
+      if (drive) {
+        const accessCheck = await checkWriteAccess(drive, spreadsheetId);
+        if (accessCheck !== null && !accessCheck.canEdit) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `You only have view access to "${accessCheck.fileName}". To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.`,
+            },
+          ]);
+        }
+      }
     }
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
@@ -905,6 +1004,20 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           text: "You only have view access to this file. To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.",
         },
       ]);
+    }
+    if (canEdit === undefined) {
+      const drive = await getDriveClient(authInfo);
+      if (drive) {
+        const accessCheck = await checkWriteAccess(drive, presentationId);
+        if (accessCheck !== null && !accessCheck.canEdit) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `You only have view access to "${accessCheck.fileName}". To edit it, ask the file owner to grant you edit permissions, or use a different file that you have edit access to.`,
+            },
+          ]);
+        }
+      }
     }
     const slides = await getSlidesClient(authInfo);
     if (!slides) {
