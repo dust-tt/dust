@@ -239,9 +239,11 @@ class RedisHybridManager {
           },
           "Error publishing to Redis, retrying..."
         );
-        // Sleep for ~10ms to avoid flooding the Redis stream with events.
+        // Sleep for at least 5ms to avoid flooding the Redis stream with events.
+        // Add jitter to avoid re-conflicting when restarting
+        // increase jitter for each failure to avoid even more conflicts
         await new Promise((resolve) =>
-          setTimeout(resolve, 5 + Math.floor(Math.random() * 5))
+          setTimeout(resolve, 5 + Math.floor(Math.random() * 5 * (i + 1)))
         );
       }
     }
