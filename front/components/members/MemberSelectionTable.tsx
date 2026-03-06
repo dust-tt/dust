@@ -11,7 +11,7 @@ import type {
   PaginationState,
   RowSelectionState,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 export interface MemberRowData {
   sId: string;
@@ -74,15 +74,44 @@ export function MemberSelectionTable({
     new Map<string, UserType>((initialMembers ?? []).map((m) => [m.sId, m]))
   );
 
-  useEffect(() => {
-    for (const member of members) {
-      if (!userMapRef.current.has(member.sId)) {
-        userMapRef.current.set(member.sId, member);
-      }
+  // Update the map synchronously so downstream memos read fresh data.
+  for (const member of members) {
+    if (!userMapRef.current.has(member.sId)) {
+      userMapRef.current.set(member.sId, member);
     }
-  }, [members]);
+  }
 
-  const rows = useMemo(() => getMemberTableRows(members), [members]);
+  // Selected members resolved from the internal map, filtered by search text.
+  const selectedRows = useMemo(() => {
+    const selected = Array.from(selectedMemberIds)
+      .map((sId) => userMapRef.current.get(sId))
+      .filter((u): u is UserType => !!u);
+
+    if (!searchText) {
+      return getMemberTableRows(selected);
+    }
+
+    const lower = searchText.toLowerCase();
+    return getMemberTableRows(
+      selected.filter(
+        (u) =>
+          u.fullName.toLowerCase().includes(lower) ||
+          (u.email ?? "").toLowerCase().includes(lower)
+      )
+    );
+  }, [selectedMemberIds, searchText]);
+
+  // On page 0, prepend selected members and remove duplicates from API results.
+  // On other pages, only show unselected API results.
+  const rows = useMemo(() => {
+    const unselected = getMemberTableRows(
+      members.filter((m) => !selectedMemberIds.has(m.sId))
+    );
+    if (pagination.pageIndex === 0) {
+      return [...selectedRows, ...unselected];
+    }
+    return unselected;
+  }, [members, selectedMemberIds, selectedRows, pagination.pageIndex]);
 
   const rowSelectionState: RowSelectionState = useMemo(
     () =>
@@ -155,7 +184,7 @@ export function MemberSelectionTable({
             columns={columns}
             pagination={pagination}
             setPagination={setPagination}
-            totalRowCount={totalMembersCount}
+            totalRowCount={totalMembersCount + selectedRows.length}
             rowSelection={rowSelectionState}
             setRowSelection={handleRowSelectionChange}
             enableRowSelection
