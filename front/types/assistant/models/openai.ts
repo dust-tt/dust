@@ -356,8 +356,12 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
-  featureFlag: "openai_o1_feature",
-  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  availableIfUnion: {
+    featureFlag: "openai_o1_feature",
+  },
+  customAvailableIf: {
+    featureFlag: "openai_o1_custom_assistants_feature",
+  },
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
@@ -379,7 +383,9 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
-  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  customAvailableIf: {
+    featureFlag: "openai_o1_custom_assistants_feature",
+  },
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
