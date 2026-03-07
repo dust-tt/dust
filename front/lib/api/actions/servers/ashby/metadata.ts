@@ -112,6 +112,49 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       done: "Create referral on Ashby",
     },
   },
+  update_job_posting: {
+    description:
+      "Update an existing job posting in Ashby. " +
+      "You can update the title and/or the description of the job posting. " +
+      "The description must be in HTML format. " +
+      "When description openings and closings are not suppressed, only the " +
+      "descriptionBody part is modifiable. To fully customize the description, " +
+      "set both suppressDescriptionOpening and suppressDescriptionClosing to true.",
+    schema: {
+      jobPostingId: z
+        .string()
+        .describe("The ID of the job posting to update."),
+      title: z
+        .string()
+        .optional()
+        .describe("New title for the job posting."),
+      descriptionHtml: z
+        .string()
+        .optional()
+        .describe(
+          "Updated HTML description for the job posting. " +
+            "Only the descriptionBody part is modifiable unless " +
+            "both suppressDescriptionOpening and suppressDescriptionClosing are true."
+        ),
+      suppressDescriptionOpening: z
+        .boolean()
+        .optional()
+        .describe(
+          "Set to true to suppress the system-generated description opening."
+        ),
+      suppressDescriptionClosing: z
+        .boolean()
+        .optional()
+        .describe(
+          "Set to true to suppress the system-generated description closing."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Updating job posting on Ashby",
+      done: "Update job posting on Ashby",
+    },
+  },
 });
 
 export const ASHBY_SERVER = {

@@ -397,6 +397,76 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     ]);
   },
 
+  update_job_posting: async (
+    {
+      jobPostingId,
+      title,
+      descriptionHtml,
+      suppressDescriptionOpening,
+      suppressDescriptionClosing,
+    },
+    extra
+  ) => {
+    if (!title && !descriptionHtml) {
+      return new Err(
+        new MCPError(
+          "At least one of title or descriptionHtml must be provided.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const updateResult = await client.updateJobPosting({
+      jobPostingId,
+      title,
+      descriptionHtml,
+      suppressDescriptionOpening,
+      suppressDescriptionClosing,
+    });
+
+    if (updateResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to update job posting: ${updateResult.error.message}`
+        )
+      );
+    }
+
+    if (!updateResult.value.success || !updateResult.value.results) {
+      const errorMessage =
+        updateResult.value.errorInfo?.message ??
+        updateResult.value.errors?.join(", ") ??
+        "Unknown error";
+      return new Err(
+        new MCPError(`Failed to update job posting: ${errorMessage}`)
+      );
+    }
+
+    const updatedFields = [
+      title ? "title" : null,
+      descriptionHtml ? "description" : null,
+    ]
+      .filter(Boolean)
+      .join(" and ");
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Successfully updated job posting ${updatedFields}.\n\n` +
+          `Job Posting ID: ${updateResult.value.results.id}\n` +
+          `Title: ${updateResult.value.results.title}`,
+      },
+    ]);
+  },
+
   [CREATE_REFERRAL_TOOL_NAME]: async ({ fieldSubmissions }, extra) => {
     const clientResult = await getAshbyClient(extra);
     if (clientResult.isErr()) {
