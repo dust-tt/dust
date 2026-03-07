@@ -86,10 +86,6 @@ export async function aggregateSyntheticSuggestions(
     auth,
     agentConfig,
     prompt,
-    functionName: "aggregate_suggestions",
-    functionDescription:
-      "Aggregate and deduplicate synthetic suggestions into " +
-      "user-facing pending suggestions.",
     source: "reinforcement",
     operationType: "reinforced_agent_aggregate_suggestions",
     contextId: "n/a",

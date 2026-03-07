@@ -9,14 +9,13 @@ import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type { AgentSuggestionSource } from "@app/types/suggestions/agent_suggestion";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
-function buildSpecifications(
-  functionName: string,
-  functionDescription: string
-): AgentActionSpecification[] {
+const FUNCTION_NAME = "add_suggestions";
+
+function buildSpecifications(): AgentActionSpecification[] {
   return [
     {
-      name: functionName,
-      description: functionDescription,
+      name: FUNCTION_NAME,
+      description: "Add structured suggestions that improve the agent.",
       inputSchema: {
         type: "object",
         properties: {
@@ -72,8 +71,6 @@ export async function runReinforcedAnalysis({
   auth,
   agentConfig,
   prompt,
-  functionName,
-  functionDescription,
   source,
   operationType,
   contextId,
@@ -81,8 +78,6 @@ export async function runReinforcedAnalysis({
   auth: Authenticator;
   agentConfig: LightAgentConfigurationType;
   prompt: string;
-  functionName: string;
-  functionDescription: string;
   source: AgentSuggestionSource;
   operationType: ReinforcedOperationType;
   contextId: string;
@@ -103,14 +98,14 @@ export async function runReinforcedAnalysis({
     {
       providerId: model.providerId,
       modelId: model.modelId,
-      functionCall: functionName,
+      functionCall: FUNCTION_NAME,
       useCache: false,
     },
     {
       conversation: { messages: [] },
       prompt,
-      specifications: buildSpecifications(functionName, functionDescription),
-      forceToolCall: functionName,
+      specifications: buildSpecifications(),
+      forceToolCall: FUNCTION_NAME,
     },
     {
       context: {
