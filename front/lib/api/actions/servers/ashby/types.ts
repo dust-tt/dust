@@ -444,3 +444,40 @@ export const AshbyReferralCreateResponseSchema = z.object({
 export type AshbyReferralCreateResponse = z.infer<
   typeof AshbyReferralCreateResponseSchema
 >;
+
+// Job posting update
+
+export const AshbyJobPostingUpdateRequestSchema = z.object({
+  jobPostingId: z.string(),
+  title: z.string().optional(),
+  descriptionHtml: z.string().optional(),
+  suppressDescriptionOpening: z.boolean().optional(),
+  suppressDescriptionClosing: z.boolean().optional(),
+});
+
+export type AshbyJobPostingUpdateRequest = z.infer<
+  typeof AshbyJobPostingUpdateRequestSchema
+>;
+
+export const AshbyJobPostingUpdateResponseSchema = z.object({
+  success: z.boolean(),
+  results: z
+    .object({
+      id: z.string(),
+      title: z.string(),
+    })
+    .passthrough()
+    .optional(),
+  errors: z.array(z.string()).optional(),
+  errorInfo: z
+    .object({
+      code: z.string().optional(),
+      message: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+export type AshbyJobPostingUpdateResponse = z.infer<
+  typeof AshbyJobPostingUpdateResponseSchema
+>;
