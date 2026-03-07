@@ -1,64 +1,9 @@
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getShrinkWrapedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import type { Authenticator } from "@app/lib/auth";
-import { ReinforcedResponseSchema } from "@app/lib/reinforced_agent/schemas";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
-
-const ANALYZE_FUNCTION_NAME = "analyze_conversation";
-
-function buildAnalyzeSpecifications(): AgentActionSpecification[] {
-  return [
-    {
-      name: ANALYZE_FUNCTION_NAME,
-      description:
-        "Analyze a conversation and produce structured suggestions " +
-        "for improving the agent configuration.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          suggestions: {
-            type: "array",
-            description:
-              "A list of concrete, actionable suggestions to improve the agent.",
-            items: {
-              type: "object",
-              properties: {
-                kind: {
-                  type: "string",
-                  enum: ["instructions"],
-                  description: "The type of suggestion.",
-                },
-                content: {
-                  type: "string",
-                  description:
-                    "The full HTML content for the instructions block.",
-                },
-                targetBlockId: {
-                  type: "string",
-                  description:
-                    "The data-block-id of the block to modify. " +
-                    "Use 'instructions-root' for top-level instructions.",
-                },
-                analysis: {
-                  type: "string",
-                  description:
-                    "A short explanation of why this suggestion would improve the agent.",
-                },
-              },
-              required: ["kind", "content", "targetBlockId", "analysis"],
-            },
-          },
-        },
-        required: ["suggestions"],
-      },
-    },
-  ];
-}
 
 function buildAnalysisPrompt(
   agentConfig: AgentConfigurationType,
@@ -116,15 +61,6 @@ export async function analyzeConversationForReinforcement(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
-  if (!model) {
-    logger.warn(
-      { workspaceId: owner.sId },
-      "ReinforcedAgent: no whitelisted model available"
-    );
-    return;
-  }
-
   // Fetch agent configuration.
   const [agentConfig] = await getAgentConfigurations(auth, {
     agentIds: [agentConfigurationId],
@@ -138,7 +74,7 @@ export async function analyzeConversationForReinforcement(
     return;
   }
   if (agentConfig.id < 0) {
-    // Skip global agents
+    // Skip global agents.
     return;
   }
 
@@ -156,91 +92,27 @@ export async function analyzeConversationForReinforcement(
 
   const prompt = buildAnalysisPrompt(agentConfig, conversationRes.value.text);
 
-  const res = await runMultiActionsAgent(
+  const createdCount = await runReinforcedAnalysis({
     auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: ANALYZE_FUNCTION_NAME,
-      useCache: false,
-    },
-    {
-      conversation: { messages: [] },
-      prompt,
-      specifications: buildAnalyzeSpecifications(),
-      forceToolCall: ANALYZE_FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType: "reinforced_agent_analyze_conversation",
-        conversationId,
-        workspaceId: owner.sId,
-      },
-    }
-  );
+    agentConfig,
+    prompt,
+    functionName: "analyze_conversation",
+    functionDescription:
+      "Analyze a conversation and produce structured suggestions " +
+      "for improving the agent configuration.",
+    source: "synthetic",
+    operationType: "reinforced_agent_analyze_conversation",
+    contextId: conversationId,
+  });
 
-  if (res.isErr()) {
-    logger.error(
-      { conversationId, error: res.error },
-      "ReinforcedAgent: LLM call failed"
-    );
-    return;
-  }
-
-  const action = res.value.actions?.[0];
-  if (!action?.arguments) {
-    logger.warn(
-      { conversationId },
-      "ReinforcedAgent: no tool call in LLM response"
-    );
-    return;
-  }
-
-  const parsed = ReinforcedResponseSchema.safeParse(action.arguments);
-  if (!parsed.success) {
-    logger.warn(
-      { conversationId, agentConfigurationId, error: parsed.error },
-      "ReinforcedAgent: invalid LLM response shape"
-    );
-    return;
-  }
-
-  const { suggestions } = parsed.data;
-
-  if (suggestions.length === 0) {
+  if (createdCount > 0) {
     logger.info(
-      { conversationId, agentConfigurationId },
-      "ReinforcedAgent: no suggestions from analysis"
-    );
-    return;
-  }
-
-  // Create synthetic suggestions.
-  for (const suggestion of suggestions) {
-    if (suggestion.kind !== "instructions") {
-      continue;
-    }
-
-    await AgentSuggestionResource.createSuggestionForAgent(auth, agentConfig, {
-      kind: "instructions",
-      suggestion: {
-        content: suggestion.content,
-        targetBlockId: suggestion.targetBlockId,
-        type: "replace",
+      {
+        conversationId,
+        agentConfigurationId,
+        suggestionsCreated: createdCount,
       },
-      analysis: suggestion.analysis,
-      state: "pending",
-      source: "synthetic",
-    });
+      "ReinforcedAgent: created synthetic suggestions from conversation analysis"
+    );
   }
-
-  logger.info(
-    {
-      conversationId,
-      agentConfigurationId,
-      suggestionsCreated: suggestions.filter((s) => s.kind === "instructions")
-        .length,
-    },
-    "ReinforcedAgent: created synthetic suggestions from conversation analysis"
-  );
 }
