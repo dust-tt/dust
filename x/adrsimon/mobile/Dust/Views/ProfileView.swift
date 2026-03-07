@@ -1,3 +1,4 @@
+import SparkleTokens
 import SwiftUI
 
 struct ProfileView: View {
@@ -14,12 +15,12 @@ struct ProfileView: View {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(user.displayName)
-                                .font(.title3)
-                                .fontWeight(.semibold)
+                                .sparkleHeadingLg()
+                                .foregroundStyle(Color.dustForeground)
 
                             Text(user.email)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .sparkleCopySm()
+                                .foregroundStyle(Color.dustFaint)
                         }
                     }
                     .padding(.vertical, 8)
@@ -30,7 +31,7 @@ struct ProfileView: View {
 
                     LabeledContent("Email Verified") {
                         Image(systemName: user.emailVerified ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundStyle(user.emailVerified ? .green : .red)
+                            .foregroundStyle(user.emailVerified ? Color.success : Color.warning)
                     }
 
                     if let firstName = user.firstName {

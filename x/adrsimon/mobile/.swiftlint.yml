@@ -3,6 +3,7 @@ included:
 
 excluded:
   - Dust.xcodeproj
+  - SparkleTokens/Sources/SparkleTokens/Generated
 
 disabled_rules:
   - trailing_comma

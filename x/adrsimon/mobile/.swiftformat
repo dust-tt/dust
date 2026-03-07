@@ -13,4 +13,4 @@
 --self init-only
 --header strip
 --ifdef no-indent
---exclude Dust.xcodeproj
+--exclude Dust.xcodeproj,SparkleTokens/Sources/SparkleTokens/Generated

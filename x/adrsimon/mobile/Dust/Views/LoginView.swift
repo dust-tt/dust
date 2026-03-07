@@ -1,3 +1,4 @@
+import SparkleTokens
 import SwiftUI
 
 struct LoginView: View {
@@ -8,30 +9,34 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.tint)
+                DustLogo.dustLogoSquare.image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 64, height: 64)
 
                 Text("Dust")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                    .sparkleHeading2xl()
+                    .foregroundStyle(Color.dustForeground)
 
                 Text("Build and operate agents for work")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .sparkleCopyBase()
+                    .foregroundStyle(Color.dustFaint)
             }
 
             Spacer()
 
             Button(action: onLogin) {
                 Text("Log In")
-                    .font(.headline)
+                    .sparkleLabelBase()
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
-            .buttonStyle(.borderedProminent)
+            .background(Color.highlight)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 40)
             .padding(.bottom, 48)
         }
+        .background(Color.dustBackground)
     }
 }
