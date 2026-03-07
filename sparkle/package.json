@@ -12,7 +12,8 @@
     "build:cjs": "node scripts/build-cjs.mjs",
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
-    "watch": "npm-watch"
+    "watch": "npm-watch",
+    "generate:swift": "node scripts/generate-swift.mjs"
   },
   "watch": {
     "build": {

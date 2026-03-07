@@ -5,6 +5,10 @@ options:
     iOS: "17.4"
   xcodeVersion: "16.0"
 
+packages:
+  SparkleTokens:
+    path: SparkleTokens
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -16,6 +20,9 @@ targets:
     platform: iOS
     sources:
       - Dust
+    dependencies:
+      - package: SparkleTokens
+        product: SparkleTokens
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

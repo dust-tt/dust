@@ -1,3 +1,4 @@
+import SparkleTokens
 import SwiftUI
 
 struct ContentView: View {
@@ -31,20 +32,22 @@ private struct ErrorView: View {
         VStack(spacing: 20) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundStyle(.red)
+                .foregroundStyle(Color.warning)
 
             Text("Something went wrong")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .sparkleHeadingXl()
+                .foregroundStyle(Color.dustForeground)
 
             Text(message)
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .sparkleCopyBase()
+                .foregroundStyle(Color.dustFaint)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
             Button("Try Again", action: onRetry)
                 .buttonStyle(.borderedProminent)
+                .tint(Color.highlight)
         }
+        .background(Color.dustBackground)
     }
 }
