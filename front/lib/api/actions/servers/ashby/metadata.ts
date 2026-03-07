@@ -115,8 +115,9 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
   update_job_posting: {
     description:
       "Update an existing job posting in Ashby. " +
-      "You can update the title and/or the description of the job posting. " +
-      "The description must be in HTML format. " +
+      "You can update the title, description, and/or workplace type. " +
+      "The description must be in HTML format " +
+      "(supported tags: h1-h6, b, i, u, a, ul, ol, li, code, pre). " +
       "When description openings and closings are not suppressed, only the " +
       "descriptionBody part is modifiable. To fully customize the description, " +
       "set both suppressDescriptionOpening and suppressDescriptionClosing to true.",
@@ -127,7 +128,7 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       title: z
         .string()
         .optional()
-        .describe("New title for the job posting."),
+        .describe("A new title for the job posting."),
       descriptionHtml: z
         .string()
         .optional()
@@ -136,17 +137,26 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
             "Only the descriptionBody part is modifiable unless " +
             "both suppressDescriptionOpening and suppressDescriptionClosing are true."
         ),
+      workplaceType: z
+        .enum(["OnSite", "Hybrid", "Remote"])
+        .optional()
+        .describe(
+          "The type of workplace for the job posting: " +
+            "OnSite, Hybrid, or Remote."
+        ),
       suppressDescriptionOpening: z
         .boolean()
         .optional()
         .describe(
-          "Set to true to suppress the system-generated description opening."
+          "When true, the job description opening from the brand " +
+            "will be suppressed."
         ),
       suppressDescriptionClosing: z
         .boolean()
         .optional()
         .describe(
-          "Set to true to suppress the system-generated description closing."
+          "When true, the job description closing from the brand " +
+            "will be suppressed."
         ),
     },
     stake: "high",

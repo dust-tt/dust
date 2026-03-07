@@ -402,15 +402,17 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       jobPostingId,
       title,
       descriptionHtml,
+      workplaceType,
       suppressDescriptionOpening,
       suppressDescriptionClosing,
     },
     extra
   ) => {
-    if (!title && !descriptionHtml) {
+    if (!title && !descriptionHtml && !workplaceType) {
       return new Err(
         new MCPError(
-          "At least one of title or descriptionHtml must be provided.",
+          "At least one of title, descriptionHtml, or workplaceType " +
+            "must be provided.",
           { tracked: false }
         )
       );
@@ -426,7 +428,10 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const updateResult = await client.updateJobPosting({
       jobPostingId,
       title,
-      descriptionHtml,
+      description: descriptionHtml
+        ? { type: "text/html", content: sanitizeHtml(descriptionHtml) }
+        : undefined,
+      workplaceType,
       suppressDescriptionOpening,
       suppressDescriptionClosing,
     });
@@ -452,9 +457,10 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const updatedFields = [
       title ? "title" : null,
       descriptionHtml ? "description" : null,
+      workplaceType ? "workplace type" : null,
     ]
       .filter(Boolean)
-      .join(" and ");
+      .join(", ");
 
     return new Ok([
       {

@@ -447,10 +447,26 @@ export type AshbyReferralCreateResponse = z.infer<
 
 // Job posting update
 
+export const AshbyJobPostingWorkplaceTypeSchema = z.enum([
+  "OnSite",
+  "Hybrid",
+  "Remote",
+]);
+
+export type AshbyJobPostingWorkplaceType = z.infer<
+  typeof AshbyJobPostingWorkplaceTypeSchema
+>;
+
 export const AshbyJobPostingUpdateRequestSchema = z.object({
   jobPostingId: z.string(),
   title: z.string().optional(),
-  descriptionHtml: z.string().optional(),
+  description: z
+    .object({
+      type: z.literal("text/html"),
+      content: z.string(),
+    })
+    .optional(),
+  workplaceType: AshbyJobPostingWorkplaceTypeSchema.optional(),
   suppressDescriptionOpening: z.boolean().optional(),
   suppressDescriptionClosing: z.boolean().optional(),
 });
