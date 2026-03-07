@@ -9,7 +9,7 @@ import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 
-export function passEnterpriseAvalability(plan: PlanType | null): boolean {
+export function passEnterpriseAvailability(plan: PlanType | null): boolean {
   return (
     plan !== null &&
     (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
@@ -28,7 +28,7 @@ export function isModelAvailable(
 
   const { enterprise, featureFlag } = m.availableIfUnion;
 
-  if (enterprise === true && passEnterpriseAvalability(plan)) {
+  if (enterprise === true && passEnterpriseAvailability(plan)) {
     return true;
   }
 
