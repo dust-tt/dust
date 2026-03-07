@@ -63,17 +63,6 @@ type ReinforcedOperationType =
   | "reinforced_agent_analyze_conversation"
   | "reinforced_agent_aggregate_suggestions";
 
-interface RunReinforcedAnalysisParams {
-  auth: Authenticator;
-  agentConfig: LightAgentConfigurationType;
-  prompt: string;
-  functionName: string;
-  functionDescription: string;
-  source: AgentSuggestionSource;
-  operationType: ReinforcedOperationType;
-  contextId: string;
-}
-
 /**
  * Shared helper for both analyze and aggregate phases of reinforced agents.
  * Calls the LLM with the given prompt, parses suggestions, and creates them.
@@ -88,7 +77,16 @@ export async function runReinforcedAnalysis({
   source,
   operationType,
   contextId,
-}: RunReinforcedAnalysisParams): Promise<number> {
+}: {
+  auth: Authenticator;
+  agentConfig: LightAgentConfigurationType;
+  prompt: string;
+  functionName: string;
+  functionDescription: string;
+  source: AgentSuggestionSource;
+  operationType: ReinforcedOperationType;
+  contextId: string;
+}): Promise<number> {
   const owner = auth.getNonNullableWorkspace();
 
   const model = getSmallWhitelistedModel(owner);
