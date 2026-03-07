@@ -9,33 +9,47 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                DustLogo.dustLogoSquare.image
+                DustLogo.dustLogo.image
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 64, height: 64)
+                    .frame(height: 36)
 
-                Text("Dust")
-                    .sparkleHeading2xl()
+                Text("The Operating System for AI Agents")
+                    .sparkleCopy2xl()
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(Color.dustForeground)
-
-                Text("Build and operate agents for work")
-                    .sparkleCopyBase()
-                    .foregroundStyle(Color.dustFaint)
             }
+            .padding(.horizontal, 40)
 
-            Spacer()
+            VStack(spacing: 12) {
+                Button(action: onLogin) {
+                    Text("Log In")
+                        .sparkleLabelBase()
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .background(Color.black)
+                .clipShape(RoundedRectangle(cornerRadius: 48))
 
-            Button(action: onLogin) {
-                Text("Log In")
-                    .sparkleLabelBase()
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                Link(destination: URL(string: "https://dust.tt")!) {
+                    Text("Sign Up")
+                        .sparkleLabelBase()
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 48))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 48)
+                        .stroke(Color.black.opacity(0.2), lineWidth: 1)
+                )
             }
-            .background(Color.highlight)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 40)
             .padding(.bottom, 48)
+
+            Spacer()
         }
         .background(Color.dustBackground)
     }
