@@ -6,9 +6,12 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getSkillIcon } from "@app/lib/skill";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
   Button,
   CardGrid,
+  Chip,
   EmptyCTA,
   Spinner,
   ToolsIcon,
@@ -17,7 +20,13 @@ import {
 import React, { useCallback, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-export function SkillBuilderToolsSection() {
+interface SkillBuilderToolsSectionProps {
+  extendedSkill?: SkillType;
+}
+
+export function SkillBuilderToolsSection({
+  extendedSkill,
+}: SkillBuilderToolsSectionProps) {
   const { getValues } = useFormContext<SkillBuilderFormData>();
   const { fields, remove, append } = useFieldArray<
     SkillBuilderFormData,
@@ -61,9 +70,19 @@ export function SkillBuilderToolsSection() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          Tools
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+            Tools
+          </h3>
+          {extendedSkill && (
+            <Chip
+              color="highlight"
+              size="xs"
+              icon={getSkillIcon(extendedSkill.icon)}
+              label={`Already includes ${extendedSkill.name}`}
+            />
+          )}
+        </div>
         {headerActions}
       </div>
 
