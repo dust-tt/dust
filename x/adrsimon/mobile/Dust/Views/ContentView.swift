@@ -16,7 +16,11 @@ struct ContentView: View {
             ProgressView("Signing in...")
 
         case let .authenticated(user):
-            ProfileView(user: user, onLogout: { authViewModel.logout() })
+            MainContainerView(
+                user: user,
+                accessToken: AuthService.loadTokens()?.accessToken ?? "",
+                onLogout: { authViewModel.logout() }
+            )
 
         case let .error(message):
             ErrorView(message: message, onRetry: { authViewModel.logout() })

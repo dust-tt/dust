@@ -139,6 +139,16 @@ enum AuthService {
         KeychainService.deleteAll()
     }
 
+    // MARK: - Dust User
+
+    static func fetchDustUser(accessToken: String) async throws -> DustUser {
+        let response: DustUserResponse = try await APIClient.getCamelCase(
+            AppConfig.Endpoints.user,
+            accessToken: accessToken
+        )
+        return response.user
+    }
+
     // MARK: - Parse Callback
 
     static func extractCode(from url: URL) -> String? {
