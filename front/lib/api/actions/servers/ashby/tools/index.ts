@@ -19,6 +19,7 @@ import {
   renderCandidateList,
   renderCandidateNotes,
   renderInterviewFeedbackRecap,
+  renderJobPostingList,
   renderReferralForm,
   renderReport,
 } from "@app/lib/api/actions/servers/ashby/rendering";
@@ -436,21 +437,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       ]);
     }
 
-    const postingsText = postings
-      .map(
-        (p) =>
-          `- **${p.title}** (ID: ${p.id})\n` +
-          `  Department: ${p.departmentName} | Team: ${p.teamName}\n` +
-          `  Location: ${p.locationName}` +
-          (p.workplaceType ? ` (${p.workplaceType})` : "") +
-          `\n` +
-          `  Employment: ${p.employmentType} | Listed: ${p.isListed}\n` +
-          `  Published: ${p.publishedDate}` +
-          (p.compensationTierSummary
-            ? `\n  Compensation: ${p.compensationTierSummary}`
-            : "")
-      )
-      .join("\n\n");
+    const postingsText = renderJobPostingList(postings);
 
     return new Ok([
       {

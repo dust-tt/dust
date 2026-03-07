@@ -5,6 +5,7 @@ import type {
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
   AshbyJob,
+  AshbyJobPosting,
   AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
@@ -207,6 +208,24 @@ export function renderCandidateNotes(
   const noteTexts = notes.map((note) => renderSingleNote(note));
 
   return header.join("\n") + noteTexts.join(`\n\n${delimiterLine}\n\n`);
+}
+
+export function renderJobPostingList(postings: AshbyJobPosting[]): string {
+  return postings
+    .map(
+      (p) =>
+        `- **${p.title}** (ID: ${p.id})\n` +
+        `  Department: ${p.departmentName} | Team: ${p.teamName}\n` +
+        `  Location: ${p.locationName}` +
+        (p.workplaceType ? ` (${p.workplaceType})` : "") +
+        `\n` +
+        `  Employment: ${p.employmentType} | Listed: ${p.isListed}\n` +
+        `  Published: ${p.publishedDate}` +
+        (p.compensationTierSummary
+          ? `\n  Compensation: ${p.compensationTierSummary}`
+          : "")
+    )
+    .join("\n\n");
 }
 
 export function renderReferralForm(
