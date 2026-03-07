@@ -3,23 +3,19 @@ import type { Authenticator } from "@app/lib/auth";
 import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
+import type { AgentInstructionsSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 function buildAggregationPrompt(
   agentName: string,
-  syntheticSuggestions: Array<{
-    kind: string;
-    analysis: string | null;
-    content: string;
-    targetBlockId: string;
-  }>
+  suggestions: AgentInstructionsSuggestionType[]
 ): string {
-  const suggestionsSection = syntheticSuggestions
+  const suggestionsSection = suggestions
     .map(
       (s, i) => `### Suggestion ${i + 1}
 kind: ${s.kind}
-targetBlockId: ${s.targetBlockId}
+targetBlockId: ${s.suggestion.targetBlockId}
 analysis: ${s.analysis ?? "N/A"}
-content: ${s.content}`
+content: ${s.suggestion.content}`
     )
     .join("\n\n");
 
@@ -32,10 +28,10 @@ content: ${s.content}`
 ${suggestionsSection}
 
 ## Your task
-- Merge suggestions that address the same issue, or that target the same block. You can never have more than one suggestion targeting the same block.
-- Remove duplicates
+- Merge suggestions that address the same issue, or that target the same block
 - Keep only the most impactful suggestions (max 5)
 - In the analysis, mention how many conversations support each suggestion
+- When calling the tool, make sure there is never more than one suggestion targeting the same block (including instructions-root)
 
 You MUST call the tool. If no suggestions survive aggregation, return an empty suggestions array.`;
 }
@@ -73,18 +69,18 @@ export async function aggregateSyntheticSuggestions(
     return;
   }
 
-  // Prepare synthetic suggestions for the prompt (instructions only).
-  const suggestionsForPrompt = syntheticSuggestions
+  // Filter to instructions suggestions using the discriminated union.
+  const instructionsSuggestions = syntheticSuggestions
     .map((s) => s.toJSON())
-    .filter((json) => json.kind === "instructions")
-    .map((json) => ({
-      kind: json.kind,
-      analysis: json.analysis,
-      content: json.suggestion.content,
-      targetBlockId: json.suggestion.targetBlockId,
-    }));
+    .filter(
+      (json): json is AgentInstructionsSuggestionType =>
+        json.kind === "instructions"
+    );
 
-  const prompt = buildAggregationPrompt(agentConfig.name, suggestionsForPrompt);
+  const prompt = buildAggregationPrompt(
+    agentConfig.name,
+    instructionsSuggestions
+  );
 
   const createdCount = await runReinforcedAnalysis({
     auth,
