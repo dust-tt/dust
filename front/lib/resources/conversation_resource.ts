@@ -568,19 +568,82 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  /**
-   * Finds conversations involving a specific agent, filtered by a date condition.
-   */
-  private static async listConversationsForAgent(
+  static async listConversationWithAgentCreatedBeforeDate(
     auth: Authenticator,
     {
       agentConfigurationId,
-      dateFilter,
+      cutoffDate,
     }: {
       agentConfigurationId: string;
-      dateFilter: WhereOptions;
+      cutoffDate: Date;
     },
     options?: FetchConversationOptions
+  ): Promise<string[]> {
+    // Find all conversations that:
+    // 1. Were created before the cutoff date.
+    // 2. Have at least one message from the specified agent.
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Two-step approach for better performance:
+    // Step 1: Get distinct conversation IDs that have messages from this agent.
+    const messageWithAgent = await MessageModel.findAll({
+      attributes: [
+        [
+          Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+          "conversationId",
+        ],
+      ],
+      where: {
+        workspaceId,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: [],
+          where: {
+            workspaceId,
+            agentConfigurationId,
+          },
+        },
+      ],
+      raw: true,
+    });
+
+    if (messageWithAgent.length === 0) {
+      return [];
+    }
+
+    // Step 2: Filter conversations by creation date.
+    const conversationIds = messageWithAgent.map((m) => m.conversationId);
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+      where: {
+        id: {
+          [Op.in]: conversationIds,
+        },
+        createdAt: {
+          [Op.lt]: cutoffDate,
+        },
+      },
+    });
+
+    return conversations.map((c) => c.sId);
+  }
+
+  /**
+   * Lists conversations updated since a given date that involve a specific agent.
+   * Returns an array of conversation sIds.
+   */
+  static async listRecentConversationsForAgent(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      updatedSince,
+    }: {
+      agentConfigurationId: string;
+      updatedSince: Date;
+    }
   ): Promise<string[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -609,57 +672,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
-    // Step 2: Filter conversations by the date condition.
+    // Step 2: Filter to conversations updated since the given date.
     const conversationIds = messagesWithAgent.map((m) => m.conversationId);
-    const conversations = await this.baseFetchWithAuthorization(auth, options, {
-      where: {
-        id: { [Op.in]: conversationIds },
-        ...dateFilter,
-      },
-    });
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      { dangerouslySkipPermissionFiltering: true, excludeTest: true },
+      {
+        where: {
+          id: { [Op.in]: conversationIds },
+          updatedAt: { [Op.gte]: updatedSince },
+        },
+      }
+    );
 
     return conversations.map((c) => c.sId);
-  }
-
-  static async listConversationWithAgentCreatedBeforeDate(
-    auth: Authenticator,
-    {
-      agentConfigurationId,
-      cutoffDate,
-    }: {
-      agentConfigurationId: string;
-      cutoffDate: Date;
-    },
-    options?: FetchConversationOptions
-  ): Promise<string[]> {
-    return this.listConversationsForAgent(
-      auth,
-      {
-        agentConfigurationId,
-        dateFilter: { createdAt: { [Op.lt]: cutoffDate } },
-      },
-      options
-    );
-  }
-
-  static async listRecentConversationsForAgent(
-    auth: Authenticator,
-    {
-      agentConfigurationId,
-      updatedSince,
-    }: {
-      agentConfigurationId: string;
-      updatedSince: Date;
-    }
-  ): Promise<string[]> {
-    return this.listConversationsForAgent(
-      auth,
-      {
-        agentConfigurationId,
-        dateFilter: { updatedAt: { [Op.gte]: updatedSince } },
-      },
-      { dangerouslySkipPermissionFiltering: true, excludeTest: true }
-    );
   }
 
   static async fetchConversationWithoutContent(
