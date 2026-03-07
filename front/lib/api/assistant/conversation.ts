@@ -36,6 +36,7 @@ import {
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { isModelAvailable } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -641,8 +642,8 @@ export async function postUserMessage(
 
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
-      supportedModelConfig?.featureFlag &&
-      !featureFlags.includes(supportedModelConfig.featureFlag)
+      supportedModelConfig &&
+      !isModelAvailable(supportedModelConfig, featureFlags, plan)
     ) {
       return new Err({
         status_code: 400,
