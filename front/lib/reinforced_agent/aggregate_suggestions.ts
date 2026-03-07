@@ -1,63 +1,8 @@
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { ReinforcedResponseSchema } from "@app/lib/reinforced_agent/schemas";
+import { runReinforcedAnalysis } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
-import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
-
-const AGGREGATE_FUNCTION_NAME = "aggregate_suggestions";
-
-function buildAggregateSpecifications(): AgentActionSpecification[] {
-  return [
-    {
-      name: AGGREGATE_FUNCTION_NAME,
-      description:
-        "Aggregate and deduplicate synthetic suggestions into " +
-        "user-facing pending suggestions.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          suggestions: {
-            type: "array",
-            description:
-              "Deduplicated, prioritized suggestions for the agent. " +
-              "Combine similar suggestions, keep the strongest ones.",
-            items: {
-              type: "object",
-              properties: {
-                kind: {
-                  type: "string",
-                  enum: ["instructions"],
-                  description: "The type of suggestion.",
-                },
-                content: {
-                  type: "string",
-                  description:
-                    "The full HTML content for the instructions block.",
-                },
-                targetBlockId: {
-                  type: "string",
-                  description: "The data-block-id of the block to modify.",
-                },
-                analysis: {
-                  type: "string",
-                  description:
-                    "A concise explanation of why this suggestion was made, " +
-                    "mentioning how many conversations support it.",
-                },
-              },
-              required: ["kind", "content", "targetBlockId", "analysis"],
-            },
-          },
-        },
-        required: ["suggestions"],
-      },
-    },
-  ];
-}
 
 function buildAggregationPrompt(
   agentName: string,
@@ -97,14 +42,12 @@ You MUST call the tool. If no suggestions survive aggregation, return an empty s
 
 /**
  * Aggregate synthetic suggestions for an agent into pending suggestions.
- * Marks processed synthetic suggestions as outdated.
+ * Marks processed synthetic suggestions as approved.
  */
 export async function aggregateSyntheticSuggestions(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   // Fetch all synthetic suggestions for this agent.
   const syntheticSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -114,15 +57,6 @@ export async function aggregateSyntheticSuggestions(
     );
 
   if (syntheticSuggestions.length === 0) {
-    return;
-  }
-
-  const model = getFastestWhitelistedModel(owner);
-  if (!model) {
-    logger.warn(
-      { workspaceId: owner.sId },
-      "ReinforcedAgent: no whitelisted model for aggregation"
-    );
     return;
   }
 
@@ -152,80 +86,18 @@ export async function aggregateSyntheticSuggestions(
 
   const prompt = buildAggregationPrompt(agentConfig.name, suggestionsForPrompt);
 
-  // Use the LLM to aggregate — we pass an empty conversation since
-  // the prompt contains all the context.
-  const res = await runMultiActionsAgent(
+  const createdCount = await runReinforcedAnalysis({
     auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: AGGREGATE_FUNCTION_NAME,
-      useCache: false,
-    },
-    {
-      conversation: { messages: [] },
-      prompt,
-      specifications: buildAggregateSpecifications(),
-      forceToolCall: AGGREGATE_FUNCTION_NAME,
-    },
-    {
-      context: {
-        operationType: "reinforced_agent_aggregate_suggestions",
-        conversationId: "n/a",
-        workspaceId: owner.sId,
-      },
-    }
-  );
-
-  if (res.isErr()) {
-    logger.error(
-      { agentConfigurationId, error: res.error },
-      "ReinforcedAgent: LLM aggregation call failed"
-    );
-    return;
-  }
-
-  const action = res.value.actions?.[0];
-  if (!action?.arguments) {
-    logger.warn(
-      { agentConfigurationId },
-      "ReinforcedAgent: no tool call in aggregation response"
-    );
-    return;
-  }
-
-  const parsed = ReinforcedResponseSchema.safeParse(action.arguments);
-  if (!parsed.success) {
-    logger.warn(
-      { agentConfigurationId, error: parsed.error },
-      "ReinforcedAgent: invalid LLM aggregation response shape"
-    );
-    return;
-  }
-
-  const { suggestions } = parsed.data;
-
-  // Create pending suggestions.
-  let createdCount = 0;
-  for (const suggestion of suggestions) {
-    if (suggestion.kind !== "instructions") {
-      continue;
-    }
-
-    await AgentSuggestionResource.createSuggestionForAgent(auth, agentConfig, {
-      kind: "instructions",
-      suggestion: {
-        content: suggestion.content,
-        targetBlockId:
-          suggestion.targetBlockId || INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
-        type: "replace",
-      },
-      analysis: suggestion.analysis,
-      state: "pending",
-      source: "reinforcement",
-    });
-    createdCount++;
-  }
+    agentConfig,
+    prompt,
+    functionName: "aggregate_suggestions",
+    functionDescription:
+      "Aggregate and deduplicate synthetic suggestions into " +
+      "user-facing pending suggestions.",
+    source: "reinforcement",
+    operationType: "reinforced_agent_aggregate_suggestions",
+    contextId: "n/a",
+  });
 
   // Mark all synthetic suggestions as approved (consumed by aggregation).
   await AgentSuggestionResource.bulkUpdateState(
