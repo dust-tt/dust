@@ -71,9 +71,6 @@ jobs:
       id-token: write
     uses: ./.github/workflows/sandbox-img-registry.yml
     secrets: inherit
-    permissions:
-      contents: read
-      id-token: write
 
   check-branch:
     runs-on: ubuntu-latest
