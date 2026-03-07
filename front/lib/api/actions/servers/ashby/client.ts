@@ -9,6 +9,7 @@ import type {
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
   AshbyJob,
+  AshbyJobPostingListRequest,
   AshbyJobPostingUpdateRequest,
   AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
@@ -21,6 +22,7 @@ import {
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
   AshbyJobListResponseSchema,
+  AshbyJobPostingListResponseSchema,
   AshbyJobPostingUpdateResponseSchema,
   AshbyReferralCreateResponseSchema,
   AshbyReferralFormInfoResponseSchema,
@@ -192,6 +194,14 @@ export class AshbyClient {
       "referral.create",
       request,
       AshbyReferralCreateResponseSchema
+    );
+  }
+
+  async listJobPostings(request: AshbyJobPostingListRequest) {
+    return this.postRequest(
+      "jobPosting.list",
+      request,
+      AshbyJobPostingListResponseSchema
     );
   }
 
