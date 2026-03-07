@@ -112,6 +112,89 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       done: "Create referral on Ashby",
     },
   },
+  list_job_postings: {
+    description:
+      "List all published job postings in Ashby. " +
+      "Returns job postings with their title, department, team, location, " +
+      "employment type, workplace type, and other details. " +
+      "By default includes both listed and unlisted postings. " +
+      "Set listedOnly to true to only return publicly listed postings.",
+    schema: {
+      location: z
+        .string()
+        .optional()
+        .describe("Filter by location name (case sensitive)."),
+      department: z
+        .string()
+        .optional()
+        .describe("Filter by department name (case sensitive)."),
+      listedOnly: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, only return publicly listed job postings. " +
+            "Defaults to false."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing job postings from Ashby",
+      done: "List job postings from Ashby",
+    },
+  },
+  update_job_posting: {
+    description:
+      "Update an existing job posting in Ashby. " +
+      "You can update the title, description, and/or workplace type. " +
+      "The description must be in HTML format " +
+      "(supported tags: h1-h6, b, i, u, a, ul, ol, li, code, pre). " +
+      "When description openings and closings are not suppressed, only the " +
+      "descriptionBody part is modifiable. To fully customize the description, " +
+      "set both suppressDescriptionOpening and suppressDescriptionClosing to true.",
+    schema: {
+      jobPostingId: z
+        .string()
+        .describe("The ID of the job posting to update."),
+      title: z
+        .string()
+        .optional()
+        .describe("A new title for the job posting."),
+      descriptionHtml: z
+        .string()
+        .optional()
+        .describe(
+          "Updated HTML description for the job posting. " +
+            "Only the descriptionBody part is modifiable unless " +
+            "both suppressDescriptionOpening and suppressDescriptionClosing are true."
+        ),
+      workplaceType: z
+        .enum(["OnSite", "Hybrid", "Remote"])
+        .optional()
+        .describe(
+          "The type of workplace for the job posting: " +
+            "OnSite, Hybrid, or Remote."
+        ),
+      suppressDescriptionOpening: z
+        .boolean()
+        .optional()
+        .describe(
+          "When true, the job description opening from the brand " +
+            "will be suppressed."
+        ),
+      suppressDescriptionClosing: z
+        .boolean()
+        .optional()
+        .describe(
+          "When true, the job description closing from the brand " +
+            "will be suppressed."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Updating job posting on Ashby",
+      done: "Update job posting on Ashby",
+    },
+  },
 });
 
 export const ASHBY_SERVER = {
