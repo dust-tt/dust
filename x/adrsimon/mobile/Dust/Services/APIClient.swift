@@ -27,9 +27,15 @@ enum APIError: LocalizedError {
 }
 
 enum APIClient {
-    private static let decoder: JSONDecoder = {
+    private static let snakeCaseDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+
+    private static let camelCaseDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
@@ -48,7 +54,16 @@ enum APIClient {
     ) async throws -> T {
         var request = try buildRequest(endpoint: endpoint, accessToken: accessToken)
         request.httpMethod = "GET"
-        return try await execute(request, endpoint: endpoint)
+        return try await execute(request, endpoint: endpoint, decoder: snakeCaseDecoder)
+    }
+
+    static func getCamelCase<T: Decodable>(
+        _ endpoint: String,
+        accessToken: String? = nil
+    ) async throws -> T {
+        var request = try buildRequest(endpoint: endpoint, accessToken: accessToken)
+        request.httpMethod = "GET"
+        return try await execute(request, endpoint: endpoint, decoder: camelCaseDecoder)
     }
 
     static func post<T: Decodable>(
@@ -60,7 +75,7 @@ enum APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(body)
-        return try await execute(request, endpoint: endpoint)
+        return try await execute(request, endpoint: endpoint, decoder: snakeCaseDecoder)
     }
 
     static func postNoResponse(
@@ -102,7 +117,11 @@ enum APIClient {
         return request
     }
 
-    private static func execute<T: Decodable>(_ request: URLRequest, endpoint: String) async throws -> T {
+    private static func execute<T: Decodable>(
+        _ request: URLRequest,
+        endpoint: String,
+        decoder: JSONDecoder
+    ) async throws -> T {
         let data: Data
         let response: URLResponse
         do {

@@ -9,5 +9,10 @@ enum AppConfig {
         static let login = "/api/workos/login"
         static let authenticate = "/api/workos/authenticate"
         static let logout = "/api/workos/logout"
+        static let user = "/api/user"
+
+        static func conversations(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations"
+        }
     }
 }
