@@ -96,10 +96,6 @@ export async function analyzeConversationForReinforcement(
     auth,
     agentConfig,
     prompt,
-    functionName: "analyze_conversation",
-    functionDescription:
-      "Analyze a conversation and produce structured suggestions " +
-      "for improving the agent configuration.",
     source: "synthetic",
     operationType: "reinforced_agent_analyze_conversation",
     contextId: conversationId,
