@@ -1,13 +1,24 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import { ReinforcedResponseSchema } from "@app/lib/reinforced_agent/schemas";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
 import type { AgentSuggestionSource } from "@app/types/suggestions/agent_suggestion";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { z } from "zod";
+
+const ReinforcedSuggestionSchema = z.object({
+  kind: z.string(),
+  content: z.string(),
+  targetBlockId: z.string(),
+  analysis: z.string(),
+});
+
+const ReinforcedResponseSchema = z.object({
+  suggestions: z.array(ReinforcedSuggestionSchema),
+});
 
 const FUNCTION_NAME = "add_suggestions";
 
