@@ -397,6 +397,69 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     ]);
   },
 
+  list_job_postings: async ({ location, department, listedOnly }, extra) => {
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const result = await client.listJobPostings({
+      location,
+      department,
+      listedOnly,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to list job postings: ${result.error.message}`
+        )
+      );
+    }
+
+    if (!result.value.success) {
+      return new Err(
+        new MCPError("Failed to list job postings from Ashby.")
+      );
+    }
+
+    const postings = result.value.results;
+
+    if (postings.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No job postings found matching the criteria.",
+        },
+      ]);
+    }
+
+    const postingsText = postings
+      .map(
+        (p) =>
+          `- **${p.title}** (ID: ${p.id})\n` +
+          `  Department: ${p.departmentName} | Team: ${p.teamName}\n` +
+          `  Location: ${p.locationName}` +
+          (p.workplaceType ? ` (${p.workplaceType})` : "") +
+          `\n` +
+          `  Employment: ${p.employmentType} | Listed: ${p.isListed}\n` +
+          `  Published: ${p.publishedDate}` +
+          (p.compensationTierSummary
+            ? `\n  Compensation: ${p.compensationTierSummary}`
+            : "")
+      )
+      .join("\n\n");
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${postings.length} job posting(s):\n\n${postingsText}`,
+      },
+    ]);
+  },
+
   update_job_posting: async (
     {
       jobPostingId,
