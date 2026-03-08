@@ -367,6 +367,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
       where: {
+        id: this.id,
         connectorId: this.connectorId,
       },
       transaction,
