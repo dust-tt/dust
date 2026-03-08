@@ -5,6 +5,13 @@ enum MessageType: String, Codable {
     case agentMessage = "agent_message"
 }
 
+enum AgentMessageStatus: String, Codable {
+    case created
+    case succeeded
+    case failed
+    case cancelled
+}
+
 struct UserMessage: Codable, Identifiable {
     let id: Int
     let sId: String
@@ -17,7 +24,7 @@ struct UserMessage: Codable, Identifiable {
     let context: UserMessageContext?
 
     var createdDate: Date {
-        Date(timeIntervalSince1970: created / 1000)
+        created.dateFromEpochMs
     }
 }
 
@@ -41,7 +48,7 @@ struct AgentMessage: Codable, Identifiable {
     let visibility: String
     let version: Int
     let rank: Int
-    let status: String
+    let status: AgentMessageStatus
     let content: String?
     let chainOfThought: String?
     let configuration: AgentConfiguration
@@ -51,11 +58,11 @@ struct AgentMessage: Codable, Identifiable {
     }
 
     var createdDate: Date {
-        Date(timeIntervalSince1970: created / 1000)
+        created.dateFromEpochMs
     }
 
     var isStreaming: Bool {
-        status == "created"
+        status == .created
     }
 }
 

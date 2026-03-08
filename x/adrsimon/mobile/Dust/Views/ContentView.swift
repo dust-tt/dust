@@ -15,10 +15,10 @@ struct ContentView: View {
         case .authenticating:
             ProgressView("Signing in...")
 
-        case let .authenticated(user):
+        case let .authenticated(user, accessToken):
             MainContainerView(
                 user: user,
-                accessToken: AuthService.loadTokens()?.accessToken ?? "",
+                accessToken: accessToken,
                 onLogout: { authViewModel.logout() }
             )
 

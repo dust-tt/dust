@@ -2,10 +2,10 @@ import Foundation
 import os
 import Security
 
-private let logger = Logger(subsystem: "com.dust.mobile", category: "Keychain")
+private let logger = Logger(subsystem: AppConfig.bundleId, category: "Keychain")
 
 enum KeychainService {
-    private static let service = "com.dust.mobile"
+    private static let service = AppConfig.bundleId
 
     enum Key: String {
         case accessToken

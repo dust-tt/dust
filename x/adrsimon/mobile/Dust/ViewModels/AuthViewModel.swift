@@ -7,11 +7,11 @@ enum AuthState {
     case loading
     case unauthenticated
     case authenticating
-    case authenticated(User)
+    case authenticated(user: User, accessToken: String)
     case error(String)
 }
 
-private let logger = Logger(subsystem: "com.dust.mobile", category: "Auth")
+private let logger = Logger(subsystem: AppConfig.bundleId, category: "Auth")
 
 @MainActor
 final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
@@ -58,8 +58,9 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
                     guard let self else { return }
 
                     if let error {
+                        pkcePair = nil
+                        webAuthSession = nil
                         if (error as NSError).code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
-                            webAuthSession = nil
                             state = .unauthenticated
                         } else {
                             state = .error(error.localizedDescription)
@@ -128,7 +129,7 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
         do {
             let response = try await AuthService.refreshTokens(refreshToken: tokens.refreshToken)
             AuthService.saveTokens(response)
-            state = .authenticated(response.user)
+            state = .authenticated(user: response.user, accessToken: response.accessToken)
         } catch {
             AuthService.clearTokens()
             state = .unauthenticated
@@ -149,8 +150,10 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
             AuthService.saveTokens(response)
             self.pkcePair = nil
             webAuthSession = nil
-            state = .authenticated(response.user)
+            state = .authenticated(user: response.user, accessToken: response.accessToken)
         } catch {
+            self.pkcePair = nil
+            webAuthSession = nil
             state = .error(error.localizedDescription)
         }
     }

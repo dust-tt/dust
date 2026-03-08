@@ -2,6 +2,7 @@ import Foundation
 
 enum AppConfig {
     static let apiBaseURL = "https://dust.tt"
+    static let bundleId = "com.dust.mobile"
     static let callbackURLScheme = "dust"
     static let callbackURL = "\(callbackURLScheme)://auth"
 
