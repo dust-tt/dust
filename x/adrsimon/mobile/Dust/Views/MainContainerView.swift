@@ -7,9 +7,13 @@ struct MainContainerView: View {
 
     @StateObject private var viewModel: ConversationListViewModel
     @State private var isDrawerOpen = false
+    @State private var selectedConversation: Conversation?
+
+    private let accessToken: String
 
     init(user: User, accessToken: String, onLogout: @escaping () -> Void) {
         self.user = user
+        self.accessToken = accessToken
         self.onLogout = onLogout
         _viewModel = StateObject(wrappedValue: ConversationListViewModel(accessToken: accessToken))
     }
@@ -26,12 +30,15 @@ struct MainContainerView: View {
                     workspaces: viewModel.workspaces,
                     isLoading: isLoading,
                     onNewConversation: {
+                        selectedConversation = nil
                         isDrawerOpen = false
                     },
-                    onSelectConversation: { _ in
+                    onSelectConversation: { conversation in
+                        selectedConversation = conversation
                         isDrawerOpen = false
                     },
                     onSwitchWorkspace: { workspace in
+                        selectedConversation = nil
                         Task { await viewModel.switchWorkspace(workspace) }
                     },
                     onLogout: {
@@ -42,15 +49,32 @@ struct MainContainerView: View {
             },
             content: {
                 ZStack(alignment: .topLeading) {
-                    NewConversationView(firstName: user.firstName)
+                    if let conversation = selectedConversation,
+                       let workspaceId = viewModel.workspace?.sId
+                    {
+                        ConversationDetailView(
+                            conversation: conversation,
+                            workspaceId: workspaceId,
+                            accessToken: accessToken,
+                            currentUserEmail: user.email,
+                            onBack: {
+                                selectedConversation = nil
+                            }
+                        )
+                        .id(conversation.sId)
+                    } else {
+                        NewConversationView(firstName: user.firstName)
+                    }
 
-                    Button {
-                        isDrawerOpen = true
-                    } label: {
-                        Image(systemName: "line.horizontal.3")
-                            .font(.title2)
-                            .foregroundStyle(Color.dustForeground)
-                            .padding(16)
+                    if selectedConversation == nil {
+                        Button {
+                            isDrawerOpen = true
+                        } label: {
+                            Image(systemName: "line.horizontal.3")
+                                .font(.title2)
+                                .foregroundStyle(Color.dustForeground)
+                                .padding(16)
+                        }
                     }
                 }
             }
