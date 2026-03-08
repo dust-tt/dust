@@ -22,7 +22,10 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceDocument,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   SlackChannelModel,
   SlackMessagesModel,
@@ -854,6 +857,60 @@ export const slack = async ({
         legacyConnector.id,
         slackBotConnector.id
       );
+
+      return { success: true };
+    }
+
+    case "delete-conversation": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+      if (!args.threadTs) {
+        throw new Error("Missing --threadTs argument");
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: { workspaceId: `${args.wId}`, type: "slack" },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const documentId = `slack-${args.channelId}-thread-${args.threadTs}`;
+
+      const message = await SlackMessagesModel.findOne({
+        where: { connectorId: connector.id, documentId },
+      });
+
+      if (!message) {
+        throw new Error(`Document ${documentId} not found in DB`);
+      }
+
+      logger.info(
+        { documentId, channelId: args.channelId, threadTs: args.threadTs },
+        "Deleting conversation document"
+      );
+
+      const connectorResource =
+        await ConnectorResource.fetchById(connector.id);
+      if (!connectorResource) {
+        throw new Error(`Could not find connector resource for ${connector.id}`);
+      }
+      const dataSourceConfig =
+        dataSourceConfigFromConnector(connectorResource);
+
+      await deleteDataSourceDocument(dataSourceConfig, documentId, {
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        documentId,
+      });
+
+      await message.destroy();
+
+      logger.info({ documentId }, "Document deleted from core and DB");
 
       return { success: true };
     }
