@@ -1,5 +1,12 @@
 import Foundation
 
+extension Double {
+    /// Converts a millisecond epoch timestamp to a Date.
+    var dateFromEpochMs: Date {
+        Date(timeIntervalSince1970: self / 1000)
+    }
+}
+
 struct Conversation: Codable, Identifiable {
     let id: Int
     let sId: String
@@ -8,11 +15,11 @@ struct Conversation: Codable, Identifiable {
     let title: String?
 
     var updatedDate: Date {
-        Date(timeIntervalSince1970: updated / 1000)
+        updated.dateFromEpochMs
     }
 
     var createdDate: Date {
-        Date(timeIntervalSince1970: created / 1000)
+        created.dateFromEpochMs
     }
 
     var effectiveDate: Date {

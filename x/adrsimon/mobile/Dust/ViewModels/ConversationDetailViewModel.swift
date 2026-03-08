@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.dust.mobile", category: "ConversationDetail")
+private let logger = Logger(subsystem: AppConfig.bundleId, category: "ConversationDetail")
 
 @MainActor
 final class ConversationDetailViewModel: ObservableObject {

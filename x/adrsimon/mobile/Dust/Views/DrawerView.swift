@@ -103,8 +103,7 @@ struct DrawerView: View {
     private var userSection: some View {
         HStack(spacing: 10) {
             HStack(spacing: 10) {
-                AsyncProfileImage(url: user.profilePictureUrl)
-                    .frame(width: 32, height: 32)
+                Avatar(url: user.profilePictureUrl, size: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(user.displayName)

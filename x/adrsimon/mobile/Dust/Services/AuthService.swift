@@ -19,18 +19,6 @@ enum AuthError: LocalizedError {
     }
 }
 
-// MARK: - Request Bodies
-
-struct TokenExchangeRequest: Encodable {
-    let code: String
-    let codeVerifier: String
-}
-
-struct TokenRefreshRequest: Encodable {
-    let grantType: String = "refresh_token"
-    let refreshToken: String
-}
-
 private extension Data {
     func base64URLEncodedString() -> String {
         base64EncodedString()
@@ -142,9 +130,10 @@ enum AuthService {
     // MARK: - Dust User
 
     static func fetchDustUser(accessToken: String) async throws -> DustUser {
-        let response: DustUserResponse = try await APIClient.getCamelCase(
+        let response: DustUserResponse = try await APIClient.get(
             AppConfig.Endpoints.user,
-            accessToken: accessToken
+            accessToken: accessToken,
+            snakeCase: false
         )
         return response.user
     }

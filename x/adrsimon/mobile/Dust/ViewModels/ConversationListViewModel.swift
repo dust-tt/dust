@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.dust.mobile", category: "ConversationList")
+private let logger = Logger(subsystem: AppConfig.bundleId, category: "ConversationList")
 
 enum ConversationDateGroup: String, CaseIterable {
     case today = "Today"

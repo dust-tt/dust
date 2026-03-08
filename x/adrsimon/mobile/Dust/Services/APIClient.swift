@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.dust.mobile", category: "APIClient")
+private let logger = Logger(subsystem: AppConfig.bundleId, category: "APIClient")
 
 enum APIError: LocalizedError {
     case invalidURL
@@ -50,20 +50,13 @@ enum APIClient {
 
     static func get<T: Decodable>(
         _ endpoint: String,
-        accessToken: String? = nil
+        accessToken: String? = nil,
+        snakeCase: Bool = true
     ) async throws -> T {
         var request = try buildRequest(endpoint: endpoint, accessToken: accessToken)
         request.httpMethod = "GET"
-        return try await execute(request, endpoint: endpoint, decoder: snakeCaseDecoder)
-    }
-
-    static func getCamelCase<T: Decodable>(
-        _ endpoint: String,
-        accessToken: String? = nil
-    ) async throws -> T {
-        var request = try buildRequest(endpoint: endpoint, accessToken: accessToken)
-        request.httpMethod = "GET"
-        return try await execute(request, endpoint: endpoint, decoder: camelCaseDecoder)
+        let decoder = snakeCase ? snakeCaseDecoder : camelCaseDecoder
+        return try await execute(request, endpoint: endpoint, decoder: decoder)
     }
 
     static func post<T: Decodable>(
@@ -87,23 +80,7 @@ enum APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(body)
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            throw APIError.networkError(error)
-        }
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
-
-        guard (200 ... 299).contains(httpResponse.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw APIError.httpError(statusCode: httpResponse.statusCode, body: body)
-        }
+        _ = try await performRequest(request)
     }
 
     private static func buildRequest(endpoint: String, accessToken: String?) throws -> URLRequest {
@@ -117,11 +94,8 @@ enum APIClient {
         return request
     }
 
-    private static func execute<T: Decodable>(
-        _ request: URLRequest,
-        endpoint: String,
-        decoder: JSONDecoder
-    ) async throws -> T {
+    /// Executes the request and validates the HTTP response, returning the raw data.
+    private static func performRequest(_ request: URLRequest) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -138,6 +112,16 @@ enum APIClient {
             let body = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw APIError.httpError(statusCode: httpResponse.statusCode, body: body)
         }
+
+        return data
+    }
+
+    private static func execute<T: Decodable>(
+        _ request: URLRequest,
+        endpoint: String,
+        decoder: JSONDecoder
+    ) async throws -> T {
+        let data = try await performRequest(request)
 
         do {
             return try decoder.decode(T.self, from: data)

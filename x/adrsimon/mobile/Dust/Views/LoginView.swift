@@ -32,7 +32,7 @@ struct LoginView: View {
                 .background(Color.black)
                 .clipShape(RoundedRectangle(cornerRadius: 48))
 
-                Link(destination: URL(string: "https://dust.tt")!) {
+                Link(destination: URL(string: AppConfig.apiBaseURL)!) {
                     Text("Sign Up")
                         .sparkleLabelBase()
                         .foregroundStyle(.black)
