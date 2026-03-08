@@ -634,6 +634,7 @@ export const SlackCommandSchema = t.type({
     t.literal("whitelist-bot"),
     t.literal("whitelist-domains"),
     t.literal("check-channel"),
+    t.literal("delete-conversation"),
   ]),
   args: t.record(
     t.string,
