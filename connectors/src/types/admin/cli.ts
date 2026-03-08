@@ -203,7 +203,7 @@ export const GongCommandSchema = t.type({
   args: t.partial({
     connectorId: t.number,
     fromTs: t.number,
-    callId: t.number,
+    callId: t.string,
   }),
 });
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;

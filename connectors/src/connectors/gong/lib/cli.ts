@@ -75,15 +75,13 @@ export const gong = async ({
     }
 
     case "delete-transcript": {
-      const { connectorId, callId: callIdArg } = args;
+      const { connectorId, callId } = args;
       if (!connectorId) {
         throw new Error("Missing --connectorId argument");
       }
-      if (!callIdArg) {
+      if (!callId) {
         throw new Error("Missing --callId argument");
       }
-
-      const callId = callIdArg.toString();
 
       const connector = await fetchGongConnector({ connectorId });
       if (connector.type !== "gong") {

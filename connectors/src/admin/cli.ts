@@ -10,7 +10,7 @@ const main = async () => {
   process.env.INTERACTIVE_CLI = process.env.INTERACTIVE_CLI || "1";
 
   const argv = parseArgs(process.argv.slice(2), {
-    string: "wId",
+    string: ["wId", "callId"],
   });
 
   if (argv._.length < 2) {
