@@ -197,24 +197,15 @@ export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
 /**
  * <Gong>
  */
-export const GongCommandSchema = t.union([
-  t.type({
-    majorCommand: t.literal("gong"),
-    command: t.literal("force-resync"),
-    args: t.type({
-      connectorId: t.union([t.number, t.undefined]),
-      fromTs: t.union([t.number, t.undefined]),
-    }),
+export const GongCommandSchema = t.type({
+  majorCommand: t.literal("gong"),
+  command: t.union([t.literal("force-resync"), t.literal("delete-transcript")]),
+  args: t.type({
+    connectorId: t.union([t.number, t.undefined]),
+    fromTs: t.union([t.number, t.undefined]),
+    callId: t.union([t.string, t.undefined]),
   }),
-  t.type({
-    majorCommand: t.literal("gong"),
-    command: t.literal("delete-transcript"),
-    args: t.type({
-      connectorId: t.union([t.number, t.undefined]),
-      callId: t.union([t.string, t.undefined]),
-    }),
-  }),
-]);
+});
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
 
 export const GongForceResyncResponseSchema = t.type({
