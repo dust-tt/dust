@@ -933,13 +933,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List active custom skills marked as discoverable.
+   * List active custom skills marked as default.
    */
-  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
+  static async listDefault(auth: Authenticator): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
         status: "active",
-        isDiscoverable: true,
+        isDefault: true,
       },
       onlyCustom: true,
     });
@@ -1273,7 +1273,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         extendedSkillId: null,
         source: null,
         sourceMetadata: null,
-        isDiscoverable: false,
+        isDefault: false,
       },
       {
         // Global skills do not have data source configurations.
@@ -1498,7 +1498,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           extendedSkillId: versionModel.extendedSkillId,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
-          isDiscoverable: versionModel.isDiscoverable,
+          isDefault: versionModel.isDefault,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -1625,7 +1625,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments,
       icon,
       instructions,
-      isDiscoverable,
+      isDefault,
       mcpServerViews,
       name,
       requestedSpaceIds,
@@ -1639,7 +1639,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments?: FileResource[];
       icon: string | null;
       instructions: string;
-      isDiscoverable?: boolean;
+      isDefault?: boolean;
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
@@ -1672,7 +1672,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
-          ...(isDiscoverable !== undefined ? { isDiscoverable } : {}),
+          ...(isDefault !== undefined ? { isDefault } : {}),
         },
         transaction
       );
@@ -2270,7 +2270,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       canWrite: this.canWrite(auth),
       isExtendable: this.isExtendable,
       extendedSkillId: this.extendedSkillId,
-      isDiscoverable: this.globalSId ? false : this.isDiscoverable,
+      isDefault: this.globalSId ? false : this.isDefault,
     };
   }
 

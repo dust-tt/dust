@@ -65,7 +65,7 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.JSONB,
     allowNull: true,
   },
-  isDiscoverable: {
+  isDefault: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false,
@@ -108,7 +108,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
-  declare isDiscoverable: CreationOptional<boolean>;
+  declare isDefault: CreationOptional<boolean>;
 
   declare requestedSpaceIds: number[];
 }

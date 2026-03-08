@@ -66,7 +66,7 @@ const PostSkillRequestBodySchema = t.intersection([
   }),
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
-    isDiscoverable: t.boolean,
+    isDefault: t.boolean,
   }),
   t.union([
     t.type({
@@ -356,7 +356,7 @@ async function handler(
           icon,
           source: body.source ?? "web_app",
           sourceMetadata: body.sourceMetadata ?? null,
-          isDiscoverable: body.isDiscoverable ?? false,
+          isDefault: body.isDefault ?? false,
         },
         {
           mcpServerViews,
