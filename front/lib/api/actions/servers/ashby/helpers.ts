@@ -3,12 +3,13 @@ import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/too
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { renderReferralForm } from "@app/lib/api/actions/servers/ashby/rendering";
-import type {
-  AshbyCandidate,
-  AshbyFieldSubmission,
-  AshbyJob,
-  AshbyReferralFormInfo,
-  AshbyUser,
+import {
+  FILE_FIELD_TYPE,
+  type AshbyCandidate,
+  type AshbyFieldSubmission,
+  type AshbyJob,
+  type AshbyReferralFormInfo,
+  type AshbyUser,
 } from "@app/lib/api/actions/servers/ashby/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -279,6 +280,46 @@ export function resolveFieldSubmissions(
   }
 
   return new Ok(resolved);
+}
+
+/**
+ * Separates file-type fields from regular fields in resolved submissions.
+ * File fields contain conversation attachment IDs as values and are
+ * uploaded separately after referral creation.
+ */
+export function extractFileFields(
+  form: AshbyReferralFormInfo,
+  submissions: AshbyFieldSubmission[]
+): {
+  fileFields: { fileId: string; path: string }[];
+  submissionsWithoutFiles: AshbyFieldSubmission[];
+} {
+  const sections = form.formDefinition?.sections ?? [];
+  const fileFieldPaths = new Set<string>();
+
+  for (const section of sections) {
+    for (const fieldWrapper of section.fields) {
+      if (fieldWrapper.field.type === FILE_FIELD_TYPE) {
+        fileFieldPaths.add(fieldWrapper.field.path);
+      }
+    }
+  }
+
+  const fileFields: { fileId: string; path: string }[] = [];
+  const submissionsWithoutFiles: AshbyFieldSubmission[] = [];
+
+  for (const submission of submissions) {
+    if (
+      fileFieldPaths.has(submission.path) &&
+      typeof submission.value === "string"
+    ) {
+      fileFields.push({ fileId: submission.value, path: submission.path });
+    } else {
+      submissionsWithoutFiles.push(submission);
+    }
+  }
+
+  return { fileFields, submissionsWithoutFiles };
 }
 
 export function diagnoseFieldSubmissions(
