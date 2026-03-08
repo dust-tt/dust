@@ -176,7 +176,7 @@ export default function SkillBuilder({
                     size="lg"
                   >
                     A customized version of {extendedSkill.name} with your own
-                    instructions and preferences
+                    instructions and preferences.
                   </ContentMessage>
                 )}
                 {skill?.status === "suggested" && (
