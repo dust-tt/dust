@@ -894,13 +894,13 @@ export const slack = async ({
         "Deleting conversation document"
       );
 
-      const connectorResource =
-        await ConnectorResource.fetchById(connector.id);
+      const connectorResource = await ConnectorResource.fetchById(connector.id);
       if (!connectorResource) {
-        throw new Error(`Could not find connector resource for ${connector.id}`);
+        throw new Error(
+          `Could not find connector resource for ${connector.id}`
+        );
       }
-      const dataSourceConfig =
-        dataSourceConfigFromConnector(connectorResource);
+      const dataSourceConfig = dataSourceConfigFromConnector(connectorResource);
 
       await deleteDataSourceDocument(dataSourceConfig, documentId, {
         workspaceId: dataSourceConfig.workspaceId,
