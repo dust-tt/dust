@@ -14,5 +14,9 @@ enum AppConfig {
         static func conversations(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations"
         }
+
+        static func conversationMessages(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages"
+        }
     }
 }

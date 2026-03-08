@@ -8,6 +8,9 @@ options:
 packages:
   SparkleTokens:
     path: SparkleTokens
+  MarkdownUI:
+    url: https://github.com/gonzalezreal/swift-markdown-ui
+    from: "2.4.1"
 
 settings:
   base:
@@ -23,6 +26,8 @@ targets:
     dependencies:
       - package: SparkleTokens
         product: SparkleTokens
+      - package: MarkdownUI
+        product: MarkdownUI
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
