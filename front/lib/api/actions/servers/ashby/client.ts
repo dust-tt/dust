@@ -8,6 +8,7 @@ import type {
   AshbyCandidateNote,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
+  AshbyFileAttachment,
   AshbyJob,
   AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
@@ -19,6 +20,7 @@ import {
   AshbyCandidateCreateNoteResponseSchema,
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
+  AshbyCandidateUploadResumeResponseSchema,
   AshbyJobListResponseSchema,
   AshbyReferralCreateResponseSchema,
   AshbyReferralFormInfoResponseSchema,
@@ -62,21 +64,11 @@ export class AshbyClient {
     return `Basic ${credentials}`;
   }
 
-  private async postRequest<T extends z.Schema>(
+  private async parseResponse<T extends z.Schema>(
     endpoint: string,
-    data: unknown,
+    response: Response,
     schema: T
   ): Promise<Result<z.infer<T>, Error>> {
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: this.getAuthHeader(),
-      },
-      body: JSON.stringify(data),
-    });
-
     if (!response.ok) {
       const errorText = await response.text();
       return new Err(
@@ -106,6 +98,25 @@ export class AshbyClient {
 
     return new Ok(parseResult.data);
   }
+
+  private async postRequest<T extends z.Schema>(
+    endpoint: string,
+    data: unknown,
+    schema: T
+  ): Promise<Result<z.infer<T>, Error>> {
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    return this.parseResponse(endpoint, response, schema);
+  }
+
 
   async getReportData(request: AshbyReportSynchronousRequest) {
     return this.postRequest(
@@ -190,6 +201,36 @@ export class AshbyClient {
       "referral.create",
       request,
       AshbyReferralCreateResponseSchema
+    );
+  }
+
+  async uploadCandidateResume(
+    candidateId: string,
+    file: AshbyFileAttachment
+  ) {
+    const formData = new FormData();
+    formData.append("candidateId", candidateId);
+    const blob = new Blob([new Uint8Array(file.buffer)], {
+      type: file.contentType,
+    });
+    formData.append("resume", blob, file.filename);
+
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch(
+      `${ASHBY_API_BASE_URL}/candidate.uploadResume`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: this.getAuthHeader(),
+        },
+        body: formData,
+      }
+    );
+
+    return this.parseResponse(
+      "candidate.uploadResume",
+      response,
+      AshbyCandidateUploadResumeResponseSchema
     );
   }
 

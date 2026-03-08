@@ -403,6 +403,16 @@ export function isAshbyCreateReferralInput(
   return AshbyCreateReferralInputSchema.safeParse(input).success;
 }
 
+// File fields
+
+export const FILE_FIELD_TYPE = "File";
+
+export interface AshbyFileAttachment {
+  buffer: Buffer;
+  filename: string;
+  contentType: string;
+}
+
 // Referral create
 
 export const AshbyFieldSubmissionSchema = z.object({
@@ -428,6 +438,7 @@ export const AshbyReferralCreateResponseSchema = z.object({
     .object({
       id: z.string(),
       status: z.string(),
+      candidate: z.object({ id: z.string() }).passthrough(),
     })
     .passthrough()
     .optional(),
@@ -436,6 +447,18 @@ export const AshbyReferralCreateResponseSchema = z.object({
     .object({
       code: z.string().optional(),
       message: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+});
+
+// Candidate resume upload
+
+export const AshbyCandidateUploadResumeResponseSchema = z.object({
+  success: z.boolean(),
+  results: z
+    .object({
+      id: z.string(),
     })
     .passthrough()
     .optional(),
