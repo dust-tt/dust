@@ -79,7 +79,7 @@ export function SkillBuilderToolsSection({
               color="highlight"
               size="xs"
               icon={getSkillIcon(extendedSkill.icon)}
-              label={`Already includes ${extendedSkill.name}`}
+              label={`Already includes tools from ${extendedSkill.name}`}
             />
           )}
         </div>
