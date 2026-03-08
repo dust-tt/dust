@@ -12,6 +12,7 @@ import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
+  slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
 import {
   launchSlackGarbageCollectWorkflow,
@@ -880,7 +881,10 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const documentId = `slack-${args.channelId}-thread-${args.threadTs}`;
+      const documentId = slackThreadInternalIdFromSlackThreadIdentifier({
+        channelId: args.channelId,
+        threadTs: args.threadTs,
+      });
 
       const message = await SlackMessagesModel.findOne({
         where: { connectorId: connector.id, documentId },
