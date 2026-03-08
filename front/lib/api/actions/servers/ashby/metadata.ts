@@ -152,13 +152,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       "descriptionBody part is modifiable. To fully customize the description, " +
       "set both suppressDescriptionOpening and suppressDescriptionClosing to true.",
     schema: {
-      jobPostingId: z
-        .string()
-        .describe("The ID of the job posting to update."),
-      title: z
-        .string()
-        .optional()
-        .describe("A new title for the job posting."),
+      jobPostingId: z.string().describe("The ID of the job posting to update."),
+      title: z.string().optional().describe("A new title for the job posting."),
       descriptionHtml: z
         .string()
         .optional()
