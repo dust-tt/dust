@@ -216,22 +216,36 @@ async function handler(
         reactions: [],
       };
 
-      const { serverToolsAndInstructions, error: mcpToolsListingError } =
-        await tryListMCPTools(
-          auth,
-          {
-            agentConfiguration,
-            conversation,
-            agentMessage: placeholderAgentMessage,
-            clientSideActionConfigurations: clientSideMCPActionConfigurations,
-          },
-          {
-            jitServers,
-            skillServers,
-          }
+      const {
+        serverToolsAndInstructions: allServerToolsAndInstructions,
+        error: mcpToolsListingError,
+      } = await tryListMCPTools(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+          agentMessage: placeholderAgentMessage,
+          clientSideActionConfigurations: clientSideMCPActionConfigurations,
+        },
+        {
+          jitServers,
+          skillServers,
+        }
+      );
+
+      const conditionalJitServerNames = new Set(
+        conditionalServers.map((s) => s.name)
+      );
+      const stableServerToolsAndInstructions =
+        allServerToolsAndInstructions.filter(
+          (a) => !conditionalJitServerNames.has(a.serverName)
+        );
+      const conditionalJitServerToolsAndInstructions =
+        allServerToolsAndInstructions.filter((a) =>
+          conditionalJitServerNames.has(a.serverName)
         );
 
-      const availableActions = serverToolsAndInstructions.flatMap(
+      const availableActions = allServerToolsAndInstructions.flatMap(
         (s) => s.tools
       );
 
@@ -261,7 +275,8 @@ async function handler(
         errorContext: mcpToolsListingError,
         agentsList,
         conversation,
-        stableServerToolsAndInstructions: serverToolsAndInstructions,
+        stableServerToolsAndInstructions,
+        conditionalJitServerToolsAndInstructions,
         enabledSkills,
         equippedSkills,
       });
