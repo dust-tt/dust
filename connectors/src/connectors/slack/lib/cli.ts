@@ -872,9 +872,10 @@ export const slack = async ({
         throw new Error("Missing --threadTs argument");
       }
 
-      const connector = await ConnectorModel.findOne({
-        where: { workspaceId: `${args.wId}`, type: "slack" },
-      });
+      const connector = await ConnectorResource.findByWorkspaceIdAndType(
+        args.wId,
+        "slack"
+      );
       if (!connector) {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
@@ -894,13 +895,7 @@ export const slack = async ({
         "Deleting conversation document"
       );
 
-      const connectorResource = await ConnectorResource.fetchById(connector.id);
-      if (!connectorResource) {
-        throw new Error(
-          `Could not find connector resource for ${connector.id}`
-        );
-      }
-      const dataSourceConfig = dataSourceConfigFromConnector(connectorResource);
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
       await deleteDataSourceDocument(dataSourceConfig, documentId, {
         workspaceId: dataSourceConfig.workspaceId,
