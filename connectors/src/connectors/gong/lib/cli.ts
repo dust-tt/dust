@@ -111,7 +111,7 @@ export const gong = async ({
         }
       );
 
-      await GongTranscriptResource.batchDelete(connector, [transcript]);
+      await transcript.delete();
 
       logger.info(
         { connectorId, callId },
