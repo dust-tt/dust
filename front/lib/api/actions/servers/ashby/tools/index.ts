@@ -1,11 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import { getAshbyClient } from "@app/lib/api/actions/servers/ashby/client";
 import {
   assertCandidateNotHired,
   diagnoseFieldSubmissions,
+  extractFileFields,
   findUniqueCandidate,
   resolveAshbyUser,
   resolveFieldSubmissions,
@@ -450,10 +452,17 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       return submissionsResult;
     }
 
+    // Separate file fields from regular fields. File fields are uploaded
+    // separately after referral creation via candidate.uploadResume.
+    const { fileFields, submissionsWithoutFiles } = extractFileFields(
+      form,
+      submissionsResult.value
+    );
+
     const referralResult = await client.createReferral({
       id: form.id,
       creditedToUserId: ashbyUser.id,
-      fieldSubmissions: submissionsResult.value,
+      fieldSubmissions: submissionsWithoutFiles,
     });
 
     if (referralResult.isErr()) {
@@ -494,14 +503,56 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
+    const referral = referralResult.value.results;
+
+    // Upload file fields (e.g. resume) to the candidate created by the referral.
+    if (fileFields.length > 0 && extra.agentLoopContext) {
+      const candidateId = referral.candidate.id;
+
+      for (const fileField of fileFields) {
+        const fileResult = await getFileFromConversationAttachment(
+          extra.auth,
+          fileField.fileId,
+          extra.agentLoopContext
+        );
+        if (fileResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Referral created (ID: ${referral.id}) but failed to fetch ` +
+                `file for "${fileField.path}": ${fileResult.error}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        const uploadResult = await client.uploadCandidateResume(candidateId, {
+          buffer: fileResult.value.buffer,
+          filename: fileResult.value.filename,
+          contentType: fileResult.value.contentType,
+        });
+        if (uploadResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Referral created (ID: ${referral.id}) but failed to upload ` +
+                `file: ${uploadResult.error.message}`,
+              { tracked: false }
+            )
+          );
+        }
+      }
+    }
+
     return new Ok([
       {
         type: "text" as const,
         text:
           `Successfully created referral.\n\n` +
           `Credited to: ${ashbyUser.firstName} ${ashbyUser.lastName} (${ashbyUser.email})\n` +
-          `Referral ID: ${referralResult.value.results.id}\n` +
-          `Status: ${referralResult.value.results.status}`,
+          `Referral ID: ${referral.id}\n` +
+          `Status: ${referral.status}` +
+          (fileFields.length > 0
+            ? `\nResume: uploaded successfully`
+            : ""),
       },
     ]);
   },

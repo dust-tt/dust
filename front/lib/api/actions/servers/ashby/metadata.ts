@@ -104,7 +104,9 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       `You must call ${GET_REFERRAL_FORM_TOOL_NAME} first to know the available fields. ` +
       "The credited user is resolved automatically from the authenticated user. " +
       "Field values must be provided as {title, value} pairs where title is " +
-      `the human-readable field title exactly as returned by ${GET_REFERRAL_FORM_TOOL_NAME}.`,
+      `the human-readable field title exactly as returned by ${GET_REFERRAL_FORM_TOOL_NAME}. ` +
+      "For file fields (e.g. Resume/CV), provide the file ID of a file " +
+      "attached to the conversation as the value.",
     schema: AshbyCreateReferralInputSchema.shape,
     stake: "high",
     displayLabels: {
