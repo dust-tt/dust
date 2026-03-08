@@ -414,16 +414,12 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
 
     if (result.isErr()) {
       return new Err(
-        new MCPError(
-          `Failed to list job postings: ${result.error.message}`
-        )
+        new MCPError(`Failed to list job postings: ${result.error.message}`)
       );
     }
 
     if (!result.value.success) {
-      return new Err(
-        new MCPError("Failed to list job postings from Ashby.")
-      );
+      return new Err(new MCPError("Failed to list job postings from Ashby."));
     }
 
     const postings = result.value.results;
