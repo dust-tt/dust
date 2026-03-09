@@ -641,7 +641,7 @@ describe("AgentSuggestionResource", () => {
       await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { source: "copilot" }
+        { source: "sidekick" }
       );
       await AgentSuggestionFactory.createInstructions(
         authenticator,
@@ -694,7 +694,7 @@ describe("AgentSuggestionResource", () => {
       await AgentSuggestionFactory.createInstructions(
         authenticator,
         agentConfiguration,
-        { source: "copilot" }
+        { source: "sidekick" }
       );
       await AgentSuggestionFactory.createInstructions(
         authenticator,
