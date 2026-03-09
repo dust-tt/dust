@@ -64,6 +64,14 @@ final class ConversationListViewModel: ObservableObject {
         }
     }
 
+    func refresh() async {
+        do {
+            try await loadConversations()
+        } catch {
+            logger.error("Failed to refresh conversations: \(error)")
+        }
+    }
+
     private func loadConversations() async throws {
         guard let workspaceSId = workspace?.sId else { return }
         let response = try await ConversationService.fetchConversations(
@@ -87,13 +95,14 @@ final class ConversationListViewModel: ObservableObject {
         let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
+        let filtered = filteredConversations
 
         guard let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday),
               let startOfLastWeek = calendar.date(byAdding: .day, value: -7, to: startOfToday),
               let startOfLastMonth = calendar.date(byAdding: .month, value: -1, to: startOfToday),
               let startOfLastYear = calendar.date(byAdding: .year, value: -1, to: startOfToday)
         else {
-            return [(ConversationDateGroup.today.rawValue, filteredConversations)]
+            return [(ConversationDateGroup.today.rawValue, filtered)]
         }
 
         var groups: [ConversationDateGroup: [Conversation]] = [:]
@@ -101,7 +110,7 @@ final class ConversationListViewModel: ObservableObject {
             groups[group] = []
         }
 
-        for conversation in filteredConversations {
+        for conversation in filtered {
             let date = conversation.effectiveDate
             if date >= startOfToday {
                 groups[.today, default: []].append(conversation)
@@ -121,7 +130,7 @@ final class ConversationListViewModel: ObservableObject {
         var result: [(String, [Conversation])] = []
 
         // Inbox section: unread or actionRequired conversations, shown first.
-        let inboxConversations = filteredConversations.filter { $0.unread || $0.actionRequired }
+        let inboxConversations = filtered.filter { $0.unread || $0.actionRequired }
         if !inboxConversations.isEmpty {
             result.append(("Inbox (\(inboxConversations.count))", inboxConversations))
         }

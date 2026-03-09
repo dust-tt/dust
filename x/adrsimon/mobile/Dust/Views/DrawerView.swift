@@ -12,6 +12,7 @@ struct DrawerView: View {
     let onSelectConversation: (Conversation) -> Void
     let onSwitchWorkspace: (Workspace) -> Void
     let onLogout: () -> Void
+    var onRefresh: (() async -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -107,6 +108,9 @@ struct DrawerView: View {
                     }
                 }
             }
+        }
+        .refreshable {
+            await onRefresh?()
         }
         .frame(maxHeight: .infinity)
     }
