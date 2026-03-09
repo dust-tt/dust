@@ -240,8 +240,7 @@ async function handler(
       const availableActions = [
         ...stableServerToolsAndInstructions,
         ...conditionalJITServerToolsAndInstructions,
-      ].flatMap((s) => s.tools
-      );
+      ].flatMap((s) => s.tools);
 
       let fallbackPrompt = "You are a conversational agent";
       if (agentConfiguration.actions.length || availableActions.length > 0) {

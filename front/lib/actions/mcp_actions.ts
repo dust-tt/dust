@@ -1048,9 +1048,10 @@ export async function tryListMCPTools(
   const stableServerToolsAndInstructions = serverToolsAndInstructions.filter(
     (s) => !conditionalJITServerNames.has(s.serverName)
   );
-  const conditionalJITServerToolsAndInstructions = serverToolsAndInstructions.filter(
-    (s) => conditionalJITServerNames.has(s.serverName)
-  );
+  const conditionalJITServerToolsAndInstructions =
+    serverToolsAndInstructions.filter((s) =>
+      conditionalJITServerNames.has(s.serverName)
+    );
 
   return {
     stableServerToolsAndInstructions,

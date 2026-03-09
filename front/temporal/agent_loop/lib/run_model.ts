@@ -588,8 +588,7 @@ export async function runModel(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools:
-      conditionalJITServerToolsAndInstructions.length > 0,
+    hasConditionalJITTools: conditionalJITServerToolsAndInstructions.length > 0,
     userMessage,
     specifications,
     flushParserTokens,
