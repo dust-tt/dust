@@ -676,7 +676,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversationIds = messagesWithAgent.map((m) => m.conversationId);
     const conversations = await this.baseFetchWithAuthorization(
       auth,
-      { dangerouslySkipPermissionFiltering: true, excludeTest: true },
+      {},
       {
         where: {
           id: { [Op.in]: conversationIds },
