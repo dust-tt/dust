@@ -6,9 +6,11 @@ export function sameNodePosition(
   prev?: MarkdownNode,
   next?: MarkdownNode
 ): boolean {
+  // Neither has position — nothing to compare, treat as equal.
   if (!(prev?.position || next?.position)) {
     return true;
   }
+  // Only one has position — they differ.
   if (!(prev?.position && next?.position)) {
     return false;
   }
