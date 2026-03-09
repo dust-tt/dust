@@ -12,6 +12,9 @@ export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
+// BYOK plan:
+export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
+
 /**
  * ENT_PLAN_FAKE is not subscribable and is only used to display the Enterprise plan in the UI (hence it's not stored on the db).
  */

@@ -43,7 +43,6 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     const models = await this.model.findAll({
       where: { workspaceId: workspace.id },
-      order: [["createdAt", "DESC"]],
     });
 
     return models.map(
@@ -85,7 +84,6 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   toJSON(): ProviderCredentialType {
     return {
       sId: this.sId,
-      id: this.id,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       providerId: this.providerId,

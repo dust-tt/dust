@@ -3,7 +3,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 
 export type ProviderCredentialType = {
   sId: string;
-  id: ModelId;
   createdAt: number;
   updatedAt: number;
   providerId: ModelProviderIdType;
