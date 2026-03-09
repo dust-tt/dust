@@ -1,0 +1,2059 @@
+front/lib/resources/provider_credential_resource.ts
+  25535915742eb8fe 1-107
+front/types/provider_credential.ts
+  25535915742eb8fe 1-14
+front/lib/resources/string_ids.ts
+  25535915742eb8fe 84-86
+front/poke/temporal/activities.ts
+  25535915742eb8fe 44,710
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "a6d812065f41222420234a93f28d4b7b4d0c7bb4",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [
+        {
+          "type": "user",
+          "text": "create a brand new model/table based on existing patterns and the follwing spec below. Ask clarifying questions to confirm any naming or architectural decision your are unsure about.\n\nHere are the model spec:\nexport class ProviderCredentialModel extends WorkspaceAwareModel<ProviderCredentialModel> {\n  declare createdAt: CreationOptional<Date>;\n  declare updatedAt: CreationOptional<Date>;\n\n  declare providerId: ProviderId;\n  declare credentialId: string;\n  declare isHealthy: boolean;\n  declare editedByUser: NonAttribute<UserModel>;\n  // the beginning of the key to display in admin \n  declare placeholder: string;\n}\n\nProviderCredentialModel.init(\n  {\n    createdAt: {\n      type: DataTypes.DATE,\n      allowNull: false,\n      defaultValue: DataTypes.NOW,\n    },\n    updatedAt: {\n      type: DataTypes.DATE,\n      allowNull: false,\n      defaultValue: DataTypes.NOW,\n    },\n    providerId: {\n      type: DataTypes.STRING,\n      allowNull: false,\n    },\n    credentialId: {\n      type: DataTypes.STRING,\n      allowNull: false,\n    },\n    placeholder: {\n      type: DataTypes.STRING,\n      allowNull: false,\n    },\n    isHealthy: {\n      type: DataTypes.BOOLEAN,\n      allowNull: false,\n    },\n  },\n  {\n    sequelize: frontSequelize,\n    modelName: \"provider_credentials\",\n    indexes: [\n      {\n        unique: true,\n        fields: [\"workspaceId\", \"providerId\"],\n      },\n      {\n        fields: [\"workspaceId\"],\n      },\n    ],\n  }\n);\nProviderCredentialModel.belongsTo(UserModel, {\n  as: \"editedByUser\",\n  foreignKey: { name: \"editedByUserId\", allowNull: true },\n});",
+          "timestamp": "2026-03-09T08:58:36.311Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Let me explore the codebase to understand existing patterns for models/tables before creating this new one.",
+          "timestamp": "2026-03-09T08:58:39.202Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Agent",
+          "input": {
+            "description": "Find model patterns in codebase",
+            "prompt": "Find existing patterns for creating Sequelize models in this codebase. I need to understand:\n\n1. Where models are defined (directory structure)\n2. How WorkspaceAwareModel is used - find its definition and a few examples of models extending it\n3. How models are registered/exported (index files, barrel exports)\n4. How migrations are created for new tables\n5. Where ProviderId type is defined\n6. How UserModel is imported in model files\n\nSearch thoroughly - check for patterns like \"WorkspaceAwareModel\", \"extends WorkspaceAwareModel\", model init patterns, migration files, and model index/export files. Be very thorough in finding the directory structure.",
+            "subagent_type": "Explore"
+          },
+          "timestamp": "2026-03-09T08:58:44.163Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me check a few things before creating the model:\n\n1. Where is `ProviderId` type defined? The agent mentioned `ModelId` but the spec uses `ProviderId`.\n2. Where should I put this new model file?\n3. Migration patterns - specifically the SQL migration directory.\n\nLet me check for the ProviderId type and the migration directory.",
+          "timestamp": "2026-03-09T09:00:33.044Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Grep",
+          "input": {
+            "output_mode": "content",
+            "pattern": "type ProviderId"
+          },
+          "timestamp": "2026-03-09T09:00:33.502Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "ls front/migrations/db/ | tail -5",
+            "description": "List latest migration files"
+          },
+          "timestamp": "2026-03-09T09:00:34.579Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Grep",
+          "input": {
+            "pattern": "export type ProviderId"
+          },
+          "timestamp": "2026-03-09T09:00:34.616Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"type ProviderId\" --type ts -l",
+            "description": "Find ProviderId type definition"
+          },
+          "timestamp": "2026-03-09T09:00:37.819Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "ls front/migrations/db/ | tail -5",
+            "description": "List latest migration files"
+          },
+          "timestamp": "2026-03-09T09:00:38.282Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderId\" --type ts -l | head -10",
+            "description": "Find files referencing ProviderId"
+          },
+          "timestamp": "2026-03-09T09:00:41.964Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_99.sql"
+          },
+          "timestamp": "2026-03-09T09:00:42.069Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderId\" --type ts -l | head -5 && rg \"type ProviderId\" --type ts",
+            "description": "Find ProviderId type definition"
+          },
+          "timestamp": "2026-03-09T09:00:45.184Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cat /private/tmp/claude-501/-Users-alexandrepinon-dust-hive-byok-provider-credential/tasks/b5c9sdl46.output",
+            "description": "Read background task output"
+          },
+          "timestamp": "2026-03-09T09:02:47.385Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderId\" front/types/ --type ts -C 2",
+            "description": "Find ProviderId in types"
+          },
+          "timestamp": "2026-03-09T09:02:49.564Z"
+        },
+        {
+          "type": "assistant",
+          "text": "So `ProviderId` in the spec is likely `ModelProviderIdType`. Let me clarify this and other questions before creating the model.\n\nQuestions I have:\n1. `ProviderId` type - is this `ModelProviderIdType` from `@app/types/assistant/models/types`? Or is it a new type?\n2. `credentialId` - what is this? A reference to an external credential store? Just a string identifier?\n3. Should there be a migration file (migration_100.sql)?\n4. The model file location - should it go in `front/lib/resources/storage/models/` like other workspace-aware models?\n\n\n5. I should reach out to clarify these details before proceeding with the implementation.",
+          "timestamp": "2026-03-09T09:02:55.705Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Before creating the model, a few clarifying questions:\n\n1. **`ProviderId` type** — is this `ModelProviderIdType` from `@app/types/assistant/models/types`? Or a new/different type?\n\n2. **`credentialId`** — is this a reference to an external credential/secret store (e.g. a vault ID)? Just want to confirm it's an opaque string, not a FK to another table.\n\n3. **File location** — placing it at `front/lib/resources/storage/models/provider_credential.ts`, consistent with other workspace-aware models. Sound right?\n\n4. **Migration** — should I create `front/migrations/db/migration_100.sql` for the `CREATE TABLE`?\n\n5. **Resource class** — per BACK3/BACK11, should I also create a `ProviderCredentialResource` wrapping this model, or is that a separate step?",
+          "timestamp": "2026-03-09T09:02:59.213Z"
+        },
+        {
+          "type": "user",
+          "text": "1. yes !\n2. reference to the credential table in oauth\n3. let's put it in lib/models instead\n4. create latest number so in our case it's migration_534.sql\n5. let's do it in another pr",
+          "timestamp": "2026-03-09T09:08:19.863Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "ls front/lib/models/ | head -20",
+            "description": "List existing models in lib/models"
+          },
+          "timestamp": "2026-03-09T09:08:22.968Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ModelProviderIdType\" front/types/assistant/models/types.ts -C 3",
+            "description": "Check ModelProviderIdType definition"
+          },
+          "timestamp": "2026-03-09T09:08:23.732Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/dust_app_secret.ts"
+          },
+          "timestamp": "2026-03-09T09:08:26.922Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "ls front/migrations/db/migration_53*.sql 2>/dev/null",
+            "description": "Check if migration 534 area exists"
+          },
+          "timestamp": "2026-03-09T09:08:27.743Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_533.sql"
+          },
+          "timestamp": "2026-03-09T09:08:30.912Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me check how the credential table in oauth looks to confirm the FK reference.",
+          "timestamp": "2026-03-09T09:08:33.646Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"credentialId\" front/lib/models/ --type ts -l",
+            "description": "Find credentialId usage in models"
+          },
+          "timestamp": "2026-03-09T09:08:34.685Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/agent/actions/mcp_server_connection.ts"
+          },
+          "timestamp": "2026-03-09T09:08:37.306Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Good, I have all the context. Now let me create the model and migration.",
+          "timestamp": "2026-03-09T09:08:40.116Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import { frontSequelize } from \"@app/lib/resources/storage\";\nimport { UserModel } from \"@app/lib/resources/storage/models/user\";\nimport { WorkspaceAwareModel } from \"@app/lib/resources/storage/wrappers/workspace_models\";\nimport type { ModelProviderIdType } from \"@app/types/assistant/models/types\";\nimport type { CreationOptional, ForeignKey, NonAttribute } from \"sequelize\";\nimport { DataTypes } from \"sequelize\";\n\nexport class ProviderCredentialModel extends WorkspaceAwareModel<ProviderCredentialModel> {\n  declare createdAt: CreationOptional<Date>;\n  declare updatedAt: CreationOptional<Date>;\n\n  declare providerId: ModelProviderIdType;\n  declare credentialId: string;\n  declare isHealthy: boolean;\n  declare placeholder: string;\n\n  declare editedByUserId: ForeignKey<UserModel[\"id\"]> | null;\n  declare editedByUser: NonAttribute<UserModel>;\n}\n\nProviderCredentialModel.init(\n  {\n    createdAt: {\n      type: DataTypes.DATE,\n      allowNull: false,\n      defaultValue: DataTypes.NOW,\n    },\n    updatedAt: {\n      type: DataTypes.DATE,\n      allowNull: false,\n      defaultValue: DataTypes.NOW,\n    },\n    providerId: {\n      type: DataTypes.STRING,\n      allowNull: false,\n    },\n    credentialId: {\n      type: DataTypes.STRING,\n      allowNull: false,\n    },\n    placeholder: {\n      type: DataTypes.STRING,\n      allowNull: false,\n    },\n    isHealthy: {\n      type: DataTypes.BOOLEAN,\n      allowNull: false,\n    },\n  },\n  {\n    sequelize: frontSequelize,\n    modelName: \"provider_credential\",\n    indexes: [\n      {\n        unique: true,\n        fields: [\"workspaceId\", \"providerId\"],\n      },\n      {\n        fields: [\"workspaceId\"],\n      },\n      {\n        fields: [\"editedByUserId\"],\n        concurrently: true,\n      },\n    ],\n  }\n);\n\nProviderCredentialModel.belongsTo(UserModel, {\n  as: \"editedByUser\",\n  foreignKey: { name: \"editedByUserId\", allowNull: true },\n});\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/provider_credential.ts"
+          },
+          "timestamp": "2026-03-09T09:08:48.506Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "-- Migration created on Mar 09, 2026\nCREATE TABLE IF NOT EXISTS \"provider_credentials\" (\n    \"id\" BIGSERIAL PRIMARY KEY,\n    \"createdAt\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n    \"updatedAt\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n    \"providerId\" VARCHAR(255) NOT NULL,\n    \"credentialId\" VARCHAR(255) NOT NULL,\n    \"placeholder\" VARCHAR(255) NOT NULL,\n    \"isHealthy\" BOOLEAN NOT NULL,\n    \"workspaceId\" BIGINT NOT NULL REFERENCES \"workspaces\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    \"editedByUserId\" BIGINT REFERENCES \"users\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\nCREATE UNIQUE INDEX CONCURRENTLY \"provider_credentials_workspace_id_provider_id\" ON \"provider_credentials\" (\"workspaceId\", \"providerId\");\nCREATE INDEX CONCURRENTLY \"provider_credentials_workspace_id\" ON \"provider_credentials\" (\"workspaceId\");\nCREATE INDEX CONCURRENTLY \"provider_credentials_edited_by_user_id\" ON \"provider_credentials\" (\"editedByUserId\");\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_534.sql"
+          },
+          "timestamp": "2026-03-09T09:08:52.135Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Two things to note:\n\n1. **`modelName`** — I used `\"provider_credential\"` (singular) which Sequelize will pluralize to `provider_credentials` for the table name. Your spec had `modelName: \"provider_credentials\"` (plural) — the existing codebase is inconsistent on this (`dust_app_secrets` uses plural, `mcp_server_connection` uses singular). I went with singular to match the more common pattern. Let me know if you want plural.\n\n2. **`editedByUserId` index** — added per BACK13 since `UserModel` is deletable. Used `concurrently: true` and `ON DELETE SET NULL` in the migration (matching the `DustAppSecretModel` pattern for optional user FKs).\n\nCreated:\n- **Model**: `front/lib/models/provider_credential.ts`\n- **Migration**: `front/migrations/db/migration_534.sql`",
+          "timestamp": "2026-03-09T09:08:59.229Z"
+        },
+        {
+          "type": "user",
+          "text": "Questions:does the unique index act as a a normal index too ?\n",
+          "timestamp": "2026-03-09T09:21:32.735Z"
+        },
+        {
+          "type": "user",
+          "text": "[Request interrupted by user]",
+          "timestamp": "2026-03-09T09:21:34.170Z"
+        },
+        {
+          "type": "user",
+          "text": "Questions:does the unique index act as a a normal index too ?",
+          "timestamp": "2026-03-09T09:21:57.572Z"
+        },
+        {
+          "type": "user",
+          "text": "[Request interrupted by user]",
+          "timestamp": "2026-03-09T09:21:58.435Z"
+        },
+        {
+          "type": "user",
+          "text": "<command-message>review</command-message>\n<command-name>/review</command-name>",
+          "timestamp": "2026-03-09T09:22:03.462Z"
+        },
+        {
+          "type": "user",
+          "text": "\n      You are an expert code reviewer. Follow these steps:\n\n      1. If no PR number is provided in the args, run `gh pr list` to show open PRs\n      2. If a PR number is provided, run `gh pr view <number>` to get PR details\n      3. Run `gh pr diff <number>` to get the diff\n      4. Analyze the changes and provide a thorough code review that includes:\n         - Overview of what the PR does\n         - Analysis of code quality and style\n         - Specific suggestions for improvements\n         - Any potential issues or risks\n\n      Keep your review concise but thorough. Focus on:\n      - Code correctness\n      - Following project conventions\n      - Performance implications\n      - Test coverage\n      - Security considerations\n\n      Format your review with clear sections and bullet points.\n\n      PR number: \n    ",
+          "timestamp": "2026-03-09T09:22:03.462Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr list --limit 20",
+            "description": "List open PRs"
+          },
+          "timestamp": "2026-03-09T09:22:05.740Z"
+        },
+        {
+          "type": "user",
+          "text": "[Request interrupted by user]",
+          "timestamp": "2026-03-09T09:22:07.320Z"
+        },
+        {
+          "type": "user",
+          "text": "Questions:\n- does unique index act as a normal index too ?\n- what is the point of concurrently ? is it still useful given the table is new ?",
+          "timestamp": "2026-03-09T09:22:51.403Z"
+        },
+        {
+          "type": "assistant",
+          "text": "\n\n**Unique index as normal index** — yes, a unique index fully functions as a regular index. So the `(workspaceId, providerId)` unique index already covers queries filtering by `workspaceId` alone (leftmost prefix). The separate `workspaceId` index is redundant.\n\n**`concurrently`** — `CREATE INDEX CONCURRENTLY` avoids locking the table for writes during index creation. For a brand new empty table it's pointless — there's no data and no traffic. It matters for existing tables with data. The `concurrently: true` in the Sequelize model definition is also irrelevant at creation time since Sequelize only uses it during `sync()`.\n\nLet me clean up both:",
+          "timestamp": "2026-03-09T09:22:58.010Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/provider_credential.ts",
+            "new_string": "    indexes: [\n      {\n        unique: true,\n        fields: [\"workspaceId\", \"providerId\"],\n      },\n      {\n        fields: [\"editedByUserId\"],\n      },\n    ],",
+            "old_string": "    indexes: [\n      {\n        unique: true,\n        fields: [\"workspaceId\", \"providerId\"],\n      },\n      {\n        fields: [\"workspaceId\"],\n      },\n      {\n        fields: [\"editedByUserId\"],\n        concurrently: true,\n      },\n    ],",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T09:23:00.013Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_534.sql",
+            "new_string": "CREATE UNIQUE INDEX \"provider_credentials_workspace_id_provider_id\" ON \"provider_credentials\" (\"workspaceId\", \"providerId\");\nCREATE INDEX \"provider_credentials_edited_by_user_id\" ON \"provider_credentials\" (\"editedByUserId\");",
+            "old_string": "CREATE UNIQUE INDEX CONCURRENTLY \"provider_credentials_workspace_id_provider_id\" ON \"provider_credentials\" (\"workspaceId\", \"providerId\");\nCREATE INDEX CONCURRENTLY \"provider_credentials_workspace_id\" ON \"provider_credentials\" (\"workspaceId\");\nCREATE INDEX CONCURRENTLY \"provider_credentials_edited_by_user_id\" ON \"provider_credentials\" (\"editedByUserId\");",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T09:23:01.545Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/provider_credential.ts"
+          },
+          "timestamp": "2026-03-09T09:23:03.388Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_534.sql"
+          },
+          "timestamp": "2026-03-09T09:23:03.807Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Looks like my first edits wrote different content than what's on disk. Let me fix both files properly.",
+          "timestamp": "2026-03-09T09:23:06.655Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/provider_credential.ts",
+            "new_string": "      {\n        unique: true,\n        fields: [\"workspaceId\", \"providerId\"],\n      },\n      {\n        fields: [\"editedByUserId\"],\n      },",
+            "old_string": "      {\n        unique: true,\n        fields: [\"workspaceId\", \"providerId\"],\n      },\n      {\n        fields: [\"workspaceId\"],\n      },",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T09:23:08.465Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_534.sql",
+            "new_string": "CREATE UNIQUE INDEX \"provider_credentials_workspace_id_provider_id\" ON \"provider_credentials\" (\"workspaceId\", \"providerId\");\nCREATE INDEX \"provider_credentials_edited_by_user_id\" ON \"provider_credentials\" (\"editedByUserId\");",
+            "old_string": "CREATE UNIQUE INDEX CONCURRENTLY \"provider_credentials_workspace_id_provider_id\" ON \"provider_credentials\" (\"workspaceId\", \"providerId\");\nCREATE INDEX CONCURRENTLY \"provider_credentials_workspace_id\" ON \"provider_credentials\" (\"workspaceId\");",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T09:23:11.000Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Done. Removed the redundant `workspaceId` index (covered by the unique index prefix) and dropped `CONCURRENTLY` since the table is new.",
+          "timestamp": "2026-03-09T09:23:14.196Z"
+        },
+        {
+          "type": "user",
+          "text": "<command-message>gs-ship</command-message>\n<command-name>/gs-ship</command-name>\n<command-args>part of issue (https://github.com/dust-tt/tasks/issues/6962) - add the comment about redundant index removed</command-args>",
+          "timestamp": "2026-03-09T09:36:26.206Z"
+        },
+        {
+          "type": "user",
+          "text": "Base directory for this skill: /Users/alexandrepinon/dust-hive/byok-provider-credential/.claude/skills/gs-ship\n\n# Ship Changes (git-spice)\n\nThis skill commits your changes, pushes to remote, and creates a PR using git-spice following the repository's PR template.\n\n## Important Rules\n\n**CRITICAL: NEVER mention \"Claude\", \"Claude Code\", \"AI\", \"assistant\", or any AI-related terms in:**\n\n- Commit messages\n- PR titles\n- PR descriptions\n- Any git metadata\n\nWrite commit messages and PR descriptions as if a human developer wrote them.\n\n## Workflow\n\n### Step 1: Check Git Status\n\nRun these commands to understand the current state:\n\n```bash\ngit status\ngit diff --stat\ngit log --oneline -5\n```\n\n### Step 2: Stage and Commit Changes\n\n1. Review all changes with `git diff` (both staged and unstaged)\n2. Stage appropriate files with `git add`\n3. Commit with a single-line message matching the PR title format (`[Service] type(scope): description`). Do NOT add a body — context belongs in the PR description, not the commit message.\n\nAlways use `gs cc` instead of `git commit` — it automatically restacks upstack branches after committing, which is essential for stacked PRs.\n\n```bash\ngs cc -m \"[Front] feat(skills): add skill versioning\"\n```\n\nIf the commit fails due to a pre-commit hook: fix the issue, re-stage files, and run `gs cc` again as a NEW commit.\n\n**Amending:** Use `gs ca` (commit amend) instead of `git commit --amend`. Then `gs branch submit --force` to push.\n\n**Squashing commits:** If commit history is messy and you're NOT addressing PR review comments, squash all commits into one clean commit:\n\n```bash\n# Reset to main keeping all changes staged\ngit reset --soft main\n\n# Create one clean commit (single-line message matching PR title)\ngs cc -m \"[Service] type(scope): description\"\n```\n\nWhen addressing PR review comments, create separate commits for each round of feedback — don't squash these into the original commit.\n\n### Step 2.5: Run Biome formatting\n\nRun `npm run biome:lefthook` from the repo root to auto-fix formatting. If it modifies files, stage and amend the commit. **Always run this before any push** — both initial submit and after amending.\n\n### Step 3: Submit Branch and Create PR\n\nFirst, check if a PR already exists for this branch:\n\n```bash\ngh pr view --json url,title,body 2>/dev/null\n```\n\n**If no PR exists:**\n\n`gs branch submit` cannot prompt interactively in Claude Code. Always pass `--title` and `--body` flags explicitly.\n\nIf submit fails with \"needs to be restacked\", run `gs branch restack` first then retry.\n\n**MANDATORY: Before creating the PR, you MUST use AskUserQuestion to ask the user for links (GitHub issues, Slack threads, related PRs) to include in the description. Do NOT skip this step. Do NOT create the PR without asking first. Wait for the user's response before proceeding.**\n\n```bash\ngs branch submit --title \"PR title here\" --body \"$(cat <<'EOF'\nPR body here\nEOF\n)\"\n```\n\n**If PR already exists:**\n\n1. If the branch is part of a stack, use `gs stack submit` to push all branches at once. Otherwise use `gs branch submit` (no flags).\n2. Do NOT use `--force` unless the push fails without it (e.g. after amend/rebase/squash). Try without `--force` first.\n3. Ask the user whether they want to update the PR description to reflect new changes\n4. If yes, use `gh pr edit` to update — do NOT use `gs branch submit --title --body` (it silently no-ops on existing PRs)\n\n```bash\n# Single branch\ngs branch submit\n\n# Stacked branches — pushes all branches in the stack\ngs stack submit\n```\n\n```bash\n# Update PR description if needed\ngh pr edit --title \"PR title here\" --body \"$(cat <<'EOF'\nPR body here\nEOF\n)\"\n```\n\n**WARNING:** `gs branch submit --title --body` does NOT update an existing PR's description. It returns a success-looking message (`INF Updated ...`) but the PR body is unchanged. Always use `gh pr edit` for updates.\n\nFollow this structure for title and body:\n\n#### PR Title\nUse the format: `[Service] type(scope): description`\n\n- **Service**: Capitalized service name in brackets — `[Front]`, `[Core]`, `[Connectors]`, etc. Infer from which top-level directory the changes are in.\n- **type**: Conventional commit type — `feat`, `fix`, `refactor`, `chore`, `docs`, etc.\n- **scope**: The main application area or project changed — e.g., `copilot`, `auth`, `mcp`, `templates`. Keep it short.\n- **description**: Concise lowercase summary of the change.\n\nExamples:\n- `[Front] feat(copilot): add query param to search_agent_templates for semantic matching`\n- `[Front] fix(auth): prevent token refresh race condition`\n- `[Connectors] refactor(slack): extract message parsing into shared utility`\n\n#### PR Description — Core Principle\n\n**CRITICAL: The description should tell the reviewer what the diff CANNOT — the \"why\", the context, the motivation. Do NOT restate implementation details that are obvious from the diff.**\n\nNever include:\n- Lists of files changed or functions moved/renamed\n- Step-by-step \"Changes:\" bullets describing implementation\n- Anything a reviewer can see by reading the code\n\nInstead focus on:\n- Problem/motivation (why this change?)\n- High-level approach (if not obvious from diff)\n- Design decisions and trade-offs (why this way vs alternatives?)\n- Links to issues/threads\n\n**Sizing rules:**\n\n**Small/medium change (< 200 lines):**\n→ `## Description` with 1-4 sentences. No subsections unless the \"why\" is non-obvious.\n\n**Complex change (200+ lines, multi-component, architectural):**\n→ Add subsections (Solution/Design Notes) only for context not in the diff: trade-off rationale, rejected alternatives, why certain architectural choices were made.\n\n**UI changes:** Add screenshots/GIFs regardless of complexity.\n**Deploy steps needed:** Add Deploy Plan with specific prerequisites/steps.\n\n#### Examples\n\n**Simple/medium (the DEFAULT — most PRs should look like this):**\n```markdown\n## Description\n\nBreak the transitive dep `A -> B -> C` so that `C` can later import `A`.\n\nUnlocks #1234\n```\n\n```markdown\n## Description\n\nFix `canEdit` check on suggestions endpoint to also allow workspace admins.\n```\n\n**Complex change (only add sections that carry info beyond the diff):**\n```markdown\n## Description\n\nBlock-level diffs weren't rendering for instruction suggestions (thread: [link]).\n\n### Solution\nUse Myers algorithm on semantic blocks (paragraphs, code blocks, lists) instead of character-level diffing.\n\n### Design Notes\n**Why Myers vs patience diff?**\nPatience flip-flopped on similar blocks. Myers is faster on large docs.\n\nList item reordering shows as delete+add (acceptable, follow-up: #5680).\n\n## Risk\nFalls back to character-level diff if block parsing fails.\n```\n\n#### GitHub Alert Banners\n\nUse GitHub's alert syntax for important callouts at the **top** of the PR body (before `## Description`). Common use cases:\n\n- **Transient/experimental changes**: warn reviewers this isn't meant for production\n- **Important caveats**: highlight non-obvious behavior (caching TTLs, known limitations, etc.)\n\n```markdown\n> [!WARNING]\n> ### This change is transient and only meant to iterate on X, not for production use.\n\n> [!NOTE]\n> Some important caveat the reviewer should know about.\n```\n\nAvailable types: `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`.\n\n#### TLDR - I want to test\n\nFor changes that are meant to be tested manually, add a `## TLDR - I want to test` section with concise, practical instructions (URL params to set, config examples, expected behavior). Keep it actionable — the reader should be able to test in under a minute.\n\n#### Full Template (reference — use sections selectively)\n\nAvailable sections: `## Description` (with optional Problem/Solution/Design Decisions/Related Work subsections), `## Tests`, `## Risk`, `## Deploy Plan`, `## TLDR - I want to test`. Only include a section if it adds value a reviewer can't get from the diff.\n\n### Step 4: Return the PR URL\n\nAfter submitting, display the PR URL so the user can review it.\n\n\nARGUMENTS: part of issue (https://github.com/dust-tt/tasks/issues/6962) - add the comment about redundant index removed",
+          "timestamp": "2026-03-09T09:36:26.206Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git status && git diff --stat && git log --oneline -5",
+            "description": "Check git status"
+          },
+          "timestamp": "2026-03-09T09:36:30.880Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git add front/lib/models/provider_credential.ts front/migrations/db/migration_534.sql && gs cc -m \"[Front] feat(byok): add ProviderCredential model and migration\"",
+            "description": "Stage and commit"
+          },
+          "timestamp": "2026-03-09T09:36:34.625Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd front && npm run biome:lefthook 2>&1 | tail -5",
+            "description": "Run biome formatting"
+          },
+          "timestamp": "2026-03-09T09:36:40.343Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential && npm run biome:lefthook 2>&1 | tail -5",
+            "description": "Run biome from repo root"
+          },
+          "timestamp": "2026-03-09T09:36:44.082Z"
+        },
+        {
+          "type": "assistant",
+          "text": "No formatting changes. Now let me check for an existing PR.",
+          "timestamp": "2026-03-09T09:37:24.733Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr view --json url,title,body 2>/dev/null || echo \"NO_PR\"",
+            "description": "Check for existing PR"
+          },
+          "timestamp": "2026-03-09T09:37:25.598Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "ToolSearch",
+          "input": {
+            "max_results": 1,
+            "query": "select:AskUserQuestion"
+          },
+          "timestamp": "2026-03-09T09:37:29.449Z"
+        },
+        {
+          "type": "user",
+          "text": "Tool loaded.",
+          "timestamp": "2026-03-09T09:37:29.502Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "AskUserQuestion",
+          "input": {
+            "questions": [
+              {
+                "header": "PR links",
+                "multiSelect": false,
+                "options": [
+                  {
+                    "description": "Only link the task issue",
+                    "label": "No, just the issue"
+                  },
+                  {
+                    "description": "Include a Slack thread link",
+                    "label": "Add Slack thread"
+                  }
+                ],
+                "question": "Any links to add to the PR description besides https://github.com/dust-tt/tasks/issues/6962?"
+              }
+            ]
+          },
+          "timestamp": "2026-03-09T09:37:33.185Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gs branch submit --title \"[Front] feat(byok): add ProviderCredential model and migration\" --body \"$(cat <<'EOF'\n## Description\n\nAdd `ProviderCredential` model to store workspace-level BYOK provider credentials. Each workspace can have one credential per provider (unique index on `workspaceId, providerId`). The credential references the oauth credential table via `credentialId` and tracks health status and a display placeholder.\n\nNo separate `workspaceId` index needed — the unique composite index already covers `workspaceId`-only queries via [leftmost prefix](https://www.postgresql.org/docs/current/indexes-unique.html#:~:text=PostgreSQL%20automatically%20creates%20a%20unique,mechanism%20that%20enforces%20the%20constraint.).\n\nPart of https://github.com/dust-tt/tasks/issues/6962\nEOF\n)\"",
+            "description": "Submit branch and create PR"
+          },
+          "timestamp": "2026-03-09T09:39:12.100Z"
+        },
+        {
+          "type": "assistant",
+          "text": "PR created: https://github.com/dust-tt/dust/pull/22720",
+          "timestamp": "2026-03-09T09:39:25.192Z"
+        },
+        {
+          "type": "user",
+          "text": "i see below \" rg \"ProviderId\" --type ts -l | head -5 … (running)\" -> is something running in the background ? stuck ?",
+          "timestamp": "2026-03-09T09:40:20.961Z"
+        },
+        {
+          "type": "assistant",
+          "text": "\n\nThat's just a leftover display artifact from an earlier search command — nothing is actually running in the background. You can ignore it.",
+          "timestamp": "2026-03-09T09:40:24.923Z"
+        },
+        {
+          "type": "user",
+          "text": "shit. migration 534 got merged already - rebase and move our migration to 535 - don't add index on user back, I don't want it",
+          "timestamp": "2026-03-09T09:43:11.059Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git fetch origin main && git rebase origin/main",
+            "description": "Rebase on latest main"
+          },
+          "timestamp": "2026-03-09T09:43:13.205Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_534.sql"
+          },
+          "timestamp": "2026-03-09T09:43:19.788Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "-- Migration created on Mar 06, 2026\nALTER TABLE \"skill_configurations\" ADD COLUMN \"isDefault\" BOOLEAN DEFAULT false;\nALTER TABLE \"skill_versions\" ADD COLUMN \"isDefault\" BOOLEAN DEFAULT false;\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_534.sql"
+          },
+          "timestamp": "2026-03-09T09:43:22.821Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "-- Migration created on Mar 09, 2026\nCREATE TABLE IF NOT EXISTS \"provider_credentials\" (\n    \"id\" BIGSERIAL PRIMARY KEY,\n    \"createdAt\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n    \"updatedAt\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n    \"providerId\" VARCHAR(255) NOT NULL,\n    \"credentialId\" VARCHAR(255) NOT NULL,\n    \"placeholder\" VARCHAR(255) NOT NULL,\n    \"isHealthy\" BOOLEAN NOT NULL,\n    \"workspaceId\" BIGINT NOT NULL REFERENCES \"workspaces\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    \"editedByUserId\" BIGINT REFERENCES \"users\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\nCREATE UNIQUE INDEX \"provider_credentials_workspace_id_provider_id\" ON \"provider_credentials\" (\"workspaceId\", \"providerId\");\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/migrations/db/migration_535.sql"
+          },
+          "timestamp": "2026-03-09T09:43:24.765Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git add front/migrations/db/migration_534.sql front/migrations/db/migration_535.sql && git rebase --continue",
+            "description": "Resolve conflict and continue rebase"
+          },
+          "timestamp": "2026-03-09T09:43:29.342Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Rebased and moved migration to `migration_535.sql`. Want me to force-push to update the PR?",
+          "timestamp": "2026-03-09T09:43:32.598Z"
+        },
+        {
+          "type": "user",
+          "text": "sure",
+          "timestamp": "2026-03-09T09:43:38.519Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gs branch submit --force",
+            "description": "Force push rebased branch"
+          },
+          "timestamp": "2026-03-09T09:43:40.800Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Done. PR updated: https://github.com/dust-tt/dust/pull/22720",
+          "timestamp": "2026-03-09T09:43:49.204Z"
+        },
+        {
+          "type": "user",
+          "text": "<command-message>dust-hive</command-message>\n<command-name>/dust-hive</command-name>\n<command-args>byok is controlled by these parameters:\n- Update the plans to add a `isByok` field\n- Create a new plan `ENT_BYOK_XXX` in the billing system\n    - Create a DustBYOK workspace with a subscription linked to this plan for testing purpose\nHow could we update dust-hive nicely to be able to test easily ? we could have a special seed ? what's the best approach</command-args>",
+          "timestamp": "2026-03-09T09:45:27.054Z"
+        },
+        {
+          "type": "user",
+          "text": "Base directory for this skill: /Users/alexandrepinon/dust-hive/byok-provider-credential/.claude/skills/dust-hive\n\n# dust-hive\n\n## What is dust-hive?\n\ndust-hive is a CLI tool for running multiple isolated Dust development environments simultaneously. Each environment gets its own:\n- Git worktree (separate branch)\n- Port range (no conflicts between environments)\n- Docker containers (isolated volumes)\n- Database instances (Postgres, Qdrant, Elasticsearch)\n\n## Detecting a dust-hive Environment\n\nTo check if you're currently running in a dust-hive environment:\n\n1. **Check working directory**: dust-hive worktrees are located at `~/dust-hive/{env-name}/`\n2. **Check for worktree**: The `.git` file (not directory) indicates a git worktree\n\n```bash\n# Check if in worktree path\npwd | grep -q \"$HOME/dust-hive/\" && echo \"In dust-hive environment\"\n```\n\n## Environment States\n\nEnvironments can be in one of three states:\n\n| State | What's Running | Can Run Tests? |\n|-------|----------------|----------------|\n| **stopped** | Nothing | No |\n| **cold** | SDK watch only | Yes (front tests use shared test DB) |\n| **warm** | All services (front, core, connectors, oauth, workers) + Docker | Yes |\n\nCheck the current state:\n```bash\ndust-hive status [ENV_NAME]\n```\n\n## Environment Variables (direnv)\n\nEach dust-hive worktree contains a `.envrc` file that automatically loads environment variables when you `cd` into the directory. This is powered by [direnv](https://direnv.net/).\n\n**What this means:**\n- Environment variables (ports, database URIs, API keys, etc.) are automatically available\n- Variables like `FRONT_DATABASE_URI`, `CORE_API`, `CONNECTORS_API` are pre-configured for the environment's port range\n\n**If environment variables are missing**, manually source the environment:\n```bash\nsource ~/.dust-hive/envs/{ENV_NAME}/env.sh\n```\n\n## Port Allocation\n\nEach environment gets a 1000-port range starting at 10000:\n- 1st env: 10000-10999 (front:10000, core:10001, connectors:10002, oauth:10006)\n- 2nd env: 11000-11999\n- 3rd env: 12000-12999\n\n## Running Linters, Type Checks, and Builds\n\n### For dust-hive itself (in `x/henry/dust-hive/`):\n```bash\n# Run ALL checks before committing (MANDATORY)\nbun run check\n\n# Individual checks\nbun run typecheck    # TypeScript strict checks\nbun run lint         # Biome linting\nbun run lint:fix     # Auto-fix lint issues\nbun run format       # Code formatting\nbun run test         # All tests\n```\n\n### For Dust apps (in worktree or main repo):\n```bash\n# TypeScript SDK (watch is running - check logs if issues after SDK changes)\ndust-hive logs [ENV_NAME] sdk\n\n# Front (Next.js)\ncd front && npm run lint                                              # ESLint\ncd front && NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsgo --noEmit  # Type-check\ncd front && npm run build                                             # Build\n\n# Core (Rust)\ncd core && cargo check && cargo clippy\n\n# Connectors\ncd connectors && npm run lint   # ESLint\ncd connectors && npm run build  # Type-check + build\n\n# OAuth (Rust)\ncd oauth && cargo check && cargo clippy\n```\n\n### Quick health check after warming:\n```bash\ncurl -sf http://localhost:10000/api/healthz  # front\ncurl -sf http://localhost:10001/             # core\n```\n\n## Running Front Tests in Cold Environments\n\nThe `front` project requires a Postgres database and Redis to run tests. dust-hive provides **shared test containers** that allow running front tests without warming up the full environment.\n\n### How it works\n\n- A shared Postgres container runs on port **5433** (started by `dust-hive up`)\n- A shared Redis container runs on port **6479** (started by `dust-hive up`)\n- Each environment gets its own test database: `dust_front_test_{env_name}`\n- `TEST_FRONT_DATABASE_URI` and `TEST_REDIS_URI` are already set in each environment's `env.sh`\n\n### Running front tests\n\n**IMPORTANT**: You must set `NODE_ENV=test` when running front tests.\n\n```bash\n# From any cold environment, run front tests directly\ncd front && NODE_ENV=test npm test\n\n# Run specific test file\ncd front && NODE_ENV=test npm test lib/resources/user_resource.test.ts\n\n# Run with verbose output\ncd front && NODE_ENV=test npm test --reporter verbose path/to/test.test.ts\n```\n\n**No need to warm the environment** - the shared test Postgres and Redis are always available.\n\n### Troubleshooting front tests\n\nIf front tests fail with database connection errors:\n1. Check if test postgres is running: `docker ps | grep dust-hive-test-postgres`\n2. If not running, start it: `docker start dust-hive-test-postgres`\n3. Verify the database exists: `docker exec dust-hive-test-postgres psql -U test -l`\n\n## Known Issues\n\n### Node modules structure\n\nIn dust-hive environments, `node_modules` for `front` and `connectors` uses a **shallow copy** structure:\n- A real `node_modules` directory with symlinks to packages from the main repo\n- `@dust-tt/client` is overridden to point to the worktree's SDK (ensuring correct type resolution)\n\n**Running `npm install` requires manual cleanup**:\n```bash\nrm -rf node_modules && npm install\n```\n\n### SDK watcher doesn't detect changes after git rebase\n\nThe SDK watcher uses nodemon which relies on filesystem events. When running `git rebase`, `git pull`, or `git checkout`, nodemon may not detect file changes.\n\n**Symptoms**: Type errors in front about missing types that should exist in the SDK.\n\n**Solution**: Restart the SDK watcher after git operations that change SDK files:\n```bash\ndust-hive restart [ENV_NAME] sdk\n```\n\nOr manually trigger a rebuild:\n```bash\ntouch sdks/js/src/types.ts\n```\n\n\nARGUMENTS: byok is controlled by these parameters:\n- Update the plans to add a `isByok` field\n- Create a new plan `ENT_BYOK_XXX` in the billing system\n    - Create a DustBYOK workspace with a subscription linked to this plan for testing purpose\nHow could we update dust-hive nicely to be able to test easily ? we could have a special seed ? what's the best approach",
+          "timestamp": "2026-03-09T09:45:27.054Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The user wants to understand how to set up their dust-hive environment for testing BYOK features. They need:\n1. A plan with `isByok: true`\n2. A workspace with a subscription to that plan\n\nLet me explore the existing seed/setup patterns in the codebase.",
+          "timestamp": "2026-03-09T09:45:31.327Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Agent",
+          "input": {
+            "description": "Find seed and plan patterns",
+            "prompt": "I need to understand how plans, subscriptions, and workspace seeding work in this codebase. Find:\n\n1. Where plans are defined (look for plan definitions, plan codes like \"ENT_PLAN_\", hardcoded plan objects)\n2. How seeds work - look in `front/seeds/`, `front/scripts/seed/`, or similar directories for seed scripts\n3. How subscriptions are created and linked to plans\n4. How the `isByok` field was added to plans (recent migration_533.sql added it)\n5. The plan model definition\n6. Any existing seed that creates test workspaces with specific plans\n\nBe very thorough - check scripts/, seeds/, admin/ directories.",
+            "subagent_type": "Explore"
+          },
+          "timestamp": "2026-03-09T09:45:36.361Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now I understand the full picture. Let me think about the best approach for the user.\n\nThe existing patterns are:\n1. Plans are defined in `free_plans.ts` and `pro_plans.ts` with hardcoded data arrays\n2. `upsertFreePlans()` / `upsertProPlans()` seed them into the DB\n3. `admin/init_plans.ts` calls both upsert functions\n4. `admin/db.ts` calls `upsertProPlans()` for test DB setup\n5. Seeds in `scripts/seed/` create workspace content (agents, conversations, etc.)\n\n\n6. Enterprise plans are typically created via Poké admin panel, not hardcoded\n\nFor BYOK testing, I should add a BYOK enterprise plan to the hardcoded data in dev/test environments, integrate it into the upsert flow for automatic seeding, and create or extend a seed script to set up a workspace with this plan. I'll follow the same pattern as the pro plans since enterprise plans in dev would work similarly.",
+          "timestamp": "2026-03-09T09:46:55.244Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/pro_plans.ts"
+          },
+          "timestamp": "2026-03-09T09:46:55.285Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/plan_codes.ts"
+          },
+          "timestamp": "2026-03-09T09:46:55.297Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/admin/db.ts"
+          },
+          "timestamp": "2026-03-09T09:46:55.545Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Here's the best approach:\n\n**Add a BYOK enterprise plan to `pro_plans.ts`** (gated behind `isDevelopment() || isTest()` like existing pro plans). This way it's automatically seeded when you run `admin/db.ts` or `admin/init_plans.ts` — no special seed script needed.\n\nThe flow would be:\n1. Add `ENT_BYOK_PLAN_CODE` constant to `plan_codes.ts`\n2. Add the plan data to `pro_plans.ts` (with `isByok: true`)\n3. Register `ProviderCredentialModel` in `admin/db.ts` `loadAllModels()`\n4. The existing `DevWkSpace` workspace can be subscribed to this plan via Poké, or we add a seed step\n\n**Unresolved questions:**\n- Should the `DevWkSpace` workspace automatically get the BYOK plan, or do you want a separate BYOK workspace?\n- What limits should the BYOK plan have? Same as Pro Business but with `isByok: true`?",
+          "timestamp": "2026-03-09T09:47:04.012Z"
+        },
+        {
+          "type": "user",
+          "text": "does dust hive use  admin/db.ts or admin/init_plans.ts ?\n>  - Should the DevWkSpace workspace automatically get the BYOK plan, or do you want a separate BYOK workspace?\ni want it as an opt in like we do with seeds and flags",
+          "timestamp": "2026-03-09T09:56:44.457Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"admin/db\" ~/dust-hive/ --type ts -l 2>/dev/null; rg \"admin/init_plans\" ~/dust-hive/ --type ts -l 2>/dev/null",
+            "description": "Find dust-hive references to admin/db or init_plans"
+          },
+          "timestamp": "2026-03-09T09:56:47.934Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"admin/db|admin/init_plans\" /Users/alexandrepinon/dust-hive/byok-provider-credential/x/henry/dust-hive/src/ --type ts -C 3",
+            "description": "Check dust-hive init references"
+          },
+          "timestamp": "2026-03-09T09:56:51.873Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cat /Users/alexandrepinon/dust-hive/byok-provider-credential/front/admin/init_plans.sh",
+            "description": "Check init_plans.sh"
+          },
+          "timestamp": "2026-03-09T09:56:54.710Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/admin/init_plans.ts"
+          },
+          "timestamp": "2026-03-09T09:56:56.945Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me check how seeds/flags work as opt-in in dust-hive.",
+          "timestamp": "2026-03-09T09:56:59.329Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"seed|flag\" /Users/alexandrepinon/dust-hive/byok-provider-credential/x/henry/dust-hive/src/ --type ts -l",
+            "description": "Find seed/flag references in dust-hive"
+          },
+          "timestamp": "2026-03-09T09:57:00.097Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/x/henry/dust-hive/src/lib/seed.ts"
+          },
+          "timestamp": "2026-03-09T09:57:03.111Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/x/henry/dust-hive/src/commands/seed-config.ts"
+          },
+          "timestamp": "2026-03-09T09:57:03.209Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/dev/dust_hive_seed.sql"
+          },
+          "timestamp": "2026-03-09T09:57:07.888Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/x/henry/dust-hive/src/commands/flag.ts"
+          },
+          "timestamp": "2026-03-09T09:57:08.365Z"
+        },
+        {
+          "type": "assistant",
+          "text": "OK, now I have the full picture. Here's my recommendation:\n\n**dust-hive uses `admin/init_plans.sh`** (which runs `admin/init_plans.ts`) during `warm`. So the BYOK plan will be auto-seeded if added to `pro_plans.ts`.\n\nFor opt-in BYOK workspace subscription, the cleanest approach following the `dust-hive flag` pattern would be:\n\n1. **Add `ENT_BYOK_PLAN_CODE` + plan data** to `pro_plans.ts` (auto-seeded on warm)\n2. **Create a script** like `front/scripts/toggle_byok_plan.ts` that switches the DevWkSpace subscription to the BYOK plan (or back to the default)\n3. **Add a `dust-hive byok` command** (or reuse `dust-hive flag` pattern) that runs the script — similar to how `dust-hive flag` runs `scripts/toggle_feature_flags.ts`\n\nAlternatively, simpler: just a script you run manually (`npx tsx scripts/toggle_byok_plan.ts --execute`), no dust-hive command needed.\n\n**Unresolved questions:**\n- Dust-hive command or just a manual script?\n- BYOK plan limits — same as Pro Business but `isByok: true`?",
+          "timestamp": "2026-03-09T09:57:19.472Z"
+        },
+        {
+          "type": "user",
+          "text": "- Let's do it as a manual script for now.\n- same as pro business\nMake sure that it also works outside dust hive too.\nDo it in another branch stacked on top of this one",
+          "timestamp": "2026-03-09T10:02:36.381Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The user wants me to:\n1. Create a new branch stacked on top of the current one\n2. Add ENT_BYOK plan to pro_plans.ts (same as Pro Business but with isByok: true)\n3. Create a script to toggle the DevWkSpace subscription to BYOK plan\n4. Register ProviderCredentialModel in loadAllModels()\n5. Register in workspace deletion workflow\n\nLet me also note the new AGENTS.local.md rules about workspace deletion registration.\n\nLet me start by creating the stacked branch and then making the changes.",
+          "timestamp": "2026-03-09T10:02:40.779Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gs bc -m \"ap/byok-plan-seed\"",
+            "description": "Create stacked branch"
+          },
+          "timestamp": "2026-03-09T10:02:41.574Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/pro_plans.ts"
+          },
+          "timestamp": "2026-03-09T10:02:46.809Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"toggle_feature_flags\" front/scripts/ -l",
+            "description": "Find toggle script"
+          },
+          "timestamp": "2026-03-09T10:02:47.508Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_feature_flags.ts"
+          },
+          "timestamp": "2026-03-09T10:02:51.339Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/subscription_resource.ts",
+            "limit": 80
+          },
+          "timestamp": "2026-03-09T10:02:51.987Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/helpers.ts",
+            "limit": 60
+          },
+          "timestamp": "2026-03-09T10:02:55.427Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"internalSubscribeWorkspaceToFreePlan\" front/lib/resources/subscription_resource.ts -n | head -5",
+            "description": "Find subscribe method"
+          },
+          "timestamp": "2026-03-09T10:02:56.815Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/subscription_resource.ts",
+            "limit": 60,
+            "offset": 484
+          },
+          "timestamp": "2026-03-09T10:02:59.105Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Good, I have everything I need. Let me create the changes.",
+          "timestamp": "2026-03-09T10:03:01.971Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/plan_codes.ts",
+            "new_string": "// BYOK enterprise plan (dev/test only).\nexport const ENT_BYOK_PLAN_CODE = \"ENT_BYOK_DEV\";\n\n// Dust's own workspace plan.\nexport const DUST_COMPANY_PLAN_CODE = \"DUST_COMPANY\";",
+            "old_string": "// Dust's own workspace plan.\nexport const DUST_COMPANY_PLAN_CODE = \"DUST_COMPANY\";",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:03:04.319Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/pro_plans.ts",
+            "new_string": "import {\n  ENT_BYOK_PLAN_CODE,\n  PRO_PLAN_SEAT_29_CODE,\n  PRO_PLAN_SEAT_39_CODE,\n} from \"@app/lib/plans/plan_codes\";",
+            "old_string": "import {\n  PRO_PLAN_SEAT_29_CODE,\n  PRO_PLAN_SEAT_39_CODE,\n} from \"@app/lib/plans/plan_codes\";",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:03:08.031Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/pro_plans.ts",
+            "new_string": "    isByok: false,\n  });\n  PRO_PLANS_DATA.push({\n    code: ENT_BYOK_PLAN_CODE,\n    name: \"Enterprise BYOK\",\n    maxMessages: -1,\n    maxMessagesTimeframe: \"lifetime\",\n    isDeepDiveAllowed: true,\n    maxImagesPerWeek: 100,\n    maxUsersInWorkspace: 1000,\n    maxVaultsInWorkspace: 5,\n    isSlackbotAllowed: true,\n    isManagedSlackAllowed: true,\n    isManagedConfluenceAllowed: true,\n    isManagedNotionAllowed: true,\n    isManagedGoogleDriveAllowed: true,\n    isManagedGithubAllowed: true,\n    isManagedIntercomAllowed: true,\n    isManagedWebCrawlerAllowed: true,\n    isManagedSalesforceAllowed: false,\n    isSSOAllowed: true,\n    isSCIMAllowed: false,\n    maxDataSourcesCount: -1,\n    maxDataSourcesDocumentsCount: -1,\n    maxDataSourcesDocumentsSizeMb: 2,\n    trialPeriodDays: 14,\n    canUseProduct: true,\n    isByok: true,\n  });\n}\n\n/**\n * Function to call when we edit something",
+            "old_string": "    isByok: false,\n  });\n}\n\n/**\n * Function to call when we edit something",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:03:18.171Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now create the toggle script.",
+          "timestamp": "2026-03-09T10:03:20.876Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import { SubscriptionResource } from \"@app/lib/resources/subscription_resource\";\nimport { WorkspaceResource } from \"@app/lib/resources/workspace_resource\";\nimport { makeScript } from \"@app/scripts/helpers\";\nimport { ENT_BYOK_PLAN_CODE } from \"@app/lib/plans/plan_codes\";\n\nmakeScript(\n  {\n    enable: {\n      type: \"boolean\",\n      default: false,\n    },\n    workspaceIds: {\n      type: \"array\",\n      demandOption: true,\n      description: \"List of workspace sIds to toggle BYOK plan on.\",\n    },\n  },\n  async ({ enable, workspaceIds, execute }) => {\n    for (const wId of workspaceIds) {\n      const workspace = await WorkspaceResource.fetchById(wId);\n      if (!workspace) {\n        console.log(`Workspace ${wId} not found -- Skipping.`);\n        continue;\n      }\n\n      const subscription =\n        await SubscriptionResource.getActiveSubscriptionForWorkspace(\n          workspace.sId\n        );\n      const currentPlanCode = subscription.plan.code;\n\n      if (enable) {\n        if (currentPlanCode === ENT_BYOK_PLAN_CODE) {\n          console.log(\n            `Workspace ${workspace.name} already on BYOK plan -- Skipping.`\n          );\n          continue;\n        }\n\n        if (execute) {\n          await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({\n            workspaceId: workspace.sId,\n            planCode: ENT_BYOK_PLAN_CODE,\n            endDate: null,\n          });\n        }\n\n        console.log(\n          `${execute ? \"\" : \"[DRYRUN]: \"}Switched workspace ${workspace.name} to BYOK plan (was ${currentPlanCode}).`\n        );\n      } else {\n        if (currentPlanCode !== ENT_BYOK_PLAN_CODE) {\n          console.log(\n            `Workspace ${workspace.name} is not on BYOK plan (${currentPlanCode}) -- Skipping.`\n          );\n          continue;\n        }\n\n        if (execute) {\n          await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({\n            workspaceId: workspace.sId,\n            planCode: \"FREE_UPGRADED_PLAN\",\n            endDate: null,\n          });\n        }\n\n        console.log(\n          `${execute ? \"\" : \"[DRYRUN]: \"}Switched workspace ${workspace.name} back to FREE_UPGRADED_PLAN.`\n        );\n      }\n    }\n  }\n);\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts"
+          },
+          "timestamp": "2026-03-09T10:03:29.196Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now register `ProviderCredentialModel` in `loadAllModels()` and the workspace deletion workflow.",
+          "timestamp": "2026-03-09T10:03:32.876Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/admin/db.ts",
+            "new_string": "import { PlanModel, SubscriptionModel } from \"@app/lib/models/plan\";\nimport { ProviderCredentialModel } from \"@app/lib/models/provider_credential\";",
+            "old_string": "import { PlanModel, SubscriptionModel } from \"@app/lib/models/plan\";",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:03:34.260Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/admin/db.ts",
+            "new_string": "    PlanModel,\n    SubscriptionModel,\n    ProviderCredentialModel,",
+            "old_string": "    PlanModel,\n    SubscriptionModel,",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:03:37.197Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now add to workspace deletion workflow.",
+          "timestamp": "2026-03-09T10:03:42.701Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"deleteAllForWorkspace|DustAppSecretModel\" front/poke/temporal/activities.ts -n | head -10",
+            "description": "Find workspace deletion patterns"
+          },
+          "timestamp": "2026-03-09T10:03:44.352Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"DustAppSecretModel\" front/poke/temporal/activities.ts -n -A 2 -B 2",
+            "description": "Find DustAppSecretModel deletion pattern"
+          },
+          "timestamp": "2026-03-09T10:03:47.290Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/poke/temporal/activities.ts",
+            "limit": 30,
+            "offset": 700
+          },
+          "timestamp": "2026-03-09T10:03:49.839Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/poke/temporal/activities.ts",
+            "new_string": "import { DustAppSecretModel } from \"@app/lib/models/dust_app_secret\";\nimport { ProviderCredentialModel } from \"@app/lib/models/provider_credential\";",
+            "old_string": "import { DustAppSecretModel } from \"@app/lib/models/dust_app_secret\";",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:03:55.348Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/poke/temporal/activities.ts",
+            "new_string": "  await ProviderCredentialModel.destroy({\n    where: { workspaceId: workspace.id },\n  });\n  await DustAppSecretModel.destroy({\n    where: {\n      workspaceId: workspace.id,\n    },\n  });",
+            "old_string": "  await DustAppSecretModel.destroy({\n    where: {\n      workspaceId: workspace.id,\n    },\n  });",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:03:59.614Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me verify everything looks right.",
+          "timestamp": "2026-03-09T10:04:03.151Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd front && npx tsgo --noEmit 2>&1 | tail -20",
+            "description": "Type-check front project",
+            "timeout": 120000
+          },
+          "timestamp": "2026-03-09T10:04:04.219Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"getActiveSubscription\" front/lib/resources/subscription_resource.ts -n | head -5",
+            "description": "Find correct method name"
+          },
+          "timestamp": "2026-03-09T10:04:15.388Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential && rg \"static.*getActive.*Subscription\" front/lib/resources/subscription_resource.ts -n",
+            "description": "Find subscription fetch method"
+          },
+          "timestamp": "2026-03-09T10:04:18.380Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential && rg \"static.*Subscription.*workspace|static.*subscription.*workspace\" front/lib/resources/subscription_resource.ts -n -i",
+            "description": "Find subscription methods"
+          },
+          "timestamp": "2026-03-09T10:04:20.887Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"static.*getActive|static.*activeSubscription|static.*fetchSubscription\" front/lib/resources/subscription_resource.ts -n",
+            "description": "Find active subscription getter"
+          },
+          "timestamp": "2026-03-09T10:04:23.966Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"plan\\.code\" front/lib/resources/subscription_resource.ts -n | head -5",
+            "description": "Find how plan code is accessed"
+          },
+          "timestamp": "2026-03-09T10:04:26.506Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"getSubscription|fetchActive\" front/lib/resources/subscription_resource.ts -n",
+            "description": "Find subscription fetch methods"
+          },
+          "timestamp": "2026-03-09T10:04:30.895Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The API uses `fetchActiveByWorkspaceModelId` or `fetchActiveByWorkspaces`. Let me simplify the script — I don't actually need to check the current plan since `internalSubscribeWorkspaceToFreePlan` already throws if already on the same plan.",
+          "timestamp": "2026-03-09T10:04:34.431Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import { ENT_BYOK_PLAN_CODE } from \"@app/lib/plans/plan_codes\";\nimport { SubscriptionResource } from \"@app/lib/resources/subscription_resource\";\nimport { WorkspaceResource } from \"@app/lib/resources/workspace_resource\";\nimport { makeScript } from \"@app/scripts/helpers\";\n\nconst FALLBACK_PLAN_CODE = \"FREE_UPGRADED_PLAN\";\n\nmakeScript(\n  {\n    enable: {\n      type: \"boolean\",\n      default: false,\n    },\n    workspaceIds: {\n      type: \"array\",\n      demandOption: true,\n      description: \"List of workspace sIds to toggle BYOK plan on.\",\n    },\n  },\n  async ({ enable, workspaceIds, execute }) => {\n    for (const wId of workspaceIds) {\n      const workspace = await WorkspaceResource.fetchById(wId);\n      if (!workspace) {\n        console.log(`Workspace ${wId} not found -- Skipping.`);\n        continue;\n      }\n\n      const subscription =\n        await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);\n      const currentPlanCode = subscription.plan.code;\n      const targetPlanCode = enable ? ENT_BYOK_PLAN_CODE : FALLBACK_PLAN_CODE;\n\n      if (currentPlanCode === targetPlanCode) {\n        console.log(\n          `Workspace ${workspace.name} already on ${targetPlanCode} -- Skipping.`\n        );\n        continue;\n      }\n\n      if (enable && currentPlanCode !== FALLBACK_PLAN_CODE) {\n        console.log(\n          `Workspace ${workspace.name} is on ${currentPlanCode}, not ${FALLBACK_PLAN_CODE} -- Skipping.`\n        );\n        continue;\n      }\n\n      if (!enable && currentPlanCode !== ENT_BYOK_PLAN_CODE) {\n        console.log(\n          `Workspace ${workspace.name} is not on BYOK plan (${currentPlanCode}) -- Skipping.`\n        );\n        continue;\n      }\n\n      if (execute) {\n        await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({\n          workspaceId: workspace.sId,\n          planCode: targetPlanCode,\n          endDate: null,\n        });\n      }\n\n      console.log(\n        `${execute ? \"\" : \"[DRYRUN]: \"}Switched workspace ${workspace.name} from ${currentPlanCode} to ${targetPlanCode}.`\n      );\n    }\n  }\n);\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts"
+          },
+          "timestamp": "2026-03-09T10:04:43.131Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential/front && npx tsgo --noEmit 2>&1 | tail -5",
+            "description": "Type-check",
+            "timeout": 120000
+          },
+          "timestamp": "2026-03-09T10:04:46.985Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"get plan\\b|public.*plan|planCode\" front/lib/resources/subscription_resource.ts -n | head -10",
+            "description": "Find public plan accessor"
+          },
+          "timestamp": "2026-03-09T10:04:56.021Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential && rg \"planCode|get plan\" front/lib/resources/subscription_resource.ts -n | head -10",
+            "description": "Find plan accessor in subscription resource"
+          },
+          "timestamp": "2026-03-09T10:04:58.468Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"getPlan|planName|planCode|toJSON|plan\\(\\)\" front/lib/resources/subscription_resource.ts -n | head -10",
+            "description": "Find how to access plan from subscription"
+          },
+          "timestamp": "2026-03-09T10:05:01.395Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"getPlan\" front/lib/resources/subscription_resource.ts -n -A 3",
+            "description": "Find getPlan method"
+          },
+          "timestamp": "2026-03-09T10:05:03.649Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts",
+            "new_string": "      const subscription =\n        await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);\n      if (!subscription) {\n        console.log(`Workspace ${workspace.name} has no active subscription -- Skipping.`);\n        continue;\n      }\n      const currentPlanCode = subscription.getPlan().code;",
+            "old_string": "      const subscription =\n        await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);\n      const currentPlanCode = subscription.plan.code;",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:05:08.998Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential/front && npx tsgo --noEmit 2>&1 | tail -5",
+            "description": "Type-check",
+            "timeout": 120000
+          },
+          "timestamp": "2026-03-09T10:05:12.271Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Clean. Now format and ship.",
+          "timestamp": "2026-03-09T10:05:17.492Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential && npm run biome:lefthook 2>&1 | tail -3",
+            "description": "Run biome formatting"
+          },
+          "timestamp": "2026-03-09T10:05:17.959Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git add front/lib/plans/plan_codes.ts front/lib/plans/pro_plans.ts front/scripts/toggle_byok_plan.ts front/admin/db.ts front/poke/temporal/activities.ts && gs cc -m \"[Front] feat(byok): add ENT_BYOK_DEV plan and toggle script\"",
+            "description": "Stage and commit"
+          },
+          "timestamp": "2026-03-09T10:06:01.737Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "AskUserQuestion",
+          "input": {
+            "questions": [
+              {
+                "header": "PR links",
+                "multiSelect": false,
+                "options": [
+                  {
+                    "description": "Only link the task issue",
+                    "label": "No, just the issue"
+                  },
+                  {
+                    "description": "I have additional links to include",
+                    "label": "Add links"
+                  }
+                ],
+                "question": "Any links to add to the PR besides https://github.com/dust-tt/tasks/issues/6962?"
+              }
+            ]
+          },
+          "timestamp": "2026-03-09T10:06:08.391Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gs branch submit --title \"[Front] feat(byok): add ENT_BYOK_DEV plan and toggle script\" --body \"$(cat <<'EOF'\n## Description\n\nAdd a dev-only `ENT_BYOK_DEV` enterprise plan with `isByok: true` (same limits as Pro Business), auto-seeded via `init_plans.sh` on `dust-hive warm`.\n\nAdd `scripts/toggle_byok_plan.ts` to opt-in/out the DevWkSpace subscription:\n\n```bash\n# Enable BYOK plan\nnpx tsx scripts/toggle_byok_plan.ts --enable --workspaceIds DevWkSpace --execute\n\n# Disable (back to FREE_UPGRADED_PLAN)\nnpx tsx scripts/toggle_byok_plan.ts --workspaceIds DevWkSpace --execute\n```\n\nAlso registers `ProviderCredentialModel` in `loadAllModels()` and workspace deletion workflow.\nEOF\n)\"",
+            "description": "Submit branch and create PR"
+          },
+          "timestamp": "2026-03-09T10:07:38.901Z"
+        },
+        {
+          "type": "assistant",
+          "text": "PR created: https://github.com/dust-tt/dust/pull/22723\n\nSummary of changes:\n- **`plan_codes.ts`** — added `ENT_BYOK_PLAN_CODE = \"ENT_BYOK_DEV\"`\n- **`pro_plans.ts`** — added BYOK plan (Pro Business limits + `isByok: true`), dev/test only\n- **`scripts/toggle_byok_plan.ts`** — opt-in script, works in dust-hive and standalone\n- **`admin/db.ts`** — registered `ProviderCredentialModel` in `loadAllModels()`\n- **`poke/temporal/activities.ts`** — registered `ProviderCredentialModel` in workspace deletion",
+          "timestamp": "2026-03-09T10:07:55.634Z"
+        },
+        {
+          "type": "user",
+          "text": "Ideally we don't define a new plan code - why not have the script only toggle the isbyok param ?\nactually make it part of a byok seed script instead of a separate script like that.\nConfirm with me your approach before proceeding",
+          "timestamp": "2026-03-09T10:11:30.554Z"
+        },
+        {
+          "type": "assistant",
+          "text": "\n\nYou're right — simpler approach:\n\n**One `scripts/seed/byok/seed.ts` script that:**\n1. Toggles `isByok = true` on the existing plan of the DevWkSpace subscription (direct `PlanModel.update`)\n2. No new plan code, no new plan data in `pro_plans.ts`\n\n**To disable:** same script with `--disable` flips `isByok = false` back.\n\nThis keeps it minimal and follows the existing seed pattern (`scripts/seed/<folder>/seed.ts`).\n\n**Questions:**\n- Should it also seed a `ProviderCredential` row for testing, or just the plan toggle for now?\n- The existing plan (e.g. `FREE_UPGRADED_PLAN`) is shared across all dev workspaces — mutating it directly means all workspaces using that plan get BYOK. Acceptable, or should we clone the plan first?",
+          "timestamp": "2026-03-09T10:11:38.208Z"
+        },
+        {
+          "type": "user",
+          "text": "sorry changed my mind again - we can't pass argument to seed scripts as it's controlled by dh feed and it would no make sens to have a --disable flag. let's keep it as separate script for now.\n-> can't you make it only update DevWkSpace ?",
+          "timestamp": "2026-03-09T10:15:23.495Z"
+        },
+        {
+          "type": "assistant",
+          "text": "\n\nGot it. So the plan is:\n\n**`scripts/toggle_byok_plan.ts`** that:\n1. Takes `--enable` flag (toggles `isByok` on/off)\n2. Always targets DevWkSpace (hardcoded, no `--workspaceIds` arg)\n3. Fetches the active subscription's plan for DevWkSpace\n4. Updates `isByok` on that plan directly\n\n**Concern:** the plan row is shared — if DevWkSpace is on `FREE_UPGRADED_PLAN`, flipping `isByok` affects any other workspace on that same plan. But in dev/test that's just the one seeded workspace, so probably fine?\n\nOr should it create a clone of the plan with `isByok: true` and switch the subscription to it?",
+          "timestamp": "2026-03-09T10:15:29.457Z"
+        },
+        {
+          "type": "user",
+          "text": "add a workspaceIds arg actually default to DevWkSpace.\nit's ok in dev to switch all workspaces i think",
+          "timestamp": "2026-03-09T10:16:39.310Z"
+        },
+        {
+          "type": "assistant",
+          "text": "\n\nClear. Here's the final approach:\n\n**`scripts/toggle_byok_plan.ts`:**\n- `--enable` flag (default false = disable)\n- `--workspaceIds` arg (default `[\"DevWkSpace\"]`)\n- Fetches each workspace's active subscription plan\n- Updates `isByok` directly on that plan model (`true` or `false`)\n- No new plan code, no `pro_plans.ts` changes\n\nLet me revert the unnecessary changes and rewrite the script.",
+          "timestamp": "2026-03-09T10:16:43.365Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/plan_codes.ts"
+          },
+          "timestamp": "2026-03-09T10:16:44.311Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/plan_codes.ts",
+            "new_string": "// Dust's own workspace plan.",
+            "old_string": "// BYOK enterprise plan (dev/test only).\nexport const ENT_BYOK_PLAN_CODE = \"ENT_BYOK_DEV\";\n\n// Dust's own workspace plan.",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:16:48.862Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/pro_plans.ts"
+          },
+          "timestamp": "2026-03-09T10:16:51.515Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/pro_plans.ts",
+            "new_string": "import {\n  PRO_PLAN_SEAT_29_CODE,\n  PRO_PLAN_SEAT_39_CODE,\n} from \"@app/lib/plans/plan_codes\";",
+            "old_string": "import {\n  ENT_BYOK_PLAN_CODE,\n  PRO_PLAN_SEAT_29_CODE,\n  PRO_PLAN_SEAT_39_CODE,\n} from \"@app/lib/plans/plan_codes\";",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:16:57.279Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/plans/pro_plans.ts",
+            "new_string": "}",
+            "old_string": "  PRO_PLANS_DATA.push({\n    code: ENT_BYOK_PLAN_CODE,\n    name: \"Enterprise BYOK\",\n    maxMessages: -1,\n    maxMessagesTimeframe: \"lifetime\",\n    isDeepDiveAllowed: true,\n    maxImagesPerWeek: 100,\n    maxUsersInWorkspace: 1000,\n    maxVaultsInWorkspace: 5,\n    isSlackbotAllowed: true,\n    isManagedSlackAllowed: true,\n    isManagedConfluenceAllowed: true,\n    isManagedNotionAllowed: true,\n    isManagedGoogleDriveAllowed: true,\n    isManagedGithubAllowed: true,\n    isManagedIntercomAllowed: true,\n    isManagedWebCrawlerAllowed: true,\n    isManagedSalesforceAllowed: false,\n    isSSOAllowed: true,\n    isSCIMAllowed: false,\n    maxDataSourcesCount: -1,\n    maxDataSourcesDocumentsCount: -1,\n    maxDataSourcesDocumentsSizeMb: 2,\n    trialPeriodDays: 14,\n    canUseProduct: true,\n    isByok: true,\n  });\n}",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:17:03.423Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now rewrite the toggle script.",
+          "timestamp": "2026-03-09T10:17:07.062Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import { PlanModel } from \"@app/lib/models/plan\";\nimport { SubscriptionResource } from \"@app/lib/resources/subscription_resource\";\nimport { WorkspaceResource } from \"@app/lib/resources/workspace_resource\";\nimport { makeScript } from \"@app/scripts/helpers\";\n\nmakeScript(\n  {\n    enable: {\n      type: \"boolean\",\n      default: false,\n    },\n    workspaceIds: {\n      type: \"array\",\n      default: [\"DevWkSpace\"],\n      description:\n        \"List of workspace sIds to toggle isByok on (defaults to DevWkSpace).\",\n    },\n  },\n  async ({ enable, workspaceIds, execute }) => {\n    for (const wId of workspaceIds) {\n      const workspace = await WorkspaceResource.fetchById(wId);\n      if (!workspace) {\n        console.log(`Workspace ${wId} not found -- Skipping.`);\n        continue;\n      }\n\n      const subscription =\n        await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);\n      if (!subscription) {\n        console.log(\n          `Workspace ${workspace.name} has no active subscription -- Skipping.`\n        );\n        continue;\n      }\n\n      const plan = subscription.getPlan();\n\n      if (plan.isByok === enable) {\n        console.log(\n          `Workspace ${workspace.name} plan ${plan.code} already has isByok=${enable} -- Skipping.`\n        );\n        continue;\n      }\n\n      if (execute) {\n        await PlanModel.update(\n          { isByok: enable },\n          { where: { code: plan.code } }\n        );\n      }\n\n      console.log(\n        `${execute ? \"\" : \"[DRYRUN]: \"}Set isByok=${enable} on plan ${plan.code} (workspace ${workspace.name}).`\n      );\n    }\n  }\n);\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts"
+          },
+          "timestamp": "2026-03-09T10:17:13.994Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential/front && npx tsgo --noEmit 2>&1 | tail -5",
+            "description": "Type-check",
+            "timeout": 120000
+          },
+          "timestamp": "2026-03-09T10:17:18.765Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential && npm run biome:lefthook 2>&1 | tail -3",
+            "description": "Run biome formatting"
+          },
+          "timestamp": "2026-03-09T10:17:33.563Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Clean. Now amend the commit since we're revising the same PR.",
+          "timestamp": "2026-03-09T10:18:19.128Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git add front/lib/plans/plan_codes.ts front/lib/plans/pro_plans.ts front/scripts/toggle_byok_plan.ts && gs ca",
+            "description": "Amend commit with reverted plan changes"
+          },
+          "timestamp": "2026-03-09T10:18:20.442Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gs branch submit --force --title \"[Front] feat(byok): add toggle_byok_plan script and register ProviderCredentialModel\" --body \"$(cat <<'EOF'\n## Description\n\nAdd `scripts/toggle_byok_plan.ts` to toggle `isByok` on the workspace's current plan — no new plan needed. Defaults to DevWkSpace.\n\n```bash\n# Enable\nnpx tsx scripts/toggle_byok_plan.ts --enable --execute\n\n# Disable\nnpx tsx scripts/toggle_byok_plan.ts --execute\n\n# Custom workspace\nnpx tsx scripts/toggle_byok_plan.ts --enable --workspaceIds MyWkSpace --execute\n```\n\nAlso registers `ProviderCredentialModel` in `loadAllModels()` and workspace deletion workflow.\nEOF\n)\"",
+            "description": "Force push and update PR"
+          },
+          "timestamp": "2026-03-09T10:18:30.858Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr edit 22723 --title \"[Front] feat(byok): add toggle_byok_plan script and register ProviderCredentialModel\" --body \"$(cat <<'EOF'\n## Description\n\nAdd `scripts/toggle_byok_plan.ts` to toggle `isByok` on the workspace's current plan — no new plan needed. Defaults to DevWkSpace.\n\n```bash\n# Enable\nnpx tsx scripts/toggle_byok_plan.ts --enable --execute\n\n# Disable\nnpx tsx scripts/toggle_byok_plan.ts --execute\n\n# Custom workspace\nnpx tsx scripts/toggle_byok_plan.ts --enable --workspaceIds MyWkSpace --execute\n```\n\nAlso registers `ProviderCredentialModel` in `loadAllModels()` and workspace deletion workflow.\nEOF\n)\"",
+            "description": "Update PR title and body"
+          },
+          "timestamp": "2026-03-09T10:18:43.328Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Updated: https://github.com/dust-tt/dust/pull/22723\n\nReverted the plan code/data changes. The script now just flips `isByok` on whatever plan the workspace is already subscribed to.",
+          "timestamp": "2026-03-09T10:18:48.022Z"
+        },
+        {
+          "type": "user",
+          "text": "update pr title, it's not up to date",
+          "timestamp": "2026-03-09T10:22:59.129Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr view 22723 --json title",
+            "description": "Check current PR title"
+          },
+          "timestamp": "2026-03-09T10:23:01.271Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Looks like the title is already updated from the `gh pr edit` call. Are you seeing a stale title? If so, what should it be?",
+          "timestamp": "2026-03-09T10:23:05.400Z"
+        },
+        {
+          "type": "user",
+          "text": "how can i test it ? hive and no hive",
+          "timestamp": "2026-03-09T10:24:15.867Z"
+        },
+        {
+          "type": "assistant",
+          "text": "\n\n**In dust-hive (warm environment):**\n```bash\ncd front\nnpx tsx scripts/toggle_byok_plan.ts --enable --execute\n```\n\n**Outside dust-hive (local dev with front running):**\n```bash\ncd front\nnpx tsx scripts/toggle_byok_plan.ts --enable --workspaceIds <your-workspace-sId> --execute\n```\n\n**To disable:**\n```bash\nnpx tsx scripts/toggle_byok_plan.ts --execute\n# or with explicit workspace\nnpx tsx scripts/toggle_byok_plan.ts --workspaceIds <your-workspace-sId> --execute\n```\n\n**Dry run first** (omit `--execute`) to see what would change without applying it.",
+          "timestamp": "2026-03-09T10:24:21.436Z"
+        },
+        {
+          "type": "user",
+          "text": "  4 | t      | FREE_UPGRADED_PLAN\nbyok shows true in db but false in script when fetching subscription - how does it happen ?",
+          "timestamp": "2026-03-09T10:31:54.007Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The user is saying that in the database, `isByok` is `true` on the plan, but when fetching through `SubscriptionResource`, the plan shows `isByok: false`. This is likely a caching issue — `SubscriptionResource.fetchActiveByWorkspaceModelId` uses Redis caching (`cacheWithRedis`), so the cached version still has the old `isByok: false` value.",
+          "timestamp": "2026-03-09T10:31:58.830Z"
+        },
+        {
+          "type": "assistant",
+          "text": "`SubscriptionResource.fetchActiveByWorkspaceModelId` is cached with Redis (saw `cacheWithRedis` wrapping it earlier). After you update `isByok` directly on the `PlanModel`, the cached subscription still has the old plan data.\n\nNeed to invalidate the cache after the update. Let me check the invalidation pattern.",
+          "timestamp": "2026-03-09T10:32:01.027Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"invalidateCache|cacheWithRedis\" front/lib/resources/subscription_resource.ts -n | head -10",
+            "description": "Find cache invalidation patterns"
+          },
+          "timestamp": "2026-03-09T10:32:01.932Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/subscription_resource.ts",
+            "limit": 20,
+            "offset": 160
+          },
+          "timestamp": "2026-03-09T10:32:06.259Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The script needs to invalidate the subscription cache after updating. But `invalidateSubscriptionCache` is private. Simpler fix: bypass the cache by reading the plan directly from the model in the script.",
+          "timestamp": "2026-03-09T10:32:09.686Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts"
+          },
+          "timestamp": "2026-03-09T10:32:10.071Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/plan.ts",
+            "limit": 60
+          },
+          "timestamp": "2026-03-09T10:32:12.677Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The fix: query the `PlanModel` directly via the subscription's `planId` instead of going through the cached resource. Let me also check how to get `planId` from the subscription.",
+          "timestamp": "2026-03-09T10:32:16.203Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"planId|get planId\" front/lib/resources/subscription_resource.ts -n | head -10",
+            "description": "Find planId accessor"
+          },
+          "timestamp": "2026-03-09T10:32:17.140Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Simplest approach: skip the SubscriptionResource entirely and query the DB directly.",
+          "timestamp": "2026-03-09T10:32:19.585Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import { PlanModel, SubscriptionModel } from \"@app/lib/models/plan\";\nimport { WorkspaceResource } from \"@app/lib/resources/workspace_resource\";\nimport { makeScript } from \"@app/scripts/helpers\";\n\nmakeScript(\n  {\n    enable: {\n      type: \"boolean\",\n      default: false,\n    },\n    workspaceIds: {\n      type: \"array\",\n      default: [\"DevWkSpace\"],\n      description:\n        \"List of workspace sIds to toggle isByok on (defaults to DevWkSpace).\",\n    },\n  },\n  async ({ enable, workspaceIds, execute }) => {\n    for (const wId of workspaceIds) {\n      const workspace = await WorkspaceResource.fetchById(wId);\n      if (!workspace) {\n        console.log(`Workspace ${wId} not found -- Skipping.`);\n        continue;\n      }\n\n      const subscription = await SubscriptionModel.findOne({\n        where: { workspaceId: workspace.id, status: \"active\" },\n        include: [{ model: PlanModel, as: \"plan\" }],\n      });\n      if (!subscription?.plan) {\n        console.log(\n          `Workspace ${workspace.name} has no active subscription -- Skipping.`\n        );\n        continue;\n      }\n\n      const { plan } = subscription;\n\n      if (plan.isByok === enable) {\n        console.log(\n          `Workspace ${workspace.name} plan ${plan.code} already has isByok=${enable} -- Skipping.`\n        );\n        continue;\n      }\n\n      if (execute) {\n        await plan.update({ isByok: enable });\n      }\n\n      console.log(\n        `${execute ? \"\" : \"[DRYRUN]: \"}Set isByok=${enable} on plan ${plan.code} (workspace ${workspace.name}).`\n      );\n    }\n  }\n);\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts"
+          },
+          "timestamp": "2026-03-09T10:32:27.646Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential/front && npx tsgo --noEmit 2>&1 | tail -5",
+            "description": "Type-check",
+            "timeout": 120000
+          },
+          "timestamp": "2026-03-09T10:32:31.099Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The issue was Redis caching. `SubscriptionResource.fetchActiveByWorkspaceModelId` caches the plan data — so even after updating `isByok` in the DB, the cached version still returned `false`.\n\nFixed by querying `SubscriptionModel` + `PlanModel` directly (bypasses cache). This is fine for a dev script.",
+          "timestamp": "2026-03-09T10:32:38.630Z"
+        },
+        {
+          "type": "user",
+          "text": "push with a little concise comment on why we use SubscriptionModel",
+          "timestamp": "2026-03-09T10:34:01.204Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts",
+            "new_string": "      // Bypass SubscriptionResource to avoid Redis-cached plan data.\n      const subscription = await SubscriptionModel.findOne({",
+            "old_string": "      const subscription = await SubscriptionModel.findOne({",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T10:34:05.225Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd /Users/alexandrepinon/dust-hive/byok-provider-credential && git add front/scripts/toggle_byok_plan.ts && gs ca && gs branch submit --force",
+            "description": "Amend and force push"
+          },
+          "timestamp": "2026-03-09T10:34:08.691Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Pushed. https://github.com/dust-tt/dust/pull/22723",
+          "timestamp": "2026-03-09T10:34:21.248Z"
+        },
+        {
+          "type": "user",
+          "text": "let's use logger instead of console.log -> seems to be the right common pattern even if not the case for feature flag",
+          "timestamp": "2026-03-09T10:35:50.711Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts"
+          },
+          "timestamp": "2026-03-09T10:35:53.240Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import { PlanModel, SubscriptionModel } from \"@app/lib/models/plan\";\nimport { WorkspaceResource } from \"@app/lib/resources/workspace_resource\";\nimport { makeScript } from \"@app/scripts/helpers\";\n\nmakeScript(\n  {\n    enable: {\n      type: \"boolean\",\n      default: false,\n    },\n    workspaceIds: {\n      type: \"array\",\n      default: [\"DevWkSpace\"],\n      description:\n        \"List of workspace sIds to toggle isByok on (defaults to DevWkSpace).\",\n    },\n  },\n  async ({ enable, workspaceIds, execute }, logger) => {\n    for (const wId of workspaceIds) {\n      const workspace = await WorkspaceResource.fetchById(wId);\n      if (!workspace) {\n        logger.info(`Workspace ${wId} not found -- Skipping.`);\n        continue;\n      }\n\n      // Bypass SubscriptionResource to avoid Redis-cached plan data.\n      const subscription = await SubscriptionModel.findOne({\n        where: { workspaceId: workspace.id, status: \"active\" },\n        include: [{ model: PlanModel, as: \"plan\" }],\n      });\n      if (!subscription?.plan) {\n        logger.info(\n          `Workspace ${workspace.name} has no active subscription -- Skipping.`\n        );\n        continue;\n      }\n\n      const { plan } = subscription;\n\n      if (plan.isByok === enable) {\n        logger.info(\n          `Workspace ${workspace.name} plan ${plan.code} already has isByok=${enable} -- Skipping.`\n        );\n        continue;\n      }\n\n      if (execute) {\n        await plan.update({ isByok: enable });\n      }\n\n      logger.info(\n        `${execute ? \"\" : \"[DRYRUN]: \"}Set isByok=${enable} on plan ${plan.code} (workspace ${workspace.name}).`\n      );\n    }\n  }\n);\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/scripts/toggle_byok_plan.ts"
+          },
+          "timestamp": "2026-03-09T10:35:59.153Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git add front/scripts/toggle_byok_plan.ts && gs ca && gs branch submit --force",
+            "description": "Amend and push"
+          },
+          "timestamp": "2026-03-09T10:36:03.008Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Pushed.",
+          "timestamp": "2026-03-09T10:36:15.698Z"
+        },
+        {
+          "type": "user",
+          "text": "This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.\n\nSummary:\n1. Primary Request and Intent:\n   - Create a new `ProviderCredentialModel` Sequelize model extending `WorkspaceAwareModel` with fields: `providerId` (ModelProviderIdType), `credentialId` (string, reference to oauth credential table), `isHealthy` (boolean), `placeholder` (string), and a `belongsTo` relationship with `UserModel` via `editedByUserId`.\n   - Create corresponding SQL migration for the table.\n   - Set up dev tooling to test BYOK features: a script to toggle `isByok` on the workspace's existing plan.\n   - Register the new model in `loadAllModels()` and workspace deletion workflow.\n   - Ship as two stacked PRs.\n\n2. Key Technical Concepts:\n   - Sequelize ORM with `WorkspaceAwareModel` pattern (workspace isolation via hooks)\n   - `frontSequelize` as the shared Sequelize instance\n   - Unique composite indexes serve as regular indexes (leftmost prefix)\n   - `CONCURRENTLY` index creation is unnecessary for new empty tables\n   - `SubscriptionResource.fetchActiveByWorkspaceModelId` uses Redis caching (`cacheWithRedis`) — direct model queries bypass cache\n   - `makeScript` helper pattern for CLI scripts with `--execute` dry-run support and logger as second arg\n   - git-spice (`gs`) for stacked PRs: `gs bc`, `gs cc`, `gs ca`, `gs branch submit`\n   - dust-hive uses `admin/init_plans.sh` (calls `admin/init_plans.ts`) during warm\n   - Plan `isByok` field added in migration_533\n\n3. Files and Code Sections:\n\n   - **`front/lib/models/provider_credential.ts`** (CREATED - PR #22720)\n     - New WorkspaceAwareModel for BYOK provider credentials\n     - Final version after user's linter removed editedByUserId index:\n     ```typescript\n     import { frontSequelize } from \"@app/lib/resources/storage\";\n     import { UserModel } from \"@app/lib/resources/storage/models/user\";\n     import { WorkspaceAwareModel } from \"@app/lib/resources/storage/wrappers/workspace_models\";\n     import type { ModelProviderIdType } from \"@app/types/assistant/models/types\";\n     import type { CreationOptional, ForeignKey, NonAttribute } from \"sequelize\";\n     import { DataTypes } from \"sequelize\";\n\n     export class ProviderCredentialModel extends WorkspaceAwareModel<ProviderCredentialModel> {\n       declare createdAt: CreationOptional<Date>;\n       declare updatedAt: CreationOptional<Date>;\n       declare providerId: ModelProviderIdType;\n       declare credentialId: string;\n       declare isHealthy: boolean;\n       declare placeholder: string;\n       declare editedByUserId: ForeignKey<UserModel[\"id\"]> | null;\n       declare editedByUser: NonAttribute<UserModel>;\n     }\n\n     ProviderCredentialModel.init(\n       {\n         createdAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },\n         updatedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },\n         providerId: { type: DataTypes.STRING, allowNull: false },\n         credentialId: { type: DataTypes.STRING, allowNull: false },\n         placeholder: { type: DataTypes.STRING, allowNull: false },\n         isHealthy: { type: DataTypes.BOOLEAN, allowNull: false },\n       },\n       {\n         sequelize: frontSequelize,\n         modelName: \"provider_credential\",\n         indexes: [\n           { unique: true, fields: [\"workspaceId\", \"providerId\"] },\n         ],\n       }\n     );\n\n     ProviderCredentialModel.belongsTo(UserModel, {\n       as: \"editedByUser\",\n       foreignKey: { name: \"editedByUserId\", allowNull: true },\n     });\n     ```\n\n   - **`front/migrations/db/migration_535.sql`** (CREATED - PR #22720)\n     - SQL migration for the provider_credentials table\n     ```sql\n     -- Migration created on Mar 09, 2026\n     CREATE TABLE IF NOT EXISTS \"provider_credentials\" (\n         \"id\" BIGSERIAL PRIMARY KEY,\n         \"createdAt\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n         \"updatedAt\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),\n         \"providerId\" VARCHAR(255) NOT NULL,\n         \"credentialId\" VARCHAR(255) NOT NULL,\n         \"placeholder\" VARCHAR(255) NOT NULL,\n         \"isHealthy\" BOOLEAN NOT NULL,\n         \"workspaceId\" BIGINT NOT NULL REFERENCES \"workspaces\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n         \"editedByUserId\" BIGINT REFERENCES \"users\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n     );\n     CREATE UNIQUE INDEX \"provider_credentials_workspace_id_provider_id\" ON \"provider_credentials\" (\"workspaceId\", \"providerId\");\n     ```\n\n   - **`front/scripts/toggle_byok_plan.ts`** (CREATED - PR #22723)\n     - Script to toggle `isByok` on the workspace's current plan, bypassing Redis cache\n     ```typescript\n     import { PlanModel, SubscriptionModel } from \"@app/lib/models/plan\";\n     import { WorkspaceResource } from \"@app/lib/resources/workspace_resource\";\n     import { makeScript } from \"@app/scripts/helpers\";\n\n     makeScript(\n       {\n         enable: { type: \"boolean\", default: false },\n         workspaceIds: {\n           type: \"array\",\n           default: [\"DevWkSpace\"],\n           description: \"List of workspace sIds to toggle isByok on (defaults to DevWkSpace).\",\n         },\n       },\n       async ({ enable, workspaceIds, execute }, logger) => {\n         for (const wId of workspaceIds) {\n           const workspace = await WorkspaceResource.fetchById(wId);\n           if (!workspace) { logger.info(`Workspace ${wId} not found -- Skipping.`); continue; }\n\n           // Bypass SubscriptionResource to avoid Redis-cached plan data.\n           const subscription = await SubscriptionModel.findOne({\n             where: { workspaceId: workspace.id, status: \"active\" },\n             include: [{ model: PlanModel, as: \"plan\" }],\n           });\n           if (!subscription?.plan) { logger.info(`Workspace ${workspace.name} has no active subscription -- Skipping.`); continue; }\n\n           const { plan } = subscription;\n           if (plan.isByok === enable) { logger.info(`Workspace ${workspace.name} plan ${plan.code} already has isByok=${enable} -- Skipping.`); continue; }\n\n           if (execute) { await plan.update({ isByok: enable }); }\n           logger.info(`${execute ? \"\" : \"[DRYRUN]: \"}Set isByok=${enable} on plan ${plan.code} (workspace ${workspace.name}).`);\n         }\n       }\n     );\n     ```\n\n   - **`front/admin/db.ts`** (MODIFIED - PR #22723)\n     - Added `ProviderCredentialModel` import and registration in `loadAllModels()` array\n\n   - **`front/poke/temporal/activities.ts`** (MODIFIED - PR #22723)\n     - Added `ProviderCredentialModel` import and `destroy` call in workspace deletion workflow, placed before `DustAppSecretModel.destroy`\n\n   - **`front/lib/plans/plan_codes.ts`** (REVERTED to original)\n     - Temporarily had `ENT_BYOK_PLAN_CODE` added, then reverted when approach changed\n\n   - **`front/lib/plans/pro_plans.ts`** (REVERTED to original)\n     - Temporarily had BYOK plan data added, then reverted when approach changed\n\n4. Errors and fixes:\n   - **Edit tool string matching failures**: File content on disk differed from what I expected (likely due to linter modifications). Fixed by re-reading files before editing.\n   - **Migration 534 conflict**: Migration 534 was already merged by another PR. Fixed by rebasing on `origin/main` and moving migration to 535.\n   - **TypeScript error - `getActiveSubscriptionForWorkspace` doesn't exist**: Wrong method name. Fixed by using `fetchActiveByWorkspaceModelId`.\n   - **TypeScript error - `subscription` possibly null**: Added null check with `continue`.\n   - **TypeScript error - `plan` is private**: Changed to use `subscription.getPlan()` public accessor.\n   - **Redis caching bug**: `isByok` showed `true` in DB but `false` when fetched via `SubscriptionResource` due to Redis caching. User reported: \"byok shows true in db but false in script when fetching subscription\". Fixed by querying `SubscriptionModel` directly with `include: [PlanModel]` to bypass the cache layer.\n   - **User feedback on approach changes**: User changed mind multiple times on the BYOK plan approach (new plan code → toggle existing plan → seed script → keep as separate script → add workspaceIds arg). Each time I adapted.\n   - **User feedback on `console.log`**: User asked to use `logger` instead per codebase patterns (GEN8 rule).\n\n5. Problem Solving:\n   - Unique index vs regular index: Explained that PostgreSQL unique indexes also serve as regular indexes via leftmost prefix, removing need for separate `workspaceId` index.\n   - `CONCURRENTLY` usage: Explained it's for avoiding write locks on existing tables with data; unnecessary for new empty tables.\n   - BYOK testing approach: Explored multiple approaches (new plan, seed script, dust-hive command) before settling on a simple toggle script that mutates `isByok` on the existing plan.\n   - Redis cache bypass: Identified caching as root cause of stale plan data and switched to direct model queries.\n\n6. All user messages:\n   - \"create a brand new model/table based on existing patterns and the following spec below...\"\n   - \"1. yes ! 2. reference to the credential table in oauth 3. let's put it in lib/models instead 4. create latest number so in our case it's migration_534.sql 5. let's do it in another pr\"\n   - Questions about unique index as normal index and concurrently usefulness\n   - \"/gs-ship\" with args about issue link and redundant index comment\n   - \"shit. migration 534 got merged already - rebase and move our migration to 535 - don't add index on user back, I don't want it\"\n   - \"sure\" (to force push)\n   - \"/dust-hive\" asking about BYOK testing setup with plans and seeds\n   - \"does dust hive use admin/db.ts or admin/init_plans.ts? ... i want it as an opt in like we do with seeds and flags\"\n   - \"Let's do it as a manual script for now. same as pro business. Make sure that it also works outside dust hive too. Do it in another branch stacked on top of this one\"\n   - \"Ideally we don't define a new plan code - why not have the script only toggle the isbyok param? actually make it part of a byok seed script instead of a separate script like that. Confirm with me your approach before proceeding\"\n   - \"sorry changed my mind again - we can't pass argument to seed scripts as it's controlled by dh feed and it would no make sens to have a --disable flag. let's keep it as separate script for now. -> can't you make it only update DevWkSpace?\"\n   - \"add a workspaceIds arg actually default to DevWkSpace. it's ok in dev to switch all workspaces i think\"\n   - \"how can i test it ? hive and no hive\"\n   - \"byok shows true in db but false in script when fetching subscription - how does it happen?\"\n   - \"push with a little concise comment on why we use SubscriptionModel\"\n   - \"let's use logger instead of console.log -> seems to be the right common pattern even if not the case for feature flag\"\n   - \"Your task is to create a detailed summary...\" (current message)\n\n7. Pending Tasks:\n   - No explicitly pending tasks. Both PRs are created and pushed.\n\n8. Current Work:\n   - Just pushed the final version of PR #22723 with `logger` instead of `console.log` in `toggle_byok_plan.ts`.\n   - Two PRs are live:\n     - PR #22720 (`ap/byok-provider-credential`): ProviderCredentialModel + migration_535\n     - PR #22723 (`ap-byok-plan-seed`, stacked on #22720): toggle_byok_plan script + model registration in loadAllModels + workspace deletion workflow\n\n9. Optional Next Step:\n   - No explicit next step requested. Both PRs are shipped and up to date. The PR title for #22723 may still reference \"ENT_BYOK_DEV\" which is no longer accurate — user previously flagged \"update pr title, it's not up to date\" but it was resolved at that time.\n\nIf you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/alexandrepinon/.claude/projects/-Users-alexandrepinon-dust-hive-byok-provider-credential/6b80c8bc-f069-4722-8a33-de2f040c21f5.jsonl",
+          "timestamp": "2026-03-09T10:39:28.900Z"
+        },
+        {
+          "type": "user",
+          "text": "<local-command-caveat>Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to.</local-command-caveat>",
+          "timestamp": "2026-03-09T10:37:59.784Z"
+        },
+        {
+          "type": "user",
+          "text": "<command-name>/compact</command-name>\n            <command-message>compact</command-message>\n            <command-args></command-args>",
+          "timestamp": "2026-03-09T10:37:59.784Z"
+        },
+        {
+          "type": "user",
+          "text": "<local-command-stdout>\u001b[2mCompacted (ctrl+o to see full summary)\u001b[22m\n\u001b[2mPreCompact [python3 ~/.claude/hooks/claude-island-state.py] completed successfully\u001b[22m</local-command-stdout>",
+          "timestamp": "2026-03-09T10:39:29.002Z"
+        },
+        {
+          "type": "user",
+          "text": "Now onto the resource. follow established pattern of existing resources (the recent ones are cleaner than older ones - see @front/lib/resources/skill/skill_resource.ts for a recent one).\nFor now let's just have a baseFetch and a getKeys(auth) method that retrieves all keys for the auth workspace.\nPermission restriction is at the plan subscription level: it must have isByok=true",
+          "timestamp": "2026-03-09T10:44:16.398Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The user wants me to create a `ProviderCredentialResource` following the pattern of recent resources like `SkillResource`. Let me first understand the patterns better by looking at a few more resources and the base resource class.\n\nKey requirements:\n1. Follow established resource patterns (recent ones like SkillResource)\n2. `baseFetch` method\n3. `getKeys(auth)` method - retrieves all keys for the auth workspace\n4. Permission: plan must have `isByok=true`\n\nLet me look at the base resource and how permission checks work, particularly how plan checks are done elsewhere.",
+          "timestamp": "2026-03-09T10:44:22.225Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Let me explore the base resource pattern and how plan-level permission checks work.",
+          "timestamp": "2026-03-09T10:44:22.787Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Agent",
+          "input": {
+            "description": "Explore resource patterns",
+            "prompt": "I need to understand how to create a new Resource in the Dust codebase. Please find:\n\n1. The BaseResource class at `front/lib/resources/base_resource.ts` - read it\n2. How `isByok` is checked on a plan/subscription - search for `isByok` usage across the codebase\n3. A simple recent resource example - look at `front/lib/resources/provider_credential_resource.ts` or similar simple resources. Also check `front/lib/resources/dust_app_secret_resource.ts` as it might be a simpler example\n4. How the Authenticator checks plan features - search for how `auth` is used to check plan properties, look at `front/lib/auth.ts` or similar\n\nFocus on: baseFetch pattern, permission checking via plan, and how resources expose data. Be thorough.",
+            "subagent_type": "Explore"
+          },
+          "timestamp": "2026-03-09T10:44:28.507Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/models/provider_credential.ts"
+          },
+          "timestamp": "2026-03-09T10:45:47.214Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/base_resource.ts"
+          },
+          "timestamp": "2026-03-09T10:45:48.185Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Grep",
+          "input": {
+            "-C": 3,
+            "output_mode": "content",
+            "pattern": "isByok"
+          },
+          "timestamp": "2026-03-09T10:45:48.673Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Grep",
+          "input": {
+            "-C": 2,
+            "output_mode": "content",
+            "path": "/Users/alexandrepinon/dust-hive/byok-provider-credential",
+            "pattern": "isByok"
+          },
+          "timestamp": "2026-03-09T10:45:52.935Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Grep",
+          "input": {
+            "output_mode": "files_with_matches",
+            "path": "/Users/alexandrepinon/dust-hive/byok-provider-credential",
+            "pattern": "provider_credential"
+          },
+          "timestamp": "2026-03-09T10:45:53.403Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"isByok\" --type ts -C 2 | head -80",
+            "description": "Search for isByok usage"
+          },
+          "timestamp": "2026-03-09T10:45:56.524Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"isByok\" --type ts -C 2 | tail -80",
+            "description": "More isByok usage"
+          },
+          "timestamp": "2026-03-09T10:45:59.247Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me look at a simpler resource for the pattern and how `auth.plan()` works:",
+          "timestamp": "2026-03-09T10:46:01.971Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/key_resource.ts",
+            "limit": 80
+          },
+          "timestamp": "2026-03-09T10:46:03.459Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/types/plan.ts"
+          },
+          "timestamp": "2026-03-09T10:46:03.640Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me check how `auth.plan()` / `auth.getNonNullablePlan()` works, and look at existing `ProviderCredentialType` if any:",
+          "timestamp": "2026-03-09T10:46:07.461Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderCredential\" --type ts -l",
+            "description": "Find files referencing ProviderCredential"
+          },
+          "timestamp": "2026-03-09T10:46:08.404Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"getNonNullablePlan\\|auth\\.plan()\" --type ts -l | head -10",
+            "description": "Find plan check patterns"
+          },
+          "timestamp": "2026-03-09T10:46:08.847Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"getNonNullablePlan\" --type ts -C 2 | head -40",
+            "description": "Find plan check pattern usage"
+          },
+          "timestamp": "2026-03-09T10:46:12.182Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ModelProviderIdType\" --type ts -C 2 | head -20",
+            "description": "Check ModelProviderIdType definition"
+          },
+          "timestamp": "2026-03-09T10:46:12.789Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me look at a simpler resource like `DustAppSecretResource`:",
+          "timestamp": "2026-03-09T10:46:15.432Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"DustAppSecretResource\" --type ts -l | head -5",
+            "description": "Find DustAppSecretResource"
+          },
+          "timestamp": "2026-03-09T10:46:16.081Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "ls front/lib/resources/ | head -30",
+            "description": "List resource files"
+          },
+          "timestamp": "2026-03-09T10:46:19.726Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Let me look at `feature_flag_resource.ts` — it's likely simpler and has a plan-gating pattern:",
+          "timestamp": "2026-03-09T10:46:21.899Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/feature_flag_resource.ts"
+          },
+          "timestamp": "2026-03-09T10:46:23.194Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me check the `ReadonlyAttributesType` and `ModelStaticWorkspaceAware`:",
+          "timestamp": "2026-03-09T10:46:25.820Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ReadonlyAttributesType\" front/lib/resources/storage/types.ts -A 5",
+            "description": "Check ReadonlyAttributesType definition"
+          },
+          "timestamp": "2026-03-09T10:46:26.486Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now I have a good understanding. Let me also check if there's an existing type for the resource:",
+          "timestamp": "2026-03-09T10:46:29.306Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderCredentialType\" --type ts | head -5",
+            "description": "Check if type exists"
+          },
+          "timestamp": "2026-03-09T10:46:29.883Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Before I create, let me confirm my approach:\n\n**Proposed `ProviderCredentialResource`:**\n- Follows `FeatureFlagResource` pattern (simple, clean)\n- `baseFetch` private static — queries by workspace, returns resources\n- `getKeys(auth)` — public static, calls `baseFetch`, checks `auth.getNonNullablePlan().isByok`\n- `delete`, `deleteAllForWorkspace` — standard\n- No `toJSON` or type yet — you said \"just baseFetch and getKeys for now\"\n\nQuestions:\n1. Should `getKeys` return `Result` with a plan-check error, or just return empty/throw if plan doesn't have `isByok`?\n2. Method name: `getKeys` or `listByWorkspace` (more consistent with codebase pattern)?\n3. Need a `ProviderCredentialType` in `types/` now, or skip?",
+          "timestamp": "2026-03-09T10:46:38.609Z"
+        },
+        {
+          "type": "user",
+          "text": "let's also define toJSON. deleteAllForWorkspace should be used in the temporal activity scrub workspace. where should delete be used ?\n1. throw using assert - no result needed\n2. listByWorkspace indeed\n3. let's have ProviderCredentialType indeed - follow pattern and use it only as return type of toJson",
+          "timestamp": "2026-03-09T10:59:59.327Z"
+        },
+        {
+          "type": "assistant",
+          "text": "\n\nGood questions. Let me check how `delete` is typically used on resources like this:",
+          "timestamp": "2026-03-09T11:00:02.514Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"DustAppSecretModel\" --type ts -l",
+            "description": "Find DustAppSecret usage for delete pattern"
+          },
+          "timestamp": "2026-03-09T11:00:03.482Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/api/dust_app_secrets.ts"
+          },
+          "timestamp": "2026-03-09T11:00:07.404Z"
+        },
+        {
+          "type": "assistant",
+          "text": "DustAppSecret doesn't have a resource — it's an older pattern. Let me check where `delete` on a resource gets called from an API endpoint:",
+          "timestamp": "2026-03-09T11:00:10.265Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"\\.delete\\(auth\" front/pages/api/ --type ts -B 2 -A 2 | head -40",
+            "description": "Find resource delete usage in API routes"
+          },
+          "timestamp": "2026-03-09T11:00:11.142Z"
+        },
+        {
+          "type": "assistant",
+          "text": "`delete` will be used from a future API endpoint for managing provider credentials. Now let me check the `makeSId` / `getResourceIdFromSId` pattern:",
+          "timestamp": "2026-03-09T11:00:14.288Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"makeSId\" front/lib/resources/string_ids.ts -B 2 -A 10 | head -30",
+            "description": "Check makeSId pattern"
+          },
+          "timestamp": "2026-03-09T11:00:15.140Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ResourceNameType\" front/lib/resources/string_ids.ts -B 2 -A 10 | head -30",
+            "description": "Check ResourceNameType"
+          },
+          "timestamp": "2026-03-09T11:00:17.091Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"RESOURCES_PREFIX\" front/lib/resources/string_ids.ts -A 30 | head -40",
+            "description": "Check RESOURCES_PREFIX registry"
+          },
+          "timestamp": "2026-03-09T11:00:19.998Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"RESOURCES_PREFIX\" front/lib/resources/string_ids.ts -A 50 | tail -20",
+            "description": "See full RESOURCES_PREFIX"
+          },
+          "timestamp": "2026-03-09T11:00:23.391Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"RESOURCES_PREFIX\" front/lib/resources/string_ids.ts | head -1",
+            "description": "Find prefix definition start"
+          },
+          "timestamp": "2026-03-09T11:00:26.073Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/string_ids.ts",
+            "limit": 60
+          },
+          "timestamp": "2026-03-09T11:00:28.876Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/string_ids.ts",
+            "limit": 20,
+            "offset": 60
+          },
+          "timestamp": "2026-03-09T11:00:31.881Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/string_ids.ts",
+            "limit": 10,
+            "offset": 78
+          },
+          "timestamp": "2026-03-09T11:00:34.422Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Good. Now I have everything I need. `delete` will be used from a future API endpoint when a user removes a provider credential. Let me create the resource and type.",
+          "timestamp": "2026-03-09T11:00:37.900Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/string_ids.ts",
+            "new_string": "  // Conversation branches.\n  conversation_branch: \"cbr\",\n\n  // Provider credentials (BYOK).\n  provider_credential: \"pcr\",\n} as const;",
+            "old_string": "  // Conversation branches.\n  conversation_branch: \"cbr\",\n} as const;",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T11:00:39.698Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me check where types for resources live:",
+          "timestamp": "2026-03-09T11:00:45.739Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "ls front/types/ | head -20",
+            "description": "List type files"
+          },
+          "timestamp": "2026-03-09T11:00:46.268Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/types/dust_app_secret.ts"
+          },
+          "timestamp": "2026-03-09T11:00:48.617Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cat front/types/key.ts",
+            "description": "Check KeyType for reference"
+          },
+          "timestamp": "2026-03-09T11:00:51.605Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me create the type and resource:",
+          "timestamp": "2026-03-09T11:00:53.341Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import type { ModelProviderIdType } from \"@app/types/assistant/models/types\";\nimport type { ModelId } from \"@app/types/shared/model_id\";\n\nexport type ProviderCredentialType = {\n  sId: string;\n  id: ModelId;\n  createdAt: number;\n  updatedAt: number;\n  providerId: ModelProviderIdType;\n  credentialId: string;\n  isHealthy: boolean;\n  placeholder: string;\n  editedByUserId: ModelId | null;\n};\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/types/provider_credential.ts"
+          },
+          "timestamp": "2026-03-09T11:00:55.638Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Write",
+          "input": {
+            "content": "import assert from \"assert\";\n\nimport type { Authenticator } from \"@app/lib/auth\";\nimport { ProviderCredentialModel } from \"@app/lib/models/provider_credential\";\nimport { BaseResource } from \"@app/lib/resources/base_resource\";\nimport type { ReadonlyAttributesType } from \"@app/lib/resources/storage/types\";\nimport type { ModelStaticWorkspaceAware } from \"@app/lib/resources/storage/wrappers/workspace_models\";\nimport { makeSId } from \"@app/lib/resources/string_ids\";\nimport type { ProviderCredentialType } from \"@app/types/provider_credential\";\nimport type { ModelId } from \"@app/types/shared/model_id\";\nimport type { Result } from \"@app/types/shared/result\";\nimport { Ok } from \"@app/types/shared/result\";\nimport type { Attributes, ModelStatic, Transaction } from \"sequelize\";\n\n// Attributes are marked as read-only to reflect the stateless nature of our Resource.\n// This design will be moved up to BaseResource once we transition away from Sequelize.\n// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging\nexport interface ProviderCredentialResource\n  extends ReadonlyAttributesType<ProviderCredentialModel> {}\n// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging\nexport class ProviderCredentialResource extends BaseResource<ProviderCredentialModel> {\n  static model: ModelStaticWorkspaceAware<ProviderCredentialModel> =\n    ProviderCredentialModel;\n\n  constructor(\n    model: ModelStatic<ProviderCredentialModel>,\n    blob: Attributes<ProviderCredentialModel>\n  ) {\n    super(ProviderCredentialModel, blob);\n  }\n\n  get sId(): string {\n    return makeSId(\"provider_credential\", {\n      id: this.id,\n      workspaceId: this.workspaceId,\n    });\n  }\n\n  private static assertByokPlan(auth: Authenticator): void {\n    const plan = auth.getNonNullablePlan();\n    assert(plan.isByok, \"BYOK is not enabled on this workspace's plan.\");\n  }\n\n  private static async baseFetch(\n    auth: Authenticator\n  ): Promise<ProviderCredentialResource[]> {\n    const workspace = auth.getNonNullableWorkspace();\n\n    const models = await this.model.findAll({\n      where: { workspaceId: workspace.id },\n      order: [[\"createdAt\", \"DESC\"]],\n    });\n\n    return models.map(\n      (m) => new ProviderCredentialResource(ProviderCredentialModel, m.get())\n    );\n  }\n\n  static async listByWorkspace(\n    auth: Authenticator\n  ): Promise<ProviderCredentialResource[]> {\n    this.assertByokPlan(auth);\n\n    return this.baseFetch(auth);\n  }\n\n  static async deleteAllForWorkspace(\n    auth: Authenticator,\n    transaction?: Transaction\n  ): Promise<void> {\n    const workspace = auth.getNonNullableWorkspace();\n\n    await ProviderCredentialModel.destroy({\n      where: { workspaceId: workspace.id },\n      transaction,\n    });\n  }\n\n  async delete(\n    auth: Authenticator,\n    { transaction }: { transaction?: Transaction }\n  ): Promise<Result<number | undefined, Error>> {\n    await this.model.destroy({\n      where: {\n        id: this.id,\n        workspaceId: auth.getNonNullableWorkspace().id,\n      },\n      transaction,\n    });\n\n    return new Ok(this.id);\n  }\n\n  toJSON(): ProviderCredentialType {\n    return {\n      sId: this.sId,\n      id: this.id,\n      createdAt: this.createdAt.getTime(),\n      updatedAt: this.updatedAt.getTime(),\n      providerId: this.providerId,\n      credentialId: this.credentialId,\n      isHealthy: this.isHealthy,\n      placeholder: this.placeholder,\n      editedByUserId: this.editedByUserId,\n    };\n  }\n}\n",
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/provider_credential_resource.ts"
+          },
+          "timestamp": "2026-03-09T11:01:12.938Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now update `poke/temporal/activities.ts` to use the resource's `deleteAllForWorkspace` instead of raw model destroy:",
+          "timestamp": "2026-03-09T11:01:16.607Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderCredentialModel\" front/poke/temporal/activities.ts -B 2 -A 5",
+            "description": "Find current ProviderCredentialModel usage in activities"
+          },
+          "timestamp": "2026-03-09T11:01:17.419Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderCredential\" front/poke/temporal/activities.ts -B 2 -A 5",
+            "description": "Find ProviderCredential in activities"
+          },
+          "timestamp": "2026-03-09T11:01:20.489Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Hmm, seems it's not there yet on this branch. Let me check the current state:",
+          "timestamp": "2026-03-09T11:01:22.687Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git log --oneline -5",
+            "description": "Check current commits"
+          },
+          "timestamp": "2026-03-09T11:01:23.106Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderCredential\" front/poke/temporal/activities.ts",
+            "description": "Check activities file"
+          },
+          "timestamp": "2026-03-09T11:01:25.521Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"ProviderCredential\" front/admin/db.ts",
+            "description": "Check db.ts registration"
+          },
+          "timestamp": "2026-03-09T11:01:30.501Z"
+        },
+        {
+          "type": "assistant",
+          "text": "OK so `ProviderCredentialModel` is in `db.ts` but not in `activities.ts` yet (the stacked PR changes may have been squashed/different). Let me add it to `activities.ts` using the resource:",
+          "timestamp": "2026-03-09T11:01:34.414Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/poke/temporal/activities.ts",
+            "limit": 50
+          },
+          "timestamp": "2026-03-09T11:01:34.779Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "rg \"DustAppSecretModel\" front/poke/temporal/activities.ts -B 1 -A 3",
+            "description": "Find DustAppSecret in activities for placement"
+          },
+          "timestamp": "2026-03-09T11:01:37.780Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/poke/temporal/activities.ts",
+            "new_string": "import { ProviderCredentialResource } from \"@app/lib/resources/provider_credential_resource\";\nimport { ProgrammaticUsageConfigurationResource } from \"@app/lib/resources/programmatic_usage_configuration_resource\";",
+            "old_string": "import { ProgrammaticUsageConfigurationResource } from \"@app/lib/resources/programmatic_usage_configuration_resource\";",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T11:01:41.630Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now add the destroy call before `DustAppSecretModel.destroy`:",
+          "timestamp": "2026-03-09T11:01:45.174Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/poke/temporal/activities.ts",
+            "new_string": "  await ExtensionConfigurationResource.deleteForWorkspace(auth, {});\n  await ProviderCredentialResource.deleteAllForWorkspace(auth);\n  await DustAppSecretModel.destroy({",
+            "old_string": "  await ExtensionConfigurationResource.deleteForWorkspace(auth, {});\n  await DustAppSecretModel.destroy({",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-09T11:01:46.298Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Let me verify the type-check passes:",
+          "timestamp": "2026-03-09T11:01:49.633Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cd front && npx tsgo --noEmit 2>&1 | tail -30",
+            "description": "Type-check the front project",
+            "timeout": 120000
+          },
+          "timestamp": "2026-03-09T11:01:50.524Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Clean type-check. Let me also verify the resource file looks correct:",
+          "timestamp": "2026-03-09T11:02:03.566Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/alexandrepinon/dust-hive/byok-provider-credential/front/lib/resources/provider_credential_resource.ts"
+          },
+          "timestamp": "2026-03-09T11:02:03.816Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Here's a summary of what was created:\n\n**New files:**\n- `front/types/provider_credential.ts` — `ProviderCredentialType` with `sId`, `id`, `createdAt`, `updatedAt`, `providerId`, `credentialId`, `isHealthy`, `placeholder`, `editedByUserId`\n- `front/lib/resources/provider_credential_resource.ts` — Resource with:\n  - `baseFetch(auth)` — private, queries all credentials for workspace\n  - `listByWorkspace(auth)` — public, asserts `plan.isByok` then delegates to `baseFetch`\n  - `deleteAllForWorkspace(auth, transaction?)` — for workspace scrubbing\n  - `delete(auth, { transaction })` — for future API endpoint to remove a credential\n  - `toJSON()` — returns `ProviderCredentialType`\n  - `sId` getter via `makeSId(\"provider_credential\", ...)`\n\n**Modified files:**\n- `front/lib/resources/string_ids.ts` — added `provider_credential: \"pcr\"` prefix\n- `front/poke/temporal/activities.ts` — uses `ProviderCredentialResource.deleteAllForWorkspace` in workspace scrubbing\n\nType-check passes cleanly.",
+          "timestamp": "2026-03-09T11:02:11.208Z"
+        }
+      ],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 126,
+      "overriden_lines": 0
+    }
+  }
+}
