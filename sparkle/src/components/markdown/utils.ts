@@ -1,7 +1,6 @@
-// Minimal type matching ReactMarkdown's AST node position.
-type MarkdownPoint = { line?: number; column?: number };
-type MarkdownPosition = { start?: MarkdownPoint; end?: MarkdownPoint };
-export type MarkdownNode = { position?: MarkdownPosition };
+import type { Element } from "hast";
+
+export type MarkdownNode = Element;
 
 export function sameNodePosition(
   prev?: MarkdownNode,
