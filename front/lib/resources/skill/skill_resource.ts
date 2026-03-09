@@ -2332,6 +2332,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sourceMetadata: this.sourceMetadata,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      isDefault: this.isDefault 
     };
 
     await SkillVersionModel.create(versionData, {
