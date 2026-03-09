@@ -550,9 +550,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
           `Credited to: ${ashbyUser.firstName} ${ashbyUser.lastName} (${ashbyUser.email})\n` +
           `Referral ID: ${referral.id}\n` +
           `Status: ${referral.status}` +
-          (fileFields.length > 0
-            ? `\nResume: uploaded successfully`
-            : ""),
+          (fileFields.length > 0 ? `\nResume: uploaded successfully` : ""),
       },
     ]);
   },
