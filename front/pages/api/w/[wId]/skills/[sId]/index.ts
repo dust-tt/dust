@@ -324,9 +324,7 @@ async function handler(
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
-        ...(body.isDefault !== undefined
-          ? { isDefault: body.isDefault }
-          : {}),
+        ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {}),
       });
 
       return res.status(200).json({
