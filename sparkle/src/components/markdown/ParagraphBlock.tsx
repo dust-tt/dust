@@ -1,3 +1,5 @@
+import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
+import { markdownParagraphSize } from "@sparkle/components/markdown/markdownSizes";
 import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -18,17 +20,11 @@ export const paragraphBlockVariants = cva(
 
 interface ParagraphBlockProps {
   children: React.ReactNode;
-  textColor: string;
-  textSize: string;
-  compactSpacing?: boolean;
 }
 
-export function ParagraphBlock({
-  children,
-  textColor,
-  textSize,
-  compactSpacing = false,
-}: ParagraphBlockProps) {
+export function ParagraphBlock({ children }: ParagraphBlockProps) {
+  const { textColor, forcedTextSize, compactSpacing } = useMarkdownStyle();
+  const textSize = forcedTextSize ?? markdownParagraphSize;
   return (
     <div
       className={cn(
