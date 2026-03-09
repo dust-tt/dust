@@ -13,7 +13,7 @@ export function getSandboxImage(
 ): Result<SandboxImage, Error> {
   const result = getSandboxImageFromRegistry({
     imageName: "dust-base",
-    tag: "production",
+    tag: "v0.2.0",
   });
   if (result.isErr()) {
     return new Err(new Error("Default sandbox image not found in registry"));
