@@ -25,10 +25,7 @@ interface OlBlockProps {
   start?: number;
 }
 
-export function OlBlock({
-  children,
-  start,
-}: OlBlockProps) {
+export function OlBlock({ children, start }: OlBlockProps) {
   const { textColor, forcedTextSize } = useMarkdownStyle();
   const textSize = forcedTextSize ?? markdownParagraphSize;
   return (
@@ -45,10 +42,7 @@ interface LiBlockProps {
   className?: string;
 }
 
-export function LiBlock({
-  children,
-  className,
-}: LiBlockProps) {
+export function LiBlock({ children, className }: LiBlockProps) {
   const { textColor, forcedTextSize } = useMarkdownStyle();
   const textSize = forcedTextSize ?? markdownParagraphSize;
   return (
