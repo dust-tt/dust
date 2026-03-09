@@ -17,8 +17,11 @@ import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
 } from "@app/types/assistant/assistant";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
+import {
+  GPT_4_1_MINI_MODEL_CONFIG,
+  GPT_4_1_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { getCompanyDataAction } from "./shared";
@@ -488,10 +491,12 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? isProviderWhitelisted(owner, "anthropic")
-        ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
+      ? isProviderWhitelisted(owner, "openai")
+        ? GPT_4_1_MINI_MODEL_CONFIG
         : getSmallWhitelistedModel(owner)
-      : getLargeWhitelistedModel(owner);
+      : isProviderWhitelisted(owner, "openai")
+        ? GPT_4_1_MODEL_CONFIG
+        : getLargeWhitelistedModel(owner);
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
