@@ -46,6 +46,8 @@ enum APIClient {
         return encoder
     }()
 
+    private static let camelCaseEncoder: JSONEncoder = .init()
+
     // MARK: - Public (raw access token)
 
     static func get<T: Decodable>(
@@ -101,15 +103,18 @@ enum APIClient {
     static func authenticatedPost<T: Decodable>(
         _ endpoint: String,
         body: some Encodable,
-        tokenProvider: TokenProvider
+        tokenProvider: TokenProvider,
+        snakeCase: Bool = true
     ) async throws -> T {
-        let encodedBody = try encoder.encode(body)
+        let selectedEncoder = snakeCase ? encoder : camelCaseEncoder
+        let selectedDecoder = snakeCase ? snakeCaseDecoder : camelCaseDecoder
+        let encodedBody = try selectedEncoder.encode(body)
         return try await withAuthRetry(tokenProvider: tokenProvider) { token in
             var request = try buildRequest(endpoint: endpoint, accessToken: token)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = encodedBody
-            return try await execute(request, endpoint: endpoint, decoder: snakeCaseDecoder)
+            return try await execute(request, endpoint: endpoint, decoder: selectedDecoder)
         }
     }
 
