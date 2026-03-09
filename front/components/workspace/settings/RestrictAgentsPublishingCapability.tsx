@@ -1,10 +1,14 @@
 import { ContextItem, LockIcon, SliderToggle } from "@dust-tt/sparkle";
 
-export function RestrictAgentsPublishingCapability() {
+export function RestrictAgentsPublishingCapability({
+  subElement,
+}: {
+  subElement: string;
+}) {
   return (
     <ContextItem
       title="Restricted agents publication"
-      subElement="Publishing agents is restricted to builders and admins"
+      subElement={subElement}
       visual={<LockIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
