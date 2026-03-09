@@ -1,9 +1,7 @@
-import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
-import type { LightWorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 describe("ProviderCredentialResource", () => {
   describe("listByWorkspace", () => {
@@ -74,26 +72,21 @@ describe("ProviderCredentialResource", () => {
   });
 
   describe("delete", () => {
-    let auth: Authenticator;
-    let workspace: LightWorkspaceType;
-
-    beforeEach(async () => {
-      const testSetup = await createResourceTest({
+    it("removes the credential", async () => {
+      const { authenticator } = await createResourceTest({
         role: "admin",
         isByok: true,
       });
-      auth = testSetup.authenticator;
-      workspace = auth.getNonNullableWorkspace();
-    });
+      const workspace = authenticator.getNonNullableWorkspace();
 
-    it("removes the credential", async () => {
       await ProviderCredentialFactory.basic(workspace, "openai");
 
       const [credential] =
-        await ProviderCredentialResource.listByWorkspace(auth);
-      await credential.delete(auth);
+        await ProviderCredentialResource.listByWorkspace(authenticator);
+      await credential.delete(authenticator);
 
-      const remaining = await ProviderCredentialResource.listByWorkspace(auth);
+      const remaining =
+        await ProviderCredentialResource.listByWorkspace(authenticator);
       expect(remaining).toHaveLength(0);
     });
   });
