@@ -65,10 +65,12 @@ struct InputBarView: View {
             viewModel.showAgentPicker = true
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 14))
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
+                SparkleIcon.robot.image
+                    .resizable()
+                    .frame(width: 14, height: 14)
+                SparkleIcon.chevronDown.image
+                    .resizable()
+                    .frame(width: 10, height: 10)
             }
             .foregroundStyle(Color.dustForeground)
             .padding(.horizontal, 8)
@@ -95,8 +97,10 @@ struct InputBarView: View {
                 .fill(canSend ? Color.highlight : Color.dustMutedBackground)
                 .frame(width: 36, height: 36)
                 .overlay {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 14, weight: .bold))
+                    SparkleIcon.arrowUp.image
+                        .resizable()
+                        .fontWeight(.bold)
+                        .frame(width: 14, height: 14)
                         .foregroundStyle(canSend ? .white : Color.dustFaint)
                 }
         }
