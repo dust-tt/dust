@@ -1,7 +1,7 @@
-import { parseGitHubRepoUrl } from "@app/lib/api/skills/detection/github/parsing";
 import {
   type DetectedSkillStatus,
   isImportableSkillStatus,
+  parseGitHubRepoUrl,
 } from "@app/lib/skill";
 import {
   useDetectSkillsFromRepo,
@@ -120,7 +120,7 @@ export function ImportSkillsDialog({
               const url = e.target.value;
               setRepoUrl(url.trim());
               const trimmed = url.trim();
-              if (trimmed && parseGitHubRepoUrl(trimmed).isOk()) {
+              if (trimmed && parseGitHubRepoUrl(trimmed)) {
                 triggerDetect(trimmed);
               }
             }}

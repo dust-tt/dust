@@ -5,61 +5,25 @@ import type {
 } from "@app/lib/api/skills/detection/github/types";
 import { findSkillDirectories } from "@app/lib/api/skills/detection/parsing";
 import type { FileEntry } from "@app/lib/api/skills/detection/types";
+import { parseGitHubRepoUrl as parseGitHubRepoUrlShared } from "@app/lib/skill";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
- * Parses a GitHub repository identifier from various formats:
- * - "owner/repo"
- * - "https://github.com/owner/repo"
- * - "https://github.com/owner/repo.git"
+ * Wraps the shared parseGitHubRepoUrl with Result error handling for use in
+ * the detection pipeline.
  */
 export function parseGitHubRepoUrl(
   input: string
 ): Result<{ owner: string; repo: string }, GitHubSkillDetectionError> {
-  const trimmed = input.trim();
-
-  // Handles "github.com/owner/repo" (no protocol) and bare "owner/repo".
-  let normalized: string;
-  if (trimmed.includes("://")) {
-    normalized = trimmed;
-  } else if (trimmed.startsWith("github.com/")) {
-    normalized = `https://${trimmed}`;
-  } else {
-    normalized = `https://github.com/${trimmed}`;
-  }
-
-  let url: URL;
-  try {
-    url = new URL(normalized);
-  } catch {
+  const result = parseGitHubRepoUrlShared(input);
+  if (!result) {
     return new Err({
       type: "invalid_url",
       message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
     });
   }
-
-  if (url.hostname !== "github.com") {
-    return new Err({
-      type: "invalid_url",
-      message: `Unsupported hostname "${url.hostname}". Only github.com repositories are supported.`,
-    });
-  }
-
-  // Extract path segments, stripping leading/trailing slashes and .git suffix.
-  const segments = url.pathname
-    .replace(/\.git$/, "")
-    .split("/")
-    .filter(Boolean);
-
-  if (segments.length < 2 || !segments[0] || !segments[1]) {
-    return new Err({
-      type: "invalid_url",
-      message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
-    });
-  }
-
-  return new Ok({ owner: segments[0], repo: segments[1] });
+  return new Ok(result);
 }
 
 /**
