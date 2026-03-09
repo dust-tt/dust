@@ -2,6 +2,7 @@ import { CapabilitiesSection } from "@app/components/workspace/settings/Capabili
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
 import { ModelSelectionSection } from "@app/components/workspace/settings/ModelSelectionSection";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
+import { getPublishingRestrictionMessage } from "@app/lib/api/assistant/publishing_restrictions";
 import {
   useAuth,
   useFeatureFlags,
@@ -46,8 +47,8 @@ export function WorkspaceSettingsPage() {
       <ModelSelectionSection owner={owner} plan={subscription.plan} />
       <CapabilitiesSection
         owner={owner}
-        showRestrictAgentsPublishing={featureFlags.includes(
-          "restrict_agents_publishing"
+        publishingRestrictionMessage={getPublishingRestrictionMessage(
+          featureFlags
         )}
       />
       <IntegrationsSection

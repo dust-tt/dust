@@ -10,6 +10,11 @@ import {
 } from "@app/lib/api/assistant/configuration/helpers";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  canPublishForAuth,
+  getPublishingRestrictionLevel,
+  PUBLISHING_RESTRICTIONS,
+} from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -477,25 +482,15 @@ export async function createAgentConfiguration(
       }
     }
     if (existingAgent && existingAgent.scope !== "visible") {
-      if (
-        !(await canPublishAgent(auth)) &&
-        scope === "visible" &&
-        status === "active"
-      ) {
-        return new Err(
-          new Error("Publishing agents is restricted to builders and admins.")
-        );
+      const { canPublish, message } = await canPublishAgent(auth);
+      if (!canPublish && scope === "visible" && status === "active") {
+        return new Err(new Error(message!));
       }
     }
   } else {
-    if (
-      !(await canPublishAgent(auth)) &&
-      scope === "visible" &&
-      status === "active"
-    ) {
-      return new Err(
-        new Error("Publishing agents is restricted to builders and admins.")
-      );
+    const { canPublish, message } = await canPublishAgent(auth);
+    if (!canPublish && scope === "visible" && status === "active") {
+      return new Err(new Error(message!));
     }
   }
 
@@ -1585,16 +1580,16 @@ export async function updateAgentPermissions(
   }
 }
 
-async function canPublishAgent(auth: Authenticator): Promise<boolean> {
+async function canPublishAgent(auth: Authenticator): Promise<{
+  canPublish: boolean;
+  message: string | null;
+}> {
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
-  if (
-    featureFlags.includes("restrict_agents_publishing") &&
-    !auth.isBuilder()
-  ) {
-    return false;
+  const level = getPublishingRestrictionLevel(featureFlags);
+  if (!level || canPublishForAuth(auth, level)) {
+    return { canPublish: true, message: null };
   }
-  return true;
+  return { canPublish: false, message: PUBLISHING_RESTRICTIONS[level].message };
 }
 
 export async function updateAgentConfigurationScope(
@@ -1611,15 +1606,14 @@ export async function updateAgentConfigurationScope(
     return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
   }
 
+  const { canPublish, message } = await canPublishAgent(auth);
   if (
-    !(await canPublishAgent(auth)) &&
+    !canPublish &&
     agentConfig.scope !== "visible" &&
     scope === "visible" &&
     agentConfig.status === "active"
   ) {
-    return new Err(
-      new Error("Publishing agents is restricted to builders and admins.")
-    );
+    return new Err(new Error(message!));
   }
 
   const previousScope = agentConfig.scope;

@@ -84,6 +84,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Restrict publishing agents to builders and admins",
     stage: "on_demand",
   },
+  restrict_agents_publishing_to_admins: {
+    description: "Restrict publishing agents to admins only",
+    stage: "on_demand",
+  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
