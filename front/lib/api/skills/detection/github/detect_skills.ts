@@ -1,19 +1,24 @@
 import {
-  findSkillDirectories,
+  findGitHubSkillDirectories,
   parseGitHubRepoUrl,
-  parseSkillMarkdown,
-} from "@app/lib/api/skills/github_detection/parsing";
+} from "@app/lib/api/skills/detection/github/parsing";
 import type {
-  DetectedSkill,
-  DetectedSkillAttachment,
+  GitHubSkillDetectionError,
+  GitHubSkillDirectory,
   GitHubTreeEntry,
-  SkillDetectionError,
-  SkillDirectory,
-} from "@app/lib/api/skills/github_detection/types";
+} from "@app/lib/api/skills/detection/github/types";
 import {
   GitHubBlobResponseSchema,
   GitHubTreeResponseSchema,
-} from "@app/lib/api/skills/github_detection/types";
+} from "@app/lib/api/skills/detection/github/types";
+import {
+  collectAttachments,
+  parseSkillMarkdown,
+} from "@app/lib/api/skills/detection/parsing";
+import type {
+  DetectedSkill,
+  FileEntry,
+} from "@app/lib/api/skills/detection/types";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -33,7 +38,7 @@ async function fetchRepoTree(
     owner: string;
     repo: string;
   }
-): Promise<Result<GitHubTreeEntry[], SkillDetectionError>> {
+): Promise<Result<GitHubTreeEntry[], GitHubSkillDetectionError>> {
   let rawData: unknown;
   try {
     const response = await octokit.request(
@@ -96,7 +101,7 @@ async function fetchBlobContent(
     repo: string;
     fileSha: string;
   }
-): Promise<Result<string, SkillDetectionError>> {
+): Promise<Result<string, GitHubSkillDetectionError>> {
   let rawData: unknown;
   try {
     const response = await octokit.request(
@@ -132,7 +137,7 @@ export async function detectSkillsFromGitHubRepo({
 }: {
   repoUrl: string;
   accessToken?: string | null;
-}): Promise<Result<DetectedSkill[], SkillDetectionError>> {
+}): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
   const parseResult = parseGitHubRepoUrl(repoUrl);
   if (parseResult.isErr()) {
     return parseResult;
@@ -147,7 +152,7 @@ export async function detectSkillsFromGitHubRepo({
   }
   const tree = treeResult.value;
 
-  const skillDirs = findSkillDirectories(tree);
+  const { skillDirs, fileEntries } = findGitHubSkillDirectories(tree);
   if (skillDirs.length === 0) {
     return new Ok([]);
   }
@@ -155,25 +160,18 @@ export async function detectSkillsFromGitHubRepo({
   const skills = await concurrentExecutor(
     skillDirs,
     async (skillDir) =>
-      buildDetectedSkill({ octokit, owner, repo, skillDir, tree }),
+      buildDetectedSkill({ octokit, owner, repo, skillDir, fileEntries }),
     { concurrency: FETCH_CONCURRENCY }
   );
 
-  const detectedSkills: DetectedSkill[] = [];
-  const seenNames = new Set<string>();
+  const resolvedSkills: DetectedSkill[] = [];
   for (const result of skills) {
-    if (result.isErr()) {
-      continue;
+    if (result.isOk()) {
+      resolvedSkills.push(result.value);
     }
-    const skill = result.value;
-    if (!skill.name || seenNames.has(skill.name)) {
-      continue;
-    }
-    seenNames.add(skill.name);
-    detectedSkills.push(skill);
   }
 
-  return new Ok(detectedSkills);
+  return new Ok(resolvedSkills.filter((s) => s.name.length > 0));
 }
 
 async function buildDetectedSkill({
@@ -181,14 +179,14 @@ async function buildDetectedSkill({
   owner,
   repo,
   skillDir,
-  tree,
+  fileEntries,
 }: {
   octokit: InstanceType<typeof Octokit>;
   owner: string;
   repo: string;
-  skillDir: SkillDirectory;
-  tree: GitHubTreeEntry[];
-}): Promise<Result<DetectedSkill, SkillDetectionError>> {
+  skillDir: GitHubSkillDirectory;
+  fileEntries: FileEntry[];
+}): Promise<Result<DetectedSkill, GitHubSkillDetectionError>> {
   const blobResult = await fetchBlobContent(octokit, {
     owner,
     repo,
@@ -208,35 +206,12 @@ async function buildDetectedSkill({
   }
   const parsed = parseSkillMarkdown(blobResult.value);
 
-  const attachments: DetectedSkillAttachment[] = [];
-  const lastSlash = skillDir.skillMdPath.lastIndexOf("/");
-  const dirPrefix = skillDir.skillMdPath.slice(0, lastSlash + 1);
-
-  for (const entry of tree) {
-    if (entry.type !== "blob") {
-      continue;
-    }
-    if (!entry.path.startsWith(dirPrefix)) {
-      continue;
-    }
-    if (entry.path === skillDir.skillMdPath) {
-      continue;
-    }
-
-    const relativePath = entry.path.slice(dirPrefix.length);
-
-    attachments.push({
-      path: relativePath,
-      sizeBytes: entry.size ?? 0,
-    });
-  }
-
   return new Ok({
     name: parsed.name,
     skillMdPath: skillDir.skillMdPath,
     description: parsed.description,
     instructions: parsed.instructions,
-    attachments,
+    attachments: collectAttachments(fileEntries, skillDir),
   });
 }
 

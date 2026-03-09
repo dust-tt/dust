@@ -1,68 +1,12 @@
 import type {
-  GitHubTreeEntry,
-  SkillDetectionError,
+  DetectedSkillAttachment,
+  FileEntry,
   SkillDirectory,
-} from "@app/lib/api/skills/github_detection/types";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+} from "@app/lib/api/skills/detection/types";
 import * as yaml from "js-yaml";
 import { z } from "zod";
 
 const SKILL_MD_FILENAME = "skill.md";
-
-/**
- * Parses a GitHub repository identifier from various formats:
- * - "owner/repo"
- * - "https://github.com/owner/repo"
- * - "https://github.com/owner/repo.git"
- */
-export function parseGitHubRepoUrl(
-  input: string
-): Result<{ owner: string; repo: string }, SkillDetectionError> {
-  const trimmed = input.trim();
-
-  // Handles "github.com/owner/repo" (no protocol) and bare "owner/repo".
-  let normalized: string;
-  if (trimmed.includes("://")) {
-    normalized = trimmed;
-  } else if (trimmed.startsWith("github.com/")) {
-    normalized = `https://${trimmed}`;
-  } else {
-    normalized = `https://github.com/${trimmed}`;
-  }
-
-  let url: URL;
-  try {
-    url = new URL(normalized);
-  } catch {
-    return new Err({
-      type: "invalid_url",
-      message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
-    });
-  }
-
-  if (url.hostname !== "github.com") {
-    return new Err({
-      type: "invalid_url",
-      message: `Unsupported hostname "${url.hostname}". Only github.com repositories are supported.`,
-    });
-  }
-
-  // Extract path segments, stripping leading/trailing slashes and .git suffix.
-  const segments = url.pathname
-    .replace(/\.git$/, "")
-    .split("/")
-    .filter(Boolean);
-
-  if (segments.length < 2 || !segments[0] || !segments[1]) {
-    return new Err({
-      type: "invalid_url",
-      message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
-    });
-  }
-
-  return new Ok({ owner: segments[0], repo: segments[1] });
-}
 
 const SkillFrontmatterSchema = z.object({
   name: z.string().min(1),
@@ -136,16 +80,15 @@ function extractFrontmatter(
 }
 
 /**
- * Scans the tree for directories containing skill.md or SKILL.md.
+ * Scans file entries for directories containing a SKILL.md (case-insensitive).
+ * Skips root-level skill.md files and deduplicates by directory.
  */
-export function findSkillDirectories(
-  tree: GitHubTreeEntry[]
-): SkillDirectory[] {
+export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
   const skillDirs: SkillDirectory[] = [];
   const seenDirs = new Set<string>();
 
-  for (const entry of tree) {
-    if (entry.type !== "blob") {
+  for (const entry of entries) {
+    if (!entry.isFile) {
       continue;
     }
 
@@ -155,7 +98,7 @@ export function findSkillDirectories(
     }
 
     const lastSlash = entry.path.lastIndexOf("/");
-    // Skip skill.md at the repo root, a skill must live in a directory.
+    // A skill must live in a directory, not at the root.
     if (lastSlash === -1) {
       continue;
     }
@@ -167,12 +110,32 @@ export function findSkillDirectories(
     }
     seenDirs.add(dirPath);
 
-    skillDirs.push({
-      dirPath,
-      skillMdPath: entry.path,
-      skillMdSha: entry.sha,
-    });
+    skillDirs.push({ dirPath, skillMdPath: entry.path });
   }
 
   return skillDirs;
+}
+
+export function collectAttachments(
+  entries: FileEntry[],
+  skillDir: SkillDirectory
+): DetectedSkillAttachment[] {
+  const dirPrefix = skillDir.dirPath + "/";
+  const attachments: DetectedSkillAttachment[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isFile) {
+      continue;
+    }
+    if (!entry.path.startsWith(dirPrefix)) {
+      continue;
+    }
+    if (entry.path === skillDir.skillMdPath) {
+      continue;
+    }
+    const relativePath = entry.path.slice(dirPrefix.length);
+    attachments.push({ path: relativePath, sizeBytes: entry.sizeBytes });
+  }
+
+  return attachments;
 }
