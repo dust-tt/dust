@@ -45,7 +45,7 @@ import { visit } from "unist-util-visit";
 
 export { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
 
-const DEFAULT_ANIMATION_DURATION = 2;
+const DEFAULT_ANIMATION_DURATION = 1;
 const DEFAULT_DELIMITER = "";
 
 function showUnsupportedDirective() {
