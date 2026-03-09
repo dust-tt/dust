@@ -42,7 +42,7 @@ type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {
 };
 
 export type FetchInstructionsContext = {
-  listDefaultSkills: () => Promise<SkillResource[]>;
+  listDiscoverable: () => Promise<SkillResource[]>;
 };
 
 type WithDynamicInstructions<T extends BaseGlobalSkillDefinition> = T & {

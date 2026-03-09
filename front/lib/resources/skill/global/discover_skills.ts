@@ -40,9 +40,9 @@ export const discoverSkillsSkill = {
   fetchInstructions: async (
     _auth: Authenticator,
     _spaceIds: string[],
-    { listDefaultSkills }: FetchInstructionsContext
+    { listDiscoverable }: FetchInstructionsContext
   ) => {
-    const defaultSkills = await listDefaultSkills();
+    const defaultSkills = await listDiscoverable();
 
     return buildDiscoverSkillsInstructions(defaultSkills);
   },

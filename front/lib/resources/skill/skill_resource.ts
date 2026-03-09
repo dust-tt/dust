@@ -489,6 +489,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     options: SkillConfigurationFindOptions = {},
     context: {
       agentLoopData?: AgentLoopExecutionData;
+      enabledSkillNames?: Set<string>;
     } = {}
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
@@ -795,9 +796,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }[],
     {
       agentLoopData,
+      enabledSkillNames,
       status,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      enabledSkillNames?: Set<string>;
       status?: SkillStatus | SkillStatus[];
     } = {}
   ): Promise<SkillResource[]> {
@@ -813,7 +816,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
         },
       },
-      { agentLoopData }
+      { agentLoopData, enabledSkillNames }
     );
   }
 
@@ -831,7 +834,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentConfigurationType,
-    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
+    {
+      agentLoopData,
+      enabledSkillNames,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+      enabledSkillNames?: Set<string>;
+    } = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
       auth,
@@ -844,6 +853,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchBySkillReferences(auth, refs, {
       agentLoopData,
+      enabledSkillNames,
     });
   }
 
@@ -933,16 +943,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List active custom skills marked as default.
+   * List active custom skills marked as default, excluding already-enabled skills.
    */
-  static async listDefault(auth: Authenticator): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
+  static async listDiscoverable(
+    auth: Authenticator,
+    { excludeNames }: { excludeNames?: Set<string> } = {}
+  ): Promise<SkillResource[]> {
+    const skills = await this.baseFetch(auth, {
       where: {
         status: "active",
         isDefault: true,
       },
       onlyCustom: true,
     });
+
+    return excludeNames
+      ? skills.filter((s) => !excludeNames.has(s.name))
+      : skills;
   }
 
   /**
@@ -1090,10 +1107,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentLoopData,
       }
     );
+    const enabledSkillNames = new Set(
+      conversationEnabledSkills.map((s) => s.name)
+    );
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
-      { agentLoopData }
+      { agentLoopData, enabledSkillNames }
     );
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
@@ -1217,8 +1237,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: GlobalSkillDefinition,
     {
       agentLoopData,
+      enabledSkillNames,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      enabledSkillNames?: Set<string>;
     } = {}
   ): Promise<SkillResource> {
     const { agentConfiguration } = agentLoopData ?? {};
@@ -1252,7 +1274,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const instructions = def.fetchInstructions
       ? await def.fetchInstructions(auth, requestedSpaceIds, {
-          listDefaultSkills: () => this.listDefault(auth),
+          listDiscoverable: () =>
+            this.listDiscoverable(auth, { excludeNames: enabledSkillNames }),
         })
       : def.instructions;
 
@@ -2072,7 +2095,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         (ref.customSkillId !== null && ref.customSkillId === this.id)
     );
 
-    if (!hasSkill) {
+    // Allow enabling default skills even if not equipped (discovered via discover_skills).
+    if (!hasSkill && !this.isDefault) {
       return new Err(
         new Error(
           `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
