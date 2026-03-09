@@ -1016,13 +1016,11 @@ async function answerMessage(
     streamHandler.start({
       slackChannel,
       slackMessageTs,
+      slackThreadTs,
       slackTeamId,
       slackUserId,
     });
-    // The stream is invisible until first append (chat.startStream only fires then).
-    // The native "Thinking…" spinner requires the Assistant API's
-    // set_status(), which we don't use, so a task kicks off the stream instead.
-    await streamHandler.startTask(`${mention.agentName} is thinking...`);
+    await streamHandler.setThinking(`${mention.agentName} is thinking...`);
   } else {
     mainMessage = await slackClient.chat.postMessage({
       ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
