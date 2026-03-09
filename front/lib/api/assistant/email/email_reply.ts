@@ -60,7 +60,9 @@ async function isEmailAgentsEnabled(
 ): Promise<boolean> {
   const authResult = await Authenticator.fromJSON(authType);
   if (authResult.isErr()) {
-    logger.warn("[email] Failed to create authenticator for feature flag check");
+    logger.warn(
+      "[email] Failed to create authenticator for feature flag check"
+    );
     return false;
   }
   const featureFlags = await getFeatureFlags(
