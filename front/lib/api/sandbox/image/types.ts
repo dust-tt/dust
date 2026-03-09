@@ -40,7 +40,7 @@ export interface SandboxImageId {
 // TODO(@jd): Replace with a proper typed link to dust-base
 export const DUST_SANDBOX_IMAGE_ID: SandboxImageId = {
   imageName: "dust-base",
-  tag: "production",
+  tag: "v0.2.0",
 };
 
 export function formatSandboxImageId(id: SandboxImageId): string {
