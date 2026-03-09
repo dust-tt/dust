@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:v0.1.1")
+const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:0.2.0")
   .registerTool(
     [
       { name: "git", description: "Version control system" },
@@ -70,6 +70,7 @@ while true; do
   (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
 done
 SHELLEOF`)
+  .runCmd("sudo chmod 755 /home/user/.bin/token-server.sh")
   // Add sentinel file to indicate when mounts are pending.
   .runCmd("sudo touch /files/conversation/.mount-pending")
   .withResources({ vcpu: 2, memoryMb: 2048 })
