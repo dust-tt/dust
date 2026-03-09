@@ -15,12 +15,12 @@ import {
   transformSkillTypeToFormData,
 } from "@app/components/skill_builder/skillFormData";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
-import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
+import { getSkillIcon } from "@app/lib/skill";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -161,14 +161,6 @@ export default function SkillBuilder({
               variant="default"
               className="mx-4"
               title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
-              description={
-                extendedSkill ? (
-                  <ExtendedSkillBadge
-                    extendedSkill={extendedSkill}
-                    className="text-sm"
-                  />
-                ) : undefined
-              }
               rightActions={
                 <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
               }
@@ -176,6 +168,17 @@ export default function SkillBuilder({
 
             <ScrollArea className="flex-1">
               <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+                {extendedSkill && (
+                  <ContentMessage
+                    title={`Built on ${extendedSkill.name}`}
+                    variant="highlight"
+                    icon={getSkillIcon(extendedSkill.icon)}
+                    size="lg"
+                  >
+                    A customized version of {extendedSkill.name} with your own
+                    instructions and preferences.
+                  </ContentMessage>
+                )}
                 {skill?.status === "suggested" && (
                   <ContentMessage
                     title="This is a generated skill suggestion"
@@ -192,7 +195,7 @@ export default function SkillBuilder({
                 <SkillBuilderAgentFacingDescriptionSection />
                 <SkillBuilderInstructionsSection skill={skill} />
                 {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-                <SkillBuilderToolsSection />
+                <SkillBuilderToolsSection extendedSkill={extendedSkill} />
                 <SkillBuilderSettingsSection />
               </div>
             </ScrollArea>
