@@ -52,7 +52,6 @@ export async function getAgentConfigurationsActivity({
     auth,
     agentsGetView: "published",
     variant: "extra_light",
-    dangerouslySkipPermissionFiltering: true,
   });
 
   return agents.filter((a) => a.id > 0).map((a) => a.sId);
