@@ -1,4 +1,3 @@
-import { Checkbox } from "@sparkle/components/Checkbox";
 import { Chip } from "@sparkle/components/Chip";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
@@ -10,11 +9,15 @@ import {
   H5Block,
   H6Block,
 } from "@sparkle/components/markdown/HeadingBlock";
+import { HrBlock } from "@sparkle/components/markdown/HrBlock";
+import { MemoInput } from "@sparkle/components/markdown/InputBlock";
+import { LinkBlock } from "@sparkle/components/markdown/LinkBlock";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { MarkdownStyleContext } from "@sparkle/components/markdown/MarkdownStyleContext";
 import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
 import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+import { StrongBlock } from "@sparkle/components/markdown/StrongBlock";
 import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   TableBlock,
@@ -24,16 +27,12 @@ import {
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
 import {
-  type MarkdownNode,
   preserveLineBreaks,
-  sameNodePosition,
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
-import { cn } from "@sparkle/lib/utils";
-import React, { memo, useMemo } from "react";
+import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
-import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
@@ -41,103 +40,6 @@ import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
 export { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
-
-// Module-level memo'd components that don't need context.
-
-const StrongBlock = memo(
-  ({ children }: { children?: React.ReactNode; node?: MarkdownNode }) => (
-    <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
-      {children}
-    </strong>
-  ),
-  (prev, next) => sameNodePosition(prev.node, next.node)
-);
-StrongBlock.displayName = "StrongBlock";
-
-const HrBlock = memo(
-  (_props: { node?: MarkdownNode }) => (
-    <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
-  ),
-  (prev, next) => sameNodePosition(prev.node, next.node)
-);
-HrBlock.displayName = "HrBlock";
-
-const LinkBlock = memo(
-  ({
-    href,
-    children,
-  }: {
-    href?: string;
-    children: React.ReactNode;
-    node?: MarkdownNode;
-  }) => (
-    <a
-      href={href}
-      title={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
-        "s-text-highlight dark:s-text-highlight-night",
-        "hover:s-text-highlight-400 dark:hover:s-text-highlight-400-night",
-        "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
-      )}
-    >
-      {children}
-    </a>
-  ),
-  (prev, next) =>
-    sameNodePosition(prev.node, next.node) && prev.href === next.href
-);
-LinkBlock.displayName = "LinkBlock";
-
-type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
-  ReactMarkdownProps & {
-    ref?: React.Ref<HTMLInputElement>;
-  };
-
-const MemoInput = memo(
-  ({ type, checked, className, onChange, ref, ...props }: InputProps) => {
-    const inputRef = React.useRef<HTMLInputElement>(null);
-    React.useImperativeHandle(ref, () => inputRef.current!);
-
-    if (type !== "checkbox") {
-      return (
-        <input
-          ref={inputRef}
-          type={type}
-          checked={checked}
-          className={className}
-          {...props}
-        />
-      );
-    }
-
-    const handleCheckedChange = (isChecked: boolean) => {
-      onChange?.({
-        target: { type: "checkbox", checked: isChecked },
-      } as React.ChangeEvent<HTMLInputElement>);
-    };
-
-    return (
-      <div className="s-inline-flex s-items-center">
-        <Checkbox
-          ref={inputRef as unknown as React.Ref<HTMLButtonElement>}
-          size="xs"
-          checked={checked}
-          className="s-translate-y-[3px]"
-          onCheckedChange={handleCheckedChange}
-        />
-      </div>
-    );
-  },
-  (prev, next) =>
-    sameNodePosition(prev.node, next.node) &&
-    prev.type === next.type &&
-    prev.checked === next.checked &&
-    prev.className === next.className
-);
-MemoInput.displayName = "MemoInput";
 
 function showUnsupportedDirective() {
   return (tree: any) => {
@@ -151,17 +53,7 @@ function showUnsupportedDirective() {
   };
 }
 
-export function Markdown({
-  content,
-  isStreaming = false,
-  textColor = "s-text-foreground dark:s-text-foreground-night",
-  forcedTextSize,
-  isLastMessage = false,
-  compactSpacing = false,
-  additionalMarkdownComponents,
-  additionalMarkdownPlugins,
-  canCopyQuotes = true,
-}: {
+interface MarkdownProps {
   content: string;
   isStreaming?: boolean;
   textColor?: string;
@@ -171,7 +63,19 @@ export function Markdown({
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   canCopyQuotes?: boolean;
-}) {
+}
+
+export const Markdown: React.FC<MarkdownProps> = ({
+  content,
+  isStreaming = false,
+  textColor = "s-text-foreground dark:s-text-foreground-night",
+  forcedTextSize,
+  isLastMessage = false,
+  compactSpacing = false,
+  additionalMarkdownComponents,
+  additionalMarkdownPlugins,
+  canCopyQuotes = true,
+}) => {
   const processedContent = useMemo(() => {
     let sanitized = sanitizeContent(content);
     if (compactSpacing) {
@@ -288,4 +192,4 @@ export function Markdown({
       </div>
     );
   }
-}
+};
