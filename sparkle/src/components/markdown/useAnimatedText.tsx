@@ -16,7 +16,6 @@ export function useAnimatedText(
 
   const controlsRef = useRef<ReturnType<typeof animate> | null>(null);
   const streamingStateRef = useRef(streamingState);
-  const hasMultipleChunksRef = useRef(false);
   streamingStateRef.current = streamingState;
 
   // if the new chunks of text have arrived, reset the starting cursor to the current cursor
@@ -65,7 +64,7 @@ export function useAnimatedText(
     }
   }, [streamingState]);
 
-  // Return full text immediately if cancelled or none (and animation is finished)
+  // Return full text immediately if cancelled or none (and animation is finished if streaming before)
   if (
     streamingState === "cancelled" ||
     (streamingState === "none" && disableAnimation)
