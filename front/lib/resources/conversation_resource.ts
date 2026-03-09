@@ -631,6 +631,63 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => c.sId);
   }
 
+  /**
+   * Lists conversations updated since a given date that involve a specific agent.
+   * Returns an array of conversation sIds.
+   */
+  static async listRecentConversationsForAgent(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      updatedSince,
+    }: {
+      agentConfigurationId: string;
+      updatedSince: Date;
+    }
+  ): Promise<string[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Step 1: Get distinct conversation IDs that have messages from this agent.
+    const messagesWithAgent = await MessageModel.findAll({
+      attributes: [
+        [
+          Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+          "conversationId",
+        ],
+      ],
+      where: { workspaceId },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: [],
+          where: { workspaceId, agentConfigurationId },
+        },
+      ],
+      raw: true,
+    });
+
+    if (messagesWithAgent.length === 0) {
+      return [];
+    }
+
+    // Step 2: Filter to conversations updated since the given date.
+    const conversationIds = messagesWithAgent.map((m) => m.conversationId);
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: {
+          id: { [Op.in]: conversationIds },
+          updatedAt: { [Op.gte]: updatedSince },
+        },
+      }
+    );
+
+    return conversations.map((c) => c.sId);
+  }
+
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,

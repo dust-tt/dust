@@ -80,6 +80,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/es_indexation");
     case "workos_events_queue":
       return path.join(baseDir, "temporal/workos_events_queue");
+    case "reinforced_agent":
+      return path.join(baseDir, "temporal/reinforced_agent");
     default:
       return assertNever(workerName);
   }
