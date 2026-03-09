@@ -490,7 +490,7 @@ export async function createAgentConfiguration(
   } else {
     const { canPublish, message } = await canPublishAgent(auth);
     if (!canPublish && scope === "visible" && status === "active") {
-      return new Err(new Error(message!));
+      return new Err(new Error(message ?? "Publishing agents is restricted."));
     }
   }
 
@@ -1613,7 +1613,7 @@ export async function updateAgentConfigurationScope(
     scope === "visible" &&
     agentConfig.status === "active"
   ) {
-    return new Err(new Error(message!));
+    return new Err(new Error(message ?? "Publishing agents is restricted."));
   }
 
   const previousScope = agentConfig.scope;
