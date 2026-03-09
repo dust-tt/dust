@@ -844,7 +844,8 @@ export async function tryListMCPTools(
     clientSideActions:
       agentLoopListToolsContext.clientSideActionConfigurations ?? [],
     skillServers,
-    jitServers,
+    stableJITServers,
+    conditionalJITServers,
   });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
