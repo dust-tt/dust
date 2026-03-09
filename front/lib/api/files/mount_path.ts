@@ -126,7 +126,7 @@ async function resolveConversationMountPath(
   // Check if the desired path is already taken (unique index lookup).
   const existing = await FileModel.findOne({
     attributes: ["id"],
-    where: { mountFilePath: desiredPath },
+    where: { workspaceId: owner.sId, mountFilePath: desiredPath },
   });
 
   const mountFilePath = existing

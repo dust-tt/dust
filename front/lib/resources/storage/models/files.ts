@@ -104,7 +104,7 @@ FileModel.init(
         ],
       },
       {
-        fields: ["mountFilePath"],
+        fields: ["workspaceId", "mountFilePath"],
         unique: true,
         where: { mountFilePath: { [Op.ne]: null } },
       },
