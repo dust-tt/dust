@@ -50,7 +50,6 @@ function getSidekickScenario({
   templateInfo,
   conversationId,
   agentConfigurationId,
-  sidekickEdge,
 }: {
   workspaceId: string;
   isNewAgent: boolean;
@@ -58,7 +57,6 @@ function getSidekickScenario({
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
-  sidekickEdge: boolean;
 }): {
   getFirstMessage: () => Promise<Result<string, Error>>;
   useCase: SidekickUseCase;
@@ -84,11 +82,6 @@ function getSidekickScenario({
     params.set("conversationId", conversationId);
   } else {
     useCase = "new";
-  }
-
-  if (sidekickEdge) {
-    params.set("sidekickEdge", "true");
-  } else if (useCase === "new") {
     return {
       getFirstMessage: () => Promise.resolve(new Ok(NEW_AGENT_FIRST_MESSAGE)),
       useCase,
@@ -111,7 +104,6 @@ export function useSidekickFirstMessage({
   templateInfo,
   conversationId,
   agentConfigurationId,
-  sidekickEdge = false,
 }: {
   owner: WorkspaceType;
   isNewAgent: boolean;
@@ -119,7 +111,6 @@ export function useSidekickFirstMessage({
   templateInfo?: TemplateInfo;
   conversationId?: string;
   agentConfigurationId?: string;
-  sidekickEdge?: boolean;
 }) {
   return useMemo(
     () =>
@@ -130,7 +121,6 @@ export function useSidekickFirstMessage({
         templateInfo,
         conversationId,
         agentConfigurationId,
-        sidekickEdge,
       }),
     [
       owner.sId,
@@ -139,7 +129,6 @@ export function useSidekickFirstMessage({
       templateInfo,
       conversationId,
       agentConfigurationId,
-      sidekickEdge,
     ]
   );
 }

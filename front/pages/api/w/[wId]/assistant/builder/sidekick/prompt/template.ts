@@ -1,4 +1,3 @@
-import { fetchLangfuseFirstMessagePrompt } from "@app/lib/api/assistant/global_agents/langfuse_prompts";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -48,7 +47,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { sidekickEdge } = req.query;
       const template = await TemplateResource.fetchByExternalId(templateId);
 
       if (!template || !template.sidekickInstructions) {
@@ -61,29 +59,7 @@ async function handler(
         });
       }
 
-      if (sidekickEdge !== "true") {
-        return res.status(200).json(buildTemplateAgentInitMessage(template));
-      }
-
-      const result = await fetchLangfuseFirstMessagePrompt(
-        "sidekick-edge-first-message-template",
-        {
-          handle: template.handle,
-          sidekickInstructions: template.sidekickInstructions,
-          agentFacingDescription: template.agentFacingDescription ?? "",
-        }
-      );
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to generate sidekick prompt.",
-          },
-        });
-      }
-
-      return res.status(200).json(result.value);
+      return res.status(200).json(buildTemplateAgentInitMessage(template));
     }
     default:
       return apiError(req, res, {

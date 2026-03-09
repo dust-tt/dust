@@ -3,7 +3,6 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSidekickFirstMessage } from "@app/hooks/useSidekickFirstMessage";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useSearchParam } from "@app/lib/platform";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TemplateInfo } from "@app/types/assistant/templates";
@@ -65,11 +64,6 @@ export const SidekickPanelProvider = ({
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
   const sendNotification = useSendNotification();
-  const sidekickEdgeParam = useSearchParam("sidekickEdge");
-  const isSidekickEdge = sidekickEdgeParam === "true";
-  const sidekickAgentId = isSidekickEdge
-    ? GLOBAL_AGENTS_SID.SIDEKICK_EDGE
-    : GLOBAL_AGENTS_SID.SIDEKICK;
 
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
@@ -85,7 +79,6 @@ export const SidekickPanelProvider = ({
     templateInfo,
     conversationId,
     agentConfigurationId: targetAgentConfigurationId ?? undefined,
-    sidekickEdge: isSidekickEdge,
   });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
@@ -123,7 +116,7 @@ export const SidekickPanelProvider = ({
     const result = await createConversationWithMessage({
       messageData: {
         input: firstMessageResult.value,
-        mentions: [{ configurationId: sidekickAgentId }],
+        mentions: [{ configurationId: GLOBAL_AGENTS_SID.SIDEKICK }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_sidekick",
         clientSideMCPServerIds,
@@ -155,7 +148,6 @@ export const SidekickPanelProvider = ({
     setIsCreatingConversation(false);
   }, [
     clientSideMCPServerIds,
-    sidekickAgentId,
     createConversationWithMessage,
     getFirstMessage,
     useCase,

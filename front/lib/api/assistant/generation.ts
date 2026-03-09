@@ -435,7 +435,6 @@ export function constructPromptMultiActions(
   const hasStaticInstructions =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
     agentConfiguration.sId === GLOBAL_AGENTS_SID.SIDEKICK ||
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.SIDEKICK_EDGE ||
     isDustLikeAgent(agentConfiguration.sId);
 
   const instructionsContent = constructInstructionsSection({
