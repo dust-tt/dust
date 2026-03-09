@@ -562,6 +562,27 @@ export type AshbyJobPostingWorkplaceType = z.infer<
   typeof AshbyJobPostingWorkplaceTypeSchema
 >;
 
+// Tool input schema (as sent by the agent to the update_job_posting tool).
+export const AshbyUpdateJobPostingInputSchema = z.object({
+  jobPostingId: z.string(),
+  title: z.string().optional(),
+  descriptionHtml: z.string().optional(),
+  workplaceType: AshbyJobPostingWorkplaceTypeSchema.optional(),
+  suppressDescriptionOpening: z.boolean().optional(),
+  suppressDescriptionClosing: z.boolean().optional(),
+});
+
+export type AshbyUpdateJobPostingInput = z.infer<
+  typeof AshbyUpdateJobPostingInputSchema
+>;
+
+export function isAshbyUpdateJobPostingInput(
+  input: Record<string, unknown>
+): input is AshbyUpdateJobPostingInput {
+  return AshbyUpdateJobPostingInputSchema.safeParse(input).success;
+}
+
+// API request schema (transformed from tool input).
 export const AshbyJobPostingUpdateRequestSchema = z.object({
   jobPostingId: z.string(),
   title: z.string().optional(),

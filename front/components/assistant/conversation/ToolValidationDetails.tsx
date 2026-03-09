@@ -1,7 +1,13 @@
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { CREATE_REFERRAL_TOOL_NAME } from "@app/lib/api/actions/servers/ashby/metadata";
-import { isAshbyCreateReferralInput } from "@app/lib/api/actions/servers/ashby/types";
+import {
+  CREATE_REFERRAL_TOOL_NAME,
+  UPDATE_JOB_POSTING_TOOL_NAME,
+} from "@app/lib/api/actions/servers/ashby/metadata";
+import {
+  isAshbyCreateReferralInput,
+  isAshbyUpdateJobPostingInput,
+} from "@app/lib/api/actions/servers/ashby/types";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import {
@@ -79,6 +85,15 @@ export function ToolValidationDetails({
     );
   }
 
+  // Custom component for Ashby job posting update.
+  if (
+    blockedAction.metadata.mcpServerName === ASHBY_SERVER_NAME &&
+    blockedAction.metadata.toolName === UPDATE_JOB_POSTING_TOOL_NAME &&
+    isAshbyUpdateJobPostingInput(blockedAction.inputs)
+  ) {
+    return <AshbyJobPostingUpdateDetails {...blockedAction.inputs} />;
+  }
+
   if (displayableInputs.length === 0) {
     return null;
   }
@@ -117,6 +132,67 @@ interface AshbyReferralDetailsProps {
     value: string | number | boolean;
   }>;
   userEmail: string;
+}
+
+interface AshbyJobPostingUpdateDetailsProps {
+  jobPostingId: string;
+  title?: string;
+  descriptionHtml?: string;
+  workplaceType?: string;
+}
+
+function AshbyJobPostingUpdateDetails({
+  jobPostingId,
+  title,
+  descriptionHtml,
+  workplaceType,
+}: AshbyJobPostingUpdateDetailsProps) {
+  const fields: DisplayableInput[] = [
+    { label: "Job Posting ID", value: jobPostingId },
+  ];
+
+  if (title) {
+    fields.push({ label: "New title", value: title });
+  }
+  if (workplaceType) {
+    fields.push({ label: "Workplace type", value: workplaceType });
+  }
+
+  return (
+    <div className="flex flex-col gap-3 pt-2">
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        This will update the job posting on Ashby. Changes are applied
+        immediately and visible to candidates.
+      </p>
+
+      <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
+        {fields.map(({ label, value }) => (
+          <div key={label} className="px-3 py-2">
+            <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+              {label}
+            </div>
+            <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
+              {value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {descriptionHtml && (
+        <Collapsible>
+          <CollapsibleTrigger>
+            <span className="text-sm font-medium">New description</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div
+              className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-sm dark:bg-muted-night"
+              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </div>
+  );
 }
 
 function AshbyReferralDetails({
