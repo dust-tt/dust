@@ -1,30 +1,9 @@
 import type {
-  GitHubSkillDetectionError,
   GitHubSkillDirectory,
   GitHubTreeEntry,
 } from "@app/lib/api/skills/detection/github/types";
 import { findSkillDirectories } from "@app/lib/api/skills/detection/parsing";
 import type { FileEntry } from "@app/lib/api/skills/detection/types";
-import { parseGitHubRepoUrl as parseGitHubRepoUrlShared } from "@app/lib/skill";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-
-/**
- * Wraps the shared parseGitHubRepoUrl with Result error handling for use in
- * the detection pipeline.
- */
-export function parseGitHubRepoUrl(
-  input: string
-): Result<{ owner: string; repo: string }, GitHubSkillDetectionError> {
-  const result = parseGitHubRepoUrlShared(input);
-  if (!result) {
-    return new Err({
-      type: "invalid_url",
-      message: `Invalid GitHub repository identifier: "${input}". Expected "owner/repo".`,
-    });
-  }
-  return new Ok(result);
-}
 
 /**
  * Scans a GitHub tree for directories containing skill.md or SKILL.md.

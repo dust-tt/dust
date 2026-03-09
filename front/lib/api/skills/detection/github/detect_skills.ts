@@ -1,7 +1,4 @@
-import {
-  findGitHubSkillDirectories,
-  parseGitHubRepoUrl,
-} from "@app/lib/api/skills/detection/github/parsing";
+import { findGitHubSkillDirectories } from "@app/lib/api/skills/detection/github/parsing";
 import type {
   GitHubSkillDetectionError,
   GitHubSkillDirectory,
@@ -20,6 +17,7 @@ import type {
   FileEntry,
 } from "@app/lib/api/skills/detection/types";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { parseGitHubRepoUrl } from "@app/lib/skill";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -138,11 +136,14 @@ export async function detectSkillsFromGitHubRepo({
   repoUrl: string;
   accessToken?: string | null;
 }): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
-  const parseResult = parseGitHubRepoUrl(repoUrl);
-  if (parseResult.isErr()) {
-    return parseResult;
+  const parsed = parseGitHubRepoUrl(repoUrl);
+  if (!parsed) {
+    return new Err({
+      type: "invalid_url",
+      message: `Invalid GitHub repository identifier: "${repoUrl}". Expected "owner/repo".`,
+    });
   }
-  const { owner, repo } = parseResult.value;
+  const { owner, repo } = parsed;
 
   const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
 
