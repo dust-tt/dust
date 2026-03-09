@@ -48,9 +48,9 @@ struct AgentMessage: Codable, Identifiable {
     let visibility: String
     let version: Int
     let rank: Int
-    let status: AgentMessageStatus
-    let content: String?
-    let chainOfThought: String?
+    var status: AgentMessageStatus
+    var content: String?
+    var chainOfThought: String?
     let configuration: AgentConfiguration
 
     var id: String {
@@ -64,6 +64,25 @@ struct AgentMessage: Codable, Identifiable {
     var isStreaming: Bool {
         status == .created
     }
+}
+
+// MARK: - Agent streaming state
+
+enum AgentStreamingPhase: Equatable {
+    /// Not streaming (completed, failed, cancelled, or not started)
+    case idle
+    /// Agent is thinking (chain of thought being generated)
+    case thinking
+    /// Agent is executing an action/tool
+    case acting(label: String)
+    /// Agent is generating response tokens
+    case generating
+    /// Agent is waiting for the user to authenticate on a third-party service
+    case personalAuthRequired(provider: String)
+    /// Agent is waiting for the user to grant file access
+    case fileAuthRequired(fileName: String)
+    /// Agent is waiting for the user to approve a tool execution
+    case approvalRequired
 }
 
 enum ConversationMessage: Identifiable {

@@ -106,7 +106,10 @@ struct ConversationDetailView: View {
                             ForEach(viewModel.messages) { message in
                                 MessageBubbleView(
                                     message: message,
-                                    currentUserEmail: currentUserEmail
+                                    currentUserEmail: currentUserEmail,
+                                    streamingPhase: message.id == viewModel.streamingMessageId
+                                        ? viewModel.streamingPhase
+                                        : .idle
                                 )
                                 .id(message.id)
                             }
@@ -114,6 +117,7 @@ struct ConversationDetailView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                     }
+                    .defaultScrollAnchor(.bottom)
                     .onChange(of: viewModel.messages.last?.id) {
                         if let last = viewModel.messages.last {
                             withAnimation {

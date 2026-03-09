@@ -6,6 +6,7 @@ struct MainContainerView: View {
     let onLogout: () -> Void
 
     @StateObject private var viewModel: ConversationListViewModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isDrawerOpen = false
     @State private var selectedConversation: Conversation?
 
@@ -44,6 +45,9 @@ struct MainContainerView: View {
                     onLogout: {
                         isDrawerOpen = false
                         onLogout()
+                    },
+                    onRefresh: {
+                        await viewModel.refresh()
                     }
                 )
             },
@@ -59,6 +63,7 @@ struct MainContainerView: View {
                             currentUserEmail: user.email,
                             onBack: {
                                 selectedConversation = nil
+                                Task { await viewModel.refresh() }
                             }
                         )
                         .id(conversation.sId)
@@ -81,6 +86,11 @@ struct MainContainerView: View {
         )
         .task {
             await viewModel.load()
+        }
+        .onChange(of: scenePhase) {
+            if scenePhase == .active {
+                Task { await viewModel.refresh() }
+            }
         }
     }
 
