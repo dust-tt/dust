@@ -15,7 +15,13 @@ export function getSandboxImageNames(): readonly SandboxImageName[] {
   return SANDBOX_IMAGE_NAMES;
 }
 
-const SANDBOX_IMAGE_TAGS = ["edge", "staging", "production", "v0.1.1"] as const;
+const SANDBOX_IMAGE_TAGS = [
+  "edge",
+  "staging",
+  "production",
+  "v0.1.1",
+  "v0.2.0",
+] as const;
 export type SandboxImageTag = (typeof SANDBOX_IMAGE_TAGS)[number];
 
 export function isValidSandboxImageTag(tag: string): tag is SandboxImageTag {

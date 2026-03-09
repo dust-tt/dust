@@ -75,7 +75,7 @@ SHELLEOF`)
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(ALLOWLIST_NETWORK_POLICY)
   .setWorkdir("/home/user")
-  .register({ imageName: "dust-base", tag: "v0.1.1" });
+  .register({ imageName: "dust-base", tag: "v0.2.0" });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
 
