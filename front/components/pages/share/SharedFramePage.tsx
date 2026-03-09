@@ -7,22 +7,21 @@ import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
 
-function isEmbeddedFromDustBlog(): boolean {
-  if (typeof window === "undefined" || !document.referrer) {
-    return false;
-  }
-  try {
-    const url = new URL(document.referrer);
-    return url.hostname === "dust.tt" && url.pathname.startsWith("/blog/");
-  } catch {
-    return false;
-  }
-}
+// Origins from which the share frame is considered as embedded.
+// We hide the header for embedded origins.
+const EMBEDDED_ORIGINS = ["https://dust.tt/blog/"];
 
 export function SharedFramePage() {
   const token = usePathParam("token");
 
-  const hideHeader = useMemo(() => isEmbeddedFromDustBlog(), []);
+  const hideHeader = useMemo(() => {
+    if (typeof window === "undefined" || !document.referrer) {
+      return false;
+    }
+    return EMBEDDED_ORIGINS.some((origin) =>
+      document.referrer.toLowerCase().startsWith(origin)
+    );
+  }, []);
 
   const { shareMetadata, isShareMetadataLoading, shareMetadataError } =
     useShareFrameMetadata({
