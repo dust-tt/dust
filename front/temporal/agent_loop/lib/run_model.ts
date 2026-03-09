@@ -221,15 +221,14 @@ export async function runModel(
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
     const {
-      stableServers: stableJITServers,
-      conditionalServers: conditionalJITServers,
+      stableJITServers,
+      conditionalJITServers,
     } = await getJITServers(auth, {
       agentConfiguration,
       conversation,
       attachments,
     });
     const hasConditionalJITTools = conditionalJITServers.length > 0;
-    const jitServers = [...stableJITServers, ...conditionalJITServers];
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
@@ -281,7 +280,7 @@ export async function runModel(
           agentMessage,
           clientSideActionConfigurations: clientSideMCPActionConfigurations,
         },
-        { jitServers, skillServers }
+        { stableJITServers, conditionalJITServers, skillServers }
       )
     );
 

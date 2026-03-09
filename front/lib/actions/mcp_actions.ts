@@ -786,19 +786,22 @@ function deduplicateMCPServerConfigurations({
   agentActions,
   clientSideActions,
   skillServers,
-  jitServers,
+  stableJITServers,
+  conditionalJITServers,
 }: {
   agentActions: MCPServerConfigurationType[];
   clientSideActions: MCPServerConfigurationType[];
   skillServers: MCPServerConfigurationType[];
-  jitServers: MCPServerConfigurationType[];
+  stableJITServers: MCPServerConfigurationType[];
+  conditionalJITServers: MCPServerConfigurationType[];
 }): MCPServerConfigurationType[] {
   const seen = new Set<string>();
   return [
     ...agentActions,
     ...clientSideActions,
     ...skillServers,
-    ...jitServers,
+    ...stableJITServers,
+    ...conditionalJITServers,
   ].filter((config) => {
     const viewId = isServerSideMCPServerConfiguration(config)
       ? config.mcpServerViewId
@@ -822,10 +825,12 @@ export async function tryListMCPTools(
   auth: Authenticator,
   agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
   {
-    jitServers,
+    stableJITServers,
+    conditionalJITServers,
     skillServers,
   }: {
-    jitServers: MCPServerConfigurationType[];
+    stableJITServers: MCPServerConfigurationType[];
+    conditionalJITServers: MCPServerConfigurationType[];
     skillServers: MCPServerConfigurationType[];
   }
 ): Promise<{

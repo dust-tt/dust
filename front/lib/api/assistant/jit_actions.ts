@@ -20,7 +20,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 /**
  * Servers whose tool specifications are mostly always added or never added.
  */
-async function getUnconditionalJITServers(
+async function getStableJITServers(
   auth: Authenticator,
   {
     agentConfiguration,
@@ -45,23 +45,6 @@ async function getUnconditionalJITServers(
     conversation
   );
   servers.push(skillManagementServer);
-
-  // Add the three project servers if the conversation belongs to a project.
-
-  const projectSearchServer = await getProjectSearchServer(auth, conversation);
-  servers.push(projectSearchServer);
-
-  const projectManagerServer = await getProjectManagerServer(
-    auth,
-    conversation
-  );
-  servers.push(projectManagerServer);
-
-  const projectConversationServer = await getProjectConversationServer(
-    auth,
-    conversation
-  );
-  servers.push(projectConversationServer);
 
   return removeNulls(servers);
 }
@@ -90,6 +73,23 @@ async function getConditionalJITServers(
     agentConfiguration.sId
   );
   servers.push(...conversationServers);
+
+  // Add the three project servers if the conversation belongs to a project.
+
+  const projectSearchServer = await getProjectSearchServer(auth, conversation);
+  servers.push(projectSearchServer);
+
+  const projectManagerServer = await getProjectManagerServer(
+    auth,
+    conversation
+  );
+  servers.push(projectManagerServer);
+
+  const projectConversationServer = await getProjectConversationServer(
+    auth,
+    conversation
+  );
+  servers.push(projectConversationServer);
 
   // Add the schedules_management server, only applies to the onboarding conversation.
   const schedulesManagementServer = await getSchedulesManagementServer(
@@ -136,11 +136,11 @@ export async function getJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<{
-  stableServers: ServerSideMCPServerConfigurationType[];
-  conditionalServers: ServerSideMCPServerConfigurationType[];
+  stableJITServers: ServerSideMCPServerConfigurationType[];
+  conditionalJITServers: ServerSideMCPServerConfigurationType[];
 }> {
-  const [stableServers, conditionalServers] = await Promise.all([
-    getUnconditionalJITServers(auth, { agentConfiguration, conversation }),
+  const [stableJITServers, conditionalJITServers] = await Promise.all([
+    getStableJITServers(auth, { agentConfiguration, conversation }),
     getConditionalJITServers(auth, {
       agentConfiguration,
       conversation,
@@ -149,7 +149,7 @@ export async function getJITServers(
   ]);
 
   return {
-    stableServers,
-    conditionalServers,
+    stableJITServers,
+    conditionalJITServers,
   };
 }

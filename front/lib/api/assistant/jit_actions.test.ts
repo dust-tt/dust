@@ -19,13 +19,26 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
-async function getAllJITServers(...args: Parameters<typeof getJITServers>) {
-  const { stableServers, conditionalServers } = await getJITServers(...args);
-  return [...stableServers, ...conditionalServers];
+async function getAllJITServers(
+  auth: Authenticator,
+  params: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationWithoutContentType;
+    attachments: ConversationAttachmentType[];
+  }
+) {
+  const { stableJITServers, conditionalJITServers } = await getJITServers(
+    auth,
+    params
+  );
+  return [...stableJITServers, ...conditionalJITServers];
 }
 
 describe("getJITServers", () => {

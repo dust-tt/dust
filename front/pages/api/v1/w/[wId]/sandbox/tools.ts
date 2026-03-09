@@ -93,13 +93,14 @@ async function handler(
 
       const conversation = conversationResult.value;
       const attachments = await listAttachments(auth, { conversation });
-      const { stableServers, conditionalServers } = await getJITServers(auth, {
+
+      const { stableJITServers, conditionalJITServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
       });
-      const jitServers = [...stableServers, ...conditionalServers];
-      for (const srv of jitServers) {
+
+      for (const srv of [...stableJITServers, ...conditionalJITServers]) {
         viewIds.add(srv.mcpServerViewId);
       }
 

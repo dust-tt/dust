@@ -163,12 +163,14 @@ async function handler(
 
       // Build tools list and prompt similar to the agent loop.
       const attachments = await listAttachments(auth, { conversation });
-      const { stableServers, conditionalServers } = await getJITServers(auth, {
-        agentConfiguration,
-        conversation,
-        attachments,
-      });
-      const jitServers = [...stableServers, ...conditionalServers];
+      const { stableJITServers, conditionalJITServers } = await getJITServers(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+          attachments,
+        }
+      );
 
       const { enabledSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
@@ -228,7 +230,8 @@ async function handler(
           clientSideActionConfigurations: clientSideMCPActionConfigurations,
         },
         {
-          jitServers,
+          stableJITServers,
+          conditionalJITServers,
           skillServers,
         }
       );
