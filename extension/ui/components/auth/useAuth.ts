@@ -99,9 +99,11 @@ export const useAuthHook = () => {
     const newAccessToken = await platform.auth.getAccessToken(true);
     if (!newAccessToken) {
       setAuthError(
-        new AuthError("not_authenticated", "No access token received.")
+        new AuthError(
+          "not_authenticated",
+          "Session expired. Please sign in again."
+        )
       );
-      log("Refresh token: No access token received.");
       setIsLoading(false);
       return;
     }

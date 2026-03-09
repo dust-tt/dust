@@ -628,7 +628,7 @@ const refreshToken = async (
         });
       });
     } catch (error) {
-      log("Token refresh failed: unknown error", error);
+      log("Token refresh failed", error);
       const handlers = state.refreshRequests;
       state.refreshRequests = [];
       handlers.forEach((sendResponse) => {
@@ -693,39 +693,47 @@ const logout = async (
     response: AuthBackgroundResponseSuccess | AuthBackgroundResponseError
   ) => void
 ) => {
-  const redirectUri = chrome.identity.getRedirectURL();
-  const queryParams: Record<string, string> = {
-    returnTo: redirectUri,
-  };
-  // We need to get the session to log out the user from WorkOS.
   const accessToken = await platform.auth.getAccessToken();
-  if (accessToken) {
-    const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
-    if (decodedPayload) {
-      queryParams.session_id = decodedPayload.sid || "";
-    }
-  } else {
+  if (!accessToken) {
     log("No access token found for WorkOS logout.");
     sendResponse({ success: false, error: "No access token found." });
     return;
   }
 
-  const logoutUrl = `${DUST_US_URL}/api/workos/logout-url?${new URLSearchParams(
-    queryParams
-  )}`;
+  const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+  const sessionId = decodedPayload?.sid;
+  if (!sessionId) {
+    log("No session ID found in access token.");
+    sendResponse({ success: false, error: "No session ID found." });
+    return;
+  }
 
-  chrome.identity.launchWebAuthFlow(
-    { url: logoutUrl, interactive: false },
-    () => {
-      if (chrome.runtime.lastError) {
-        log("Logout failed:", chrome.runtime.lastError.message);
-        sendResponse({
-          success: false,
-          error: `Logout failed: ${chrome.runtime.lastError.message}`,
-        });
-      } else {
-        sendResponse({ success: true });
-      }
+  try {
+    const response = await fetch(`${DUST_US_URL}/api/workos/revoke-session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      credentials: "omit",
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+
+    if (!response.ok) {
+      log("Revoke session failed:", response.status);
+      sendResponse({
+        success: false,
+        error: `Revoke session failed: ${response.status}`,
+      });
+      return;
     }
-  );
+
+    sendResponse({ success: true });
+  } catch (error) {
+    log("Revoke session failed:", error);
+    sendResponse({
+      success: false,
+      error: `Revoke session failed: ${error}`,
+    });
+  }
 };

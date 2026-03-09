@@ -18,7 +18,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
-import { GenericServerException } from "@workos-inc/node";
+import { GenericServerException, OauthException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -45,8 +45,8 @@ export default async function handler(
       return handleAuthenticate(req, res);
     case "logout":
       return handleLogout(req, res);
-    case "logout-url":
-      return handleLogoutUrl(req, res);
+    case "revoke-session":
+      return handleRevokeSession(req, res);
     default:
       return res.status(400).json({ error: "Invalid action" });
   }
@@ -143,12 +143,17 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   const { code, grant_type, refresh_token, code_verifier } = req.body;
 
   if (grant_type && !isString(grant_type)) {
-    return res.status(400).json({ error: "Invalid grant_type" });
+    return res
+      .status(400)
+      .json({ error: "Invalid grant_type", type: "invalid_request_error" });
   }
 
   if (grant_type === "refresh_token") {
     if (!refresh_token || !isString(refresh_token)) {
-      return res.status(400).json({ error: "Invalid refresh token" });
+      return res.status(400).json({
+        error: "Invalid refresh token",
+        type: "invalid_request_error",
+      });
     }
     try {
       const result =
@@ -158,8 +163,17 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
         });
       return res.status(200).json(result);
     } catch (error) {
-      logger.error({ error }, "Error during WorkOS token refresh");
-      return res.status(500).json({ error: "Authentication failed" });
+      if (error instanceof OauthException) {
+        return res
+          .status(error.status)
+          .json({ error: error.errorDescription, type: error.error });
+      } else {
+        logger.error({ error }, "Error during WorkOS token refresh");
+        return res.status(500).json({
+          error: "Authentication failed",
+          type: "internal_server_error",
+        });
+      }
     }
   }
 
@@ -185,8 +199,17 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
 
     return res.status(200).json({ ...authResult, expiresIn });
   } catch (error) {
-    logger.error({ error }, "Error during WorkOS authentication");
-    return res.status(500).json({ error: "Authentication failed" });
+    if (error instanceof OauthException) {
+      return res
+        .status(error.status)
+        .json({ error: error.errorDescription, type: error.error });
+    } else {
+      logger.error({ error }, "Error during WorkOS authentication");
+      return res.status(500).json({
+        error: "Authentication failed",
+        type: "internal_server_error",
+      });
+    }
   }
 }
 
@@ -483,18 +506,31 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   redirectTo(res, sanitizedReturnTo);
 }
 
-async function handleLogoutUrl(req: NextApiRequest, res: NextApiResponse) {
-  const { session_id, returnTo } = req.query;
+/**
+ * Revoke a specific WorkOS session via API (same as handleLogout but accepts
+ * session_id from request body instead of reading from cookie).
+ * Used by the Chrome extension which authenticates with Bearer tokens.
+ */
+async function handleRevokeSession(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const { session_id } = req.body;
 
   if (!session_id || !isString(session_id)) {
     return res.status(400).json({ error: "Invalid session_id" });
   }
-  const logoutUrl = getWorkOS().userManagement.getLogoutUrl({
-    sessionId: session_id,
-    returnTo: isString(returnTo) ? returnTo : undefined,
-  });
 
-  return res.redirect(logoutUrl);
+  try {
+    await getWorkOS().userManagement.revokeSession({
+      sessionId: session_id,
+    });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error({ error }, "Error during WorkOS session revocation");
+    return res.status(500).json({ error: "Session revocation failed" });
+  }
 }
 
 function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
