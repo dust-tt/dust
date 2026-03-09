@@ -43,6 +43,7 @@ import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resou
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -706,6 +707,7 @@ export async function deleteWorkspaceActivity({
     where: { workspaceId: workspace.id },
   });
   await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
+  await ProviderCredentialResource.deleteAllForWorkspace(auth);
   await DustAppSecretModel.destroy({
     where: {
       workspaceId: workspace.id,
