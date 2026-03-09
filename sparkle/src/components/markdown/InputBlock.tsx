@@ -8,7 +8,7 @@ type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
     ref?: React.Ref<HTMLInputElement>;
   };
 
-export const MemoInput = memo(
+export const InputBlock = memo(
   ({ type, checked, className, onChange, ref, ...props }: InputProps) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
     React.useImperativeHandle(ref, () => inputRef.current!);
@@ -49,4 +49,4 @@ export const MemoInput = memo(
     prev.checked === next.checked &&
     prev.className === next.className
 );
-MemoInput.displayName = "MemoInput";
+InputBlock.displayName = "InputBlock";

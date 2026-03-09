@@ -10,7 +10,7 @@ import {
   H6Block,
 } from "@sparkle/components/markdown/HeadingBlock";
 import { HrBlock } from "@sparkle/components/markdown/HrBlock";
-import { MemoInput } from "@sparkle/components/markdown/InputBlock";
+import { InputBlock } from "@sparkle/components/markdown/InputBlock";
 import { LinkBlock } from "@sparkle/components/markdown/LinkBlock";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
@@ -126,7 +126,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
       th: TableHeaderBlock,
       td: TableDataBlock,
       strong: StrongBlock,
-      input: MemoInput,
+      input: InputBlock,
       blockquote: BlockquoteBlock,
       hr: HrBlock,
       code: CodeBlockWithExtendedSupport,
