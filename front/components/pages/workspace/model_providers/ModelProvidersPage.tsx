@@ -1,4 +1,5 @@
 import { AllProvidersToggle } from "@app/components/pages/workspace/model_providers/AllProvidersToggle";
+import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_providers/EmbeddingModelSelect";
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspace as useWorkspaceDetails } from "@app/lib/swr/workspaces";
@@ -22,6 +23,7 @@ export function ModelProvidersPage() {
           providersSelection={providersSelection}
           setProvidersSelection={setProvidersSelection}
         />
+        <EmbeddingModelSelect workspace={workspace} />
       </Page.Vertical>
     </Page.Vertical>
   );
