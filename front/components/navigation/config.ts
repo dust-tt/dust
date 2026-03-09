@@ -73,6 +73,7 @@ export type SubNavigationAssistantsId =
 export type SubNavigationAdminId =
   | "subscription"
   | "workspace"
+  | "model_providers"
   | "members"
   | "providers"
   | "api_keys"
@@ -83,6 +84,7 @@ export type SubNavigationAdminId =
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   workspace: ["/w/[wId]/workspace"],
+  model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   subscription: ["/w/[wId]/subscription"],
   api_keys: ["/w/[wId]/developers/api-keys"],
@@ -189,6 +191,7 @@ export const getTopNavigationTabs = (
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
           "/w/[wId]/workspace",
+          "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
           "/w/[wId]/analytics",
           "/w/[wId]/actions",
@@ -241,6 +244,13 @@ export const subNavigationAdmin = ({
           icon: GlobeAltIcon,
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
+        },
+        {
+          id: "model_providers",
+          label: "Model Providers",
+          icon: GlobeAltIcon,
+          href: `/w/${owner.sId}/model-providers`,
+          current: isCurrent("model_providers"),
         },
         {
           id: "analytics",
