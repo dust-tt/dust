@@ -161,9 +161,10 @@ export function Markdown({
     [additionalMarkdownPlugins]
   );
 
-  const rehypePlugins = [
-    [safeRehypeKatex, { output: "mathml" }],
-  ] as PluggableList;
+  const rehypePlugins = useMemo(
+    () => [[safeRehypeKatex, { output: "mathml" }]] as PluggableList,
+    []
+  );
 
   try {
     return (
