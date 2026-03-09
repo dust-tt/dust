@@ -951,7 +951,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     // Extract the unprefixed tool name from the function call name (e.g. "server__tool" -> "tool").
     const toolName =
       this.toolConfiguration.originalName ??
-      this.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+      this.functionCallName.split(TOOL_NAME_SEPARATOR).at(-1) ??
       this.functionCallName;
     const mcpServerId = this.metadata.mcpServerId ?? null;
 
