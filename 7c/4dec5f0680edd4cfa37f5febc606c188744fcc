@@ -1,0 +1,25 @@
+front/admin/db.ts
+  25535915742eb8fe 50,158
+front/scripts/toggle_byok_plan.ts
+  25535915742eb8fe 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "7c4dec5f0680edd4cfa37f5febc606c188744fcc",
+  "prompts": {
+    "25535915742eb8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b80c8bc-f069-4722-8a33-de2f040c21f5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon <ap@dust.tt>",
+      "messages": [],
+      "total_additions": 171,
+      "total_deletions": 113,
+      "accepted_lines": 126,
+      "overriden_lines": 0
+    }
+  }
+}
