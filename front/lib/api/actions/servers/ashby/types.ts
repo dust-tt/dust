@@ -565,6 +565,7 @@ export type AshbyJobPostingWorkplaceType = z.infer<
 // Tool input schema (as sent by the agent to the update_job_posting tool).
 export const AshbyUpdateJobPostingInputSchema = z.object({
   jobPostingId: z.string(),
+  jobId: z.string(),
   title: z.string().optional(),
   descriptionHtml: z.string().optional(),
   workplaceType: AshbyJobPostingWorkplaceTypeSchema.optional(),

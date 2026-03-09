@@ -154,6 +154,9 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       "set both suppressDescriptionOpening and suppressDescriptionClosing to true.",
     schema: {
       jobPostingId: z.string().describe("The ID of the job posting to update."),
+      jobId: z
+        .string()
+        .describe("The ID of the parent job for this posting."),
       title: z.string().optional().describe("A new title for the job posting."),
       descriptionHtml: z
         .string()

@@ -138,6 +138,7 @@ interface AshbyReferralDetailsProps {
 
 interface AshbyJobPostingUpdateDetailsProps {
   jobPostingId: string;
+  jobId: string;
   title?: string;
   descriptionHtml?: string;
   workplaceType?: string;
@@ -145,11 +146,12 @@ interface AshbyJobPostingUpdateDetailsProps {
 
 function AshbyJobPostingUpdateDetails({
   jobPostingId,
+  jobId,
   title,
   descriptionHtml,
   workplaceType,
 }: AshbyJobPostingUpdateDetailsProps) {
-  const jobPostingUrl = `https://app.ashbyhq.com/jobs/${jobPostingId}`;
+  const jobPostingUrl = `https://app.ashbyhq.com/jobs/${jobId}/job-postings/${jobPostingId}/description`;
 
   const fields: DisplayableInput[] = [];
 
