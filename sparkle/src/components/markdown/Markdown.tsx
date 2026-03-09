@@ -55,7 +55,7 @@ function showUnsupportedDirective() {
 export function Markdown({
   content,
   isStreaming = false,
-  textColor,
+  textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
   compactSpacing = false,
