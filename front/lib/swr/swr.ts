@@ -1,10 +1,6 @@
 export { FetcherProvider, useFetcher } from "@app/lib/swr/FetcherContext";
 
-import { COMMIT_HASH } from "@app/lib/commit-hash";
-import { clientFetch } from "@app/lib/egress/client";
-import datadogLogger from "@app/logger/datadogLogger";
 import { isAPIErrorResponse } from "@app/types/error";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type {
@@ -20,6 +16,7 @@ import type {
   SWRInfiniteKeyLoader,
 } from "swr/infinite";
 import useSWRInfinite from "swr/infinite";
+
 const EMPTY_ARRAY = Object.freeze([]);
 
 // Returns a frozen constant empty array of the required type- use to avoid creating new arrays
@@ -136,71 +133,6 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
   return useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
 }
-
-const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
-  ...headers,
-  "X-Commit-Hash": COMMIT_HASH,
-});
-
-const resHandler = async (res: Response, url: string | URL | Request) => {
-  if (res.status >= 300) {
-    const errorText = await res.text();
-    datadogLogger.error(
-      {
-        url,
-        statusCode: res.status,
-        errorText:
-          errorText.length > 1000 ? errorText.substring(0, 1000) : errorText,
-      },
-      "Error returned by the front API"
-    );
-
-    const parseRes = safeParseJSON(errorText);
-    if (parseRes.isOk()) {
-      if (isAPIErrorResponse(parseRes.value)) {
-        throw parseRes.value;
-      }
-    }
-
-    throw new Error(errorText);
-  }
-  return res.json();
-};
-
-export const fetcher = async (...args: Parameters<typeof fetch>) => {
-  const [url, config] = args;
-  const res = await clientFetch(url, {
-    ...config,
-    headers: addCommitHashToHeaders(config?.headers),
-  });
-  return resHandler(res, url);
-};
-
-export const fetcherWithBody = async ([url, body, method]: [
-  string,
-  object,
-  string,
-]) => {
-  const res = await clientFetch(url, {
-    method,
-    headers: addCommitHashToHeaders({
-      "Content-Type": "application/json",
-    }),
-    body: JSON.stringify(body),
-  });
-
-  return resHandler(res, url);
-};
-
-type UrlsAndOptions = { url: string; options: RequestInit };
-
-export const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
-  const f = async (url: string, options: RequestInit) => fetcher(url, options);
-
-  return Promise.all<T>(
-    urlsAndOptions.map(({ url, options }) => f(url, options))
-  );
-};
 
 export const appendPaginationParams = (
   params: URLSearchParams,

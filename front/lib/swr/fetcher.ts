@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { BUILD_DATE, COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientFetch } from "@app/lib/egress/client";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
+import datadogLogger from "@app/logger/datadogLogger";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
@@ -33,11 +34,14 @@ const resHandler = async (res: Response) => {
 
   if (res.status >= 300) {
     const errorText = await res.text();
-    console.error(
-      "Error returned by the front API: ",
-      res.status,
-      res.headers,
-      errorText
+    datadogLogger.error(
+      {
+        url: res.url,
+        statusCode: res.status,
+        errorText:
+          errorText.length > 1000 ? errorText.substring(0, 1000) : errorText,
+      },
+      "Error returned by the front API"
     );
 
     const parseRes = safeParseJSON(errorText);
