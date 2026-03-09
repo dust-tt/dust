@@ -16,7 +16,7 @@ COMMENT ON COLUMN "agent_suggestions"."agentConfigurationVersion" IS 'Version of
 COMMENT ON COLUMN "agent_suggestions"."kind" IS 'Discriminator for the suggestion type: instructions, tools, skills, model';
 COMMENT ON COLUMN "agent_suggestions"."suggestion" IS 'JSONB payload containing the suggestion details, structure depends on kind';
 COMMENT ON COLUMN "agent_suggestions"."analysis" IS 'Optional analysis/reasoning explaining why this suggestion was made';
-COMMENT ON COLUMN "agent_suggestions"."source" IS 'Origin of the suggestion such as reinforcement or sidekick';
+COMMENT ON COLUMN "agent_suggestions"."source" IS 'Origin of the suggestion such as reinforcement or copilot';
 COMMENT ON COLUMN "agent_suggestions"."state" IS 'Current state of the suggestion (e.g., pending, accepted, rejected...)';
 COMMENT ON TABLE "agent_suggestions" IS 'AI-generated suggestions to improve agent configurations.';
 CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config" ON "agent_suggestions" ("workspaceId", "agentConfigurationId");
