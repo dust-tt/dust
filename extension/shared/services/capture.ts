@@ -1,5 +1,4 @@
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
 
 export type CaptureOperationId = "capture-page-content" | "capture-screenshot";
 
@@ -22,19 +21,4 @@ export interface CaptureService {
     id: CaptureOperationId,
     options: CaptureOptions
   ): Promise<Result<TabContent, Error>>;
-}
-
-// Mock capture service that provides no-op implementations when the real service is not available.
-export function createMockCaptureService(): CaptureService {
-  return {
-    handleOperation: async () => {
-      return new Ok<TabContent>({
-        title: "",
-        url: "",
-        content: "",
-        captures: [],
-      });
-    },
-    isOperationSupported: () => false,
-  };
 }

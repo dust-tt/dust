@@ -22,7 +22,6 @@ import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
-import { isChromeExtension } from "@app/lib/utils/extension";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -610,8 +609,6 @@ const InputBarContainer = ({
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const displayCaptureActionsDropdown = captureActions && isChromeExtension();
-
   return (
     <div
       id="InputBarContainer"
@@ -750,38 +747,37 @@ const InputBarContainer = ({
                     className="flex sm:hidden"
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {actions.includes("attachment") &&
-                    !displayCaptureActionsDropdown && (
-                      <>
-                        <input
-                          accept={getSupportedFileExtensions().join(",")}
-                          onChange={async (e) => {
-                            await fileUploaderService.handleFileChange(e);
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = "";
-                            }
-                            editorService.focusEnd();
-                          }}
-                          ref={fileInputRef}
-                          style={{ display: "none" }}
-                          type="file"
-                          multiple={true}
-                        />
-                        <InputBarAttachmentsPicker
-                          fileUploaderService={fileUploaderService}
-                          owner={owner}
-                          isLoading={false}
-                          onNodeSelect={onNodeSelect}
-                          onNodeUnselect={onNodeUnselect}
-                          attachedNodes={attachedNodes}
-                          disabled={disableInput}
-                          buttonSize={buttonSize}
-                          conversation={conversation}
-                          space={space}
-                          type="dropdown"
-                        />
-                      </>
-                    )}
+                  {actions.includes("attachment") && !captureActions && (
+                    <>
+                      <input
+                        accept={getSupportedFileExtensions().join(",")}
+                        onChange={async (e) => {
+                          await fileUploaderService.handleFileChange(e);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                          }
+                          editorService.focusEnd();
+                        }}
+                        ref={fileInputRef}
+                        style={{ display: "none" }}
+                        type="file"
+                        multiple={true}
+                      />
+                      <InputBarAttachmentsPicker
+                        fileUploaderService={fileUploaderService}
+                        owner={owner}
+                        isLoading={false}
+                        onNodeSelect={onNodeSelect}
+                        onNodeUnselect={onNodeUnselect}
+                        attachedNodes={attachedNodes}
+                        disabled={disableInput}
+                        buttonSize={buttonSize}
+                        conversation={conversation}
+                        space={space}
+                        type="dropdown"
+                      />
+                    </>
+                  )}
                   {actions.includes("capabilities") && (
                     <CapabilitiesPicker
                       owner={owner}
@@ -827,7 +823,7 @@ const InputBarContainer = ({
                       showStopLabel={!isMobile}
                     />
                   )}
-                {displayCaptureActionsDropdown && (
+                {captureActions && (
                   <DropdownMenu
                     open={isCaptureDropdownOpen}
                     onOpenChange={setIsCaptureDropdownOpen}

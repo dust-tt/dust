@@ -1,15 +1,46 @@
-import { ChromeCaptureActions } from "@extension/platforms/chrome/components/ChromeCaptureActions";
-import { ChromeCorePlatformService } from "@extension/platforms/chrome/services/core_platform";
+import { ChromeAuthService } from "@extension/platforms/chrome/services/auth";
+import { ChromeBrowserMessagingService } from "@extension/platforms/chrome/services/browser_messaging";
+import { ChromeCaptureService } from "@extension/platforms/chrome/services/capture";
+import { ChromeMcpService } from "@extension/platforms/chrome/services/mcp";
+import { ChromeStorageService } from "@extension/platforms/chrome/services/storage";
+import { PlatformService } from "@extension/shared/services/platform";
 
-// This class extends the ChromeCorePlatformService to include UI-specific functionality.
-// It provides methods that return React components, such as getCaptureActionsComponent,
-// which is used exclusively in the React UI context, not in the service worker.
-export class ChromePlatformService extends ChromeCorePlatformService {
-  getCaptureActionsComponent() {
-    return ChromeCaptureActions;
+export interface PendingUpdate {
+  detectedAt: number;
+  version: string;
+}
+
+export class ChromePlatformService extends PlatformService {
+  constructor() {
+    const messaging = new ChromeBrowserMessagingService();
+    const captureService = new ChromeCaptureService();
+    const mcpService = new ChromeMcpService();
+    mcpService.setCaptureService(captureService);
+
+    super(
+      "chrome",
+      ChromeAuthService,
+      new ChromeStorageService(),
+      captureService,
+      messaging,
+      mcpService
+    );
   }
 
-  getSendWithActionsLabel() {
-    return "Add page text + Send";
+  // Chrome specific helpers.
+
+  // Store version for force update.
+  async savePendingUpdate(
+    pendingUpdate: PendingUpdate
+  ): Promise<PendingUpdate> {
+    await this.storage.set("pendingUpdate", pendingUpdate);
+
+    return pendingUpdate;
+  }
+
+  async getPendingUpdate(): Promise<PendingUpdate | null> {
+    const result = await this.storage.get<PendingUpdate>("pendingUpdate");
+
+    return result ?? null;
   }
 }

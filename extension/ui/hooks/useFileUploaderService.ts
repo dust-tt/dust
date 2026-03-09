@@ -14,7 +14,7 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
 };
 
 export function useFileUploaderService(
-  captureService: CaptureService,
+  captureService: CaptureService | undefined,
   conversationId: string | null
 ) {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -65,6 +65,10 @@ export function useFileUploaderService(
       includeSelectionOnly,
       includeCapture,
     }: CaptureOptions) => {
+      if (!captureService) {
+        return;
+      }
+
       setIsCapturing(includeCapture ?? false);
 
       try {
@@ -171,7 +175,7 @@ export function useFileUploaderService(
       }
     },
     [
-      captureService.handleOperation,
+      captureService,
       fileBlobs.map,
       findAvailableTitle,
       handleFilesUpload,

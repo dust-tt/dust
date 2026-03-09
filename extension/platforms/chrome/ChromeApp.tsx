@@ -4,6 +4,7 @@ import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { SparkleContext } from "@dust-tt/sparkle";
 import { ChromeExtensionWrapper } from "@extension/platforms/chrome/ChromeExtensionWrapper";
 import { PortProvider } from "@extension/platforms/chrome/context/PortContext";
+import { useCaptureActions } from "@extension/platforms/chrome/hooks/useCaptureActions";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { PlatformProvider } from "@extension/shared/context/PlatformContext";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
@@ -14,6 +15,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 export const ChromeApp = () => {
   const platformService = new ChromePlatformService();
+  platformService.useCaptureActions = useCaptureActions;
   const router = createBrowserRouter(routes);
 
   return (
