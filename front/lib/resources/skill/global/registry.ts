@@ -143,6 +143,16 @@ export class GlobalSkillsRegistry {
             return false; // Global skills are always active.
           }
 
+          // Global skills are default discoverable except if they are auto enabled,
+          // in which case discoverability does not really haved a meaning.
+          if (where.isDefault !== undefined) {
+            const isDefault =
+              !("isAutoEnabled" in skill) || !skill.isAutoEnabled;
+            if (isDefault !== where.isDefault) {
+              return false;
+            }
+          }
+
           return true;
         })
       : [...GLOBAL_SKILLS_ARRAY];
