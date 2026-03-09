@@ -17,7 +17,7 @@ import type {
   FileEntry,
 } from "@app/lib/api/skills/detection/types";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { parseGitHubRepoUrl } from "@app/lib/skill";
+import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";

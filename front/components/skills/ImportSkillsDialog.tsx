@@ -2,7 +2,7 @@ import {
   type DetectedSkillStatus,
   isImportableSkillStatus,
   parseGitHubRepoUrl,
-} from "@app/lib/skill";
+} from "@app/lib/skill_detection";
 import {
   useDetectSkillsFromRepo,
   useImportSkills,

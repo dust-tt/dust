@@ -15,26 +15,27 @@ export function findGitHubSkillDirectories(tree: GitHubTreeEntry[]): {
   fileEntries: FileEntry[];
 } {
   const shaByPath = new Map<string, string>();
+  const fileEntries: FileEntry[] = [];
   for (const entry of tree) {
     if (entry.type === "blob") {
       shaByPath.set(entry.path, entry.sha);
+      fileEntries.push({
+        path: entry.path,
+        isFile: true,
+        sizeBytes: entry.size ?? 0,
+      });
     }
   }
 
-  const fileEntries: FileEntry[] = tree
-    .filter((e) => e.type === "blob")
-    .map((e) => ({
-      path: e.path,
-      isFile: true,
-      sizeBytes: e.size ?? 0,
-    }));
-
   const baseDirs = findSkillDirectories(fileEntries);
 
-  const skillDirs = baseDirs.map((dir) => ({
-    ...dir,
-    skillMdSha: shaByPath.get(dir.skillMdPath) ?? "",
-  }));
+  const skillDirs: GitHubSkillDirectory[] = [];
+  for (const dir of baseDirs) {
+    const sha = shaByPath.get(dir.skillMdPath);
+    if (sha) {
+      skillDirs.push({ ...dir, skillMdSha: sha });
+    }
+  }
 
   return { skillDirs, fileEntries };
 }

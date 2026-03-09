@@ -1,7 +1,7 @@
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { DetectedSkillSummary } from "@app/lib/skill";
+import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   emptyArray,
   getErrorFromResponse,
