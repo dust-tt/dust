@@ -4,10 +4,10 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { MAX_TOOL_CALL_ROUNDS } from "@app/tests/sidekick-evals/lib/config";
 import { getMockToolResponse } from "@app/tests/sidekick-evals/lib/mock-responses";
 import {
-  type CopilotConfig,
-  type CopilotExecutionResult,
   isTestCaseWithConversation,
   type MockAgentState,
+  type SidekickConfig,
+  type SidekickExecutionResult,
   type TestCase,
   type ToolCall,
 } from "@app/tests/sidekick-evals/lib/types";
@@ -17,12 +17,12 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 
-export async function executeCopilot(
+export async function executeSidekick(
   auth: Authenticator,
-  config: CopilotConfig,
+  config: SidekickConfig,
   testCase: TestCase,
   agentState: MockAgentState
-): Promise<CopilotExecutionResult> {
+): Promise<SidekickExecutionResult> {
   const llm = await getLLM(auth, {
     modelId: config.model.modelId,
     temperature: config.model.temperature ?? null,
@@ -31,7 +31,7 @@ export async function executeCopilot(
   });
 
   if (!llm) {
-    throw new Error("Failed to initialize LLM for copilot execution");
+    throw new Error("Failed to initialize LLM for sidekick execution");
   }
 
   // Build initial messages from either a single user message or a conversation history.
@@ -117,7 +117,7 @@ export async function executeCopilot(
           });
           break;
         case "error":
-          throw new Error(`Copilot LLM error: ${event.content.message}`);
+          throw new Error(`Sidekick LLM error: ${event.content.message}`);
       }
     }
 

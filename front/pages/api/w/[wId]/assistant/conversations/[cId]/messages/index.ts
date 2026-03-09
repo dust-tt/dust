@@ -1,5 +1,5 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { isCopilotConversation } from "@app/lib/api/actions/servers/helpers";
+import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -200,8 +200,8 @@ async function handler(
       // then default to "web".
       const origin =
         context.origin ??
-        (isCopilotConversation(conversation.metadata)
-          ? "agent_copilot"
+        (isSidekickConversation(conversation.metadata)
+          ? "agent_sidekick"
           : "web");
 
       const messageRes = await postUserMessage(auth, {

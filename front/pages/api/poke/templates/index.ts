@@ -112,7 +112,7 @@ async function handler(
         handle: body.handle,
         helpActions: body.helpActions ?? null,
         helpInstructions: body.helpInstructions ?? null,
-        copilotInstructions: body.copilotInstructions ?? null,
+        sidekickInstructions: body.sidekickInstructions ?? null,
         presetActions: body.presetActions,
         presetDescription: null,
         presetInstructions: body.presetInstructions ?? null,

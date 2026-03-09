@@ -90,7 +90,7 @@ import {
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 import {
   getRandomAgents,
-  mockCopilotConversationItems,
+  mockSidekickConversationItems,
   mockInstructionCases,
   mockSpaces,
   mockSuggestionChanges,
@@ -465,7 +465,7 @@ export function AgentBuilderView({
   const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
   const wasRightPanelOpen = useRef(isRightPanelOpen);
 
-  const copilotConversationItems = useMemo(() => {
+  const sidekickConversationItems = useMemo(() => {
     if (template) {
       return [
         {
@@ -477,7 +477,7 @@ export function AgentBuilderView({
         },
       ];
     }
-    return mockCopilotConversationItems;
+    return mockSidekickConversationItems;
   }, [template, displayName]);
 
   const initialInstruction = useMemo(() => {
@@ -636,7 +636,7 @@ export function AgentBuilderView({
     });
   };
 
-  const handleAskCopilot = (payload: {
+  const handleAskSidekick = (payload: {
     selectedText: string;
     start: number;
     end: number;
@@ -647,8 +647,8 @@ export function AgentBuilderView({
       start: payload.start,
       end: payload.end,
     });
-    // The selected text can be used to pre-fill the copilot input or as context
-    console.log("Ask Copilot with selected text:", payload.selectedText);
+    // The selected text can be used to pre-fill the sidekick input or as context
+    console.log("Ask Sidekick with selected text:", payload.selectedText);
   };
 
   const checkForSuggestions = () => {
@@ -797,7 +797,7 @@ export function AgentBuilderView({
                     <RichTextArea
                       ref={richTextAreaRef}
                       placeholder="Write instructions for your agent..."
-                      onAskCopilot={handleAskCopilot}
+                      onAskSidekick={handleAskSidekick}
                       onSuggestionsChange={setHasSuggestionsState}
                       onTextChange={handleInstructionTextChange}
                       scrollContainer={scrollContainer}
@@ -1328,9 +1328,9 @@ export function AgentBuilderView({
                         };
 
                         const lastMessageId =
-                          copilotConversationItems.length > 0
-                            ? copilotConversationItems[
-                                copilotConversationItems.length - 1
+                          sidekickConversationItems.length > 0
+                            ? sidekickConversationItems[
+                                sidekickConversationItems.length - 1
                               ].id
                             : null;
 
@@ -1339,7 +1339,7 @@ export function AgentBuilderView({
                         let currentGroupType: "agent" | "locutor" | null = null;
                         let currentGroupName: string | undefined;
                         let currentGroupTimestamp: string | undefined;
-                        let currentGroupMessages: typeof copilotConversationItems =
+                        let currentGroupMessages: typeof sidekickConversationItems =
                           [];
 
                         const flushGroup = () => {
@@ -1392,7 +1392,7 @@ export function AgentBuilderView({
                           currentGroupMessages = [];
                         };
 
-                        copilotConversationItems.forEach((item) => {
+                        sidekickConversationItems.forEach((item) => {
                           const groupKey = `${item.type}-${item.name}`;
                           if (currentGroupKey !== groupKey) {
                             flushGroup();

@@ -179,9 +179,9 @@ makeScript({}, async ({ execute }, logger) => {
   const conversationSIds = conversations.map((c) => c.sId);
   await seedAnalytics(ctx, conversationSIds);
 
-  // 8. Create templates (with copilotInstructions)
+  // 8. Create templates (with sidekickInstructions)
   logger.info("Seeding templates...");
   await seedTemplates(ctx, templates);
 
-  logger.info("Copilot seed completed");
+  logger.info("Sidekick seed completed");
 });

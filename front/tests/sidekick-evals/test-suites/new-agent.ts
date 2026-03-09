@@ -46,13 +46,13 @@ export const newAgentSuite: TestSuite = {
         "suggest_prompt_edits",
         "suggest_tools",
       ],
-      judgeCriteria: `This test checks that the copilot includes suggestion directives in its response text.
+      judgeCriteria: `This test checks that the sidekick includes suggestion directives in its response text.
 
-CRITICAL CHECK — the copilot response MUST contain:
+CRITICAL CHECK — the sidekick response MUST contain:
 1. At least one \`:agent_suggestion[]{sId=... kind=instructions}\` directive (from suggest_prompt_edits)
 2. At least one \`:agent_suggestion[]{sId=... kind=tools}\` directive (from suggest_tools)
 
-These directives are returned by the suggest_prompt_edits and suggest_tools tools and MUST be included verbatim in the copilot's text response so they render as interactive suggestion cards for the user.
+These directives are returned by the suggest_prompt_edits and suggest_tools tools and MUST be included verbatim in the sidekick's text response so they render as interactive suggestion cards for the user.
 
 Score 0 if ANY of the directives are missing from the response text.
 Score 1 if directives are present but the surrounding explanation is poor.
@@ -63,14 +63,14 @@ Score 2-3 if directives are present and the response clearly explains what was s
       userMessage: "Make me an agent",
       mockState: BLANK_AGENT,
       expectedToolCalls: [], // New workflow may respond with only clarifying questions (no get_agent_config yet)
-      judgeCriteria: `Intent is vague (new workflow: do NOT suggest until intent is clear). Should ask clarifying questions about purpose, audience, tone, capabilities. Should NOT suggest instructions yet. Score 0-1 if copilot suggests instructions without clarifying first. Accept response with no tool calls.`,
+      judgeCriteria: `Intent is vague (new workflow: do NOT suggest until intent is clear). Should ask clarifying questions about purpose, audience, tone, capabilities. Should NOT suggest instructions yet. Score 0-1 if sidekick suggests instructions without clarifying first. Accept response with no tool calls.`,
     },
     {
       scenarioId: "vague-help-team",
       userMessage: "I want to build something that helps my team",
       mockState: BLANK_AGENT,
       expectedToolCalls: ["get_agent_config"],
-      judgeCriteria: `Intent is vague. Should ask what team, what kind of help, current problems. Should NOT suggest instructions until clarified. Score 0-1 if copilot suggests instructions without understanding use case.`,
+      judgeCriteria: `Intent is vague. Should ask what team, what kind of help, current problems. Should NOT suggest instructions until clarified. Score 0-1 if sidekick suggests instructions without understanding use case.`,
     },
     {
       scenarioId: "discovery-sales",
@@ -85,7 +85,7 @@ Score 2-3 if directives are present and the response clearly explains what was s
         "My marketing team needs help but I'm not sure what kind of agent would be most useful",
       mockState: BLANK_AGENT,
       expectedToolCalls: ["get_agent_config"],
-      judgeCriteria: `Intent is vague (marketing help). Per new workflow should ask about pain points, content types, tools, workflows. Asking discovery questions is sufficient; may suggest agent ideas. Score 0-1 if copilot suggests generic marketing instructions without discovery.`,
+      judgeCriteria: `Intent is vague (marketing help). Per new workflow should ask about pain points, content types, tools, workflows. Asking discovery questions is sufficient; may suggest agent ideas. Score 0-1 if sidekick suggests generic marketing instructions without discovery.`,
     },
   ],
 };

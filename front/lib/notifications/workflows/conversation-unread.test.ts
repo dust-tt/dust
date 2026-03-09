@@ -68,7 +68,7 @@ describe("conversation-unread workflow business logic", () => {
     email: false,
     api: false,
     onboarding_conversation: false,
-    agent_copilot: false,
+    agent_sidekick: false,
     project_butler: false,
     project_kickoff: false,
     excel: false,

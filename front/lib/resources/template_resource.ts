@@ -172,7 +172,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       sId: this.sId,
       tags: this.tags,
       visibility: this.visibility,
-      hasCopilotInstructions: this.copilotInstructions !== null,
+      hasSidekickInstructions: this.sidekickInstructions !== null,
       hasPresetInstructions: this.presetInstructions !== null,
     };
   }
@@ -187,7 +187,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       handle: this.handle,
       helpActions: this.helpActions,
       helpInstructions: this.helpInstructions,
-      copilotInstructions: this.copilotInstructions,
+      sidekickInstructions: this.sidekickInstructions,
       pictureUrl: this.pictureUrl,
       presetActions: this.presetActions,
       timeFrameDuration: this.timeFrameDuration,

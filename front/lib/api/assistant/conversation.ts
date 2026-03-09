@@ -500,7 +500,7 @@ export function isUserMessageContextValid(
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
-    case "agent_copilot":
+    case "agent_sidekick":
     case "project_kickoff":
     case "web":
       return false;

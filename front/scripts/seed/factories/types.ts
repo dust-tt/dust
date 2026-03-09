@@ -111,5 +111,5 @@ export interface TemplateAsset {
   visibility: "draft" | "published" | "disabled";
   tags: TemplateTagCodeType[];
   presetInstructions?: string;
-  copilotInstructions?: string;
+  sidekickInstructions?: string;
 }

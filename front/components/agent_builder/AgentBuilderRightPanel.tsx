@@ -1,9 +1,9 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
-import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderSidekick";
+import { AgentBuilderSidekick } from "@app/components/agent_builder/AgentBuilderSidekick";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
-import { useIsAgentBuilderCopilotEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
+import { useIsAgentBuilderSidekickEnabled } from "@app/components/agent_builder/hooks/useIsAgentBuilderSidekickEnabled";
 import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
@@ -24,7 +24,7 @@ import {
 import { useState } from "react";
 
 type AgentBuilderRightPanelTabType =
-  | "copilot"
+  | "sidekick"
   | "preview"
   | "template"
   | "insights";
@@ -35,7 +35,7 @@ interface PanelHeaderProps {
   onTogglePanel: () => void;
   onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
-  hasCopilot: boolean;
+  hasSidekick: boolean;
 }
 
 function PanelHeader({
@@ -44,7 +44,7 @@ function PanelHeader({
   onTogglePanel,
   onTabChange,
   hasTemplate,
-  hasCopilot,
+  hasSidekick,
 }: PanelHeaderProps) {
   return (
     <div className="flex h-16 items-end">
@@ -60,12 +60,12 @@ function PanelHeader({
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
                 />
-                {hasCopilot && (
+                {hasSidekick && (
                   <TabsTrigger
-                    value="copilot"
+                    value="sidekick"
                     label="Sidekick (Beta)"
                     icon={SidekickIcon}
-                    onClick={() => onTabChange("copilot")}
+                    onClick={() => onTabChange("sidekick")}
                   />
                 )}
                 <TabsTrigger
@@ -80,7 +80,7 @@ function PanelHeader({
                   icon={BarChartIcon}
                   onClick={() => onTabChange("insights")}
                 />
-                {hasTemplate && !hasCopilot && (
+                {hasTemplate && !hasSidekick && (
                   <TabsTrigger
                     value="template"
                     label="Template"
@@ -110,23 +110,23 @@ function PanelHeader({
 interface CollapsedTabsProps {
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
-  hasCopilot: boolean;
+  hasSidekick: boolean;
 }
 
 function CollapsedTabs({
   onTabSelect,
   hasTemplate,
-  hasCopilot,
+  hasSidekick,
 }: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
-      {hasCopilot && (
+      {hasSidekick && (
         <Button
           icon={SidekickIcon}
           variant="ghost"
           size="sm"
           tooltip="Sidekick"
-          onClick={() => onTabSelect("copilot")}
+          onClick={() => onTabSelect("sidekick")}
         />
       )}
       <Button
@@ -143,7 +143,7 @@ function CollapsedTabs({
         tooltip="Insights"
         onClick={() => onTabSelect("insights")}
       />
-      {hasTemplate && !hasCopilot && (
+      {hasTemplate && !hasSidekick && (
         <Button
           icon={MagicIcon}
           variant="ghost"
@@ -159,14 +159,14 @@ function CollapsedTabs({
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
-  hasCopilot: boolean;
+  hasSidekick: boolean;
   conversationId?: string;
 }
 
 function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
-  hasCopilot,
+  hasSidekick,
 }: ExpandedContentProps) {
   const { assistantTemplate, setPresetActionToAdd } = useAgentBuilderContext();
 
@@ -178,9 +178,9 @@ function ExpandedContent({
           onAddPresetAction={setPresetActionToAdd}
         />
       )}
-      {selectedTab === "copilot" && hasCopilot && (
+      {selectedTab === "sidekick" && hasSidekick && (
         <div className="min-h-0 flex-1">
-          <AgentBuilderCopilot />
+          <AgentBuilderSidekick />
         </div>
       )}
       {selectedTab === "preview" && (
@@ -220,20 +220,20 @@ export function AgentBuilderRightPanel({
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
   const { assistantTemplate } = useAgentBuilderContext();
-  const hasCopilot = useIsAgentBuilderCopilotEnabled();
+  const hasSidekick = useIsAgentBuilderSidekickEnabled();
 
   const hasTemplate = !!assistantTemplate;
 
   // Default tab priority:
-  // - Template tab: when building from a template (copilot OFF)
-  // - Copilot tab: when copilot is enabled and prereqs met
-  // - Preview tab: fallback when copilot not available
+  // - Template tab: when building from a template (sidekick OFF)
+  // - Sidekick tab: when sidekick is enabled and prereqs met
+  // - Preview tab: fallback when sidekick not available
   function getDefaultTab(): AgentBuilderRightPanelTabType {
-    if (hasTemplate && !hasCopilot) {
+    if (hasTemplate && !hasSidekick) {
       return "template";
     }
-    if (hasCopilot) {
-      return "copilot";
+    if (hasSidekick) {
+      return "sidekick";
     }
     return "preview";
   }
@@ -263,21 +263,21 @@ export function AgentBuilderRightPanel({
           onTogglePanel={handleTogglePanel}
           onTabChange={handleTabChange}
           hasTemplate={hasTemplate}
-          hasCopilot={hasCopilot}
+          hasSidekick={hasSidekick}
         />
       </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
-          hasCopilot={hasCopilot}
+          hasSidekick={hasSidekick}
           conversationId={conversationId}
         />
       ) : (
         <CollapsedTabs
           onTabSelect={handleTabSelect}
           hasTemplate={hasTemplate}
-          hasCopilot={hasCopilot}
+          hasSidekick={hasSidekick}
         />
       )}
     </div>

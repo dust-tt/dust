@@ -74,7 +74,7 @@ export type ClientMessageOrigin =
   | "web"
   | "project_kickoff"
   | "extension"
-  | "agent_copilot";
+  | "agent_sidekick";
 
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
@@ -98,7 +98,7 @@ export type UserMessageOrigin =
   | "triggered"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation, agent_copilot, and project_kickoff aren't message origins. They
+  // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They
   // have been used as a hack but should be removed and most likely handled as message metadata
   // (to be created).
   | "onboarding_conversation"

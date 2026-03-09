@@ -11,7 +11,7 @@ export interface GetAgentConfigCallbacks {
 
 /**
  * Registers the get_agent_config tool on the MCP server.
- * This tool allows the copilot to access the live (unsaved) agent builder form state.
+ * This tool allows the sidekick to access the live (unsaved) agent builder form state.
  */
 export function registerGetAgentConfigTool(
   mcpServer: McpServer,

@@ -464,16 +464,16 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.COPILOT:
+    case GLOBAL_AGENTS_SID.SIDEKICK:
       return {
-        sId: GLOBAL_AGENTS_SID.COPILOT,
+        sId: GLOBAL_AGENTS_SID.SIDEKICK,
         name: "Sidekick",
         description: "An agent that suggests improvements for another agent.",
         pictureUrl: DUST_AVATAR_URL,
       };
-    case GLOBAL_AGENTS_SID.COPILOT_EDGE:
+    case GLOBAL_AGENTS_SID.SIDEKICK_EDGE:
       return {
-        sId: GLOBAL_AGENTS_SID.COPILOT_EDGE,
+        sId: GLOBAL_AGENTS_SID.SIDEKICK_EDGE,
         name: "Sidekick (Edge)",
         description: "An agent that suggests improvements for another agent.",
         pictureUrl: DUST_AVATAR_URL,

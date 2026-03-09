@@ -112,7 +112,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { copilotEdge } = req.query;
+      const { sidekickEdge } = req.query;
       const conversationRes = await getShrinkWrapedConversation(auth, {
         conversationId,
       });
@@ -130,14 +130,14 @@ async function handler(
         return apiErrorForConversation(req, res, error);
       }
 
-      if (copilotEdge !== "true") {
+      if (sidekickEdge !== "true") {
         return res
           .status(200)
           .json(buildFirstMessage(conversationRes.value.text));
       }
 
       const result = await fetchLangfuseFirstMessagePrompt(
-        "copilot-edge-first-message-shrink-wrap",
+        "sidekick-edge-first-message-shrink-wrap",
         { conversation: conversationRes.value.text }
       );
       if (result.isErr()) {
@@ -145,7 +145,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to generate copilot prompt.",
+            message: "Failed to generate sidekick prompt.",
           },
         });
       }

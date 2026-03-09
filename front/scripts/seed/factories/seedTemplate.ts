@@ -32,7 +32,7 @@ export async function seedTemplate(
       presetActions: [],
       helpInstructions: null,
       helpActions: null,
-      copilotInstructions: asset.copilotInstructions ?? null,
+      sidekickInstructions: asset.sidekickInstructions ?? null,
       timeFrameDuration: null,
       timeFrameUnit: null,
     });

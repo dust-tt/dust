@@ -6,7 +6,7 @@ import { BLOCK_ID_ATTRIBUTE } from "./BlockIdExtension";
 export const INSTRUCTIONS_ROOT_NODE_NAME = "instructionsRoot";
 
 // Wrapper node that sits between doc and the block-level content.
-// Carries a stable block-id so the copilot can target it to replace
+// Carries a stable block-id so the sidekick can target it to replace
 // the entire editor content at once via the suggestion system.
 export const InstructionsRootExtension = Node.create({
   name: INSTRUCTIONS_ROOT_NODE_NAME,

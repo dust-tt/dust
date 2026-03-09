@@ -1,4 +1,4 @@
-import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import {
   fetchLangfuseSystemPromptConfig,
   type LangfusePromptConfig,
@@ -24,12 +24,12 @@ import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
 import { isStringArray } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
-interface CopilotUserMetadata {
+interface SidekickUserMetadata {
   jobType: JobType | null;
   favoritePlatforms: FavoritePlatform[];
 }
 
-export interface CopilotContext {
+export interface SidekickContext {
   mcpServerViews: {
     context: MCPServerViewResource;
   } | null;
@@ -81,9 +81,9 @@ export function formatAvailableTools(tools: AvailableTool[]): string {
   return `## AVAILABLE TOOLS\n${tools.length} tools available.\n\n${toolLines}`;
 }
 
-async function fetchCopilotUserMetadata(
+async function fetchSidekickUserMetadata(
   auth: Authenticator
-): Promise<CopilotUserMetadata | null> {
+): Promise<SidekickUserMetadata | null> {
   const user = auth.user();
   if (!user) {
     return null;
@@ -114,7 +114,7 @@ async function fetchCopilotUserMetadata(
 }
 
 function formatUserContext(
-  userMetadata: CopilotUserMetadata | null
+  userMetadata: SidekickUserMetadata | null
 ): string | null {
   if (
     !userMetadata ||
@@ -147,7 +147,7 @@ function formatWorkspaceContext(
 export async function buildUserContext(
   auth: Authenticator
 ): Promise<string | null> {
-  const userMetadata = await fetchCopilotUserMetadata(auth);
+  const userMetadata = await fetchSidekickUserMetadata(auth);
   const formatted = formatUserContext(userMetadata);
   if (!formatted) {
     return null;
@@ -167,13 +167,13 @@ export async function buildWorkspaceContext(
   return `<workspace_context>\n${formatted}\n</workspace_context>`;
 }
 
-export async function buildCopilotContext(
+export async function buildSidekickContext(
   auth: Authenticator,
   agentsIdsToFetch: string[]
-): Promise<CopilotContext | null> {
+): Promise<SidekickContext | null> {
   if (
-    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT) &&
-    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_EDGE)
+    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK) &&
+    !agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)
   ) {
     return null;
   }
@@ -181,17 +181,17 @@ export async function buildCopilotContext(
   const context =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      AGENT_COPILOT_CONTEXT_TOOL_NAME
+      AGENT_SIDEKICK_CONTEXT_TOOL_NAME
     );
 
   let langfuseConfig: LangfusePromptConfig | null = null;
 
-  if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT_EDGE)) {
-    const result = await fetchLangfuseSystemPromptConfig("copilot-edge", {});
+  if (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK_EDGE)) {
+    const result = await fetchLangfuseSystemPromptConfig("sidekick-edge", {});
     if (result.isErr()) {
       logger.error(
         {
-          promptName: GLOBAL_AGENTS_SID.COPILOT_EDGE,
+          promptName: GLOBAL_AGENTS_SID.SIDEKICK_EDGE,
           error: result.error,
         },
         "[Langfuse] Failed to fetch prompt"

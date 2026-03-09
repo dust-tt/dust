@@ -2,10 +2,24 @@
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
-  "agent_copilot_agent_state": {
+  "agent_management": {
+    "create_agent": "high",
+  },
+  "agent_memory": {
+    "compact_memory": "never_ask",
+    "edit_entries": "never_ask",
+    "erase_entries": "never_ask",
+    "record_entries": "never_ask",
+    "retrieve": "never_ask",
+  },
+  "agent_router": {
+    "list_all_published_agents": "never_ask",
+    "suggest_agents_for_content": "never_ask",
+  },
+  "agent_sidekick_agent_state": {
     "get_agent_info": "never_ask",
   },
-  "agent_copilot_context": {
+  "agent_sidekick_context": {
     "get_agent_feedback": "never_ask",
     "get_agent_insights": "never_ask",
     "get_agent_template": "never_ask",
@@ -27,20 +41,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "suggest_sub_agent": "never_ask",
     "suggest_tools": "never_ask",
     "update_suggestions_state": "never_ask",
-  },
-  "agent_management": {
-    "create_agent": "high",
-  },
-  "agent_memory": {
-    "compact_memory": "never_ask",
-    "edit_entries": "never_ask",
-    "erase_entries": "never_ask",
-    "record_entries": "never_ask",
-    "retrieve": "never_ask",
-  },
-  "agent_router": {
-    "list_all_published_agents": "never_ask",
-    "suggest_agents_for_content": "never_ask",
   },
   "ashby": {
     "create_candidate_note": "high",
