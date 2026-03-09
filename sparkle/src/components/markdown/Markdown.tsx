@@ -45,7 +45,7 @@ import { visit } from "unist-util-visit";
 
 export { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
 
-const DEFAULT_ANIMATION_DURATION = 1;
+const DEFAULT_ANIMATION_DURATION_SECONDS = 1;
 const DEFAULT_DELIMITER = "";
 
 function showUnsupportedDirective() {
@@ -88,7 +88,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   additionalMarkdownPlugins,
   canCopyQuotes = true,
   enableAnimation = false,
-  animationDuration = DEFAULT_ANIMATION_DURATION,
+  animationDuration = DEFAULT_ANIMATION_DURATION_SECONDS,
   delimiter = DEFAULT_DELIMITER,
 }) => {
   // Derive streaming state: explicit prop takes priority, otherwise derive from isStreaming boolean.
