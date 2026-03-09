@@ -346,4 +346,16 @@ ${tabTemplate}
   getInstallInstructions(): string {
     return getPlatformInstallInstructions("zellij");
   }
+
+  // ============================================================
+  // Session Naming
+  // ============================================================
+
+  getSessionName(envName: string): string {
+    return `${SESSION_PREFIX}${envName}`;
+  }
+
+  getMainSessionName(): string {
+    return `${SESSION_PREFIX}main`;
+  }
 }

@@ -197,24 +197,27 @@ export interface MultiplexerAdapter {
    * Get installation instructions for this multiplexer
    */
   getInstallInstructions(): string;
+
+  // ============================================================
+  // Session Naming
+  // ============================================================
+
+  /**
+   * Get the session name for an environment.
+   * Adapters may use different naming conventions (e.g., with or without prefix).
+   */
+  getSessionName(envName: string): string;
+
+  /**
+   * Get the session name for the main session.
+   */
+  getMainSessionName(): string;
 }
 
 /**
- * Standard session name prefix for all dust-hive sessions
+ * Standard session name prefix for multiplexers that need one (e.g., zellij)
  */
 export const SESSION_PREFIX = "dust-hive-";
-
-/**
- * Get the session name for an environment
- */
-export function getSessionName(envName: string): string {
-  return `${SESSION_PREFIX}${envName}`;
-}
-
-/**
- * Main session name constant
- */
-export const MAIN_SESSION_NAME = "dust-hive-main";
 
 /**
  * Tab display names (shorter names for better display in tab bar)

@@ -12,7 +12,7 @@ import type {
   MultiplexerAdapter,
   MultiplexerType,
 } from "./types";
-import { SESSION_PREFIX, TAB_NAMES } from "./types";
+import { TAB_NAMES } from "./types";
 
 /**
  * Base directory for tmux layout scripts
@@ -25,6 +25,12 @@ const TMUX_LAYOUT_DIR = join(homedir(), ".dust-hive", "tmux");
 function getUserShell(): string {
   return process.env["SHELL"] ?? "/bin/bash";
 }
+
+/**
+ * Tmux environment variable used to tag dust-hive sessions.
+ * Set on each session at creation time, checked in listSessions.
+ */
+const DUST_HIVE_SESSION_TAG = "DUST_HIVE";
 
 /**
  * Tmux multiplexer adapter implementation
@@ -52,11 +58,24 @@ export class TmuxAdapter implements MultiplexerAdapter {
       return [];
     }
 
-    return output
+    const allSessions = output
       .split("\n")
       .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .filter((name) => name.startsWith(SESSION_PREFIX));
+      .filter((line) => line.length > 0);
+
+    // Filter to sessions tagged as dust-hive (check env var in parallel)
+    const checks = await Promise.all(
+      allSessions.map(async (name) => {
+        const check = Bun.spawn(
+          ["tmux", "show-environment", "-t", name, DUST_HIVE_SESSION_TAG],
+          { stdout: "ignore", stderr: "ignore" }
+        );
+        await check.exited;
+        return check.exitCode === 0 ? name : null;
+      })
+    );
+
+    return checks.filter((name): name is string => name !== null);
   }
 
   async sessionExists(sessionName: string): Promise<boolean> {
@@ -172,7 +191,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
   generateLayout(config: LayoutConfig): string {
     const { envName, worktreePath, envShPath, unifiedLogs, warmCommand, initialCommand } = config;
     const shellPath = getUserShell();
-    const sessionName = `${SESSION_PREFIX}${envName}`;
+    const sessionName = envName;
     const mainWindowName = envName;
 
     // Build the shell command that runs in the main window
@@ -192,6 +211,9 @@ export class TmuxAdapter implements MultiplexerAdapter {
       "",
       "# Create the session with the main window",
       `tmux new-session -d -s "$SESSION_NAME" -n "$MAIN_WINDOW" -c "$WORKTREE_PATH"`,
+      "",
+      "# Tag session as dust-hive managed",
+      `tmux set-environment -t "$SESSION_NAME" ${DUST_HIVE_SESSION_TAG} 1`,
       "",
       "# Run the shell command in the main window (use window name, not index)",
       `tmux send-keys -t "$SESSION_NAME:$MAIN_WINDOW" ${shellQuote(shellCommand)} Enter`,
@@ -243,7 +265,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
   generateMainLayout(config: MainLayoutConfig): string {
     const { repoRoot } = config;
     const shellPath = getUserShell();
-    const sessionName = `${SESSION_PREFIX}main`;
+    const sessionName = "main";
 
     // Use window names instead of indices to avoid base-index issues
     const lines: string[] = [
@@ -256,6 +278,9 @@ export class TmuxAdapter implements MultiplexerAdapter {
       "",
       "# Create the session with the main window",
       `tmux new-session -d -s "$SESSION_NAME" -n "main" -c "$REPO_ROOT"`,
+      "",
+      "# Tag session as dust-hive managed",
+      `tmux set-environment -t "$SESSION_NAME" ${DUST_HIVE_SESSION_TAG} 1`,
       "",
       "# Start the user's shell in the main window (use window name, not index)",
       `tmux send-keys -t "$SESSION_NAME:main" ${shellQuote(`exec ${shellPath}`)} Enter`,
@@ -318,5 +343,17 @@ export class TmuxAdapter implements MultiplexerAdapter {
 
   getInstallInstructions(): string {
     return getPlatformInstallInstructions("tmux");
+  }
+
+  // ============================================================
+  // Session Naming
+  // ============================================================
+
+  getSessionName(envName: string): string {
+    return envName;
+  }
+
+  getMainSessionName(): string {
+    return "main";
   }
 }

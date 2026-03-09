@@ -42,7 +42,7 @@ export function validateEnvName(name: string): { valid: boolean; error?: string 
     };
   }
 
-  // Zellij has a 36-character session name limit. Since session names are
+  // Zellij has a 36-character session name limit. Since zellij session names are
   // formatted as "dust-hive-{name}" (10-char prefix), env names must be ≤26 chars.
   if (name.length > 26) {
     return { valid: false, error: "Name must be 26 characters or less" };

@@ -3,10 +3,8 @@ import { getEnvironment } from "../lib/environment";
 import { logger } from "../lib/logger";
 import {
   type LayoutConfig,
-  MAIN_SESSION_NAME,
   type MainLayoutConfig,
   getConfiguredMultiplexer,
-  getSessionName,
 } from "../lib/multiplexer";
 import { getEnvFilePath, getWorktreeDir } from "../lib/paths";
 import { selectEnvironmentWithFzf } from "../lib/prompt";
@@ -37,7 +35,7 @@ export async function openCommand(
   const multiplexer = await getConfiguredMultiplexer();
   const worktreePath = getWorktreeDir(env.name);
   const envShPath = getEnvFilePath(env.name);
-  const sessionName = getSessionName(env.name);
+  const sessionName = multiplexer.getSessionName(env.name);
 
   const layoutConfig: LayoutConfig = {
     envName: env.name,
@@ -147,7 +145,7 @@ export async function openMainSession(
   options: MainSessionOptions = {}
 ): Promise<void> {
   const multiplexer = await getConfiguredMultiplexer();
-  const sessionName = MAIN_SESSION_NAME;
+  const sessionName = multiplexer.getMainSessionName();
 
   const inMultiplexer = multiplexer.isInsideMultiplexer();
   const currentSession = multiplexer.getCurrentSessionName();

@@ -3,7 +3,7 @@ import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import { type Environment, deleteEnvironmentDir, getEnvironment } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
-import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
+import { getConfiguredMultiplexer } from "../lib/multiplexer";
 import { getWorktreeDir } from "../lib/paths";
 import { getInstallInstructions } from "../lib/platform";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
@@ -20,7 +20,7 @@ import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/work
 
 async function cleanupMultiplexerSession(envName: string): Promise<void> {
   const multiplexer = await getConfiguredMultiplexer();
-  const sessionName = getSessionName(envName);
+  const sessionName = multiplexer.getSessionName(envName);
 
   // Kill session first (stops it)
   await multiplexer.killSession(sessionName);
