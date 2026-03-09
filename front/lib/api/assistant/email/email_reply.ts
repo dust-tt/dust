@@ -51,22 +51,6 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
 }
 
 /**
- * Check feature flag for email replies (defense-in-depth, duplicates webhook check).
- */
-async function isEmailReplyEnabled(
-  authType: AuthenticatorType
-): Promise<boolean> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return false;
-  }
-  const featureFlags = await getFeatureFlags(
-    authResult.value.getNonNullableWorkspace()
-  );
-  return featureFlags.includes("email_agents");
-}
-
-/**
  * Check if the agent is blocked on tool validation.
  * If so, send a validation email and re-store the context with fresh TTL.
  * Returns true if blocked (validation email sent), false otherwise.
@@ -175,14 +159,6 @@ export async function sendEmailReplyOnCompletion(
       return;
     }
 
-    if (!(await isEmailReplyEnabled(authType))) {
-      await deleteEmailReplyContext(
-        authType.workspaceId,
-        agentLoopArgs.agentMessageId
-      );
-      return;
-    }
-
     // Get the completed agent message data.
     const dataRes = await getAgentLoopData(authType, agentLoopArgs);
     if (dataRes.isErr()) {
@@ -197,6 +173,18 @@ export async function sendEmailReplyOnCompletion(
     }
 
     const { auth, agentMessage, conversation } = dataRes.value;
+
+    // Defense-in-depth: check feature flag before sending reply.
+    const featureFlags = await getFeatureFlags(
+      auth.getNonNullableWorkspace()
+    );
+    if (!featureFlags.includes("email_agents")) {
+      await deleteEmailReplyContext(
+        authType.workspaceId,
+        agentLoopArgs.agentMessageId
+      );
+      return;
+    }
 
     // Check if blocked on tool validation — send validation email instead.
     const blocked = await handleBlockedValidation(
@@ -300,7 +288,15 @@ export async function sendEmailReplyOnError(
       agentLoopArgs.agentMessageId
     );
 
-    if (!(await isEmailReplyEnabled(authType))) {
+    // Defense-in-depth: check feature flag before sending reply.
+    const authResult = await Authenticator.fromJSON(authType);
+    if (authResult.isErr()) {
+      return;
+    }
+    const featureFlags = await getFeatureFlags(
+      authResult.value.getNonNullableWorkspace()
+    );
+    if (!featureFlags.includes("email_agents")) {
       return;
     }
 
