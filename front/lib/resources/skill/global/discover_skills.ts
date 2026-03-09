@@ -13,7 +13,8 @@ function buildDiscoverSkillsInstructions(
     return "No workspace skills are currently available for discovery.";
   }
 
-  const skillList = discoverableSkills
+  const skillList = [...discoverableSkills]
+    .sort((a, b) => a.name.localeCompare(b.name))
     .map(
       ({ name, agentFacingDescription }) =>
         `- **${name}**: ${agentFacingDescription}`
