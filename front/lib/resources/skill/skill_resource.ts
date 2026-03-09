@@ -933,6 +933,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * List active custom skills marked as default.
+   */
+  static async listDefault(auth: Authenticator): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        status: "active",
+        isDefault: true,
+      },
+      onlyCustom: true,
+    });
+  }
+
+  /**
    * List skills that use any of the given MCP server view IDs.
    * Used during space deletion to find skills that need to be updated.
    */
@@ -1260,6 +1273,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         extendedSkillId: null,
         source: null,
         sourceMetadata: null,
+        isDefault: false,
       },
       {
         // Global skills do not have data source configurations.
@@ -1484,6 +1498,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           extendedSkillId: versionModel.extendedSkillId,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
+          isDefault: versionModel.isDefault,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -2317,6 +2332,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sourceMetadata: this.sourceMetadata,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      isDefault: this.isDefault,
     };
 
     await SkillVersionModel.create(versionData, {

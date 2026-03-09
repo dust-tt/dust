@@ -208,6 +208,7 @@ async function handler(
                 repoUrl,
                 filePath: skill.skillMdPath,
               },
+              isDefault: false,
             },
             { mcpServerViews: [] }
           );
