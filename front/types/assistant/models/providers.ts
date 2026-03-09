@@ -59,6 +59,10 @@ export function isProviderWhitelisted(
   if (providerId === "noop") {
     return true;
   }
+  // Emergency block for Anthropic while we are hit by the rate limit.
+  if (providerId === "anthropic") {
+    return false;
+  }
   const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   return whiteListedProviders.includes(providerId);
 }
