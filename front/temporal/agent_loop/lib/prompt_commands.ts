@@ -207,7 +207,10 @@ async function listAvailableTools(
     skillServers.push(dataWarehouseServer);
   }
 
-  const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
+  const {
+    stableServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
+  } = await tryListMCPTools(
     auth,
     {
       agentConfiguration,
@@ -222,7 +225,10 @@ async function listAvailableTools(
     }
   );
 
-  return mcpActions.flatMap((s) => s.tools);
+  return [
+    ...stableServerToolsAndInstructions,
+    ...conditionalJITServerToolsAndInstructions,
+  ].flatMap((s) => s.tools);
 }
 
 /**

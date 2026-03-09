@@ -219,7 +219,8 @@ async function handler(
       };
 
       const {
-        serverToolsAndInstructions: allServerToolsAndInstructions,
+        stableServerToolsAndInstructions,
+        conditionalJITServerToolsAndInstructions,
         error: mcpToolsListingError,
       } = await tryListMCPTools(
         auth,
@@ -236,20 +237,10 @@ async function handler(
         }
       );
 
-      const conditionalJITServerNames = new Set(
-        conditionalJITServers.map((s) => s.name)
-      );
-      const stableServerToolsAndInstructions =
-        allServerToolsAndInstructions.filter(
-          (a) => !conditionalJITServerNames.has(a.serverName)
-        );
-      const conditionalJITServerToolsAndInstructions =
-        allServerToolsAndInstructions.filter((a) =>
-          conditionalJITServerNames.has(a.serverName)
-        );
-
-      const availableActions = allServerToolsAndInstructions.flatMap(
-        (s) => s.tools
+      const availableActions = [
+        ...stableServerToolsAndInstructions,
+        ...conditionalJITServerToolsAndInstructions,
+      ].flatMap((s) => s.tools
       );
 
       let fallbackPrompt = "You are a conversational agent";

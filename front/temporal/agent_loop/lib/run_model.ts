@@ -214,9 +214,8 @@ export async function runModel(
   const {
     enabledSkills,
     equippedSkills,
-    hasConditionalJITTools,
-    mcpActions,
-    conditionalJITServerNames,
+    stableServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
@@ -228,7 +227,6 @@ export async function runModel(
         attachments,
       }
     );
-    const hasConditionalJITTools = conditionalJITServers.length > 0;
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
@@ -269,7 +267,8 @@ export async function runModel(
     }
 
     const {
-      serverToolsAndInstructions: mcpActions,
+      stableServerToolsAndInstructions,
+      conditionalJITServerToolsAndInstructions,
       error: mcpToolsListingError,
     } = await startActiveObservation("list-mcp-tools", () =>
       tryListMCPTools(
@@ -284,16 +283,11 @@ export async function runModel(
       )
     );
 
-    const conditionalJITServerNames = new Set(
-      conditionalJITServers.map((s) => s.name)
-    );
-
     return {
-      hasConditionalJITTools,
       enabledSkills,
       equippedSkills,
-      mcpActions,
-      conditionalJITServerNames,
+      stableServerToolsAndInstructions,
+      conditionalJITServerToolsAndInstructions,
       mcpToolsListingError,
     };
   });
@@ -311,7 +305,13 @@ export async function runModel(
 
   // If we are on the last step, we don't show any action.
   // This will force the agent to run the generation.
-  const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
+  const allServerToolsAndInstructions = [
+    ...stableServerToolsAndInstructions,
+    ...conditionalJITServerToolsAndInstructions,
+  ];
+  const availableActions = isLastStep
+    ? []
+    : allServerToolsAndInstructions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (agentConfiguration.actions.length || availableActions.length > 0) {
@@ -375,13 +375,6 @@ export async function runModel(
   if (globalAgentInjectsWorkspaceContext(agentConfiguration.sId)) {
     workspaceContext = await buildWorkspaceContext(auth);
   }
-
-  const stableServerToolsAndInstructions = mcpActions.filter(
-    (a) => !conditionalJITServerNames.has(a.serverName)
-  );
-  const conditionalJITServerToolsAndInstructions = mcpActions.filter((a) =>
-    conditionalJITServerNames.has(a.serverName)
-  );
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
@@ -595,7 +588,8 @@ export async function runModel(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
+    hasConditionalJITTools:
+      conditionalJITServerToolsAndInstructions.length > 0,
     userMessage,
     specifications,
     flushParserTokens,

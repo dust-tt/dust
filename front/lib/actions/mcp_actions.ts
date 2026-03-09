@@ -834,10 +834,15 @@ export async function tryListMCPTools(
     skillServers: MCPServerConfigurationType[];
   }
 ): Promise<{
-  serverToolsAndInstructions: ServerToolsAndInstructions[];
+  stableServerToolsAndInstructions: ServerToolsAndInstructions[];
+  conditionalJITServerToolsAndInstructions: ServerToolsAndInstructions[];
   error?: string;
 }> {
   const owner = auth.getNonNullableWorkspace();
+
+  const conditionalJITServerNames = new Set(
+    conditionalJITServers.map((s) => s.name)
+  );
 
   const deduplicatedConfigs = deduplicateMCPServerConfigurations({
     agentActions: agentLoopListToolsContext.agentConfiguration.actions,
@@ -1040,8 +1045,16 @@ export async function tryListMCPTools(
     { serverToolsAndInstructions: [], errors: [] }
   );
 
+  const stableServerToolsAndInstructions = serverToolsAndInstructions.filter(
+    (s) => !conditionalJITServerNames.has(s.serverName)
+  );
+  const conditionalJITServerToolsAndInstructions = serverToolsAndInstructions.filter(
+    (s) => conditionalJITServerNames.has(s.serverName)
+  );
+
   return {
-    serverToolsAndInstructions,
+    stableServerToolsAndInstructions,
+    conditionalJITServerToolsAndInstructions,
     error: errors.length > 0 ? errors.join("\n") : undefined,
   };
 }
