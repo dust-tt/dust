@@ -27,13 +27,15 @@ export const blockquoteVariants = cva(
   }
 );
 
+interface BlockquoteBlockProps {
+  children: React.ReactNode;
+  variant?: "surface";
+}
+
 export function BlockquoteBlock({
   children,
   variant = "surface",
-}: {
-  children: React.ReactNode;
-  variant?: "surface";
-}) {
+}: BlockquoteBlockProps) {
   const { canCopyQuotes } = useMarkdownStyle();
   const buttonDisplay = canCopyQuotes ? "inside" : null;
 

@@ -6,7 +6,11 @@ import React from "react";
 
 export const ulBlockVariants = cva(["s-list-disc s-pb-2 s-pl-6"]);
 
-export function UlBlock({ children }: { children: React.ReactNode }) {
+interface UlBlockProps {
+  children: React.ReactNode;
+}
+
+export function UlBlock({ children }: UlBlockProps) {
   const { textColor, forcedTextSize } = useMarkdownStyle();
   const textSize = forcedTextSize ?? markdownParagraphSize;
   return (
@@ -16,13 +20,15 @@ export function UlBlock({ children }: { children: React.ReactNode }) {
 
 export const olBlockVariants = cva(["s-list-decimal s-pb-2 s-pl-6"]);
 
+interface OlBlockProps {
+  children: React.ReactNode;
+  start?: number;
+}
+
 export function OlBlock({
   children,
   start,
-}: {
-  children: React.ReactNode;
-  start?: number;
-}) {
+}: OlBlockProps) {
   const { textColor, forcedTextSize } = useMarkdownStyle();
   const textSize = forcedTextSize ?? markdownParagraphSize;
   return (
@@ -34,13 +40,15 @@ export function OlBlock({
 
 export const liBlockVariants = cva(["s-break-words"]);
 
+interface LiBlockProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
 export function LiBlock({
   children,
   className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+}: LiBlockProps) {
   const { textColor, forcedTextSize } = useMarkdownStyle();
   const textSize = forcedTextSize ?? markdownParagraphSize;
   return (

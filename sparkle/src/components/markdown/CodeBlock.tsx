@@ -45,14 +45,14 @@ export const codeBlockVariants = cva(
   }
 );
 
-type CodeBlockProps = {
+interface CodeBlockProps {
   children?: React.ReactNode;
   className?: string;
   inline?: boolean;
   variant?: "surface";
   wrapLongLines?: boolean;
   showLineNumber?: boolean;
-};
+}
 
 export function CodeBlock({
   children,

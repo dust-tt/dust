@@ -16,10 +16,10 @@ export type CustomRenderers = {
   ) => React.JSX.Element;
 };
 
-type VisualizationBlockProps = {
+interface VisualizationBlockProps {
   position: PositionType;
   customRenderer?: CustomRenderers;
-};
+}
 export function VisualizationBlock({
   position,
   customRenderer,

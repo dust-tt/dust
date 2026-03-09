@@ -18,11 +18,11 @@ export const paragraphBlockVariants = cva(
   }
 );
 
-export function ParagraphBlock({
-  children,
-}: {
+interface ParagraphBlockProps {
   children: React.ReactNode;
-}) {
+}
+
+export function ParagraphBlock({ children }: ParagraphBlockProps) {
   const { textColor, forcedTextSize, compactSpacing } = useMarkdownStyle();
   const textSize = forcedTextSize ?? markdownParagraphSize;
   return (
