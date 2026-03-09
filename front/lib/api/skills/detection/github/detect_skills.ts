@@ -136,11 +136,11 @@ export async function detectSkillsFromGitHubRepo({
   repoUrl: string;
   accessToken?: string | null;
 }): Promise<Result<DetectedSkill[], GitHubSkillDetectionError>> {
-  const parsedUrl = parseGitHubRepoUrl(repoUrl);
-  if (parsedUrl.isErr()) {
-    return parsedUrl;
+  const parseResult = parseGitHubRepoUrl(repoUrl);
+  if (parseResult.isErr()) {
+    return parseResult;
   }
-  const { owner, repo } = parsedUrl.value;
+  const { owner, repo } = parseResult.value;
 
   const octokit = new Octokit(accessToken ? { auth: accessToken } : {});
 
@@ -162,14 +162,14 @@ export async function detectSkillsFromGitHubRepo({
     { concurrency: FETCH_CONCURRENCY }
   );
 
-  const resolvedSkills: DetectedSkill[] = [];
+  const detectedSkills: DetectedSkill[] = [];
   for (const result of skills) {
     if (result.isOk()) {
-      resolvedSkills.push(result.value);
+      detectedSkills.push(result.value);
     }
   }
 
-  return new Ok(resolvedSkills.filter((s) => s.name.length > 0));
+  return new Ok(detectedSkills.filter((s) => s.name.length > 0));
 }
 
 async function buildDetectedSkill({
