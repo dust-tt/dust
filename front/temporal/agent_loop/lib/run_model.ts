@@ -220,14 +220,14 @@ export async function runModel(
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
-    const {
-      stableJITServers,
-      conditionalJITServers,
-    } = await getJITServers(auth, {
-      agentConfiguration,
-      conversation,
-      attachments,
-    });
+    const { stableJITServers, conditionalJITServers } = await getJITServers(
+      auth,
+      {
+        agentConfiguration,
+        conversation,
+        attachments,
+      }
+    );
     const hasConditionalJITTools = conditionalJITServers.length > 0;
 
     const clientSideMCPActionConfigurations =
