@@ -2,6 +2,10 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import config from "@app/lib/api/config";
+import {
+  makeProcessedMountFileName,
+  maybeResolveMountPath,
+} from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -339,6 +343,9 @@ export class FileResource extends BaseResource<FileModel> {
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
       if (this.isReady) {
+        // Delete mount file copies if set.
+        await this.deleteMountFileCopies();
+
         await this.getBucketForVersion("original")
           .file(this.getCloudStoragePath(auth, "original"))
           .delete();
@@ -400,7 +407,7 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ status: "failed" });
   }
 
-  async markAsReady() {
+  async markAsReady(auth?: Authenticator) {
     // Early return if the file is already ready.
     if (this.status === "ready") {
       return;
@@ -419,6 +426,10 @@ export class FileResource extends BaseResource<FileModel> {
         sharedAt: new Date(),
         token: crypto.randomUUID(),
       });
+    }
+
+    if (auth) {
+      await maybeResolveMountPath(auth, this);
     }
 
     return updateResult;
@@ -609,8 +620,8 @@ export class FileResource extends BaseResource<FileModel> {
     const currentVersion = versions[0];
     const previousVersion = versions[1];
 
-    // Update metadata before copy
-    await this.setUseCaseMetadata({
+    // Update metadata before copy.
+    await this.setUseCaseMetadata(auth, {
       ...this.useCaseMetadata,
       lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
     });
@@ -735,13 +746,70 @@ export class FileResource extends BaseResource<FileModel> {
       filePath: this.getCloudStoragePath(auth, "original"),
     });
 
+    // TEMPORARY DUAL WRITE: Write to mount path as well if set (e.g., frame edits). Once all
+    // conversation frames have a mount path, the canonical path write above should be removed.
+    // The mount path becomes the sole live version, and the canonical path stays as the immutable
+    // original.
+    if (this.mountFilePath) {
+      await getPrivateUploadBucket().uploadRawContentToBucket({
+        content,
+        contentType: this.contentType,
+        filePath: this.mountFilePath,
+      });
+    }
+
     // Increment version after successful upload and mark as ready
     await this.incrementVersion();
-    await this.markAsReady();
+    await this.markAsReady(auth);
   }
 
-  setUseCaseMetadata(metadata: FileUseCaseMetadata) {
-    return this.update({ useCaseMetadata: metadata });
+  async setUseCaseMetadata(auth: Authenticator, metadata: FileUseCaseMetadata) {
+    const result = await this.update({ useCaseMetadata: metadata });
+    await maybeResolveMountPath(auth, this);
+    return result;
+  }
+
+  /**
+   * Set the mount file path and copy the file's original (and processed if exists) versions to the
+   * conversation-level GCS path for gcsfuse mounting.
+   *
+   * This is a one-time operation: copies from the canonical path to the mount path. Subsequent
+   * edits (frames) write directly to the mount path.
+   */
+  async setMountFilePath(
+    auth: Authenticator,
+    mountFilePath: string
+  ): Promise<void> {
+    const bucket = getPrivateUploadBucket();
+
+    const srcOriginalPath = this.getCloudStoragePath(auth, "original");
+    await bucket.file(srcOriginalPath).copy(bucket.file(mountFilePath));
+
+    // Copy processed version if it exists.
+    const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
+    const processedMountPath = makeProcessedMountFileName(mountFilePath);
+    try {
+      await bucket.file(srcProcessedPath).copy(bucket.file(processedMountPath));
+    } catch {
+      // Processed version may not exist. Ignore.
+    }
+
+    await this.update({ mountFilePath });
+  }
+
+  /**
+   * Delete the file's copies from the mount path (if set).
+   */
+  private async deleteMountFileCopies(): Promise<void> {
+    if (!this.mountFilePath) {
+      return;
+    }
+
+    const bucket = getPrivateUploadBucket();
+    await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
+    await bucket.delete(makeProcessedMountFileName(this.mountFilePath), {
+      ignoreNotFound: true,
+    });
   }
 
   static async bulkSetUseCaseMetadata(
@@ -1033,7 +1101,7 @@ export class FileResource extends BaseResource<FileModel> {
       await copyContent(auth, sourceFile, newFile);
 
       // Mark the new file as ready.
-      await newFile.markAsReady();
+      await newFile.markAsReady(auth);
 
       return new Ok(newFile);
     } catch (error) {

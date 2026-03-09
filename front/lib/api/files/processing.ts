@@ -757,6 +757,7 @@ export async function processAndStoreFile(
     });
   }
 
-  await file.markAsReady();
+  await file.markAsReady(auth);
+
   return new Ok(file);
 }

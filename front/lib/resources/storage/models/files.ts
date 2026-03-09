@@ -14,6 +14,7 @@ import {
   type ForeignKey,
   literal,
   type NonAttribute,
+  Op,
 } from "sequelize";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
@@ -28,6 +29,7 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare status: FileStatus;
   declare useCase: FileUseCase;
   declare useCaseMetadata: FileUseCaseMetadata | null;
+  declare mountFilePath: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
@@ -80,6 +82,11 @@ FileModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    mountFilePath: {
+      type: DataTypes.STRING(4096),
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "files",
@@ -95,6 +102,11 @@ FileModel.init(
           // index on the JSONB field, not the best but it works
           literal("(\"useCaseMetadata\" #>> '{spaceId}')"),
         ],
+      },
+      {
+        fields: ["mountFilePath"],
+        unique: true,
+        where: { mountFilePath: { [Op.ne]: null } },
       },
     ],
   }

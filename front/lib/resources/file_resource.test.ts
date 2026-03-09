@@ -57,7 +57,7 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      await frameFile.markAsReady();
+      await frameFile.markAsReady(auth);
 
       const frameShareInfo = await frameFile.getShareInfo();
 
@@ -93,7 +93,7 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      await frameFile.markAsReady();
+      await frameFile.markAsReady(auth);
 
       const frameShareInfo = await frameFile.getShareInfo();
 
@@ -163,7 +163,7 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      await frameFile.markAsReady();
+      await frameFile.markAsReady(adminAuth);
 
       const frameShareInfo = await frameFile.getShareInfo();
       const token = frameShareInfo?.shareUrl.split("/").at(-1);

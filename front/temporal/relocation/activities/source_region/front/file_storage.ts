@@ -1,3 +1,4 @@
+import { getBaseMountPathForWorkspace } from "@app/lib/api/files/mount_path";
 import type { RegionType } from "@app/lib/api/regions/config";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
@@ -103,6 +104,7 @@ export async function startTransferFrontPrivateFiles({
     includePrefixes: [
       FileResource.getBaseCloudStorageForWorkspace({ workspaceId }),
       getContentFragmentBaseCloudStorageForWorkspace(workspaceId),
+      getBaseMountPathForWorkspace({ workspaceId }),
     ],
     sourceBucket: fileStorageConfig.getGcsPrivateUploadsBucket(),
     sourceProjectId: config.getGcsSourceProjectId(),

@@ -218,7 +218,7 @@ export async function editClientExecutableFile(
           editedByAgentConfigurationId;
 
         if (needsMetadataUpdate) {
-          await fileResource.setUseCaseMetadata({
+          await fileResource.setUseCaseMetadata(auth, {
             ...fileResource.useCaseMetadata,
             lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
           });
@@ -294,7 +294,7 @@ export async function renameClientExecutableFile(
     fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
       renamedByAgentConfigurationId
   ) {
-    await fileResource.setUseCaseMetadata({
+    await fileResource.setUseCaseMetadata(auth, {
       ...fileResource.useCaseMetadata,
       lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
     });
