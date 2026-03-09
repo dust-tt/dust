@@ -5,15 +5,14 @@ import {
 import { cn } from "@sparkle/lib";
 import React, { memo } from "react";
 
+interface LinkBlockProps {
+  href?: string;
+  children: React.ReactNode;
+  node?: MarkdownNode;
+}
+
 export const LinkBlock = memo(
-  ({
-    href,
-    children,
-  }: {
-    href?: string;
-    children: React.ReactNode;
-    node?: MarkdownNode;
-  }) => (
+  ({ href, children }: LinkBlockProps) => (
     <a
       href={href}
       title={href}

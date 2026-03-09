@@ -19,15 +19,14 @@ export const preBlockVariants = cva(
   }
 );
 
+interface PreBlockProps {
+  children: React.ReactNode;
+  variant?: "surface";
+  node?: MarkdownNode;
+}
+
 export const PreBlock = memo(
-  ({
-    children,
-    variant = "surface",
-  }: {
-    children: React.ReactNode;
-    variant?: "surface";
-    node?: MarkdownNode;
-  }) => {
+  ({ children, variant = "surface" }: PreBlockProps) => {
     const validChildrenContent =
       Array.isArray(children) && children[0]
         ? children[0].props.children[0]

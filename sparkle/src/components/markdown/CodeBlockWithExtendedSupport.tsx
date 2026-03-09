@@ -307,13 +307,15 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   );
 };
 
+interface StyledMermaidGraphProps {
+  children?: React.ReactNode;
+  className?: string;
+}
+
 export function StyledMermaidGraph({
   children,
   className,
-}: {
-  children?: React.ReactNode;
-  className?: string;
-}) {
+}: StyledMermaidGraphProps) {
   const validChildrenContent = String(children).trim();
 
   return (
@@ -323,17 +325,15 @@ export function StyledMermaidGraph({
   );
 }
 
+interface CodeBlockWithExtendedSupportProps {
+  children?: React.ReactNode;
+  className?: string;
+  inline?: boolean;
+  node?: MarkdownNode;
+}
+
 export const CodeBlockWithExtendedSupport = memo(
-  ({
-    children,
-    className,
-    inline,
-  }: {
-    children?: React.ReactNode;
-    className?: string;
-    inline?: boolean;
-    node?: MarkdownNode;
-  }) => {
+  ({ children, className, inline }: CodeBlockWithExtendedSupportProps) => {
     const validChildrenContent = String(children).trim();
     const [showMermaid, setShowMermaid] = useState<boolean>(false);
     const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);

@@ -4,8 +4,12 @@ import {
 } from "@sparkle/components/markdown/utils";
 import React, { memo } from "react";
 
+interface HrBlockProps {
+  node?: MarkdownNode;
+}
+
 export const HrBlock = memo(
-  (_props: { node?: MarkdownNode }) => (
+  (_props: HrBlockProps) => (
     <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
   ),
   (prev, next) => sameNodePosition(prev.node, next.node)

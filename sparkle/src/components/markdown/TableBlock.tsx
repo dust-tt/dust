@@ -20,8 +20,13 @@ const getNodeText = (node: ReactNode): string => {
   return "";
 };
 
+interface TableBlockProps {
+  children: React.ReactNode;
+  node?: MarkdownNode;
+}
+
 export const TableBlock = memo(
-  ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
+  ({ children }: TableBlockProps) => {
     const tableData = useMemo(() => {
       const [headNode, bodyNode] = Array.from(children as [any, any]);
       if (
@@ -83,8 +88,13 @@ export const TableBlock = memo(
 );
 TableBlock.displayName = "TableBlock";
 
+interface TableHeadBlockProps {
+  children: React.ReactNode;
+  node?: MarkdownNode;
+}
+
 export const TableHeadBlock = memo(
-  ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
+  ({ children }: TableHeadBlockProps) => {
     return (
       <thead className="s-bg-muted-background s-px-2 s-py-2 dark:s-bg-muted-background-night">
         {children}
@@ -95,8 +105,13 @@ export const TableHeadBlock = memo(
 );
 TableHeadBlock.displayName = "TableHeadBlock";
 
+interface TableBodyBlockProps {
+  children: React.ReactNode;
+  node?: MarkdownNode;
+}
+
 export const TableBodyBlock = memo(
-  ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
+  ({ children }: TableBodyBlockProps) => {
     return (
       <tbody className="s-bg-white dark:s-bg-background-night">
         {children}
@@ -107,8 +122,13 @@ export const TableBodyBlock = memo(
 );
 TableBodyBlock.displayName = "TableBodyBlock";
 
+interface TableHeaderBlockProps {
+  children: React.ReactNode;
+  node?: MarkdownNode;
+}
+
 export const TableHeaderBlock = memo(
-  ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
+  ({ children }: TableHeaderBlockProps) => {
     return (
       <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground dark:s-text-muted-foreground-night">
         {children}
@@ -119,8 +139,13 @@ export const TableHeaderBlock = memo(
 );
 TableHeaderBlock.displayName = "TableHeaderBlock";
 
+interface TableDataBlockProps {
+  children: React.ReactNode;
+  node?: MarkdownNode;
+}
+
 export const TableDataBlock = memo(
-  ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
+  ({ children }: TableDataBlockProps) => {
     return (
       <td className="s-px-4 s-py-3 s-text-sm s-text-foreground dark:s-text-foreground-night">
         {Array.isArray(children) ? (

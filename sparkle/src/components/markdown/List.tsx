@@ -10,8 +10,13 @@ import React, { memo } from "react";
 
 export const ulBlockVariants = cva(["s-list-disc s-pb-2 s-pl-6"]);
 
+interface UlBlockProps {
+  children: React.ReactNode;
+  node?: MarkdownNode;
+}
+
 export const UlBlock = memo(
-  ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
+  ({ children }: UlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
     return (
@@ -24,15 +29,14 @@ UlBlock.displayName = "UlBlock";
 
 export const olBlockVariants = cva(["s-list-decimal s-pb-2 s-pl-6"]);
 
+interface OlBlockProps {
+  children: React.ReactNode;
+  start?: number;
+  node?: MarkdownNode;
+}
+
 export const OlBlock = memo(
-  ({
-    children,
-    start,
-  }: {
-    children: React.ReactNode;
-    start?: number;
-    node?: MarkdownNode;
-  }) => {
+  ({ children, start }: OlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
     return (
@@ -48,15 +52,14 @@ OlBlock.displayName = "OlBlock";
 
 export const liBlockVariants = cva(["s-break-words"]);
 
+interface LiBlockProps {
+  children: React.ReactNode;
+  className?: string;
+  node?: MarkdownNode;
+}
+
 export const LiBlock = memo(
-  ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode;
-    className?: string;
-    node?: MarkdownNode;
-  }) => {
+  ({ children, className }: LiBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
     return (
